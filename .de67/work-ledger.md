@@ -84,8 +84,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   contact dispatcher, all-loaded-defender target owner, or raid casualty/return owner. Freeze these
   ordered closure gaps:
 
-  - `G-001`: own a raid-aware rally hold until true local darkness, then replay-safe physical
-    approach and committed contact for the same identities.
   - `G-002`: dispatch committed raid contact to combat against the avatar and every loaded allied
     defender without shakedown UI, broad bandit policy, or offscreen defender mutation.
   - `G-003`: reconcile authoritative raid casualties and survivors into survivor-only physical
@@ -95,6 +93,11 @@ Lineage: `CAOL-hostile-ecology-dev`
   byte-stable pre-dark hold, true-night contact, loaded-only combat, and physical return, with
   missing identity/cursor/path and replay controls inert. The existing attack-not-extort policy
   control passes 61 assertions.
+
+  `G-001` is closed at checkpoint `967800e778`: a real-NPC raid holds byte-stably at its physical
+  rally in daylight, then uses ordinary production paths at true night to reach committed contact
+  with the same identities. The exact fixture passes 48 assertions; shared hostile and cannibal
+  policy regressions pass 311 and 61 assertions.
 
   The immutable whole-item estimate is 5396 seconds, the next whole second above R-006's directly
   measured 5395.802046-second first-dispatch-to-acceptance interval, used as the nearest completed
