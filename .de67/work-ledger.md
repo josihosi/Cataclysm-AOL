@@ -79,6 +79,16 @@ Lineage: `CAOL-hostile-ecology-dev`
   and application identities through the resumed production transition.
   - DFS slices: `R-009-S001`, `R-009-S002`
 
+  `G-001` revision 3 is closed with real-owner, two-direction handoff continuation. `G-002` revision 1
+  is closed from bound `cata_test` artifact `62c18e0c65ed`: two real scout NPCs resumed through the
+  full global owner and ordinary `note_live_bandit_aftermath`, preserving provisional identity across
+  reload before finalizing receipts once and replaying byte-stably. G-003 shakedown committed contact
+  is next; G-004 cannibal darkness wait remains open.
+
+  The immutable whole-item estimate is 7864 seconds, the next whole second above R-008's directly
+  measured 7863.018709897995-second first-dispatch-to-acceptance interval, used as the nearest
+  completed adjacent multi-gap hostile-lifecycle delivery.
+
 - [ ] R-010 — After every predecessor is green, measure the completed production route on macOS,
   Linux/WSL, and Windows for scheduler/loaded-NPC CPU, retained memory, save growth, save/load
   latency, runtime, and packaging. Do not touch `port/cdda-master` without fresh explicit authority.

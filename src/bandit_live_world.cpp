@@ -9575,9 +9575,7 @@ void world_state::serialize( JsonOut &json ) const
         }
         json.end_array();
     }
-    if( !hostile_target_opportunities.empty() ) {
-        json.member( "hostile_target_opportunities", hostile_target_opportunities );
-    }
+    json.member( "hostile_target_opportunities", hostile_target_opportunities );
     json.end_object();
 }
 

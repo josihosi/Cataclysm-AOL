@@ -64,6 +64,7 @@ overmap_global_state populated_global_state()
     state.zombie_rider_light_memory_last_turn = calendar::turn_zero + 123_turns;
 
     state.placed_regions.emplace( tripoint_abs_om( 6, 7, 0 ), region_settings_id( "default" ) );
+    state.bandit_live_world.schema_version = 7;
     return state;
 }
 
@@ -77,6 +78,14 @@ overmap_global_state round_trip_global_state( const overmap_global_state &state 
     overmap_global_state loaded;
     loaded.deserialize( jsin.get_object() );
     return loaded;
+}
+
+std::string serialize_global_state( const overmap_global_state &state )
+{
+    std::ostringstream out;
+    JsonOut jsout( out, true );
+    state.serialize( jsout );
+    return out.str();
 }
 
 JsonValue legacy_npc_save_with( const std::string &fields )
@@ -191,9 +200,13 @@ TEST_CASE( "npc_loads_established_C-AOL_numeric_mission_values",
 TEST_CASE( "overmap_global_save_fields_coexist_across_a_round_trip",
            "[savegame][overmap][regression]" )
 {
-    const overmap_global_state loaded = round_trip_global_state( populated_global_state() );
+    const overmap_global_state original = populated_global_state();
+    const overmap_global_state loaded = round_trip_global_state( original );
+
+    CHECK( serialize_global_state( loaded ) == serialize_global_state( original ) );
 
     REQUIRE( loaded.bandit_live_world.sites.size() == 1 );
+    CHECK( loaded.bandit_live_world.hostile_target_opportunities.empty() );
     CHECK( loaded.bandit_live_world.sites.front().site_id == "save_compatibility_site" );
     CHECK( loaded.bandit_live_world.sites.front().living_total == 2 );
     CHECK( loaded.bandit_live_world.sites.front().supply_units == 13 );

@@ -4946,6 +4946,11 @@ bool record_live_bandit_structural_member_returns()
             !bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) ) {
             continue;
         }
+        // A complete local handoff owns its pair's camp-arrival receipt.  Recording either
+        // member here first would unload it before the transactional dematerializer reads both.
+        if( outing.local_handoff.is_active() && outing.local_handoff.members.size() == 2 ) {
+            continue;
+        }
         for( const character_id member_id : outing.member_ids ) {
             shared_ptr_fast<npc> member = overmap_buffer.find_npc( member_id );
             if( !member || member->is_dead() || !site_contains_omt( site, member->pos_abs_omt() ) ) {
