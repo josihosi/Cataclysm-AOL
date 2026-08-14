@@ -788,6 +788,27 @@ struct finite_resource_record {
     int revision = 0;
 };
 
+struct hostile_target_opportunity_record {
+    std::string target_id;
+    tripoint_abs_omt target_omt;
+    int goods_value = 0;
+    int population = 0;
+    int activity = 0;
+    int revision = 0;
+    std::string consumed_operation_id;
+    std::string consumed_report_key;
+    int consumed_generation = 0;
+
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &jo );
+};
+
+enum class hostile_target_claim_result {
+    rejected,
+    applied,
+    already_applied,
+};
+
 enum class finite_resource_claim_status {
     rejected,
     stale,
@@ -1005,13 +1026,14 @@ struct site_record {
 };
 
 struct world_state {
-    int schema_version = 6;
+    int schema_version = 7;
     std::string owner_id = "hells_raiders_live_owner_v0";
     int routine_scheduler_cursor = 0;
     int routine_terrain_scan_cursor = 0;
     int routine_scheduler_last_hour = -1;
     std::vector<site_record> sites;
     std::map<tripoint_abs_omt, finite_resource_record> finite_resources;
+    std::vector<hostile_target_opportunity_record> hostile_target_opportunities;
 
     void clear();
     void serialize( JsonOut &json ) const;
@@ -1020,6 +1042,8 @@ struct world_state {
     site_record *find_site( const std::string &site_id );
     const site_record *find_site( const std::string &site_id ) const;
     const finite_resource_record *find_finite_resource( const tripoint_abs_omt &omt ) const;
+    const hostile_target_opportunity_record *find_hostile_target_opportunity(
+        const std::string &target_id, const tripoint_abs_omt &target_omt ) const;
 };
 
 struct footprint_snapshot {
@@ -1549,6 +1573,12 @@ finite_resource_record finite_resource_snapshot( const world_state &state,
         const tripoint_abs_omt &omt, int undiscovered_units );
 std::string finite_resource_claim_application_key( const std::string &operation_id,
         int operation_generation, const tripoint_abs_omt &omt );
+bool observe_hostile_target_opportunity( world_state &state, const std::string &target_id,
+        const tripoint_abs_omt &target_omt, int goods_value, int population, int activity,
+        int revision );
+hostile_target_claim_result claim_hostile_target_opportunity( world_state &state,
+        const std::string &target_id, const tripoint_abs_omt &target_omt, int revision,
+        const std::string &operation_id, const std::string &report_key, int generation );
 int camp_supply_living_total( const site_record &site );
 int camp_supply_cap( const site_record &site );
 bool advance_camp_supply( site_record &site, int now_minutes );

@@ -9522,13 +9522,14 @@ bool site_record::eligible_for_empty_site_retirement() const
 
 void world_state::clear()
 {
-    schema_version = 6;
+    schema_version = 7;
     owner_id = "hells_raiders_live_owner_v0";
     routine_scheduler_cursor = 0;
     routine_terrain_scan_cursor = 0;
     routine_scheduler_last_hour = -1;
     sites.clear();
     finite_resources.clear();
+    hostile_target_opportunities.clear();
 }
 
 void world_state::serialize( JsonOut &json ) const
@@ -9567,6 +9568,9 @@ void world_state::serialize( JsonOut &json ) const
         }
         json.end_array();
     }
+    if( !hostile_target_opportunities.empty() ) {
+        json.member( "hostile_target_opportunities", hostile_target_opportunities );
+    }
     json.end_object();
 }
 
@@ -9579,7 +9583,7 @@ void world_state::deserialize( const JsonObject &jo )
     world_state candidate;
     int loaded_schema_version = 0;
     jo.read( "schema_version", loaded_schema_version );
-    if( loaded_schema_version < 0 || loaded_schema_version > 6 ) {
+    if( loaded_schema_version < 0 || loaded_schema_version > 7 ) {
         jo.throw_error( "hostile live-world schema version is unsupported" );
     }
     jo.read( "owner_id", candidate.owner_id );
@@ -9661,7 +9665,15 @@ void world_state::deserialize( const JsonObject &jo )
             }
         }
     }
-    candidate.schema_version = 6;
+    if( jo.has_member( "hostile_target_opportunities" ) ) {
+        if( loaded_schema_version < 7 ) {
+            jo.throw_error( "pre-v7 world cannot contain hostile target opportunities" );
+        }
+        jo.read( "hostile_target_opportunities", candidate.hostile_target_opportunities );
+    } else if( loaded_schema_version >= 7 ) {
+        jo.throw_error( "v7 world is missing hostile target opportunities" );
+    }
+    candidate.schema_version = 7;
     *this = std::move( candidate );
 }
 
@@ -9686,6 +9698,100 @@ const finite_resource_record *world_state::find_finite_resource(
 {
     const auto iter = finite_resources.find( omt );
     return iter != finite_resources.end() ? &iter->second : nullptr;
+}
+
+const hostile_target_opportunity_record *world_state::find_hostile_target_opportunity(
+    const std::string &target_id, const tripoint_abs_omt &target_omt ) const
+{
+    const auto iter = std::find_if( hostile_target_opportunities.begin(),
+    hostile_target_opportunities.end(), [&target_id, &target_omt](
+    const hostile_target_opportunity_record & record ) {
+        return record.target_id == target_id && record.target_omt == target_omt;
+    } );
+    return iter != hostile_target_opportunities.end() ? &*iter : nullptr;
+}
+
+void hostile_target_opportunity_record::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "target_id", target_id );
+    json.member( "target_omt", target_omt );
+    json.member( "goods_value", goods_value );
+    json.member( "population", population );
+    json.member( "activity", activity );
+    json.member( "revision", revision );
+    json.member( "consumed_operation_id", consumed_operation_id );
+    json.member( "consumed_report_key", consumed_report_key );
+    json.member( "consumed_generation", consumed_generation );
+    json.end_object();
+}
+
+void hostile_target_opportunity_record::deserialize( const JsonObject &jo )
+{
+    jo.read( "target_id", target_id );
+    jo.read( "target_omt", target_omt );
+    jo.read( "goods_value", goods_value );
+    jo.read( "population", population );
+    jo.read( "activity", activity );
+    jo.read( "revision", revision );
+    jo.read( "consumed_operation_id", consumed_operation_id );
+    jo.read( "consumed_report_key", consumed_report_key );
+    jo.read( "consumed_generation", consumed_generation );
+    if( target_id.empty() || target_id.size() > max_camp_lead_target_id_length ||
+        goods_value < 0 || population < 0 || activity < 0 || revision <= 0 ||
+        consumed_generation < 0 || ( consumed_generation == 0 &&
+                                     ( !consumed_operation_id.empty() || !consumed_report_key.empty() ) ) ||
+        ( consumed_generation > 0 &&
+          ( consumed_operation_id.empty() || consumed_report_key.empty() ) ) ) {
+        jo.throw_error( "hostile target opportunity is malformed" );
+    }
+}
+
+bool observe_hostile_target_opportunity( world_state &state, const std::string &target_id,
+        const tripoint_abs_omt &target_omt, const int goods_value, const int population,
+        const int activity, const int revision )
+{
+    if( target_id.empty() || target_id.size() > max_camp_lead_target_id_length ||
+        goods_value < 0 || population < 0 || activity < 0 || revision <= 0 ) {
+        return false;
+    }
+    const hostile_target_opportunity_record *current =
+        state.find_hostile_target_opportunity( target_id, target_omt );
+    if( current != nullptr ) {
+        return current->goods_value == goods_value && current->population == population &&
+               current->activity == activity && current->revision == revision;
+    }
+    state.hostile_target_opportunities.push_back( { target_id, target_omt, goods_value,
+            population, activity, revision, "", "", 0 } );
+    return true;
+}
+
+hostile_target_claim_result claim_hostile_target_opportunity( world_state &state,
+        const std::string &target_id, const tripoint_abs_omt &target_omt, const int revision,
+        const std::string &operation_id, const std::string &report_key, const int generation )
+{
+    if( target_id.empty() || target_id.size() > max_camp_lead_target_id_length || revision <= 0 ||
+        operation_id.empty() || report_key.empty() ||
+        generation <= 0 ) {
+        return hostile_target_claim_result::rejected;
+    }
+    auto iter = std::find_if( state.hostile_target_opportunities.begin(),
+    state.hostile_target_opportunities.end(), [&target_id, &target_omt](
+    const hostile_target_opportunity_record & record ) {
+        return record.target_id == target_id && record.target_omt == target_omt;
+    } );
+    if( iter == state.hostile_target_opportunities.end() || iter->revision != revision ) {
+        return hostile_target_claim_result::rejected;
+    }
+    if( iter->consumed_generation == 0 ) {
+        iter->consumed_operation_id = operation_id;
+        iter->consumed_report_key = report_key;
+        iter->consumed_generation = generation;
+        return hostile_target_claim_result::applied;
+    }
+    return iter->consumed_operation_id == operation_id && iter->consumed_report_key == report_key &&
+           iter->consumed_generation == generation ? hostile_target_claim_result::already_applied :
+           hostile_target_claim_result::rejected;
 }
 
 finite_resource_record finite_resource_snapshot( const world_state &state,

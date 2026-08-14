@@ -2820,21 +2820,21 @@ TEST_CASE( "bandit_live_world_migrates_or_closes_persisted_hostile_operation_own
         const std::string before_escalation = serialize_world(
                                                   bandit_live_world::world_state { 6,
                                                       "hells_raiders_live_owner_v0", 0, 0, -1,
-                                                      { site }, {} } );
+                                                      { site }, {}, {} } );
         CHECK( transition_test_hostile_operation(
                    site, hostile_operation_phase::returning_home,
                    hostile_operation_phase::approaching, 130, "unsafe legacy escalation" ) ==
                bandit_live_world::hostile_operation_transition_result::rejected );
         CHECK( serialize_world( bandit_live_world::world_state { 6,
                                 "hells_raiders_live_owner_v0", 0, 0, -1,
-                                { site }, {} } ) == before_escalation );
+                                { site }, {}, {} } ) == before_escalation );
         CHECK( transition_test_hostile_operation(
                    site, hostile_operation_phase::returning_home,
                    hostile_operation_phase::lost, 130, "legacy party lost" ) ==
                bandit_live_world::hostile_operation_transition_result::applied );
         CHECK( serialize_world( bandit_live_world::world_state { 6,
                                 "hells_raiders_live_owner_v0", 0, 0, -1,
-                                { site }, {} } ) != before_escalation );
+                                { site }, {}, {} } ) != before_escalation );
     }
 
     SECTION( "malformed new operation releases every known in-flight reservation" ) {
@@ -25643,6 +25643,59 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_true_darkness",
         CHECK( serialize_site( live_site.active_hostile_operation ) == released_raid );
     }
 
+}
+
+TEST_CASE( "hostile target opportunity ledger arbitrates and persists exact receipts",
+           "[bandit][live_world][hostile_operation][target_opportunity]" )
+{
+    bandit_live_world::world_state state;
+    const tripoint_abs_omt target( 41, 52, 0 );
+    REQUIRE( bandit_live_world::observe_hostile_target_opportunity( state, "shared-target", target,
+             90, 4, 2, 7 ) );
+    CHECK_FALSE( bandit_live_world::observe_hostile_target_opportunity( state, "shared-target", target,
+                 91, 4, 2, 7 ) );
+    REQUIRE( state.find_hostile_target_opportunity( "shared-target", target ) != nullptr );
+    REQUIRE( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 7,
+             "camp-a#hostile:3", "camp-a:report:9", 3 ) ==
+             bandit_live_world::hostile_target_claim_result::applied );
+
+    const auto serialize_state = []( const bandit_live_world::world_state & value ) {
+        std::ostringstream out;
+        JsonOut json( out, true );
+        value.serialize( json );
+        return out.str();
+    };
+    const std::string claimed = serialize_state( state );
+    CHECK( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 7,
+           "camp-a#hostile:3", "camp-a:report:9", 3 ) ==
+           bandit_live_world::hostile_target_claim_result::already_applied );
+    CHECK( serialize_state( state ) == claimed );
+    CHECK( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 7,
+           "camp-b#hostile:4", "camp-b:report:2", 4 ) ==
+           bandit_live_world::hostile_target_claim_result::rejected );
+    CHECK( bandit_live_world::claim_hostile_target_opportunity( state, "shared-target", target, 6,
+           "camp-b#hostile:4", "camp-b:report:2", 4 ) ==
+           bandit_live_world::hostile_target_claim_result::rejected );
+    CHECK( serialize_state( state ) == claimed );
+
+    JsonObject claimed_json = json_loader::from_string( claimed );
+    bandit_live_world::world_state reloaded;
+    reloaded.deserialize( claimed_json );
+    CHECK( serialize_state( reloaded ) == claimed );
+    const bandit_live_world::hostile_target_opportunity_record *record =
+        reloaded.find_hostile_target_opportunity( "shared-target", target );
+    REQUIRE( record != nullptr );
+    CHECK( record->goods_value == 90 );
+    CHECK( record->population == 4 );
+    CHECK( record->activity == 2 );
+    CHECK( record->revision == 7 );
+    CHECK( record->consumed_operation_id == "camp-a#hostile:3" );
+
+    JsonObject legacy_json = json_loader::from_string(
+                                R"({"schema_version":6,"owner_id":"legacy","routine_scheduler_cursor":0,"routine_terrain_scan_cursor":0,"routine_scheduler_last_hour":-1,"sites":[]})" );
+    bandit_live_world::world_state legacy;
+    legacy.deserialize( legacy_json );
+    CHECK( legacy.hostile_target_opportunities.empty() );
 }
 
 TEST_CASE( "bandit_live_world_scheduler_commits_authorized_response_as_assembling_only",
