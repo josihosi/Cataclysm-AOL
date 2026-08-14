@@ -25375,11 +25375,11 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_true_darkness",
     bandit_live_world::world_state world;
     REQUIRE( bandit_live_world::register_abstract_site( world,
              bandit_live_world::anchor_source_kind::overmap_special, "bandit_camp",
-             tripoint_abs_omt( 10, 20, 0 ), special_lookup, 4 ) );
+             tripoint_abs_omt( 10, 20, 0 ), special_lookup, 6 ) );
     bandit_live_world::site_record &site = world.sites.front();
     site.site_kind = bandit_live_world::owned_site_kind::cannibal_camp;
     site.profile = bandit_live_world::hostile_site_profile::cannibal_camp;
-    for( int index = 0; index < 4; ++index ) {
+    for( int index = 0; index < 6; ++index ) {
         shared_ptr_fast<npc> member = make_shared_fast<npc>();
         member->normalize();
         member->load_npc_template( npc_template_id( "cannibal_hunter" ) );
@@ -25494,6 +25494,89 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_true_darkness",
     const std::string committed = serialize_site( live_site );
     process_overmap_npc_move_for_test();
     CHECK( serialize_site( live_site ) == committed );
+
+    map &here = get_map();
+    const tripoint_bub_ms avatar_pos = get_avatar().pos_bub( here );
+    const character_id first_defender_id = here.place_npc( avatar_pos.xy() + point( 5, 0 ),
+                                           npc_template_test_talker );
+    const character_id second_defender_id = here.place_npc( avatar_pos.xy() + point( 0, 5 ),
+                                            npc_template_test_talker );
+    g->load_npcs();
+    npc *first_defender = g->find_npc( first_defender_id );
+    npc *second_defender = g->find_npc( second_defender_id );
+    REQUIRE( first_defender != nullptr );
+    REQUIRE( second_defender != nullptr );
+    generated_npc_ids.push_back( first_defender_id );
+    generated_npc_ids.push_back( second_defender_id );
+    first_defender->set_fac( faction_your_followers );
+    second_defender->set_fac( faction_your_followers );
+    REQUIRE( first_defender->is_active() );
+    REQUIRE( second_defender->is_active() );
+
+    shared_ptr_fast<npc> unloaded_defender = make_shared_fast<npc>();
+    unloaded_defender->normalize();
+    unloaded_defender->load_npc_template( npc_template_test_talker );
+    unloaded_defender->set_fac( faction_your_followers );
+    unloaded_defender->spawn_at_precise( get_avatar().pos_abs() + point( 200, 200 ) );
+    const character_id unloaded_defender_id = unloaded_defender->getID();
+    const tripoint_abs_ms unloaded_before = unloaded_defender->pos_abs();
+    overmap_buffer.insert_npc( unloaded_defender );
+    generated_npc_ids.push_back( unloaded_defender_id );
+    REQUIRE_FALSE( unloaded_defender->is_active() );
+
+    struct raid_target_pressure {
+        Creature *target;
+        npc *attacker;
+        int hp_before;
+        int distance_before;
+    };
+    std::vector<tripoint_bub_ms> expected_placements;
+    for( const tripoint_bub_ms &candidate : closest_points_first( avatar_pos, 2 ) ) {
+        if( candidate != avatar_pos && here.inbounds( candidate ) && g->is_empty( candidate ) ) {
+            expected_placements.push_back( candidate );
+            if( expected_placements.size() == raid_ids.size() ) {
+                break;
+            }
+        }
+    }
+    REQUIRE( raid_ids.size() == 3 );
+    REQUIRE( expected_placements.size() == raid_ids.size() );
+    const std::vector<Creature *> raid_targets = { &get_avatar(), first_defender, second_defender };
+    std::vector<raid_target_pressure> pressures;
+    for( std::size_t index = 0; index < raid_targets.size(); ++index ) {
+        npc *attacker = g->find_npc( raid_ids[index] );
+        REQUIRE( attacker != nullptr );
+        pressures.push_back( { raid_targets[index], attacker, raid_targets[index]->get_hp(),
+                               rl_dist( expected_placements[index],
+                                        raid_targets[index]->pos_bub( here ) ) } );
+    }
+
+    calendar::turn += 1_minutes;
+    note_live_bandit_aftermath_for_test();
+    for( const character_id id : raid_ids ) {
+        npc *member = g->find_npc( id );
+        REQUIRE( member != nullptr );
+        CHECK( member->is_active() );
+        CHECK( here.inbounds( member->pos_bub( here ) ) );
+        CHECK( member->get_attitude() == NPCATT_KILL );
+    }
+    for( const raid_target_pressure &pressure : pressures ) {
+        const int distance_after = rl_dist( pressure.attacker->pos_bub( here ),
+                                            pressure.target->pos_bub( here ) );
+        const bool pressured = pressure.target->get_hp() < pressure.hp_before ||
+                               distance_after < pressure.distance_before ||
+                               !pressure.attacker->path.empty();
+        CHECK( pressured );
+    }
+    CHECK( unloaded_defender->pos_abs() == unloaded_before );
+    CHECK_FALSE( unloaded_defender->is_active() );
+    CHECK( live_site.active_hostile_operation.shakedown_pending_branch.empty() );
+    CHECK( live_site.last_shakedown_outcome.empty() );
+    CHECK_FALSE( bandit_live_world::is_active_shakedown_parley_member(
+                     overmap_buffer.global_state.bandit_live_world, raid_ids.front() ) );
+    const std::string after_raid_dispatch = serialize_site( live_site.active_hostile_operation );
+    note_live_bandit_aftermath_for_test();
+    CHECK( serialize_site( live_site.active_hostile_operation ) == after_raid_dispatch );
 }
 
 TEST_CASE( "bandit_live_world_scheduler_commits_authorized_response_as_assembling_only",

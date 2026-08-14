@@ -1991,6 +1991,103 @@ bool live_bandit_try_fight_advance( npc &member_npc,
     return attacked || moved || path_found || adjacent;
 }
 
+bool live_cannibal_raid_attack_loaded_targets( bandit_live_world::site_record &site )
+{
+    bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    if( site.retired_empty_site || outing == nullptr || outing != &site.active_hostile_operation.reservation ||
+        !site.active_hostile_operation.is_active() ||
+        site.active_hostile_operation.operation_kind != bandit_live_world::hostile_operation_kind::raid ||
+        site.active_hostile_operation.phase != bandit_live_world::hostile_operation_phase::committed_contact ||
+        outing->owner != bandit_live_world::simulation_owner::local ) {
+        return false;
+    }
+    const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    if( !cursor || live_bandit_current_minutes() <= cursor->last_advanced_minutes ) {
+        return false;
+    }
+
+    avatar &u = get_avatar();
+    map &here = get_map();
+    std::vector<Creature *> targets = { &u };
+    for( npc &defender : g->all_npcs() ) {
+        if( defender.is_player_ally() && !defender.is_dead() && defender.is_active() &&
+            here.inbounds( defender.pos_bub( here ) ) ) {
+            targets.push_back( &defender );
+        }
+    }
+    bool changed = false;
+    std::vector<npc *> attackers;
+    for( const character_id member_id : outing->member_ids ) {
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        npc *attacker = g->find_npc( member_id );
+        if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ||
+            attacker == nullptr || attacker->is_dead() ) {
+            continue;
+        }
+        attackers.push_back( attacker );
+    }
+    for( std::size_t target_index = 0; target_index < targets.size() && !attackers.empty();
+         ++target_index ) {
+        npc *attacker = attackers[target_index % attackers.size()];
+        Creature &target = *targets[target_index];
+        attacker->set_attitude( NPCATT_KILL );
+        const tripoint_bub_ms before = attacker->pos_bub( here );
+        const tripoint_bub_ms target_pos = target.pos_bub( here );
+        if( rl_dist( attacker->pos_abs(), target.pos_abs() ) <= 1 && attacker->sees( here, target ) &&
+            !attacker->has_flag( json_flag_CANNOT_ATTACK ) ) {
+            changed |= attacker->melee_attack( target, true );
+        } else if( !attacker->has_flag( json_flag_CANNOT_MOVE ) && attacker->update_path( target_pos, false ) ) {
+            attacker->move_to_next();
+            changed |= attacker->pos_bub( here ) != before;
+        }
+    }
+    return changed;
+}
+
+bool materialize_committed_cannibal_raid( bandit_live_world::site_record &site )
+{
+    bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    if( site.retired_empty_site || outing == nullptr || outing != &site.active_hostile_operation.reservation ||
+        !site.active_hostile_operation.is_active() ||
+        site.active_hostile_operation.operation_kind != bandit_live_world::hostile_operation_kind::raid ||
+        site.active_hostile_operation.phase != bandit_live_world::hostile_operation_phase::committed_contact ||
+        outing->owner != bandit_live_world::simulation_owner::local ) {
+        return false;
+    }
+    map &here = get_map();
+    const tripoint_bub_ms avatar_pos = get_avatar().pos_bub( here );
+    std::vector<npc *> party;
+    party.reserve( outing->member_ids.size() );
+    for( const character_id member_id : outing->member_ids ) {
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        npc *member_npc = g->find_npc( member_id );
+        if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ||
+            member_npc == nullptr || member_npc->is_dead() || member_npc->is_active() ) {
+            return false;
+        }
+        party.push_back( member_npc );
+    }
+    std::vector<tripoint_bub_ms> placements;
+    placements.reserve( party.size() );
+    for( const tripoint_bub_ms &candidate : closest_points_first( avatar_pos, 2 ) ) {
+        if( candidate == avatar_pos || !here.inbounds( candidate ) || !g->is_empty( candidate ) ) {
+            continue;
+        }
+        placements.push_back( candidate );
+        if( placements.size() == party.size() ) {
+            break;
+        }
+    }
+    if( placements.size() != party.size() ) {
+        return false;
+    }
+    for( std::size_t index = 0; index < party.size(); ++index ) {
+        party[index]->setpos( here, placements[index] );
+    }
+    return true;
+}
+
 bool live_bandit_reconcile_hostile_shakedown_combat( bandit_live_world::site_record &site )
 {
     bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
@@ -3130,7 +3227,13 @@ bool note_live_bandit_aftermath()
         changed |= live_bandit_apply_shakedown_defender_aftermath( site, u );
         bandit_live_world::active_outing_state *external_outing = site.active_external_outing();
         if( external_outing != nullptr && external_outing != &site.active_outing ) {
-            changed |= live_bandit_handle_hostile_shakedown_contact( site, u );
+            if( site.active_hostile_operation.operation_kind ==
+                bandit_live_world::hostile_operation_kind::raid ) {
+                changed |= materialize_committed_cannibal_raid( site );
+                changed |= live_cannibal_raid_attack_loaded_targets( site );
+            } else {
+                changed |= live_bandit_handle_hostile_shakedown_contact( site, u );
+            }
             continue;
         }
         if( site.retired_empty_site || !site.active_outing.is_active() || site.active_outing.member_ids.empty() ) {
