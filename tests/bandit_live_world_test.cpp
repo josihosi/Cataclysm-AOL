@@ -25165,6 +25165,48 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
         const std::string before_contact_replay = serialize_record( live_site );
         process_overmap_npc_move_for_test();
         CHECK( serialize_record( live_site ) == before_contact_replay );
+
+        const bandit_live_world::simulation_advance_cursor contact_cursor =
+            require_current_simulation_cursor( live_site );
+        REQUIRE( bandit_live_world::transition_hostile_operation_phase( live_site,
+                 contact_cursor, bandit_live_world::hostile_operation_phase::committed_contact,
+                 bandit_live_world::hostile_operation_phase::returning_home,
+                 contact_cursor.last_advanced_minutes + 1,
+                 "test paid shakedown begins physical return" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        for( const character_id id : expected_selection.member_ids ) {
+            CHECK( live_site.find_member( id )->state ==
+                   bandit_live_world::member_state::outbound );
+        }
+
+        calendar::turn += 2_minutes;
+        process_overmap_npc_move_for_test();
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::returning_home );
+        for( const character_id id : expected_selection.member_ids ) {
+            npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            CHECK( member->goal == live_site.anchor );
+            CHECK( member->is_travelling() );
+        }
+        const std::string before_return_replay = serialize_record( live_site );
+        process_overmap_npc_move_for_test();
+        CHECK( serialize_record( live_site ) == before_return_replay );
+
+        for( const character_id id : expected_selection.member_ids ) {
+            npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            member->spawn_at_omt( live_site.anchor );
+        }
+        calendar::turn += 1_minutes;
+        process_overmap_npc_move_for_test();
+        CHECK_FALSE( live_site.active_hostile_operation.is_active() );
+        for( const character_id id : expected_selection.member_ids ) {
+            CHECK( live_site.find_member( id )->state ==
+                   bandit_live_world::member_state::at_home );
+        }
     }
 
     SECTION( "a later missing reserved member leaves earlier members untouched" ) {
