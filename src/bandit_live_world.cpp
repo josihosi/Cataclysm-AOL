@@ -18253,12 +18253,13 @@ bool is_active_shakedown_parley_member( const world_state &state, const characte
 {
     for( const site_record &site : state.sites ) {
         const active_outing_state *outing = site.active_external_outing();
-        const bool new_model_shakedown = outing != &site.active_hostile_operation.reservation ||
-                                        site.active_hostile_operation.operation_kind ==
-                                        hostile_operation_kind::shakedown;
         if( site.retired_empty_site || outing == nullptr || !outing->is_active() ||
+            outing != &site.active_hostile_operation.reservation ||
+            !site.active_hostile_operation.is_active() ||
+            site.active_hostile_operation.operation_kind != hostile_operation_kind::shakedown ||
+            site.active_hostile_operation.phase != hostile_operation_phase::committed_contact ||
             outing->owner != simulation_owner::local || outing->member_ids.empty() ||
-            outing->job_type != "toll" || !new_model_shakedown ) {
+            outing->job_type != "toll" ) {
             continue;
         }
         if( site.last_shakedown_outcome.rfind( "fight", 0 ) == 0 ) {

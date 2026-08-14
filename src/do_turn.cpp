@@ -1127,6 +1127,106 @@ bool advance_live_bandit_hostile_rallies()
     return changed;
 }
 
+bool advance_live_bandit_hostile_approaches()
+{
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const int current_minutes = live_bandit_current_minutes();
+    bool changed = false;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
+        bandit_live_world::active_outing_state &reservation = operation.reservation;
+        if( site.retired_empty_site || !operation.is_active() ||
+            ( operation.phase != bandit_live_world::hostile_operation_phase::rallying &&
+              operation.phase != bandit_live_world::hostile_operation_phase::approaching ) ||
+            reservation.owner != bandit_live_world::simulation_owner::abstract ||
+            reservation.member_ids.empty() || reservation.shared_route.empty() ||
+            reservation.shared_route.back() != reservation.target_omt ) {
+            continue;
+        }
+
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        if( !cursor || current_minutes <= cursor->last_advanced_minutes ) {
+            continue;
+        }
+
+        struct hostile_approach_travel_order {
+            npc *member_npc;
+            std::vector<tripoint_abs_omt> route;
+        };
+        std::vector<hostile_approach_travel_order> travel_orders;
+        bool valid_party = true;
+        bool all_at_target = true;
+        for( const character_id member_id : reservation.member_ids ) {
+            const bandit_live_world::member_record *member = site.find_member( member_id );
+            npc *member_npc = g->find_npc( member_id );
+            if( member == nullptr || member->state != bandit_live_world::member_state::outbound ||
+                member_npc == nullptr || member_npc->is_dead() ) {
+                valid_party = false;
+                break;
+            }
+            if( member_npc->pos_abs_omt() == reservation.target_omt ) {
+                continue;
+            }
+            all_at_target = false;
+            if( member_npc->goal == reservation.target_omt && !member_npc->omt_path.empty() &&
+                member_npc->is_travelling() ) {
+                continue;
+            }
+            const std::vector<tripoint_abs_omt> route = overmap_buffer.get_travel_path(
+                        member_npc->pos_abs_omt(), reservation.target_omt,
+                        overmap_path_params::for_npc() ).points;
+            if( route.empty() || route.front() != reservation.target_omt ||
+                route.back() != member_npc->pos_abs_omt() ) {
+                valid_party = false;
+                break;
+            }
+            travel_orders.push_back( { member_npc, route } );
+        }
+        if( !valid_party ) {
+            continue;
+        }
+
+        if( operation.phase == bandit_live_world::hostile_operation_phase::rallying ) {
+            if( std::any_of( reservation.member_ids.begin(), reservation.member_ids.end(),
+            [&operation]( const character_id member_id ) {
+                npc *member_npc = g->find_npc( member_id );
+                return member_npc == nullptr || member_npc->pos_abs_omt() != operation.rally_omt;
+            } ) ) {
+                continue;
+            }
+            for( hostile_approach_travel_order &order : travel_orders ) {
+                order.member_npc->goal = reservation.target_omt;
+                order.member_npc->omt_path = std::move( order.route );
+                order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
+                changed = true;
+            }
+            changed |= bandit_live_world::transition_hostile_operation_phase( site, *cursor,
+                       bandit_live_world::hostile_operation_phase::rallying,
+                       bandit_live_world::hostile_operation_phase::approaching, current_minutes,
+                       "hostile operation openly approached persisted target" ) ==
+                       bandit_live_world::hostile_operation_transition_result::applied;
+            continue;
+        }
+
+        if( !all_at_target ) {
+            for( hostile_approach_travel_order &order : travel_orders ) {
+                order.member_npc->goal = reservation.target_omt;
+                order.member_npc->omt_path = std::move( order.route );
+                order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
+                changed = true;
+            }
+            continue;
+        }
+        changed |= bandit_live_world::transition_hostile_operation_phase( site, *cursor,
+                   bandit_live_world::hostile_operation_phase::approaching,
+                   bandit_live_world::hostile_operation_phase::committed_contact, current_minutes,
+                   "hostile operation physically reached target contact" ) ==
+                   bandit_live_world::hostile_operation_transition_result::applied;
+    }
+    return changed;
+}
+
 struct live_bandit_covert_egress_plan {
     std::vector<bandit_live_world::covert_scout_egress_candidate> candidates;
     std::map<tripoint_abs_omt,
@@ -8528,6 +8628,7 @@ void overmap_npc_move()
                                    << " facts=" << recorded.facts_recorded << '\n';
     }
     advance_live_bandit_hostile_rallies();
+    advance_live_bandit_hostile_approaches();
     materialize_live_bandit_structural_handoffs();
     const auto dispatch_done = std::chrono::steady_clock::now();
     const std::set<character_id> local_pair_homeward_member_ids =

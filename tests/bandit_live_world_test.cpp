@@ -23082,6 +23082,9 @@ TEST_CASE( "bandit_live_world_builds_a_bounded_pay_or_fight_shakedown_surface", 
                  bandit_live_world::hostile_operation_phase::approaching, 105,
                  "hostile shakedown approached target" ) ==
              bandit_live_world::hostile_operation_transition_result::applied );
+    for( const character_id member_id : hostile_member_ids ) {
+        CHECK_FALSE( bandit_live_world::is_active_shakedown_parley_member( world, member_id ) );
+    }
     REQUIRE( transition_test_hostile_operation(
                  site, bandit_live_world::hostile_operation_phase::approaching,
                  bandit_live_world::hostile_operation_phase::committed_contact, 106,
@@ -25114,6 +25117,54 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
         const std::string before_rally_replay = serialize_record( live_site );
         process_overmap_npc_move_for_test();
         CHECK( serialize_record( live_site ) == before_rally_replay );
+
+        calendar::turn += 1_minutes;
+        process_overmap_npc_move_for_test();
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::approaching );
+
+        calendar::turn += 1_minutes;
+        process_overmap_npc_move_for_test();
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::approaching );
+        for( const character_id id : expected_selection.member_ids ) {
+            npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            CHECK( member->goal == live_site.active_hostile_operation.reservation.target_omt );
+            CHECK( member->pos_abs_omt() != live_site.active_hostile_operation.rally_omt );
+        }
+
+        calendar::turn += 1_minutes;
+        process_overmap_npc_move_for_test();
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::approaching );
+        for( const character_id id : expected_selection.member_ids ) {
+            npc *member = g->find_npc( id );
+            REQUIRE( member != nullptr );
+            CHECK( member->pos_abs_omt() ==
+                   live_site.active_hostile_operation.reservation.target_omt );
+        }
+
+        calendar::turn += 1_minutes;
+        process_overmap_npc_move_for_test();
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::committed_contact );
+        for( const character_id id : expected_selection.member_ids ) {
+            CHECK( live_site.find_member( id )->state ==
+                   bandit_live_world::member_state::local_contact );
+            CHECK( bandit_live_world::is_active_shakedown_parley_member(
+                       overmap_buffer.global_state.bandit_live_world, id ) );
+        }
+        CHECK_FALSE( bandit_live_world::is_active_shakedown_parley_member(
+                         overmap_buffer.global_state.bandit_live_world,
+                         expected_selection.reserve_member_ids.front() ) );
+        const std::string before_contact_replay = serialize_record( live_site );
+        process_overmap_npc_move_for_test();
+        CHECK( serialize_record( live_site ) == before_contact_replay );
     }
 
     SECTION( "a later missing reserved member leaves earlier members untouched" ) {
@@ -25123,12 +25174,20 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
         const tripoint_abs_omt valid_goal_before = valid_member->goal;
         const std::vector<tripoint_abs_omt> valid_path_before = valid_member->omt_path;
         const bool valid_travelling_before = valid_member->is_travelling();
+
+        REQUIRE( transition_test_hostile_operation(
+                     live_site, bandit_live_world::hostile_operation_phase::assembling,
+                     bandit_live_world::hostile_operation_phase::outbound, 61,
+                     "test fixture departed before authoritative missing-member read" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
         const character_id missing_member_id = expected_selection.member_ids.back();
         g->remove_npc( missing_member_id );
+        REQUIRE( overmap_buffer.remove_npc( missing_member_id ) != nullptr );
+        CHECK( g->find_npc( missing_member_id ) == nullptr );
         generated_npc_ids.erase( std::remove( generated_npc_ids.begin(), generated_npc_ids.end(),
                                               missing_member_id ), generated_npc_ids.end() );
 
-        calendar::turn += 60_minutes;
+        calendar::turn += 2_minutes;
         process_overmap_npc_move_for_test();
         REQUIRE( live_site.active_hostile_operation.is_active() );
         CHECK( live_site.active_hostile_operation.phase ==
