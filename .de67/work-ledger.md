@@ -82,8 +82,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   Completed exploration `R008-M001` proves the existing operation/report/generation receipt is
   replay-safe but camp-local; no world-level target consumption or renewal owner exists. Freeze:
 
-  - `G-001`: persist a world-level stable target opportunity record with observed
-    goods/population/activity revision and atomic consumed-by operation/report/generation identity.
   - `G-002`: join terminal hostile aftermath to the global claim and attacking camp readiness,
     cooldown, alert, and outcome transaction exactly once; stale/losing/replay remains byte-stable.
   - `G-003`: create a new target revision only from authoritative reachable goods, loaded
@@ -93,6 +91,11 @@ Lineage: `CAOL-hostile-ecology-dev`
 
   One changed-executable two-camp fixture must prove the exact global receipt, stale/losing replay,
   cooldown-only rejection, real-evidence revision, and post-renewal authorization.
+
+  `G-001` is closed at checkpoint `dfc72de248`: the persisted v7 world-level target ledger admits
+  one exact operation/report/generation winner for a target revision, makes identical replay
+  idempotent, rejects competing/stale claims byte-stably, and round-trips while v6 migrates empty.
+  The focused save/arbitration control passes 17 assertions.
 
   The immutable whole-item estimate is 2910 seconds, the next whole second above R-007's directly
   measured 2908.768838-second first-dispatch-to-acceptance interval, used as the nearest completed
