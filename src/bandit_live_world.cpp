@@ -20297,7 +20297,8 @@ bool reconcile_matching_hostile_operation_deaths( site_record &site,
     const active_outing_state *outing = site.active_external_outing();
     if( outing == nullptr || outing != &site.active_hostile_operation.reservation ||
         !site.active_hostile_operation.is_active() ||
-        site.active_hostile_operation.operation_kind != hostile_operation_kind::shakedown ||
+        ( site.active_hostile_operation.operation_kind != hostile_operation_kind::shakedown &&
+          site.active_hostile_operation.operation_kind != hostile_operation_kind::raid ) ||
         site.active_hostile_operation.phase != hostile_operation_phase::committed_contact ||
         outing->owner != simulation_owner::local ||
         !simulation_cursor_matches( *outing, expected_cursor ) || dead_member_ids.empty() ||

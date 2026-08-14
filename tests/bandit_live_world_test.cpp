@@ -25491,9 +25491,6 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_true_darkness",
     process_overmap_npc_move_for_test();
     CHECK( live_site.active_hostile_operation.phase ==
            bandit_live_world::hostile_operation_phase::committed_contact );
-    const std::string committed = serialize_site( live_site );
-    process_overmap_npc_move_for_test();
-    CHECK( serialize_site( live_site ) == committed );
 
     map &here = get_map();
     const tripoint_bub_ms avatar_pos = get_avatar().pos_bub( here );
@@ -25577,6 +25574,75 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_true_darkness",
     const std::string after_raid_dispatch = serialize_site( live_site.active_hostile_operation );
     note_live_bandit_aftermath_for_test();
     CHECK( serialize_site( live_site.active_hostile_operation ) == after_raid_dispatch );
+
+    SECTION( "raid casualties return only living participants" ) {
+    npc *dead_raider = g->find_npc( raid_ids.front() );
+    REQUIRE( dead_raider != nullptr );
+    dead_raider->die( &here, nullptr );
+    REQUIRE( dead_raider->is_dead() );
+    calendar::turn += 1_minutes;
+    note_live_bandit_aftermath_for_test();
+    REQUIRE( live_site.active_hostile_operation.is_active() );
+    CHECK( live_site.active_hostile_operation.phase ==
+           bandit_live_world::hostile_operation_phase::committed_contact );
+    CHECK( live_site.find_member( raid_ids.front() )->state ==
+           bandit_live_world::member_state::dead );
+    CHECK( std::find( live_site.active_hostile_operation.reservation.casualty_ids.begin(),
+                      live_site.active_hostile_operation.reservation.casualty_ids.end(),
+                      raid_ids.front() ) !=
+           live_site.active_hostile_operation.reservation.casualty_ids.end() );
+    CHECK( live_site.last_shakedown_outcome.empty() );
+    CHECK( live_site.active_hostile_operation.shakedown_pending_branch.empty() );
+
+    calendar::turn += 1_minutes;
+    note_live_bandit_aftermath_for_test();
+    REQUIRE( live_site.active_hostile_operation.is_active() );
+    CHECK( live_site.active_hostile_operation.phase ==
+           bandit_live_world::hostile_operation_phase::returning_home );
+    for( const character_id member_id : raid_ids ) {
+        if( member_id == raid_ids.front() ) {
+            continue;
+        }
+        npc *member = g->find_npc( member_id );
+        REQUIRE( member != nullptr );
+        CHECK( member->goal == live_site.anchor );
+        member->spawn_at_omt( live_site.anchor );
+    }
+    calendar::turn += 1_minutes;
+    process_overmap_npc_move_for_test();
+    CHECK_FALSE( live_site.active_hostile_operation.is_active() );
+    CHECK( live_site.find_member( raid_ids.front() )->state ==
+           bandit_live_world::member_state::dead );
+    CHECK( live_site.last_shakedown_outcome.empty() );
+    CHECK( live_site.active_hostile_operation.shakedown_pending_branch.empty() );
+    CHECK( unloaded_defender->pos_abs() == unloaded_before );
+    CHECK_FALSE( unloaded_defender->is_active() );
+    }
+
+    SECTION( "all raid casualties release without a shakedown outcome" ) {
+        for( const character_id member_id : raid_ids ) {
+            npc *member = g->find_npc( member_id );
+            REQUIRE( member != nullptr );
+            member->die( &here, nullptr );
+            REQUIRE( member->is_dead() );
+        }
+        calendar::turn += 1_minutes;
+        note_live_bandit_aftermath_for_test();
+        CHECK_FALSE( live_site.active_hostile_operation.is_active() );
+        for( const character_id member_id : raid_ids ) {
+            CHECK( live_site.find_member( member_id )->state ==
+                   bandit_live_world::member_state::dead );
+        }
+        CHECK( live_site.last_shakedown_outcome.empty() );
+        CHECK( live_site.active_hostile_operation.shakedown_pending_branch.empty() );
+        CHECK( live_site.shakedown_bandit_losses == 0 );
+        CHECK( unloaded_defender->pos_abs() == unloaded_before );
+        CHECK_FALSE( unloaded_defender->is_active() );
+        const std::string released_raid = serialize_site( live_site.active_hostile_operation );
+        note_live_bandit_aftermath_for_test();
+        CHECK( serialize_site( live_site.active_hostile_operation ) == released_raid );
+    }
+
 }
 
 TEST_CASE( "bandit_live_world_scheduler_commits_authorized_response_as_assembling_only",

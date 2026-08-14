@@ -1312,12 +1312,16 @@ bool advance_live_bandit_hostile_returns()
         }
         const std::string activity_id = reservation.activity_id;
         const int generation = reservation.generation;
-        if( !bandit_live_world::apply_terminal_hostile_shakedown_aftermath( site, activity_id,
-                generation ) ) {
+        if( operation.operation_kind == bandit_live_world::hostile_operation_kind::shakedown &&
+            !bandit_live_world::apply_terminal_hostile_shakedown_aftermath( site, activity_id,
+                    generation ) ) {
             continue;
         }
         changed |= bandit_live_world::release_matching_external_reservation( site, activity_id,
-                   generation, "paid shakedown survivors physically returned home" ).has_value();
+                   generation, operation.operation_kind ==
+                   bandit_live_world::hostile_operation_kind::raid ?
+                   "cannibal raid survivors physically returned home" :
+                   "paid shakedown survivors physically returned home" ).has_value();
     }
     return changed;
 }
@@ -2176,6 +2180,95 @@ bool live_bandit_reconcile_hostile_shakedown_combat( bandit_live_world::site_rec
         return false;
     }
     for( hostile_combat_return_order &order : travel_orders ) {
+        order.member_npc->set_attitude( NPCATT_NULL );
+        order.member_npc->goal = site.anchor;
+        order.member_npc->omt_path = std::move( order.route );
+        order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
+    }
+    return true;
+}
+
+bool live_cannibal_raid_reconcile_combat( bandit_live_world::site_record &site )
+{
+    bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
+    bandit_live_world::active_outing_state &reservation = operation.reservation;
+    if( !operation.is_active() || operation.operation_kind !=
+        bandit_live_world::hostile_operation_kind::raid ||
+        operation.phase != bandit_live_world::hostile_operation_phase::committed_contact ||
+        reservation.owner != bandit_live_world::simulation_owner::local ) {
+        return false;
+    }
+    const int current_minutes = live_bandit_current_minutes();
+    const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    if( !cursor || current_minutes <= cursor->last_advanced_minutes ) {
+        return false;
+    }
+    std::vector<character_id> dead_member_ids;
+    for( const character_id member_id : reservation.member_ids ) {
+        if( reservation.member_is_resolved( member_id ) ) {
+            continue;
+        }
+        npc *member_npc = g->find_npc( member_id );
+        if( member_npc != nullptr && member_npc->is_dead() ) {
+            dead_member_ids.push_back( member_id );
+        }
+    }
+    if( !dead_member_ids.empty() ) {
+        const std::string activity_id = reservation.activity_id;
+        const int generation = reservation.generation;
+        if( !bandit_live_world::reconcile_matching_hostile_operation_deaths( site, *cursor,
+                dead_member_ids, current_minutes,
+                "authoritative cannibal raid combat death" ) ) {
+            return false;
+        }
+        if( site.active_hostile_operation.phase ==
+            bandit_live_world::hostile_operation_phase::lost ) {
+            return bandit_live_world::release_matching_external_reservation( site,
+                    activity_id, generation,
+                    "all cannibal raid combat participants died" ).has_value();
+        }
+        return true;
+    }
+    if( reservation.casualty_ids.empty() ) {
+        return false;
+    }
+    struct return_order {
+        npc *member_npc;
+        std::vector<tripoint_abs_omt> route;
+    };
+    std::vector<return_order> travel_orders;
+    for( const character_id member_id : reservation.member_ids ) {
+        if( reservation.member_is_resolved( member_id ) ) {
+            const bandit_live_world::member_record *member = site.find_member( member_id );
+            if( member == nullptr || member->state != bandit_live_world::member_state::dead ) {
+                return false;
+            }
+            continue;
+        }
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        npc *member_npc = g->find_npc( member_id );
+        if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ||
+            member_npc == nullptr || member_npc->is_dead() ) {
+            return false;
+        }
+        const std::vector<tripoint_abs_omt> route = overmap_buffer.get_travel_path(
+                    member_npc->pos_abs_omt(), site.anchor,
+                    overmap_path_params::for_npc() ).points;
+        if( route.empty() || route.front() != site.anchor ||
+            route.back() != member_npc->pos_abs_omt() ) {
+            return false;
+        }
+        travel_orders.push_back( { member_npc, route } );
+    }
+    if( bandit_live_world::transition_hostile_operation_phase( site, *cursor,
+            bandit_live_world::hostile_operation_phase::committed_contact,
+            bandit_live_world::hostile_operation_phase::returning_home, current_minutes,
+            "cannibal raid combat survivors return home" ) !=
+        bandit_live_world::hostile_operation_transition_result::applied ) {
+        return false;
+    }
+    for( return_order &order : travel_orders ) {
         order.member_npc->set_attitude( NPCATT_NULL );
         order.member_npc->goal = site.anchor;
         order.member_npc->omt_path = std::move( order.route );
@@ -3229,8 +3322,12 @@ bool note_live_bandit_aftermath()
         if( external_outing != nullptr && external_outing != &site.active_outing ) {
             if( site.active_hostile_operation.operation_kind ==
                 bandit_live_world::hostile_operation_kind::raid ) {
-                changed |= materialize_committed_cannibal_raid( site );
-                changed |= live_cannibal_raid_attack_loaded_targets( site );
+                if( live_cannibal_raid_reconcile_combat( site ) ) {
+                    changed = true;
+                } else {
+                    changed |= materialize_committed_cannibal_raid( site );
+                    changed |= live_cannibal_raid_attack_loaded_targets( site );
+                }
             } else {
                 changed |= live_bandit_handle_hostile_shakedown_contact( site, u );
             }
