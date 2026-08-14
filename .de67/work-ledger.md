@@ -82,8 +82,6 @@ Lineage: `CAOL-hostile-ecology-dev`
   Completed exploration `R005-M001` proves the hourly `overmap_npc_move` structural-maintenance
   scheduler is the production owner. Freeze these closure gaps:
 
-  - `G-001`: bind the exact authorized live response selection and named home reserve into hostile
-    operation plan/apply; scheduler-originated responses must not reuse the divergent fresh selector.
   - `G-002`: canonicalize the real NPC overmap path from camp to target and select its validated
     first departure OMT as the deterministic rally.
   - `G-003`: materialize only enough concrete responders for the existing two-to-six response plus
@@ -93,10 +91,11 @@ Lineage: `CAOL-hostile-ecology-dev`
   - `G-005`: at scheduler hour N+1, advance only the same assembling operation through its exact
     cursor to outbound, preserving the named reserve and rejecting same-hour or replayed transitions.
 
-  Next closure attempt `R005-M002` binds `G-001` revision 1. Add the smallest transient authorized
-  selection input and owning controls that make planner/apply reserve exactly those fresh response
-  IDs while preserving the named at-home reserve and rejecting stale, altered, scout-reused, or
-  independently reselected identities. Do not wire the production scheduler or claim later gaps.
+  Next closure attempt `R005-M003` binds `G-002` revision 1. Add the smallest production-facing
+  hostile route adapter around the existing NPC overmap path: reverse its target-to-origin points,
+  require exact camp/target endpoints, same z-level, bounded length, and no adjacent duplicates, and
+  select `route[1]` as the deterministic rally. Prove valid, adjacent-target, malformed, and missing
+  route controls without wiring scheduler ownership or claiming later gaps.
 
   The immutable whole-item estimate is 42823 seconds, the next whole second above R-004's directly
   measured 42822.686289-second first-dispatch-to-acceptance interval, used as the nearest completed
