@@ -495,6 +495,87 @@ bandit_live_world::shakedown_goods_pool live_bandit_make_shakedown_goods_pool(
     return pool;
 }
 
+int live_bandit_reachable_goods_value( const bandit_live_world::shakedown_goods_pool &pool )
+{
+    int value = pool.player_carried_value + pool.companion_carried_value;
+    value += pool.basecamp_or_camp_scene ? pool.reachable_basecamp_value :
+             pool.vehicle_carried_value;
+    return std::max( 0, value );
+}
+
+int live_bandit_loaded_player_allied_population()
+{
+    map &here = get_map();
+    int population = 1;
+    for( const npc &guy : g->all_npcs() ) {
+        if( guy.is_player_ally() && !guy.is_dead() && guy.is_active() &&
+            here.inbounds( guy.pos_bub( here ) ) ) {
+            population++;
+        }
+    }
+    return population;
+}
+
+bool live_bandit_active_hostile_receipt_matches(
+    const bandit_live_world::world_state &state,
+    const bandit_live_world::hostile_target_opportunity_record &receipt )
+{
+    if( receipt.consumed_generation <= 0 ) {
+        return false;
+    }
+    return std::any_of( state.sites.begin(), state.sites.end(), [&receipt](
+    const bandit_live_world::site_record & site ) {
+        const bandit_live_world::hostile_operation_state &operation =
+            site.active_hostile_operation;
+        const bandit_live_world::active_outing_state &reservation = operation.reservation;
+        return operation.is_active() && reservation.activity_id == receipt.consumed_operation_id &&
+               operation.source_report_application_key == receipt.consumed_report_key &&
+               reservation.generation == receipt.consumed_generation;
+    } );
+}
+
+void observe_live_bandit_player_target_opportunity()
+{
+    avatar &u = get_avatar();
+    bandit_live_world::local_gate_input input;
+    input.basecamp_or_camp_scene = live_bandit_player_near_basecamp( u );
+    if( !input.basecamp_or_camp_scene ) {
+        return;
+    }
+    input.local_opportunity = 2;
+    const tripoint_abs_omt target_omt = u.pos_abs_omt();
+    const std::string target_id = "player@" + live_bandit_omt_token( target_omt );
+    const bandit_live_world::shakedown_goods_pool pool =
+        live_bandit_make_shakedown_goods_pool( input, u );
+    const bandit_live_world::hostile_target_opportunity_evidence evidence = {
+        live_bandit_reachable_goods_value( pool ),
+        live_bandit_loaded_player_allied_population(), input.local_opportunity
+    };
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::hostile_target_opportunity_record *existing =
+        state.find_hostile_target_opportunity( target_id, target_omt );
+    if( existing != nullptr && live_bandit_active_hostile_receipt_matches( state, *existing ) &&
+        ( existing->goods_value != evidence.reachable_goods_value ||
+          existing->population != evidence.loaded_population ||
+          existing->activity != evidence.activity ) ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world hostile_target_observation frozen"
+                                   << " target=" << target_id
+                                   << " receipt=" << existing->consumed_operation_id
+                                   << " generation=" << existing->consumed_generation << '\n';
+        return;
+    }
+
+    // Camp-local scout reports read this world receipt; only this loaded player-scene owner writes it.
+    if( bandit_live_world::observe_authoritative_hostile_target_opportunity( state, target_id,
+            target_omt, evidence ) ) {
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world hostile_target_observation"
+                                   << " target=" << target_id
+                                   << " goods=" << evidence.reachable_goods_value
+                                   << " population=" << evidence.loaded_population
+                                   << " activity=" << evidence.activity << '\n';
+    }
+}
+
 int live_bandit_select_shakedown_payment( const bandit_live_world::site_record &site,
         const bandit_live_world::local_gate_input &input,
         const bandit_live_world::shakedown_surface &surface, avatar &u )
@@ -9036,6 +9117,7 @@ void overmap_npc_move()
         refresh_live_bandit_member_readiness( bandit_state );
     }
     if( structural_cadence_due ) {
+        observe_live_bandit_player_target_opportunity();
         maintain_live_bandit_structural_bounty( live_signals, live_sounds );
     } else if( !live_sounds.empty() ) {
         const bandit_live_world::structural_signal_record_result recorded =

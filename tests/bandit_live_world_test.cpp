@@ -16,6 +16,7 @@
 #include "cata_scope_helpers.h"
 #include "calendar.h"
 #include "avatar.h"
+#include "basecamp.h"
 #include "do_turn.h"
 #include "faction.h"
 #include "game.h"
@@ -28,6 +29,7 @@
 #include "map_helpers_tests.h"
 #include "monster.h"
 #include "npc.h"
+#include "item.h"
 #include "omdata.h"
 #include "overmapbuffer.h"
 #include "pathfinding.h"
@@ -25167,6 +25169,9 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
 {
     clear_npcs();
     const time_point saved_turn = calendar::turn;
+    const tripoint_abs_ms saved_avatar_position = get_avatar().pos_abs();
+    const tripoint_abs_omt target_omt( 6, 20, 0 );
+    const std::string target_id = "player@6,20,0";
     bandit_live_world::world_state saved_world =
         overmap_buffer.global_state.bandit_live_world;
     std::vector<character_id> generated_npc_ids;
@@ -25179,6 +25184,12 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
         overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
         calendar::turn = saved_turn;
         clear_creatures();
+    } );
+    get_avatar().setpos( project_to<coords::ms>( target_omt ), false );
+    overmap_buffer.add_camp( basecamp( "hostile target observation camp", target_omt ) );
+    on_out_of_scope restore_target_scene( [saved_avatar_position, target_omt]() {
+        overmap_buffer.remove_camp( target_omt.xy() );
+        get_avatar().setpos( saved_avatar_position, false );
     } );
 
     bandit_live_world::world_state world;
@@ -25206,10 +25217,25 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
     report.source_activity_id = site.site_id + "#scout:1";
     report.source_generation = 1;
     report.source_job_type = "scout";
-    report.target_id = "response-materialization-target";
-    report.target_omt = tripoint_abs_omt( 6, 20, 0 );
+    report.target_id = target_id;
+    report.target_omt = target_omt;
+    report.target_lead_id = site.site_id + ":player-basecamp";
+    report.target_lead_revision = 1;
     report.application_key = report.source_activity_id + ":report:1";
     report.delivered_minutes = 1;
+    bandit_live_world::camp_map_lead target_lead;
+    target_lead.lead_id = report.target_lead_id;
+    target_lead.revision = report.target_lead_revision;
+    target_lead.kind = bandit_live_world::camp_lead_kind::basecamp_activity;
+    target_lead.origin = bandit_live_world::camp_lead_origin::returned_report;
+    target_lead.status = bandit_live_world::camp_lead_status::scout_confirmed;
+    target_lead.target_id = report.target_id;
+    target_lead.omt = report.target_omt;
+    target_lead.bounty = 8;
+    target_lead.threat = 1;
+    target_lead.confidence = 4;
+    target_lead.threat_confirmed = true;
+    REQUIRE( bandit_live_world::upsert_camp_map_lead( site, target_lead ) );
     REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
              bandit_live_world::camp_decision_transition_result::applied );
     REQUIRE( site.camp_decision.state ==
@@ -25264,7 +25290,28 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
     REQUIRE( created_ids.size() == 2 );
     generated_npc_ids.insert( generated_npc_ids.end(), created_ids.begin(), created_ids.end() );
 
-    calendar::turn = calendar::start_of_cataclysm + 60_minutes;
+    calendar::turn = calendar::start_of_cataclysm;
+    process_overmap_npc_move_for_test();
+    const bandit_live_world::hostile_target_opportunity_record *observed_receipt =
+        overmap_buffer.global_state.bandit_live_world.find_hostile_target_opportunity(
+            target_id, target_omt );
+    REQUIRE( observed_receipt != nullptr );
+    CHECK( observed_receipt->goods_value >= 0 );
+    CHECK( observed_receipt->population >= 1 );
+    CHECK( observed_receipt->activity == 2 );
+    CHECK( observed_receipt->revision == 1 );
+    CHECK( observed_receipt->consumed_generation == 0 );
+    const bandit_live_world::world_state observed_reloaded_world = round_trip_world(
+                overmap_buffer.global_state.bandit_live_world );
+    const bandit_live_world::hostile_target_opportunity_record *reloaded_observed_receipt =
+        observed_reloaded_world.find_hostile_target_opportunity( target_id, target_omt );
+    REQUIRE( reloaded_observed_receipt != nullptr );
+    CHECK( reloaded_observed_receipt->goods_value == observed_receipt->goods_value );
+    CHECK( reloaded_observed_receipt->population == observed_receipt->population );
+    CHECK( reloaded_observed_receipt->activity == observed_receipt->activity );
+    CHECK( reloaded_observed_receipt->revision == observed_receipt->revision );
+    CHECK( reloaded_observed_receipt->consumed_generation == 0 );
+
     live_site.current_scout_report.assessment.certainty = 60;
     live_site.current_scout_report.assessment.readiness_latched = true;
     live_site.current_scout_report.assessment.threshold_class =
@@ -25280,8 +25327,14 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
     REQUIRE( bandit_live_world::evaluate_response_authorization( live_site, 60,
              expected_selection, live_reads ).authorized );
     const int expected_generation = live_site.next_outing_generation;
+    calendar::turn += 60_minutes;
     process_overmap_npc_move_for_test();
     REQUIRE( live_site.active_hostile_operation.is_active() );
+    const bandit_live_world::hostile_target_opportunity_record *receipt =
+        overmap_buffer.global_state.bandit_live_world.find_hostile_target_opportunity(
+            target_id, target_omt );
+    REQUIRE( receipt != nullptr );
+    CHECK( receipt->revision == 1 );
     CHECK( live_site.camp_decision.state ==
            bandit_live_world::camp_decision_state::preparing_follow_on );
     CHECK( live_site.active_hostile_operation.phase ==
@@ -25297,12 +25350,31 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
            live_site.current_scout_report.source_activity_id );
     CHECK( live_site.active_hostile_operation.reservation.member_ids ==
            expected_selection.member_ids );
+    CHECK( receipt->consumed_operation_id ==
+           live_site.active_hostile_operation.reservation.activity_id );
+    CHECK( receipt->consumed_report_key ==
+           live_site.active_hostile_operation.source_report_application_key );
+    CHECK( receipt->consumed_generation == expected_generation );
     CHECK_FALSE( live_site.active_outing.is_active() );
     for( const character_id id : expected_selection.member_ids ) {
         CHECK( live_site.find_member( id )->state == bandit_live_world::member_state::at_home );
     }
     for( const character_id id : expected_selection.reserve_member_ids ) {
         CHECK( live_site.find_member( id )->state == bandit_live_world::member_state::at_home );
+    }
+
+    SECTION( "changed target evidence cannot renew an active hostile receipt" ) {
+        item_location changed_goods = get_avatar().i_add( item( itype_id( "2x4" ) ) );
+        on_out_of_scope remove_changed_goods( [changed_goods]() mutable {
+            changed_goods.remove_item();
+        } );
+        const std::string claimed_receipt = serialize_record( *receipt );
+        calendar::turn += 60_minutes;
+        process_overmap_npc_move_for_test();
+        receipt = overmap_buffer.global_state.bandit_live_world.find_hostile_target_opportunity(
+                      target_id, target_omt );
+        REQUIRE( receipt != nullptr );
+        CHECK( serialize_record( *receipt ) == claimed_receipt );
     }
 
     SECTION( "reserved party travels through the ordinary overmap motor" ) {
@@ -26222,6 +26294,18 @@ TEST_CASE( "scheduler arbitrates one authoritative hostile target across two rea
         return bandit_live_world::advance_structural_bounty_maintenance( world, now_minutes, 0, 0,
                 {}, {}, {}, {}, {}, {}, reads, {}, route );
     };
+
+    bandit_live_world::world_state without_receipt = state;
+    without_receipt.hostile_target_opportunities.clear();
+    const bandit_live_world::structural_bounty_maintenance_result missing_receipt =
+        advance_scheduler( without_receipt, initial_minutes );
+    CHECK( missing_receipt.response_operations_applied == 0 );
+    CHECK( missing_receipt.response_operation_rejections == 2 );
+    CHECK( std::none_of( without_receipt.sites.begin(), without_receipt.sites.end(),
+    []( const bandit_live_world::site_record & site ) {
+        return site.active_hostile_operation.is_active();
+    } ) );
+    CHECK( without_receipt.hostile_target_opportunities.empty() );
 
     const std::string first_site_before = serialize_site( state.sites[0] );
     const std::string second_site_before = serialize_site( state.sites[1] );

@@ -14953,7 +14953,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                 }
                 const active_outing_state &reservation = plan.plan.operation.reservation;
                 if( state.find_hostile_target_opportunity( reservation.target_id,
-                        reservation.target_omt ) != nullptr &&
+                        reservation.target_omt ) == nullptr ||
                     claim_hostile_target_opportunity( state, reservation.target_id,
                             reservation.target_omt, reservation.target_lead_revision,
                             reservation.activity_id,
