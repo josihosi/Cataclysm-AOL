@@ -32,6 +32,7 @@ std::size_t maintain_live_bandit_local_pair_cohesion_for_test();
 bool dematerialize_live_bandit_structural_handoffs_for_test();
 void process_monsters_and_npcs_turn_for_test();
 void process_overmap_npc_move_for_test();
+void note_live_bandit_aftermath_for_test();
 void run_live_bandit_structural_route_analyzer_for_debug();
 std::string live_bandit_local_reality_safety_record_for_test( const map &here,
         const avatar &observer, monster &critter );

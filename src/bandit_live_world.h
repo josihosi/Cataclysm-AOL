@@ -2061,6 +2061,13 @@ bool record_matching_external_outing_casualty( site_record &site,
         const std::string &expected_activity_id, int expected_generation,
         character_id npc_id, member_state casualty_state, int current_minutes,
         const std::string &summary );
+bool reconcile_matching_hostile_operation_deaths( site_record &site,
+        const simulation_advance_cursor &expected_cursor,
+        const std::vector<character_id> &dead_member_ids, int current_minutes,
+        const std::string &summary );
+bool begin_matching_hostile_shakedown_combat( site_record &site,
+        const simulation_advance_cursor &expected_cursor, int current_minutes,
+        const std::string &summary );
 bool record_active_outing_casualty( site_record &site,
                                     const simulation_advance_cursor &expected_cursor,
                                     character_id npc_id,

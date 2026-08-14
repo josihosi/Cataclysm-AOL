@@ -20213,6 +20213,88 @@ bool record_matching_external_outing_casualty( site_record &site,
     return true;
 }
 
+bool reconcile_matching_hostile_operation_deaths( site_record &site,
+        const simulation_advance_cursor &expected_cursor,
+        const std::vector<character_id> &dead_member_ids, const int current_minutes,
+        const std::string &summary )
+{
+    const active_outing_state *outing = site.active_external_outing();
+    if( outing == nullptr || outing != &site.active_hostile_operation.reservation ||
+        !site.active_hostile_operation.is_active() ||
+        site.active_hostile_operation.operation_kind != hostile_operation_kind::shakedown ||
+        site.active_hostile_operation.phase != hostile_operation_phase::committed_contact ||
+        outing->owner != simulation_owner::local ||
+        !simulation_cursor_matches( *outing, expected_cursor ) || dead_member_ids.empty() ||
+        current_minutes <= outing->last_advanced_minutes || summary.empty() || !site.roster().valid ) {
+        return false;
+    }
+
+    for( const character_id member_id : dead_member_ids ) {
+        const member_record *member = site.find_member( member_id );
+        if( member == nullptr || member->state != member_state::local_contact ||
+            std::find( outing->member_ids.begin(), outing->member_ids.end(), member_id ) ==
+            outing->member_ids.end() || outing->member_is_resolved( member_id ) ||
+            std::find( outing->casualty_ids.begin(), outing->casualty_ids.end(), member_id ) !=
+            outing->casualty_ids.end() ||
+            std::count( dead_member_ids.begin(), dead_member_ids.end(), member_id ) != 1 ) {
+            return false;
+        }
+    }
+
+    site_record candidate = site;
+    active_outing_state &reservation = candidate.active_hostile_operation.reservation;
+    for( const character_id member_id : dead_member_ids ) {
+        if( !update_member_state( candidate, member_id, member_state::dead, summary ) ) {
+            return false;
+        }
+        reservation.casualty_ids.push_back( member_id );
+        reservation.resolved_member_ids.push_back( member_id );
+    }
+    reservation.last_progress_minutes = std::max( reservation.last_progress_minutes, current_minutes );
+    reservation.last_advanced_minutes = current_minutes;
+    if( reservation.casualty_ids.size() == reservation.member_ids.size() ) {
+        reservation.phase = scout_phase::lost;
+        candidate.active_hostile_operation.phase = hostile_operation_phase::lost;
+        candidate.active_hostile_operation.last_transition_reason = summary.substr(
+                0, max_camp_decision_reason_length );
+    }
+    if( !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    return true;
+}
+
+bool begin_matching_hostile_shakedown_combat( site_record &site,
+        const simulation_advance_cursor &expected_cursor, const int current_minutes,
+        const std::string &summary )
+{
+    const active_outing_state *outing = site.active_external_outing();
+    if( outing == nullptr || outing != &site.active_hostile_operation.reservation ||
+        !site.active_hostile_operation.is_active() ||
+        site.active_hostile_operation.operation_kind != hostile_operation_kind::shakedown ||
+        site.active_hostile_operation.phase != hostile_operation_phase::committed_contact ||
+        outing->owner != simulation_owner::local ||
+        !simulation_cursor_matches( *outing, expected_cursor ) || current_minutes < 0 ||
+        current_minutes < outing->last_advanced_minutes || summary.empty() || !site.roster().valid ) {
+        return false;
+    }
+    site_record candidate = site;
+    candidate.last_shakedown_outcome = "fight_unresolved";
+    for( const character_id member_id : candidate.active_hostile_operation.reservation.member_ids ) {
+        member_record *member = candidate.find_member( member_id );
+        if( member == nullptr || member->state != member_state::local_contact ) {
+            return false;
+        }
+        member->last_writeback_summary = summary;
+    }
+    if( !candidate.roster().valid ) {
+        return false;
+    }
+    site = std::move( candidate );
+    return true;
+}
+
 bool record_active_outing_casualty( site_record &site,
                                     const simulation_advance_cursor &expected_cursor,
                                     const character_id npc_id,

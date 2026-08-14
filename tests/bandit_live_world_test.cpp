@@ -25241,6 +25241,84 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
         process_overmap_npc_move_for_test();
         CHECK( serialize_record( live_site ) == rejected_site );
     }
+
+    SECTION( "a player attack closes parley and returns only authoritative combat survivors" ) {
+        REQUIRE( expected_selection.member_ids.size() >= 2 );
+        REQUIRE( transition_test_hostile_operation(
+                     live_site, bandit_live_world::hostile_operation_phase::assembling,
+                     bandit_live_world::hostile_operation_phase::outbound, 61,
+                     "test combat departure" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        REQUIRE( transition_test_hostile_operation(
+                     live_site, bandit_live_world::hostile_operation_phase::outbound,
+                     bandit_live_world::hostile_operation_phase::rallying, 62,
+                     "test combat rally" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        REQUIRE( transition_test_hostile_operation(
+                     live_site, bandit_live_world::hostile_operation_phase::rallying,
+                     bandit_live_world::hostile_operation_phase::approaching, 63,
+                     "test combat approach" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        REQUIRE( transition_test_hostile_operation(
+                     live_site, bandit_live_world::hostile_operation_phase::approaching,
+                     bandit_live_world::hostile_operation_phase::committed_contact, 64,
+                     "test combat contact" ) ==
+                 bandit_live_world::hostile_operation_transition_result::applied );
+        for( const character_id member_id : expected_selection.member_ids ) {
+            npc *member = g->find_npc( member_id );
+            REQUIRE( member != nullptr );
+            member->spawn_at_omt( live_site.active_hostile_operation.reservation.target_omt );
+        }
+
+        calendar::turn += 5_minutes;
+        npc *victim = g->find_npc( expected_selection.member_ids.front() );
+        REQUIRE( victim != nullptr );
+        victim->set_fac( faction_id::NULL_ID() );
+        victim->set_attitude( NPCATT_NULL );
+        REQUIRE_FALSE( victim->is_enemy() );
+        victim->on_attacked( get_avatar() );
+        REQUIRE( victim->hit_by_player );
+        REQUIRE( victim->get_attitude() == NPCATT_KILL );
+        note_live_bandit_aftermath_for_test();
+        CHECK( live_site.last_shakedown_outcome == "fight_unresolved" );
+        CHECK_FALSE( bandit_live_world::is_active_shakedown_parley_member(
+                         overmap_buffer.global_state.bandit_live_world,
+                         expected_selection.member_ids.front() ) );
+
+        victim->die( &get_map(), nullptr );
+        REQUIRE( victim->is_dead() );
+        calendar::turn += 1_minutes;
+        note_live_bandit_aftermath_for_test();
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.find_member( expected_selection.member_ids.front() )->state ==
+               bandit_live_world::member_state::dead );
+        CHECK( std::find( live_site.active_hostile_operation.reservation.casualty_ids.begin(),
+                          live_site.active_hostile_operation.reservation.casualty_ids.end(),
+                          expected_selection.member_ids.front() ) !=
+               live_site.active_hostile_operation.reservation.casualty_ids.end() );
+        CHECK( live_site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::committed_contact );
+
+        calendar::turn += 1_minutes;
+        note_live_bandit_aftermath_for_test();
+        REQUIRE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.active_hostile_operation.phase ==
+               bandit_live_world::hostile_operation_phase::returning_home );
+        for( const character_id member_id : expected_selection.member_ids ) {
+            if( member_id == expected_selection.member_ids.front() ) {
+                continue;
+            }
+            npc *member = g->find_npc( member_id );
+            REQUIRE( member != nullptr );
+            CHECK( member->goal == live_site.anchor );
+            member->spawn_at_omt( live_site.anchor );
+        }
+        calendar::turn += 1_minutes;
+        process_overmap_npc_move_for_test();
+        CHECK_FALSE( live_site.active_hostile_operation.is_active() );
+        CHECK( live_site.find_member( expected_selection.member_ids.front() )->state ==
+               bandit_live_world::member_state::dead );
+    }
 }
 
 TEST_CASE( "bandit_live_world_scheduler_commits_authorized_response_as_assembling_only",

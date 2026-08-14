@@ -1256,6 +1256,14 @@ bool advance_live_bandit_hostile_returns()
         bool all_home = true;
         for( const character_id member_id : reservation.member_ids ) {
             const bandit_live_world::member_record *member = site.find_member( member_id );
+            if( reservation.member_is_resolved( member_id ) ) {
+                if( member == nullptr || member->state != bandit_live_world::member_state::dead ||
+                    std::find( reservation.casualty_ids.begin(), reservation.casualty_ids.end(),
+                               member_id ) == reservation.casualty_ids.end() ) {
+                    valid_party = false;
+                }
+                continue;
+            }
             npc *member_npc = g->find_npc( member_id );
             if( member == nullptr || member->state != bandit_live_world::member_state::outbound ||
                 member_npc == nullptr || member_npc->is_dead() ) {
@@ -1970,6 +1978,98 @@ bool live_bandit_try_fight_advance( npc &member_npc,
     return attacked || moved || path_found || adjacent;
 }
 
+bool live_bandit_reconcile_hostile_shakedown_combat( bandit_live_world::site_record &site )
+{
+    bandit_live_world::hostile_operation_state &operation = site.active_hostile_operation;
+    bandit_live_world::active_outing_state &reservation = operation.reservation;
+    if( !operation.is_active() || operation.operation_kind !=
+        bandit_live_world::hostile_operation_kind::shakedown ||
+        operation.phase != bandit_live_world::hostile_operation_phase::committed_contact ||
+        reservation.owner != bandit_live_world::simulation_owner::local ||
+        site.last_shakedown_outcome != "fight_unresolved" ) {
+        return false;
+    }
+
+    const int current_minutes = live_bandit_current_minutes();
+    const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+        bandit_live_world::current_external_simulation_cursor( site );
+    if( !cursor || current_minutes <= cursor->last_advanced_minutes ) {
+        return false;
+    }
+    std::vector<character_id> dead_member_ids;
+    for( const character_id member_id : reservation.member_ids ) {
+        if( reservation.member_is_resolved( member_id ) ) {
+            continue;
+        }
+        npc *member_npc = g->find_npc( member_id );
+        if( member_npc != nullptr && member_npc->is_dead() ) {
+            dead_member_ids.push_back( member_id );
+        }
+    }
+    if( !dead_member_ids.empty() ) {
+        const std::string activity_id = reservation.activity_id;
+        const int generation = reservation.generation;
+        if( !bandit_live_world::reconcile_matching_hostile_operation_deaths( site, *cursor,
+                dead_member_ids, current_minutes,
+                "authoritative shakedown combat death" ) ) {
+            return false;
+        }
+        if( site.active_hostile_operation.phase ==
+            bandit_live_world::hostile_operation_phase::lost ) {
+            return bandit_live_world::release_matching_external_reservation( site,
+                    activity_id, generation,
+                    "all shakedown combat participants died" ).has_value();
+        }
+        return true;
+    }
+    if( reservation.casualty_ids.empty() ) {
+        return false;
+    }
+
+    struct hostile_combat_return_order {
+        npc *member_npc;
+        std::vector<tripoint_abs_omt> route;
+    };
+    std::vector<hostile_combat_return_order> travel_orders;
+    for( const character_id member_id : reservation.member_ids ) {
+        if( reservation.member_is_resolved( member_id ) ) {
+            const bandit_live_world::member_record *member = site.find_member( member_id );
+            if( member == nullptr || member->state != bandit_live_world::member_state::dead ) {
+                return false;
+            }
+            continue;
+        }
+        const bandit_live_world::member_record *member = site.find_member( member_id );
+        npc *member_npc = g->find_npc( member_id );
+        if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ||
+            member_npc == nullptr || member_npc->is_dead() ) {
+            return false;
+        }
+        const std::vector<tripoint_abs_omt> route = overmap_buffer.get_travel_path(
+                    member_npc->pos_abs_omt(), site.anchor,
+                    overmap_path_params::for_npc() ).points;
+        if( route.empty() || route.front() != site.anchor ||
+            route.back() != member_npc->pos_abs_omt() ) {
+            return false;
+        }
+        travel_orders.push_back( { member_npc, route } );
+    }
+    if( bandit_live_world::transition_hostile_operation_phase( site, *cursor,
+            bandit_live_world::hostile_operation_phase::committed_contact,
+            bandit_live_world::hostile_operation_phase::returning_home, current_minutes,
+            "shakedown combat survivors return home" ) !=
+        bandit_live_world::hostile_operation_transition_result::applied ) {
+        return false;
+    }
+    for( hostile_combat_return_order &order : travel_orders ) {
+        order.member_npc->set_attitude( NPCATT_NULL );
+        order.member_npc->goal = site.anchor;
+        order.member_npc->omt_path = std::move( order.route );
+        order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
+    }
+    return true;
+}
+
 bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_record &site,
         const avatar &u )
 {
@@ -1980,6 +2080,29 @@ bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_recor
         bandit_live_world::hostile_operation_kind::shakedown ||
         outing->owner != bandit_live_world::simulation_owner::local ) {
         return false;
+    }
+
+    if( site.last_shakedown_outcome.empty() ) {
+        const bool player_attack_escalated = std::any_of(
+                outing->member_ids.begin(), outing->member_ids.end(), []( const character_id member_id ) {
+            const npc *member_npc = g->find_npc( member_id );
+            return member_npc != nullptr && member_npc->get_attitude() == NPCATT_KILL;
+        } );
+        if( player_attack_escalated ) {
+            const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+                bandit_live_world::current_external_simulation_cursor( site );
+            if( cursor ) {
+                bandit_live_world::begin_matching_hostile_shakedown_combat( site, *cursor,
+                        live_bandit_current_minutes(), "player attacked shakedown participant" );
+            }
+        }
+    }
+    outing = site.active_external_outing();
+    if( outing == nullptr || outing != &site.active_hostile_operation.reservation ) {
+        return false;
+    }
+    if( live_bandit_reconcile_hostile_shakedown_combat( site ) ) {
+        return true;
     }
 
     const bool has_loaded_local_contact = std::any_of(
@@ -9244,6 +9367,11 @@ void process_monsters_and_npcs_turn_for_test()
 void process_overmap_npc_move_for_test()
 {
     overmap_npc_move();
+}
+
+void note_live_bandit_aftermath_for_test()
+{
+    note_live_bandit_aftermath();
 }
 
 void game::handle_progress_ui()
