@@ -82,15 +82,15 @@ Lineage: `CAOL-hostile-ecology-dev`
   `G-001` revision 3 is closed with real-owner, two-direction handoff continuation. `G-002` revision 1
   is closed from bound `cata_test` artifact `62c18e0c65ed`: two real scout NPCs resumed through the
   full global owner and ordinary `note_live_bandit_aftermath`, preserving provisional identity across
-  reload before finalizing receipts once and replaying byte-stably. R-009 is reopened to exploration:
-  the bound SDL run proved the inherited raw local-contact fixture has no active outing, and source
-  inspection then proved `observe_authoritative_hostile_target_opportunity` has no production caller.
-  The single learning goal is to identify the authoritative production observation point that can
-  derive one stable global target opportunity from real reachable goods, loaded population, and
-  activity evidence before any camp scheduler claims it, while preventing duplicate private
-  ownership. Success is a source-grounded owner strategy plus an integrated observation that can
-  prove or falsify it; it does not close G-003. The visible Fight/ordinary aftermath route and G-004
-  cannibal darkness wait remain unresolved closure obligations.
+  reload before finalizing receipts once and replaying byte-stably. The reopened exploration closed
+  with one production owner strategy, and the new finite closure map is frozen. G-001 is next: make
+  `overmap_npc_move()` the sole production observer of stable player-site opportunity evidence
+  immediately before hourly hostile maintenance, reject scheduler operation commit without the exact
+  global claim, and prevent a changed observation from renewing a claimed revision mid-operation.
+  Prove ordering, full-owner serialization, one claim, and inert missing/stale/replay paths through
+  the source-bound `process_overmap_npc_move_for_test()` route. G-002 then produces that real setup,
+  reloads committed contact, and drives visible Fight through ordinary combat/aftermath. G-003 proves
+  the cannibal daylight hold and exact true-night continuation after full-owner reload.
 
   The immutable whole-item estimate is 7864 seconds, the next whole second above R-008's directly
   measured 7863.018709897995-second first-dispatch-to-acceptance interval, used as the nearest
