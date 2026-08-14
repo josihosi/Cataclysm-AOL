@@ -79,6 +79,29 @@ Lineage: `CAOL-hostile-ecology-dev`
   duplicate generations, scout-party reuse, duplicate owners, and LLM-created ecology truth fail.
   - DFS slices: `R-005-S001`, `R-005-S002`
 
+  Completed exploration `R005-M001` proves the hourly `overmap_npc_move` structural-maintenance
+  scheduler is the production owner. Freeze these closure gaps:
+
+  - `G-001`: bind the exact authorized live response selection and named home reserve into hostile
+    operation plan/apply; scheduler-originated responses must not reuse the divergent fresh selector.
+  - `G-002`: canonicalize the real NPC overmap path from camp to target and select its validated
+    first departure OMT as the deterministic rally.
+  - `G-003`: materialize only enough concrete responders for the existing two-to-six response plus
+    named home-reserve policy before live reads, with no anonymous or partial-reservation fallback.
+  - `G-004`: at scheduler hour N, publish decision CAS plus selection-bound plan/apply as one
+    failure-atomic site candidate; stale input or replay leaves the prior site intact.
+  - `G-005`: at scheduler hour N+1, advance only the same assembling operation through its exact
+    cursor to outbound, preserving the named reserve and rejecting same-hour or replayed transitions.
+
+  Next closure attempt `R005-M002` binds `G-001` revision 1. Add the smallest transient authorized
+  selection input and owning controls that make planner/apply reserve exactly those fresh response
+  IDs while preserving the named at-home reserve and rejecting stale, altered, scout-reused, or
+  independently reselected identities. Do not wire the production scheduler or claim later gaps.
+
+  The immutable whole-item estimate is 42823 seconds, the next whole second above R-004's directly
+  measured 42822.686289-second first-dispatch-to-acceptance interval, used as the nearest completed
+  adjacent production-owner delivery.
+
 - [ ] R-006 — Prove the full bandit shakedown lifecycle through one paid branch and one refusal or
   attack branch, including fresh party reservation, physical rally/approach, real reachable-storage
   demand, controlled escalation, casualties/survivors, return, and exactly-once aftermath.
