@@ -19,11 +19,15 @@ struct active_outing_state;
 struct structural_threat_observer_request;
 struct structural_route_read;
 struct structural_outing_plan;
+struct response_member_power_read;
 } // namespace bandit_live_world
 
 void handle_key_blocking_activity();
 bool process_live_bandit_aftermath_for_test();
 bool materialize_live_bandit_structural_handoffs_for_test();
+int materialize_live_bandit_response_members_for_test( const std::string &site_id );
+std::vector<bandit_live_world::response_member_power_read>
+live_bandit_response_member_power_reads_for_test( const bandit_live_world::site_record &site );
 std::size_t maintain_live_bandit_local_pair_cohesion_for_test();
 bool dematerialize_live_bandit_structural_handoffs_for_test();
 void process_monsters_and_npcs_turn_for_test();

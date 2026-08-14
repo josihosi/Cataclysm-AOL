@@ -10734,6 +10734,22 @@ int hostile_response_home_reserve( const int living_total )
     return std::max( 1, ( std::max( 0, living_total ) + 2 ) / 3 );
 }
 
+int hostile_response_materialization_count( const site_record &site,
+        const int ready_concrete_source_members )
+{
+    const roster_view roster = site.roster();
+    if( !roster.valid || site.retired_empty_site || site.has_active_outside_pressure() ||
+        roster.living_total < 2 || ready_concrete_source_members < 0 ) {
+        return 0;
+    }
+
+    const int reserve = hostile_response_home_reserve( roster.living_total );
+    const int concrete_goal = std::min( roster.living_total,
+                                        static_cast<int>( max_hostile_operation_members ) + reserve );
+    return std::min( roster.unmaterialized_home_total,
+                     std::max( 0, concrete_goal - ready_concrete_source_members ) );
+}
+
 response_power_evaluation evaluate_response_party_power(
     const camp_report_policy policy, const int danger_high,
     const std::vector<int> &normalized_member_powers )

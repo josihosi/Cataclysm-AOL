@@ -1571,6 +1571,8 @@ int structural_terrain_static_risk( const std::string &terrain_fit_class );
 int normalize_hostile_camp_danger_risk( int danger_high );
 int normalize_hostile_camp_character_power( float deterministic_character_threat );
 int hostile_response_home_reserve( int living_total );
+int hostile_response_materialization_count( const site_record &site,
+        int ready_concrete_source_members );
 response_power_evaluation evaluate_response_party_power(
     camp_report_policy policy, int danger_high,
     const std::vector<int> &normalized_member_powers );

@@ -3496,27 +3496,12 @@ live_bandit_response_member_power_reads_impl( const bandit_live_world::site_reco
     return reads;
 }
 
-int live_bandit_materialize_abstract_members_for_routine(
-    bandit_live_world::world_state &state, bandit_live_world::site_record &site )
+int live_bandit_materialize_abstract_members(
+    bandit_live_world::world_state &state, bandit_live_world::site_record &site,
+    const int members_to_create, const std::string &purpose )
 {
     if( site.source_kind != bandit_live_world::anchor_source_kind::overmap_special ||
-        site.source_id.empty() || site.living_total <= 0 ) {
-        return 0;
-    }
-
-    int members_to_create = bandit_live_world::routine_scout_materialization_count( site );
-    const bandit_live_world::hostile_site_profile profile = site.profile ==
-            bandit_live_world::hostile_site_profile::none ?
-            bandit_live_world::profile_for_site_kind( site.site_kind ) : site.profile;
-    if( profile == bandit_live_world::hostile_site_profile::small_hostile_site &&
-        !site.retired_empty_site && !site.has_active_outside_pressure() ) {
-        const bandit_live_world::roster_view roster = site.roster();
-        if( roster.valid ) {
-            members_to_create = std::min( roster.unmaterialized_home_total,
-                                          std::max( 0, 1 - roster.ready_concrete_total ) );
-        }
-    }
-    if( members_to_create <= 0 ) {
+        site.source_id.empty() || site.living_total <= 0 || members_to_create <= 0 ) {
         return 0;
     }
 
@@ -3559,13 +3544,50 @@ int live_bandit_materialize_abstract_members_for_routine(
     }
 
     if( created_members > 0 ) {
-        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world lazy materialized abstract roster: site="
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world lazy materialized " << purpose << ": site="
                                    << site.site_id << " created_members=" << created_members
                                    << " concrete_live_members=" << site.count_live_members()
                                    << " living_total=" << site.living_total
                                    << " template=" << template_id.str() << '\n';
     }
     return created_members;
+}
+
+int live_bandit_materialize_abstract_members_for_routine(
+    bandit_live_world::world_state &state, bandit_live_world::site_record &site )
+{
+    int members_to_create = bandit_live_world::routine_scout_materialization_count( site );
+    const bandit_live_world::hostile_site_profile profile = site.profile ==
+            bandit_live_world::hostile_site_profile::none ?
+            bandit_live_world::profile_for_site_kind( site.site_kind ) : site.profile;
+    if( profile == bandit_live_world::hostile_site_profile::small_hostile_site &&
+        !site.retired_empty_site && !site.has_active_outside_pressure() ) {
+        const bandit_live_world::roster_view roster = site.roster();
+        if( roster.valid ) {
+            members_to_create = std::min( roster.unmaterialized_home_total,
+                                          std::max( 0, 1 - roster.ready_concrete_total ) );
+        }
+    }
+    return live_bandit_materialize_abstract_members( state, site, members_to_create,
+            "abstract routine roster" );
+}
+
+int live_bandit_materialize_abstract_members_for_response(
+    bandit_live_world::world_state &state, bandit_live_world::site_record &site )
+{
+    if( site.camp_decision.state !=
+        bandit_live_world::camp_decision_state::report_awaiting_assessment ) {
+        return 0;
+    }
+    const std::vector<bandit_live_world::response_member_power_read> reads =
+        live_bandit_response_member_power_reads_impl( site );
+    const int ready_concrete_source_members = static_cast<int>( std::count_if(
+            reads.begin(), reads.end(), []( const bandit_live_world::response_member_power_read & read ) {
+        return read.authoritative_present && read.at_source_camp && read.ready;
+    } ) );
+    return live_bandit_materialize_abstract_members( state, site,
+            bandit_live_world::hostile_response_materialization_count( site,
+                    ready_concrete_source_members ), "abstract response roster" );
 }
 
 struct live_bandit_local_handoff_member_backup {
@@ -8921,6 +8943,20 @@ bool process_live_bandit_aftermath_for_test()
 bool materialize_live_bandit_structural_handoffs_for_test()
 {
     return materialize_live_bandit_structural_handoffs();
+}
+
+int materialize_live_bandit_response_members_for_test( const std::string &site_id )
+{
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    bandit_live_world::site_record *site = state.find_site( site_id );
+    return site == nullptr ? 0 : live_bandit_materialize_abstract_members_for_response(
+               state, *site );
+}
+
+std::vector<bandit_live_world::response_member_power_read>
+live_bandit_response_member_power_reads_for_test( const bandit_live_world::site_record &site )
+{
+    return live_bandit_response_member_power_reads_impl( site );
 }
 
 std::size_t maintain_live_bandit_local_pair_cohesion_for_test()
