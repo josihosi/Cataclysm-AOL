@@ -29,6 +29,7 @@ from startup_harness import (  # noqa: E402
     audit_saved_weather_state,
     apply_direct_child_liveness,
     build_feature_debug_guard,
+    build_runtime_binding,
     build_probe_step_ledger,
     build_portal_storm_warning,
     capture_debug_delta,
@@ -36,6 +37,8 @@ from startup_harness import (  # noqa: E402
     capture_feature_phase_guard,
     capture_stable_final_debug_delta,
     classify_wait_step_ledger,
+    compare_runtime_binding,
+    declared_screen_artifact_matches,
     classify_blocking_interruption,
     compact_probe_report_for_stdout,
     collect_weather_audits_from_step_reports,
@@ -67,6 +70,64 @@ from startup_harness import (  # noqa: E402
     summarize_probe_step_ledger,
     summarize_wait_step_ledgers,
 )
+
+
+class RuntimeBindingContractTest(unittest.TestCase):
+    def _binding(self, root: Path) -> dict:
+        source = root / "src" / "runtime.cpp"
+        source.parent.mkdir()
+        source.write_text("int runtime = 1;\n", encoding="utf-8")
+        subprocess.run(["git", "-C", str(root), "init", "-q"], check=True)
+        subprocess.run(["git", "-C", str(root), "add", "src/runtime.cpp"], check=True)
+        subprocess.run(
+            [
+                "git", "-C", str(root), "-c", "user.name=Harness Test",
+                "-c", "user.email=harness@example.invalid", "commit", "-qm", "baseline",
+            ],
+            check=True,
+        )
+        source.write_text("int runtime = 2;\n", encoding="utf-8")
+        executable = root / "cataclysm-tiles"
+        executable.write_bytes(b"exact executable")
+        with patch("startup_harness.repo_root", return_value=root), patch(
+            "startup_harness.RUNTIME_RELEVANT_PATHS", ("src",)
+        ):
+            return build_runtime_binding(executable)
+
+    def test_exact_dirty_source_and_executable_binding_is_accepted(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            binding = self._binding(root)
+            self.assertTrue(binding["ok"])
+            with patch("startup_harness.repo_root", return_value=root), patch(
+                "startup_harness.RUNTIME_RELEVANT_PATHS", ("src",)
+            ):
+                result = compare_runtime_binding(binding)
+            self.assertEqual(result["status"], "matched")
+
+    def test_changed_runtime_source_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            binding = self._binding(root)
+            (root / "src" / "runtime.cpp").write_text("int runtime = 3;\n", encoding="utf-8")
+            with patch("startup_harness.repo_root", return_value=root), patch(
+                "startup_harness.RUNTIME_RELEVANT_PATHS", ("src",)
+            ):
+                result = compare_runtime_binding(binding)
+            self.assertEqual(result["status"], "mismatch")
+            self.assertIn("runtime_source_sha256", result["error"])
+
+    def test_changed_executable_is_rejected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            binding = self._binding(root)
+            (root / "cataclysm-tiles").write_bytes(b"different executable")
+            with patch("startup_harness.repo_root", return_value=root), patch(
+                "startup_harness.RUNTIME_RELEVANT_PATHS", ("src",)
+            ):
+                result = compare_runtime_binding(binding)
+            self.assertEqual(result["status"], "mismatch")
+            self.assertIn("executable_sha256", result["error"])
 
 
 def startup(*, clean: bool = True, status: str = "green") -> Dict[str, Any]:
@@ -1582,6 +1643,42 @@ class StartupScreenGateTest(unittest.TestCase):
 
         self.assertTrue(probe["gameplay_hud_present"])
         self.assertEqual(probe["classification"], "green_gameplay_hud_present")
+
+    def test_one_body_label_and_exact_sidebar_speed_match_the_compact_mac_hud(self) -> None:
+        probe = startup_screen_probe_classification(
+            ocr_payload={
+                "ok": True,
+                "lines": ["TORSO", "Speed: 97"],
+            },
+            capture_warnings=[],
+            debug_delta_text="",
+        )
+
+        self.assertTrue(probe["gameplay_hud_present"])
+        self.assertEqual(probe["classification"], "green_gameplay_hud_present")
+
+    def test_declared_screen_artifact_requires_every_named_matched_guard(self) -> None:
+        matched = {
+            "label": "confirm_highlighted_talker",
+            "screen_after": {"png_path": "/tmp/response.png"},
+            "screen_after_text_expectation": {
+                "status": "matched",
+                "source": "/tmp/response.ocr.json",
+                "matches": [{"line": "Your response:"}],
+            },
+        }
+        missing = {
+            "label": "open_talker_selector",
+            "screen_after_text_expectation": {"status": "missing", "source": "/tmp/selector.ocr.json"},
+        }
+
+        result = declared_screen_artifact_matches(
+            [matched, missing],
+            {"artifact_verdict": ["confirm_highlighted_talker", "open_talker_selector"]},
+        )
+
+        self.assertEqual([entry["lines"] for entry in result], [["Your response:"], []])
+        self.assertEqual(result[0]["artifact_path"], "/tmp/response.png")
 
     def test_mac_sidebar_ocr_activity_and_wield_fallback_counts_as_gameplay_hud(self) -> None:
         probe = startup_screen_probe_classification(

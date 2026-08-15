@@ -5,14 +5,6 @@ Lineage: `CAOL-hostile-ecology-dev`
 
 ## Active work
 
-- [ ] R-104 — Connect a valid registry selection token to the existing canonical startup/probe
-  owner and ingest the finalized report into registry history without creating a second launcher or
-  weakening startup-versus-feature proof.
-  - DFS slices: `R-104-S001`, `R-104-S002`
-
-  Start only after R-103 produces bound tokens on R-101/R-102 truth. Preserve the existing runner,
-  report finalizer, proof classifier, and cleanup boundaries as the acting owners.
-
 - [ ] R-105 — Implement crash-resumable exhaustive inventory/migration, per-path/hash attempt and
   terminal disposition ownership, quarantine, evidence-grounded relation review, and explicitly
   approved coverage-guarded retirement with complete retained history.

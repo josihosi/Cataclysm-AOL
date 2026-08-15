@@ -18,6 +18,7 @@ from scenario_registry_store import (
     ScenarioRegistryStoreError,
     execute_registry_query,
     ingest_report_reference,
+    ingest_token_linked_report_reference,
     open_registry,
     rebuild_manifest_projection,
     repository_root,
@@ -26,6 +27,7 @@ from scenario_registry_store import (
     record_selection_token_rejection,
     reload_selection_token_for_launch,
     parse_registry_query_request,
+    path_sha256,
 )
 import startup_harness
 from startup_harness import (
@@ -46,35 +48,6 @@ class _ArgumentParser(argparse.ArgumentParser):
 
 def _write_result(value: Mapping[str, Any], *, stream: Any = sys.stdout) -> None:
     print(json.dumps(value, ensure_ascii=False, sort_keys=True), file=stream)
-
-
-def _path_sha256(path: Path) -> str:
-    """Hash the real file or directory tree that an adapter resolves."""
-    digest = hashlib.sha256()
-    try:
-        resolved = path.resolve(strict=True)
-    except OSError as exc:
-        raise ScenarioRegistryStoreError(f"Could not resolve binding path {path}: {exc}") from exc
-    if resolved.is_file():
-        value, error = sha256_file(resolved)
-        if error:
-            raise ScenarioRegistryStoreError(f"Could not hash binding file {resolved}: {error}")
-        return value
-    if not resolved.is_dir():
-        raise ScenarioRegistryStoreError(f"Binding path is neither a file nor directory: {resolved}")
-    digest.update(b"caol-scenario-directory-binding-v1\0")
-    for entry in sorted(resolved.rglob("*"), key=lambda item: str(item.relative_to(resolved))):
-        relative = str(entry.relative_to(resolved)).replace("\\", "/")
-        if entry.is_dir():
-            digest.update(b"directory\0" + relative.encode("utf-8") + b"\0")
-            continue
-        if not entry.is_file():
-            raise ScenarioRegistryStoreError(f"Binding tree contains unsupported entry: {entry}")
-        value, error = sha256_file(entry)
-        if error:
-            raise ScenarioRegistryStoreError(f"Could not hash binding file {entry}: {error}")
-        digest.update(b"file\0" + relative.encode("utf-8") + b"\0" + value.encode("ascii") + b"\0")
-    return digest.hexdigest()
 
 
 def _identity_sha256(label: str) -> str:
@@ -126,7 +99,7 @@ def _fixture_adapter(expected: Mapping[str, Any]) -> Mapping[str, Any]:
     try:
         resolved = resolve_fixture_payload(fixture_name, fixture_profile)
         source_path = Path(resolved["fixture_dir"])
-        source_sha256 = _path_sha256(source_path)
+        source_sha256 = path_sha256(source_path)
     except (KeyError, OSError, SystemExit, ScenarioRegistryStoreError) as exc:
         return {"status": "stale", "facts": {"source_sha256": _identity_sha256(f"fixture error:{exc}"), "reason": str(exc)}}
     expected_sha256 = str(installed.get("source_sha256", "")).strip().lower()
@@ -153,7 +126,7 @@ def _profile_adapter(expected: Mapping[str, Any]) -> Mapping[str, Any]:
     try:
         resolved = resolve_profile_snapshot_payload(snapshot_name, snapshot_profile)
         source_path = Path(resolved["snapshot_dir"])
-        source_sha256 = _path_sha256(source_path)
+        source_sha256 = path_sha256(source_path)
     except (KeyError, OSError, SystemExit, ScenarioRegistryStoreError) as exc:
         return {"status": "stale", "facts": {"source_sha256": _identity_sha256(f"profile error:{exc}"), "reason": str(exc)}}
     expected_sha256 = str(installed.get("source_sha256", "")).strip().lower()
@@ -210,6 +183,33 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken) -> argparse
             f"{source_path}"
         )
     return startup_harness.build_parser().parse_args(["probe", selection.scenario])
+
+
+def _registry_post_finalize_ingest(receipt: str) -> Any:
+    """Return the narrow callback that links a durable probe report to its token."""
+    def ingest(report_path: Path, _report: Mapping[str, Any]) -> Dict[str, Any]:
+        try:
+            payload = json.loads(receipt)
+            if not isinstance(payload, Mapping):
+                raise ScenarioRegistryStoreError("registry launch receipt must be an object")
+            registry_path = Path(str(payload["registry_path"])).resolve()
+            token_id = str(payload["token_id"]).strip()
+            if not token_id:
+                raise ScenarioRegistryStoreError("registry launch receipt token is missing")
+            connection = open_registry(str(registry_path))
+            try:
+                return ingest_token_linked_report_reference(
+                    connection,
+                    token_id,
+                    report_path,
+                    adapters=production_binding_adapters(),
+                )
+            finally:
+                connection.close()
+        except (KeyError, OSError, sqlite3.Error, ScenarioRegistryStoreError, ValueError) as exc:
+            return {"status": "ingest_error", "error": str(exc)}
+
+    return ingest
 
 
 def build_parser() -> argparse.ArgumentParser:
@@ -289,7 +289,34 @@ def main(argv: Sequence[str] | None = None) -> int:
                             reason="canonical_probe_source_mismatch",
                         ))
                     else:
-                        result = asdict(selection)
+                        runtime_binding = startup_harness.build_runtime_binding(
+                            startup_harness.detect_executable()
+                        )
+                        if not runtime_binding.get("ok"):
+                            record_selection_token_rejection(
+                                connection,
+                                selection.token_id,
+                                reason="runtime_binding_unavailable",
+                                details={"error": str(runtime_binding.get("error", "unknown error"))},
+                            )
+                            result = asdict(RegistryLaunchToken(
+                                token_id=selection.token_id,
+                                accepted=False,
+                                reason="runtime_binding_unavailable",
+                            ))
+                            probe_namespace = None
+                        else:
+                            probe_namespace.registry_launch_receipt = json.dumps({
+                                "schema": 1,
+                                "registry_path": str(registry_path),
+                                "token_id": selection.token_id,
+                                "source_path": selection.source_path,
+                                "runtime_binding": runtime_binding,
+                            }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                            probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
+                                probe_namespace.registry_launch_receipt
+                            )
+                            result = asdict(selection)
             else:
                 raise ScenarioRegistryStoreError(f"Unsupported registry command: {args.command}")
         finally:

@@ -134,6 +134,62 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             "opaque_report_payload": {"prose": OPAQUE_PROSE, "nested": [OPAQUE_PROSE]},
         }
 
+    def gated_manifest(self) -> dict:
+        manifest = self.strict_manifest()
+        manifest["capabilities"] = {
+            "player.startup_gate": True,
+            "player.interaction_gate": True,
+            "player.terminal_gate": True,
+            "player.persistence_gate": True,
+            "player.replay_gate": True,
+        }
+        manifest["proof_route"]["capability_gates"] = {
+            "player.startup_gate": {"startup": ["setup"]},
+            "player.interaction_gate": {"interaction": ["production"]},
+            "player.terminal_gate": {"terminal": ["terminal"]},
+            "player.persistence_gate": {"persistence": ["artifact"]},
+            "player.replay_gate": {"replay": ["artifact"]},
+        }
+        return manifest
+
+    def report_with_named_gates(
+        self,
+        manifest_path: Path,
+        *,
+        setup: str = "green_setup",
+        production: str = "green_production",
+        terminal: str = "green_terminal",
+        artifact: str = "green_artifact",
+        status: str = "green",
+        feature_proof: bool = True,
+        supersedes_verification_id: str = "",
+    ) -> dict:
+        report = self.report_with_proof(
+            manifest_path,
+            status=status,
+            feature_proof=feature_proof,
+            supersedes_verification_id=supersedes_verification_id,
+        )
+        report["startup"]["startup_step_ledger"] = [
+            {"step": "setup", "verdict": setup},
+        ]
+        report["step_ledger"] = [
+            {"primitive_step": "production", "verdict": production},
+            {"primitive_step": "terminal", "verdict": terminal},
+            {"primitive_step": "artifact", "verdict": artifact},
+            {"primitive_step": "shortcut", "verdict": "green_debug_setup"},
+        ]
+        return report
+
+    def setup_gated_registry(self, root: Path) -> tuple:
+        scenarios = root / "scenarios"
+        scenarios.mkdir()
+        manifest_path = scenarios / "gated.json"
+        self.write_json(manifest_path, self.gated_manifest())
+        connection = open_registry(str(root / "registry.sqlite3"))
+        rebuild_manifest_projection(connection, scenarios)
+        return connection, scenarios, manifest_path
+
     def adapters(self, state: dict) -> BindingAdapters:
         def result(kind: str, expected: object) -> dict:
             self.assertIsInstance(expected, dict)
@@ -359,6 +415,153 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             ).fetchone()
             self.assertEqual(evidence["evidence_state"], "unknown")
             self.assertEqual(json.loads(evidence["details_json"])["hard_proven_verification_ids"], [])
+            connection.close()
+
+    def test_named_capability_gates_are_exact_depths_and_hud_debug_fields_grant_nothing(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _scenarios, manifest_path = self.setup_gated_registry(root)
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            hud_only = self.report_with_proof(manifest_path, status="green", feature_proof=True)
+            hud_only["startup"]["screen"]["gameplay_hud_present"] = True
+            hud_only["feature_debug_guard"] = {"status": "green", "verdict": "debug_setup_only"}
+            self.ingest_named_report(connection, root, "hud-only.probe.report.json", hud_only, state)
+            facts = build_registry_query_candidate_snapshot(connection)[0].facts
+            self.assertEqual(
+                {key: (fact["evidence_state"], fact["proof_depth"]) for key, fact in facts.items()},
+                {
+                    "player.interaction_gate": ("declared", None),
+                    "player.persistence_gate": ("declared", None),
+                    "player.replay_gate": ("declared", None),
+                    "player.startup_gate": ("declared", None),
+                    "player.terminal_gate": ("declared", None),
+                },
+            )
+
+            startup_only = self.report_with_proof(manifest_path, status="green", feature_proof=True)
+            startup_only["startup"]["startup_step_ledger"] = [
+                {"step": "setup", "verdict": "green_startup"},
+                {"step": "production", "verdict": "green_spoofed_startup"},
+            ]
+            self.ingest_named_report(connection, root, "startup-only.probe.report.json", startup_only, state)
+            facts = build_registry_query_candidate_snapshot(connection)[0].facts
+            self.assertEqual(facts["player.startup_gate"]["proof_depth"], "startup")
+            self.assertEqual(facts["player.interaction_gate"], {
+                "present": True, "value": True, "evidence_state": "declared", "proof_depth": None,
+            })
+
+            green = self.ingest_named_report(
+                connection,
+                root,
+                "named-gates.probe.report.json",
+                self.report_with_named_gates(manifest_path),
+                state,
+            )
+            self.assertEqual(green["eligibility"], "hard_proven")
+            facts = build_registry_query_candidate_snapshot(connection)[0].facts
+            self.assertEqual(facts["player.startup_gate"], {
+                "present": True, "value": True, "evidence_state": "inspected", "proof_depth": "startup",
+            })
+            for key, depth in (
+                ("player.interaction_gate", "interaction"),
+                ("player.terminal_gate", "terminal"),
+                ("player.persistence_gate", "persistence"),
+                ("player.replay_gate", "replay"),
+            ):
+                self.assertEqual(facts[key]["evidence_state"], "run-verified")
+                self.assertEqual(facts[key]["proof_depth"], depth)
+            query = evaluate_registry_query_from_store(
+                connection,
+                parse_registry_query_request({
+                    "requirements": [{
+                        "key": "player.startup_gate", "op": "eq", "value": True,
+                        "minimum_evidence": "run-verified",
+                    }],
+                    "preferences": [],
+                }),
+            )
+            self.assertEqual(query.evaluation.candidates[0].hard_results[0].reason, "below_minimum_evidence")
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM capability_evidence_history "
+                    "WHERE capability_key = 'player.startup_gate' AND evidence_kind = 'named_proof_gate'"
+                ).fetchone()[0],
+                2,
+            )
+            connection.close()
+
+    def test_named_gate_contradiction_outranks_success_until_same_route_supersession(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _scenarios, manifest_path = self.setup_gated_registry(root)
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            current_manifest = connection.execute(
+                "SELECT revision, current_sha256, declaration_json FROM manifest_current"
+            ).fetchone()
+            success = self.ingest_named_report(
+                connection, root, "success.probe.report.json", self.report_with_named_gates(manifest_path), state,
+            )
+            contradiction = self.ingest_named_report(
+                connection,
+                root,
+                "contradiction.probe.report.json",
+                self.report_with_named_gates(
+                    manifest_path,
+                    production="red_production_gate_failed",
+                    status="red",
+                    feature_proof=False,
+                ),
+                state,
+            )
+            self.assertEqual(success["eligibility"], "hard_proven")
+            self.assertEqual(contradiction["eligibility"], "contradicted")
+            self.assertEqual(
+                build_registry_query_candidate_snapshot(connection, include_lifecycle_states=("quarantined",))[0]
+                .facts["player.interaction_gate"]["evidence_state"],
+                "contradicted",
+            )
+            later_success = self.ingest_named_report(
+                connection, root, "later-success.probe.report.json", self.report_with_named_gates(manifest_path), state,
+            )
+            self.assertEqual(later_success["eligibility"], "contradicted")
+            superseding_success = self.ingest_named_report(
+                connection,
+                root,
+                "superseding-success.probe.report.json",
+                self.report_with_named_gates(
+                    manifest_path,
+                    supersedes_verification_id=contradiction["verification_id"],
+                ),
+                state,
+            )
+            self.assertEqual(superseding_success["eligibility"], "hard_proven")
+            facts = build_registry_query_candidate_snapshot(connection)[0].facts
+            self.assertEqual(facts["player.interaction_gate"]["evidence_state"], "run-verified")
+            self.assertEqual(facts["player.interaction_gate"]["proof_depth"], "interaction")
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM capability_evidence_history "
+                    "WHERE capability_key = 'player.interaction_gate' AND evidence_state = 'contradicted'"
+                ).fetchone()[0],
+                1,
+            )
+            self.assertEqual(
+                tuple(connection.execute("SELECT revision, current_sha256, declaration_json FROM manifest_current").fetchone()),
+                tuple(current_manifest),
+            )
+            repeated = ingest_report_reference(
+                connection,
+                root / "superseding-success.probe.report.json",
+                adapters=self.adapters(state),
+            )
+            self.assertTrue(repeated["idempotent"])
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM capability_evidence_history "
+                    "WHERE capability_key = 'player.interaction_gate' AND evidence_kind = 'named_proof_gate'"
+                ).fetchone()[0],
+                4,
+            )
             connection.close()
 
     def test_compatible_contradiction_requires_explicit_same_route_supersession(self) -> None:

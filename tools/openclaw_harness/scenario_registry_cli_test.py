@@ -32,6 +32,7 @@ from scenario_registry_store import (  # noqa: E402
     reconcile_report_bindings,
 )
 from startup_harness import runtime_source_binding  # noqa: E402
+from startup_harness import finalize_probe_report  # noqa: E402
 
 
 class ScenarioRegistryCliTest(unittest.TestCase):
@@ -194,7 +195,18 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         scenarios: Path,
         token_id: str,
     ) -> tuple[int, mock.Mock]:
+        executable = registry_path.parent / "selected-runtime"
+        executable.write_bytes(b"selected runtime")
+        runtime_binding = {
+            "ok": True,
+            "schema": 1,
+            "executable_path": str(executable.resolve()),
+            "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
+            "runtime_source_sha256": "test-runtime-source",
+        }
         with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                mock.patch.object(startup_harness, "detect_executable", return_value=executable), \
+                mock.patch.object(startup_harness, "build_runtime_binding", return_value=runtime_binding), \
                 mock.patch.object(startup_harness, "run_probe_mode", return_value=23) as run_probe, \
                 redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
             result = scenario_registry_cli.main([
@@ -218,7 +230,15 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(result, 23)
             run_probe.assert_called_once()
             expected = startup_harness.build_parser().parse_args(["probe", "cli"])
-            self.assertEqual(vars(run_probe.call_args.args[0]), vars(expected))
+            received = vars(run_probe.call_args.args[0]).copy()
+            receipt = json.loads(received.pop("registry_launch_receipt"))
+            post_finalize_hook = received.pop("registry_post_finalize_hook")
+            self.assertEqual(received, vars(expected))
+            self.assertTrue(callable(post_finalize_hook))
+            self.assertEqual(receipt["registry_path"], str(registry_path.resolve()))
+            self.assertEqual(receipt["token_id"], token_id)
+            self.assertEqual(receipt["source_path"], str((scenarios / "cli.json").resolve()))
+            self.assertEqual(receipt["runtime_binding"]["schema"], 1)
             self.assertEqual(self.token_events(registry_path, token_id), [("issued", "query_selection")])
             other_connection = sqlite3.connect(other_registry)
             try:
@@ -351,6 +371,169 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             connection = sqlite3.connect(registry_path)
             try:
                 self.assertEqual(connection.execute("SELECT COUNT(*) FROM query_history").fetchone()[0], 1)
+            finally:
+                connection.close()
+
+    def registry_launch_receipt(self, registry_path: Path, token_id: str, source_path: Path, executable: Path) -> str:
+        runtime_binding = startup_harness.build_runtime_binding(executable)
+        self.assertTrue(runtime_binding.get("ok"), runtime_binding.get("error"))
+        return json.dumps({
+            "schema": 1,
+            "registry_path": str(registry_path),
+            "token_id": token_id,
+            "source_path": str(source_path),
+            "runtime_binding": runtime_binding,
+        })
+
+    def run_startup_with_receipt(
+        self,
+        root: Path,
+        executable: Path,
+        receipt: str,
+        launch_game: mock.Mock,
+    ) -> None:
+        args = startup_harness.build_parser().parse_args(["start", "--profile", "registry-receipt-test"])
+        args.registry_launch_receipt = receipt
+        plan = startup_harness.StartupPlan(
+            profile="registry-receipt-test",
+            userdir=str(root / "userdir"),
+            executable=str(executable),
+            strategy="harness_new_world",
+            reason="test",
+            target_world="",
+            existing_worlds=[],
+            fixture="",
+            run_dir=str(root / "run"),
+        )
+        with mock.patch.object(startup_harness, "load_profile_config", return_value={"startup": {}}), \
+                mock.patch.object(startup_harness, "purge_profile_flexbuffer_cache", return_value={}), \
+                mock.patch.object(startup_harness, "build_plan", return_value=plan), \
+                mock.patch.object(startup_harness, "game_child_environment", return_value={}), \
+                mock.patch.object(startup_harness, "startup_gui_automation_required", return_value=False), \
+                mock.patch.object(startup_harness, "kill_existing_game_processes", return_value=[]), \
+                mock.patch.object(startup_harness, "config_dir_for_profile", return_value=root / "config"), \
+                mock.patch.object(startup_harness, "latest_world_save_marker", return_value={}), \
+                mock.patch.object(startup_harness, "copy_file_if_exists"), \
+                mock.patch.object(startup_harness, "launch_game", launch_game):
+            startup_harness.run_startup(args)
+
+    def test_run_startup_rejects_post_receipt_source_change_before_launch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"selected binary")
+            receipt = self.registry_launch_receipt(registry_path, token_id, scenarios / "cli.json", executable)
+            changed = self.strict_manifest()
+            changed["description"] = "changed after receipt"
+            self.write_json(scenarios / "cli.json", changed)
+            launch_game = mock.Mock()
+
+            with self.assertRaisesRegex(SystemExit, "manifest_source_changed"):
+                self.run_startup_with_receipt(root, executable, receipt, launch_game)
+
+            launch_game.assert_not_called()
+            self.assertEqual(self.token_events(registry_path, token_id), [
+                ("issued", "query_selection"),
+                ("invalidated", "registry_launch_manifest_source_changed"),
+            ])
+
+    def test_run_startup_rejects_post_receipt_binary_change_before_launch(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"selected binary")
+            receipt = self.registry_launch_receipt(registry_path, token_id, scenarios / "cli.json", executable)
+            executable.write_bytes(b"changed binary")
+            launch_game = mock.Mock()
+
+            with self.assertRaisesRegex(SystemExit, "runtime_binding_changed"):
+                self.run_startup_with_receipt(root, executable, receipt, launch_game)
+
+            launch_game.assert_not_called()
+            self.assertEqual(self.token_events(registry_path, token_id), [
+                ("issued", "query_selection"),
+                ("invalidated", "registry_launch_runtime_binding_changed"),
+            ])
+
+    def test_run_startup_allows_unchanged_receipt_to_reach_canonical_launch(self) -> None:
+        class LaunchReached(RuntimeError):
+            pass
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"selected binary")
+            receipt = self.registry_launch_receipt(registry_path, token_id, scenarios / "cli.json", executable)
+            launch_game = mock.Mock(side_effect=LaunchReached("canonical launch reached"))
+
+            with self.assertRaisesRegex(LaunchReached, "canonical launch reached"):
+                self.run_startup_with_receipt(root, executable, receipt, launch_game)
+
+            launch_game.assert_called_once()
+            self.assertEqual(self.token_events(registry_path, token_id), [("issued", "query_selection")])
+
+    def test_registry_finalizer_ingests_one_durable_cleaned_probe_report_idempotently(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"selected binary")
+            receipt = self.registry_launch_receipt(registry_path, token_id, scenarios / "cli.json", executable)
+            hook = scenario_registry_cli._registry_post_finalize_ingest(receipt)
+            run_dir = root / "run"
+            report = self.report(scenarios / "cli.json", executable)
+            report["cleanup"] = {"status": "already_exited", "pid": 42}
+
+            with redirect_stdout(io.StringIO()):
+                finalize_probe_report(run_dir, report, post_finalize_hook=hook)
+                finalize_probe_report(run_dir, report, post_finalize_hook=hook)
+
+            self.assertTrue((run_dir / "probe.report.json").is_file())
+            self.assertEqual(self.token_events(registry_path, token_id), [
+                ("issued", "query_selection"),
+                ("verification_run", "report_ingested"),
+            ])
+            connection = sqlite3.connect(registry_path)
+            try:
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT COUNT(*) FROM report_ingestion_history WHERE report_path = ?",
+                        (str((run_dir / "probe.report.json").resolve()),),
+                    ).fetchone()[0],
+                    1,
+                )
+            finally:
+                connection.close()
+
+    def test_registry_finalizer_skips_handoff_and_non_authoritative_cleanup(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"selected binary")
+            receipt = self.registry_launch_receipt(registry_path, token_id, scenarios / "cli.json", executable)
+            hook = scenario_registry_cli._registry_post_finalize_ingest(receipt)
+
+            for name, cleanup in (
+                ("missing", None),
+                ("handoff", {"status": "deferred_handoff", "pid": 42}),
+                ("failed", {"status": "failed", "pid": 42}),
+            ):
+                report = self.report(scenarios / "cli.json", executable)
+                if cleanup is not None:
+                    report["cleanup"] = cleanup
+                if name == "handoff":
+                    report["mode"] = "handoff"
+                with redirect_stdout(io.StringIO()):
+                    finalize_probe_report(root / name, report, post_finalize_hook=hook)
+
+            self.assertEqual(self.token_events(registry_path, token_id), [("issued", "query_selection")])
+            connection = sqlite3.connect(registry_path)
+            try:
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM report_ingestion_history").fetchone()[0], 1)
             finally:
                 connection.close()
 

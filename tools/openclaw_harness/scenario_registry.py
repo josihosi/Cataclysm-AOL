@@ -31,6 +31,13 @@ PROOF_ROUTE_ROLES = (
     "artifact_verdict",
     "disallowed_shortcuts",
 )
+PROOF_DEPTHS = (
+    "startup",
+    "interaction",
+    "terminal",
+    "persistence",
+    "replay",
+)
 RUNTIME_REQUIREMENT_KEYS = (
     "os",
     "source",
@@ -155,6 +162,34 @@ def _validate_proof_route(value: Any, manifest: Mapping[str, Any], *, path: Path
         unknown = [label for label in references if label not in labels]
         if unknown:
             raise _error(path, f"proof_route.{role} references unknown step label(s): {', '.join(unknown)}")
+    capability_gates = value.get("capability_gates")
+    if capability_gates is None:
+        return
+    if not isinstance(capability_gates, dict):
+        raise _error(path, "proof_route.capability_gates must be an object when present")
+    declared_capabilities = manifest.get("capabilities")
+    if not isinstance(declared_capabilities, dict):
+        raise _error(path, "proof_route.capability_gates requires declared capabilities")
+    eligible_labels = set().union(*(set(value[role]) for role in PROOF_ROUTE_ROLES[:-1]))
+    for capability_key, depth_gates in capability_gates.items():
+        if capability_key not in declared_capabilities:
+            raise _error(path, f"proof_route.capability_gates references undeclared capability {capability_key!r}")
+        if not isinstance(depth_gates, dict) or not depth_gates:
+            raise _error(path, f"proof_route.capability_gates[{capability_key!r}] must be a non-empty object")
+        for depth, gates in depth_gates.items():
+            if depth not in PROOF_DEPTHS:
+                raise _error(path, f"proof_route.capability_gates[{capability_key!r}] has unknown proof depth {depth!r}")
+            references = _require_string_list(
+                gates,
+                path=path,
+                field=f"proof_route.capability_gates[{capability_key!r}][{depth!r}]",
+            )
+            ineligible = [label for label in references if label not in eligible_labels]
+            if ineligible:
+                raise _error(
+                    path,
+                    f"proof_route.capability_gates[{capability_key!r}][{depth!r}] references non-production gate(s): {', '.join(ineligible)}",
+                )
 
 
 def _validate_versioned_fields(manifest: Mapping[str, Any], *, path: Path) -> None:

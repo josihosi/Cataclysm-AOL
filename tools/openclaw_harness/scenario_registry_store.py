@@ -31,6 +31,31 @@ class ScenarioRegistryQueryError(ValueError):
     """A registry query request or explicit candidate fact is not well-typed."""
 
 
+def path_sha256(path: Path) -> str:
+    """Hash one resolved file or directory tree for a durable binding."""
+    try:
+        resolved = path.resolve(strict=True)
+    except OSError as exc:
+        raise ScenarioRegistryStoreError(f"Could not resolve binding path {path}: {exc}") from exc
+    digest = hashlib.sha256()
+    if resolved.is_file():
+        digest.update(resolved.read_bytes())
+        return digest.hexdigest()
+    if not resolved.is_dir():
+        raise ScenarioRegistryStoreError(f"Binding path is neither a file nor directory: {resolved}")
+    digest.update(b"caol-scenario-directory-binding-v1\0")
+    for entry in sorted(resolved.rglob("*"), key=lambda item: str(item.relative_to(resolved))):
+        relative = str(entry.relative_to(resolved)).replace("\\", "/")
+        if entry.is_dir():
+            digest.update(b"directory\0" + relative.encode("utf-8") + b"\0")
+            continue
+        if not entry.is_file():
+            raise ScenarioRegistryStoreError(f"Binding tree contains unsupported entry: {entry}")
+        content_hash = hashlib.sha256(entry.read_bytes()).hexdigest()
+        digest.update(b"file\0" + relative.encode("utf-8") + b"\0" + content_hash.encode("ascii") + b"\0")
+    return digest.hexdigest()
+
+
 @dataclass(frozen=True)
 class RegistryQueryPredicate:
     """One typed hard requirement or ordered soft preference."""
@@ -153,6 +178,13 @@ _KNOWN_PROOF_DEPTHS = frozenset({
     "persistence",
     "replay",
 })
+_PROOF_DEPTH_RANKS = {
+    "startup": 0,
+    "interaction": 1,
+    "terminal": 2,
+    "persistence": 3,
+    "replay": 4,
+}
 
 
 def _is_number(value: Any) -> bool:
@@ -650,34 +682,63 @@ def _current_lifecycle_state(
     return "active", "current_manifest"
 
 
-def _fact_state_from_current_authority(
+def _fact_evidence_from_current_authority(
     connection: sqlite3.Connection,
     *,
     manifest_id: str,
     capability_key: str,
     declared_state: str,
     route_evidence: Sequence[Mapping[str, Any]],
-) -> str:
+) -> Tuple[str, Optional[str]]:
     route_states = {str(item["evidence_state"]) for item in route_evidence}
     if "contradicted" in route_states:
-        return "contradicted"
+        return "contradicted", None
     if "stale" in route_states:
-        return "stale"
+        return "stale", None
     rows = connection.execute(
-        "SELECT evidence_state FROM capability_evidence_history WHERE manifest_id = ? "
+        "SELECT evidence_state, verification_id, details_json FROM capability_evidence_history WHERE manifest_id = ? "
         "AND capability_key = ? AND evidence_kind != 'declaration' ORDER BY capability_evidence_id",
         (manifest_id, capability_key),
     ).fetchall()
-    states = {_public_evidence_state(str(row["evidence_state"])) for row in rows}
-    if "contradicted" in states:
-        return "contradicted"
-    if "stale" in states:
-        return "stale"
-    if "run-verified" in states:
-        return "run-verified"
-    if "inspected" in states:
-        return "inspected"
-    return _public_evidence_state(declared_state)
+    contradictions = {
+        str(row["verification_id"])
+        for row in rows
+        if row["verification_id"] is not None and _public_evidence_state(str(row["evidence_state"])) == "contradicted"
+    }
+    superseded = {
+        str(row["supersedes_verification_id"])
+        for row in connection.execute(
+            "SELECT verification_id, supersedes_verification_id FROM verification_history "
+            "WHERE manifest_id = ? AND supersedes_verification_id IS NOT NULL",
+            (manifest_id,),
+        )
+        if str(row["verification_id"]) in {
+            str(evidence["verification_id"])
+            for evidence in rows
+            if evidence["verification_id"] is not None
+            and _public_evidence_state(str(evidence["evidence_state"])) == "run-verified"
+        }
+    }
+    if contradictions - superseded:
+        return "contradicted", None
+    if any(_public_evidence_state(str(row["evidence_state"])) == "stale" for row in rows):
+        return "stale", None
+    candidates: List[Tuple[str, str]] = []
+    for row in rows:
+        state = _public_evidence_state(str(row["evidence_state"]))
+        if state not in {"inspected", "run-verified"}:
+            continue
+        details = _json_object(str(row["details_json"]), "capability evidence details")
+        depth = details.get("proof_depth")
+        if isinstance(depth, str) and depth in _KNOWN_PROOF_DEPTHS:
+            candidates.append((state, depth))
+    run_verified = [entry for entry in candidates if entry[0] == "run-verified"]
+    if run_verified:
+        return "run-verified", max(run_verified, key=lambda entry: _PROOF_DEPTH_RANKS[entry[1]])[1]
+    inspected = [entry for entry in candidates if entry[0] == "inspected"]
+    if inspected:
+        return "inspected", max(inspected, key=lambda entry: _PROOF_DEPTH_RANKS[entry[1]])[1]
+    return _public_evidence_state(declared_state), None
 
 
 def build_registry_query_candidate_snapshot(
@@ -729,7 +790,7 @@ def build_registry_query_candidate_snapshot(
         for capability in capabilities:
             key = str(capability["capability_key"])
             value = json.loads(str(capability["value_json"]))
-            evidence_state = _fact_state_from_current_authority(
+            evidence_state, proof_depth = _fact_evidence_from_current_authority(
                 connection,
                 manifest_id=manifest_id,
                 capability_key=key,
@@ -740,7 +801,7 @@ def build_registry_query_candidate_snapshot(
                 "present": True,
                 "value": value,
                 "evidence_state": evidence_state,
-                "proof_depth": None,
+                "proof_depth": proof_depth,
             }
             fact_explanations[key] = {
                 "declared_state": str(capability["declared_state"]),
@@ -2004,6 +2065,129 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _report_named_gate_verdicts(
+    report: Mapping[str, Any],
+) -> Tuple[Dict[str, Tuple[str, ...]], Dict[str, Tuple[str, ...]]]:
+    """Retain only named structured ledger verdicts; prose and HUD fields grant nothing."""
+    startup_collected: Dict[str, List[str]] = {}
+    step_collected: Dict[str, List[str]] = {}
+    startup = report.get("startup") if isinstance(report.get("startup"), Mapping) else {}
+    ledgers: Tuple[Tuple[Any, str, Dict[str, List[str]]], ...] = (
+        (startup.get("startup_step_ledger"), "step", startup_collected),
+        (report.get("step_ledger"), "primitive_step", step_collected),
+    )
+    for ledger, label_key, collected in ledgers:
+        if not isinstance(ledger, list):
+            continue
+        for row in ledger:
+            if not isinstance(row, Mapping):
+                continue
+            label = str(row.get(label_key, "")).strip()
+            verdict = str(row.get("verdict", "")).strip().lower()
+            if label and verdict:
+                collected.setdefault(label, []).append(verdict)
+    return (
+        {label: tuple(verdicts) for label, verdicts in startup_collected.items()},
+        {label: tuple(verdicts) for label, verdicts in step_collected.items()},
+    )
+
+
+def _declared_capability_gates(declaration: Mapping[str, Any]) -> Mapping[str, Mapping[str, Tuple[str, ...]]]:
+    proof_route = declaration.get("proof_route")
+    capabilities = declaration.get("capabilities")
+    if not isinstance(proof_route, Mapping) or not isinstance(capabilities, Mapping):
+        return {}
+    raw_gates = proof_route.get("capability_gates")
+    if not isinstance(raw_gates, Mapping):
+        return {}
+    positive_labels = {
+        str(label)
+        for role in ("precondition", "production_behavior", "terminal_persistence", "artifact_verdict")
+        for label in proof_route.get(role, [])
+        if isinstance(label, str) and label.strip()
+    }
+    gates: Dict[str, Mapping[str, Tuple[str, ...]]] = {}
+    for capability_key, depth_gates in raw_gates.items():
+        if not isinstance(capability_key, str) or capability_key not in capabilities or not isinstance(depth_gates, Mapping):
+            continue
+        mapped: Dict[str, Tuple[str, ...]] = {}
+        for depth, labels in depth_gates.items():
+            if depth not in _KNOWN_PROOF_DEPTHS or not isinstance(labels, list):
+                continue
+            names = tuple(str(label).strip() for label in labels if isinstance(label, str) and str(label).strip())
+            if names and all(label in positive_labels for label in names):
+                mapped[str(depth)] = names
+        if mapped:
+            gates[capability_key] = mapped
+    return gates
+
+
+def _append_named_capability_gate_evidence(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    verification_id: str,
+    declaration: Mapping[str, Any],
+    report: Mapping[str, Any],
+) -> None:
+    """Append only explicit, named green/red gates for declared capabilities."""
+    capability_gates = _declared_capability_gates(declaration)
+    if not capability_gates:
+        return
+    declared_values = {
+        str(row["capability_key"]): str(row["value_json"])
+        for row in connection.execute(
+            "SELECT capability_key, value_json FROM manifest_capability_current WHERE manifest_id = ?",
+            (manifest_id,),
+        )
+    }
+    startup_gates, step_gates = _report_named_gate_verdicts(report)
+    for capability_key, depth_gates in capability_gates.items():
+        value_json = declared_values.get(capability_key)
+        if value_json is None:
+            continue
+        for depth, labels in depth_gates.items():
+            observed = startup_gates if depth == "startup" else step_gates
+            verdicts = tuple(observed.get(label, ()) for label in labels)
+            if any(any(verdict.startswith(("red", "blocked")) for verdict in gate_verdicts) for gate_verdicts in verdicts):
+                evidence_state = "contradicted"
+            elif all(gate_verdicts and all(verdict.startswith("green") for verdict in gate_verdicts) for gate_verdicts in verdicts):
+                evidence_state = "inspected" if depth == "startup" else "run-verified"
+            else:
+                continue
+            details = {
+                "proof_depth": depth,
+                "gate_labels": list(labels),
+                "gate_verdicts": {
+                    label: list(observed.get(label, ()))
+                    for label in labels
+                },
+            }
+            value_sha256 = _identity(
+                "caol-scenario-named-capability-gate-v1",
+                manifest_id,
+                verification_id,
+                capability_key,
+                evidence_state,
+                value_json,
+                _json_text(details),
+            )
+            connection.execute(
+                "INSERT OR IGNORE INTO capability_evidence_history( "
+                "manifest_id, verification_id, capability_key, evidence_kind, evidence_state, value_json, value_sha256, details_json "
+                ") VALUES( ?, ?, ?, 'named_proof_gate', ?, ?, ?, ? )",
+                (
+                    manifest_id,
+                    verification_id,
+                    capability_key,
+                    evidence_state,
+                    value_json,
+                    value_sha256,
+                    _json_text(details),
+                ),
+            )
+
+
 def _adapter_result(kind: str, adapter: Callable[[Mapping[str, Any]], Mapping[str, Any]], expected: Mapping[str, Any]) -> Dict[str, Any]:
     result = adapter(expected)
     if not isinstance(result, Mapping):
@@ -2495,6 +2679,19 @@ def ingest_report_reference(
                 }),
             ),
         )
+        declaration_row = connection.execute(
+            "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?",
+            (manifest_id,),
+        ).fetchone()
+        if declaration_row is None:
+            raise ScenarioRegistryStoreError("Report manifest disappeared during ingestion")
+        _append_named_capability_gate_evidence(
+            connection,
+            manifest_id=manifest_id,
+            verification_id=verification_id,
+            declaration=_json_object(str(declaration_row["declaration_json"]), "manifest declaration"),
+            report=report,
+        )
         resolution = "compatible" if all(status == "compatible" for status in statuses.values()) else "stale"
         _append_resolution_if_changed(
             connection,
@@ -2517,6 +2714,128 @@ def ingest_report_reference(
         "resolution": resolution,
         "eligibility": eligibility,
         "idempotent": False,
+    }
+
+
+def ingest_token_linked_report_reference(
+    connection: sqlite3.Connection,
+    token_id: str,
+    report_path: Path,
+    *,
+    adapters: BindingAdapters,
+) -> Dict[str, Any]:
+    """Ingest one durable report and retain its selected-token verification link."""
+    canonical_path, report_bytes = _report_path_and_bytes(report_path)
+    report_id = _identity(
+        "caol-scenario-report-v1",
+        canonical_path,
+        hashlib.sha256(report_bytes).hexdigest(),
+    )
+    prior = connection.execute(
+        "SELECT details_json FROM token_history WHERE token_id = ? "
+        "AND event_kind = 'verification_run' AND reason = 'report_ingested'",
+        (str(token_id).strip(),),
+    ).fetchone()
+    if prior is not None:
+        prior_details = _json_object(str(prior["details_json"]), "token verification run details")
+        if str(prior_details.get("report_id", "")) == report_id:
+            return {
+                "status": "ingested",
+                "token_id": str(token_id).strip(),
+                "report_id": report_id,
+                "idempotent": True,
+            }
+        record_selection_token_rejection(
+            connection,
+            str(token_id).strip(),
+            reason="multiple_report_runs",
+            details={"prior_report_id": str(prior_details.get("report_id", "")), "report_id": report_id},
+        )
+        return {
+            "status": "rejected_multiple_reports",
+            "token_id": str(token_id).strip(),
+            "report_id": report_id,
+        }
+
+    selection = reload_selection_token_for_launch(connection, token_id)
+    if not selection.accepted:
+        return {
+            "status": "rejected_token",
+            "reason": selection.reason,
+            "token_id": selection.token_id,
+        }
+
+    ingested = ingest_report_reference(connection, report_path, adapters=adapters)
+    if str(ingested.get("status", "")) != "ingested":
+        record_selection_token_rejection(
+            connection,
+            selection.token_id,
+            reason="report_ingest_" + str(ingested.get("status", "unknown")),
+            details={
+                "report_id": str(ingested.get("report_id", "")),
+                "error": str(ingested.get("error", "")),
+            },
+        )
+        return {
+            "status": "rejected_report",
+            "reason": str(ingested.get("status", "unknown")),
+            "token_id": selection.token_id,
+            "report_id": str(ingested.get("report_id", "")),
+        }
+
+    issued = connection.execute(
+        "SELECT manifest_id, verification_id, route_key FROM token_history "
+        "WHERE token_id = ? AND event_kind = 'issued' ORDER BY token_event_id LIMIT 1",
+        (selection.token_id,),
+    ).fetchone()
+    verification = connection.execute(
+        "SELECT verification_id, manifest_id, route_key FROM verification_history WHERE report_id = ?",
+        (str(ingested["report_id"]),),
+    ).fetchone()
+    if (
+        issued is None
+        or verification is None
+        or str(verification["manifest_id"]) != str(issued["manifest_id"])
+        or str(verification["route_key"]) != str(issued["route_key"])
+    ):
+        record_selection_token_rejection(
+            connection,
+            selection.token_id,
+            reason="report_verification_identity_mismatch",
+            details={
+                "report_id": str(ingested.get("report_id", "")),
+                "verification_id": str(verification["verification_id"]) if verification else "",
+            },
+        )
+        return {
+            "status": "rejected_report_identity",
+            "token_id": selection.token_id,
+            "report_id": str(ingested.get("report_id", "")),
+        }
+
+    with immediate_transaction(connection):
+        inserted = connection.execute(
+            "INSERT OR IGNORE INTO token_history( "
+            "token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json "
+            ") VALUES( ?, ?, ?, ?, 'verification_run', 'report_ingested', ? )",
+            (
+                selection.token_id,
+                str(issued["manifest_id"]),
+                str(verification["verification_id"]),
+                str(issued["route_key"]),
+                _json_text({
+                    "report_id": str(ingested["report_id"]),
+                    "report_path": str(report_path.resolve()),
+                    "report_ingestion_idempotent": bool(ingested.get("idempotent", False)),
+                }),
+            ),
+        ).rowcount == 1
+    return {
+        "status": "ingested",
+        "token_id": selection.token_id,
+        "report_id": str(ingested["report_id"]),
+        "verification_id": str(verification["verification_id"]),
+        "idempotent": not inserted,
     }
 
 

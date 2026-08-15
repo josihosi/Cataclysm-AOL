@@ -18,12 +18,14 @@ from __future__ import annotations
 
 import argparse
 import copy
+import hashlib
 import json
 import math
 import os
 import re
 import shutil
 import signal
+import sqlite3
 import subprocess
 import sys
 import tempfile
@@ -31,10 +33,11 @@ import time
 from datetime import datetime
 from dataclasses import asdict, dataclass
 from pathlib import Path
-from typing import Any, Callable, Dict, Iterable, List, Optional, Pattern, Sequence, Set, Tuple
+from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Pattern, Sequence, Set, Tuple
 
 from bandit_live_world_audit import load_special_placements as load_bandit_special_placements
 from scenario_registry import ManifestValidationError, validate_manifest
+from scenario_registry_store import path_sha256
 
 
 IGNORABLE_DEBUG_LOG_PATTERNS: List[Pattern[str]] = [
@@ -87,6 +90,7 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "tools/llm_runner",
 )
 PROFILE_SNAPSHOT_SKIP_ENTRIES = {"manifest.json", "save", "harness_runs", "cache"}
+RUNTIME_BINDING_FILENAME = "runtime.binding.json"
 
 PATROL_CACHE_RE = re.compile(
     r"camp patrol: cache camp=(?P<camp>.+?) shift=(?P<shift>\w+)(?: alarm=(?P<alarm>\w+))? workers=(?P<workers>\d+) "
@@ -164,8 +168,10 @@ STARTUP_HUD_BODY_PATTERNS: Tuple[Pattern[str], ...] = (
 )
 STARTUP_HUD_STATUS_PATTERNS: Tuple[Pattern[str], ...] = (
     re.compile(r"\bmove\s*:", re.IGNORECASE),
+    re.compile(r"^speed\s*:", re.IGNORECASE | re.MULTILINE),
     re.compile(r"\bsafe\s*:", re.IGNORECASE),
     re.compile(r"\bactivit\w*\s*:", re.IGNORECASE),
+    re.compile(r"\bhctivitu\s*:", re.IGNORECASE),
     re.compile(r"\bwield\s*:", re.IGNORECASE),
     re.compile(r"\bweary(?:\s+malus)?\s*:", re.IGNORECASE),
 )
@@ -388,6 +394,226 @@ def runtime_relevant_worktree_changes() -> Tuple[List[str], str]:
             return [], detail or "git worktree comparison failed"
         changes.update(line.strip() for line in proc.stdout.splitlines() if line.strip())
     return sorted(changes), ""
+
+
+def sha256_file(path: Path) -> Tuple[str, str]:
+    """Return a file digest, keeping missing/unreadable evidence explicit."""
+    digest = hashlib.sha256()
+    try:
+        with path.open("rb") as stream:
+            for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                digest.update(chunk)
+    except OSError as exc:
+        return "", str(exc)
+    return digest.hexdigest(), ""
+
+
+def runtime_source_binding() -> Dict[str, Any]:
+    """Hash the exact runtime diff plus untracked runtime file content.
+
+    The commit shown by the game window proves the committed baseline.  This
+    digest binds the dirty portion to the executable launched for this run,
+    including untracked files which ``git diff`` does not report.
+    """
+    root = repo_root()
+    diff_proc = subprocess.run(
+        ["git", "-C", str(root), "diff", "--binary", "HEAD", "--", *RUNTIME_RELEVANT_PATHS],
+        capture_output=True,
+        check=False,
+    )
+    if diff_proc.returncode != 0:
+        detail = (diff_proc.stderr or diff_proc.stdout).decode("utf-8", errors="replace").strip()
+        return {"ok": False, "error": detail or "git runtime diff failed"}
+
+    untracked_proc = subprocess.run(
+        [
+            "git", "-C", str(root), "ls-files", "--others", "--exclude-standard", "-z", "--",
+            *RUNTIME_RELEVANT_PATHS,
+        ],
+        capture_output=True,
+        check=False,
+    )
+    if untracked_proc.returncode != 0:
+        detail = (untracked_proc.stderr or untracked_proc.stdout).decode("utf-8", errors="replace").strip()
+        return {"ok": False, "error": detail or "git untracked runtime listing failed"}
+
+    untracked_paths = [
+        entry.decode("utf-8", errors="surrogateescape")
+        for entry in untracked_proc.stdout.split(b"\0")
+        if entry
+    ]
+    source = bytearray(b"caol-runtime-source-binding-v1\0")
+    source.extend(diff_proc.stdout)
+    unreadable: List[str] = []
+    for relative in sorted(untracked_paths):
+        path = root / relative
+        try:
+            content = path.read_bytes()
+        except OSError as exc:
+            unreadable.append(f"{relative}: {exc}")
+            continue
+        source.extend(relative.encode("utf-8", errors="surrogateescape"))
+        source.extend(b"\0")
+        source.extend(content)
+        source.extend(b"\0")
+    if unreadable:
+        return {"ok": False, "error": "unreadable untracked runtime file(s): " + "; ".join(unreadable)}
+
+    changes, changes_error = runtime_relevant_worktree_changes()
+    if changes_error:
+        return {"ok": False, "error": changes_error}
+    return {
+        "ok": True,
+        "sha256": hashlib.sha256(source).hexdigest(),
+        "worktree_changes": changes,
+        "untracked_paths": untracked_paths,
+    }
+
+
+def build_runtime_binding(executable: Path) -> Dict[str, Any]:
+    """Capture the immutable run inputs used by the changed executable."""
+    executable_path = executable.resolve()
+    executable_sha256, executable_error = sha256_file(executable_path)
+    if executable_error:
+        return {"ok": False, "error": f"executable digest failed: {executable_error}"}
+    source = runtime_source_binding()
+    if not source.get("ok"):
+        return {"ok": False, "error": str(source.get("error", "runtime source digest failed"))}
+    return {
+        "ok": True,
+        "schema": 1,
+        "captured_head": current_head_short(),
+        "executable_path": str(executable_path),
+        "executable_sha256": executable_sha256,
+        "runtime_source_sha256": str(source["sha256"]),
+        "runtime_relevant_paths": list(RUNTIME_RELEVANT_PATHS),
+        "runtime_relevant_worktree_diff": list(source.get("worktree_changes", [])),
+        "untracked_runtime_paths": list(source.get("untracked_paths", [])),
+    }
+
+
+def compare_runtime_binding(binding: Any) -> Dict[str, Any]:
+    """Recompute every bound input; no missing field is treated as a match."""
+    if not isinstance(binding, dict) or binding.get("schema") != 1:
+        return {"status": "unproven", "error": "runtime binding schema is missing or unsupported"}
+    expected_path = str(binding.get("executable_path", "")).strip()
+    expected_executable_sha256 = str(binding.get("executable_sha256", "")).strip().lower()
+    expected_source_sha256 = str(binding.get("runtime_source_sha256", "")).strip().lower()
+    if not expected_path or not expected_executable_sha256 or not expected_source_sha256:
+        return {"status": "unproven", "error": "runtime binding is missing executable/source digest"}
+
+    executable_path = Path(expected_path).resolve()
+    executable_sha256, executable_error = sha256_file(executable_path)
+    source = runtime_source_binding()
+    mismatches: List[str] = []
+    if executable_error:
+        mismatches.append(f"executable_digest_error:{executable_error}")
+    elif executable_sha256.lower() != expected_executable_sha256:
+        mismatches.append("executable_sha256")
+    if not source.get("ok"):
+        mismatches.append(f"runtime_source_digest_error:{source.get('error', 'unknown error')}")
+    elif str(source.get("sha256", "")).lower() != expected_source_sha256:
+        mismatches.append("runtime_source_sha256")
+    return {
+        "status": "mismatch" if mismatches else "matched",
+        "error": "; ".join(mismatches),
+        "executable_path": str(executable_path),
+        "executable_sha256": executable_sha256,
+        "runtime_source_sha256": str(source.get("sha256", "")),
+        "runtime_relevant_worktree_diff": source.get("worktree_changes", []),
+    }
+
+
+def load_runtime_binding(run_dir: Path) -> Optional[Dict[str, Any]]:
+    path = run_dir / RUNTIME_BINDING_FILENAME
+    if not path.exists():
+        return None
+    try:
+        value = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeError, json.JSONDecodeError):
+        return {"schema": 0, "error": f"could not read {path}"}
+    return value if isinstance(value, dict) else {"schema": 0, "error": f"invalid {path}"}
+
+
+def validate_registry_launch_receipt_before_launch(
+    raw_receipt: Any,
+    executable: Path,
+) -> Dict[str, Any]:
+    """Recheck one selected registry receipt immediately before process launch."""
+    if raw_receipt in (None, ""):
+        return {"status": "not_required"}
+    if not isinstance(raw_receipt, str):
+        return {"status": "rejected", "reason": "receipt_not_text"}
+    try:
+        receipt = json.loads(raw_receipt)
+    except json.JSONDecodeError as exc:
+        return {"status": "rejected", "reason": "receipt_invalid_json", "error": str(exc)}
+    if not isinstance(receipt, dict) or receipt.get("schema") != 1:
+        return {"status": "rejected", "reason": "receipt_schema_invalid"}
+
+    registry_path = str(receipt.get("registry_path", "")).strip()
+    token_id = str(receipt.get("token_id", "")).strip()
+    source_path = str(receipt.get("source_path", "")).strip()
+    runtime_binding = receipt.get("runtime_binding")
+    if not registry_path or not token_id or not source_path or not isinstance(runtime_binding, dict):
+        return {"status": "rejected", "reason": "receipt_fields_missing"}
+
+    from scenario_registry_store import (
+        ScenarioRegistryStoreError,
+        open_registry,
+        record_selection_token_rejection,
+        reload_selection_token_for_launch,
+    )
+
+    try:
+        connection = open_registry(registry_path)
+    except (OSError, sqlite3.Error, ScenarioRegistryStoreError) as exc:
+        return {"status": "rejected", "reason": "registry_unavailable", "error": str(exc)}
+    try:
+        selection = reload_selection_token_for_launch(connection, token_id)
+        if not selection.accepted:
+            return {
+                "status": "rejected",
+                "reason": f"token_{selection.reason}",
+                "token_id": token_id,
+            }
+
+        def reject(reason: str, **details: Any) -> Dict[str, Any]:
+            record_selection_token_rejection(
+                connection,
+                token_id,
+                reason=reason,
+                details=details,
+            )
+            return {"status": "rejected", "reason": reason, "token_id": token_id}
+
+        if selection.source_path != str(Path(source_path).resolve()):
+            return reject(
+                "receipt_source_changed",
+                expected_source_path=source_path,
+                current_source_path=selection.source_path,
+            )
+        expected_executable = str(runtime_binding.get("executable_path", "")).strip()
+        if not expected_executable or Path(expected_executable).resolve() != executable.resolve():
+            return reject(
+                "runtime_executable_changed",
+                expected_executable=expected_executable,
+                current_executable=str(executable.resolve()),
+            )
+        comparison = compare_runtime_binding(runtime_binding)
+        if comparison.get("status") != "matched":
+            return reject(
+                "runtime_binding_changed",
+                comparison=dict(comparison),
+            )
+        return {
+            "status": "compatible",
+            "token_id": token_id,
+            "source_path": selection.source_path,
+            "runtime_binding": comparison,
+        }
+    finally:
+        connection.close()
 
 
 def resolve_profile_name(explicit: str) -> str:
@@ -7597,13 +7823,19 @@ def extract_window_build_info(window_title: str) -> Dict[str, Any]:
     return info
 
 
-def populate_runtime_version_comparison(summary: Dict[str, Any]) -> None:
+def populate_runtime_version_comparison(
+    summary: Dict[str, Any],
+    *,
+    runtime_binding: Optional[Dict[str, Any]] = None,
+) -> None:
     captured_head = str(summary.get("captured_head", "") or "").strip()
     repo_head = str(summary.get("repo_head", "") or "").strip()
     summary["runtime_relevant_diff_since_capture"] = []
     summary["runtime_relevant_worktree_diff"] = []
     summary["runtime_compare_error"] = ""
     summary["runtime_worktree_compare_error"] = ""
+    summary["runtime_binding_status"] = "not_requested"
+    summary["runtime_binding_error"] = ""
     if not captured_head:
         summary["runtime_compare_error"] = "captured head is missing from the window title"
         return
@@ -7619,7 +7851,28 @@ def populate_runtime_version_comparison(summary: Dict[str, Any]) -> None:
     summary["runtime_worktree_compare_error"] = worktree_error
     if runtime_error or worktree_error:
         return
-    summary["version_matches_runtime_paths"] = not (runtime_changes or worktree_changes)
+    if runtime_binding is not None:
+        binding_result = compare_runtime_binding(runtime_binding)
+        summary["runtime_binding_status"] = binding_result["status"]
+        summary["runtime_binding_error"] = binding_result.get("error", "")
+        summary["runtime_binding_observed"] = binding_result
+        # The title still has to identify the bound committed baseline.  The
+        # binding is an additional proof for the dirty portion, not a bypass
+        # of the existing version/title gate.
+        expected_head = str(runtime_binding.get("captured_head", "") or "").strip()
+        title_matches_binding_head = bool(
+            expected_head and captured_head and expected_head.startswith(captured_head)
+        )
+        summary["version_matches_runtime_paths"] = bool(
+            binding_result["status"] == "matched" and title_matches_binding_head
+        )
+    else:
+        # A dirty executable is never trusted from the title alone.  It needs
+        # the per-run binding above; clean source/binary remains the legacy
+        # title-plus-Git path comparison.
+        summary["version_matches_runtime_paths"] = bool(
+            not summary.get("captured_dirty") and not (runtime_changes or worktree_changes)
+        )
 
 
 def window_area(window: Dict[str, Any]) -> int:
@@ -7985,6 +8238,9 @@ def capture_screenshot(
         )
         screen_summary["capture_success"] = bool(screen_summary.get("peekaboo_success"))
         screen_summary["capture_backend"] = "peekaboo"
+    runtime_binding = load_runtime_binding(run_dir)
+    if runtime_binding is not None:
+        populate_runtime_version_comparison(screen_summary, runtime_binding=runtime_binding)
     screen_summary["peekaboo_command"] = list(cmd)
     screen_summary["peekaboo_returncode"] = proc.returncode
     screen_summary["peekaboo_stderr"] = proc.stderr
@@ -13761,9 +14017,39 @@ def load_scenario(name: str) -> Dict[str, Any]:
     loaded = json.loads(path.read_text(encoding="utf-8"))
     if not isinstance(loaded, dict):
         raise SystemExit(f"Invalid scenario config: {path}")
+    try:
+        registry = validate_manifest(loaded, path=path)
+    except ManifestValidationError as exc:
+        raise SystemExit(str(exc)) from exc
     loaded.setdefault("name", name)
     loaded["path"] = str(path)
+    loaded["_scenario_registry"] = registry
     return loaded
+
+
+def scenario_manifest_binding(scenario: Dict[str, Any]) -> Dict[str, Any]:
+    """Return declaration identity/normalization without exposing a mutable declaration."""
+    registry = scenario.get("_scenario_registry")
+    if not isinstance(registry, dict):
+        return {
+            "source": {
+                "path": "",
+                "sha256": "",
+            },
+            "normalized": {},
+            "validation": {
+                "status": "unavailable",
+                "review_required": True,
+            },
+        }
+    source = registry.get("source") if isinstance(registry.get("source"), dict) else {}
+    normalized = registry.get("normalized") if isinstance(registry.get("normalized"), dict) else {}
+    validation = registry.get("validation") if isinstance(registry.get("validation"), dict) else {}
+    return {
+        "source": copy.deepcopy(source),
+        "normalized": copy.deepcopy(normalized),
+        "validation": copy.deepcopy(validation),
+    }
 
 
 def normalize_string_list(raw_value: Any) -> List[str]:
@@ -15933,6 +16219,8 @@ def install_fixture(profile: str, fixture_name: str, replace: bool, fixture_prof
         "fixture_profile": source_profile,
         "resolved_fixture": resolved["fixture"],
         "resolved_fixture_profile": resolved["fixture_profile"],
+        "source_path": str(Path(resolved["fixture_dir"]).resolve()),
+        "source_sha256": path_sha256(Path(resolved["fixture_dir"])),
         "source_chain": [f"{entry_profile}:{entry_name}" for entry_profile, entry_name in resolved["source_chain"]],
         "installed_worlds": installed_worlds,
         "applied_save_transforms": applied_save_transforms,
@@ -16008,6 +16296,7 @@ def install_profile_snapshot(profile: str, snapshot_name: str, snapshot_profile:
         "resolved_snapshot": resolved["snapshot"],
         "resolved_snapshot_profile": resolved["snapshot_profile"],
         "source_path": str(snapshot_dir),
+        "source_sha256": path_sha256(snapshot_dir),
         "destination": str(userdir),
         "copied_entries": copied_entries,
         "skipped_entries": skipped_entries,
@@ -16547,6 +16836,45 @@ def probe_proof_classification(
     }
 
 
+def declared_screen_artifact_matches(
+    step_reports: Sequence[Dict[str, Any]],
+    proof_route: Any,
+) -> List[Dict[str, Any]]:
+    """Promote only declared, matched screen guards to durable artifacts."""
+    if not isinstance(proof_route, dict):
+        return []
+    labels = normalize_string_list(proof_route.get("artifact_verdict", []))
+    if not labels:
+        return []
+    reports_by_label = {
+        str(report.get("label", "")).strip(): report
+        for report in step_reports
+        if isinstance(report, dict) and str(report.get("label", "")).strip()
+    }
+    matches: List[Dict[str, Any]] = []
+    for label in labels:
+        report = reports_by_label.get(label, {})
+        expectation = report.get("screen_after_text_expectation")
+        if not isinstance(expectation, dict):
+            expectation = report.get("screen_text_expectation")
+        evidence_lines: List[str] = []
+        if isinstance(expectation, dict) and expectation.get("status") == "matched":
+            evidence_lines = [
+                str(item.get("line", ""))
+                for item in expectation.get("matches", [])
+                if isinstance(item, dict) and str(item.get("line", "")).strip()
+            ]
+        screen = report.get("screen_after", report.get("screen", {}))
+        matches.append({
+            "pattern": f"{label}: declared screen artifact",
+            "lines": evidence_lines,
+            "source": str(expectation.get("source", "")) if isinstance(expectation, dict) else "",
+            "artifact_path": str(screen.get("png_path", "")) if isinstance(screen, dict) else "",
+            "capture_policy": "declared screen-text guard",
+        })
+    return matches
+
+
 def success_from_lastworld(profile: str, baseline_mtime: float, expected_world: str) -> Tuple[bool, Dict[str, str]]:
     path = config_dir_for_profile(profile) / "lastworld.json"
     if not path.exists():
@@ -16668,6 +16996,13 @@ def run_startup(args: argparse.Namespace) -> int:
     )
     run_dir = Path(plan.run_dir)
     write_json(run_dir / "plan.json", asdict(plan))
+    runtime_binding = build_runtime_binding(Path(plan.executable))
+    if not runtime_binding.get("ok"):
+        raise SystemExit(
+            "Could not bind changed executable/runtime source before launch: "
+            + str(runtime_binding.get("error", "unknown runtime binding error"))
+        )
+    write_json(run_dir / RUNTIME_BINDING_FILENAME, runtime_binding)
 
     child_environment = game_child_environment(profile)
     child_environment.pop("OPENCLAW_HARNESS_BANDIT_FEASIBILITY", None)
@@ -16692,6 +17027,16 @@ def run_startup(args: argparse.Namespace) -> int:
     baseline_save_marker = latest_world_save_marker(profile, plan.target_world)
     baseline_save_marker_mtime = float(baseline_save_marker.get("mtime", 0.0) or 0.0)
     copy_file_if_exists(lastworld, run_dir / "lastworld.before.json")
+    registry_launch_validation = validate_registry_launch_receipt_before_launch(
+        getattr(args, "registry_launch_receipt", ""),
+        Path(plan.executable),
+    )
+    if registry_launch_validation.get("status") == "rejected":
+        write_json(run_dir / "registry.launch.validation.json", registry_launch_validation)
+        raise SystemExit(
+            "Registry launch receipt rejected before process launch: "
+            + str(registry_launch_validation.get("reason", "unknown"))
+        )
     proc = launch_game(
         profile,
         plan.target_world,
@@ -17239,11 +17584,23 @@ def finalize_probe_report(
     cleanup_pid: int = 0,
     report_filename: str = "probe.report.json",
     compact_stdout: bool = False,
+    post_finalize_hook: Optional[Callable[[Path, Mapping[str, Any]], Any]] = None,
 ) -> None:
     if cleanup_pid > 0 and "cleanup" not in report:
         report["cleanup"] = cleanup_game_process(cleanup_pid)
+    report_path: Optional[Path] = None
     if run_dir is not None:
-        write_json(run_dir / report_filename, report)
+        report_path = run_dir / report_filename
+        write_json(report_path, report)
+    cleanup = report.get("cleanup")
+    if (
+        post_finalize_hook is not None
+        and report_path is not None
+        and str(report.get("mode", "")) == "probe"
+        and isinstance(cleanup, Mapping)
+        and str(cleanup.get("status", "")) in CLEANUP_ACCEPTED_STATUSES
+    ):
+        post_finalize_hook(report_path, report)
     stdout_payload = compact_probe_report_for_stdout(
         report,
         run_dir=run_dir,
@@ -17260,6 +17617,7 @@ def finalize_scenario_report(
     cleanup_pid: int = 0,
     report_filename: str = "probe.report.json",
     compact_stdout: bool = False,
+    post_finalize_hook: Optional[Callable[[Path, Mapping[str, Any]], Any]] = None,
 ) -> None:
     """Append immutable declaration identity to a run-owned report."""
     report.setdefault("scenario_manifest", scenario_manifest_binding(scenario))
@@ -17269,6 +17627,7 @@ def finalize_scenario_report(
         cleanup_pid=cleanup_pid,
         report_filename=report_filename,
         compact_stdout=compact_stdout,
+        post_finalize_hook=post_finalize_hook,
     )
 
 
@@ -18035,6 +18394,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     portal_storm_policy = portal_storm_policy_from_scenario(scenario)
     mode = "handoff" if handoff else "probe"
     report_filename = "handoff.report.json" if handoff else "probe.report.json"
+    post_finalize_hook = getattr(args, "registry_post_finalize_hook", None)
 
     if blocker_info["status"] == "blocked":
         run_dir = create_run_dir(profile)
@@ -18115,6 +18475,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             report,
             scenario=scenario,
             report_filename=report_filename,
+            post_finalize_hook=post_finalize_hook,
         )
         return 2
 
@@ -18167,6 +18528,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         start_cmd.extend(["--fixture-profile", fixture_profile])
     if replace_existing_worlds:
         start_cmd.append("--replace-existing-worlds")
+    registry_launch_receipt = getattr(args, "registry_launch_receipt", "")
+    if registry_launch_receipt:
+        start_cmd.extend(["--registry-launch-receipt", str(registry_launch_receipt)])
     if args.dry_run:
         start_cmd.append("--dry-run")
 
@@ -18236,6 +18600,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             scenario=scenario,
             cleanup_pid=int(start_result.get("pid", 0)),
             report_filename=report_filename,
+            post_finalize_hook=post_finalize_hook,
         )
         return 1
 
@@ -18270,6 +18635,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             scenario=scenario,
             cleanup_pid=pid,
             report_filename=report_filename,
+            post_finalize_hook=post_finalize_hook,
         )
         return 1
 
@@ -18344,6 +18710,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             cleanup_pid=pid,
             report_filename=report_filename,
             compact_stdout=bool(getattr(args, "compact_stdout", False)),
+            post_finalize_hook=post_finalize_hook,
         )
         return 2
 
@@ -18430,6 +18797,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             scenario=scenario,
             cleanup_pid=pid,
             report_filename=report_filename,
+            post_finalize_hook=post_finalize_hook,
         )
         return 0
 
@@ -18554,6 +18922,13 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     if not effective_artifact_patterns and step_artifact_matches:
         effective_artifact_patterns = [str(entry.get("pattern", "")) for entry in step_artifact_matches]
         effective_matches_by_pattern = step_artifact_matches
+    declared_screen_matches = declared_screen_artifact_matches(
+        step_reports,
+        scenario.get("proof_route", {}),
+    )
+    if not effective_artifact_patterns and not effective_matches_by_pattern and declared_screen_matches:
+        effective_artifact_patterns = [str(entry.get("pattern", "")) for entry in declared_screen_matches]
+        effective_matches_by_pattern = declared_screen_matches
 
     companion_helpers: List[Dict[str, Any]] = []
     abort_report: Optional[Dict[str, Any]] = None
@@ -18565,7 +18940,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             helper = step_report.get(helper_key)
             if isinstance(helper, dict):
                 companion_helpers.append(helper)
-    if not all_matched_lines and effective_matches_by_pattern is step_artifact_matches:
+    if not all_matched_lines and effective_matches_by_pattern in (step_artifact_matches, declared_screen_matches):
         all_matched_lines = [line for entry in effective_matches_by_pattern for line in entry.get("lines", [])]
     patrol_summary = summarize_patrol_artifacts(str(scenario.get("name", args.scenario)), all_matched_lines)
     if patrol_summary is not None:
@@ -18709,6 +19084,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             scenario=scenario,
             report_filename=report_filename,
             compact_stdout=bool(getattr(args, "compact_stdout", False)),
+            post_finalize_hook=post_finalize_hook,
         )
         return 0
 
@@ -18719,6 +19095,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         cleanup_pid=pid,
         report_filename=report_filename,
         compact_stdout=bool(getattr(args, "compact_stdout", False)),
+        post_finalize_hook=post_finalize_hook,
     )
     return 0
 
@@ -18748,6 +19125,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--config-profile", default="", help="Startup policy profile; defaults to the target user-data profile.")
     start_p.add_argument("--world", default="", help="Explicit target world name.")
     start_p.add_argument("--scenario-identity", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--registry-launch-receipt", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--profile-snapshot", default="", help="Install this captured profile snapshot before startup.")
     start_p.add_argument("--profile-snapshot-profile", default="", help="Profile snapshot source profile; defaults to the target profile.")
     start_p.add_argument("--profile-option", action="append", default=[], metavar="NAME=VALUE", help="Override one option after profile snapshot install; may be repeated.")

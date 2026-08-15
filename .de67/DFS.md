@@ -811,7 +811,7 @@ Implementation status:
 
 - [x] `run_probe_mode` already provides the required canonical startup, Peekaboo, input,
   observation, report, proof-firewall, and cleanup route for a named scenario.
-- [ ] 🔴 R-104 — Registry selection cannot yet enter that route safely, and runs do not strengthen,
+- [x] R-104 — Registry selection cannot yet enter that route safely, and runs do not strengthen,
   contradict, or stale indexed evidence without mutating declarations.
   - Code gap: no token validation or report-ingestion seam surrounds the existing runner.
   - Required mechanism: add only the token adapter and post-finalization registry ingestion above;

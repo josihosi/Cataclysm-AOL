@@ -1,4 +1,5 @@
 {
+  "manifest_version": 1,
   "name": "basecamp.talker_selector_metadata_probe_mcw",
   "description": "Focused proof-freeze primitive for the McWilliams nearby talker selector: prove C opens the interaction menu, t opens Talk to whom, and Enter confirms the highlighted first talker into an NPC dialogue response menu without treating follower rules navigation as proven.",
   "profile": "dev-harness",
@@ -8,6 +9,85 @@
   "fixture": "mcwilliams_live_debug_2026-04-07",
   "fixture_profile": "live-debug",
   "replace_existing_worlds": true,
+  "capabilities": {
+    "actors.katharina_leach.nearby": true,
+    "capabilities.dialogue.talker_selector.visible": true,
+    "capabilities.dialogue.talker_selector.confirmed_response": true
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "press:C",
+      "press:t",
+      "press:enter"
+    ],
+    "forbidden_input": [],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "dev-harness",
+    "fixture": "mcwilliams_live_debug_2026-04-07",
+    "requirements": {
+      "os": "macos",
+      "source": "worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "mcwilliams_live_debug_2026-04-07",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": [
+        "press:C",
+        "press:t",
+        "press:enter"
+      ],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": [
+      "wait_for_gameplay_settle"
+    ],
+    "production_behavior": [
+      "open_interaction_menu",
+      "open_talker_selector"
+    ],
+    "terminal_persistence": [
+      "confirm_highlighted_talker"
+    ],
+    "artifact_verdict": [
+      "confirm_highlighted_talker"
+    ],
+    "disallowed_shortcuts": [
+      "wait_for_gameplay_settle"
+    ],
+    "capability_gates": {
+      "actors.katharina_leach.nearby": {
+        "startup": [
+          "wait_for_gameplay_settle"
+        ]
+      },
+      "capabilities.dialogue.talker_selector.visible": {
+        "interaction": [
+          "open_talker_selector"
+        ]
+      },
+      "capabilities.dialogue.talker_selector.confirmed_response": {
+        "terminal": [
+          "confirm_highlighted_talker"
+        ]
+      }
+    }
+  },
   "steps": [
     {
       "kind": "wait",
@@ -50,6 +130,12 @@
       "keys": ["enter"],
       "settle_seconds": 1.0,
       "capture_after": true,
+      "capture_after_crop": {
+        "height": 1650,
+        "width": 1650,
+        "offset_y": 640,
+        "offset_x": 470
+      },
       "extract_text_after_capture": true,
       "expected_visible_fact": "Confirming the highlighted Talk to whom row opens Katharina Leach's dialogue response surface.",
       "expected_screen_text_after_contains": ["Your response"],
