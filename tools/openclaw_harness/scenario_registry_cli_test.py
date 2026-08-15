@@ -153,6 +153,49 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(reconciled.returncode, 0, reconciled.stderr)
             self.assertEqual(json.loads(reconciled.stdout)["result"], {"reconciled": 1, "stale": 0})
 
+            selected = self.run_cli(
+                "--registry", str(registry_path), "registry-query", "--query-json", json.dumps({
+                    "requirements": [{
+                        "key": "player.injured",
+                        "op": "eq",
+                        "value": False,
+                        "minimum_evidence": "declared",
+                    }],
+                    "preferences": [],
+                }),
+            )
+            self.assertEqual(selected.returncode, 0, selected.stderr)
+            selected_result = json.loads(selected.stdout)["result"]
+            self.assertIsNotNone(selected_result["token_id"])
+            self.assertIsNone(selected_result["draft_path"])
+            self.assertEqual(selected_result["evaluation"]["evaluation"]["ranked_scenario_ids"], [
+                selected_result["evaluation"]["candidates"][0]["scenario_id"],
+            ])
+            self.assertEqual(
+                selected_result["evaluation"]["candidates"][0]["explanation"]["lifecycle"]["state"],
+                "active",
+            )
+
+            no_match_query = {
+                "requirements": [{
+                    "key": "player.injured",
+                    "op": "eq",
+                    "value": True,
+                    "minimum_evidence": "declared",
+                }],
+                "preferences": [],
+            }
+            no_match_path = root / "no-match.query.json"
+            self.write_json(no_match_path, no_match_query)
+            no_match = self.run_cli(
+                "--registry", str(registry_path), "registry-query", "--query-file", str(no_match_path)
+            )
+            self.assertEqual(no_match.returncode, 0, no_match.stderr)
+            no_match_result = json.loads(no_match.stdout)["result"]
+            self.assertIsNone(no_match_result["token_id"])
+            self.assertTrue(Path(no_match_result["draft_path"]).is_file())
+            self.assertFalse(json.loads(Path(no_match_result["draft_path"]).read_text(encoding="utf-8"))["executable"])
+
             connection = sqlite3.connect(registry_path)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM manifest_current").fetchone()[0], 1)
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM report_ingestion_history").fetchone()[0], 1)
@@ -182,6 +225,20 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(other_connection.execute("SELECT COUNT(*) FROM report_ingestion_history").fetchone()[0], 0)
             other_connection.close()
 
+            isolated_query = self.run_cli(
+                "--registry", str(other_registry_path), "registry-query", "--query-json", json.dumps({
+                    "requirements": [{
+                        "key": "player.injured",
+                        "op": "eq",
+                        "value": False,
+                        "minimum_evidence": "declared",
+                    }],
+                    "preferences": [],
+                }),
+            )
+            self.assertEqual(isolated_query.returncode, 0, isolated_query.stderr)
+            self.assertIsNone(json.loads(isolated_query.stdout)["result"]["token_id"])
+
     def test_invalid_invocation_is_machine_readable_and_nonzero(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             registry_path = Path(temp_dir) / "registry.sqlite3"
@@ -192,6 +249,23 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertFalse(error["ok"])
             self.assertIn("--report", error["error"])
             self.assertFalse(registry_path.exists())
+
+            missing_query = self.run_cli("--registry", str(registry_path), "registry-query")
+            self.assertEqual(missing_query.returncode, 2)
+            self.assertIn("one of the arguments", json.loads(missing_query.stderr)["error"])
+
+            conflicting_query = self.run_cli(
+                "--registry", str(registry_path), "registry-query",
+                "--query-json", "{}", "--query-file", str(registry_path),
+            )
+            self.assertEqual(conflicting_query.returncode, 2)
+            self.assertIn("not allowed with argument", json.loads(conflicting_query.stderr)["error"])
+
+            malformed_query = self.run_cli(
+                "--registry", str(registry_path), "registry-query", "--query-json", "{",
+            )
+            self.assertEqual(malformed_query.returncode, 1)
+            self.assertIn("valid JSON", json.loads(malformed_query.stderr)["error"])
 
 
 if __name__ == "__main__":

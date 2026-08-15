@@ -774,7 +774,7 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-103 — The harness cannot hard-filter typed requirements, rank only valid survivors,
+- [x] R-103 — The harness cannot hard-filter typed requirements, rank only valid survivors,
   explain evidence/freshness, or produce a non-executed no-match draft.
   - Code gap: selection is exact scenario-name lookup; list output is descriptive only.
   - Required mechanism: implement the query contract, deterministic explanation, token, and draft

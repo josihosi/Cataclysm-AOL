@@ -5,13 +5,6 @@ Lineage: `CAOL-hostile-ecology-dev`
 
 ## Active work
 
-- [ ] R-103 — Add hard typed filtering, survivor-only preference ordering, complete explanations,
-  change-invalidated selection tokens, and inert no-match drafts.
-  - DFS slices: `R-103-S001`, `R-103-S002`
-
-  Start only after R-101 and R-102 provide typed declarations and current evidence ownership. Query
-  must remain non-executing and may not let preferences rescue a hard rejection.
-
 - [ ] R-104 — Connect a valid registry selection token to the existing canonical startup/probe
   owner and ingest the finalized report into registry history without creating a second launcher or
   weakening startup-versus-feature proof.

@@ -9,6 +9,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -17,11 +18,16 @@ sys.path.insert(0, str(HARNESS_DIR))
 
 from scenario_registry_store import (  # noqa: E402
     BindingAdapters,
+    build_registry_query_candidate_snapshot,
+    execute_registry_query,
+    evaluate_registry_query_from_store,
     ingest_report_reference,
     open_registry,
+    parse_registry_query_request,
     rebuild_manifest_projection,
     reconcile_report_bindings,
 )
+import startup_harness  # noqa: E402
 
 
 OPAQUE_PROSE = "opaque report prose must never be copied into sqlite"
@@ -412,15 +418,24 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             connection, _scenarios, manifest_path, report_path = self.setup_registry(root)
             state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
             ingested = ingest_report_reference(connection, report_path, adapters=self.adapters(state))
+            issued = execute_registry_query(
+                connection,
+                parse_registry_query_request({
+                    "requirements": [{
+                        "key": "player.injured",
+                        "op": "eq",
+                        "value": False,
+                        "minimum_evidence": "declared",
+                    }],
+                    "preferences": [],
+                }),
+                drafts_root=root / "drafts",
+            )
+            self.assertIsNotNone(issued.token_id)
             verification = connection.execute(
                 "SELECT manifest_id, route_key FROM verification_history WHERE verification_id = ?",
                 (ingested["verification_id"],),
             ).fetchone()
-            connection.execute(
-                "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
-                "VALUES( 'token-stale', ?, ?, ?, 'issued', 'selection', '{}' )",
-                (verification["manifest_id"], ingested["verification_id"], verification["route_key"]),
-            )
             stale_report = self.report(manifest_path)
             stale_report["opaque_report_payload"]["prose"] = "changed report bytes"
             self.write_json(report_path, stale_report)
@@ -452,11 +467,12 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
                 [
                     tuple(row)
                     for row in connection.execute(
-                        "SELECT event_kind, reason FROM token_history WHERE token_id = 'token-stale' "
-                        "ORDER BY token_event_id"
+                        "SELECT event_kind, reason FROM token_history WHERE token_id = ? "
+                        "ORDER BY token_event_id",
+                        (issued.token_id,),
                     ).fetchall()
                 ],
-                [("issued", "selection"), ("invalidated", "proof_route_stale")],
+                [("issued", "query_selection"), ("invalidated", "proof_route_stale")],
             )
             self.assertGreaterEqual(
                 connection.execute("SELECT COUNT(*) FROM binding_history WHERE binding_kind = 'report'").fetchone()[0],
@@ -479,6 +495,91 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
                 },
                 counts,
             )
+            connection.close()
+
+    def test_query_audit_token_manifest_invalidation_and_inert_draft_are_isolated(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, scenarios, manifest_path, report_path = self.setup_registry(root)
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            ingest_report_reference(connection, report_path, adapters=self.adapters(state))
+            valid = parse_registry_query_request({
+                "requirements": [{
+                    "key": "player.injured",
+                    "op": "eq",
+                    "value": False,
+                    "minimum_evidence": "declared",
+                }],
+                "preferences": [],
+            })
+            forbidden = ["run_startup", "run_probe_mode", "launch_game", "peekaboo_command"]
+            with mock.patch.object(startup_harness, forbidden[0], side_effect=AssertionError), \
+                    mock.patch.object(startup_harness, forbidden[1], side_effect=AssertionError), \
+                    mock.patch.object(startup_harness, forbidden[2], side_effect=AssertionError), \
+                    mock.patch.object(startup_harness, forbidden[3], side_effect=AssertionError):
+                selected = execute_registry_query(connection, valid, drafts_root=root / "drafts")
+
+            self.assertIsNotNone(selected.token_id)
+            self.assertIsNone(selected.draft_path)
+            token = connection.execute(
+                "SELECT manifest_id, verification_id, route_key, details_json FROM token_history "
+                "WHERE token_id = ? AND event_kind = 'issued'",
+                (selected.token_id,),
+            ).fetchone()
+            self.assertIsNotNone(token)
+            details = json.loads(token["details_json"])
+            self.assertEqual(details["query_sha256"], selected.query_sha256)
+            self.assertEqual(details["manifest_sha256"], hashlib.sha256(manifest_path.read_bytes()).hexdigest())
+            self.assertEqual(details["selected_values"]["player.injured"]["value"], False)
+            self.assertTrue(details["route_evidence"]["bindings"])
+
+            changed = self.strict_manifest()
+            changed["description"] = "query token invalidation control"
+            self.write_json(manifest_path, changed)
+            rebuild_manifest_projection(connection, scenarios)
+            self.assertEqual(
+                connection.execute(
+                    "SELECT reason FROM token_history WHERE token_id = ? AND event_kind = 'invalidated'",
+                    (selected.token_id,),
+                ).fetchone()[0],
+                "manifest_changed",
+            )
+            self.assertEqual(build_registry_query_candidate_snapshot(connection), ())
+
+            no_match = parse_registry_query_request({
+                "requirements": [{
+                    "key": "player.injured",
+                    "op": "eq",
+                    "value": True,
+                    "minimum_evidence": "declared",
+                }],
+                "preferences": [],
+            })
+            draft = execute_registry_query(
+                connection,
+                no_match,
+                include_lifecycle_states=("quarantined",),
+                drafts_root=root / "drafts",
+            )
+            self.assertIsNone(draft.token_id)
+            self.assertEqual(draft.draft_path, str(root / "drafts" / f"{draft.query_sha256}.json"))
+            artifact = json.loads(Path(draft.draft_path).read_text(encoding="utf-8"))
+            draft_bytes = Path(draft.draft_path).read_bytes()
+            self.assertEqual(artifact["review_status"], "pending")
+            self.assertFalse(artifact["executable"])
+            self.assertEqual(artifact["query"]["requirements"][0]["value"], True)
+            self.assertEqual(artifact["unmet_capabilities"][0]["unmet"][0]["reason"], "stale")
+            self.assertEqual(artifact["candidate_manifest"]["fixture"], "fixture-a")
+            repeated = execute_registry_query(
+                connection,
+                no_match,
+                include_lifecycle_states=("quarantined",),
+                drafts_root=root / "drafts",
+            )
+            self.assertIsNone(repeated.token_id)
+            self.assertEqual(repeated.draft_path, draft.draft_path)
+            self.assertEqual(Path(repeated.draft_path).read_bytes(), draft_bytes)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM query_history").fetchone()[0], 3)
             connection.close()
 
     def test_compatible_surviving_verification_prevents_stale_quarantine_and_token_invalidation(self) -> None:
@@ -529,6 +630,91 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
                 ).fetchone()[0],
                 "hard_proven",
             )
+            connection.close()
+
+    def test_snapshot_derives_lifecycle_evidence_freshness_and_fixed_rejection(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _scenarios, manifest_path, report_path = self.setup_registry(root)
+            request = parse_registry_query_request({
+                "requirements": [{
+                    "key": "player.injured",
+                    "op": "eq",
+                    "value": False,
+                    "minimum_evidence": "run-verified",
+                }],
+                "preferences": [],
+            })
+
+            before = evaluate_registry_query_from_store(connection, request)
+            self.assertEqual(len(before.candidates), 1)
+            self.assertEqual(before.candidates[0].lifecycle_state, "active")
+            self.assertTrue(before.candidates[0].token_eligible)
+            self.assertEqual(before.evaluation.ranked_scenario_ids, ())
+            self.assertEqual(before.evaluation.candidates[0].hard_results[0].reason, "below_minimum_evidence")
+
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            ingested = ingest_report_reference(connection, report_path, adapters=self.adapters(state))
+            current = build_registry_query_candidate_snapshot(connection)[0]
+            self.assertEqual(current.lifecycle_state, "active")
+            self.assertEqual(current.facts["player.injured"]["evidence_state"], "declared")
+            self.assertEqual(current.explanation["route_evidence"][0]["evidence_state"], "run-verified")
+            self.assertEqual(current.explanation["route_evidence"][0]["bindings"][0]["resolution"], "compatible")
+
+            contradiction = self.ingest_named_report(
+                connection,
+                root,
+                "contradiction.probe.report.json",
+                self.report_with_proof(manifest_path, status="red", feature_proof=False),
+                state,
+            )
+            self.assertEqual(contradiction["eligibility"], "contradicted")
+            self.assertEqual(build_registry_query_candidate_snapshot(connection), ())
+            quarantined = evaluate_registry_query_from_store(
+                connection,
+                request,
+                include_lifecycle_states=("quarantined",),
+            )
+            self.assertEqual(quarantined.candidates[0].lifecycle_state, "quarantined")
+            self.assertFalse(quarantined.candidates[0].token_eligible)
+            self.assertEqual(quarantined.candidates[0].facts["player.injured"]["evidence_state"], "contradicted")
+            self.assertEqual(quarantined.evaluation.ranked_scenario_ids, ())
+
+            state["runtime"] = "stale"
+            self.assertEqual(reconcile_report_bindings(connection, adapters=self.adapters(state)), {"reconciled": 2, "stale": 2})
+            stale = build_registry_query_candidate_snapshot(
+                connection,
+                include_lifecycle_states=("quarantined",),
+            )[0]
+            self.assertEqual(stale.facts["player.injured"]["evidence_state"], "stale")
+            self.assertEqual(stale.explanation["route_evidence"][0]["evidence_state"], "stale")
+            self.assertTrue(all(
+                binding["resolution"] == "stale"
+                for binding in stale.explanation["route_evidence"][0]["bindings"]
+            ))
+            self.assertGreater(
+                connection.execute("SELECT COUNT(*) FROM verification_resolution_history").fetchone()[0],
+                2,
+            )
+            self.assertGreater(
+                connection.execute(
+                    "SELECT COUNT(*) FROM capability_evidence_history WHERE evidence_state = 'contradicted'"
+                ).fetchone()[0],
+                0,
+            )
+            manifest_id = stale.explanation["manifest"]["manifest_id"]
+            connection.execute(
+                "INSERT INTO retirement_history( manifest_id, retirement_kind, authority, reason, details_json ) "
+                "VALUES( ?, 'approved', 'reviewer', 'replacement', '{}' )",
+                (manifest_id,),
+            )
+            self.assertEqual(build_registry_query_candidate_snapshot(connection), ())
+            retired = build_registry_query_candidate_snapshot(
+                connection,
+                include_lifecycle_states=("retired",),
+            )[0]
+            self.assertEqual(retired.lifecycle_state, "retired")
+            self.assertFalse(retired.token_eligible)
             connection.close()
 
 

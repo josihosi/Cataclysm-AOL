@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import argparse
+from dataclasses import asdict
 import hashlib
 import json
 from pathlib import Path
@@ -14,12 +15,14 @@ from typing import Any, Dict, Mapping, Sequence
 from scenario_registry_store import (
     BindingAdapters,
     ScenarioRegistryStoreError,
+    execute_registry_query,
     ingest_report_reference,
     open_registry,
     rebuild_manifest_projection,
     repository_root,
     resolve_registry_path,
     reconcile_report_bindings,
+    parse_registry_query_request,
 )
 from startup_harness import (
     resolve_fixture_payload,
@@ -176,6 +179,23 @@ def _default_scenarios_root() -> Path:
     return repository_root() / "tools" / "openclaw_harness" / "scenarios"
 
 
+def _load_query_request(args: argparse.Namespace) -> Mapping[str, Any]:
+    if args.query_json is not None:
+        source = args.query_json
+    else:
+        try:
+            source = Path(args.query_file).read_text(encoding="utf-8")
+        except OSError as exc:
+            raise ScenarioRegistryStoreError(f"Could not read query file {args.query_file}: {exc}") from exc
+    try:
+        value = json.loads(source)
+    except json.JSONDecodeError as exc:
+        raise ScenarioRegistryStoreError(f"Registry query must be valid JSON: {exc}") from exc
+    if not isinstance(value, Mapping):
+        raise ScenarioRegistryStoreError("Registry query top level must be an object")
+    return value
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = _ArgumentParser(description=__doc__)
     parser.add_argument("--registry", help="SQLite registry path; defaults to the shared harness registry")
@@ -189,6 +209,17 @@ def build_parser() -> argparse.ArgumentParser:
     ingest = commands.add_parser("ingest-report", help="ingest one immutable report reference")
     ingest.add_argument("--report", required=True, help="full probe or handoff report JSON path")
     commands.add_parser("reconcile", help="recompute report bindings from their authoritative owners")
+    query = commands.add_parser("registry-query", help="evaluate typed requirements without launching the harness")
+    query_source = query.add_mutually_exclusive_group(required=True)
+    query_source.add_argument("--query-file", help="typed registry-query JSON file")
+    query_source.add_argument("--query-json", help="typed registry-query JSON object")
+    query.add_argument(
+        "--include-state",
+        action="append",
+        choices=("quarantined", "retired"),
+        default=[],
+        help="include inspect-only lifecycle state; repeated values are accepted",
+    )
     return parser
 
 
@@ -208,6 +239,14 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             elif args.command == "reconcile":
                 result = reconcile_report_bindings(connection, adapters=production_binding_adapters())
+            elif args.command == "registry-query":
+                request = parse_registry_query_request(_load_query_request(args))
+                result = asdict(execute_registry_query(
+                    connection,
+                    request,
+                    include_lifecycle_states=tuple(args.include_state),
+                    drafts_root=registry_path.parent / "drafts",
+                ))
             else:
                 raise ScenarioRegistryStoreError(f"Unsupported registry command: {args.command}")
         finally:

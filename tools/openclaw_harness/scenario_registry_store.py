@@ -16,7 +16,7 @@ from pathlib import Path
 import sqlite3
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
-from scenario_registry import ManifestValidationError, validate_manifest
+from scenario_registry import CAPABILITY_NAMESPACE_PREFIXES, ManifestValidationError, validate_manifest
 
 
 SCHEMA_VERSION = 2
@@ -25,6 +25,972 @@ Migration = Tuple[int, str, Callable[[sqlite3.Connection], None]]
 
 class ScenarioRegistryStoreError(RuntimeError):
     """The registry database could not be opened or migrated safely."""
+
+
+class ScenarioRegistryQueryError(ValueError):
+    """A registry query request or explicit candidate fact is not well-typed."""
+
+
+@dataclass(frozen=True)
+class RegistryQueryPredicate:
+    """One typed hard requirement or ordered soft preference."""
+
+    key: str
+    op: str
+    value: Any = None
+    minimum: Optional[float] = None
+    maximum: Optional[float] = None
+    minimum_evidence: str = "run-verified"
+
+
+@dataclass(frozen=True)
+class RegistryQueryRequest:
+    """The parsed query contract; no registry or runtime state is resolved here."""
+
+    requirements: Tuple[RegistryQueryPredicate, ...]
+    preferences: Tuple[RegistryQueryPredicate, ...]
+
+
+@dataclass(frozen=True)
+class RegistryQueryPredicateResult:
+    """A complete predicate observation, including fail-closed evidence details."""
+
+    key: str
+    op: str
+    expected: Any
+    observed: Any
+    evidence_state: str
+    passed: bool
+    reason: str
+
+
+@dataclass(frozen=True)
+class RegistryQueryCandidateResult:
+    """All hard observations precede any preference observations for one candidate."""
+
+    scenario_id: str
+    hard_results: Tuple[RegistryQueryPredicateResult, ...]
+    preference_results: Tuple[RegistryQueryPredicateResult, ...]
+
+    @property
+    def hard_valid(self) -> bool:
+        return all(result.passed for result in self.hard_results)
+
+    @property
+    def preference_vector(self) -> Tuple[bool, ...]:
+        return tuple(result.passed for result in self.preference_results)
+
+
+@dataclass(frozen=True)
+class RegistryQueryEvaluation:
+    """Pure deterministic selection output for later lifecycle/evidence owners."""
+
+    candidates: Tuple[RegistryQueryCandidateResult, ...]
+    ranked_scenario_ids: Tuple[str, ...]
+
+
+@dataclass(frozen=True)
+class RegistryQueryCandidateSnapshot:
+    """One fixed registry-authority candidate prepared for pure evaluation."""
+
+    scenario_id: str
+    facts: Mapping[str, Mapping[str, Any]]
+    lifecycle_state: str
+    token_eligible: bool
+    explanation: Mapping[str, Any]
+
+
+@dataclass(frozen=True)
+class RegistryStoredQueryEvaluation:
+    """Registry snapshots plus their fixed typed-predicate evaluation."""
+
+    candidates: Tuple[RegistryQueryCandidateSnapshot, ...]
+    evaluation: RegistryQueryEvaluation
+
+
+@dataclass(frozen=True)
+class RegistryQueryExecution:
+    """The append-only audit result of a non-executing registry query."""
+
+    query_id: str
+    query_sha256: str
+    evaluation: RegistryStoredQueryEvaluation
+    token_id: Optional[str]
+    draft_path: Optional[str]
+
+
+_QUERY_OPERATORS = frozenset({"eq", "contains", "present", "absent", "range"})
+# Query floors use the WEC's public authority labels.  They deliberately do
+# not reuse registry resolution labels such as the internal hard_proven state.
+_PUBLIC_EVIDENCE_MINIMUM_RANKS = {
+    "declared": 0,
+    "inspected": 1,
+    "run-verified": 2,
+}
+_KNOWN_EVIDENCE_STATES = frozenset({
+    "declared",
+    "inspected",
+    "run-verified",
+    "unknown",
+    "stale",
+    "contradicted",
+})
+_KNOWN_PROOF_DEPTHS = frozenset({
+    "startup",
+    "interaction",
+    "terminal",
+    "persistence",
+    "replay",
+})
+
+
+def _is_number(value: Any) -> bool:
+    return type(value) in {int, float} and value == value and value not in {float("inf"), float("-inf")}
+
+
+def _is_scalar(value: Any) -> bool:
+    return (
+        value is None
+        or type(value) in {bool, int, str}
+        or (type(value) is float and _is_number(value))
+    )
+
+
+def _is_scalar_list(value: Any) -> bool:
+    return isinstance(value, list) and all(_is_scalar(item) for item in value)
+
+
+def _is_bounded_value(value: Any) -> bool:
+    if _is_scalar(value) or _is_scalar_list(value):
+        return True
+    return isinstance(value, dict) and all(
+        isinstance(key, str) and key and (_is_scalar(item) or _is_scalar_list(item))
+        for key, item in value.items()
+    )
+
+
+def _typed_equal(left: Any, right: Any) -> bool:
+    """Compare JSON-shaped values without Python's bool/int coercion."""
+    if type(left) is not type(right):
+        return False
+    if isinstance(left, list):
+        return len(left) == len(right) and all(_typed_equal(a, b) for a, b in zip(left, right))
+    if isinstance(left, dict):
+        return set(left) == set(right) and all(_typed_equal(left[key], right[key]) for key in left)
+    return left == right
+
+
+def _query_error(field: str, message: str) -> ScenarioRegistryQueryError:
+    return ScenarioRegistryQueryError(f"Invalid registry query {field}: {message}")
+
+
+def _parse_predicate(raw: Any, *, field: str) -> RegistryQueryPredicate:
+    if not isinstance(raw, Mapping):
+        raise _query_error(field, "predicate must be an object")
+    key = raw.get("key")
+    if not isinstance(key, str) or not key.strip():
+        raise _query_error(field, "key must be a non-empty string")
+    if not any(key.startswith(prefix) for prefix in CAPABILITY_NAMESPACE_PREFIXES):
+        raise _query_error(field, f"key {key!r} is outside the stable capability namespaces")
+    op = raw.get("op")
+    if not isinstance(op, str) or op not in _QUERY_OPERATORS:
+        raise _query_error(field, "op must be one of eq, contains, present, absent, range")
+    minimum_evidence = raw.get("minimum_evidence", "run-verified")
+    if not isinstance(minimum_evidence, str) or minimum_evidence not in _PUBLIC_EVIDENCE_MINIMUM_RANKS:
+        raise _query_error(field, "minimum_evidence must be declared, inspected, or run-verified")
+
+    common_fields = {"key", "op", "minimum_evidence"}
+    if op in {"eq", "contains"}:
+        allowed_fields = common_fields | {"value"}
+        if set(raw) - allowed_fields:
+            raise _query_error(field, f"{op} contains unsupported fields")
+        if "value" not in raw:
+            raise _query_error(field, "value is required")
+        value = raw["value"]
+        if op == "eq" and not _is_bounded_value(value):
+            raise _query_error(field, "eq value must be a JSON scalar, scalar list, or bounded object")
+        if op == "contains" and not _is_scalar(value):
+            raise _query_error(field, "contains value must be a JSON scalar")
+        return RegistryQueryPredicate(
+            key=key,
+            op=op,
+            value=value,
+            minimum_evidence=minimum_evidence,
+        )
+
+    if op in {"present", "absent"}:
+        if set(raw) - common_fields:
+            raise _query_error(field, f"{op} does not accept value or range bounds")
+        return RegistryQueryPredicate(key=key, op=op, minimum_evidence=minimum_evidence)
+
+    allowed_fields = common_fields | {"minimum", "maximum"}
+    if set(raw) - allowed_fields:
+        raise _query_error(field, "range does not accept value or unsupported fields")
+    has_minimum = "minimum" in raw
+    has_maximum = "maximum" in raw
+    if not has_minimum and not has_maximum:
+        raise _query_error(field, "range requires minimum, maximum, or both")
+    minimum = raw.get("minimum")
+    maximum = raw.get("maximum")
+    if has_minimum and not _is_number(minimum):
+        raise _query_error(field, "minimum must be a finite number and not a boolean")
+    if has_maximum and not _is_number(maximum):
+        raise _query_error(field, "maximum must be a finite number and not a boolean")
+    if has_minimum and has_maximum and float(minimum) > float(maximum):
+        raise _query_error(field, "minimum cannot exceed maximum")
+    return RegistryQueryPredicate(
+        key=key,
+        op=op,
+        minimum=float(minimum) if has_minimum else None,
+        maximum=float(maximum) if has_maximum else None,
+        minimum_evidence=minimum_evidence,
+    )
+
+
+def parse_registry_query_request(raw: Any) -> RegistryQueryRequest:
+    """Parse the public requirements/preferences shape without touching SQLite.
+
+    Candidate facts are intentionally supplied separately by later lifecycle and
+    evidence owners.  This function never accepts prose fields and it never
+    constructs SQL from user-provided data.
+    """
+    if not isinstance(raw, Mapping):
+        raise _query_error("", "top level must be an object")
+    allowed_fields = {"requirements", "preferences"}
+    if set(raw) - allowed_fields:
+        raise _query_error("", "top level contains unsupported fields")
+    for name in ("requirements", "preferences"):
+        if name not in raw:
+            raise _query_error("", f"{name} is required")
+        if not isinstance(raw[name], list):
+            raise _query_error(name, "must be a list")
+    return RegistryQueryRequest(
+        requirements=tuple(
+            _parse_predicate(predicate, field=f"requirements[{index}]")
+            for index, predicate in enumerate(raw["requirements"])
+        ),
+        preferences=tuple(
+            _parse_predicate(predicate, field=f"preferences[{index}]")
+            for index, predicate in enumerate(raw["preferences"])
+        ),
+    )
+
+
+def _fact_for_key(facts: Any, key: str) -> Tuple[Optional[Mapping[str, Any]], str]:
+    if not isinstance(facts, Mapping):
+        return None, "malformed_facts"
+    if key not in facts:
+        return None, "unknown_fact"
+    fact = facts[key]
+    if not isinstance(fact, Mapping):
+        return None, "malformed_fact"
+    return fact, ""
+
+
+def _predicate_expected(predicate: RegistryQueryPredicate) -> Any:
+    if predicate.op == "range":
+        return {"minimum": predicate.minimum, "maximum": predicate.maximum}
+    if predicate.op in {"present", "absent"}:
+        return predicate.op
+    return predicate.value
+
+
+def _evaluate_registry_predicate(
+    predicate: RegistryQueryPredicate,
+    facts: Any,
+) -> RegistryQueryPredicateResult:
+    expected = _predicate_expected(predicate)
+    fact, fact_problem = _fact_for_key(facts, predicate.key)
+    if fact is None:
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=None,
+            evidence_state="unknown",
+            passed=False,
+            reason=fact_problem,
+        )
+    evidence_state = fact.get("evidence_state")
+    if not isinstance(evidence_state, str) or evidence_state not in _KNOWN_EVIDENCE_STATES:
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=None,
+            evidence_state="unknown",
+            passed=False,
+            reason="malformed_evidence_state",
+        )
+    proof_depth = fact.get("proof_depth")
+    if proof_depth is not None and (
+        not isinstance(proof_depth, str) or proof_depth not in _KNOWN_PROOF_DEPTHS
+    ):
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=None,
+            evidence_state=evidence_state,
+            passed=False,
+            reason="malformed_proof_depth",
+        )
+    present = fact.get("present")
+    if type(present) is not bool:
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=None,
+            evidence_state=evidence_state,
+            passed=False,
+            reason="malformed_presence",
+        )
+    if evidence_state in {"unknown", "stale", "contradicted"}:
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=fact.get("value") if present else None,
+            evidence_state=evidence_state,
+            passed=False,
+            reason=evidence_state,
+        )
+    if _PUBLIC_EVIDENCE_MINIMUM_RANKS[evidence_state] < _PUBLIC_EVIDENCE_MINIMUM_RANKS[predicate.minimum_evidence]:
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=fact.get("value") if present else None,
+            evidence_state=evidence_state,
+            passed=False,
+            reason="below_minimum_evidence",
+        )
+    if not present:
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=None,
+            evidence_state=evidence_state,
+            passed=predicate.op == "absent",
+            reason="matched" if predicate.op == "absent" else "fact_absent",
+        )
+    if "value" not in fact or not _is_bounded_value(fact["value"]):
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=None,
+            evidence_state=evidence_state,
+            passed=False,
+            reason="malformed_value",
+        )
+    observed = fact["value"]
+    if predicate.op == "present":
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=observed,
+            evidence_state=evidence_state,
+            passed=True,
+            reason="matched",
+        )
+    if predicate.op == "absent":
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=observed,
+            evidence_state=evidence_state,
+            passed=False,
+            reason="fact_present",
+        )
+    if predicate.op == "eq":
+        matched = _typed_equal(observed, predicate.value)
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=observed,
+            evidence_state=evidence_state,
+            passed=matched,
+            reason="matched" if matched else "equality_mismatch",
+        )
+    if predicate.op == "contains":
+        if not isinstance(observed, list):
+            return RegistryQueryPredicateResult(
+                key=predicate.key,
+                op=predicate.op,
+                expected=expected,
+                observed=observed,
+                evidence_state=evidence_state,
+                passed=False,
+                reason="non_container_value",
+            )
+        matched = any(_typed_equal(item, predicate.value) for item in observed)
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=observed,
+            evidence_state=evidence_state,
+            passed=matched,
+            reason="matched" if matched else "containment_mismatch",
+        )
+    if not _is_number(observed):
+        return RegistryQueryPredicateResult(
+            key=predicate.key,
+            op=predicate.op,
+            expected=expected,
+            observed=observed,
+            evidence_state=evidence_state,
+            passed=False,
+            reason="non_numeric_value",
+        )
+    number = float(observed)
+    matched = (
+        (predicate.minimum is None or number >= predicate.minimum)
+        and (predicate.maximum is None or number <= predicate.maximum)
+    )
+    return RegistryQueryPredicateResult(
+        key=predicate.key,
+        op=predicate.op,
+        expected=expected,
+        observed=observed,
+        evidence_state=evidence_state,
+        passed=matched,
+        reason="matched" if matched else "outside_range",
+    )
+
+
+def evaluate_registry_query(
+    request: RegistryQueryRequest,
+    candidates: Sequence[Mapping[str, Any]],
+) -> RegistryQueryEvaluation:
+    """Evaluate explicit facts only; lifecycle, bindings, tokens, and SQL stay elsewhere."""
+    candidate_results: List[RegistryQueryCandidateResult] = []
+    seen_scenario_ids = set()
+    for index, candidate in enumerate(candidates):
+        if not isinstance(candidate, Mapping):
+            raise ScenarioRegistryQueryError(f"Invalid registry candidate {index}: must be an object")
+        scenario_id = candidate.get("scenario_id")
+        if not isinstance(scenario_id, str) or not scenario_id.strip():
+            raise ScenarioRegistryQueryError(f"Invalid registry candidate {index}: scenario_id must be a non-empty string")
+        if scenario_id in seen_scenario_ids:
+            raise ScenarioRegistryQueryError(f"Invalid registry candidate {index}: duplicate scenario_id {scenario_id!r}")
+        seen_scenario_ids.add(scenario_id)
+        facts = candidate.get("facts")
+        hard_results = tuple(
+            _evaluate_registry_predicate(predicate, facts)
+            for predicate in request.requirements
+        )
+        preference_results: Tuple[RegistryQueryPredicateResult, ...] = ()
+        if all(result.passed for result in hard_results):
+            preference_results = tuple(
+                _evaluate_registry_predicate(predicate, facts)
+                for predicate in request.preferences
+            )
+        candidate_results.append(RegistryQueryCandidateResult(
+            scenario_id=scenario_id,
+            hard_results=hard_results,
+            preference_results=preference_results,
+        ))
+    hard_valid = [result for result in candidate_results if result.hard_valid]
+    ranked = sorted(
+        hard_valid,
+        key=lambda result: (
+            tuple(0 if preference else 1 for preference in result.preference_vector),
+            result.scenario_id,
+        ),
+    )
+    return RegistryQueryEvaluation(
+        candidates=tuple(candidate_results),
+        ranked_scenario_ids=tuple(result.scenario_id for result in ranked),
+    )
+
+
+def _json_object(value: str, field: str) -> Mapping[str, Any]:
+    try:
+        parsed = json.loads(value)
+    except json.JSONDecodeError as exc:
+        raise ScenarioRegistryStoreError(f"Registry {field} is not valid JSON") from exc
+    if not isinstance(parsed, Mapping):
+        raise ScenarioRegistryStoreError(f"Registry {field} must be an object")
+    return parsed
+
+
+def _public_evidence_state(state: str) -> str:
+    """Translate retained resolution terminology only at the public query boundary."""
+    if state == "hard_proven":
+        return "run-verified"
+    if state in _KNOWN_EVIDENCE_STATES:
+        return state
+    return "unknown"
+
+
+def _current_route_evidence(connection: sqlite3.Connection, manifest_id: str) -> Tuple[Mapping[str, Any], ...]:
+    manifest = connection.execute(
+        "SELECT present, current_sha256 FROM manifest_current WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchone()
+    if manifest is None:
+        raise ScenarioRegistryStoreError("Route evidence references a missing manifest")
+    current_manifest_sha256 = manifest["current_sha256"]
+    rows = connection.execute(
+        "SELECT capability_evidence_id, evidence_state, details_json, value_json FROM capability_evidence_history "
+        "WHERE manifest_id = ? AND capability_key = '_registry.proof_route' "
+        "AND evidence_kind = 'route_resolution' ORDER BY capability_evidence_id",
+        (manifest_id,),
+    ).fetchall()
+    latest: Dict[str, Mapping[str, Any]] = {}
+    for row in rows:
+        details = _json_object(str(row["details_json"]), "route evidence details")
+        value = _json_object(str(row["value_json"]), "route evidence value")
+        route_key = str(details.get("route_key") or value.get("route_key") or "")
+        if not route_key:
+            raise ScenarioRegistryStoreError("Registry route evidence is missing route_key")
+        bindings = []
+        resolutions = connection.execute(
+            "SELECT verification.verification_id, resolution.resolution_kind, resolution.binding_fingerprint, "
+            "resolution.details_json FROM verification_history AS verification "
+            "JOIN verification_resolution_history AS resolution "
+            "ON resolution.verification_id = verification.verification_id "
+            "WHERE verification.manifest_id = ? AND verification.route_key = ? "
+            "AND resolution.resolution_event_id = ( SELECT MAX( latest.resolution_event_id ) "
+            "FROM verification_resolution_history AS latest "
+            "WHERE latest.verification_id = verification.verification_id ) "
+            "ORDER BY verification.verification_id",
+            (manifest_id, route_key),
+        ).fetchall()
+        for resolution in resolutions:
+            manifest_binding_current = False
+            for binding_row in connection.execute(
+                "SELECT payload_json FROM binding_history WHERE manifest_id = ? AND binding_kind = 'manifest' "
+                "ORDER BY binding_event_id DESC",
+                (manifest_id,),
+            ):
+                payload = _json_object(str(binding_row["payload_json"]), "manifest binding payload")
+                if payload.get("verification_id") != str(resolution["verification_id"]):
+                    continue
+                expected = payload.get("expected")
+                manifest_binding_current = (
+                    bool(manifest["present"])
+                    and isinstance(expected, Mapping)
+                    and expected.get("source_sha256") == current_manifest_sha256
+                )
+                break
+            resolution_state = str(resolution["resolution_kind"])
+            if resolution_state == "compatible" and not manifest_binding_current:
+                resolution_state = "stale"
+            freshness = dict(_json_object(str(resolution["details_json"]), "binding resolution details"))
+            freshness["manifest_current"] = "compatible" if manifest_binding_current else "stale"
+            bindings.append({
+                "verification_id": str(resolution["verification_id"]),
+                "resolution": resolution_state,
+                "binding_fingerprint": str(resolution["binding_fingerprint"]),
+                "freshness": freshness,
+            })
+        evidence_state = _public_evidence_state(str(row["evidence_state"]))
+        if evidence_state == "run-verified" and not any(
+            binding["resolution"] == "compatible" for binding in bindings
+        ):
+            evidence_state = "stale"
+        latest[route_key] = {
+            "route_key": route_key,
+            "evidence_state": evidence_state,
+            "internal_resolution_state": str(row["evidence_state"]),
+            "details": dict(details),
+            "bindings": tuple(bindings),
+        }
+    return tuple(latest[key] for key in sorted(latest))
+
+
+def _current_lifecycle_state(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    present: bool,
+    route_evidence: Sequence[Mapping[str, Any]],
+) -> Tuple[str, str]:
+    if connection.execute(
+        "SELECT retirement_event_id FROM retirement_history WHERE manifest_id = ? "
+        "ORDER BY retirement_event_id DESC LIMIT 1",
+        (manifest_id,),
+    ).fetchone() is not None:
+        return "retired", "retirement_history"
+    if not present:
+        return "retired", "source_absent"
+    states = {str(item["evidence_state"]) for item in route_evidence}
+    if "contradicted" in states:
+        return "quarantined", "route_contradicted"
+    if "stale" in states:
+        return "quarantined", "route_stale"
+    latest_quarantine: Dict[str, str] = {}
+    for row in connection.execute(
+        "SELECT route_key, quarantine_kind FROM quarantine_history WHERE manifest_id = ? "
+        "ORDER BY quarantine_event_id",
+        (manifest_id,),
+    ):
+        latest_quarantine[str(row["route_key"])] = str(row["quarantine_kind"])
+    if any(not kind.startswith("released_") for kind in latest_quarantine.values()):
+        return "quarantined", "quarantine_history"
+    return "active", "current_manifest"
+
+
+def _fact_state_from_current_authority(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    capability_key: str,
+    declared_state: str,
+    route_evidence: Sequence[Mapping[str, Any]],
+) -> str:
+    route_states = {str(item["evidence_state"]) for item in route_evidence}
+    if "contradicted" in route_states:
+        return "contradicted"
+    if "stale" in route_states:
+        return "stale"
+    rows = connection.execute(
+        "SELECT evidence_state FROM capability_evidence_history WHERE manifest_id = ? "
+        "AND capability_key = ? AND evidence_kind != 'declaration' ORDER BY capability_evidence_id",
+        (manifest_id, capability_key),
+    ).fetchall()
+    states = {_public_evidence_state(str(row["evidence_state"])) for row in rows}
+    if "contradicted" in states:
+        return "contradicted"
+    if "stale" in states:
+        return "stale"
+    if "run-verified" in states:
+        return "run-verified"
+    if "inspected" in states:
+        return "inspected"
+    return _public_evidence_state(declared_state)
+
+
+def build_registry_query_candidate_snapshot(
+    connection: sqlite3.Connection,
+    *,
+    include_lifecycle_states: Sequence[str] = (),
+) -> Tuple[RegistryQueryCandidateSnapshot, ...]:
+    """Read current projection/history into fixed, explained, non-executing candidates."""
+    requested_states = set(include_lifecycle_states)
+    if not requested_states <= {"quarantined", "retired"}:
+        raise ScenarioRegistryQueryError("include_lifecycle_states may contain only quarantined or retired")
+    allowed_states = {"active"} | requested_states
+    snapshots: List[RegistryQueryCandidateSnapshot] = []
+    manifests = connection.execute(
+        "SELECT manifest_id, source_path, present, revision, current_sha256, validation_json, declaration_json "
+        "FROM manifest_current ORDER BY manifest_id"
+    ).fetchall()
+    for manifest in manifests:
+        manifest_id = str(manifest["manifest_id"])
+        declaration = _json_object(str(manifest["declaration_json"]), "manifest declaration")
+        validation = _json_object(str(manifest["validation_json"]), "manifest validation")
+        route_evidence = _current_route_evidence(connection, manifest_id)
+        known_footing: Dict[str, Any] = {}
+        for field in ("fixture", "fixture_profile", "profile", "profile_snapshot", "profile_snapshot_profile", "world", "required_helpers"):
+            value = declaration.get(field)
+            if value not in (None, "", [], {}):
+                known_footing[field] = value
+        runtime_contract = declaration.get("runtime_contract")
+        if isinstance(runtime_contract, Mapping):
+            for field in ("helpers", "profile", "fixture"):
+                value = runtime_contract.get(field)
+                if value not in (None, "", [], {}):
+                    known_footing.setdefault(field if field != "helpers" else "required_helpers", value)
+        lifecycle_state, lifecycle_reason = _current_lifecycle_state(
+            connection,
+            manifest_id=manifest_id,
+            present=bool(manifest["present"]),
+            route_evidence=route_evidence,
+        )
+        if lifecycle_state not in allowed_states:
+            continue
+        facts: Dict[str, Mapping[str, Any]] = {}
+        fact_explanations: Dict[str, Mapping[str, Any]] = {}
+        capabilities = connection.execute(
+            "SELECT capability_key, value_json, declared_state, review_required "
+            "FROM manifest_capability_current WHERE manifest_id = ? ORDER BY capability_key",
+            (manifest_id,),
+        ).fetchall()
+        for capability in capabilities:
+            key = str(capability["capability_key"])
+            value = json.loads(str(capability["value_json"]))
+            evidence_state = _fact_state_from_current_authority(
+                connection,
+                manifest_id=manifest_id,
+                capability_key=key,
+                declared_state=str(capability["declared_state"]),
+                route_evidence=route_evidence,
+            )
+            facts[key] = {
+                "present": True,
+                "value": value,
+                "evidence_state": evidence_state,
+                "proof_depth": None,
+            }
+            fact_explanations[key] = {
+                "declared_state": str(capability["declared_state"]),
+                "review_required": bool(capability["review_required"]),
+                "evidence_state": evidence_state,
+                "source": "manifest_capability_current",
+            }
+        snapshots.append(RegistryQueryCandidateSnapshot(
+            scenario_id=manifest_id,
+            facts=facts,
+            lifecycle_state=lifecycle_state,
+            token_eligible=lifecycle_state == "active",
+            explanation={
+                "manifest": {
+                    "manifest_id": manifest_id,
+                    "name": declaration.get("name"),
+                    "source_path": str(manifest["source_path"]),
+                    "present": bool(manifest["present"]),
+                    "revision": int(manifest["revision"]),
+                    "sha256": manifest["current_sha256"],
+                    "validation": dict(validation),
+                    "known_footing": known_footing,
+                },
+                "lifecycle": {"state": lifecycle_state, "reason": lifecycle_reason},
+                "route_evidence": route_evidence,
+                "facts": fact_explanations,
+            },
+        ))
+    return tuple(snapshots)
+
+
+def evaluate_registry_query_from_store(
+    connection: sqlite3.Connection,
+    request: RegistryQueryRequest,
+    *,
+    include_lifecycle_states: Sequence[str] = (),
+) -> RegistryStoredQueryEvaluation:
+    """Evaluate fixed current-authority snapshots; this owner never launches or mints tokens."""
+    candidates = build_registry_query_candidate_snapshot(
+        connection,
+        include_lifecycle_states=include_lifecycle_states,
+    )
+    evaluation = evaluate_registry_query(
+        request,
+        tuple({"scenario_id": candidate.scenario_id, "facts": candidate.facts} for candidate in candidates),
+    )
+    return RegistryStoredQueryEvaluation(candidates=candidates, evaluation=evaluation)
+
+
+def _query_predicate_json(predicate: RegistryQueryPredicate) -> Dict[str, Any]:
+    result: Dict[str, Any] = {
+        "key": predicate.key,
+        "op": predicate.op,
+        "minimum_evidence": predicate.minimum_evidence,
+    }
+    if predicate.op in {"eq", "contains"}:
+        result["value"] = predicate.value
+    elif predicate.op == "range":
+        if predicate.minimum is not None:
+            result["minimum"] = predicate.minimum
+        if predicate.maximum is not None:
+            result["maximum"] = predicate.maximum
+    return result
+
+
+def _query_request_json(request: RegistryQueryRequest) -> str:
+    return _json_text({
+        "requirements": [_query_predicate_json(predicate) for predicate in request.requirements],
+        "preferences": [_query_predicate_json(predicate) for predicate in request.preferences],
+    })
+
+
+def _current_verified_route(snapshot: RegistryQueryCandidateSnapshot) -> Optional[Mapping[str, Any]]:
+    routes = snapshot.explanation.get("route_evidence", ())
+    if not isinstance(routes, Sequence):
+        return None
+    for route in routes:
+        if not isinstance(route, Mapping) or route.get("evidence_state") != "run-verified":
+            continue
+        bindings = route.get("bindings", ())
+        if isinstance(bindings, Sequence) and bindings and all(
+            isinstance(binding, Mapping) and binding.get("resolution") == "compatible"
+            for binding in bindings
+        ):
+            return route
+    return None
+
+
+def _query_unmet_capabilities(evaluation: RegistryStoredQueryEvaluation) -> List[Dict[str, Any]]:
+    explanations = {candidate.scenario_id: candidate.explanation for candidate in evaluation.candidates}
+    unmet: List[Dict[str, Any]] = []
+    for candidate in evaluation.evaluation.candidates:
+        failed = [
+            {
+                "key": result.key,
+                "expected": result.expected,
+                "observed": result.observed,
+                "evidence_state": result.evidence_state,
+                "reason": result.reason,
+            }
+            for result in candidate.hard_results
+            if not result.passed
+        ]
+        if failed:
+            unmet.append({
+                "scenario_id": candidate.scenario_id,
+                "manifest": explanations[candidate.scenario_id]["manifest"],
+                "unmet": failed,
+            })
+    return unmet
+
+
+def _known_draft_footing(candidates: Sequence[RegistryQueryCandidateSnapshot]) -> Dict[str, Any]:
+    known: Dict[str, Any] = {}
+    for candidate in candidates:
+        manifest = candidate.explanation.get("manifest", {})
+        footing = manifest.get("known_footing") if isinstance(manifest, Mapping) else None
+        if not isinstance(footing, Mapping):
+            continue
+        for field, value in footing.items():
+            if value not in (None, "", [], {}):
+                known[field] = value
+    return known
+
+
+def _write_inert_draft(
+    *,
+    request_json: str,
+    query_sha256: str,
+    evaluation: RegistryStoredQueryEvaluation,
+    drafts_root: Path,
+) -> str:
+    drafts_root.mkdir(parents=True, exist_ok=True)
+    path = drafts_root / f"{query_sha256}.json"
+    payload = {
+        "review_status": "pending",
+        "executable": False,
+        "query": json.loads(request_json),
+        "unmet_capabilities": _query_unmet_capabilities(evaluation),
+        "candidate_manifest": _known_draft_footing(evaluation.candidates),
+    }
+    path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    return str(path)
+
+
+def _append_query_audit(
+    connection: sqlite3.Connection,
+    *,
+    query_id: str,
+    request_json: str,
+    result: Mapping[str, Any],
+) -> None:
+    connection.execute(
+        "INSERT INTO query_history( query_id, query_kind, request_json, result_sha256 ) VALUES( ?, ?, ?, ? )",
+        (query_id, "registry_query", request_json, hashlib.sha256(_json_text(result).encode("utf-8")).hexdigest()),
+    )
+
+
+def execute_registry_query(
+    connection: sqlite3.Connection,
+    request: RegistryQueryRequest,
+    *,
+    include_lifecycle_states: Sequence[str] = (),
+    drafts_root: Optional[Path] = None,
+) -> RegistryQueryExecution:
+    """Audit a fixed query and issue one bound token or a deterministic inert draft."""
+    request_json = _query_request_json(request)
+    query_sha256 = hashlib.sha256(request_json.encode("utf-8")).hexdigest()
+    query_id = _identity("caol-scenario-query-v1", query_sha256)
+    evaluation = evaluate_registry_query_from_store(
+        connection,
+        request,
+        include_lifecycle_states=include_lifecycle_states,
+    )
+    selected_id = evaluation.evaluation.ranked_scenario_ids[0] if evaluation.evaluation.ranked_scenario_ids else None
+    selected = next((candidate for candidate in evaluation.candidates if candidate.scenario_id == selected_id), None)
+    route = _current_verified_route(selected) if selected is not None and selected.token_eligible else None
+    if selected is None or route is None:
+        root = drafts_root or repository_root() / ".userdata" / "openclaw_harness" / "drafts"
+        draft_path = _write_inert_draft(
+            request_json=request_json,
+            query_sha256=query_sha256,
+            evaluation=evaluation,
+            drafts_root=root,
+        )
+        with immediate_transaction(connection):
+            _append_query_audit(
+                connection,
+                query_id=query_id,
+                request_json=request_json,
+                result={"kind": "draft", "draft_path": draft_path, "selected_scenario_id": selected_id},
+            )
+        return RegistryQueryExecution(query_id, query_sha256, evaluation, None, draft_path)
+
+    manifest = selected.explanation["manifest"]
+    route_key = str(route["route_key"])
+    bindings = route["bindings"]
+    verification_ids = tuple(str(binding["verification_id"]) for binding in bindings)
+    token_details = {
+        "query_id": query_id,
+        "query_sha256": query_sha256,
+        "manifest_id": manifest["manifest_id"],
+        "manifest_revision": manifest["revision"],
+        "manifest_sha256": manifest["sha256"],
+        "lifecycle": selected.explanation["lifecycle"],
+        "selected_values": selected.facts,
+        "route_evidence": route,
+    }
+    token_id = _identity(
+        "caol-scenario-selection-token-v1",
+        query_sha256,
+        str(manifest["manifest_id"]),
+        str(manifest["revision"]),
+        str(manifest["sha256"]),
+        route_key,
+        _json_text(token_details),
+    )
+    with immediate_transaction(connection):
+        _append_query_audit(
+            connection,
+            query_id=query_id,
+            request_json=request_json,
+            result={"kind": "selection", "token_id": token_id, "selected_scenario_id": selected.scenario_id},
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, ?, ?, 'issued', 'query_selection', ? )",
+            (
+                token_id,
+                str(manifest["manifest_id"]),
+                verification_ids[0],
+                route_key,
+                _json_text(token_details),
+            ),
+        )
+    return RegistryQueryExecution(query_id, query_sha256, evaluation, token_id, None)
+
+
+def _invalidate_manifest_tokens(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    reason: str,
+    details: Mapping[str, Any],
+) -> int:
+    routes = connection.execute(
+        "SELECT DISTINCT route_key FROM token_history AS issued WHERE manifest_id = ? "
+        "AND event_kind = 'issued' AND NOT EXISTS( SELECT 1 FROM token_history AS invalidated "
+        "WHERE invalidated.token_id = issued.token_id AND invalidated.event_kind = 'invalidated' )",
+        (manifest_id,),
+    ).fetchall()
+    return sum(
+        _invalidate_outstanding_tokens(
+            connection,
+            manifest_id=manifest_id,
+            route_key=str(row["route_key"]),
+            reason=reason,
+            details=details,
+        )
+        for row in routes
+    )
 
 
 @dataclass(frozen=True)
@@ -660,6 +1626,12 @@ def rebuild_manifest_projection(
                 )
                 if content_changed:
                     changed += 1
+                    _invalidate_manifest_tokens(
+                        connection,
+                        manifest_id=entry.manifest_id,
+                        reason="manifest_changed",
+                        details={"source_path": entry.source_path, "source_sha256": entry.source_sha256},
+                    )
                 elif was_absent:
                     discovered += 1
 
@@ -727,6 +1699,12 @@ def rebuild_manifest_projection(
                     )
                     for row in current_relations
                 ],
+            )
+            _invalidate_manifest_tokens(
+                connection,
+                manifest_id=manifest_id,
+                reason="manifest_absent",
+                details={"source_path": source_path, "source_sha256": last_hash},
             )
             absent += 1
 
