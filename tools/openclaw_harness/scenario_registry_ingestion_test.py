@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import sqlite3
 import sys
 import tempfile
 import unittest
@@ -281,6 +282,253 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             self.assertEqual(result["status"], "rejected_manifest")
             self.assertIn("SHA-256", result["error"])
             self.assertEqual(connection.execute("SELECT COUNT(*) FROM verification_history").fetchone()[0], 0)
+            connection.close()
+
+    def report_with_proof(
+        self,
+        manifest_path: Path,
+        *,
+        status: str,
+        feature_proof: bool,
+        supersedes_verification_id: str = "",
+    ) -> dict:
+        report = self.report(manifest_path)
+        report["proof_classification"].update({
+            "status": status,
+            "evidence_class": "feature-path" if feature_proof else "startup/load-or-inconclusive",
+            "feature_proof": feature_proof,
+        })
+        report["verdict"] = f"{status}_route_result"
+        report["evidence_class"] = report["proof_classification"]["evidence_class"]
+        report["feature_proof"] = feature_proof
+        if supersedes_verification_id:
+            report["supersedes_verification_id"] = supersedes_verification_id
+        return report
+
+    def ingest_named_report(
+        self,
+        connection: object,
+        root: Path,
+        name: str,
+        report: dict,
+        state: dict,
+    ) -> dict:
+        path = root / name
+        self.write_json(path, report)
+        return ingest_report_reference(connection, path, adapters=self.adapters(state))
+
+    def test_declarations_and_unknown_reports_never_hard_prove(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _scenarios, manifest_path, _report_path = self.setup_registry(root)
+            declared = connection.execute(
+                "SELECT evidence_state, value_json FROM capability_evidence_history "
+                "WHERE capability_key = 'player.injured' AND evidence_kind = 'declaration'"
+            ).fetchone()
+            self.assertEqual((declared["evidence_state"], declared["value_json"]), ("declared", "false"))
+            declared_count = connection.execute(
+                "SELECT COUNT(*) FROM capability_evidence_history WHERE evidence_kind = 'declaration'"
+            ).fetchone()[0]
+            rebuild_manifest_projection(connection, _scenarios)
+            self.assertEqual(
+                connection.execute(
+                    "SELECT COUNT(*) FROM capability_evidence_history WHERE evidence_kind = 'declaration'"
+                ).fetchone()[0],
+                declared_count,
+            )
+
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            result = self.ingest_named_report(
+                connection,
+                root,
+                "unknown.probe.report.json",
+                self.report_with_proof(manifest_path, status="yellow", feature_proof=False),
+                state,
+            )
+            self.assertEqual(result["eligibility"], "unknown")
+            evidence = connection.execute(
+                "SELECT evidence_state, details_json FROM capability_evidence_history "
+                "WHERE capability_key = '_registry.proof_route' AND evidence_kind = 'route_resolution' "
+                "ORDER BY capability_evidence_id DESC LIMIT 1"
+            ).fetchone()
+            self.assertEqual(evidence["evidence_state"], "unknown")
+            self.assertEqual(json.loads(evidence["details_json"])["hard_proven_verification_ids"], [])
+            connection.close()
+
+    def test_compatible_contradiction_requires_explicit_same_route_supersession(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _scenarios, manifest_path, _report_path = self.setup_registry(root)
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            contradiction = self.ingest_named_report(
+                connection,
+                root,
+                "contradiction.probe.report.json",
+                self.report_with_proof(manifest_path, status="red", feature_proof=False),
+                state,
+            )
+            unsuperseded_success = self.ingest_named_report(
+                connection,
+                root,
+                "later-success.probe.report.json",
+                self.report_with_proof(manifest_path, status="green", feature_proof=True),
+                state,
+            )
+            self.assertEqual(contradiction["eligibility"], "contradicted")
+            self.assertEqual(unsuperseded_success["eligibility"], "contradicted")
+
+            superseding_success = self.ingest_named_report(
+                connection,
+                root,
+                "superseding-success.probe.report.json",
+                self.report_with_proof(
+                    manifest_path,
+                    status="green",
+                    feature_proof=True,
+                    supersedes_verification_id=contradiction["verification_id"],
+                ),
+                state,
+            )
+            self.assertEqual(superseding_success["eligibility"], "hard_proven")
+            verification = connection.execute(
+                "SELECT route_key, supersedes_verification_id FROM verification_history WHERE verification_id = ?",
+                (superseding_success["verification_id"],),
+            ).fetchone()
+            self.assertEqual(verification["supersedes_verification_id"], contradiction["verification_id"])
+            evidence = connection.execute(
+                "SELECT evidence_state, details_json FROM capability_evidence_history "
+                "WHERE capability_key = '_registry.proof_route' AND evidence_kind = 'route_resolution' "
+                "ORDER BY capability_evidence_id DESC LIMIT 1"
+            ).fetchone()
+            self.assertEqual(evidence["evidence_state"], "hard_proven")
+            details = json.loads(evidence["details_json"])
+            self.assertEqual(details["unresolved_contradiction_ids"], [])
+            self.assertEqual(details["superseded_contradiction_ids"], [contradiction["verification_id"]])
+            connection.close()
+
+    def test_stale_evidence_quarantines_and_invalidates_tokens_without_erasing_history(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _scenarios, manifest_path, report_path = self.setup_registry(root)
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            ingested = ingest_report_reference(connection, report_path, adapters=self.adapters(state))
+            verification = connection.execute(
+                "SELECT manifest_id, route_key FROM verification_history WHERE verification_id = ?",
+                (ingested["verification_id"],),
+            ).fetchone()
+            connection.execute(
+                "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+                "VALUES( 'token-stale', ?, ?, ?, 'issued', 'selection', '{}' )",
+                (verification["manifest_id"], ingested["verification_id"], verification["route_key"]),
+            )
+            stale_report = self.report(manifest_path)
+            stale_report["opaque_report_payload"]["prose"] = "changed report bytes"
+            self.write_json(report_path, stale_report)
+
+            self.assertEqual(reconcile_report_bindings(connection, adapters=self.adapters(state)), {"reconciled": 1, "stale": 1})
+            self.assertEqual(
+                connection.execute(
+                    "SELECT evidence_state FROM capability_evidence_history "
+                    "WHERE capability_key = '_registry.proof_route' AND evidence_kind = 'route_resolution' "
+                    "ORDER BY capability_evidence_id DESC LIMIT 1"
+                ).fetchone()[0],
+                "stale",
+            )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT quarantine_kind FROM quarantine_history ORDER BY quarantine_event_id DESC LIMIT 1"
+                ).fetchone()[0],
+                "quarantined_no_compatible_verification",
+            )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT event_kind FROM lifecycle_history WHERE manifest_id = ? "
+                    "ORDER BY lifecycle_event_id DESC LIMIT 1",
+                    (verification["manifest_id"],),
+                ).fetchone()[0],
+                "proof_route_stale",
+            )
+            self.assertEqual(
+                [
+                    tuple(row)
+                    for row in connection.execute(
+                        "SELECT event_kind, reason FROM token_history WHERE token_id = 'token-stale' "
+                        "ORDER BY token_event_id"
+                    ).fetchall()
+                ],
+                [("issued", "selection"), ("invalidated", "proof_route_stale")],
+            )
+            self.assertGreaterEqual(
+                connection.execute("SELECT COUNT(*) FROM binding_history WHERE binding_kind = 'report'").fetchone()[0],
+                2,
+            )
+            with self.assertRaises(sqlite3.IntegrityError):
+                connection.execute(
+                    "UPDATE capability_evidence_history SET evidence_state = 'rewritten' "
+                    "WHERE capability_key = '_registry.proof_route'"
+                )
+            counts = {
+                table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                for table in ("capability_evidence_history", "lifecycle_history", "quarantine_history", "token_history")
+            }
+            reconcile_report_bindings(connection, adapters=self.adapters(state))
+            self.assertEqual(
+                {
+                    table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                    for table in counts
+                },
+                counts,
+            )
+            connection.close()
+
+    def test_compatible_surviving_verification_prevents_stale_quarantine_and_token_invalidation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _scenarios, manifest_path, first_report_path = self.setup_registry(root)
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            first = ingest_report_reference(connection, first_report_path, adapters=self.adapters(state))
+            second_path = root / "second.probe.report.json"
+            self.write_json(second_path, self.report(manifest_path))
+            second = ingest_report_reference(connection, second_path, adapters=self.adapters(state))
+            verification = connection.execute(
+                "SELECT manifest_id, route_key FROM verification_history WHERE verification_id = ?",
+                (first["verification_id"],),
+            ).fetchone()
+            self.assertEqual(
+                verification["route_key"],
+                connection.execute(
+                    "SELECT route_key FROM verification_history WHERE verification_id = ?",
+                    (second["verification_id"],),
+                ).fetchone()[0],
+            )
+            connection.execute(
+                "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+                "VALUES( 'token-survives', ?, ?, ?, 'issued', 'selection', '{}' )",
+                (verification["manifest_id"], first["verification_id"], verification["route_key"]),
+            )
+            changed = self.report(manifest_path)
+            changed["opaque_report_payload"]["prose"] = "changed second report bytes"
+            self.write_json(second_path, changed)
+
+            self.assertEqual(reconcile_report_bindings(connection, adapters=self.adapters(state)), {"reconciled": 2, "stale": 1})
+            self.assertIsNone(connection.execute("SELECT quarantine_event_id FROM quarantine_history").fetchone())
+            self.assertEqual(
+                [
+                    tuple(row)
+                    for row in connection.execute(
+                        "SELECT event_kind FROM token_history WHERE token_id = 'token-survives'"
+                    ).fetchall()
+                ],
+                [("issued",)],
+            )
+            self.assertEqual(
+                connection.execute(
+                    "SELECT evidence_state FROM capability_evidence_history "
+                    "WHERE capability_key = '_registry.proof_route' AND evidence_kind = 'route_resolution' "
+                    "ORDER BY capability_evidence_id DESC LIMIT 1"
+                ).fetchone()[0],
+                "hard_proven",
+            )
             connection.close()
 
 

@@ -534,6 +534,34 @@ def _replace_current_materializations(connection: sqlite3.Connection, staged: St
         [(staged.manifest_id, kind, target_kind, target_key, route_role)
          for kind, target_kind, target_key, route_role in staged.relations],
     )
+    for capability_key, value_json, declared_state, _review_required in staged.capabilities:
+        value_sha256 = _identity(
+            "caol-scenario-declaration-evidence-v1",
+            staged.source_sha256,
+            capability_key,
+            declared_state,
+            value_json,
+        )
+        existing = connection.execute(
+            "SELECT capability_evidence_id FROM capability_evidence_history "
+            "WHERE manifest_id = ? AND verification_id IS NULL AND capability_key = ? "
+            "AND evidence_kind = 'declaration' AND value_sha256 = ?",
+            (staged.manifest_id, capability_key, value_sha256),
+        ).fetchone()
+        if existing is None:
+            connection.execute(
+                "INSERT INTO capability_evidence_history( "
+                "manifest_id, capability_key, evidence_kind, evidence_state, value_json, value_sha256, details_json "
+                ") VALUES( ?, ?, 'declaration', ?, ?, ?, ? )",
+                (
+                    staged.manifest_id,
+                    capability_key,
+                    declared_state,
+                    value_json,
+                    value_sha256,
+                    _json_text({"source_sha256": staged.source_sha256}),
+                ),
+            )
 
 
 def _append_relation_events(
@@ -766,6 +794,12 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
     proof["route_verdict"] = str(report.get("verdict", "")).strip()
     proof["route_evidence_class"] = str(report.get("evidence_class", "")).strip()
     proof["route_feature_proof"] = bool(report.get("feature_proof", False))
+    supersedes_verification_id = report.get("supersedes_verification_id")
+    if supersedes_verification_id is not None:
+        supersedes_verification_id = _string(
+            supersedes_verification_id,
+            "supersedes_verification_id",
+        )
     runtime = {
         "runtime_binding_status": screen.get("runtime_binding_status"),
         "runtime_binding_observed": _selected_mapping(
@@ -802,6 +836,7 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
         "fixture": fixture,
         "profile": profile,
         "proof": proof,
+        "supersedes_verification_id": supersedes_verification_id,
     }
 
 
@@ -896,6 +931,237 @@ def _append_resolution_if_changed(
     )
 
 
+def _verification_evidence_state(row: sqlite3.Row) -> str:
+    """Classify report proof without allowing declarations or unknowns to prove."""
+    details = json.loads(str(row["details_json"]))
+    proof = details.get("proof", {}) if isinstance(details, dict) else {}
+    status = str(proof.get("status", "")).strip().lower()
+    if status == "red":
+        return "contradicted"
+    if (
+        status == "green"
+        and bool(proof.get("feature_proof", False))
+        and str(proof.get("evidence_class", "")).strip() == "feature-path"
+    ):
+        return "hard_proven"
+    return "unknown"
+
+
+def _append_route_evidence_if_changed(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    route_key: str,
+    evidence_state: str,
+    details: Mapping[str, Any],
+) -> None:
+    value_json = _json_text({"route_key": route_key, "state": evidence_state})
+    value_sha256 = _identity(
+        "caol-scenario-route-evidence-v1",
+        manifest_id,
+        route_key,
+        evidence_state,
+        _json_text(details),
+    )
+    existing = connection.execute(
+        "SELECT capability_evidence_id FROM capability_evidence_history "
+        "WHERE manifest_id = ? AND verification_id IS NULL AND capability_key = '_registry.proof_route' "
+        "AND evidence_kind = 'route_resolution' AND value_sha256 = ?",
+        (manifest_id, value_sha256),
+    ).fetchone()
+    if existing is None:
+        connection.execute(
+            "INSERT INTO capability_evidence_history( "
+            "manifest_id, capability_key, evidence_kind, evidence_state, value_json, value_sha256, details_json "
+            ") VALUES( ?, '_registry.proof_route', 'route_resolution', ?, ?, ?, ? )",
+            (manifest_id, evidence_state, value_json, value_sha256, _json_text(details)),
+        )
+
+
+def _append_lifecycle_if_changed(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    event_kind: str,
+    details: Mapping[str, Any],
+) -> None:
+    details_json = _json_text(details)
+    existing = connection.execute(
+        "SELECT lifecycle_event_id FROM lifecycle_history "
+        "WHERE manifest_id = ? AND event_kind = ? AND details_json = ?",
+        (manifest_id, event_kind, details_json),
+    ).fetchone()
+    if existing is not None:
+        return
+    manifest = connection.execute(
+        "SELECT revision, last_content_sha256 FROM manifest_current WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchone()
+    if manifest is None:
+        raise ScenarioRegistryStoreError("route resolution references a missing manifest")
+    connection.execute(
+        "INSERT INTO lifecycle_history( manifest_id, event_kind, revision, cause_sha256, details_json ) "
+        "VALUES( ?, ?, ?, ?, ? )",
+        (
+            manifest_id,
+            event_kind,
+            int(manifest["revision"]),
+            manifest["last_content_sha256"],
+            details_json,
+        ),
+    )
+
+
+def _append_quarantine_if_changed(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    route_key: str,
+    quarantine_kind: str,
+    details: Mapping[str, Any],
+) -> None:
+    latest = connection.execute(
+        "SELECT quarantine_kind FROM quarantine_history WHERE manifest_id = ? AND route_key = ? "
+        "ORDER BY quarantine_event_id DESC LIMIT 1",
+        (manifest_id, route_key),
+    ).fetchone()
+    if latest is not None and str(latest["quarantine_kind"]) == quarantine_kind:
+        return
+    connection.execute(
+        "INSERT INTO quarantine_history( manifest_id, route_key, quarantine_kind, details_json ) "
+        "VALUES( ?, ?, ?, ? )",
+        (manifest_id, route_key, quarantine_kind, _json_text(details)),
+    )
+
+
+def _invalidate_outstanding_tokens(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    route_key: str,
+    reason: str,
+    details: Mapping[str, Any],
+) -> int:
+    outstanding = connection.execute(
+        "SELECT issued.token_id, issued.verification_id FROM token_history AS issued "
+        "WHERE issued.manifest_id = ? AND issued.route_key = ? AND issued.event_kind = 'issued' "
+        "AND NOT EXISTS( SELECT 1 FROM token_history AS invalidated "
+        "WHERE invalidated.token_id = issued.token_id AND invalidated.event_kind = 'invalidated' )",
+        (manifest_id, route_key),
+    ).fetchall()
+    for token in outstanding:
+        connection.execute(
+            "INSERT OR IGNORE INTO token_history( "
+            "token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json "
+            ") VALUES( ?, ?, ?, ?, 'invalidated', ?, ? )",
+            (
+                str(token["token_id"]),
+                manifest_id,
+                token["verification_id"],
+                route_key,
+                reason,
+                _json_text(details),
+            ),
+        )
+    return len(outstanding)
+
+
+def _resolve_route_evidence(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    route_key: str,
+) -> str:
+    """Append the current route decision without rewriting report or declaration history."""
+    rows = connection.execute(
+        "SELECT verification_id, proof_status, supersedes_verification_id, details_json FROM verification_history "
+        "WHERE manifest_id = ? AND route_key = ? AND EXISTS( "
+        "SELECT 1 FROM verification_resolution_history AS resolution "
+        "WHERE resolution.verification_id = verification_history.verification_id "
+        "AND resolution.resolution_event_id = ( SELECT MAX( latest.resolution_event_id ) "
+        "FROM verification_resolution_history AS latest WHERE latest.verification_id = verification_history.verification_id ) "
+        "AND resolution.resolution_kind = 'compatible' )",
+        (manifest_id, route_key),
+    ).fetchall()
+    by_id = {str(row["verification_id"]): row for row in rows}
+    hard_proven = {
+        verification_id
+        for verification_id, row in by_id.items()
+        if _verification_evidence_state(row) == "hard_proven"
+    }
+    contradicted = {
+        verification_id
+        for verification_id, row in by_id.items()
+        if _verification_evidence_state(row) == "contradicted"
+    }
+    superseded = {
+        str(row["supersedes_verification_id"])
+        for row in by_id.values()
+        if (
+            _verification_evidence_state(row) == "hard_proven"
+            and row["supersedes_verification_id"] is not None
+            and str(row["supersedes_verification_id"]) in contradicted
+        )
+    }
+    unresolved_contradictions = sorted(contradicted - superseded)
+    if not rows:
+        evidence_state = "stale"
+    elif unresolved_contradictions:
+        evidence_state = "contradicted"
+    elif hard_proven:
+        evidence_state = "hard_proven"
+    else:
+        evidence_state = "unknown"
+    details = {
+        "route_key": route_key,
+        "compatible_verification_ids": sorted(by_id),
+        "hard_proven_verification_ids": sorted(hard_proven),
+        "unresolved_contradiction_ids": unresolved_contradictions,
+        "superseded_contradiction_ids": sorted(superseded),
+    }
+    _append_route_evidence_if_changed(
+        connection,
+        manifest_id=manifest_id,
+        route_key=route_key,
+        evidence_state=evidence_state,
+        details=details,
+    )
+    _append_lifecycle_if_changed(
+        connection,
+        manifest_id=manifest_id,
+        event_kind=f"proof_route_{evidence_state}",
+        details=details,
+    )
+    if not rows:
+        _append_quarantine_if_changed(
+            connection,
+            manifest_id=manifest_id,
+            route_key=route_key,
+            quarantine_kind="quarantined_no_compatible_verification",
+            details=details,
+        )
+    elif connection.execute(
+        "SELECT quarantine_event_id FROM quarantine_history WHERE manifest_id = ? AND route_key = ?",
+        (manifest_id, route_key),
+    ).fetchone() is not None:
+        _append_quarantine_if_changed(
+            connection,
+            manifest_id=manifest_id,
+            route_key=route_key,
+            quarantine_kind="released_compatible_verification",
+            details=details,
+        )
+    if evidence_state != "hard_proven":
+        _invalidate_outstanding_tokens(
+            connection,
+            manifest_id=manifest_id,
+            route_key=route_key,
+            reason=f"proof_route_{evidence_state}",
+            details=details,
+        )
+    return evidence_state
+
+
 def _evaluation_for_facts(
     connection: sqlite3.Connection,
     *,
@@ -986,10 +1252,9 @@ def ingest_report_reference(
         return {"report_id": report_id, "status": "invalid_report", "error": str(exc), "idempotent": False}
 
     route_key = _identity(
-        "caol-scenario-route-v1",
+        "caol-scenario-proof-route-v2",
         facts["manifest"]["source_path"],
         facts["scenario"],
-        _json_text(facts["proof"]),
     )
     verification_id = _identity("caol-scenario-verification-v1", report_id, route_key)
     with immediate_transaction(connection):
@@ -1025,6 +1290,18 @@ def ingest_report_reference(
             aggregate_binding,
             f"report:{report_binding}",
         )
+        supersedes_verification_id = facts["supersedes_verification_id"]
+        if supersedes_verification_id is not None:
+            superseded = connection.execute(
+                "SELECT manifest_id, route_key FROM verification_history WHERE verification_id = ?",
+                (supersedes_verification_id,),
+            ).fetchone()
+            if (
+                superseded is None
+                or str(superseded["manifest_id"]) != manifest_id
+                or str(superseded["route_key"]) != route_key
+            ):
+                supersedes_verification_id = None
 
         connection.execute(
             "INSERT INTO report_ingestion_history( "
@@ -1035,8 +1312,8 @@ def ingest_report_reference(
         proof = _object(facts["proof"], "proof")
         connection.execute(
             "INSERT INTO verification_history( "
-            "verification_id, manifest_id, report_id, route_key, binding_fingerprint, outcome_kind, proof_status, details_json "
-            ") VALUES( ?, ?, ?, ?, ?, ?, ?, ? )",
+            "verification_id, manifest_id, report_id, route_key, binding_fingerprint, outcome_kind, proof_status, "
+            "supersedes_verification_id, details_json ) VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ? )",
             (
                 verification_id,
                 manifest_id,
@@ -1045,7 +1322,13 @@ def ingest_report_reference(
                 aggregate_binding,
                 str(proof.get("verdict", "unknown")),
                 str(proof.get("status", "unknown")),
-                _json_text({"scenario": facts["scenario"], "proof": proof, "manifest": facts["manifest"]}),
+                supersedes_verification_id,
+                _json_text({
+                    "scenario": facts["scenario"],
+                    "proof": proof,
+                    "manifest": facts["manifest"],
+                    "requested_supersedes_verification_id": facts["supersedes_verification_id"],
+                }),
             ),
         )
         resolution = "compatible" if all(status == "compatible" for status in statuses.values()) else "stale"
@@ -1058,11 +1341,17 @@ def ingest_report_reference(
             binding_fingerprint=aggregate_binding,
             details={"statuses": statuses},
         )
+        eligibility = _resolve_route_evidence(
+            connection,
+            manifest_id=manifest_id,
+            route_key=route_key,
+        )
     return {
         "report_id": report_id,
         "verification_id": verification_id,
         "status": "ingested",
         "resolution": resolution,
+        "eligibility": eligibility,
         "idempotent": False,
     }
 
@@ -1119,6 +1408,11 @@ def reconcile_report_bindings(connection: sqlite3.Connection, *, adapters: Bindi
                     binding_fingerprint=fingerprint,
                     details={"reason": reason},
                 )
+                _resolve_route_evidence(
+                    connection,
+                    manifest_id=manifest_id,
+                    route_key=route_key,
+                )
                 reconciled += 1
                 stale += 1
                 continue
@@ -1172,6 +1466,11 @@ def reconcile_report_bindings(connection: sqlite3.Connection, *, adapters: Bindi
                 resolution_kind=resolution,
                 binding_fingerprint=aggregate_binding,
                 details=details,
+            )
+            _resolve_route_evidence(
+                connection,
+                manifest_id=manifest_id,
+                route_key=route_key,
             )
             reconciled += 1
             stale += int(resolution == "stale")
