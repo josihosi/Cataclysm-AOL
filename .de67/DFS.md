@@ -1,9 +1,9 @@
-# Bandit and Cannibal Hostile-Camp AI Specification
+# Combined Hostile-Camp AI and Harness Registry Specification
 
-Status: Refrozen for DE-67 phase 3 after the user-approved R-002 proof rescope.
+Status: Frozen combined successor for DE-67 phase 3.
 WEC: `.de67/WEC.md`
-Source baseline: `dev@97b8ea09e8d7823c7a4892386b2d77cccf9c3941`, clean before this
-documentation-only phase; inspected 2026-08-12.
+Source baseline: `dev@e466d06870a3bd8bceeaee32e202b7d94e930d46` with the preserved hostile-
+ecology/harness frontier listed in the freeze record; inspected 2026-08-15.
 Comparison baseline: `port/cdda-master` at `660057ff728b`.
 
 This document defines what the feature must do in play, how the implementation is divided between
@@ -502,7 +502,7 @@ teleport, handwritten artifact, or test-only code may manufacture gameplay credi
 comes from the authoritative production owner, and positive or negative controls exist only when
 they distinguish the claimed mechanism.
 
-## Freeze record
+## Preserved hostile-ecology freeze record
 
 - Status: Refrozen
 - Frozen source baseline: `dev@97b8ea09e8d7823c7a4892386b2d77cccf9c3941`; the worktree was clean
@@ -510,4 +510,416 @@ they distinguish the claimed mechanism.
 - User-owned choice: preserve R-002's bounded-real-perception behavior and rescope only its proof
   burden as stated verbatim in `.de67/WEC.md`; leave R-001 and R-003 through R-010 product
   requirements unchanged.
+- Evidence-implied refinements: none.
+
+## Harness scenario selection, registry, execution, and migration
+
+This section is a separate `R-1xx` claim family. It does not change the hostile-camp gameplay
+contract or the status of `R-001` through `R-010`. It makes the existing Python harness dependable
+for finding, explaining, launching, and learning from scenarios that can prove that contract and
+other C-AOL behavior.
+
+### Functional contract
+
+```text
+coordinator query
+  -> hard capability and current-evidence rejection
+  -> preference ordering of survivors only
+  -> explained selection token OR reviewable non-executed draft
+  -> explicit selected launch through the existing startup/probe owner
+  -> separate startup and feature verdicts
+  -> append-only verification/contradiction/staleness history
+```
+
+The inventory route is:
+
+```text
+enumerate every scenario JSON
+  -> create one migration-item row before parsing each path
+  -> import declared facts without prose inference
+  -> explicitly block, attempt canonical probe, or record import failure
+  -> persist one terminal disposition per enumerated path
+  -> prove final filesystem set equals terminal migration-item set
+```
+
+Query never launches. A generated draft is never executable. A launch may begin only from a
+non-stale selection token produced by a successful hard-filter query.
+
+### Project language and compatibility
+
+- The existing JSON files under `tools/openclaw_harness/scenarios/` remain **scenario manifests**.
+  There is no second declaration directory.
+- The SQLite **scenario registry** is a rebuildable index and verification-history store. It does
+  not become the declaration source and does not rewrite manifest intent after a run.
+- A **capability** is a typed fact or transition, never a filename, description substring, or
+  scenario family guess.
+- Evidence states are exactly `declared`, `inspected`, `run-verified`, `contradicted`, and `stale`.
+  Migration dispositions are exactly `attempted`, `imported`, `verified`, `failed`, `blocked`, and
+  `contradicted`.
+- **Startup footing** and `feature_proof=false` remain non-gameplay evidence even when Peekaboo,
+  HUD detection, fixture install, artifact capture, and cleanup all succeed.
+- Debug-authored fixture state may prove declared preconditions; only the named production route
+  may prove gameplay behavior.
+- The implementation remains Python and JSON beside `startup_harness.py`, uses the standard-library
+  `sqlite3` module, and stays portable across macOS, Linux/WSL, and Windows. No product C++ owner is
+  added for registry behavior.
+
+### Current code map
+
+| Concern | Current files and symbols | Current behavior at inspected baseline | Gap |
+|---|---|---|---|
+| Scenario declaration | `tools/openclaw_harness/scenarios/*.json`; `scenario_path`; `load_scenario` | 168 parseable object files exist. Fields are heterogeneous; capability dimensions and evidence floors are not normalized. | Names/descriptions and ad hoc proof prose cannot support hard selection. |
+| Listing | `list_scenarios`; `scenario_blocker_info`; CLI `list-scenarios` | Enumerates all 168 JSON files and reports name, description, artifact source, step count, blocker reason, and helpers. The `--profile` option is explicitly ignored. | No typed filtering, ranking, freshness, fixture explanation, or draft. |
+| Fixtures and profiles | `load_fixture_manifest`; `resolve_fixture_payload`; `install_fixture`; `resolve_profile_snapshot_payload`; `install_profile_snapshot`; `load_profile_config` | 107 save-fixture manifests, profile snapshots, alias chains, save transforms, and `master`/`dev-harness` startup policy are real owners. | No searchable normalized binding or capability evidence. |
+| Runtime binding | `runtime_source_binding`; `build_runtime_binding`; `compare_runtime_binding`; `load_runtime_binding` | Binds committed HEAD, relevant dirty source, and executable hash for a run. | Does not bind scenario/fixture/profile/helper inputs into reusable registry evidence. |
+| Canonical startup | `run_startup`; `build_plan`; `require_peekaboo_permissions`; `peekaboo_focus_pid_with_retry`; `launch_game` | Resolves/install footing, checks runtime, launches, verifies Peekaboo permissions/focus, navigates, captures startup evidence, and gates feature steps. | Registry has no safe handoff into this owner. |
+| Canonical feature route | `run_probe_mode`; `execute_probe_steps`; `probe_proof_classification`; `finalize_probe_report`; `cleanup_game_process` | Named scenario runs generate step ledgers, screenshots/OCR, log/save audits, separate startup/feature classifications, reports, and cleanup. Blocked scenarios already refuse launch. | Results are not normalized into searchable capability history. |
+| Step vocabulary | `execute_probe_steps` | 37 current kinds cover input, waiting, capture, debug setup, log checks, and saved-state audits. | Step names alone do not declare scenario capabilities or proof depth. |
+| Guidance | `AGENTS.md`; `Agents.md`; `doc/OPENCLAW_HARNESS.md`; `tools/openclaw_harness/CONTROL_LOOKUP.md` | Names the harness, commands, evidence firewall, current controls, and caveats. | No repository skill or single query-to-launch workflow. |
+| Registry/query/migration | no current owner; no `sqlite3` use in `tools/openclaw_harness` | Absent. | Whole requested harness-registry outcome is red. |
+
+Inspected inventory facts are evidence about the source baseline, not permanent numeric limits. A
+later all-scenario migration proves equality against the files present in its own final snapshot;
+it must not hard-code 168 or 19 as acceptance thresholds.
+
+### 8. Authoritative scenario manifests
+
+Mechanism:
+
+- Files and symbols: existing `tools/openclaw_harness/scenarios/<scenario-id>.json`; extend
+  `load_scenario` with validation delegated to a new
+  `tools/openclaw_harness/scenario_registry.py :: validate_manifest`.
+- Required top-level additions: `manifest_version`, `capabilities`, `runtime_contract`, and
+  `proof_route`. Existing `profile`, `world`, `fixture`, `fixture_profile`, `profile_snapshot`,
+  `profile_snapshot_profile`, `required_helpers`, `steps`, `proof_contract`, `evidence_contract`,
+  and blocker fields remain compatible inputs.
+- `capabilities` is a map from stable dotted keys to typed JSON values. Its allowed namespaces are
+  `player.*`, `local_place.*`, `actors.*`, `world.*`, `capabilities.*`, and `runtime.*`. Values may
+  be booleans, strings, numbers, arrays, or bounded objects such as count/range/visibility; schema
+  validation rejects ambiguous shapes instead of flattening them to prose.
+- The schema vocabulary covers every WEC dimension, including player condition/inventory/state;
+  local terrain/camp/light/traversability; friendly, unfriendly, and monster identity/count/range/
+  visibility/load/readiness/availability; world/overmap/time/weather/options/operation identity;
+  movement/dialogue/Pay/Fight/trade/combat/travel/terminal/persistence/replay capabilities; and
+  OS/source/executable/profile/fixture/helper/Peekaboo/input/OCR/cleanup requirements.
+- `runtime_contract` declares permitted input, forbidden input, whether debug is setup-only,
+  disposable-copy policy, required helpers/permissions, and supported platform/profile/fixture
+  footing. It does not grant gameplay proof.
+- `proof_route` names precondition step labels, production-behavior step labels, terminal and
+  persistence step labels, expected artifact/verdict, and disallowed shortcuts. Referenced labels
+  must exist in `steps`.
+- Legacy manifests remain listable and runnable. Migration records missing normalized fields as
+  unknown/review-required. It may map already-structured fields and exact step/report metadata, but
+  may not infer camp, Fight, visibility, injury state, or any capability from name/description prose.
+- A run appends observed evidence; it never edits the declaration block.
+
+Implementation status:
+
+- [x] Existing JSON scenario files, fixture/profile ownership, blocker metadata, step contracts,
+  and proof-classification fields are present and exercised by the production harness CLI.
+- [ ] 🔴 R-101 — Scenario manifests do not yet expose or validate the normalized capability,
+  runtime, and proof-route contract required for hard selection.
+  - Code gap: `startup_harness.py :: load_scenario/list_scenarios` accepts heterogeneous objects and
+    presents descriptions without machine-checkable capability ownership.
+  - Required mechanism: add the compatible manifest validator and normalized blocks above; migrate
+    existing manifests explicitly, retaining unknowns and review requirements instead of prose
+    inference or silent defaults.
+  - Proof: focused tests show typed fields round-trip, every WEC namespace is representable,
+    referenced proof labels are checked, a legacy file stays runnable but cannot hard-match unknown
+    facts, and camp/Fight are not inferred from a filename or description.
+
+### 9. SQLite registry, evidence, and binding ownership
+
+Mechanism:
+
+- New file: `tools/openclaw_harness/scenario_registry.py` owns schema creation, transactions,
+  manifest indexing, evidence resolution, querying, selection tokens, drafts, and migration state.
+- Default state root: `.userdata/openclaw_harness/`; default database:
+  `.userdata/openclaw_harness/scenario_registry.sqlite3`; CLI `--registry` may select another path.
+  No database or draft is tracked source.
+- `registry_meta(schema_version, created_at, updated_at)` owns schema compatibility.
+- `scenario_manifest(scenario_id PRIMARY KEY, path UNIQUE, manifest_sha256, manifest_version,
+  name, description, status, blocked_reason, source_head, indexed_at, review_state)` is the current
+  rebuildable declaration projection.
+- `scenario_capability(scenario_id, capability_key, declared_value_json, declaration_source,
+  PRIMARY KEY(scenario_id, capability_key))` stores only normalized manifest declarations.
+- `scenario_binding(binding_id PRIMARY KEY, scenario_id, manifest_sha256, fixture_binding_sha256,
+  profile_binding_sha256, source_head, runtime_source_sha256, executable_path,
+  executable_sha256, os_name, helpers_json, peekaboo_json, created_at)` binds evidence to all inputs
+  that can invalidate it. Fixture binding hashes every resolved alias manifest and payload file;
+  profile binding hashes every resolved snapshot/config input.
+- `verification_run(run_id PRIMARY KEY, scenario_id, binding_id, mode, started_at, completed_at,
+  report_path, report_sha256, startup_verdict, feature_verdict, feature_proof, proof_depth,
+  disposition, invalidation_reason)` points to the existing full harness report rather than copying
+  its unfilterable body into SQLite.
+- `capability_evidence(evidence_id PRIMARY KEY, scenario_id, capability_key, binding_id, state,
+  observed_value_json, source_kind, source_path, source_sha256, proof_depth, recorded_at,
+  invalidation_reason, superseded_by)` retains declared, inspected, run-verified, contradicted, and
+  stale rows. A later success resolves a contradiction only by explicitly setting `superseded_by`
+  after the same proof route observes the capability under a compatible binding; timestamps alone
+  never launder red evidence.
+- `query_receipt(query_id PRIMARY KEY, query_sha256, request_json, registry_revision, created_at)`
+  and `selection_token(token PRIMARY KEY, query_id, scenario_id, manifest_sha256, binding_id,
+  expires_on_change, created_at, consumed_at)` bind selection to the exact indexed facts. There is no
+  time-based expiry invented by the harness; any manifest, binding, or evidence-revision change
+  invalidates the token.
+- `migration_run(migration_id PRIMARY KEY, started_at, completed_at, source_head, initial_count,
+  final_count, disposition)` and `migration_item(migration_id, scenario_path, scenario_sha256,
+  scenario_id, attempted_at, completed_at, disposition, reason, run_id,
+  PRIMARY KEY(migration_id, scenario_path))` make omissions queryable.
+- Manifest-derived tables rebuild in one transaction. Verification, evidence, query, and migration
+  history survive rebuild. Deleting a manifest marks its projection absent/stale; history remains.
+
+Evidence resolution:
+
+1. Recompute manifest, fixture/profile, source/executable, helper, and permission binding facts.
+2. Mark incompatible prior evidence `stale` with the exact changed component; retain the old row.
+3. An unresolved compatible `contradicted` row rejects a hard requirement.
+4. A compatible `run-verified` row may satisfy a gameplay/transition evidence floor; compatible
+   `inspected` may satisfy a static-footing floor.
+5. `declared` alone is explanation and review input, not proof for a hard match.
+6. Missing/unknown and stale facts reject hard predicates and remain visible in explanations.
+
+Implementation status:
+
+- [ ] 🔴 R-102 — No registry schema, rebuildable manifest index, binding-aware evidence history, or
+  explicit contradiction/staleness owner exists.
+  - Code gap: reports live only under per-profile run directories; `list_scenarios` reparses files
+    without history, typed evidence, or invalidation.
+  - Required mechanism: implement the tables, transactions, binding rules, and evidence precedence
+    above using standard-library SQLite; integrate report ingestion without changing report truth.
+  - Proof: rebuild tests preserve history, binding changes retain but stale old evidence, unresolved
+    contradiction rejects, explicit same-route supersession can restore eligibility, duplicate
+    ingestion is idempotent, and a database can be deleted/rebuilt from manifests plus retained run
+    artifacts without becoming a competing declaration source.
+
+### 10. Hard filtering, preference ranking, explanations, and drafts
+
+Mechanism:
+
+- New CLI commands in `startup_harness.py :: build_parser/main`:
+  `registry-build`, `registry-query`, `registry-launch`, `registry-migrate-all`, and
+  `registry-status`. Each accepts `--registry`; query accepts `--query-file` or `--query-json`.
+- Query shape:
+
+```json
+{
+  "requirements": [
+    {"key":"local_place.camp.real","op":"eq","value":true,"minimum_evidence":"inspected"},
+    {"key":"player.condition.critical_injury","op":"eq","value":false,"minimum_evidence":"inspected"},
+    {"key":"actors.friendly_npc.nearby_not_visible","op":"eq","value":true,"minimum_evidence":"inspected"},
+    {"key":"actors.hostile_npc.shakedown_nearby","op":"eq","value":true,"minimum_evidence":"inspected"},
+    {"key":"runtime.input.ordinary_allowed","op":"eq","value":true,"minimum_evidence":"inspected"},
+    {"key":"capabilities.dialogue.choice.fight.visible","op":"eq","value":true,"minimum_evidence":"run-verified"}
+  ],
+  "preferences": []
+}
+```
+
+- Allowed operators are schema-validated typed equality, containment, presence/absence, and numeric
+  range comparisons. Query text is never interpolated into SQL.
+- Every hard predicate is evaluated before ranking. Unknown, wrong, stale, below-floor, or
+  contradicted facts reject the candidate with capability key, expected/observed value, evidence
+  state, source, binding, freshness, and reason.
+- Preferences use the caller's given order as a lexicographic satisfaction vector over hard-valid
+  survivors; no unstated weight, score cutoff, or fuzzy filename similarity exists. Stable ties use
+  `scenario_id` only after all supplied preferences tie.
+- A valid result includes manifest path/hash, fixture/profile/world, current binding, helpers and
+  Peekaboo prerequisites, each satisfied hard predicate and evidence source, preference result,
+  proof route, and a change-invalidated selection token.
+- If no candidate survives, write
+  `.userdata/openclaw_harness/drafts/<query-sha256>.json` with `review_status: "pending"`,
+  `executable: false`, the exact query, all unmet capabilities, and a candidate manifest block using
+  only known fixture/profile/helper facts. Return its path. Do not call `run_startup`,
+  `run_probe_mode`, `launch_game`, or any Peekaboo input function during query/draft generation.
+
+Implementation status:
+
+- [ ] 🔴 R-103 — The harness cannot hard-filter typed requirements, rank only valid survivors,
+  explain evidence/freshness, or produce a non-executed no-match draft.
+  - Code gap: selection is exact scenario-name lookup; list output is descriptive only.
+  - Required mechanism: implement the query contract, deterministic explanation, token, and draft
+    owner above.
+  - Proof: the WEC vertical-slice query rejects a thirsty forest observer, rejects a camp-named
+    scenario without capability evidence, rejects a current Fight contradiction, and cannot be
+    rescued by preferences; it returns only a fully explained hard-valid scenario or a pending
+    `executable=false` draft, with spies proving no startup/launch/input call occurred.
+
+### 11. One canonical selected launch and run-history ingestion
+
+Mechanism:
+
+- `registry-launch <selection-token>` reloads the receipt, manifest, registry revision, and complete
+  binding. Any change rejects the launch and records why; it does not silently re-query.
+- A valid token resolves the exact existing manifest and constructs the same argument namespace
+  consumed by `run_probe_mode`. The launch path calls `run_probe_mode`/`run_startup`; it does not
+  duplicate fixture install, runtime binding, Peekaboo permission/focus/input, step execution,
+  artifact capture, proof classification, report writing, or cleanup.
+- `finalize_probe_report` remains the report/cleanup boundary. After the full report is durable and
+  cleanup status is known, a registry ingestion hook records one idempotent `verification_run` and
+  capability evidence derived only from structured proof-route mappings and report fields.
+- Startup/load fields may create `proof_depth=startup` evidence only. Interaction, terminal,
+  persistence, and replay evidence require their named green step-ledger/report gates. Debug setup
+  is tagged as setup and cannot strengthen a production-behavior capability.
+- Handoff records `launched`/startup evidence and deferred cleanup, not feature proof. Later
+  observation may ingest a terminal report but cannot backfill gameplay credit from the initial HUD.
+- Failed, blocked, contradicted, stale, and successful runs all remain visible. Manifest declarations
+  are not rewritten.
+
+Implementation status:
+
+- [x] `run_probe_mode` already provides the required canonical startup, Peekaboo, input,
+  observation, report, proof-firewall, and cleanup route for a named scenario.
+- [ ] 🔴 R-104 — Registry selection cannot yet enter that route safely, and runs do not strengthen,
+  contradict, or stale indexed evidence without mutating declarations.
+  - Code gap: no token validation or report-ingestion seam surrounds the existing runner.
+  - Required mechanism: add only the token adapter and post-finalization registry ingestion above;
+    keep the existing runner authoritative.
+  - Proof: one selected Mac run shows preflight -> fixture/profile -> runtime binding -> Peekaboo
+    permissions -> PID focus -> ordinary input -> observation -> separate startup/feature verdicts
+    -> report -> cleanup -> registry history. Controls reject a changed manifest/binary token,
+    preserve startup as non-feature evidence, and record a production contradiction without editing
+    the manifest.
+
+### 12. Complete all-scenario inventory and migration
+
+Mechanism:
+
+- `registry-migrate-all` snapshots every `tools/openclaw_harness/scenarios/*.json` path and hash,
+  creates one `migration_item` row with disposition `attempted` before parsing each file, and then
+  processes every row. Enumeration order is deterministic but has no semantic priority.
+- Invalid JSON/object/schema becomes `failed` with parser/validator reason. A declared blocker or
+  unavailable required helper/permission becomes `blocked` and is not launched. A valid legacy
+  manifest is `imported` with review-required unknown capability rows before any run.
+- Every active executable contract is tried through the canonical probe route in a disposable
+  migration profile derived from migration/scenario identity. It may install the declared
+  fixture/profile snapshot into that disposable profile; it may not mutate a user's ordinary
+  profile or bypass the manifest's input/debug restrictions. A no-fixture scenario that cannot
+  obtain legitimate disposable footing is explicitly `blocked` or `failed`, never skipped.
+- A green named feature route becomes `verified`; an observed incompatible capability becomes
+  `contradicted`; other completed non-green runs become `failed` with report/run identity. Initial
+  `imported` remains only for a non-executable review-only contract that was nevertheless parsed,
+  indexed, and explicitly classified.
+- An interrupted process leaves `attempted`, so `registry-migrate-all --resume <migration-id>` can
+  continue idempotently. Already terminal items with the same path/hash are not silently rerun;
+  changed hashes create a new attempt. This is crash recovery, not a retry limit.
+- Before success, enumerate again and continue processing any newly present path. Deleted paths
+  retain a `failed: source_removed_during_migration` item. Commit `migration_run` success only when
+  the final filesystem path set exactly equals the terminal item set and no item remains
+  `attempted`.
+- The summary reports total filesystem paths, terminal database rows, disposition counts, every
+  non-verified reason, and the equality check. No numeric scenario count is hard-coded.
+
+Implementation status:
+
+- [ ] 🔴 R-105 — There is no working step that tries and defines every existing scenario in the
+  database with an explicit terminal disposition.
+  - Code gap: current listing happens in memory; no attempt ledger or completeness invariant exists.
+  - Required mechanism: implement the transactional inventory/try/resume route above around the
+    canonical runner and disposable profiles.
+  - Proof: on the inspected tree the command accounts for all 168 current files, including all 19
+    current declared blockers and the untracked continuation scenario, while deriving acceptance
+    from final set equality rather than those snapshot counts. Injected invalid JSON, helper block,
+    contradiction, process interruption/resume, and a file appearing during migration each receive
+    explicit rows; omission and duplicate terminal processing fail the command.
+
+### 13. Harness-facing skill and durable guidance
+
+Mechanism:
+
+- New repository skill: `.agents/skills/caol-harness/SKILL.md`. Repository-root `.agents/skills` is
+  Codex's project-scoped discovery location; the skill contains `name` and `description` metadata
+  and may include a small reference with the query vocabulary.
+- The skill asks the coordinator for or constructs a typed query, runs `registry-build`/status when
+  required, invokes `registry-query`, presents hard rejections/evidence/freshness and the selected
+  proof route, and stops on a draft. It invokes `registry-launch` only for an explicit selected-run
+  request and then reports separate startup/feature verdicts and cleanup from the same full report.
+- The skill never contains its own matcher, fixture selector, key choreography, proof classifier,
+  or direct Peekaboo command. All behavior comes from the CLI owners above.
+- Update `doc/OPENCLAW_HARNESS.md`, `tools/openclaw_harness/CONTROL_LOOKUP.md`, and the harness lines
+  in `AGENTS.md`/`Agents.md` to teach the same query -> explain -> explicit launch -> history flow.
+  Preserve the evidence firewall and label the older speculative C++ architecture as history where
+  needed; do not describe missing files as current implementation.
+
+Implementation status:
+
+- [ ] 🔴 R-106 — No repository harness skill teaches or invokes the registry-backed canonical
+  workflow, and current guidance starts from manual exact scenario-name selection.
+  - Code gap: `.agents/skills` has no C-AOL harness skill; docs name `list-scenarios` and direct
+    `probe`/`handoff` commands only.
+  - Required mechanism: add the repo skill and align the named durable docs after the CLI exists.
+  - Proof: a fresh Codex invocation discovers the skill, the vertical-slice prompt produces the same
+    query receipt/explanation as direct CLI use, no-match stops at the same non-executed draft, and
+    an explicit selected launch reaches the identical run/report/cleanup IDs rather than a second
+    workflow.
+
+## Harness competing systems and override direction
+
+| State or action | Readers | Writers / competing owners | Authoritative decision |
+|---|---|---|---|
+| Declared scenario intent/capabilities | Registry importer, query explanation, reviewer, skill | Scenario JSON versus SQLite projection or run observations | Scenario manifest alone writes declaration truth. Registry rebuilds from it; evidence never edits it. |
+| Fixture/profile/world footing | Existing install/resolve/startup functions, query explanation | Scenario fields, fixture/profile alias manifests, CLI overrides | Manifest declares intended footing; existing resolvers own actual install. A selection token binds both. Unsafe or incompatible overrides reject. |
+| Registry manifest projection | Query/migration/status | Rebuild/import transaction | `scenario_registry.py` transaction is sole writer; exact path/hash identity makes duplicate import idempotent. |
+| Verification/evidence history | Query, status, migration resume, reviewer | Final report ingestion, explicit stale resolver | Durable report remains source artifact; registry appends normalized pointers/states. Duplicate report hash/run ID is a no-op. |
+| Contradiction resolution | Hard matcher, reviewer | Later compatible run could compete by timestamp | Unresolved contradiction wins. Only explicit same-route supersession under compatible binding yields. |
+| Evidence freshness | Hard matcher and explanations | Manifest/fixture/profile/source/executable/helper/permission changes | Recomputed complete binding owns invalidation. Changed component retains old row as stale and invalidates tokens. |
+| Query eligibility | CLI, skill, coordinator | Hard predicates versus preference scorer | Hard matcher runs first and is absolute. Preferences see survivors only and cannot restore a rejected row. |
+| Selection | Registry launch adapter | Exact-name direct launch remains available for developers | Registry workflow requires bound token. Direct `probe` remains compatible but is not represented as query-selected unless its report is ingested with a matching manifest binding. |
+| Draft | Reviewer | No-match generator versus launcher | Draft generator writes `executable=false`; launch parser rejects draft path/token. Only human review and promotion into a real manifest can transfer ownership. |
+| Startup/fixture/Peekaboo/input/steps | Query layer versus `run_probe_mode`/`run_startup` | Risk of a second launcher | Existing startup/probe functions alone act. Registry passes identity and ingests results; it never sends input itself. |
+| Startup versus feature verdict | Registry, skill, migration | HUD/artifact success could compete with step proof | Existing `probe_proof_classification` and step ledgers remain authoritative; startup never upgrades feature depth. |
+| Game process cleanup | Report finalizer, handoff reviewer, migration | Probe cleanup versus deferred handoff | Existing `finalize_probe_report`/`cleanup_game_process` owns probe cleanup. Migration never uses deferred handoff; handoff remains explicitly deferred. |
+| Migration completeness | Status/reviewer | Filesystem enumeration versus successful-only inserts | Preinserted migration items plus final set equality own completeness; failures/blocks/contradictions are retained terminal outcomes. |
+| Skill behavior | Codex/coordinator | Skill prose could duplicate matcher or key paths | Skill invokes the CLI only. CLI/database/report identities are the shared truth. |
+
+## Harness acceptance and production proof
+
+| Red ID | Outcome test | Required evidence | False-green controls |
+|---|---|---|---|
+| `R-101` | Current and legacy manifests validate into typed declarations/unknowns without changing run compatibility. | Schema tests plus all-current-manifest validation report bound to path/hash. | Filename/description inference, camp-implies-Fight, and unknown-as-false/true fail. |
+| `R-102` | Rebuildable SQLite index retains binding-aware run history and exact evidence state. | Schema/rebuild/idempotency/staleness/contradiction tests and inspected DB rows. | Dropped red history, timestamp-only green override, opaque copied report prose, and manifest rewriting fail. |
+| `R-103` | WEC query returns only a hard-valid explained scenario or an inert draft. | Query receipt, candidate/rejection explanations, selection token or draft artifact. | Preference rescue, stale/contradicted match, prose similarity, and any launch/input call during query fail. |
+| `R-104` | Explicit token launch uses one canonical Mac production harness route and records its result. | Bound selection receipt; existing plan/runtime binding; Peekaboo permission/focus; step ledger; full report; cleanup; matching DB run/evidence rows. | Changed token inputs, HUD-only proof, debug-created behavior credit, second launcher, or missing cleanup fail. |
+| `R-105` | One migration run tries and defines every scenario present at final enumeration. | Migration summary and SQL equality query showing every path has one terminal disposition, plus run/report IDs for attempts. | Successful-only inventory, skipped blocked/invalid files, fixed count assumption, normal-profile mutation, or lingering `attempted` rows fail. |
+| `R-106` | Repo skill produces the same query/launch/history behavior as direct CLI. | Fresh skill discovery/invocation transcript plus identical query, selection, run, report, and cleanup IDs. | Embedded matcher, direct Peekaboo choreography, auto-launched draft, or guidance for nonexistent owners fail. |
+
+The smallest integrated production proof is:
+
+```text
+complete manifest inventory
+  -> current binding-aware registry
+  -> camp/not-critical/nearby-hidden-friendly/nearby-shakedown/input/Fight query
+  -> reject forest observer, name-only camp, and unresolved Fight contradiction
+  -> explained hard-valid selection OR inert draft without launch
+  -> explicit selected launch through existing Mac startup/probe route
+  -> separate startup and terminal/persistence feature evidence
+  -> cleanup
+  -> registry history visible without manifest mutation
+```
+
+## Combined freeze record
+
+- Status: Frozen
+- Frozen source baseline: `dev@e466d06870a3bd8bceeaee32e202b7d94e930d46`, tree
+  `21b8338fdfa196d35029206a107063cd86155b52`, inspected 2026-08-15 on
+  `Josefs-Mac-mini.local` as `josefhorvath`.
+- Relevant preserved dirty frontier: `src/bandit_live_world.cpp`,
+  `src/bandit_live_world.h`, `src/do_turn.cpp`, `tests/bandit_live_world_test.cpp`,
+  `tools/openclaw_harness/proof_classification_unit_test.py`,
+  `tools/openclaw_harness/startup_harness.py`, and
+  `tools/openclaw_harness/test_fixture_contract.py`; their combined binary diff SHA-256 is
+  `bef986e09880b2ff49d2c126d165b7c867d0db7859075bd6a2d1cc2288ea6852`.
+- Relevant untracked scenario:
+  `tools/openclaw_harness/scenarios/bandit.extortion_reopened_fight_continuation_mcw.json`,
+  SHA-256 `a5d0098e27fe8e96d39d168d6cc5c6110649d4a56c0c1f1c14b6da4f3a77806b`.
+- Other preserved unrelated dirty state at freeze: `.de67/work-ledger.md` and
+  `.de67/mutation-suggestions.md`. This Phase 2 did not read, rewrite, stage, or checkpoint them.
+- User-owned choices: preserve the previous hostile-ecology WEC/DFS contract; preserve the R-002
+  proof rescope and all `R-001`/`R-003`-`R-010` behavior; add the harness registry/rework as a
+  separate `R-1xx` family in this combined successor; manifests remain declarations; SQLite is a
+  rebuildable index/history store; hard mismatches cannot rank; drafts do not run; all scenarios
+  receive explicit migration dispositions; existing startup/probe is the only launcher.
+- Inspected current harness inventory: 168 scenario JSON objects, 149 currently active and 19
+  explicitly blocked, 107 save-fixture manifests, two startup-profile configs, and 37 current step
+  kinds. These are source facts, not future acceptance limits.
 - Evidence-implied refinements: none.
