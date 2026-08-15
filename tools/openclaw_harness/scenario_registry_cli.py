@@ -14,6 +14,7 @@ from typing import Any, Dict, Mapping, Sequence
 
 from scenario_registry_store import (
     BindingAdapters,
+    RegistryLaunchToken,
     ScenarioRegistryStoreError,
     execute_registry_query,
     ingest_report_reference,
@@ -22,8 +23,11 @@ from scenario_registry_store import (
     repository_root,
     resolve_registry_path,
     reconcile_report_bindings,
+    record_selection_token_rejection,
+    reload_selection_token_for_launch,
     parse_registry_query_request,
 )
+import startup_harness
 from startup_harness import (
     resolve_fixture_payload,
     resolve_profile_snapshot_payload,
@@ -196,6 +200,18 @@ def _load_query_request(args: argparse.Namespace) -> Mapping[str, Any]:
     return value
 
 
+def _registry_launch_probe_namespace(selection: RegistryLaunchToken) -> argparse.Namespace:
+    """Adapt one validated registry selection into the ordinary probe parser."""
+    source_path = Path(selection.source_path).resolve()
+    canonical_path = startup_harness.scenario_path(selection.scenario).resolve()
+    if canonical_path != source_path:
+        raise ScenarioRegistryStoreError(
+            "Selected scenario source is not the canonical probe manifest: "
+            f"{source_path}"
+        )
+    return startup_harness.build_parser().parse_args(["probe", selection.scenario])
+
+
 def build_parser() -> argparse.ArgumentParser:
     parser = _ArgumentParser(description=__doc__)
     parser.add_argument("--registry", help="SQLite registry path; defaults to the shared harness registry")
@@ -220,12 +236,18 @@ def build_parser() -> argparse.ArgumentParser:
         default=[],
         help="include inspect-only lifecycle state; repeated values are accepted",
     )
+    launch = commands.add_parser(
+        "registry-launch",
+        help="reload one selection token and run its canonical probe route",
+    )
+    launch.add_argument("selection_token", help="selection token returned by registry-query")
     return parser
 
 
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
     registry_path = resolve_registry_path(args.registry)
+    probe_namespace: argparse.Namespace | None = None
     try:
         connection = open_registry(str(registry_path))
         try:
@@ -247,6 +269,27 @@ def main(argv: Sequence[str] | None = None) -> int:
                     include_lifecycle_states=tuple(args.include_state),
                     drafts_root=registry_path.parent / "drafts",
                 ))
+            elif args.command == "registry-launch":
+                selection = reload_selection_token_for_launch(connection, args.selection_token)
+                if not selection.accepted:
+                    result = asdict(selection)
+                else:
+                    try:
+                        probe_namespace = _registry_launch_probe_namespace(selection)
+                    except ScenarioRegistryStoreError as exc:
+                        record_selection_token_rejection(
+                            connection,
+                            selection.token_id,
+                            reason="canonical_probe_source_mismatch",
+                            details={"error": str(exc)},
+                        )
+                        result = asdict(RegistryLaunchToken(
+                            token_id=selection.token_id,
+                            accepted=False,
+                            reason="canonical_probe_source_mismatch",
+                        ))
+                    else:
+                        result = asdict(selection)
             else:
                 raise ScenarioRegistryStoreError(f"Unsupported registry command: {args.command}")
         finally:
@@ -254,6 +297,16 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, sqlite3.Error, ScenarioRegistryStoreError, SystemExit, ValueError) as exc:
         _write_result({"ok": False, "command": args.command, "error": str(exc)}, stream=sys.stderr)
         return 1
+    if args.command == "registry-launch":
+        if probe_namespace is None:
+            _write_result({
+                "ok": False,
+                "command": args.command,
+                "registry": str(registry_path),
+                "result": result,
+            }, stream=sys.stderr)
+            return 1
+        return startup_harness.run_probe_mode(probe_namespace)
     _write_result({
         "ok": True,
         "command": args.command,

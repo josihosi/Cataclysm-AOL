@@ -119,6 +119,17 @@ class RegistryQueryExecution:
     draft_path: Optional[str]
 
 
+@dataclass(frozen=True)
+class RegistryLaunchToken:
+    """A token reloaded from current registry owners for one canonical launch."""
+
+    token_id: str
+    accepted: bool
+    reason: str
+    scenario: str = ""
+    source_path: str = ""
+
+
 _QUERY_OPERATORS = frozenset({"eq", "contains", "present", "absent", "range"})
 # Query floors use the WEC's public authority labels.  They deliberately do
 # not reuse registry resolution labels such as the internal hard_proven state.
@@ -991,6 +1002,175 @@ def _invalidate_manifest_tokens(
         )
         for row in routes
     )
+
+
+def _record_selection_token_rejection(
+    connection: sqlite3.Connection,
+    *,
+    issued: sqlite3.Row,
+    reason: str,
+    details: Mapping[str, Any],
+) -> None:
+    """Retain one idempotent launch rejection beside the original token receipt."""
+    connection.execute(
+        "INSERT OR IGNORE INTO token_history( "
+        "token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json "
+        ") VALUES( ?, ?, ?, ?, 'invalidated', ?, ? )",
+        (
+            str(issued["token_id"]),
+            str(issued["manifest_id"]),
+            issued["verification_id"],
+            str(issued["route_key"]),
+            f"registry_launch_{reason}",
+            _json_text(dict(details)),
+        ),
+    )
+
+
+def record_selection_token_rejection(
+    connection: sqlite3.Connection,
+    token_id: str,
+    *,
+    reason: str,
+    details: Mapping[str, Any],
+) -> bool:
+    """Record a post-reload adapter rejection without querying or minting a token."""
+    with immediate_transaction(connection):
+        issued = connection.execute(
+            "SELECT token_id, manifest_id, verification_id, route_key FROM token_history "
+            "WHERE token_id = ? AND event_kind = 'issued' ORDER BY token_event_id LIMIT 1",
+            (token_id,),
+        ).fetchone()
+        if issued is None:
+            return False
+        _record_selection_token_rejection(
+            connection,
+            issued=issued,
+            reason=reason,
+            details=details,
+        )
+        return True
+
+
+def reload_selection_token_for_launch(
+    connection: sqlite3.Connection,
+    token_id: str,
+) -> RegistryLaunchToken:
+    """Atomically reload a selection receipt and reject any changed launch owner."""
+    token_id = str(token_id).strip()
+    if not token_id:
+        return RegistryLaunchToken(token_id="", accepted=False, reason="token_missing")
+
+    with immediate_transaction(connection):
+        issued = connection.execute(
+            "SELECT token_id, manifest_id, verification_id, route_key, details_json FROM token_history "
+            "WHERE token_id = ? AND event_kind = 'issued' ORDER BY token_event_id LIMIT 1",
+            (token_id,),
+        ).fetchone()
+        if issued is None:
+            return RegistryLaunchToken(token_id=token_id, accepted=False, reason="token_unknown")
+
+        def reject(reason: str, **details: Any) -> RegistryLaunchToken:
+            _record_selection_token_rejection(
+                connection,
+                issued=issued,
+                reason=reason,
+                details=details,
+            )
+            return RegistryLaunchToken(token_id=token_id, accepted=False, reason=reason)
+
+        invalidation = connection.execute(
+            "SELECT reason FROM token_history WHERE token_id = ? AND event_kind = 'invalidated' "
+            "ORDER BY token_event_id LIMIT 1",
+            (token_id,),
+        ).fetchone()
+        if invalidation is not None:
+            return reject("token_invalidated", prior_reason=str(invalidation["reason"]))
+
+        try:
+            receipt = _json_object(str(issued["details_json"]), "selection token details")
+            expected_manifest_id = _string(receipt.get("manifest_id"), "selection token manifest_id")
+            expected_revision = receipt.get("manifest_revision")
+            expected_sha256 = _string(receipt.get("manifest_sha256"), "selection token manifest_sha256").lower()
+            expected_route = _object(receipt.get("route_evidence"), "selection token route_evidence")
+        except ScenarioRegistryStoreError as exc:
+            return reject("receipt_malformed", error=str(exc))
+        if type(expected_revision) is not int:
+            return reject("receipt_malformed", error="selection token manifest_revision must be an integer")
+        if expected_manifest_id != str(issued["manifest_id"]):
+            return reject("receipt_manifest_mismatch")
+        if str(expected_route.get("route_key", "")) != str(issued["route_key"]):
+            return reject("receipt_route_mismatch")
+
+        manifest = connection.execute(
+            "SELECT source_path, present, revision, current_sha256, declaration_json FROM manifest_current "
+            "WHERE manifest_id = ?",
+            (expected_manifest_id,),
+        ).fetchone()
+        if manifest is None:
+            return reject("manifest_missing")
+        if not bool(manifest["present"]):
+            return reject("manifest_absent")
+        if int(manifest["revision"]) != expected_revision:
+            return reject("manifest_revision_changed", current_revision=int(manifest["revision"]))
+        if str(manifest["current_sha256"] or "").lower() != expected_sha256:
+            return reject("manifest_sha256_changed")
+
+        source_path = Path(str(manifest["source_path"]))
+        try:
+            source_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
+        except OSError as exc:
+            return reject("manifest_source_unreadable", error=str(exc))
+        if source_sha256 != expected_sha256:
+            return reject("manifest_source_changed", source_sha256=source_sha256)
+
+        try:
+            declaration = _json_object(str(manifest["declaration_json"]), "current manifest declaration")
+        except ScenarioRegistryStoreError as exc:
+            return reject("manifest_declaration_malformed", error=str(exc))
+        scenario = source_path.stem
+        if not scenario or not isinstance(declaration.get("name", ""), str):
+            return reject("manifest_scenario_unavailable")
+
+        current_routes = _current_route_evidence(connection, expected_manifest_id)
+        current_route = next(
+            (route for route in current_routes if str(route.get("route_key", "")) == str(issued["route_key"])),
+            None,
+        )
+        if current_route is None:
+            return reject("route_missing")
+        if _json_text(current_route) != _json_text(expected_route):
+            return reject("route_binding_changed")
+        bindings = current_route.get("bindings", ())
+        if (
+            current_route.get("evidence_state") != "run-verified"
+            or not isinstance(bindings, Sequence)
+            or not bindings
+            or not all(
+                isinstance(binding, Mapping) and binding.get("resolution") == "compatible"
+                for binding in bindings
+            )
+            or not any(
+                str(binding.get("verification_id", "")) == str(issued["verification_id"])
+                for binding in bindings
+            )
+        ):
+            return reject("route_binding_ineligible")
+
+        verification = connection.execute(
+            "SELECT verification_id FROM verification_history WHERE verification_id = ? "
+            "AND manifest_id = ? AND route_key = ?",
+            (issued["verification_id"], expected_manifest_id, issued["route_key"]),
+        ).fetchone()
+        if verification is None:
+            return reject("verification_missing")
+        return RegistryLaunchToken(
+            token_id=token_id,
+            accepted=True,
+            reason="current",
+            scenario=scenario,
+            source_path=str(source_path.resolve()),
+        )
 
 
 @dataclass(frozen=True)

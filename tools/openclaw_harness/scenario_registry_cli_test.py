@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import hashlib
+import io
 import json
 from pathlib import Path
 import sqlite3
@@ -11,12 +12,25 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from contextlib import redirect_stderr, redirect_stdout
+from unittest import mock
 
 
 HARNESS_DIR = Path(__file__).resolve().parent
 CLI_PATH = HARNESS_DIR / "scenario_registry_cli.py"
 sys.path.insert(0, str(HARNESS_DIR))
 
+import scenario_registry_cli  # noqa: E402
+import startup_harness  # noqa: E402
+from scenario_registry_store import (  # noqa: E402
+    BindingAdapters,
+    execute_registry_query,
+    ingest_report_reference,
+    open_registry,
+    parse_registry_query_request,
+    rebuild_manifest_projection,
+    reconcile_report_bindings,
+)
 from startup_harness import runtime_source_binding  # noqa: E402
 
 
@@ -119,6 +133,226 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             "evidence_class": "feature-path",
             "feature_proof": True,
         }
+
+    def issue_selection_token(self, root: Path) -> tuple[Path, Path, str]:
+        scenarios = root / "scenarios"
+        scenarios.mkdir()
+        manifest_path = scenarios / "cli.json"
+        self.write_json(manifest_path, self.strict_manifest())
+        executable_path = root / "cataclysm-tiles"
+        executable_path.write_bytes(b"registry launch runtime fixture")
+        report_path = root / "probe.report.json"
+        self.write_json(report_path, self.report(manifest_path, executable_path))
+        registry_path = root / "registry.sqlite3"
+        connection = open_registry(str(registry_path))
+        try:
+            rebuild_manifest_projection(connection, scenarios)
+            adapters = BindingAdapters(
+                runtime=lambda _expected: {"status": "compatible", "facts": {}},
+                fixture=lambda _expected: {"status": "compatible", "facts": {
+                    "source_sha256": hashlib.sha256(b"fixture").hexdigest(),
+                }},
+                profile=lambda _expected: {"status": "compatible", "facts": {
+                    "source_sha256": hashlib.sha256(b"profile").hexdigest(),
+                }},
+            )
+            ingested = ingest_report_reference(connection, report_path, adapters=adapters)
+            self.assertEqual(ingested["eligibility"], "hard_proven")
+            issued = execute_registry_query(
+                connection,
+                parse_registry_query_request({
+                    "requirements": [{
+                        "key": "player.injured",
+                        "op": "eq",
+                        "value": False,
+                        "minimum_evidence": "declared",
+                    }],
+                    "preferences": [],
+                }),
+            )
+            self.assertIsNotNone(issued.token_id)
+            return registry_path, scenarios, str(issued.token_id)
+        finally:
+            connection.close()
+
+    def token_events(self, registry_path: Path, token_id: str) -> list[tuple[str, str]]:
+        connection = sqlite3.connect(registry_path)
+        try:
+            return [
+                tuple(row)
+                for row in connection.execute(
+                    "SELECT event_kind, reason FROM token_history WHERE token_id = ? ORDER BY token_event_id",
+                    (token_id,),
+                ).fetchall()
+            ]
+        finally:
+            connection.close()
+
+    def run_registry_launch(
+        self,
+        registry_path: Path,
+        scenarios: Path,
+        token_id: str,
+    ) -> tuple[int, mock.Mock]:
+        with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                mock.patch.object(startup_harness, "run_probe_mode", return_value=23) as run_probe, \
+                redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+            result = scenario_registry_cli.main([
+                "--registry", str(registry_path), "registry-launch", token_id,
+            ])
+        return result, run_probe
+
+    def test_registry_launch_adapts_exact_probe_namespace_and_honors_registry_override(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            other_registry = root / "other.sqlite3"
+            other_connection = open_registry(str(other_registry))
+            try:
+                rebuild_manifest_projection(other_connection, scenarios)
+            finally:
+                other_connection.close()
+
+            result, run_probe = self.run_registry_launch(registry_path, scenarios, token_id)
+
+            self.assertEqual(result, 23)
+            run_probe.assert_called_once()
+            expected = startup_harness.build_parser().parse_args(["probe", "cli"])
+            self.assertEqual(vars(run_probe.call_args.args[0]), vars(expected))
+            self.assertEqual(self.token_events(registry_path, token_id), [("issued", "query_selection")])
+            other_connection = sqlite3.connect(other_registry)
+            try:
+                self.assertEqual(other_connection.execute("SELECT COUNT(*) FROM token_history").fetchone()[0], 0)
+                self.assertEqual(other_connection.execute("SELECT COUNT(*) FROM query_history").fetchone()[0], 0)
+            finally:
+                other_connection.close()
+
+    def test_registry_launch_rejects_changed_source_without_requery_or_probe_call(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            manifest_path = scenarios / "cli.json"
+            changed = self.strict_manifest()
+            changed["description"] = "changed after selection"
+            self.write_json(manifest_path, changed)
+
+            result, run_probe = self.run_registry_launch(registry_path, scenarios, token_id)
+
+            self.assertEqual(result, 1)
+            run_probe.assert_not_called()
+            self.assertEqual(self.token_events(registry_path, token_id), [
+                ("issued", "query_selection"),
+                ("invalidated", "registry_launch_manifest_source_changed"),
+            ])
+            connection = sqlite3.connect(registry_path)
+            try:
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM query_history").fetchone()[0], 1)
+            finally:
+                connection.close()
+
+    def test_registry_launch_rejects_stale_token_without_requery_or_probe_call(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            connection = open_registry(str(registry_path))
+            try:
+                stale_adapters = BindingAdapters(
+                    runtime=lambda _expected: {"status": "stale", "facts": {}},
+                    fixture=lambda _expected: {"status": "compatible", "facts": {
+                        "source_sha256": hashlib.sha256(b"fixture").hexdigest(),
+                    }},
+                    profile=lambda _expected: {"status": "compatible", "facts": {
+                        "source_sha256": hashlib.sha256(b"profile").hexdigest(),
+                    }},
+                )
+                self.assertEqual(
+                    reconcile_report_bindings(connection, adapters=stale_adapters),
+                    {"reconciled": 1, "stale": 1},
+                )
+            finally:
+                connection.close()
+
+            result, run_probe = self.run_registry_launch(registry_path, scenarios, token_id)
+
+            self.assertEqual(result, 1)
+            run_probe.assert_not_called()
+            self.assertEqual(self.token_events(registry_path, token_id), [
+                ("issued", "query_selection"),
+                ("invalidated", "proof_route_stale"),
+                ("invalidated", "registry_launch_token_invalidated"),
+            ])
+            connection = sqlite3.connect(registry_path)
+            try:
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM query_history").fetchone()[0], 1)
+            finally:
+                connection.close()
+
+    def test_registry_launch_rejects_changed_route_binding_without_probe_call(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            connection = open_registry(str(registry_path))
+            try:
+                changed_binding_adapters = BindingAdapters(
+                    runtime=lambda _expected: {"status": "compatible", "facts": {}},
+                    fixture=lambda _expected: {"status": "compatible", "facts": {
+                        "source_sha256": hashlib.sha256(b"changed fixture").hexdigest(),
+                    }},
+                    profile=lambda _expected: {"status": "compatible", "facts": {
+                        "source_sha256": hashlib.sha256(b"profile").hexdigest(),
+                    }},
+                )
+                self.assertEqual(
+                    reconcile_report_bindings(connection, adapters=changed_binding_adapters),
+                    {"reconciled": 1, "stale": 0},
+                )
+            finally:
+                connection.close()
+
+            result, run_probe = self.run_registry_launch(registry_path, scenarios, token_id)
+
+            self.assertEqual(result, 1)
+            run_probe.assert_not_called()
+            self.assertEqual(self.token_events(registry_path, token_id), [
+                ("issued", "query_selection"),
+                ("invalidated", "registry_launch_route_binding_changed"),
+            ])
+
+    def test_registry_launch_records_malformed_token_rejection_without_probe_call(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            malformed_token = "malformed-selection-token"
+            connection = sqlite3.connect(registry_path)
+            try:
+                issued = connection.execute(
+                    "SELECT manifest_id, verification_id, route_key FROM token_history "
+                    "WHERE token_id = ? AND event_kind = 'issued'",
+                    (token_id,),
+                ).fetchone()
+                connection.execute(
+                    "INSERT INTO token_history( "
+                    "token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json "
+                    ") VALUES( ?, ?, ?, ?, 'issued', 'test_invalid_receipt', '{}' )",
+                    (malformed_token, issued[0], issued[1], issued[2]),
+                )
+                connection.commit()
+            finally:
+                connection.close()
+
+            result, run_probe = self.run_registry_launch(registry_path, scenarios, malformed_token)
+
+            self.assertEqual(result, 1)
+            run_probe.assert_not_called()
+            self.assertEqual(self.token_events(registry_path, malformed_token), [
+                ("issued", "test_invalid_receipt"),
+                ("invalidated", "registry_launch_receipt_malformed"),
+            ])
+            connection = sqlite3.connect(registry_path)
+            try:
+                self.assertEqual(connection.execute("SELECT COUNT(*) FROM query_history").fetchone()[0], 1)
+            finally:
+                connection.close()
 
     def test_rebuild_ingest_reconcile_use_the_requested_registry_only(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
