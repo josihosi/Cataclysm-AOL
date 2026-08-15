@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import argparse
 import hashlib
 import io
 import json
@@ -26,6 +27,7 @@ from scenario_registry_store import (  # noqa: E402
     BindingAdapters,
     execute_registry_query,
     ingest_report_reference,
+    immediate_transaction,
     open_registry,
     parse_registry_query_request,
     rebuild_manifest_projection,
@@ -655,6 +657,348 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             )
             self.assertEqual(isolated_query.returncode, 0, isolated_query.stderr)
             self.assertIsNone(json.loads(isolated_query.stdout)["result"]["token_id"])
+
+    def migration_report(self, manifest_path: Path, profile: str, *, status: str = "green") -> dict:
+        feature_proof = status == "green"
+        return {
+            "mode": "probe",
+            "scenario": manifest_path.stem,
+            "contract": {"profile": profile},
+            "scenario_manifest": {
+                "source": {
+                    "path": str(manifest_path.resolve()),
+                    "sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+                }
+            },
+            "proof_classification": {
+                "status": status,
+                "verdict": "feature_route_green" if feature_proof else "feature_route_red",
+                "evidence_class": "feature-path" if feature_proof else "startup/load",
+                "feature_proof": feature_proof,
+            },
+            "cleanup": {"status": "already_exited"},
+        }
+
+    def test_registry_migrate_all_classifies_invalid_blocked_and_review_only_without_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            (scenarios / "invalid.json").write_text("{ invalid", encoding="utf-8")
+            blocked = self.strict_manifest()
+            blocked["status"] = "blocked"
+            blocked["blocked_reason"] = "missing_fixture"
+            self.write_json(scenarios / "blocked.json", blocked)
+            self.write_json(scenarios / "review.json", {"name": "review", "steps": []})
+            registry_path = root / "registry.sqlite3"
+
+            with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                    mock.patch.object(startup_harness, "run_probe_mode") as run_probe, \
+                    redirect_stdout(io.StringIO()):
+                result = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-migrate-all",
+                    "--scenarios-root", str(scenarios),
+                ])
+
+            self.assertEqual(result, 0)
+            run_probe.assert_not_called()
+            connection = sqlite3.connect(registry_path)
+            try:
+                rows = connection.execute(
+                    "SELECT source_path, disposition FROM migration_item WHERE event_kind = 'terminal' "
+                    "ORDER BY source_path"
+                ).fetchall()
+                self.assertEqual(
+                    [(Path(row[0]).stem, row[1]) for row in rows],
+                    [("blocked", "blocked"), ("invalid", "invalid"), ("review", "imported")],
+                )
+                history = connection.execute(
+                    "SELECT event_kind FROM migration_item WHERE source_path = ? ORDER BY migration_item_event_id",
+                    (str((scenarios / "invalid.json").resolve()),),
+                ).fetchall()
+                self.assertEqual([row[0] for row in history], ["snapshot", "attempted", "terminal"])
+            finally:
+                connection.close()
+
+    def test_retirement_cli_inspects_candidates_and_prepares_without_removal(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            subject_path = root / "subject.json"
+            successor_path = root / "successor.json"
+            source_bytes = b'{"retirement":"cli"}\n'
+            subject_path.write_bytes(source_bytes)
+            successor_path.write_bytes(source_bytes)
+            source_sha256 = hashlib.sha256(source_bytes).hexdigest()
+            registry_path = root / "registry.sqlite3"
+            connection = open_registry(str(registry_path))
+            try:
+                with immediate_transaction(connection):
+                    for manifest_id, source_path in (("subject", subject_path), ("successor", successor_path)):
+                        connection.execute(
+                            "INSERT INTO manifest_current( manifest_id, source_path, present, revision, current_sha256, "
+                            "last_content_sha256, declaration_json, normalized_json, validation_json, last_seen_at ) "
+                            "VALUES( ?, ?, 1, 1, ?, ?, '{}', '{}', '{}', CURRENT_TIMESTAMP )",
+                            (manifest_id, str(source_path.resolve()), source_sha256, source_sha256),
+                        )
+                    connection.execute(
+                        "INSERT INTO manifest_relation_current( manifest_id, relation_kind, target_kind, target_key, route_role ) "
+                        "VALUES( 'subject', 'exact_duplicate_candidate', 'manifest', 'successor', '' )"
+                    )
+            finally:
+                connection.close()
+
+            candidates_result = self.run_cli(
+                "--registry", str(registry_path), "retirement-candidates",
+            )
+            self.assertEqual(candidates_result.returncode, 0, candidates_result.stderr)
+            candidates = json.loads(candidates_result.stdout)["result"]["candidates"]
+            self.assertEqual(candidates[0]["manifest_id"], "subject")
+            self.assertIn("exact_duplicate", candidates[0]["reasons"])
+            prepared_result = self.run_cli(
+                "--registry", str(registry_path), "approve-retirement",
+                "--manifest-id", "subject", "--successor-manifest-id", "successor",
+                "--source-sha256", source_sha256, "--reason", "exact_duplicate",
+                "--reviewer", "cli-reviewer", "--approval", "approved",
+            )
+            self.assertEqual(prepared_result.returncode, 0, prepared_result.stderr)
+            prepared = json.loads(prepared_result.stdout)["result"]
+            self.assertTrue(prepared["approved"])
+            self.assertTrue(subject_path.exists())
+            status_result = self.run_cli(
+                "--registry", str(registry_path), "registry-status", "--include-state", "quarantined",
+            )
+            self.assertEqual(status_result.returncode, 0, status_result.stderr)
+            entries = json.loads(status_result.stdout)["result"]["entries"]
+            subject = next(entry for entry in entries if entry["manifest"]["manifest_id"] == "subject")
+            self.assertEqual(subject["lifecycle"]["state"], "quarantined")
+            self.assertEqual(subject["history"]["actions"][0]["action_id"], prepared["action_id"])
+
+    def test_registry_migrate_all_uses_canonical_probe_and_reconciles_finalized_report(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            manifest_path = scenarios / "valid.json"
+            self.write_json(manifest_path, self.strict_manifest())
+            registry_path = root / "registry.sqlite3"
+            seen_namespaces = []
+
+            def run_probe(namespace: argparse.Namespace) -> int:
+                seen_namespaces.append(namespace)
+                run_dir = root / "finalized"
+                report = self.migration_report(manifest_path, namespace.profile)
+                with redirect_stdout(io.StringIO()):
+                    finalize_probe_report(
+                        run_dir,
+                        report,
+                        post_finalize_hook=namespace.registry_post_finalize_hook,
+                    )
+                return 17
+
+            with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                    mock.patch.object(startup_harness, "run_probe_mode", side_effect=run_probe), \
+                    redirect_stdout(io.StringIO()):
+                result = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-migrate-all",
+                    "--scenarios-root", str(scenarios),
+                ])
+
+            self.assertEqual(result, 0)
+            self.assertEqual(len(seen_namespaces), 1)
+            namespace = seen_namespaces[0]
+            expected = startup_harness.build_parser().parse_args([
+                "probe", "valid", "--profile", namespace.profile,
+            ])
+            received = vars(namespace).copy()
+            receipt = json.loads(received.pop("registry_migration_receipt"))
+            received.pop("registry_post_finalize_hook")
+            self.assertEqual(received, vars(expected))
+            self.assertTrue(namespace.profile.startswith("registry-migration-"))
+            self.assertEqual(receipt["source_path"], str(manifest_path.resolve()))
+            self.assertEqual(receipt["profile"], namespace.profile)
+            connection = sqlite3.connect(registry_path)
+            try:
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT event_kind, disposition FROM migration_item ORDER BY migration_item_event_id"
+                    ).fetchall(),
+                    [("snapshot", "snapshotted"), ("attempted", "attempted"),
+                     ("launch_claimed", "launch_claimed"), ("terminal", "verified")],
+                )
+            finally:
+                connection.close()
+
+    def test_registry_migrate_resume_reconciles_report_and_never_relaunches_claim(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            manifest_path = scenarios / "valid.json"
+            self.write_json(manifest_path, self.strict_manifest())
+            registry_path = root / "registry.sqlite3"
+            userdir_root = root / "profiles"
+            received = []
+
+            def run_probe(namespace: argparse.Namespace) -> int:
+                received.append(namespace)
+                return 9
+
+            def userdir_for_profile(profile: str) -> Path:
+                return userdir_root / profile
+
+            with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                    mock.patch.object(startup_harness, "userdir_for_profile", side_effect=userdir_for_profile), \
+                    mock.patch.object(startup_harness, "run_probe_mode", side_effect=run_probe), \
+                    redirect_stdout(io.StringIO()):
+                initial = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-migrate-all",
+                    "--scenarios-root", str(scenarios),
+                ])
+                self.assertEqual(initial, 0)
+                self.assertEqual(len(received), 1)
+                receipt = json.loads(received[0].registry_migration_receipt)
+                interrupted_resume = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-migrate-all",
+                    "--resume", receipt["migration_run_id"],
+                ])
+                self.assertEqual(interrupted_resume, 0)
+                self.assertEqual(len(received), 1)
+                interrupted_connection = sqlite3.connect(registry_path)
+                try:
+                    self.assertEqual(
+                        interrupted_connection.execute(
+                            "SELECT COUNT(*) FROM migration_item WHERE event_kind = 'terminal'"
+                        ).fetchone()[0],
+                        0,
+                    )
+                finally:
+                    interrupted_connection.close()
+                run_dir = userdir_for_profile(receipt["profile"]) / "harness_runs" / "durable"
+                run_dir.mkdir(parents=True)
+                self.write_json(run_dir / "probe.report.json", self.migration_report(manifest_path, receipt["profile"]))
+                resumed = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-migrate-all",
+                    "--resume", receipt["migration_run_id"],
+                ])
+
+            self.assertEqual(resumed, 0)
+            self.assertEqual(len(received), 1)
+            connection = sqlite3.connect(registry_path)
+            try:
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT event_kind, disposition FROM migration_item ORDER BY migration_item_event_id"
+                    ).fetchall(),
+                    [("snapshot", "snapshotted"), ("attempted", "attempted"),
+                     ("launch_claimed", "launch_claimed"), ("terminal", "verified")],
+                )
+            finally:
+                connection.close()
+
+    def test_migration_durable_report_classification_is_explicit(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manifest_path = root / "scenario.json"
+            self.write_json(manifest_path, self.strict_manifest())
+            receipt = {
+                "source_path": str(manifest_path.resolve()),
+                "source_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+                "profile": "registry-migration-test",
+            }
+            for status, expected in (("red", "contradicted"), ("amber", "failed")):
+                report_path = root / f"{status}.report.json"
+                self.write_json(report_path, self.migration_report(manifest_path, receipt["profile"], status=status))
+                terminal = scenario_registry_cli._migration_report_terminal(
+                    receipt,
+                    report_path,
+                    json.loads(report_path.read_text(encoding="utf-8")),
+                )
+                self.assertIsNotNone(terminal)
+                self.assertEqual(terminal[0], expected)
+
+    def test_migration_failure_report_uses_recorded_startup_profile_when_contract_is_absent(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            manifest_path = root / "scenario.json"
+            self.write_json(manifest_path, self.strict_manifest())
+            receipt = {
+                "source_path": str(manifest_path.resolve()),
+                "source_sha256": hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+                "profile": "registry-migration-test",
+            }
+            report = self.migration_report(manifest_path, receipt["profile"], status="amber")
+            report.pop("contract")
+            report["startup"] = {"profile": receipt["profile"]}
+            report_path = root / "startup-gated.report.json"
+            self.write_json(report_path, report)
+
+            terminal = scenario_registry_cli._migration_report_terminal(receipt, report_path, report)
+
+            self.assertIsNotNone(terminal)
+            self.assertEqual(terminal[0], "failed")
+
+    def test_migration_completion_reenumerates_changed_added_and_removed_identities(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            changed_path = scenarios / "changed.json"
+            removed_path = scenarios / "removed.json"
+            self.write_json(changed_path, {"name": "changed", "steps": []})
+            self.write_json(removed_path, {"name": "removed", "steps": []})
+            registry_path = root / "registry.sqlite3"
+            connection = open_registry(str(registry_path))
+            try:
+                migration = scenario_registry_cli.snapshot_migration_run(
+                    connection,
+                    scenarios,
+                    launcher_identity="scenario_registry_cli.registry-migrate-all",
+                )
+                self.assertEqual(len(migration.items), 2)
+                original_changed_sha = migration.items[0].source_sha256
+                self.write_json(changed_path, {"name": "changed", "description": "new bytes", "steps": []})
+                removed_path.unlink()
+                self.write_json(scenarios / "added.json", {"name": "added", "steps": []})
+                self.write_json(scenarios / "added_two.json", {"name": "added_two", "steps": []})
+
+                with mock.patch.object(startup_harness, "run_probe_mode") as run_probe:
+                    summary = scenario_registry_cli._reconcile_migration_final_set(
+                        connection,
+                        registry_path=registry_path,
+                        migration=migration,
+                    )
+
+                run_probe.assert_not_called()
+                self.assertEqual(summary["filesystem_totals"], {
+                    "identities": 3,
+                    "executable": 0,
+                    "non_executable": 3,
+                })
+                self.assertTrue(summary["final_set_equals_terminal_set"])
+                self.assertTrue(summary["once_only_launches"])
+                self.assertTrue(summary["completion_ready"])
+                self.assertEqual(summary["terminal_rows"], 5)
+                self.assertEqual(summary["disposition_counts"], {"failed": 2, "imported": 3})
+                self.assertTrue(any(
+                    entry[0] == str(removed_path.resolve()) and entry[1] == "source_removed_during_migration"
+                    for entry in connection.execute(
+                        "SELECT source_path, reason FROM migration_item WHERE event_kind = 'terminal'"
+                    ).fetchall()
+                ))
+                changed_rows = connection.execute(
+                    "SELECT source_sha256 FROM migration_item WHERE source_path = ? AND event_kind = 'snapshot' "
+                    "ORDER BY migration_item_event_id",
+                    (str(changed_path.resolve()),),
+                ).fetchall()
+                self.assertEqual(len(changed_rows), 2)
+                self.assertEqual(changed_rows[0][0], original_changed_sha)
+                self.assertNotEqual(changed_rows[1][0], original_changed_sha)
+                self.assertEqual(
+                    connection.execute("SELECT COUNT(*) FROM migration_run_event WHERE status = 'succeeded'").fetchone()[0],
+                    1,
+                )
+            finally:
+                connection.close()
 
     def test_invalid_invocation_is_machine_readable_and_nonzero(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

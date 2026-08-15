@@ -16,10 +16,16 @@ from pathlib import Path
 import sqlite3
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
-from scenario_registry import CAPABILITY_NAMESPACE_PREFIXES, ManifestValidationError, validate_manifest
+from scenario_registry import (
+    CAPABILITY_NAMESPACE_PREFIXES,
+    ManifestValidationError,
+    normalize_relation_contract,
+    relation_contract_likely_subsumes,
+    validate_manifest,
+)
 
 
-SCHEMA_VERSION = 2
+SCHEMA_VERSION = 5
 Migration = Tuple[int, str, Callable[[sqlite3.Connection], None]]
 
 
@@ -29,6 +35,52 @@ class ScenarioRegistryStoreError(RuntimeError):
 
 class ScenarioRegistryQueryError(ValueError):
     """A registry query request or explicit candidate fact is not well-typed."""
+
+
+@dataclass(frozen=True)
+class MigrationSnapshotItem:
+    """One exact source identity captured before migration parsing begins."""
+
+    source_path: str
+    source_sha256: str
+    attempt_identity: str
+
+
+@dataclass(frozen=True)
+class MigrationRunSnapshot:
+    """An immutable inventory snapshot and the run which owns it."""
+
+    migration_run_id: str
+    run_identity: str
+    scenarios_root: str
+    items: Tuple[MigrationSnapshotItem, ...]
+
+
+@dataclass(frozen=True)
+class MigrationItemEvent:
+    """One append-only migration item transition."""
+
+    migration_item_event_id: int
+    event_kind: str
+    completion_status: str
+    disposition: str
+    reason: str
+    details: Mapping[str, Any]
+    recorded_at: str
+
+
+@dataclass(frozen=True)
+class MigrationItemCurrent:
+    """Current derived state for one frozen path/SHA migration identity."""
+
+    migration_run_id: str
+    attempt_identity: str
+    source_path: str
+    source_sha256: str
+    status: str
+    terminal_disposition: Optional[str]
+    launch_claimed: bool
+    history: Tuple[MigrationItemEvent, ...]
 
 
 def path_sha256(path: Path) -> str:
@@ -664,7 +716,7 @@ def _current_lifecycle_state(
     ).fetchone() is not None:
         return "retired", "retirement_history"
     if not present:
-        return "retired", "source_absent"
+        return "absent", "source_absent"
     states = {str(item["evidence_state"]) for item in route_evidence}
     if "contradicted" in states:
         return "quarantined", "route_contradicted"
@@ -748,8 +800,10 @@ def build_registry_query_candidate_snapshot(
 ) -> Tuple[RegistryQueryCandidateSnapshot, ...]:
     """Read current projection/history into fixed, explained, non-executing candidates."""
     requested_states = set(include_lifecycle_states)
-    if not requested_states <= {"quarantined", "retired"}:
-        raise ScenarioRegistryQueryError("include_lifecycle_states may contain only quarantined or retired")
+    if not requested_states <= {"absent", "quarantined", "retired"}:
+        raise ScenarioRegistryQueryError(
+            "include_lifecycle_states may contain only absent, quarantined, or retired"
+        )
     allowed_states = {"active"} | requested_states
     snapshots: List[RegistryQueryCandidateSnapshot] = []
     manifests = connection.execute(
@@ -1570,9 +1624,84 @@ def _migration_002_inventory_migration_history(connection: sqlite3.Connection) -
     _create_history_append_only_triggers(connection, "migration_item")
 
 
+def _migration_003_migration_item_transition_guards(connection: sqlite3.Connection) -> None:
+    """Make each immutable migration identity claimable exactly once per phase."""
+    connection.executescript(
+        """
+        CREATE UNIQUE INDEX migration_item_one_snapshot
+        ON migration_item( migration_run_id, source_path, source_sha256 )
+        WHERE event_kind = 'snapshot';
+
+        CREATE UNIQUE INDEX migration_item_one_attempt
+        ON migration_item( migration_run_id, source_path, source_sha256 )
+        WHERE event_kind = 'attempted';
+
+        CREATE UNIQUE INDEX migration_item_one_launch_claim
+        ON migration_item( migration_run_id, source_path, source_sha256 )
+        WHERE event_kind = 'launch_claimed';
+
+        CREATE UNIQUE INDEX migration_item_one_terminal
+        ON migration_item( migration_run_id, source_path, source_sha256 )
+        WHERE event_kind = 'terminal';
+        """
+    )
+
+
+def _migration_004_migration_run_events(connection: sqlite3.Connection) -> None:
+    """Keep completion state append-only instead of rewriting immutable migration runs."""
+    connection.executescript(
+        """
+        CREATE TABLE migration_run_event (
+            migration_run_event_id INTEGER PRIMARY KEY,
+            migration_run_id TEXT NOT NULL REFERENCES migration_run( migration_run_id ) ON DELETE RESTRICT,
+            event_kind TEXT NOT NULL,
+            completion_identity TEXT NOT NULL,
+            status TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            details_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( migration_run_id, event_kind, completion_identity )
+        );
+
+        CREATE INDEX idx_migration_run_event
+        ON migration_run_event( migration_run_id, migration_run_event_id );
+        """
+    )
+    _create_history_append_only_triggers(connection, "migration_run_event")
+
+
+def _migration_005_retirement_actions(connection: sqlite3.Connection) -> None:
+    """Retain approval and removal attempts as resumable append-only actions."""
+    connection.executescript(
+        """
+        CREATE TABLE retirement_action_history (
+            retirement_action_event_id INTEGER PRIMARY KEY,
+            action_id TEXT NOT NULL,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            successor_manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            source_path TEXT NOT NULL,
+            source_sha256 TEXT NOT NULL,
+            reviewer_identity TEXT NOT NULL,
+            retirement_reason TEXT NOT NULL,
+            event_kind TEXT NOT NULL,
+            details_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( action_id, event_kind )
+        );
+
+        CREATE INDEX idx_retirement_action_manifest
+        ON retirement_action_history( manifest_id, retirement_action_event_id );
+        """
+    )
+    _create_history_append_only_triggers(connection, "retirement_action_history")
+
+
 SCHEMA_MIGRATIONS: Sequence[Migration] = (
     (1, "initial_registry_surface", _migration_001_initial),
     (2, "inventory_migration_history", _migration_002_inventory_migration_history),
+    (3, "migration_item_transition_guards", _migration_003_migration_item_transition_guards),
+    (4, "migration_run_events", _migration_004_migration_run_events),
+    (5, "retirement_actions", _migration_005_retirement_actions),
 )
 
 
@@ -1645,6 +1774,469 @@ def manifest_identity(source_path: Path) -> str:
 
 def _json_text(value: Any) -> str:
     return json.dumps(value, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+
+
+_MIGRATION_TERMINAL_DISPOSITIONS = frozenset({
+    "invalid",
+    "blocked",
+    "imported",
+    "verified",
+    "contradicted",
+    "failed",
+})
+
+
+def _migration_item_identity(migration_run_id: str, source_path: str, source_sha256: str) -> str:
+    return _identity(
+        "caol-scenario-migration-item-v1",
+        migration_run_id,
+        source_path,
+        source_sha256,
+    )
+
+
+def _migration_event_from_row(row: sqlite3.Row) -> MigrationItemEvent:
+    try:
+        details = _json_object(str(row["details_json"]), "migration item details")
+    except ScenarioRegistryStoreError as exc:
+        raise ScenarioRegistryStoreError(
+            f"Migration item event {row['migration_item_event_id']} has malformed details"
+        ) from exc
+    return MigrationItemEvent(
+        migration_item_event_id=int(row["migration_item_event_id"]),
+        event_kind=str(row["event_kind"]),
+        completion_status=str(row["completion_status"]),
+        disposition=str(row["disposition"]),
+        reason=str(row["reason"]),
+        details=details,
+        recorded_at=str(row["recorded_at"]),
+    )
+
+
+def _require_migration_source_identity(
+    connection: sqlite3.Connection,
+    *,
+    migration_run_id: str,
+    source_path: Path | str,
+    source_sha256: str,
+) -> Tuple[str, str, str]:
+    canonical_path = str(Path(source_path).resolve())
+    source_hash = str(source_sha256).strip().lower()
+    if len(source_hash) != 64 or any(character not in "0123456789abcdef" for character in source_hash):
+        raise ScenarioRegistryStoreError("migration source SHA-256 must be a lowercase hexadecimal digest")
+    row = connection.execute(
+        "SELECT attempt_identity FROM migration_item WHERE migration_run_id = ? "
+        "AND source_path = ? AND source_sha256 = ? AND event_kind = 'snapshot'",
+        (migration_run_id, canonical_path, source_hash),
+    ).fetchone()
+    if row is None:
+        raise ScenarioRegistryStoreError(
+            "migration source identity is not owned by this immutable snapshot"
+        )
+    return canonical_path, source_hash, str(row["attempt_identity"])
+
+
+def _migration_item_current_in_transaction(
+    connection: sqlite3.Connection,
+    *,
+    migration_run_id: str,
+    source_path: str,
+    source_sha256: str,
+    attempt_identity: str,
+) -> MigrationItemCurrent:
+    rows = connection.execute(
+        "SELECT migration_item_event_id, event_kind, completion_status, disposition, reason, details_json, recorded_at "
+        "FROM migration_item WHERE migration_run_id = ? AND attempt_identity = ? "
+        "AND source_path = ? AND source_sha256 = ? ORDER BY migration_item_event_id",
+        (migration_run_id, attempt_identity, source_path, source_sha256),
+    ).fetchall()
+    if not rows:
+        raise ScenarioRegistryStoreError("migration source identity has no durable history")
+    history = tuple(_migration_event_from_row(row) for row in rows)
+    terminals = [event for event in history if event.event_kind == "terminal"]
+    terminal = terminals[-1] if terminals else None
+    attempted = any(event.event_kind == "attempted" for event in history)
+    launch_claimed = any(event.event_kind == "launch_claimed" for event in history)
+    if terminal is not None:
+        status = terminal.disposition
+    elif attempted:
+        status = "attempted"
+    else:
+        status = "snapshotted"
+    return MigrationItemCurrent(
+        migration_run_id=migration_run_id,
+        attempt_identity=attempt_identity,
+        source_path=source_path,
+        source_sha256=source_sha256,
+        status=status,
+        terminal_disposition=terminal.disposition if terminal is not None else None,
+        launch_claimed=launch_claimed,
+        history=history,
+    )
+
+
+def snapshot_migration_run(
+    connection: sqlite3.Connection,
+    scenarios_root: Path,
+    *,
+    launcher_identity: str,
+) -> MigrationRunSnapshot:
+    """Capture exact scenario bytes without parsing, and append immutable snapshot events.
+
+    One root owns one resumable migration run.  Repeating a snapshot returns
+    that run; changed source bytes append a new path/SHA item identity rather
+    than retrying the old identity.
+    """
+    root = scenarios_root.resolve()
+    if not root.is_dir():
+        raise ScenarioRegistryStoreError(f"Scenario root does not exist: {root}")
+    launcher = launcher_identity.strip()
+    if not launcher:
+        raise ScenarioRegistryStoreError("migration launcher identity is required")
+    sources: List[Tuple[str, str]] = []
+    for path in sorted(root.glob("*.json"), key=lambda item: str(item.resolve())):
+        if not path.is_file():
+            continue
+        canonical_path = str(path.resolve())
+        try:
+            source_sha256 = hashlib.sha256(path.read_bytes()).hexdigest()
+        except OSError as exc:
+            raise ScenarioRegistryStoreError(f"Could not snapshot scenario source {path}: {exc}") from exc
+        sources.append((canonical_path, source_sha256))
+    run_identity = _identity(
+        "caol-scenario-migration-run-v1",
+        str(root),
+    )
+    migration_run_id = _identity("caol-scenario-migration-run-id-v1", run_identity)
+    items = tuple(
+        MigrationSnapshotItem(
+            source_path=source_path,
+            source_sha256=source_sha256,
+            attempt_identity=_migration_item_identity(migration_run_id, source_path, source_sha256),
+        )
+        for source_path, source_sha256 in sources
+    )
+    with immediate_transaction(connection):
+        existing = connection.execute(
+            "SELECT launcher_identity FROM migration_run WHERE migration_run_id = ?",
+            (migration_run_id,),
+        ).fetchone()
+        if existing is None:
+            connection.execute(
+                "INSERT INTO migration_run( migration_run_id, run_identity, launch_status, launch_reason, "
+                "launcher_identity, details_json ) VALUES( ?, ?, 'snapshotted', 'source_bytes_captured', ?, ? )",
+                (
+                    migration_run_id,
+                    run_identity,
+                    launcher,
+                    _json_text({"scenarios_root": str(root), "initial_item_count": len(items)}),
+                ),
+            )
+        elif str(existing["launcher_identity"]) != launcher:
+            raise ScenarioRegistryStoreError(
+                "immutable migration run was created by a different launcher identity"
+            )
+        existing_snapshots = {
+            (str(row["source_path"]), str(row["source_sha256"]))
+            for row in connection.execute(
+                "SELECT source_path, source_sha256 FROM migration_item WHERE migration_run_id = ? "
+                "AND event_kind = 'snapshot'",
+                (migration_run_id,),
+            )
+        }
+        new_items = [
+            item for item in items
+            if (item.source_path, item.source_sha256) not in existing_snapshots
+        ]
+        if new_items:
+            connection.executemany(
+                "INSERT INTO migration_item( migration_run_id, manifest_id, attempt_identity, source_path, "
+                "source_sha256, event_kind, completion_status, disposition, reason, details_json ) "
+                "VALUES( ?, NULL, ?, ?, ?, 'snapshot', 'pending', 'snapshotted', 'source_bytes_captured', ? )",
+                [
+                    (
+                        migration_run_id,
+                        item.attempt_identity,
+                        item.source_path,
+                        item.source_sha256,
+                        _json_text({"scenarios_root": str(root)}),
+                    )
+                    for item in new_items
+                ],
+            )
+    return MigrationRunSnapshot(
+        migration_run_id=migration_run_id,
+        run_identity=run_identity,
+        scenarios_root=str(root),
+        items=items,
+    )
+
+
+def migration_run_snapshot(connection: sqlite3.Connection, migration_run_id: str) -> MigrationRunSnapshot:
+    """Read the immutable snapshot belonging to one resumable migration run."""
+    run = connection.execute(
+        "SELECT run_identity, details_json FROM migration_run WHERE migration_run_id = ?",
+        (migration_run_id,),
+    ).fetchone()
+    if run is None:
+        raise ScenarioRegistryStoreError("migration run does not exist")
+    details = _json_object(str(run["details_json"]), "migration run details")
+    scenarios_root = str(details.get("scenarios_root", "")).strip()
+    if not scenarios_root:
+        raise ScenarioRegistryStoreError("migration run has no scenarios root")
+    rows = connection.execute(
+        "SELECT source_path, source_sha256, attempt_identity FROM migration_item "
+        "WHERE migration_run_id = ? AND event_kind = 'snapshot' ORDER BY source_path, source_sha256",
+        (migration_run_id,),
+    ).fetchall()
+    return MigrationRunSnapshot(
+        migration_run_id=migration_run_id,
+        run_identity=str(run["run_identity"]),
+        scenarios_root=scenarios_root,
+        items=tuple(
+            MigrationSnapshotItem(
+                source_path=str(row["source_path"]),
+                source_sha256=str(row["source_sha256"]),
+                attempt_identity=str(row["attempt_identity"]),
+            )
+            for row in rows
+        ),
+    )
+
+
+def record_migration_run_success(
+    connection: sqlite3.Connection,
+    *,
+    migration_run_id: str,
+    summary: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Append an idempotent completion event for a proven exact final set."""
+    if not bool(summary.get("completion_ready", False)):
+        raise ScenarioRegistryStoreError("migration run cannot succeed before final-set invariants hold")
+    summary_json = _json_text(summary)
+    completion_identity = _identity(
+        "caol-scenario-migration-completion-v1",
+        migration_run_id,
+        summary_json,
+    )
+    with immediate_transaction(connection):
+        run = connection.execute(
+            "SELECT migration_run_id FROM migration_run WHERE migration_run_id = ?",
+            (migration_run_id,),
+        ).fetchone()
+        if run is None:
+            raise ScenarioRegistryStoreError("migration run does not exist")
+        existing = connection.execute(
+            "SELECT migration_run_event_id FROM migration_run_event WHERE migration_run_id = ? "
+            "AND event_kind = 'completion' AND completion_identity = ?",
+            (migration_run_id, completion_identity),
+        ).fetchone()
+        if existing is None:
+            connection.execute(
+                "INSERT INTO migration_run_event( migration_run_id, event_kind, completion_identity, status, reason, details_json ) "
+                "VALUES( ?, 'completion', ?, 'succeeded', 'exact_final_set_complete', ? )",
+                (migration_run_id, completion_identity, summary_json),
+            )
+        row = connection.execute(
+            "SELECT migration_run_event_id, recorded_at FROM migration_run_event WHERE migration_run_id = ? "
+            "AND event_kind = 'completion' AND completion_identity = ?",
+            (migration_run_id, completion_identity),
+        ).fetchone()
+    return {
+        "migration_run_event_id": int(row["migration_run_event_id"]),
+        "completion_identity": completion_identity,
+        "recorded_at": str(row["recorded_at"]),
+        "idempotent": existing is not None,
+    }
+
+
+def migration_item_current(
+    connection: sqlite3.Connection,
+    *,
+    migration_run_id: str,
+    source_path: Path | str,
+    source_sha256: str,
+) -> MigrationItemCurrent:
+    """Return the latest derived state and complete append-only event history."""
+    canonical_path, source_hash, attempt_identity = _require_migration_source_identity(
+        connection,
+        migration_run_id=migration_run_id,
+        source_path=source_path,
+        source_sha256=source_sha256,
+    )
+    return _migration_item_current_in_transaction(
+        connection,
+        migration_run_id=migration_run_id,
+        source_path=canonical_path,
+        source_sha256=source_hash,
+        attempt_identity=attempt_identity,
+    )
+
+
+def record_migration_attempt(
+    connection: sqlite3.Connection,
+    *,
+    migration_run_id: str,
+    source_path: Path | str,
+    source_sha256: str,
+) -> MigrationItemCurrent:
+    """Durably record an attempt before any caller parses or validates source bytes."""
+    with immediate_transaction(connection):
+        canonical_path, source_hash, attempt_identity = _require_migration_source_identity(
+            connection,
+            migration_run_id=migration_run_id,
+            source_path=source_path,
+            source_sha256=source_sha256,
+        )
+        current = _migration_item_current_in_transaction(
+            connection,
+            migration_run_id=migration_run_id,
+            source_path=canonical_path,
+            source_sha256=source_hash,
+            attempt_identity=attempt_identity,
+        )
+        if current.status == "snapshotted":
+            connection.execute(
+                "INSERT INTO migration_item( migration_run_id, manifest_id, attempt_identity, source_path, "
+                "source_sha256, event_kind, completion_status, disposition, reason, details_json ) "
+                "VALUES( ?, NULL, ?, ?, ?, 'attempted', 'in_progress', 'attempted', 'pre_parse_claim', '{}' )",
+                (migration_run_id, attempt_identity, canonical_path, source_hash),
+            )
+        return _migration_item_current_in_transaction(
+            connection,
+            migration_run_id=migration_run_id,
+            source_path=canonical_path,
+            source_sha256=source_hash,
+            attempt_identity=attempt_identity,
+        )
+
+
+def claim_migration_item_launch(
+    connection: sqlite3.Connection,
+    *,
+    migration_run_id: str,
+    source_path: Path | str,
+    source_sha256: str,
+    launch_identity: str,
+) -> MigrationItemCurrent:
+    """Append the one durable pre-launch claim for an unterminalized item."""
+    claim = launch_identity.strip()
+    if not claim:
+        raise ScenarioRegistryStoreError("migration launch identity is required")
+    with immediate_transaction(connection):
+        canonical_path, source_hash, attempt_identity = _require_migration_source_identity(
+            connection,
+            migration_run_id=migration_run_id,
+            source_path=source_path,
+            source_sha256=source_sha256,
+        )
+        current = _migration_item_current_in_transaction(
+            connection,
+            migration_run_id=migration_run_id,
+            source_path=canonical_path,
+            source_sha256=source_hash,
+            attempt_identity=attempt_identity,
+        )
+        if current.terminal_disposition is not None:
+            raise ScenarioRegistryStoreError("terminal migration item cannot receive a launch claim")
+        if current.status != "attempted":
+            raise ScenarioRegistryStoreError("migration item must be attempted before launch claim")
+        existing_claims = [event for event in current.history if event.event_kind == "launch_claimed"]
+        if existing_claims:
+            if existing_claims[0].details.get("launch_identity") != claim:
+                raise ScenarioRegistryStoreError("migration item already has a different launch claim")
+            return current
+        connection.execute(
+            "INSERT INTO migration_item( migration_run_id, manifest_id, attempt_identity, source_path, "
+            "source_sha256, event_kind, completion_status, disposition, reason, details_json ) "
+            "VALUES( ?, NULL, ?, ?, ?, 'launch_claimed', 'in_progress', 'launch_claimed', "
+            "'canonical_launch_claimed', ? )",
+            (
+                migration_run_id,
+                attempt_identity,
+                canonical_path,
+                source_hash,
+                _json_text({"launch_identity": claim}),
+            ),
+        )
+        return _migration_item_current_in_transaction(
+            connection,
+            migration_run_id=migration_run_id,
+            source_path=canonical_path,
+            source_sha256=source_hash,
+            attempt_identity=attempt_identity,
+        )
+
+
+def record_migration_terminal(
+    connection: sqlite3.Connection,
+    *,
+    migration_run_id: str,
+    source_path: Path | str,
+    source_sha256: str,
+    disposition: str,
+    reason: str,
+    details: Optional[Mapping[str, Any]] = None,
+) -> MigrationItemCurrent:
+    """Append one terminal disposition; matching replay is idempotent, conflict fails."""
+    terminal = disposition.strip()
+    terminal_reason = reason.strip()
+    terminal_details = dict(details or {})
+    if terminal not in _MIGRATION_TERMINAL_DISPOSITIONS:
+        raise ScenarioRegistryStoreError(f"unsupported migration terminal disposition: {terminal}")
+    if not terminal_reason:
+        raise ScenarioRegistryStoreError("migration terminal reason is required")
+    with immediate_transaction(connection):
+        canonical_path, source_hash, attempt_identity = _require_migration_source_identity(
+            connection,
+            migration_run_id=migration_run_id,
+            source_path=source_path,
+            source_sha256=source_sha256,
+        )
+        current = _migration_item_current_in_transaction(
+            connection,
+            migration_run_id=migration_run_id,
+            source_path=canonical_path,
+            source_sha256=source_hash,
+            attempt_identity=attempt_identity,
+        )
+        source_removed_before_parse = (
+            current.status == "snapshotted"
+            and terminal == "failed"
+            and terminal_reason == "source_removed_during_migration"
+        )
+        if current.status == "snapshotted" and not source_removed_before_parse:
+            raise ScenarioRegistryStoreError("migration item must be attempted before terminal disposition")
+        if current.terminal_disposition is not None:
+            terminal_event = next(event for event in current.history if event.event_kind == "terminal")
+            if (
+                terminal_event.disposition != terminal
+                or terminal_event.reason != terminal_reason
+                or _json_text(terminal_event.details) != _json_text(terminal_details)
+            ):
+                raise ScenarioRegistryStoreError("migration item already has a conflicting terminal disposition")
+            return current
+        connection.execute(
+            "INSERT INTO migration_item( migration_run_id, manifest_id, attempt_identity, source_path, "
+            "source_sha256, event_kind, completion_status, disposition, reason, details_json ) "
+            "VALUES( ?, NULL, ?, ?, ?, 'terminal', 'terminal', ?, ?, ? )",
+            (
+                migration_run_id,
+                attempt_identity,
+                canonical_path,
+                source_hash,
+                terminal,
+                terminal_reason,
+                _json_text(terminal_details),
+            ),
+        )
+        return _migration_item_current_in_transaction(
+            connection,
+            migration_run_id=migration_run_id,
+            source_path=canonical_path,
+            source_sha256=source_hash,
+            attempt_identity=attempt_identity,
+        )
 
 
 def _stage_manifest(path: Path) -> StagedManifest:
@@ -1800,6 +2392,82 @@ def _append_relation_events(
     )
 
 
+def detect_scenario_relations(connection: sqlite3.Connection) -> Dict[str, int]:
+    """Persist structured duplicate/subsumption candidates as review evidence only.
+
+    This owner touches relation materializations/history exclusively.  It does
+    not change lifecycle, tokens, report verification, or selection behavior.
+    Callers rebuilding the projection invoke it inside their existing atomic
+    transaction; standalone callers receive the same transaction boundary.
+    """
+    candidate_kinds = ("exact_duplicate_candidate", "likely_subsumed_by_candidate")
+
+    def detect() -> Dict[str, int]:
+        rows = connection.execute(
+            "SELECT manifest_id, revision, last_content_sha256, declaration_json FROM manifest_current "
+            "WHERE present = 1 ORDER BY manifest_id"
+        ).fetchall()
+        entries = []
+        for row in rows:
+            declaration = _json_object(str(row["declaration_json"]), "manifest declaration")
+            contract = normalize_relation_contract(declaration)
+            if contract is not None:
+                entries.append((
+                    str(row["manifest_id"]),
+                    int(row["revision"]),
+                    str(row["last_content_sha256"] or ""),
+                    contract,
+                ))
+        placeholders = ", ".join("?" for _kind in candidate_kinds)
+        connection.execute(
+            f"DELETE FROM manifest_relation_current WHERE relation_kind IN ( {placeholders} )",
+            candidate_kinds,
+        )
+        candidates: List[Tuple[str, str, str]] = []
+        for subject_id, _subject_revision, _subject_sha, subject_contract in entries:
+            for candidate_id, _candidate_revision, _candidate_sha, candidate_contract in entries:
+                if subject_id == candidate_id:
+                    continue
+                if subject_contract == candidate_contract:
+                    candidates.append((subject_id, "exact_duplicate_candidate", candidate_id))
+                elif relation_contract_likely_subsumes(subject_contract, candidate_contract):
+                    candidates.append((subject_id, "likely_subsumed_by_candidate", candidate_id))
+        connection.executemany(
+            "INSERT INTO manifest_relation_current( manifest_id, relation_kind, target_kind, target_key, route_role ) "
+            "VALUES( ?, ?, 'manifest', ?, '' )",
+            candidates,
+        )
+        entry_by_id = {entry[0]: entry for entry in entries}
+        for subject_id, relation_kind, candidate_id in candidates:
+            _manifest_id, revision, source_sha256, _contract = entry_by_id[subject_id]
+            target_sha256 = entry_by_id[candidate_id][2]
+            connection.execute(
+                "INSERT OR IGNORE INTO manifest_relation_history( "
+                "manifest_id, relation_kind, target_kind, target_key, route_role, event_kind, revision, details_json "
+                ") VALUES( ?, ?, 'manifest', ?, '', 'review_candidate', ?, ? )",
+                (
+                    subject_id,
+                    relation_kind,
+                    candidate_id,
+                    revision,
+                    _json_text({
+                        "review_required": True,
+                        "source_sha256": source_sha256,
+                        "target_source_sha256": target_sha256,
+                    }),
+                ),
+            )
+        return {
+            "exact_duplicates": sum(kind == "exact_duplicate_candidate" for _subject, kind, _target in candidates),
+            "likely_subsumptions": sum(kind == "likely_subsumed_by_candidate" for _subject, kind, _target in candidates),
+        }
+
+    if connection.in_transaction:
+        return detect()
+    with immediate_transaction(connection):
+        return detect()
+
+
 def rebuild_manifest_projection(
     connection: sqlite3.Connection,
     scenarios_root: Path,
@@ -1948,6 +2616,8 @@ def rebuild_manifest_projection(
                 details={"source_path": source_path, "source_sha256": last_hash},
             )
             absent += 1
+
+        detect_scenario_relations(connection)
 
     return {
         "staged": len(staged),
@@ -2414,6 +3084,559 @@ def _invalidate_outstanding_tokens(
     return len(outstanding)
 
 
+_QUARANTINE_REASONS = frozenset({
+    "invalid",
+    "blocked",
+    "broken",
+    "contradicted",
+    "stale",
+    "retirement_pending",
+})
+
+
+def quarantine_scenario(
+    connection: sqlite3.Connection,
+    *,
+    reason: str,
+    details: Mapping[str, Any],
+    manifest_id: Optional[str] = None,
+    route_key: Optional[str] = None,
+    source_path: Optional[Path | str] = None,
+    source_sha256: Optional[str] = None,
+    quarantine_kind: Optional[str] = None,
+    lifecycle_event_kind: Optional[str] = None,
+    invalidation_reason: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Append one nonselectable quarantine outcome without changing source or retirement state.
+
+    A migration may encounter bytes which cannot become a manifest projection.  Its
+    immutable migration terminal remains the evidence in that case.  When a prior
+    projection shares the source path, this owner also preserves an explicit
+    quarantine event and invalidates every outstanding selection token for it.
+    """
+    quarantine_reason = str(reason).strip().lower()
+    if quarantine_reason not in _QUARANTINE_REASONS:
+        raise ScenarioRegistryStoreError(f"unsupported quarantine reason: {quarantine_reason}")
+    if manifest_id is None and source_path is None:
+        raise ScenarioRegistryStoreError("quarantine requires a manifest_id or source_path")
+    if source_sha256 is not None:
+        source_sha256 = str(source_sha256).strip().lower()
+        if len(source_sha256) != 64 or any(character not in "0123456789abcdef" for character in source_sha256):
+            raise ScenarioRegistryStoreError("quarantine source SHA-256 must be a lowercase hexadecimal digest")
+
+    def append() -> Dict[str, Any]:
+        target_manifest_id = str(manifest_id).strip() if manifest_id is not None else ""
+        canonical_source_path = str(Path(source_path).resolve()) if source_path is not None else ""
+        if target_manifest_id:
+            manifest = connection.execute(
+                "SELECT manifest_id, source_path, present FROM manifest_current WHERE manifest_id = ?",
+                (target_manifest_id,),
+            ).fetchone()
+        else:
+            manifest = connection.execute(
+                "SELECT manifest_id, source_path, present FROM manifest_current WHERE source_path = ?",
+                (canonical_source_path,),
+            ).fetchone()
+        if manifest is None:
+            return {"manifest_id": None, "quarantined": False, "invalidated_tokens": 0}
+        if canonical_source_path and str(manifest["source_path"]) != canonical_source_path:
+            raise ScenarioRegistryStoreError("quarantine manifest and source path do not match")
+        if not bool(manifest["present"]):
+            return {
+                "manifest_id": str(manifest["manifest_id"]),
+                "quarantined": False,
+                "invalidated_tokens": 0,
+                "source_absent": True,
+            }
+        target_manifest_id = str(manifest["manifest_id"])
+        target_route_key = str(route_key).strip() if route_key is not None else "_migration"
+        if not target_route_key:
+            raise ScenarioRegistryStoreError("quarantine route key must not be empty")
+        evidence = dict(details)
+        evidence.update({
+            "quarantine_reason": quarantine_reason,
+            "source_path": canonical_source_path or str(manifest["source_path"]),
+        })
+        if source_sha256 is not None:
+            evidence["source_sha256"] = source_sha256
+        _append_quarantine_if_changed(
+            connection,
+            manifest_id=target_manifest_id,
+            route_key=target_route_key,
+            quarantine_kind=quarantine_kind or f"quarantined_{quarantine_reason}",
+            details=evidence,
+        )
+        _append_lifecycle_if_changed(
+            connection,
+            manifest_id=target_manifest_id,
+            event_kind=lifecycle_event_kind or f"quarantine_{quarantine_reason}",
+            details=evidence,
+        )
+        invalidated = _invalidate_manifest_tokens(
+            connection,
+            manifest_id=target_manifest_id,
+            reason=invalidation_reason or f"quarantine_{quarantine_reason}",
+            details=evidence,
+        )
+        return {
+            "manifest_id": target_manifest_id,
+            "quarantined": True,
+            "invalidated_tokens": invalidated,
+        }
+
+    if connection.in_transaction:
+        return append()
+    with immediate_transaction(connection):
+        return append()
+
+
+_RETIREMENT_REASONS = frozenset({
+    "cannot_launch_unique_diagnostic",
+    "exact_duplicate",
+    "fully_subsumed",
+    "temporary_historical_one_off",
+    "missing_fixture_helper",
+    "startup_only_superseded",
+})
+
+
+def _retirement_candidate_rows(connection: sqlite3.Connection) -> Dict[str, Dict[str, Any]]:
+    """Derive review-only candidate reasons from present source and relation evidence."""
+    candidates: Dict[str, Dict[str, Any]] = {}
+    rows = connection.execute(
+        "SELECT manifest_id, source_path, current_sha256, present FROM manifest_current ORDER BY manifest_id"
+    ).fetchall()
+    for row in rows:
+        manifest_id = str(row["manifest_id"])
+        if not bool(row["present"]):
+            continue
+        route_evidence = _current_route_evidence(connection, manifest_id)
+        lifecycle_state, lifecycle_reason = _current_lifecycle_state(
+            connection,
+            manifest_id=manifest_id,
+            present=True,
+            route_evidence=route_evidence,
+        )
+        if lifecycle_state == "retired":
+            continue
+        reasons: Dict[str, list[Dict[str, str]]] = {}
+        successors: Dict[str, Dict[str, str]] = {}
+        relations = connection.execute(
+            "SELECT relation_kind, target_key FROM manifest_relation_current WHERE manifest_id = ? "
+            "AND target_kind = 'manifest' ORDER BY relation_kind, target_key",
+            (manifest_id,),
+        ).fetchall()
+        for relation in relations:
+            relation_kind = str(relation["relation_kind"])
+            successor_id = str(relation["target_key"])
+            reason = {
+                "exact_duplicate_candidate": "exact_duplicate",
+                "likely_subsumed_by_candidate": "fully_subsumed",
+            }.get(relation_kind)
+            if reason is None:
+                continue
+            reasons.setdefault(reason, []).append({
+                "relation_kind": relation_kind,
+                "successor_manifest_id": successor_id,
+            })
+            successors[successor_id] = {
+                "manifest_id": successor_id,
+                "relation_kind": relation_kind,
+            }
+        quarantine_rows = connection.execute(
+            "SELECT quarantine_kind, details_json FROM quarantine_history WHERE manifest_id = ? "
+            "ORDER BY quarantine_event_id",
+            (manifest_id,),
+        ).fetchall()
+        for quarantine in quarantine_rows:
+            kind = str(quarantine["quarantine_kind"])
+            details = _json_object(str(quarantine["details_json"]), "quarantine details")
+            migration_reason = str(details.get("migration_reason", ""))
+            if kind == "quarantined_blocked" and "fixture" in migration_reason:
+                reasons.setdefault("missing_fixture_helper", []).append({"quarantine_kind": kind})
+            elif kind == "quarantined_broken":
+                reasons.setdefault("cannot_launch_unique_diagnostic", []).append({"quarantine_kind": kind})
+        if reasons:
+            candidates[manifest_id] = {
+                "manifest_id": manifest_id,
+                "source_path": str(row["source_path"]),
+                "source_sha256": str(row["current_sha256"] or ""),
+                "lifecycle": {"state": lifecycle_state, "reason": lifecycle_reason},
+                "reasons": {key: tuple(value) for key, value in sorted(reasons.items())},
+                "successors": tuple(successors[key] for key in sorted(successors)),
+            }
+    return candidates
+
+
+def retirement_candidates(connection: sqlite3.Connection) -> Tuple[Mapping[str, Any], ...]:
+    """Return inspect-only retirement candidates; this owner changes no lifecycle state."""
+    candidates = _retirement_candidate_rows(connection)
+    return tuple(candidates[key] for key in sorted(candidates))
+
+
+def _retirement_action_history(connection: sqlite3.Connection, action_id: str) -> Tuple[Mapping[str, Any], ...]:
+    rows = connection.execute(
+        "SELECT event_kind, details_json, recorded_at FROM retirement_action_history "
+        "WHERE action_id = ? ORDER BY retirement_action_event_id",
+        (action_id,),
+    ).fetchall()
+    return tuple({
+        "event_kind": str(row["event_kind"]),
+        "details": dict(_json_object(str(row["details_json"]), "retirement action details")),
+        "recorded_at": str(row["recorded_at"]),
+    } for row in rows)
+
+
+def registry_status(
+    connection: sqlite3.Connection,
+    *,
+    include_lifecycle_states: Sequence[str] = (),
+) -> Tuple[Mapping[str, Any], ...]:
+    """Expose active status by default, with explicit inspect-only lifecycle expansion."""
+    snapshots = build_registry_query_candidate_snapshot(
+        connection,
+        include_lifecycle_states=include_lifecycle_states,
+    )
+    candidates = _retirement_candidate_rows(connection)
+    result = []
+    for snapshot in snapshots:
+        manifest_id = str(snapshot.scenario_id)
+        source_path = str(snapshot.explanation["manifest"]["source_path"])
+        relations = tuple({
+            "relation_kind": str(row["relation_kind"]),
+            "target_kind": str(row["target_kind"]),
+            "target_key": str(row["target_key"]),
+            "route_role": str(row["route_role"]),
+        } for row in connection.execute(
+            "SELECT relation_kind, target_kind, target_key, route_role FROM manifest_relation_current "
+            "WHERE manifest_id = ? ORDER BY relation_kind, target_kind, target_key, route_role",
+            (manifest_id,),
+        ))
+        action_rows = connection.execute(
+            "SELECT DISTINCT action_id FROM retirement_action_history WHERE manifest_id = ? ORDER BY action_id",
+            (manifest_id,),
+        ).fetchall()
+        result.append({
+            "manifest": snapshot.explanation["manifest"],
+            "lifecycle": snapshot.explanation["lifecycle"],
+            "token_eligible": snapshot.token_eligible,
+            "retirement_candidate": candidates.get(manifest_id),
+            "relations": relations,
+            "history": {
+                "lifecycle": tuple({
+                    "event_kind": str(row["event_kind"]),
+                    "details": dict(_json_object(str(row["details_json"]), "lifecycle details")),
+                    "recorded_at": str(row["recorded_at"]),
+                } for row in connection.execute(
+                    "SELECT event_kind, details_json, recorded_at FROM lifecycle_history "
+                    "WHERE manifest_id = ? ORDER BY lifecycle_event_id", (manifest_id,),
+                )),
+                "retirement": tuple({
+                    "retirement_kind": str(row["retirement_kind"]),
+                    "authority": str(row["authority"]),
+                    "reason": str(row["reason"]),
+                    "details": dict(_json_object(str(row["details_json"]), "retirement details")),
+                    "recorded_at": str(row["recorded_at"]),
+                } for row in connection.execute(
+                    "SELECT retirement_kind, authority, reason, details_json, recorded_at FROM retirement_history "
+                    "WHERE manifest_id = ? ORDER BY retirement_event_id", (manifest_id,),
+                )),
+                "relations": tuple({
+                    "relation_kind": str(row["relation_kind"]),
+                    "target_kind": str(row["target_kind"]),
+                    "target_key": str(row["target_key"]),
+                    "route_role": str(row["route_role"]),
+                    "event_kind": str(row["event_kind"]),
+                    "revision": int(row["revision"]),
+                    "details": dict(_json_object(str(row["details_json"]), "relation details")),
+                    "recorded_at": str(row["recorded_at"]),
+                } for row in connection.execute(
+                    "SELECT relation_kind, target_kind, target_key, route_role, event_kind, revision, details_json, recorded_at "
+                    "FROM manifest_relation_history WHERE manifest_id = ? ORDER BY relation_event_id", (manifest_id,),
+                )),
+                "verifications": tuple({
+                    "verification_id": str(row["verification_id"]),
+                    "route_key": str(row["route_key"]),
+                    "outcome_kind": str(row["outcome_kind"]),
+                    "proof_status": str(row["proof_status"]),
+                    "details": dict(_json_object(str(row["details_json"]), "verification details")),
+                    "recorded_at": str(row["recorded_at"]),
+                } for row in connection.execute(
+                    "SELECT verification_id, route_key, outcome_kind, proof_status, details_json, recorded_at "
+                    "FROM verification_history WHERE manifest_id = ? ORDER BY recorded_at, verification_id", (manifest_id,),
+                )),
+                "evidence": tuple({
+                    "capability_key": str(row["capability_key"]),
+                    "evidence_kind": str(row["evidence_kind"]),
+                    "evidence_state": str(row["evidence_state"]),
+                    "details": dict(_json_object(str(row["details_json"]), "evidence details")),
+                    "recorded_at": str(row["recorded_at"]),
+                } for row in connection.execute(
+                    "SELECT capability_key, evidence_kind, evidence_state, details_json, recorded_at "
+                    "FROM capability_evidence_history WHERE manifest_id = ? ORDER BY capability_evidence_id", (manifest_id,),
+                )),
+                "migration": tuple({
+                    "migration_run_id": str(row["migration_run_id"]),
+                    "event_kind": str(row["event_kind"]),
+                    "disposition": str(row["disposition"]),
+                    "reason": str(row["reason"]),
+                    "details": dict(_json_object(str(row["details_json"]), "migration details")),
+                    "recorded_at": str(row["recorded_at"]),
+                } for row in connection.execute(
+                    "SELECT migration_run_id, event_kind, disposition, reason, details_json, recorded_at FROM migration_item "
+                    "WHERE source_path = ? ORDER BY migration_item_event_id", (source_path,),
+                )),
+                "actions": tuple({"action_id": str(row["action_id"]), "events": _retirement_action_history(connection, str(row["action_id"]))}
+                                 for row in action_rows),
+            },
+        })
+    return tuple(result)
+
+
+def _active_canonical_manifest(connection: sqlite3.Connection, manifest_id: str) -> Mapping[str, Any]:
+    row = connection.execute(
+        "SELECT manifest_id, source_path, current_sha256, present FROM manifest_current WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchone()
+    if row is None or not bool(row["present"]):
+        raise ScenarioRegistryStoreError("retirement successor is not source-present")
+    route_evidence = _current_route_evidence(connection, manifest_id)
+    state, _reason = _current_lifecycle_state(
+        connection, manifest_id=manifest_id, present=True, route_evidence=route_evidence,
+    )
+    if state != "active":
+        raise ScenarioRegistryStoreError("retirement successor is not active")
+    try:
+        observed_sha256 = hashlib.sha256(Path(str(row["source_path"])).read_bytes()).hexdigest()
+    except OSError as exc:
+        raise ScenarioRegistryStoreError(f"retirement successor source is unavailable: {exc}") from exc
+    if observed_sha256 != str(row["current_sha256"] or ""):
+        raise ScenarioRegistryStoreError("retirement successor source SHA-256 is stale")
+    return {"manifest_id": str(row["manifest_id"]), "source_path": str(row["source_path"]), "source_sha256": observed_sha256}
+
+
+def _retirement_coverage_guard(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    successor_manifest_id: str,
+) -> Mapping[str, Any]:
+    subject_capabilities = {
+        str(row["capability_key"]): (str(row["value_json"]), str(row["declared_state"]))
+        for row in connection.execute(
+            "SELECT capability_key, value_json, declared_state FROM manifest_capability_current WHERE manifest_id = ?",
+            (manifest_id,),
+        )
+    }
+    successor_capabilities = {
+        str(row["capability_key"]): (str(row["value_json"]), str(row["declared_state"]))
+        for row in connection.execute(
+            "SELECT capability_key, value_json, declared_state FROM manifest_capability_current WHERE manifest_id = ?",
+            (successor_manifest_id,),
+        )
+    }
+    missing_capabilities = sorted(
+        key for key, value in subject_capabilities.items() if successor_capabilities.get(key) != value
+    )
+    subject_routes = {
+        (str(row["route_role"]), str(row["step_label"]))
+        for row in connection.execute(
+            "SELECT route_role, step_label FROM manifest_proof_route_current WHERE manifest_id = ?", (manifest_id,),
+        )
+    }
+    successor_routes = {
+        (str(row["route_role"]), str(row["step_label"]))
+        for row in connection.execute(
+            "SELECT route_role, step_label FROM manifest_proof_route_current WHERE manifest_id = ?", (successor_manifest_id,),
+        )
+    }
+    missing_routes = sorted(subject_routes - successor_routes)
+    missing_negative_controls = [
+        route for route in missing_routes if "negative" in route[0] or "disallowed" in route[0]
+    ]
+    missing_failure_controls = [route for route in missing_routes if "failure" in route[0]]
+    return {
+        "required_capabilities": sorted(subject_capabilities),
+        "missing_capabilities": missing_capabilities,
+        "required_proof_routes": [list(route) for route in sorted(subject_routes)],
+        "missing_proof_routes": [list(route) for route in missing_routes],
+        "missing_negative_controls": [list(route) for route in missing_negative_controls],
+        "missing_failure_controls": [list(route) for route in missing_failure_controls],
+        "coverage_ready": not missing_capabilities and not missing_routes,
+    }
+
+
+def approve_retirement(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    successor_manifest_id: str,
+    source_sha256: str,
+    reason: str,
+    reviewer_identity: str,
+    approval: str,
+) -> Mapping[str, Any]:
+    """Prepare one reviewer-approved, SHA-bound retirement without deleting its source."""
+    approved_reason = str(reason).strip()
+    reviewer = str(reviewer_identity).strip()
+    if approved_reason not in _RETIREMENT_REASONS:
+        raise ScenarioRegistryStoreError("retirement reason is not owner-approved")
+    if not reviewer or str(approval).strip().lower() != "approved":
+        raise ScenarioRegistryStoreError("retirement requires explicit reviewer approval")
+    requested_sha256 = str(source_sha256).strip().lower()
+    if len(requested_sha256) != 64 or any(character not in "0123456789abcdef" for character in requested_sha256):
+        raise ScenarioRegistryStoreError("retirement source SHA-256 must be a lowercase hexadecimal digest")
+    with immediate_transaction(connection):
+        subject = connection.execute(
+            "SELECT source_path, current_sha256, present FROM manifest_current WHERE manifest_id = ?", (manifest_id,),
+        ).fetchone()
+        if subject is None or not bool(subject["present"]):
+            raise ScenarioRegistryStoreError("retirement subject is not source-present")
+        subject_routes = _current_route_evidence(connection, manifest_id)
+        subject_state, _subject_reason = _current_lifecycle_state(
+            connection, manifest_id=manifest_id, present=True, route_evidence=subject_routes,
+        )
+        if subject_state != "active":
+            raise ScenarioRegistryStoreError("retirement subject is not active")
+        if requested_sha256 != str(subject["current_sha256"] or ""):
+            raise ScenarioRegistryStoreError("retirement subject SHA-256 is stale")
+        try:
+            observed_sha256 = hashlib.sha256(Path(str(subject["source_path"])).read_bytes()).hexdigest()
+        except OSError as exc:
+            raise ScenarioRegistryStoreError(f"retirement subject source is unavailable: {exc}") from exc
+        if observed_sha256 != requested_sha256:
+            raise ScenarioRegistryStoreError("retirement subject source SHA-256 changed")
+        candidates = _retirement_candidate_rows(connection)
+        candidate = candidates.get(manifest_id)
+        if candidate is None or approved_reason not in candidate["reasons"]:
+            raise ScenarioRegistryStoreError("retirement subject has no matching review candidate")
+        approved_successors = {
+            evidence["successor_manifest_id"]
+            for evidence in candidate["reasons"][approved_reason]
+            if "successor_manifest_id" in evidence
+        }
+        if successor_manifest_id not in approved_successors:
+            raise ScenarioRegistryStoreError("retirement successor is not supported by the approved reason")
+        successor = _active_canonical_manifest(connection, successor_manifest_id)
+        coverage = _retirement_coverage_guard(
+            connection, manifest_id=manifest_id, successor_manifest_id=successor_manifest_id,
+        )
+        if not bool(coverage["coverage_ready"]):
+            raise ScenarioRegistryStoreError("retirement would remove required active coverage")
+        action_id = _identity(
+            "caol-scenario-retirement-action-v1", manifest_id, successor_manifest_id,
+            requested_sha256, approved_reason, reviewer,
+        )
+        existing = connection.execute(
+            "SELECT retirement_action_event_id FROM retirement_action_history WHERE action_id = ? AND event_kind = 'approved'",
+            (action_id,),
+        ).fetchone()
+        details = {
+            "approval": "approved",
+            "coverage": coverage,
+            "successor": successor,
+        }
+        if existing is None:
+            connection.execute(
+                "INSERT INTO retirement_action_history( action_id, manifest_id, successor_manifest_id, source_path, "
+                "source_sha256, reviewer_identity, retirement_reason, event_kind, details_json ) "
+                "VALUES( ?, ?, ?, ?, ?, ?, ?, 'approved', ? )",
+                (action_id, manifest_id, successor_manifest_id, str(subject["source_path"]), requested_sha256,
+                 reviewer, approved_reason, _json_text(details)),
+            )
+        quarantine_scenario(
+            connection,
+            manifest_id=manifest_id,
+            route_key="_retirement",
+            reason="retirement_pending",
+            details={"action_id": action_id, "successor_manifest_id": successor_manifest_id},
+        )
+    return {"action_id": action_id, "approved": True, "idempotent": existing is not None, "coverage": coverage}
+
+
+def execute_retirement_action(connection: sqlite3.Connection, action_id: str) -> Mapping[str, Any]:
+    """Delete only an approved exact source, then append retirement or resumable failure evidence."""
+    action = connection.execute(
+        "SELECT manifest_id, successor_manifest_id, source_path, source_sha256, reviewer_identity, retirement_reason "
+        "FROM retirement_action_history WHERE action_id = ? AND event_kind = 'approved'",
+        (action_id,),
+    ).fetchone()
+    if action is None:
+        raise ScenarioRegistryStoreError("retirement action is not approved")
+    history = _retirement_action_history(connection, action_id)
+    if any(event["event_kind"] == "retired" for event in history):
+        return {"action_id": action_id, "retired": True, "idempotent": True}
+    manifest_id = str(action["manifest_id"])
+    successor_manifest_id = str(action["successor_manifest_id"])
+    source_path = Path(str(action["source_path"]))
+    source_sha256 = str(action["source_sha256"])
+    try:
+        _active_canonical_manifest(connection, successor_manifest_id)
+        coverage = _retirement_coverage_guard(
+            connection, manifest_id=manifest_id, successor_manifest_id=successor_manifest_id,
+        )
+        if not bool(coverage["coverage_ready"]):
+            raise ScenarioRegistryStoreError("retirement would remove required active coverage")
+        if source_path.exists():
+            observed_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
+            if observed_sha256 != source_sha256:
+                raise ScenarioRegistryStoreError("retirement subject source SHA-256 changed")
+            source_path.unlink()
+    except (OSError, ScenarioRegistryStoreError) as exc:
+        with immediate_transaction(connection):
+            connection.execute(
+                "INSERT OR IGNORE INTO retirement_action_history( action_id, manifest_id, successor_manifest_id, source_path, "
+                "source_sha256, reviewer_identity, retirement_reason, event_kind, details_json ) "
+                "VALUES( ?, ?, ?, ?, ?, ?, ?, 'failed', ? )",
+                (action_id, manifest_id, successor_manifest_id, str(source_path), source_sha256,
+                 str(action["reviewer_identity"]), str(action["retirement_reason"]), _json_text({"error": str(exc)})),
+            )
+            quarantine_scenario(
+                connection, manifest_id=manifest_id, route_key="_retirement", reason="broken",
+                details={"action_id": action_id, "error": str(exc)},
+            )
+        return {"action_id": action_id, "retired": False, "resumable": True, "error": str(exc)}
+    with immediate_transaction(connection):
+        subject = connection.execute(
+            "SELECT present, last_content_sha256 FROM manifest_current WHERE manifest_id = ?", (manifest_id,),
+        ).fetchone()
+        if subject is None or str(subject["last_content_sha256"] or "") != source_sha256:
+            raise ScenarioRegistryStoreError("retirement action no longer matches its manifest history")
+        existing_retirement = connection.execute(
+            "SELECT retirement_event_id FROM retirement_history WHERE manifest_id = ?", (manifest_id,)
+        ).fetchone()
+        if existing_retirement is None:
+            details = {
+                "action_id": action_id,
+                "successor_manifest_id": successor_manifest_id,
+                "source_path": str(source_path),
+                "source_sha256": source_sha256,
+            }
+            connection.execute(
+                "UPDATE manifest_current SET present = 0, current_sha256 = NULL, absent_at = CURRENT_TIMESTAMP "
+                "WHERE manifest_id = ?",
+                (manifest_id,),
+            )
+            connection.execute(
+                "INSERT INTO lifecycle_history( manifest_id, event_kind, revision, cause_sha256, details_json ) "
+                "SELECT manifest_id, 'retired', revision, last_content_sha256, ? FROM manifest_current WHERE manifest_id = ?",
+                (_json_text(details), manifest_id),
+            )
+            connection.execute(
+                "INSERT INTO retirement_history( manifest_id, retirement_kind, authority, reason, details_json ) "
+                "VALUES( ?, 'approved_source_removal', ?, ?, ? )",
+                (manifest_id, str(action["reviewer_identity"]), str(action["retirement_reason"]), _json_text(details)),
+            )
+        connection.execute(
+            "INSERT OR IGNORE INTO retirement_action_history( action_id, manifest_id, successor_manifest_id, source_path, "
+            "source_sha256, reviewer_identity, retirement_reason, event_kind, details_json ) "
+            "VALUES( ?, ?, ?, ?, ?, ?, ?, 'retired', ? )",
+            (action_id, manifest_id, successor_manifest_id, str(source_path), source_sha256,
+             str(action["reviewer_identity"]), str(action["retirement_reason"]), _json_text({"source_removed": True})),
+        )
+    return {"action_id": action_id, "retired": True, "idempotent": False}
+
+
 def _resolve_route_evidence(
     connection: sqlite3.Connection,
     *,
@@ -2474,19 +3697,16 @@ def _resolve_route_evidence(
         evidence_state=evidence_state,
         details=details,
     )
-    _append_lifecycle_if_changed(
-        connection,
-        manifest_id=manifest_id,
-        event_kind=f"proof_route_{evidence_state}",
-        details=details,
-    )
     if not rows:
-        _append_quarantine_if_changed(
+        quarantine_scenario(
             connection,
             manifest_id=manifest_id,
             route_key=route_key,
-            quarantine_kind="quarantined_no_compatible_verification",
+            reason="stale",
             details=details,
+            quarantine_kind="quarantined_no_compatible_verification",
+            lifecycle_event_kind="proof_route_stale",
+            invalidation_reason="proof_route_stale",
         )
     elif connection.execute(
         "SELECT quarantine_event_id FROM quarantine_history WHERE manifest_id = ? AND route_key = ?",
@@ -2499,12 +3719,35 @@ def _resolve_route_evidence(
             quarantine_kind="released_compatible_verification",
             details=details,
         )
-    if evidence_state != "hard_proven":
+    elif evidence_state in {"contradicted", "stale"}:
+        quarantine_scenario(
+            connection,
+            manifest_id=manifest_id,
+            route_key=route_key,
+            reason=evidence_state,
+            details=details,
+            lifecycle_event_kind=f"proof_route_{evidence_state}",
+            invalidation_reason=f"proof_route_{evidence_state}",
+        )
+    elif evidence_state != "hard_proven":
         _invalidate_outstanding_tokens(
             connection,
             manifest_id=manifest_id,
             route_key=route_key,
             reason=f"proof_route_{evidence_state}",
+            details=details,
+        )
+        _append_lifecycle_if_changed(
+            connection,
+            manifest_id=manifest_id,
+            event_kind=f"proof_route_{evidence_state}",
+            details=details,
+        )
+    else:
+        _append_lifecycle_if_changed(
+            connection,
+            manifest_id=manifest_id,
+            event_kind=f"proof_route_{evidence_state}",
             details=details,
         )
     return evidence_state

@@ -16,6 +16,7 @@ sys.path.insert(0, str(HARNESS_DIR))
 
 from scenario_registry_store import (  # noqa: E402
     ScenarioRegistryStoreError,
+    detect_scenario_relations,
     open_registry,
     rebuild_manifest_projection,
 )
@@ -217,6 +218,80 @@ class ScenarioRegistryRebuildTest(unittest.TestCase):
             )
             self.assertNotEqual(path.read_text(encoding="utf-8"), before[0]["declaration_json"])
             connection.close()
+
+    def test_relation_candidates_are_review_only_and_keep_manifest_identities_separate(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            duplicate_a = self.strict_manifest()
+            duplicate_a["name"] = "duplicate.a"
+            duplicate_b = self.strict_manifest()
+            duplicate_b["name"] = "duplicate.b"
+            duplicate_b["description"] = "Different prose only."
+            successor = self.strict_manifest()
+            successor["name"] = "successor"
+            successor["steps"].insert(2, {"label": "production_extra", "kind": "press", "key": "p"})
+            successor["proof_route"]["production_behavior"] = ["production", "production_extra"]
+            narrower = self.strict_manifest()
+            narrower["name"] = "narrower"
+            narrower["runtime_contract"]["requirements"]["extra_gate"] = True
+            self.write_manifest(scenarios, "duplicate_a", duplicate_a)
+            self.write_manifest(scenarios, "duplicate_b", duplicate_b)
+            self.write_manifest(scenarios, "successor", successor)
+            self.write_manifest(scenarios, "narrower", narrower)
+            connection = open_registry(str(root / "registry.sqlite3"))
+            try:
+                self.assertEqual(
+                    rebuild_manifest_projection(connection, scenarios),
+                    {"staged": 4, "discovered": 4, "changed": 0, "absent": 0},
+                )
+                manifest_rows = connection.execute(
+                    "SELECT manifest_id, source_path FROM manifest_current WHERE present = 1 ORDER BY source_path"
+                ).fetchall()
+                self.assertEqual(len(manifest_rows), 4)
+                self.assertEqual(len({row[0] for row in manifest_rows}), 4)
+                by_stem = {Path(row[1]).stem: row[0] for row in manifest_rows}
+                relations = connection.execute(
+                    "SELECT manifest_id, relation_kind, target_key FROM manifest_relation_current "
+                    "WHERE relation_kind IN ('exact_duplicate_candidate', 'likely_subsumed_by_candidate') "
+                    "ORDER BY relation_kind, manifest_id, target_key"
+                ).fetchall()
+                self.assertIn(
+                    (by_stem["duplicate_a"], "exact_duplicate_candidate", by_stem["duplicate_b"]),
+                    [tuple(row) for row in relations],
+                )
+                self.assertIn(
+                    (by_stem["duplicate_b"], "exact_duplicate_candidate", by_stem["duplicate_a"]),
+                    [tuple(row) for row in relations],
+                )
+                self.assertIn(
+                    (by_stem["duplicate_a"], "likely_subsumed_by_candidate", by_stem["successor"]),
+                    [tuple(row) for row in relations],
+                )
+                self.assertNotIn(
+                    (by_stem["duplicate_a"], "likely_subsumed_by_candidate", by_stem["narrower"]),
+                    [tuple(row) for row in relations],
+                )
+                before = {
+                    table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                    for table in ("lifecycle_history", "token_history", "verification_history")
+                }
+                detected = detect_scenario_relations(connection)
+                self.assertGreaterEqual(detected["exact_duplicates"], 2)
+                self.assertGreaterEqual(detected["likely_subsumptions"], 1)
+                after = {
+                    table: connection.execute(f"SELECT COUNT(*) FROM {table}").fetchone()[0]
+                    for table in before
+                }
+                self.assertEqual(after, before)
+                review_details = connection.execute(
+                    "SELECT details_json FROM manifest_relation_history WHERE event_kind = 'review_candidate'"
+                ).fetchall()
+                self.assertTrue(review_details)
+                self.assertTrue(all(json.loads(row[0])["review_required"] for row in review_details))
+            finally:
+                connection.close()
 
 
 if __name__ == "__main__":

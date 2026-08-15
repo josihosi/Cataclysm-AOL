@@ -7486,6 +7486,41 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             scenario["evidence_contract"]["pass_fail_rule"],
         )
 
+    def test_reopened_fight_continuation_binds_empty_export_and_real_terminal(self) -> None:
+        scenario = load_scenario("bandit.extortion_reopened_fight_continuation_mcw")
+        fixture = resolve_fixture_payload(scenario["fixture"], scenario["fixture_profile"])
+        manifest = json.loads(
+            (Path(fixture["save_src"]).parent / "manifest.json").read_text(encoding="utf-8")
+        )
+        steps = list(scenario["steps"])
+        kinds = [str(step.get("kind", "")).strip() for step in steps]
+
+        self.assertEqual(
+            scenario["fixture"],
+            "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+        )
+        self.assertEqual(manifest.get("save_transforms"), [])
+        self.assertNotIn("bandit.scout_to_decision_observer_live_mcw", scenario["description"])
+        self.assertEqual(
+            next(step["keys"] for step in steps if step.get("label") == "choose_reopened_fight"),
+            ["f"],
+        )
+        self.assertIn("advance_turns", kinds)
+        self.assertIn("audit_authoritative_fight_terminal", [step["label"] for step in steps])
+        self.assertIn("audit_one_identity_stable_fight_receipt", [step["label"] for step in steps])
+        save_labels = [step["label"] for step in steps if step.get("kind") == "audit_player_save_mtime"]
+        self.assertEqual(save_labels, [
+            "audit_player_save_mtime_before_fight_reload",
+            "audit_player_save_mtime_after_fight_save",
+        ])
+        for step in steps:
+            if step.get("capture_after"):
+                self.assertTrue(
+                    step.get("expected_screen_text_after_contains")
+                    or step.get("proof_deferred_to_label"),
+                    step.get("label"),
+                )
+
     def test_scout_to_decision_watch_geography_preflight_matcher_rejects_false_green(self) -> None:
         scenario = load_scenario("bandit.scout_to_decision_observer_live_mcw")
         steps = {step["label"]: step for step in scenario["steps"]}

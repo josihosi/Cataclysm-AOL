@@ -15,7 +15,12 @@ from pathlib import Path
 HARNESS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(HARNESS_DIR))
 
-from scenario_registry import ManifestValidationError, validate_manifest  # noqa: E402
+from scenario_registry import (  # noqa: E402
+    ManifestValidationError,
+    normalize_relation_contract,
+    relation_contract_likely_subsumes,
+    validate_manifest,
+)
 
 
 class ScenarioRegistryContractTest(unittest.TestCase):
@@ -181,6 +186,46 @@ class ScenarioRegistryContractTest(unittest.TestCase):
 
             with self.assertRaises(ManifestValidationError):
                 validate_manifest(substituted, path=path)
+
+    def test_relation_contract_ignores_prose_but_retains_input_steps_and_route(self) -> None:
+        first = self.versioned_manifest()
+        second = self.versioned_manifest()
+        second["name"] = "different.identity"
+        second["description"] = "Different prose must not create a distinct relation contract."
+        second["recommendation"] = "Run a different manual command."
+        second["artifact_patterns"] = ["prose narration only"]
+        second["steps"][1]["comment"] = "This comment is not a production requirement."
+        self.assertEqual(normalize_relation_contract(first), normalize_relation_contract(second))
+
+        changed_input = copy.deepcopy(second)
+        changed_input["runtime_contract"]["permitted_input"] = ["press:p"]
+        self.assertNotEqual(normalize_relation_contract(first), normalize_relation_contract(changed_input))
+
+        changed_step = copy.deepcopy(second)
+        changed_step["steps"][1]["key"] = "p"
+        self.assertNotEqual(normalize_relation_contract(first), normalize_relation_contract(changed_step))
+
+        changed_route = copy.deepcopy(second)
+        changed_route["proof_route"]["terminal_persistence"] = ["artifact"]
+        self.assertNotEqual(normalize_relation_contract(first), normalize_relation_contract(changed_route))
+
+    def test_relation_contract_likely_subsumption_is_directional_and_rejects_narrower_requirements(self) -> None:
+        subject = self.versioned_manifest()
+        successor = self.versioned_manifest()
+        successor["steps"].insert(2, {"label": "production_extra", "kind": "press", "key": "p"})
+        successor["proof_route"]["production_behavior"] = ["production", "production_extra"]
+        subject_contract = normalize_relation_contract(subject)
+        successor_contract = normalize_relation_contract(successor)
+        self.assertIsNotNone(subject_contract)
+        self.assertIsNotNone(successor_contract)
+        self.assertTrue(relation_contract_likely_subsumes(subject_contract, successor_contract))
+        self.assertFalse(relation_contract_likely_subsumes(successor_contract, subject_contract))
+
+        narrower = copy.deepcopy(successor)
+        narrower["runtime_contract"]["requirements"]["extra_gate"] = True
+        narrower_contract = normalize_relation_contract(narrower)
+        self.assertIsNotNone(narrower_contract)
+        self.assertFalse(relation_contract_likely_subsumes(subject_contract, narrower_contract))
 
 
 if __name__ == "__main__":
