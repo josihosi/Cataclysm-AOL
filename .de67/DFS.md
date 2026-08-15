@@ -1,8 +1,8 @@
 # Combined Hostile-Camp AI and Harness Registry Specification
 
-Status: Frozen combined successor for DE-67 phase 3.
+Status: Refrozen combined successor for DE-67 phase 3.
 WEC: `.de67/WEC.md`
-Source baseline: `dev@e466d06870a3bd8bceeaee32e202b7d94e930d46` with the preserved hostile-
+Source baseline: `dev@038c2e9e60b39572db864ed7465a618e08e8ba6f` with the preserved hostile-
 ecology/harness frontier listed in the freeze record; inspected 2026-08-15.
 Comparison baseline: `port/cdda-master` at `660057ff728b`.
 
@@ -556,6 +556,15 @@ non-stale selection token produced by a successful hard-filter query.
 - Evidence states are exactly `declared`, `inspected`, `run-verified`, `contradicted`, and `stale`.
   Migration dispositions are exactly `attempted`, `imported`, `verified`, `failed`, `blocked`, and
   `contradicted`.
+- Scenario lifecycle states are exactly `active`, `quarantined`, and `retired`. Lifecycle is registry
+  and review truth, not a second declaration of product intent. Active scenarios alone participate in
+  default query selection. Quarantined and retired scenarios remain explicitly inspectable.
+- A broken, contradicted, or stale scenario is quarantined. Quarantine is retained evidence, not
+  deletion or retirement; a unique broken scenario remains quarantined until a replacement exists.
+- Exact duplicate and likely subsumption are review findings, not lifecycle transitions. Their owner
+  compares normalized hard requirements/capabilities, resolved fixture/profile identity, ordered step
+  sequence, permitted input, and proof contract. It never uses filename, name, description, or prose
+  similarity as evidence, and a result for one scenario never verifies a sibling.
 - **Startup footing** and `feature_proof=false` remain non-gameplay evidence even when Peekaboo,
   HUD detection, fixture install, artifact capture, and cleanup all succeed.
 - Debug-authored fixture state may prove declared preconditions; only the named production route
@@ -568,7 +577,7 @@ non-stale selection token produced by a successful hard-filter query.
 
 | Concern | Current files and symbols | Current behavior at inspected baseline | Gap |
 |---|---|---|---|
-| Scenario declaration | `tools/openclaw_harness/scenarios/*.json`; `scenario_path`; `load_scenario` | 168 parseable object files exist. Fields are heterogeneous; capability dimensions and evidence floors are not normalized. | Names/descriptions and ad hoc proof prose cannot support hard selection. |
+| Scenario declaration and lifecycle | `tools/openclaw_harness/scenarios/*.json`; `scenario_path`; `load_scenario`; `scenario_blocker_info` | 168 parseable object files exist. Fields are heterogeneous; capability dimensions and evidence floors are not normalized. `scenario_blocker_info` collapses every non-blocked manifest to `active` and has no quarantine/retirement/history owner. | Names/descriptions and ad hoc proof prose cannot support hard selection, relationship analysis, or lifecycle review. |
 | Listing | `list_scenarios`; `scenario_blocker_info`; CLI `list-scenarios` | Enumerates all 168 JSON files and reports name, description, artifact source, step count, blocker reason, and helpers. The `--profile` option is explicitly ignored. | No typed filtering, ranking, freshness, fixture explanation, or draft. |
 | Fixtures and profiles | `load_fixture_manifest`; `resolve_fixture_payload`; `install_fixture`; `resolve_profile_snapshot_payload`; `install_profile_snapshot`; `load_profile_config` | 107 save-fixture manifests, profile snapshots, alias chains, save transforms, and `master`/`dev-harness` startup policy are real owners. | No searchable normalized binding or capability evidence. |
 | Runtime binding | `runtime_source_binding`; `build_runtime_binding`; `compare_runtime_binding`; `load_runtime_binding` | Binds committed HEAD, relevant dirty source, and executable hash for a run. | Does not bind scenario/fixture/profile/helper inputs into reusable registry evidence. |
@@ -639,8 +648,20 @@ Mechanism:
   No database or draft is tracked source.
 - `registry_meta(schema_version, created_at, updated_at)` owns schema compatibility.
 - `scenario_manifest(scenario_id PRIMARY KEY, path UNIQUE, manifest_sha256, manifest_version,
-  name, description, status, blocked_reason, source_head, indexed_at, review_state)` is the current
-  rebuildable declaration projection.
+  name, description, declared_status, blocked_reason, lifecycle_state, lifecycle_reason,
+  canonical_successor_id, source_present, normalized_contract_sha256, raw_manifest_json, source_head,
+  indexed_at, review_state)` is the current declaration projection plus the complete retained last
+  manifest record. While `source_present=1`, the source manifest alone owns declared intent;
+  `raw_manifest_json` is retained history and never becomes an editable declaration source.
+- `scenario_lifecycle_event(event_id PRIMARY KEY, scenario_id, from_state, to_state, reason_code,
+  reason_detail, canonical_successor_id, review_identity, approved_at, source_manifest_sha256,
+  source_removed_at)` is append-only lifecycle history. Automated evidence may enter quarantine but
+  may never create a retired event.
+- `scenario_relation(relation_id PRIMARY KEY, subject_scenario_id, canonical_scenario_id,
+  relation_kind, normalized_requirements_sha256, fixture_profile_binding_sha256,
+  step_sequence_sha256, permitted_input_sha256, proof_contract_sha256, evidence_json, review_state,
+  recorded_at)` stores reviewable `exact_duplicate` and `likely_subsumption` findings. It never changes
+  lifecycle or supplies proof credit.
 - `scenario_capability(scenario_id, capability_key, declared_value_json, declaration_source,
   PRIMARY KEY(scenario_id, capability_key))` stores only normalized manifest declarations.
 - `scenario_binding(binding_id PRIMARY KEY, scenario_id, manifest_sha256, fixture_binding_sha256,
@@ -663,17 +684,24 @@ Mechanism:
   expires_on_change, created_at, consumed_at)` bind selection to the exact indexed facts. There is no
   time-based expiry invented by the harness; any manifest, binding, or evidence-revision change
   invalidates the token.
+- `retirement_action(action_id PRIMARY KEY, scenario_id, manifest_sha256, reason_code,
+  canonical_successor_id, review_identity, approved_at, source_removed_at, completed_at, error)` is
+  the crash-resumable, explicit approval boundary for source removal. It is absent for automated
+  candidate detection and quarantine.
 - `migration_run(migration_id PRIMARY KEY, started_at, completed_at, source_head, initial_count,
   final_count, disposition)` and `migration_item(migration_id, scenario_path, scenario_sha256,
-  scenario_id, attempted_at, completed_at, disposition, reason, run_id,
+  scenario_id, attempted_at, launch_attempted_at, completed_at, disposition, reason, run_id,
   PRIMARY KEY(migration_id, scenario_path))` make omissions queryable.
 - Manifest-derived tables rebuild in one transaction. Verification, evidence, query, and migration
-  history survive rebuild. Deleting a manifest marks its projection absent/stale; history remains.
+  history survive rebuild. Missing source marks `source_present=0`; complete manifest, lifecycle,
+  relation, retirement, verification, and migration history remain inspectable.
 
 Evidence resolution:
 
 1. Recompute manifest, fixture/profile, source/executable, helper, and permission binding facts.
 2. Mark incompatible prior evidence `stale` with the exact changed component; retain the old row.
+   If no compatible current verification remains, atomically quarantine the scenario and invalidate
+   every outstanding selection token.
 3. An unresolved compatible `contradicted` row rejects a hard requirement.
 4. A compatible `run-verified` row may satisfy a gameplay/transition evidence floor; compatible
    `inspected` may satisfy a static-footing floor.
@@ -699,7 +727,10 @@ Mechanism:
 
 - New CLI commands in `startup_harness.py :: build_parser/main`:
   `registry-build`, `registry-query`, `registry-launch`, `registry-migrate-all`, and
-  `registry-status`. Each accepts `--registry`; query accepts `--query-file` or `--query-json`.
+  `registry-status`, plus the explicit-review-only `registry-retire`. Each accepts `--registry`;
+  query accepts `--query-file` or `--query-json`. Retirement requires scenario ID, reason, active
+  canonical successor, and reviewer approval identity; migration, status, and relation detection
+  never invoke it.
 - Query shape:
 
 ```json
@@ -724,6 +755,9 @@ Mechanism:
 - Preferences use the caller's given order as a lexicographic satisfaction vector over hard-valid
   survivors; no unstated weight, score cutoff, or fuzzy filename similarity exists. Stable ties use
   `scenario_id` only after all supplied preferences tie.
+- Default query eligibility begins with `lifecycle_state=active`. Repeated `registry-query
+  --include-state quarantined|retired` values may inspect those states but cannot issue a launchable
+  selection token for either state.
 - A valid result includes manifest path/hash, fixture/profile/world, current binding, helpers and
   Peekaboo prerequisites, each satisfied hard predicate and evidence source, preference result,
   proof route, and a change-invalidated selection token.
@@ -785,43 +819,99 @@ Implementation status:
 
 Mechanism:
 
-- `registry-migrate-all` snapshots every `tools/openclaw_harness/scenarios/*.json` path and hash,
-  creates one `migration_item` row with disposition `attempted` before parsing each file, and then
-  processes every row. Enumeration order is deterministic but has no semantic priority.
-- Invalid JSON/object/schema becomes `failed` with parser/validator reason. A declared blocker or
-  unavailable required helper/permission becomes `blocked` and is not launched. A valid legacy
-  manifest is `imported` with review-required unknown capability rows before any run.
-- Every active executable contract is tried through the canonical probe route in a disposable
-  migration profile derived from migration/scenario identity. It may install the declared
-  fixture/profile snapshot into that disposable profile; it may not mutate a user's ordinary
-  profile or bypass the manifest's input/debug restrictions. A no-fixture scenario that cannot
-  obtain legitimate disposable footing is explicitly `blocked` or `failed`, never skipped.
-- A green named feature route becomes `verified`; an observed incompatible capability becomes
-  `contradicted`; other completed non-green runs become `failed` with report/run identity. Initial
-  `imported` remains only for a non-executable review-only contract that was nevertheless parsed,
-  indexed, and explicitly classified.
-- An interrupted process leaves `attempted`, so `registry-migrate-all --resume <migration-id>` can
-  continue idempotently. Already terminal items with the same path/hash are not silently rerun;
-  changed hashes create a new attempt. This is crash recovery, not a retry limit.
+- `registry-migrate-all` is the initial exhaustive migration owner. It snapshots every
+  `tools/openclaw_harness/scenarios/*.json` path and hash, creates one `migration_item` row with
+  disposition `attempted` before parsing each file, and then processes every row. Enumeration order
+  is deterministic but has no semantic priority.
+- Invalid JSON/object/schema becomes terminal `failed` and lifecycle `quarantined`, with the exact
+  parser/validator reason. A declared blocker or unavailable required fixture/helper/permission is
+  terminal `blocked` and quarantined without launch. A valid non-executable review-only manifest is
+  terminal `imported` and quarantined with review-required unknown capability rows.
+- Every executable scenario, including a duplicate/subsumption candidate, is attempted once for its
+  path/hash during the initial exhaustive migration through the canonical probe route in a disposable
+  migration profile derived from migration/scenario identity. No scenario is skipped because a
+  sibling ran, and no result is copied between scenario IDs.
+- The migration may install the scenario's declared fixture/profile snapshot into that disposable
+  profile; it may not mutate a user's ordinary profile or bypass the manifest's input/debug
+  restrictions. A no-fixture scenario that cannot obtain legitimate disposable footing is terminal
+  `blocked` or `failed` and quarantined, never skipped.
+- A green named feature route becomes terminal `verified` and lifecycle `active`. An observed
+  incompatible capability becomes terminal `contradicted` and quarantined. Other completed non-green
+  runs become terminal `failed` and quarantined with report/run identity.
+- An interrupted process leaves transitional `attempted`, so `registry-migrate-all --resume
+  <migration-id>` can continue idempotently. A row with `launch_attempted_at` is resumed/reconciled
+  from its durable report/process state rather than launched a second time. Already terminal items
+  with the same path/hash are not silently rerun; changed hashes create a new attempt. This is crash
+  recovery, not a retry limit.
 - Before success, enumerate again and continue processing any newly present path. Deleted paths
-  retain a `failed: source_removed_during_migration` item. Commit `migration_run` success only when
-  the final filesystem path set exactly equals the terminal item set and no item remains
-  `attempted`.
-- The summary reports total filesystem paths, terminal database rows, disposition counts, every
-  non-verified reason, and the equality check. No numeric scenario count is hard-coded.
+  retain terminal `failed: source_removed_during_migration`. Commit `migration_run` success only when
+  the final filesystem path set exactly equals the terminal item set, every executable final-set item
+  has one launch attempt for its path/hash, and no item remains `attempted`.
+- The summary reports total filesystem paths, terminal database rows, executable attempts,
+  disposition/lifecycle counts, every non-verified reason, and both equality/once-only checks. No
+  numeric scenario count is hard-coded.
+
+Lifecycle and relation analysis:
+
+- `scenario_registry.py :: normalize_relation_contract` canonicalizes only structured hard
+  requirements/capabilities, resolved fixture/profile identity, ordered step kind/arguments/labels,
+  permitted/forbidden input, and proof route/contract. It excludes names, descriptions, comments,
+  recommendation prose, and artifact narration.
+- `detect_scenario_relations` records `exact_duplicate` only when all normalized components are equal.
+  It records `likely_subsumption` only when footing and permitted input are compatible, the proposed
+  successor accepts every subject-valid normalized requirement without adding a narrower hard
+  precondition, contains the subject's ordered production-step sequence, and covers every subject
+  outcome/control at equal or greater proof depth. Both are review candidates only and preserve
+  separate verification identity.
+- `quarantine_scenario` is the sole automated lifecycle writer. Parse/schema/footing failure,
+  blocked/broken execution, contradiction, or stale binding can call it idempotently with evidence.
+  It invalidates selection tokens but never removes a manifest or writes `retired`.
+- `retirement_candidates` may explain only these owner-approved reasons: cannot launch/reach declared
+  footing and has no unique diagnostic value; exact duplicate; fully subsumed; temporary/historical
+  one-off; required fixture/helper no longer exists; or startup-only proof where a stronger scenario
+  proves the same footing plus the feature route. Candidate generation changes no lifecycle state.
+- `approve_retirement` requires explicit reviewer identity/approval, one reason above, and an active
+  canonical successor. In one guarded preparation transaction it verifies the exact source manifest
+  hash and proves that removing the subject leaves active coverage for every required capability,
+  proof route, negative control, and failure control the subject covers. Exact duplicate or likely
+  subsumption alone is insufficient when that coverage check fails.
+- The approved `retirement_action` then removes only the exact bound source manifest. A completion
+  transaction sets lifecycle `retired`, `source_present=0`, records reason/successor/removal time, and
+  retains the complete manifest, normalized projection, relationships, verification runs, evidence,
+  and migration history. If removal fails or the process is interrupted, the scenario remains
+  quarantined and the approved action is inspectable/resumable; it is never reported retired early.
+- A broken unique scenario with no active replacement remains quarantined. `approve_retirement`
+  rejects the last scenario covering any required capability, proof route, negative control, or
+  failure control.
+- `registry-status` searches active scenarios by default and can explicitly include quarantined and
+  retired rows, their reasons, successors, relation evidence, and complete history.
 
 Implementation status:
 
-- [ ] 🔴 R-105 — There is no working step that tries and defines every existing scenario in the
-  database with an explicit terminal disposition.
-  - Code gap: current listing happens in memory; no attempt ledger or completeness invariant exists.
-  - Required mechanism: implement the transactional inventory/try/resume route above around the
-    canonical runner and disposable profiles.
+- [ ] 🔴 R-105 — There is no working exhaustive migration/lifecycle owner that tries every executable
+  scenario once, gives every discovered scenario a terminal disposition, quarantines nonselectable
+  scenarios, detects evidence-grounded duplicate/subsumption candidates, and preserves reviewed
+  retirement history.
+  - Code gap: `list_scenarios` reparses current files in memory; `scenario_blocker_info` has only a
+    derived active/blocked view; no attempt ledger, lifecycle/history store, relation normalization,
+    explicit retirement boundary, coverage guard, or completeness/once-only invariant exists.
+  - Required mechanism: implement the transactional inventory/try/resume, lifecycle, normalized
+    relationship, review/approval, guarded manifest removal, and retained-history mechanisms above
+    around the canonical runner and disposable profiles.
   - Proof: on the inspected tree the command accounts for all 168 current files, including all 19
     current declared blockers and the untracked continuation scenario, while deriving acceptance
-    from final set equality rather than those snapshot counts. Injected invalid JSON, helper block,
-    contradiction, process interruption/resume, and a file appearing during migration each receive
-    explicit rows; omission and duplicate terminal processing fail the command.
+    from final set equality and per-path/hash attempt identity rather than those snapshot counts.
+    Every executable scenario has one initial canonical attempt; no sibling result supplies credit.
+    Injected invalid JSON, missing fixture/helper, contradiction, stale binding, process
+    interruption/resume, and a file appearing during migration each receive explicit rows and the
+    required lifecycle. Contract-identical/different-prose and similar-prose/different-contract
+    controls respectively do and do not produce exact-duplicate findings; a stronger same-footing
+    route can produce a reviewable subsumption candidate without changing lifecycle. A unique broken
+    scenario remains quarantined; default query excludes quarantined/retired rows; explicit status
+    can inspect them. Retirement without approval/successor or retirement of last required coverage
+    fails without source deletion. One approved eligible retirement removes only the bound manifest
+    and retains its complete manifest/history/reason/successor row. Omission, representative credit,
+    duplicate launch/terminal processing, automatic retirement, and history loss fail the command.
 
 ### 13. Harness-facing skill and durable guidance
 
@@ -859,17 +949,19 @@ Implementation status:
 |---|---|---|---|
 | Declared scenario intent/capabilities | Registry importer, query explanation, reviewer, skill | Scenario JSON versus SQLite projection or run observations | Scenario manifest alone writes declaration truth. Registry rebuilds from it; evidence never edits it. |
 | Fixture/profile/world footing | Existing install/resolve/startup functions, query explanation | Scenario fields, fixture/profile alias manifests, CLI overrides | Manifest declares intended footing; existing resolvers own actual install. A selection token binds both. Unsafe or incompatible overrides reject. |
-| Registry manifest projection | Query/migration/status | Rebuild/import transaction | `scenario_registry.py` transaction is sole writer; exact path/hash identity makes duplicate import idempotent. |
+| Registry manifest projection | Query/migration/status/lifecycle review | Rebuild/import transaction | `scenario_registry.py` transaction is sole writer; exact path/hash identity makes duplicate import idempotent, while missing/retired sources retain complete historical rows. |
 | Verification/evidence history | Query, status, migration resume, reviewer | Final report ingestion, explicit stale resolver | Durable report remains source artifact; registry appends normalized pointers/states. Duplicate report hash/run ID is a no-op. |
 | Contradiction resolution | Hard matcher, reviewer | Later compatible run could compete by timestamp | Unresolved contradiction wins. Only explicit same-route supersession under compatible binding yields. |
-| Evidence freshness | Hard matcher and explanations | Manifest/fixture/profile/source/executable/helper/permission changes | Recomputed complete binding owns invalidation. Changed component retains old row as stale and invalidates tokens. |
-| Query eligibility | CLI, skill, coordinator | Hard predicates versus preference scorer | Hard matcher runs first and is absolute. Preferences see survivors only and cannot restore a rejected row. |
+| Evidence freshness | Hard matcher and explanations | Manifest/fixture/profile/source/executable/helper/permission changes | Recomputed complete binding owns invalidation. Changed component retains old row as stale, quarantines when no compatible verification remains, and invalidates tokens. |
+| Query eligibility | CLI, skill, coordinator | Lifecycle, hard predicates, preference scorer | Active lifecycle is the default first gate; hard matcher then runs and is absolute. Preferences see survivors only and cannot restore quarantined, retired, or predicate-rejected rows. |
 | Selection | Registry launch adapter | Exact-name direct launch remains available for developers | Registry workflow requires bound token. Direct `probe` remains compatible but is not represented as query-selected unless its report is ingested with a matching manifest binding. |
 | Draft | Reviewer | No-match generator versus launcher | Draft generator writes `executable=false`; launch parser rejects draft path/token. Only human review and promotion into a real manifest can transfer ownership. |
 | Startup/fixture/Peekaboo/input/steps | Query layer versus `run_probe_mode`/`run_startup` | Risk of a second launcher | Existing startup/probe functions alone act. Registry passes identity and ingests results; it never sends input itself. |
 | Startup versus feature verdict | Registry, skill, migration | HUD/artifact success could compete with step proof | Existing `probe_proof_classification` and step ledgers remain authoritative; startup never upgrades feature depth. |
 | Game process cleanup | Report finalizer, handoff reviewer, migration | Probe cleanup versus deferred handoff | Existing `finalize_probe_report`/`cleanup_game_process` owns probe cleanup. Migration never uses deferred handoff; handoff remains explicitly deferred. |
-| Migration completeness | Status/reviewer | Filesystem enumeration versus successful-only inserts | Preinserted migration items plus final set equality own completeness; failures/blocks/contradictions are retained terminal outcomes. |
+| Migration completeness and attempt identity | Status/reviewer | Filesystem enumeration versus successful-only inserts or sibling credit | Preinserted migration items, per-path/hash launch identity, and final set equality own completeness; failures/blocks/contradictions are retained and representative results never verify siblings. |
+| Duplicate/subsumption relation | Reviewer/status | Normalized contract evidence versus filename/prose similarity | `detect_scenario_relations` may write a review candidate only from the five normalized contract components; it never changes lifecycle or evidence. |
+| Quarantine/retirement | Query/status/reviewer | Automated run outcomes, candidate detector, explicit reviewer | Evidence may quarantine idempotently. Only `approve_retirement` with exact hash, reason, active successor, and surviving required coverage may remove a manifest and finalize retired history. |
 | Skill behavior | Codex/coordinator | Skill prose could duplicate matcher or key paths | Skill invokes the CLI only. CLI/database/report identities are the shared truth. |
 
 ## Harness acceptance and production proof
@@ -877,16 +969,17 @@ Implementation status:
 | Red ID | Outcome test | Required evidence | False-green controls |
 |---|---|---|---|
 | `R-101` | Current and legacy manifests validate into typed declarations/unknowns without changing run compatibility. | Schema tests plus all-current-manifest validation report bound to path/hash. | Filename/description inference, camp-implies-Fight, and unknown-as-false/true fail. |
-| `R-102` | Rebuildable SQLite index retains binding-aware run history and exact evidence state. | Schema/rebuild/idempotency/staleness/contradiction tests and inspected DB rows. | Dropped red history, timestamp-only green override, opaque copied report prose, and manifest rewriting fail. |
-| `R-103` | WEC query returns only a hard-valid explained scenario or an inert draft. | Query receipt, candidate/rejection explanations, selection token or draft artifact. | Preference rescue, stale/contradicted match, prose similarity, and any launch/input call during query fail. |
+| `R-102` | Rebuildable SQLite index retains binding-aware run history, exact evidence state, complete lifecycle history, and last known manifest content. | Schema/rebuild/idempotency/staleness/contradiction/lifecycle tests and inspected DB rows. | Dropped red/retired history, timestamp-only green override, opaque copied report prose, and evidence rewriting declaration truth fail. |
+| `R-103` | WEC query searches active scenarios by default and returns only a hard-valid explained scenario or an inert draft. | Query receipt, lifecycle/candidate/rejection explanations, selection token or draft artifact. | Preference rescue, stale/contradicted/quarantined/retired match, prose similarity, and any launch/input call during query fail. |
 | `R-104` | Explicit token launch uses one canonical Mac production harness route and records its result. | Bound selection receipt; existing plan/runtime binding; Peekaboo permission/focus; step ledger; full report; cleanup; matching DB run/evidence rows. | Changed token inputs, HUD-only proof, debug-created behavior credit, second launcher, or missing cleanup fail. |
-| `R-105` | One migration run tries and defines every scenario present at final enumeration. | Migration summary and SQL equality query showing every path has one terminal disposition, plus run/report IDs for attempts. | Successful-only inventory, skipped blocked/invalid files, fixed count assumption, normal-profile mutation, or lingering `attempted` rows fail. |
+| `R-105` | Initial exhaustive migration accounts for every final-enumeration scenario, attempts every executable path/hash once, assigns lifecycle, and exposes guarded relation/retirement review without losing history. | Migration summary; SQL final-set/terminal/once-only queries; per-scenario run/report IDs; lifecycle/relation/retirement rows; source/history checks for one approved retirement. | Successful-only inventory, skipped blocked/invalid files, representative sibling credit, fixed count assumption, normal-profile mutation, lingering `attempted`, prose-based relation, automatic retirement/deletion, last-coverage retirement, or lost history fail. |
 | `R-106` | Repo skill produces the same query/launch/history behavior as direct CLI. | Fresh skill discovery/invocation transcript plus identical query, selection, run, report, and cleanup IDs. | Embedded matcher, direct Peekaboo choreography, auto-launched draft, or guidance for nonexistent owners fail. |
 
 The smallest integrated production proof is:
 
 ```text
-complete manifest inventory
+complete manifest inventory with one attempt per executable path/hash
+  -> active/quarantined lifecycle and review-only retirement candidates
   -> current binding-aware registry
   -> camp/not-critical/nearby-hidden-friendly/nearby-shakedown/input/Fight query
   -> reject forest observer, name-only camp, and unresolved Fight contradiction
@@ -899,9 +992,9 @@ complete manifest inventory
 
 ## Combined freeze record
 
-- Status: Frozen
-- Frozen source baseline: `dev@e466d06870a3bd8bceeaee32e202b7d94e930d46`, tree
-  `21b8338fdfa196d35029206a107063cd86155b52`, inspected 2026-08-15 on
+- Status: Refrozen
+- Frozen source baseline: `dev@038c2e9e60b39572db864ed7465a618e08e8ba6f`, tree
+  `95508f27c81bdf6673b33cffcc98f6a7cf56cb13`, inspected 2026-08-15 on
   `Josefs-Mac-mini.local` as `josefhorvath`.
 - Relevant preserved dirty frontier: `src/bandit_live_world.cpp`,
   `src/bandit_live_world.h`, `src/do_turn.cpp`, `tests/bandit_live_world_test.cpp`,
@@ -919,7 +1012,15 @@ complete manifest inventory
   separate `R-1xx` family in this combined successor; manifests remain declarations; SQLite is a
   rebuildable index/history store; hard mismatches cannot rank; drafts do not run; all scenarios
   receive explicit migration dispositions; existing startup/probe is the only launcher.
+- Refreeze owner choices: initial exhaustive migration attempts every executable scenario once and
+  gives every discovered scenario a terminal disposition; lifecycle is active/quarantined/retired;
+  broken, contradicted, and stale scenarios quarantine; active is the default search state;
+  duplicate/subsumption evidence uses normalized requirements, fixture/profile identity, ordered
+  steps, permitted input, and proof contract; representative runs never verify siblings; retirement
+  is explicit review/approval only, records reason and active canonical successor, preserves complete
+  history, and cannot remove unique or last required coverage.
 - Inspected current harness inventory: 168 scenario JSON objects, 149 currently active and 19
   explicitly blocked, 107 save-fixture manifests, two startup-profile configs, and 37 current step
   kinds. These are source facts, not future acceptance limits.
-- Evidence-implied refinements: none.
+- Evidence-implied refinements: none; this refreeze incorporates the user-owned lifecycle and
+  exhaustive-migration decision.
