@@ -34,6 +34,7 @@ from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Optional, Pattern, Sequence, Set, Tuple
 
 from bandit_live_world_audit import load_special_placements as load_bandit_special_placements
+from scenario_registry import ManifestValidationError, validate_manifest
 
 
 IGNORABLE_DEBUG_LOG_PATTERNS: List[Pattern[str]] = [
@@ -13794,6 +13795,26 @@ def list_scenarios() -> List[Dict[str, Any]]:
         loaded = json.loads(path.read_text(encoding="utf-8"))
         if not isinstance(loaded, dict):
             continue
+        try:
+            registry = validate_manifest(loaded, path=path)
+            manifest_binding = {
+                "source": copy.deepcopy(registry["source"]),
+                "normalized": copy.deepcopy(registry["normalized"]),
+                "validation": copy.deepcopy(registry["validation"]),
+            }
+        except ManifestValidationError as exc:
+            manifest_binding = {
+                "source": {
+                    "path": str(path.resolve()),
+                    "sha256": "",
+                },
+                "normalized": {},
+                "validation": {
+                    "status": "invalid",
+                    "review_required": True,
+                    "error": str(exc),
+                },
+            }
         blocker_info = scenario_blocker_info(loaded)
         scenarios.append({
             "name": str(loaded.get("name", path.stem)),
@@ -13804,6 +13825,7 @@ def list_scenarios() -> List[Dict[str, Any]]:
             "status": blocker_info["status"],
             "blocked_reason": blocker_info["blocked_reason"],
             "required_helpers": blocker_info["required_helpers"],
+            "scenario_manifest": manifest_binding,
         })
     return scenarios
 
@@ -17230,6 +17252,26 @@ def finalize_probe_report(
     print(json.dumps(stdout_payload, indent=2, ensure_ascii=False))
 
 
+def finalize_scenario_report(
+    run_dir: Optional[Path],
+    report: Dict[str, Any],
+    *,
+    scenario: Dict[str, Any],
+    cleanup_pid: int = 0,
+    report_filename: str = "probe.report.json",
+    compact_stdout: bool = False,
+) -> None:
+    """Append immutable declaration identity to a run-owned report."""
+    report.setdefault("scenario_manifest", scenario_manifest_binding(scenario))
+    finalize_probe_report(
+        run_dir,
+        report,
+        cleanup_pid=cleanup_pid,
+        report_filename=report_filename,
+        compact_stdout=compact_stdout,
+    )
+
+
 def compact_probe_report_for_stdout(
     report: Dict[str, Any],
     *,
@@ -17508,6 +17550,7 @@ def render_repeatability_text_report(summary: Dict[str, Any]) -> str:
 
 def run_repeatability(args: argparse.Namespace) -> int:
     scenario = load_scenario(args.scenario)
+    scenario_manifest = scenario_manifest_binding(scenario)
     profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
     config_profile = resolve_startup_config_profile(scenario, profile)
     world = args.world or str(scenario.get("world", ""))
@@ -17533,6 +17576,7 @@ def run_repeatability(args: argparse.Namespace) -> int:
     if args.dry_run:
         payload = {
             "scenario": str(scenario.get("name", args.scenario)),
+            "scenario_manifest": scenario_manifest,
             "profile": profile,
             "config_profile": config_profile,
             "world": world,
@@ -17600,6 +17644,7 @@ def run_repeatability(args: argparse.Namespace) -> int:
     summary = {
         "ok": stable_repeatability,
         "scenario": str(scenario.get("name", args.scenario)),
+        "scenario_manifest": scenario_manifest,
         "profile": profile,
         "config_profile": config_profile,
         "world": world,
@@ -17646,6 +17691,7 @@ def scenario_contract_dict(
     steps: List[Dict[str, Any]],
     capture_world_after: bool,
     portal_storm_policy: Dict[str, Any],
+    scenario_manifest: Dict[str, Any],
 ) -> Dict[str, Any]:
     return {
         "profile": profile,
@@ -17665,6 +17711,7 @@ def scenario_contract_dict(
         "steps": steps,
         "capture_world_after": capture_world_after,
         "portal_storm_policy": portal_storm_policy,
+        "scenario_manifest": scenario_manifest,
     }
 
 
@@ -17692,6 +17739,7 @@ def run_launch_only_handoff(
     report_filename: str = "handoff.report.json",
 ) -> int:
     scenario_name = str(scenario.get("name", args.scenario))
+    scenario_manifest = scenario_manifest_binding(scenario)
     contract = scenario_contract_dict(
         profile=profile,
         config_profile=config_profile,
@@ -17710,6 +17758,7 @@ def run_launch_only_handoff(
         steps=steps,
         capture_world_after=capture_world_after,
         portal_storm_policy=portal_storm_policy,
+        scenario_manifest=scenario_manifest,
     )
 
     if args.dry_run:
@@ -17719,6 +17768,7 @@ def run_launch_only_handoff(
             "ok": True,
             "mode": "handoff",
             "scenario": scenario,
+            "scenario_manifest": scenario_manifest,
             "launch_only": True,
             "dry_run": True,
             "resolved_contract": contract,
@@ -17783,9 +17833,10 @@ def run_launch_only_handoff(
                 "evidence_class": "setup",
                 "feature_proof": False,
             }
-            finalize_probe_report(
+            finalize_scenario_report(
                 run_dir,
                 report,
+                scenario=scenario,
                 report_filename=report_filename,
                 compact_stdout=bool(getattr(args, "compact_stdout", False)),
             )
@@ -17814,9 +17865,10 @@ def run_launch_only_handoff(
                 "evidence_class": "setup",
                 "feature_proof": False,
             }
-            finalize_probe_report(
+            finalize_scenario_report(
                 run_dir,
                 report,
+                scenario=scenario,
                 report_filename=report_filename,
                 compact_stdout=bool(getattr(args, "compact_stdout", False)),
             )
@@ -17914,9 +17966,10 @@ def run_launch_only_handoff(
             "evidence_class": "launch-only/manual-handoff",
             "feature_proof": False,
         }
-        finalize_probe_report(
+        finalize_scenario_report(
             run_dir,
             report,
+            scenario=scenario,
             report_filename=report_filename,
             compact_stdout=bool(getattr(args, "compact_stdout", False)),
         )
@@ -17937,9 +17990,10 @@ def run_launch_only_handoff(
             "evidence_class": "setup",
             "feature_proof": False,
         }
-        finalize_probe_report(
+        finalize_scenario_report(
             run_dir,
             report,
+            scenario=scenario,
             report_filename=report_filename,
             compact_stdout=bool(getattr(args, "compact_stdout", False)),
         )
@@ -17948,6 +18002,7 @@ def run_launch_only_handoff(
 
 def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     scenario = load_scenario(args.scenario)
+    scenario_manifest = scenario_manifest_binding(scenario)
     scenario_name = str(scenario.get("name", args.scenario))
     blocker_info = scenario_blocker_info(scenario)
     profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
@@ -18055,7 +18110,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "feature_proof": proof_classification["feature_proof"],
             "verdict": "blocked_helper_gap",
         }
-        finalize_probe_report(run_dir, report, report_filename=report_filename)
+        finalize_scenario_report(
+            run_dir,
+            report,
+            scenario=scenario,
+            report_filename=report_filename,
+        )
         return 2
 
     if handoff and bool(getattr(args, "launch_only", False)):
@@ -18115,6 +18175,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         print(json.dumps({
             "mode": mode,
             "scenario": scenario,
+            "scenario_manifest": scenario_manifest,
             "resolved_contract": {
                 "profile": profile,
                 "config_profile": config_profile,
@@ -18133,6 +18194,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "steps": steps,
                 "capture_world_after": capture_world_after,
                 "portal_storm_policy": portal_storm_policy,
+                "scenario_manifest": scenario_manifest,
             },
             "startup_plan": start_result,
             "start_command": start_cmd,
@@ -18168,9 +18230,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "start_stdout": start_stdout,
             "start_stderr": start_stderr,
         }
-        finalize_probe_report(
+        finalize_scenario_report(
             run_dir,
             report,
+            scenario=scenario,
             cleanup_pid=int(start_result.get("pid", 0)),
             report_filename=report_filename,
         )
@@ -18201,7 +18264,13 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "evidence_class": proof_classification.get("evidence_class", "startup/load"),
             "feature_proof": proof_classification.get("feature_proof", False),
         }
-        finalize_probe_report(run_dir, report, cleanup_pid=pid, report_filename=report_filename)
+        finalize_scenario_report(
+            run_dir,
+            report,
+            scenario=scenario,
+            cleanup_pid=pid,
+            report_filename=report_filename,
+        )
         return 1
 
     startup_classification = start_result.get("proof_classification") if isinstance(start_result.get("proof_classification"), dict) else {}
@@ -18268,9 +18337,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "feature_proof": False,
             "verdict": "blocked_startup_gate",
         }
-        finalize_probe_report(
+        finalize_scenario_report(
             run_dir,
             report,
+            scenario=scenario,
             cleanup_pid=pid,
             report_filename=report_filename,
             compact_stdout=bool(getattr(args, "compact_stdout", False)),
@@ -18354,7 +18424,13 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "feature_proof": proof_classification.get("feature_proof", False),
             "verdict": "blocked_runtime_prereqs",
         }
-        finalize_probe_report(run_dir, report, cleanup_pid=pid, report_filename=report_filename)
+        finalize_scenario_report(
+            run_dir,
+            report,
+            scenario=scenario,
+            cleanup_pid=pid,
+            report_filename=report_filename,
+        )
         return 0
 
     initial_weather_audit = read_current_saved_weather_audit(profile, world)
@@ -18627,17 +18703,19 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "report_path": str(run_dir / report_filename),
         }
         (run_dir / "handoff.pid").write_text(f"{pid}\n", encoding="utf-8")
-        finalize_probe_report(
+        finalize_scenario_report(
             run_dir,
             report,
+            scenario=scenario,
             report_filename=report_filename,
             compact_stdout=bool(getattr(args, "compact_stdout", False)),
         )
         return 0
 
-    finalize_probe_report(
+    finalize_scenario_report(
         run_dir,
         report,
+        scenario=scenario,
         cleanup_pid=pid,
         report_filename=report_filename,
         compact_stdout=bool(getattr(args, "compact_stdout", False)),

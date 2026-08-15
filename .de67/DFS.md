@@ -591,6 +591,7 @@ Inspected inventory facts are evidence about the source baseline, not permanent 
 later all-scenario migration proves equality against the files present in its own final snapshot;
 it must not hard-code 168 or 19 as acceptance thresholds.
 
+<!-- DE67:DFS-SLICE:BEGIN id=R-101-S001 claim=R-101 -->
 ### 8. Authoritative scenario manifests
 
 Mechanism:
@@ -626,7 +627,7 @@ Implementation status:
 
 - [x] Existing JSON scenario files, fixture/profile ownership, blocker metadata, step contracts,
   and proof-classification fields are present and exercised by the production harness CLI.
-- [ ] 🔴 R-101 — Scenario manifests do not yet expose or validate the normalized capability,
+- [x] R-101 — Scenario manifests do not yet expose or validate the normalized capability,
   runtime, and proof-route contract required for hard selection.
   - Code gap: `startup_harness.py :: load_scenario/list_scenarios` accepts heterogeneous objects and
     presents descriptions without machine-checkable capability ownership.
@@ -636,7 +637,9 @@ Implementation status:
   - Proof: focused tests show typed fields round-trip, every WEC namespace is representable,
     referenced proof labels are checked, a legacy file stays runnable but cannot hard-match unknown
     facts, and camp/Fight are not inferred from a filename or description.
+<!-- DE67:DFS-SLICE:END id=R-101-S001 claim=R-101 -->
 
+<!-- DE67:DFS-SLICE:BEGIN id=R-102-S001 claim=R-102 -->
 ### 9. SQLite registry, evidence, and binding ownership
 
 Mechanism:
@@ -720,7 +723,9 @@ Implementation status:
     contradiction rejects, explicit same-route supersession can restore eligibility, duplicate
     ingestion is idempotent, and a database can be deleted/rebuilt from manifests plus retained run
     artifacts without becoming a competing declaration source.
+<!-- DE67:DFS-SLICE:END id=R-102-S001 claim=R-102 -->
 
+<!-- DE67:DFS-SLICE:BEGIN id=R-103-S001 claim=R-103 -->
 ### 10. Hard filtering, preference ranking, explanations, and drafts
 
 Mechanism:
@@ -778,7 +783,9 @@ Implementation status:
     scenario without capability evidence, rejects a current Fight contradiction, and cannot be
     rescued by preferences; it returns only a fully explained hard-valid scenario or a pending
     `executable=false` draft, with spies proving no startup/launch/input call occurred.
+<!-- DE67:DFS-SLICE:END id=R-103-S001 claim=R-103 -->
 
+<!-- DE67:DFS-SLICE:BEGIN id=R-104-S001 claim=R-104 -->
 ### 11. One canonical selected launch and run-history ingestion
 
 Mechanism:
@@ -814,7 +821,9 @@ Implementation status:
     -> report -> cleanup -> registry history. Controls reject a changed manifest/binary token,
     preserve startup as non-feature evidence, and record a production contradiction without editing
     the manifest.
+<!-- DE67:DFS-SLICE:END id=R-104-S001 claim=R-104 -->
 
+<!-- DE67:DFS-SLICE:BEGIN id=R-105-S001 claim=R-105 -->
 ### 12. Complete all-scenario inventory and migration
 
 Mechanism:
@@ -912,7 +921,9 @@ Implementation status:
     fails without source deletion. One approved eligible retirement removes only the bound manifest
     and retains its complete manifest/history/reason/successor row. Omission, representative credit,
     duplicate launch/terminal processing, automatic retirement, and history loss fail the command.
+<!-- DE67:DFS-SLICE:END id=R-105-S001 claim=R-105 -->
 
+<!-- DE67:DFS-SLICE:BEGIN id=R-106-S001 claim=R-106 -->
 ### 13. Harness-facing skill and durable guidance
 
 Mechanism:
@@ -942,6 +953,7 @@ Implementation status:
     query receipt/explanation as direct CLI use, no-match stops at the same non-executed draft, and
     an explicit selected launch reaches the identical run/report/cleanup IDs rather than a second
     workflow.
+<!-- DE67:DFS-SLICE:END id=R-106-S001 claim=R-106 -->
 
 ## Harness competing systems and override direction
 
@@ -968,12 +980,24 @@ Implementation status:
 
 | Red ID | Outcome test | Required evidence | False-green controls |
 |---|---|---|---|
+<!-- DE67:DFS-SLICE:BEGIN id=R-101-S002 claim=R-101 -->
 | `R-101` | Current and legacy manifests validate into typed declarations/unknowns without changing run compatibility. | Schema tests plus all-current-manifest validation report bound to path/hash. | Filename/description inference, camp-implies-Fight, and unknown-as-false/true fail. |
+<!-- DE67:DFS-SLICE:END id=R-101-S002 claim=R-101 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-102-S002 claim=R-102 -->
 | `R-102` | Rebuildable SQLite index retains binding-aware run history, exact evidence state, complete lifecycle history, and last known manifest content. | Schema/rebuild/idempotency/staleness/contradiction/lifecycle tests and inspected DB rows. | Dropped red/retired history, timestamp-only green override, opaque copied report prose, and evidence rewriting declaration truth fail. |
+<!-- DE67:DFS-SLICE:END id=R-102-S002 claim=R-102 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-103-S002 claim=R-103 -->
 | `R-103` | WEC query searches active scenarios by default and returns only a hard-valid explained scenario or an inert draft. | Query receipt, lifecycle/candidate/rejection explanations, selection token or draft artifact. | Preference rescue, stale/contradicted/quarantined/retired match, prose similarity, and any launch/input call during query fail. |
+<!-- DE67:DFS-SLICE:END id=R-103-S002 claim=R-103 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-104-S002 claim=R-104 -->
 | `R-104` | Explicit token launch uses one canonical Mac production harness route and records its result. | Bound selection receipt; existing plan/runtime binding; Peekaboo permission/focus; step ledger; full report; cleanup; matching DB run/evidence rows. | Changed token inputs, HUD-only proof, debug-created behavior credit, second launcher, or missing cleanup fail. |
+<!-- DE67:DFS-SLICE:END id=R-104-S002 claim=R-104 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-105-S002 claim=R-105 -->
 | `R-105` | Initial exhaustive migration accounts for every final-enumeration scenario, attempts every executable path/hash once, assigns lifecycle, and exposes guarded relation/retirement review without losing history. | Migration summary; SQL final-set/terminal/once-only queries; per-scenario run/report IDs; lifecycle/relation/retirement rows; source/history checks for one approved retirement. | Successful-only inventory, skipped blocked/invalid files, representative sibling credit, fixed count assumption, normal-profile mutation, lingering `attempted`, prose-based relation, automatic retirement/deletion, last-coverage retirement, or lost history fail. |
+<!-- DE67:DFS-SLICE:END id=R-105-S002 claim=R-105 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-106-S002 claim=R-106 -->
 | `R-106` | Repo skill produces the same query/launch/history behavior as direct CLI. | Fresh skill discovery/invocation transcript plus identical query, selection, run, report, and cleanup IDs. | Embedded matcher, direct Peekaboo choreography, auto-launched draft, or guidance for nonexistent owners fail. |
+<!-- DE67:DFS-SLICE:END id=R-106-S002 claim=R-106 -->
 
 The smallest integrated production proof is:
 
