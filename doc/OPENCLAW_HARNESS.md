@@ -26,6 +26,14 @@ On macOS, run the same commands from `Cataclysm.app/Contents/Resources`.
 
 Use `handoff` for human playtesting because it installs the fixture, checks the footing, and leaves the game running. Catapult-Dabubu's shipped Debug tab exposes only `manual.*` handoff scenarios; automated probes remain a developer CLI path and may close the game after collecting artifacts.
 
+## Registry-backed scenario selection
+
+For a typed scenario request, use `tools/openclaw_harness/scenario_registry_cli.py` as the only registry owner. Project declarations with `rebuild` when they need to be refreshed and use `reconcile` when existing report bindings need recomputation. Submit a typed `registry-query` request, then explain its hard rejections or selection using the returned candidate evidence, lifecycle, freshness, and proof-route details.
+
+The query has `requirements` and `preferences` arrays of capability predicates. A predicate uses a capability key and one of `eq`, `contains`, `present`, `absent`, or `range`; its evidence floor is `declared`, `inspected`, or `run-verified`. The query result is non-executing: it returns a selection token only for an eligible route, otherwise it writes an inert draft with `executable: false`. Stop at that draft and report the unmet footing.
+
+Launch only after an explicit request to run the selected result, with `registry-launch <selection-token>`. The launch owner reloads and validates the token, canonical source, route, and runtime before running the canonical probe. Its finalizer ingests the finalized `probe.report.json` after accepted cleanup. Read that report as separate startup and feature verdicts, plus its cleanup outcome. Use `registry-status` for lifecycle, verification, and history continuity; there is no separate history command.
+
 ## Why this is technically plausible in the current codebase
 
 The current repo already contains several ingredients the harness can reuse:

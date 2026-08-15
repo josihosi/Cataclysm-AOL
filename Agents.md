@@ -125,6 +125,8 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - List packaged scenarios with `python3 tools/openclaw_harness/startup_harness.py list-scenarios --profile dev-harness`.
 - Use probe runs for artifact evidence and handoff runs when Josef needs to continue manual play from a staged setup.
 - Keep evidence classes honest: a startup/load screenshot is not feature proof unless the scenario report reaches the feature path.
+- For typed scenario selection, use `tools/openclaw_harness/scenario_registry_cli.py`: run `rebuild` or `reconcile` only when their registry owners need refreshing, then `registry-query` and explain its hard rejection/selection, evidence, lifecycle, freshness, and proof route. An `executable: false` draft is inert; stop there.
+- Launch only on an explicit selected-run request with `registry-launch <selection-token>`. It revalidates token, source, route, and runtime and canonically ingests the finalized `probe.report.json` after accepted cleanup. Report startup and feature verdicts separately with cleanup; use `registry-status` for lifecycle/verification/history continuity, since no history subcommand exists.
 
 ## Build (MSYS2 UCRT64)
 - Josef needs to use the MSYS2 UCRT64 shell for Windows builds.

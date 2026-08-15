@@ -944,7 +944,7 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-106 — No repository harness skill teaches or invokes the registry-backed canonical
+- [x] R-106 — No repository harness skill teaches or invokes the registry-backed canonical
   workflow, and current guidance starts from manual exact scenario-name selection.
   - Code gap: `.agents/skills` has no C-AOL harness skill; docs name `list-scenarios` and direct
     `probe`/`handoff` commands only.
