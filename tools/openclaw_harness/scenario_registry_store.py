@@ -812,7 +812,10 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
         "fixture_profile": contract.get("fixture_profile"),
         "installed": _selected_mapping(
             startup.get("fixture_install"),
-            ("fixture", "fixture_profile", "resolved_fixture", "resolved_fixture_profile", "destination"),
+            (
+                "fixture", "fixture_profile", "resolved_fixture", "resolved_fixture_profile",
+                "source_path", "source_sha256", "destination",
+            ),
         ),
     }
     profile = {
@@ -822,7 +825,10 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
         "profile_snapshot_profile": contract.get("profile_snapshot_profile"),
         "snapshot_install": _selected_mapping(
             startup.get("profile_snapshot"),
-            ("profile", "snapshot", "snapshot_profile", "resolved_snapshot", "resolved_snapshot_profile", "source_path"),
+            (
+                "profile", "snapshot", "snapshot_profile", "resolved_snapshot",
+                "resolved_snapshot_profile", "source_path", "source_sha256",
+            ),
         ),
     }
     return {
