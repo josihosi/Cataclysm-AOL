@@ -5,14 +5,6 @@ Lineage: `CAOL-hostile-ecology-dev`
 
 ## Active work
 
-- [ ] R-102 — Establish the authoritative rebuildable SQLite registry, complete input bindings,
-  append-only evidence/lifecycle history, and contradiction/staleness precedence without competing
-  with manifest declaration truth or durable reports.
-  - DFS slices: `R-102-S001`, `R-102-S002`
-
-  This is the second foundation claim and consumes R-101's validated normalized contract. Registry
-  schema, indexing, binding, evidence, and history proof precede query, launch, or exhaustive runs.
-
 - [ ] R-103 — Add hard typed filtering, survivor-only preference ordering, complete explanations,
   change-invalidated selection tokens, and inert no-match drafts.
   - DFS slices: `R-103-S001`, `R-103-S002`

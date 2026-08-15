@@ -713,7 +713,7 @@ Evidence resolution:
 
 Implementation status:
 
-- [ ] 🔴 R-102 — No registry schema, rebuildable manifest index, binding-aware evidence history, or
+- [x] R-102 — No registry schema, rebuildable manifest index, binding-aware evidence history, or
   explicit contradiction/staleness owner exists.
   - Code gap: reports live only under per-profile run directories; `list_scenarios` reparses files
     without history, typed evidence, or invalidation.
