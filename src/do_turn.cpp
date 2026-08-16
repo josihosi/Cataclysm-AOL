@@ -6783,6 +6783,16 @@ live_bandit_hostile_operation_route_read( const bandit_live_world::site_record &
                path.points, site.anchor, site.camp_decision.target_omt );
 }
 
+bool live_bandit_player_opportunity_route_available(
+    const bandit_live_world::site_record &site,
+    const bandit_live_world::hostile_target_opportunity_record &opportunity )
+{
+    const auto path = overmap_buffer.get_travel_path( site.anchor, opportunity.target_omt,
+                      overmap_path_params::for_npc() );
+    return path.cost >= 0 && path.points.size() >= 2 &&
+           path.points.front() == opportunity.target_omt && path.points.back() == site.anchor;
+}
+
 std::string live_bandit_structural_route_analyzer_record(
     const bandit_live_world::site_record &site,
     const bandit_live_world::structural_outing_plan &plan,
@@ -9118,6 +9128,17 @@ void overmap_npc_move()
     }
     if( structural_cadence_due ) {
         observe_live_bandit_player_target_opportunity();
+        const int adopted_opportunities =
+            bandit_live_world::adopt_observed_hostile_player_opportunities(
+                bandit_state, live_bandit_current_minutes(),
+        []( const bandit_live_world::site_record & site,
+        const bandit_live_world::hostile_target_opportunity_record & opportunity ) {
+            return live_bandit_player_opportunity_route_available( site, opportunity );
+        } );
+        if( adopted_opportunities > 0 ) {
+            DebugLog( D_INFO, DC_ALL ) << "bandit_live_world player_opportunity_adoption adopted="
+                                       << adopted_opportunities << '\n';
+        }
         maintain_live_bandit_structural_bounty( live_signals, live_sounds );
     } else if( !live_sounds.empty() ) {
         const bandit_live_world::structural_signal_record_result recorded =

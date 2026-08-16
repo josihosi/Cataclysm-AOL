@@ -1597,6 +1597,9 @@ std::string finite_resource_claim_application_key( const std::string &operation_
 bool observe_authoritative_hostile_target_opportunity( world_state &state,
         const std::string &target_id, const tripoint_abs_omt &target_omt,
         const hostile_target_opportunity_evidence &evidence );
+int adopt_observed_hostile_player_opportunities( world_state &state, int now_minutes,
+        const std::function<bool( const site_record &,
+                                  const hostile_target_opportunity_record & )> &route_available );
 hostile_target_claim_result claim_hostile_target_opportunity( world_state &state,
         const std::string &target_id, const tripoint_abs_omt &target_omt, int revision,
         const std::string &operation_id, const std::string &report_key, int generation );

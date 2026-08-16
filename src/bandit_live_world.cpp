@@ -9811,6 +9811,111 @@ bool observe_authoritative_hostile_target_opportunity( world_state &state,
     return true;
 }
 
+int adopt_observed_hostile_player_opportunities( world_state &state, const int now_minutes,
+        const std::function<bool( const site_record &,
+                                  const hostile_target_opportunity_record & )> &route_available )
+{
+    if( now_minutes < 0 || !route_available ) {
+        return 0;
+    }
+
+    std::vector<std::size_t> opportunity_indices;
+    opportunity_indices.reserve( state.hostile_target_opportunities.size() );
+    for( std::size_t index = 0; index < state.hostile_target_opportunities.size(); ++index ) {
+        opportunity_indices.push_back( index );
+    }
+    std::sort( opportunity_indices.begin(), opportunity_indices.end(), [&state](
+    const std::size_t lhs, const std::size_t rhs ) {
+        const hostile_target_opportunity_record &left = state.hostile_target_opportunities[lhs];
+        const hostile_target_opportunity_record &right = state.hostile_target_opportunities[rhs];
+        return std::make_tuple( left.target_id, left.target_omt.z(), left.target_omt.y(),
+                                left.target_omt.x() ) <
+               std::make_tuple( right.target_id, right.target_omt.z(), right.target_omt.y(),
+                                right.target_omt.x() );
+    } );
+
+    std::vector<std::size_t> site_indices;
+    site_indices.reserve( state.sites.size() );
+    for( std::size_t index = 0; index < state.sites.size(); ++index ) {
+        site_indices.push_back( index );
+    }
+    std::sort( site_indices.begin(), site_indices.end(), [&state]( const std::size_t lhs,
+    const std::size_t rhs ) {
+        const site_record &left = state.sites[lhs];
+        const site_record &right = state.sites[rhs];
+        return std::make_tuple( left.site_id, left.anchor.z(), left.anchor.y(), left.anchor.x() ) <
+               std::make_tuple( right.site_id, right.anchor.z(), right.anchor.y(), right.anchor.x() );
+    } );
+
+    int adopted = 0;
+    for( const std::size_t opportunity_index : opportunity_indices ) {
+        const hostile_target_opportunity_record &opportunity =
+            state.hostile_target_opportunities[opportunity_index];
+        if( opportunity.target_id.rfind( "player@", 0 ) != 0 || opportunity.revision <= 0 ||
+            opportunity.consumed_generation != 0 ||
+            !opportunity.consumed_operation_id.empty() ||
+            !opportunity.consumed_report_key.empty() ) {
+            continue;
+        }
+
+        const bool already_adopted = std::any_of( state.sites.begin(), state.sites.end(),
+        [&opportunity]( const site_record & site ) {
+            return std::any_of( site.intelligence_map.leads.begin(),
+            site.intelligence_map.leads.end(), [&opportunity]( const camp_map_lead & lead ) {
+                return lead.target_id == opportunity.target_id && lead.omt == opportunity.target_omt;
+            } );
+        } );
+        if( already_adopted ) {
+            continue;
+        }
+
+        site_record *selected_site = nullptr;
+        for( const std::size_t site_index : site_indices ) {
+            site_record &site = state.sites[site_index];
+            if( effective_profile( site ) != hostile_site_profile::camp_style ||
+                site.retired_empty_site || site.has_active_outside_pressure() ||
+                site.routine_activated_minutes > now_minutes ||
+                ( site.next_routine_dispatch_eligible_minutes >= 0 &&
+                  now_minutes < site.next_routine_dispatch_eligible_minutes ) ||
+                !camp_decision_allows_dispatch( site.camp_decision,
+                                                bandit_dry_run::job_template::scout ) ||
+                !routine_scout_policy( site ).eligible || !route_available( site, opportunity ) ) {
+                continue;
+            }
+            selected_site = &site;
+            break;
+        }
+        if( selected_site == nullptr ) {
+            continue;
+        }
+
+        camp_map_lead lead;
+        lead.lead_id = camp_lead_id_for( selected_site->site_id,
+                                         camp_lead_kind::terrain_opportunity,
+                                         opportunity.target_id, opportunity.target_omt );
+        lead.revision = opportunity.revision;
+        lead.kind = camp_lead_kind::terrain_opportunity;
+        lead.origin = camp_lead_origin::structural_routine;
+        lead.status = camp_lead_status::suspected;
+        lead.target_id = opportunity.target_id;
+        lead.omt = opportunity.target_omt;
+        lead.source_key = "authoritative_player_opportunity:terrain_fit:unknown";
+        lead.source_summary = "unconsumed authoritative player opportunity adopted for a paired scout";
+        lead.first_seen_minutes = now_minutes;
+        lead.last_seen_minutes = now_minutes;
+        lead.bounty = 0;
+        lead.threat = 0;
+        lead.confidence = 0;
+        lead.threat_confirmed = false;
+        lead.generated_by_this_camp_routine = true;
+        lead.last_outcome = "authoritative_player_opportunity_adopted";
+        if( upsert_camp_map_lead( *selected_site, std::move( lead ) ) ) {
+            adopted++;
+        }
+    }
+    return adopted;
+}
+
 hostile_target_claim_result claim_hostile_target_opportunity( world_state &state,
         const std::string &target_id, const tripoint_abs_omt &target_omt, const int revision,
         const std::string &operation_id, const std::string &report_key, const int generation )
