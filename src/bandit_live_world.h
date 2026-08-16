@@ -815,6 +815,21 @@ enum class hostile_target_claim_result {
     already_applied,
 };
 
+enum class terminal_hostile_shakedown_replay_disposition {
+    rejected,
+    exact_duplicate,
+    stale_replay,
+};
+
+struct terminal_hostile_shakedown_replay_identity {
+    std::string target_id;
+    tripoint_abs_omt target_omt;
+    int target_revision = 0;
+    std::string operation_id;
+    std::string report_key;
+    int generation = 0;
+};
+
 enum class finite_resource_claim_status {
     rejected,
     stale,
@@ -1585,6 +1600,9 @@ bool observe_authoritative_hostile_target_opportunity( world_state &state,
 hostile_target_claim_result claim_hostile_target_opportunity( world_state &state,
         const std::string &target_id, const tripoint_abs_omt &target_omt, int revision,
         const std::string &operation_id, const std::string &report_key, int generation );
+terminal_hostile_shakedown_replay_disposition observe_terminal_hostile_shakedown_replay(
+    const world_state &state, const site_record &site,
+    const terminal_hostile_shakedown_replay_identity &identity );
 int camp_supply_living_total( const site_record &site );
 int camp_supply_cap( const site_record &site );
 bool advance_camp_supply( site_record &site, int now_minutes );

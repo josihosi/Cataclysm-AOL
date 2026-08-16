@@ -9839,6 +9839,36 @@ hostile_target_claim_result claim_hostile_target_opportunity( world_state &state
            hostile_target_claim_result::rejected;
 }
 
+terminal_hostile_shakedown_replay_disposition observe_terminal_hostile_shakedown_replay(
+    const world_state &state, const site_record &site,
+    const terminal_hostile_shakedown_replay_identity &identity )
+{
+    if( site.active_hostile_operation.is_active() || identity.target_id.empty() ||
+        identity.target_revision <= 0 || identity.operation_id.empty() ||
+        identity.report_key.empty() || identity.generation <= 0 ) {
+        return terminal_hostile_shakedown_replay_disposition::rejected;
+    }
+    const hostile_target_opportunity_record *receipt = state.find_hostile_target_opportunity(
+                identity.target_id, identity.target_omt );
+    if( receipt == nullptr || receipt->consumed_operation_id.empty() ||
+        receipt->consumed_report_key.empty() || receipt->consumed_generation <= 0 ) {
+        return terminal_hostile_shakedown_replay_disposition::rejected;
+    }
+    const bool receipt_matches = receipt->revision == identity.target_revision &&
+                                 receipt->consumed_operation_id == identity.operation_id &&
+                                 receipt->consumed_report_key == identity.report_key &&
+                                 receipt->consumed_generation == identity.generation;
+    const bool site_matches = site.last_hostile_shakedown_aftermath_key ==
+                              identity.operation_id + "|" + identity.report_key + "|" +
+                              std::to_string( identity.generation ) &&
+                              site.last_hostile_shakedown_operation_id == identity.operation_id &&
+                              site.last_hostile_shakedown_report_key == identity.report_key &&
+                              site.last_hostile_shakedown_generation == identity.generation;
+    return receipt_matches && site_matches ?
+           terminal_hostile_shakedown_replay_disposition::exact_duplicate :
+           terminal_hostile_shakedown_replay_disposition::stale_replay;
+}
+
 finite_resource_record finite_resource_snapshot( const world_state &state,
         const tripoint_abs_omt &omt, const int undiscovered_units )
 {
