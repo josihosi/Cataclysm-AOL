@@ -25,12 +25,16 @@ import scenario_registry_cli  # noqa: E402
 import startup_harness  # noqa: E402
 from scenario_registry_store import (  # noqa: E402
     BindingAdapters,
+    claim_bootstrap_token_for_launch,
     execute_registry_query,
+    issue_registry_bootstrap_token,
     ingest_report_reference,
     immediate_transaction,
     open_registry,
     parse_registry_query_request,
     rebuild_manifest_projection,
+    reload_bootstrap_token_for_launch,
+    reload_selection_token_for_launch,
     reconcile_report_bindings,
 )
 from startup_harness import runtime_source_binding  # noqa: E402
@@ -215,6 +219,160 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 "--registry", str(registry_path), "registry-launch", token_id,
             ])
         return result, run_probe
+
+    def bootstrap_runtime(self, executable: Path) -> dict:
+        source = runtime_source_binding()
+        self.assertTrue(source.get("ok"), source.get("error"))
+        return {
+            "ok": True,
+            "schema": 1,
+            "executable_path": str(executable.resolve()),
+            "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
+            "runtime_source_sha256": source["sha256"],
+        }
+
+    def bootstrap_request(self) -> dict:
+        return {
+            "requirements": [{
+                "key": "player.injured",
+                "op": "eq",
+                "value": False,
+                "minimum_evidence": "declared",
+            }],
+            "preferences": [],
+        }
+
+    def test_bootstrap_authorizes_only_first_query_bound_run_and_is_not_a_selection_token(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            manifest_path = scenarios / "bootstrap.json"
+            self.write_json(manifest_path, self.strict_manifest())
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"bootstrap runtime")
+            connection = open_registry(str(root / "registry.sqlite3"))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+                bootstrap = issue_registry_bootstrap_token(
+                    connection,
+                    parse_registry_query_request(self.bootstrap_request()),
+                    runtime_binding=self.bootstrap_runtime(executable),
+                )
+                self.assertTrue(bootstrap.accepted)
+                self.assertEqual(bootstrap.scenario, "bootstrap")
+                self.assertFalse(reload_selection_token_for_launch(connection, bootstrap.token_id).accepted)
+                claimed = claim_bootstrap_token_for_launch(connection, bootstrap.token_id)
+                self.assertTrue(claimed.accepted)
+                self.assertEqual(claimed.reason, "claimed")
+                self.assertFalse(claim_bootstrap_token_for_launch(connection, bootstrap.token_id).accepted)
+                self.assertEqual(
+                    reload_bootstrap_token_for_launch(connection, bootstrap.token_id, require_claimed=True).reason,
+                    "token_invalidated",
+                )
+            finally:
+                connection.close()
+
+    def test_bootstrap_fails_closed_when_manifest_or_runtime_binding_changes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            manifest_path = scenarios / "bootstrap.json"
+            self.write_json(manifest_path, self.strict_manifest())
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"bootstrap runtime")
+            connection = open_registry(str(root / "registry.sqlite3"))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+                bootstrap = issue_registry_bootstrap_token(
+                    connection,
+                    parse_registry_query_request(self.bootstrap_request()),
+                    runtime_binding=self.bootstrap_runtime(executable),
+                )
+                changed = self.strict_manifest()
+                changed["description"] = "changed after bootstrap issue"
+                self.write_json(manifest_path, changed)
+                rejected = reload_bootstrap_token_for_launch(connection, bootstrap.token_id)
+                self.assertFalse(rejected.accepted)
+                self.assertEqual(rejected.reason, "manifest_source_changed")
+            finally:
+                connection.close()
+
+    def test_bootstrap_cli_claims_the_separate_authority_for_the_canonical_probe_only_once(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            self.write_json(scenarios / "bootstrap.json", self.strict_manifest())
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"bootstrap runtime")
+            registry_path = root / "registry.sqlite3"
+            connection = open_registry(str(registry_path))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+                bootstrap = issue_registry_bootstrap_token(
+                    connection,
+                    parse_registry_query_request(self.bootstrap_request()),
+                    runtime_binding=self.bootstrap_runtime(executable),
+                )
+            finally:
+                connection.close()
+
+            with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                    mock.patch.object(startup_harness, "detect_executable", return_value=executable), \
+                    mock.patch.object(startup_harness, "run_probe_mode", return_value=29) as run_probe, \
+                    redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                result = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-bootstrap-launch", bootstrap.token_id,
+                ])
+
+            self.assertEqual(result, 29)
+            run_probe.assert_called_once()
+            receipt = json.loads(run_probe.call_args.args[0].registry_launch_receipt)
+            self.assertEqual(receipt["authority_kind"], "registry_bootstrap_first_compatible_run")
+            self.assertEqual(receipt["token_id"], bootstrap.token_id)
+            with mock.patch.object(startup_harness, "run_probe_mode") as reused_probe, \
+                    redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                self.assertEqual(scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-bootstrap-launch", bootstrap.token_id,
+                ]), 1)
+            reused_probe.assert_not_called()
+
+    def test_bootstrap_cli_rejects_a_changed_runtime_before_probe_claim(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            self.write_json(scenarios / "bootstrap.json", self.strict_manifest())
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"bootstrap runtime")
+            registry_path = root / "registry.sqlite3"
+            connection = open_registry(str(registry_path))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+                bootstrap = issue_registry_bootstrap_token(
+                    connection,
+                    parse_registry_query_request(self.bootstrap_request()),
+                    runtime_binding=self.bootstrap_runtime(executable),
+                )
+            finally:
+                connection.close()
+            executable.write_bytes(b"changed bootstrap runtime")
+
+            with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                    mock.patch.object(startup_harness, "run_probe_mode") as run_probe, \
+                    redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                result = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-bootstrap-launch", bootstrap.token_id,
+                ])
+
+            self.assertEqual(result, 1)
+            run_probe.assert_not_called()
+            self.assertIn(
+                ("bootstrap_invalidated", "runtime_binding_changed"),
+                self.token_events(registry_path, bootstrap.token_id),
+            )
 
     def test_registry_launch_adapts_exact_probe_namespace_and_honors_registry_override(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

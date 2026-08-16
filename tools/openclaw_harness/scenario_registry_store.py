@@ -207,6 +207,18 @@ class RegistryLaunchToken:
     source_path: str = ""
 
 
+@dataclass(frozen=True)
+class RegistryBootstrapToken:
+    """One separate, single-use authority for an initial compatible probe."""
+
+    token_id: str
+    accepted: bool
+    reason: str
+    scenario: str = ""
+    source_path: str = ""
+    runtime_binding: Mapping[str, Any] | None = None
+
+
 _QUERY_OPERATORS = frozenset({"eq", "contains", "present", "absent", "range"})
 # Query floors use the WEC's public authority labels.  They deliberately do
 # not reuse registry resolution labels such as the internal hard_proven state.
@@ -1286,6 +1298,195 @@ def reload_selection_token_for_launch(
             scenario=scenario,
             source_path=str(source_path.resolve()),
         )
+
+
+def _bootstrap_runtime_binding(raw: Any) -> Mapping[str, Any]:
+    if not isinstance(raw, Mapping) or raw.get("schema") != 1:
+        raise ScenarioRegistryStoreError("bootstrap runtime binding is invalid")
+    required = ("executable_path", "executable_sha256", "runtime_source_sha256")
+    binding = {key: str(raw.get(key, "")).strip() for key in required}
+    if not all(binding.values()):
+        raise ScenarioRegistryStoreError("bootstrap runtime binding is incomplete")
+    return {"schema": 1, **binding}
+
+
+def _bootstrap_token_details(
+    connection: sqlite3.Connection,
+    token_id: str,
+) -> Optional[sqlite3.Row]:
+    return connection.execute(
+        "SELECT token_id, manifest_id, route_key, details_json FROM token_history "
+        "WHERE token_id = ? AND event_kind = 'bootstrap_issued' ORDER BY token_event_id LIMIT 1",
+        (token_id,),
+    ).fetchone()
+
+
+def issue_registry_bootstrap_token(
+    connection: sqlite3.Connection,
+    request: RegistryQueryRequest,
+    *,
+    runtime_binding: Mapping[str, Any],
+) -> RegistryBootstrapToken:
+    """Mint a distinct authority for one first compatible evidence run only."""
+    runtime = _bootstrap_runtime_binding(runtime_binding)
+    request_json = _query_request_json(request)
+    query_sha256 = hashlib.sha256(request_json.encode("utf-8")).hexdigest()
+    evaluation = evaluate_registry_query_from_store(connection, request)
+    selected_id = evaluation.evaluation.ranked_scenario_ids[0] if evaluation.evaluation.ranked_scenario_ids else None
+    selected = next((candidate for candidate in evaluation.candidates if candidate.scenario_id == selected_id), None)
+    if selected is None or not selected.token_eligible:
+        return RegistryBootstrapToken("", False, "query_has_no_active_compatible_manifest")
+    if _current_verified_route(selected) is not None:
+        return RegistryBootstrapToken("", False, "compatible_run_evidence_already_exists")
+    manifest = selected.explanation["manifest"]
+    manifest_id = str(manifest["manifest_id"])
+    manifest_sha256 = str(manifest["sha256"])
+    token_details = {
+        "authority_kind": "registry_bootstrap_first_compatible_run",
+        "query_json": json.loads(request_json),
+        "query_sha256": query_sha256,
+        "manifest_id": manifest_id,
+        "manifest_sha256": manifest_sha256,
+        "runtime_binding": runtime,
+    }
+    token_id = _identity(
+        "caol-scenario-bootstrap-token-v1",
+        manifest_id,
+        manifest_sha256,
+        query_sha256,
+        _json_text(runtime),
+    )
+    with immediate_transaction(connection):
+        existing = _bootstrap_token_details(connection, token_id)
+        if existing is None:
+            connection.execute(
+                "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+                "VALUES( ?, ?, NULL, ?, 'bootstrap_issued', 'first_compatible_evidence_run', ? )",
+                (token_id, manifest_id, "bootstrap:" + query_sha256, _json_text(token_details)),
+            )
+            _append_query_audit(
+                connection,
+                query_id=_identity("caol-scenario-bootstrap-query-v1", query_sha256),
+                request_json=request_json,
+                result={"kind": "bootstrap", "token_id": token_id, "selected_scenario_id": selected.scenario_id},
+            )
+    return RegistryBootstrapToken(
+        token_id, True, "issued", Path(str(manifest["source_path"])).stem,
+        str(manifest["source_path"]), runtime,
+    )
+
+
+def record_bootstrap_token_rejection(
+    connection: sqlite3.Connection,
+    token_id: str,
+    *,
+    reason: str,
+    details: Mapping[str, Any],
+) -> bool:
+    with immediate_transaction(connection):
+        issued = _bootstrap_token_details(connection, str(token_id).strip())
+        if issued is None:
+            return False
+        connection.execute(
+            "INSERT OR IGNORE INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, NULL, ?, 'bootstrap_invalidated', ?, ? )",
+            (str(issued["token_id"]), str(issued["manifest_id"]), str(issued["route_key"]), reason, _json_text(dict(details))),
+        )
+        return True
+
+
+def reload_bootstrap_token_for_launch(
+    connection: sqlite3.Connection,
+    token_id: str,
+    *,
+    require_claimed: bool = False,
+) -> RegistryBootstrapToken:
+    """Revalidate a bootstrap receipt without treating it as a normal selection token."""
+    token_id = str(token_id).strip()
+    if not token_id:
+        return RegistryBootstrapToken("", False, "token_missing")
+    with immediate_transaction(connection):
+        issued = _bootstrap_token_details(connection, token_id)
+        if issued is None:
+            return RegistryBootstrapToken(token_id, False, "token_unknown")
+
+        def reject(reason: str, **details: Any) -> RegistryBootstrapToken:
+            connection.execute(
+                "INSERT OR IGNORE INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+                "VALUES( ?, ?, NULL, ?, 'bootstrap_invalidated', ?, ? )",
+                (token_id, str(issued["manifest_id"]), str(issued["route_key"]), reason, _json_text(details)),
+            )
+            return RegistryBootstrapToken(token_id, False, reason)
+
+        if connection.execute(
+                "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'bootstrap_invalidated' LIMIT 1",
+                (token_id,)).fetchone() is not None:
+            return reject("token_invalidated")
+        claimed = connection.execute(
+            "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'bootstrap_claimed' LIMIT 1",
+            (token_id,)).fetchone() is not None
+        if claimed != require_claimed:
+            return reject("token_already_claimed" if claimed else "token_not_claimed")
+        try:
+            receipt = _json_object(str(issued["details_json"]), "bootstrap token details")
+            runtime = _bootstrap_runtime_binding(receipt.get("runtime_binding"))
+            request = parse_registry_query_request(receipt.get("query_json"))
+            expected_query_sha256 = _string(receipt.get("query_sha256"), "bootstrap token query_sha256")
+            expected_manifest_id = _string(receipt.get("manifest_id"), "bootstrap token manifest_id")
+            expected_sha256 = _string(receipt.get("manifest_sha256"), "bootstrap token manifest_sha256")
+        except (ScenarioRegistryStoreError, ScenarioRegistryQueryError) as exc:
+            return reject("receipt_malformed", error=str(exc))
+        if expected_manifest_id != str(issued["manifest_id"]):
+            return reject("receipt_manifest_mismatch")
+        if hashlib.sha256(_query_request_json(request).encode("utf-8")).hexdigest() != expected_query_sha256:
+            return reject("query_sha256_changed")
+        if str(issued["route_key"]) != "bootstrap:" + expected_query_sha256:
+            return reject("query_route_mismatch")
+        manifest = connection.execute(
+            "SELECT source_path, present, current_sha256 FROM manifest_current WHERE manifest_id = ?",
+            (expected_manifest_id,),
+        ).fetchone()
+        if manifest is None or not bool(manifest["present"]):
+            return reject("manifest_absent")
+        if str(manifest["current_sha256"] or "") != expected_sha256:
+            return reject("manifest_sha256_changed")
+        try:
+            observed_sha256 = hashlib.sha256(Path(str(manifest["source_path"])).read_bytes()).hexdigest()
+        except OSError as exc:
+            return reject("manifest_source_unreadable", error=str(exc))
+        if observed_sha256 != expected_sha256:
+            return reject("manifest_source_changed")
+        evaluation = evaluate_registry_query_from_store(connection, request)
+        selected_id = evaluation.evaluation.ranked_scenario_ids[0] if evaluation.evaluation.ranked_scenario_ids else None
+        selected = next((candidate for candidate in evaluation.candidates if candidate.scenario_id == selected_id), None)
+        if selected is None or selected.scenario_id != expected_manifest_id or not selected.token_eligible:
+            return reject("query_authority_changed")
+        if _current_verified_route(selected) is not None:
+            return reject("compatible_run_evidence_already_exists")
+        return RegistryBootstrapToken(
+            token_id, True, "claimed" if claimed else "current", Path(str(manifest["source_path"])).stem,
+            str(manifest["source_path"]), runtime,
+        )
+
+
+def claim_bootstrap_token_for_launch(
+    connection: sqlite3.Connection,
+    token_id: str,
+) -> RegistryBootstrapToken:
+    """Atomically consume the bootstrap authority before the sole canonical probe begins."""
+    selection = reload_bootstrap_token_for_launch(connection, token_id)
+    if not selection.accepted:
+        return selection
+    with immediate_transaction(connection):
+        issued = _bootstrap_token_details(connection, selection.token_id)
+        if issued is None:
+            return RegistryBootstrapToken(selection.token_id, False, "token_unknown")
+        connection.execute(
+            "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, NULL, ?, 'bootstrap_claimed', 'canonical_probe_launch', '{}' )",
+            (selection.token_id, str(issued["manifest_id"]), str(issued["route_key"])),
+        )
+    return reload_bootstrap_token_for_launch(connection, selection.token_id, require_claimed=True)
 
 
 @dataclass(frozen=True)
@@ -4080,6 +4281,47 @@ def ingest_token_linked_report_reference(
         "verification_id": str(verification["verification_id"]),
         "idempotent": not inserted,
     }
+
+
+def ingest_bootstrap_token_linked_report_reference(
+    connection: sqlite3.Connection,
+    token_id: str,
+    report_path: Path,
+    *,
+    adapters: BindingAdapters,
+) -> Dict[str, Any]:
+    """Ingest the sole report from a claimed bootstrap authority without minting a selection token."""
+    selection = reload_bootstrap_token_for_launch(connection, token_id, require_claimed=True)
+    if not selection.accepted:
+        return {"status": "rejected_token", "reason": selection.reason, "token_id": selection.token_id}
+    canonical_path, report_bytes = _report_path_and_bytes(report_path)
+    report_id = _identity("caol-scenario-report-v1", canonical_path, hashlib.sha256(report_bytes).hexdigest())
+    prior = connection.execute(
+        "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'bootstrap_verification_run'",
+        (selection.token_id,),
+    ).fetchone()
+    if prior is not None:
+        return {"status": "rejected_multiple_reports", "token_id": selection.token_id, "report_id": report_id}
+    ingested = ingest_report_reference(connection, report_path, adapters=adapters)
+    if str(ingested.get("status", "")) != "ingested":
+        record_bootstrap_token_rejection(
+            connection, selection.token_id, reason="report_ingest_" + str(ingested.get("status", "unknown")),
+            details={"report_id": str(ingested.get("report_id", "")), "error": str(ingested.get("error", ""))},
+        )
+        return {"status": "rejected_report", "token_id": selection.token_id}
+    with immediate_transaction(connection):
+        issued = _bootstrap_token_details(connection, selection.token_id)
+        if issued is None:
+            raise ScenarioRegistryStoreError("bootstrap token disappeared during report ingestion")
+        connection.execute(
+            "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, NULL, ?, 'bootstrap_verification_run', 'report_ingested', ? )",
+            (
+                selection.token_id, str(issued["manifest_id"]), str(issued["route_key"]),
+                _json_text({"report_id": str(ingested["report_id"]), "report_path": str(report_path.resolve())}),
+            ),
+        )
+    return {"status": "ingested", "token_id": selection.token_id, "report_id": str(ingested["report_id"])}
 
 
 def reconcile_report_bindings(connection: sqlite3.Connection, *, adapters: BindingAdapters) -> Dict[str, int]:

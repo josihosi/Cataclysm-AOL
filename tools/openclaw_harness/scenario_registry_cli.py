@@ -15,12 +15,15 @@ from typing import Any, Dict, Mapping, Sequence
 from scenario_registry import ManifestValidationError, validate_manifest
 from scenario_registry_store import (
     BindingAdapters,
+    RegistryBootstrapToken,
     RegistryLaunchToken,
     ScenarioRegistryStoreError,
     approve_retirement,
     claim_migration_item_launch,
     execute_registry_query,
+    issue_registry_bootstrap_token,
     ingest_report_reference,
+    ingest_bootstrap_token_linked_report_reference,
     ingest_token_linked_report_reference,
     migration_item_current,
     migration_run_snapshot,
@@ -36,6 +39,9 @@ from scenario_registry_store import (
     resolve_registry_path,
     reconcile_report_bindings,
     record_selection_token_rejection,
+    record_bootstrap_token_rejection,
+    claim_bootstrap_token_for_launch,
+    reload_bootstrap_token_for_launch,
     reload_selection_token_for_launch,
     parse_registry_query_request,
     path_sha256,
@@ -729,6 +735,18 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken) -> argparse
     return startup_harness.build_parser().parse_args(["probe", selection.scenario])
 
 
+def _registry_bootstrap_probe_namespace(selection: RegistryBootstrapToken) -> argparse.Namespace:
+    """Adapt a separately authorized bootstrap run into the same canonical probe route."""
+    source_path = Path(selection.source_path).resolve()
+    canonical_path = startup_harness.scenario_path(selection.scenario).resolve()
+    if canonical_path != source_path:
+        raise ScenarioRegistryStoreError(
+            "Bootstrap scenario source is not the canonical probe manifest: "
+            f"{source_path}"
+        )
+    return startup_harness.build_parser().parse_args(["probe", selection.scenario])
+
+
 def _registry_post_finalize_ingest(receipt: str) -> Any:
     """Return the narrow callback that links a durable probe report to its token."""
     def ingest(report_path: Path, _report: Mapping[str, Any]) -> Dict[str, Any]:
@@ -742,6 +760,13 @@ def _registry_post_finalize_ingest(receipt: str) -> Any:
                 raise ScenarioRegistryStoreError("registry launch receipt token is missing")
             connection = open_registry(str(registry_path))
             try:
+                if payload.get("authority_kind") == "registry_bootstrap_first_compatible_run":
+                    return ingest_bootstrap_token_linked_report_reference(
+                        connection,
+                        token_id,
+                        report_path,
+                        adapters=production_binding_adapters(),
+                    )
                 return ingest_token_linked_report_reference(
                     connection,
                     token_id,
@@ -769,6 +794,13 @@ def build_parser() -> argparse.ArgumentParser:
     ingest = commands.add_parser("ingest-report", help="ingest one immutable report reference")
     ingest.add_argument("--report", required=True, help="full probe or handoff report JSON path")
     commands.add_parser("reconcile", help="recompute report bindings from their authoritative owners")
+    bootstrap = commands.add_parser(
+        "registry-bootstrap",
+        help="issue one manifest-SHA/query/runtime-bound first-evidence authority",
+    )
+    bootstrap_source = bootstrap.add_mutually_exclusive_group(required=True)
+    bootstrap_source.add_argument("--query-file", help="typed bootstrap query JSON file")
+    bootstrap_source.add_argument("--query-json", help="typed bootstrap query JSON object")
     query = commands.add_parser("registry-query", help="evaluate typed requirements without launching the harness")
     query_source = query.add_mutually_exclusive_group(required=True)
     query_source.add_argument("--query-file", help="typed registry-query JSON file")
@@ -803,6 +835,11 @@ def build_parser() -> argparse.ArgumentParser:
         help="reload one selection token and run its canonical probe route",
     )
     launch.add_argument("selection_token", help="selection token returned by registry-query")
+    bootstrap_launch = commands.add_parser(
+        "registry-bootstrap-launch",
+        help="claim one bootstrap authority and run its canonical probe route",
+    )
+    bootstrap_launch.add_argument("bootstrap_token", help="token returned by registry-bootstrap")
     migrate = commands.add_parser(
         "registry-migrate-all",
         help="claim and classify one immutable scenario inventory snapshot",
@@ -844,6 +881,20 @@ def main(argv: Sequence[str] | None = None) -> int:
                     request,
                     include_lifecycle_states=tuple(args.include_state),
                     drafts_root=registry_path.parent / "drafts",
+                ))
+            elif args.command == "registry-bootstrap":
+                runtime_binding = startup_harness.build_runtime_binding(
+                    startup_harness.detect_executable()
+                )
+                if not runtime_binding.get("ok"):
+                    raise ScenarioRegistryStoreError(
+                        "bootstrap runtime binding unavailable: "
+                        + str(runtime_binding.get("error", "unknown error"))
+                    )
+                result = asdict(issue_registry_bootstrap_token(
+                    connection,
+                    parse_registry_query_request(_load_query_request(args)),
+                    runtime_binding=runtime_binding,
                 ))
             elif args.command == "registry-status":
                 result = {"entries": registry_status(
@@ -912,6 +963,52 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 probe_namespace.registry_launch_receipt
                             )
                             result = asdict(selection)
+            elif args.command == "registry-bootstrap-launch":
+                selection = reload_bootstrap_token_for_launch(connection, args.bootstrap_token)
+                if not selection.accepted:
+                    result = asdict(selection)
+                else:
+                    comparison = startup_harness.compare_runtime_binding(selection.runtime_binding)
+                    if comparison.get("status") != "matched":
+                        record_bootstrap_token_rejection(
+                            connection,
+                            selection.token_id,
+                            reason="runtime_binding_changed",
+                            details={"comparison": dict(comparison)},
+                        )
+                        result = asdict(RegistryBootstrapToken(
+                            selection.token_id, False, "runtime_binding_changed",
+                        ))
+                    else:
+                        selection = claim_bootstrap_token_for_launch(connection, selection.token_id)
+                        if not selection.accepted:
+                            result = asdict(selection)
+                        else:
+                            try:
+                                probe_namespace = _registry_bootstrap_probe_namespace(selection)
+                            except ScenarioRegistryStoreError as exc:
+                                record_bootstrap_token_rejection(
+                                    connection,
+                                    selection.token_id,
+                                    reason="canonical_probe_source_mismatch",
+                                    details={"error": str(exc)},
+                                )
+                                result = asdict(RegistryBootstrapToken(
+                                    selection.token_id, False, "canonical_probe_source_mismatch",
+                                ))
+                            else:
+                                probe_namespace.registry_launch_receipt = json.dumps({
+                                    "schema": 1,
+                                    "authority_kind": "registry_bootstrap_first_compatible_run",
+                                    "registry_path": str(registry_path),
+                                    "token_id": selection.token_id,
+                                    "source_path": selection.source_path,
+                                    "runtime_binding": selection.runtime_binding,
+                                }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                                probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
+                                    probe_namespace.registry_launch_receipt
+                                )
+                                result = asdict(selection)
             elif args.command == "registry-migrate-all":
                 if args.resume:
                     migration = migration_run_snapshot(connection, str(args.resume))
@@ -950,7 +1047,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, sqlite3.Error, ScenarioRegistryStoreError, SystemExit, ValueError) as exc:
         _write_result({"ok": False, "command": args.command, "error": str(exc)}, stream=sys.stderr)
         return 1
-    if args.command == "registry-launch":
+    if args.command in {"registry-launch", "registry-bootstrap-launch"}:
         if probe_namespace is None:
             _write_result({
                 "ok": False,

@@ -570,6 +570,43 @@ def validate_registry_launch_receipt_before_launch(
     except (OSError, sqlite3.Error, ScenarioRegistryStoreError) as exc:
         return {"status": "rejected", "reason": "registry_unavailable", "error": str(exc)}
     try:
+        if receipt.get("authority_kind") == "registry_bootstrap_first_compatible_run":
+            from scenario_registry_store import reload_bootstrap_token_for_launch
+
+            selection = reload_bootstrap_token_for_launch(connection, token_id, require_claimed=True)
+            if not selection.accepted:
+                return {
+                    "status": "rejected",
+                    "reason": f"bootstrap_{selection.reason}",
+                    "token_id": token_id,
+                }
+            if selection.source_path != str(Path(source_path).resolve()):
+                return {
+                    "status": "rejected",
+                    "reason": "bootstrap_source_changed",
+                    "token_id": token_id,
+                }
+            expected_executable = str(runtime_binding.get("executable_path", "")).strip()
+            if not expected_executable or Path(expected_executable).resolve() != executable.resolve():
+                return {
+                    "status": "rejected",
+                    "reason": "bootstrap_runtime_executable_changed",
+                    "token_id": token_id,
+                }
+            comparison = compare_runtime_binding(runtime_binding)
+            if comparison.get("status") != "matched":
+                return {
+                    "status": "rejected",
+                    "reason": "bootstrap_runtime_binding_changed",
+                    "token_id": token_id,
+                    "comparison": dict(comparison),
+                }
+            return {
+                "status": "compatible",
+                "token_id": token_id,
+                "source_path": selection.source_path,
+                "runtime_binding": comparison,
+            }
         selection = reload_selection_token_for_launch(connection, token_id)
         if not selection.accepted:
             return {
