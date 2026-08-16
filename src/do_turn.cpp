@@ -195,6 +195,34 @@ static constexpr std::size_t live_bandit_response_source_omt_cap = 64;
 static const faction_id faction_your_followers( "your_followers" );
 static const zone_type_id zone_type_CAMP_STORAGE( "CAMP_STORAGE" );
 
+static bool openclaw_harness_bandit_owner_trace_enabled()
+{
+    const char *enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
+}
+
+static void openclaw_harness_trace_bandit_owner( const std::string &event,
+        const tripoint_abs_omt &player_omt, const tripoint_abs_omt *camp_omt,
+        const int distance, const bool eligible, const int result = -1 )
+{
+    if( !openclaw_harness_bandit_owner_trace_enabled() ) {
+        return;
+    }
+    std::ostringstream trace;
+    trace << "openclaw_harness_ui_trace: component=bandit_owner"
+          << " event=" << event
+          << " player_omt=" << player_omt.x() << ',' << player_omt.y() << ',' << player_omt.z()
+          << " camp_omt=";
+    if( camp_omt != nullptr ) {
+        trace << camp_omt->x() << ',' << camp_omt->y() << ',' << camp_omt->z();
+    } else {
+        trace << "none";
+    }
+    trace << " distance=" << distance << " eligible=" << ( eligible ? "true" : "false" )
+          << " result=" << result;
+    DebugLog( D_INFO, DC_ALL ) << trace.str() << '\n';
+}
+
 void live_bandit_refresh_basecamp_storage_tiles( const avatar &u, basecamp &camp )
 {
     zone_manager::get_manager().cache_data();
@@ -212,12 +240,33 @@ void live_bandit_refresh_basecamp_storage_tiles( const avatar &u, basecamp &camp
 
 basecamp *live_bandit_nearest_basecamp( const avatar &u )
 {
-    if( std::optional<basecamp *> bcp = overmap_buffer.find_camp( u.pos_abs_omt().xy() ) ) {
-        return *bcp;
-    }
-
+    const tripoint_abs_omt player_omt = u.pos_abs_omt();
+    const std::optional<basecamp *> direct_camp = overmap_buffer.find_camp( player_omt.xy() );
     const std::vector<camp_reference> camps_near_player = overmap_buffer.get_camps_near(
                 u.pos_abs_sm(), live_bandit_camp_adjacent_radius_submaps );
+    if( openclaw_harness_bandit_owner_trace_enabled() ) {
+        std::ostringstream trace;
+        trace << "openclaw_harness_ui_trace: component=bandit_owner event=registry"
+              << " player_omt=" << player_omt.x() << ',' << player_omt.y() << ',' << player_omt.z()
+              << " direct=";
+        if( direct_camp && *direct_camp != nullptr ) {
+            const tripoint_abs_omt camp_omt = ( *direct_camp )->camp_omt_pos();
+            trace << camp_omt.x() << ',' << camp_omt.y() << ',' << camp_omt.z();
+        } else {
+            trace << "none";
+        }
+        trace << " nearby_count=" << camps_near_player.size() << " nearby_first=";
+        if( !camps_near_player.empty() && camps_near_player.front().camp != nullptr ) {
+            const tripoint_abs_omt camp_omt = camps_near_player.front().camp->camp_omt_pos();
+            trace << camp_omt.x() << ',' << camp_omt.y() << ',' << camp_omt.z();
+        } else {
+            trace << "none";
+        }
+        DebugLog( D_INFO, DC_ALL ) << trace.str() << '\n';
+    }
+    if( direct_camp && *direct_camp != nullptr ) {
+        return *direct_camp;
+    }
     if( !camps_near_player.empty() ) {
         return camps_near_player.front().camp;
     }
@@ -227,7 +276,15 @@ basecamp *live_bandit_nearest_basecamp( const avatar &u )
 
 bool live_bandit_player_near_basecamp( const avatar &u )
 {
-    return live_bandit_nearest_basecamp( u ) != nullptr;
+    basecamp *camp = live_bandit_nearest_basecamp( u );
+    const tripoint_abs_omt player_omt = u.pos_abs_omt();
+    const std::optional<tripoint_abs_omt> camp_omt_value = camp != nullptr ?
+            std::optional<tripoint_abs_omt>( camp->camp_omt_pos() ) : std::nullopt;
+    const tripoint_abs_omt *camp_omt = camp_omt_value ? &*camp_omt_value : nullptr;
+    const int distance = camp_omt != nullptr ? rl_dist( player_omt, *camp_omt ) : -1;
+    const bool eligible = camp != nullptr;
+    openclaw_harness_trace_bandit_owner( "near_basecamp", player_omt, camp_omt, distance, eligible );
+    return eligible;
 }
 
 bool live_bandit_player_in_rolling_travel_scene( const avatar &u )
@@ -540,6 +597,8 @@ void observe_live_bandit_player_target_opportunity()
     bandit_live_world::local_gate_input input;
     input.basecamp_or_camp_scene = live_bandit_player_near_basecamp( u );
     if( !input.basecamp_or_camp_scene ) {
+        openclaw_harness_trace_bandit_owner( "observation_rejected", u.pos_abs_omt(), nullptr, -1,
+                false, 0 );
         return;
     }
     input.local_opportunity = 2;
@@ -566,8 +625,11 @@ void observe_live_bandit_player_target_opportunity()
     }
 
     // Camp-local scout reports read this world receipt; only this loaded player-scene owner writes it.
-    if( bandit_live_world::observe_authoritative_hostile_target_opportunity( state, target_id,
-            target_omt, evidence ) ) {
+    const bool observed = bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
+                           target_id, target_omt, evidence );
+    openclaw_harness_trace_bandit_owner( "observation_result", target_omt, nullptr, 0, true,
+                                         observed ? 1 : 0 );
+    if( observed ) {
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world hostile_target_observation"
                                    << " target=" << target_id
                                    << " goods=" << evidence.reachable_goods_value
@@ -1204,7 +1266,27 @@ bool advance_live_bandit_hostile_rallies()
         const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
             bandit_live_world::current_external_simulation_cursor( site );
         if( !cursor || current_minutes <= cursor->last_advanced_minutes ) {
+            if( openclaw_harness_bandit_owner_trace_enabled() ) {
+                DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_return"
+                                           << " event=preflight_blocked site=" << site.site_id
+                                           << " operation=" << reservation.activity_id
+                                           << " generation=" << reservation.generation
+                                           << " cursor=" << ( cursor ? "present" : "none" )
+                                           << " current_minutes=" << current_minutes
+                                           << " last_advanced=" << ( cursor ?
+                                               std::to_string( cursor->last_advanced_minutes ) : "none" )
+                                           << '\n';
+            }
             continue;
+        }
+        if( openclaw_harness_bandit_owner_trace_enabled() ) {
+            DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_return"
+                                       << " event=preflight site=" << site.site_id
+                                       << " operation=" << reservation.activity_id
+                                       << " generation=" << reservation.generation
+                                       << " owner=" << to_string( reservation.owner )
+                                       << " member_count=" << reservation.member_ids.size()
+                                       << " target=" << reservation.target_id << '\n';
         }
         changed |= bandit_live_world::transition_hostile_operation_phase( site, *cursor,
                    bandit_live_world::hostile_operation_phase::outbound,
@@ -1245,9 +1327,20 @@ bool advance_live_bandit_hostile_approaches()
         std::vector<hostile_approach_travel_order> travel_orders;
         bool valid_party = true;
         bool all_at_target = true;
+        bool approach_progressed = false;
         for( const character_id member_id : reservation.member_ids ) {
             const bandit_live_world::member_record *member = site.find_member( member_id );
             npc *member_npc = g->find_npc( member_id );
+            if( openclaw_harness_bandit_owner_trace_enabled() ) {
+                DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_return"
+                                           << " event=member member=" << member_id.get_value()
+                                           << " state=" << ( member == nullptr ? "missing" :
+                                               std::to_string( static_cast<int>( member->state ) ) )
+                                           << " loaded=" << ( member_npc != nullptr ? "true" : "false" )
+                                           << " pos=" << ( member_npc != nullptr ?
+                                               member_npc->pos_abs_omt().to_string() : "none" )
+                                           << " home=" << site.anchor.to_string() << '\n';
+            }
             if( member == nullptr || member->state != bandit_live_world::member_state::outbound ||
                 member_npc == nullptr || member_npc->is_dead() ) {
                 valid_party = false;
@@ -1259,6 +1352,15 @@ bool advance_live_bandit_hostile_approaches()
             all_at_target = false;
             if( member_npc->goal == reservation.target_omt && !member_npc->omt_path.empty() &&
                 member_npc->is_travelling() ) {
+                while( !member_npc->omt_path.empty() &&
+                       member_npc->omt_path.back() == member_npc->pos_abs_omt() ) {
+                    member_npc->omt_path.pop_back();
+                }
+                if( !member_npc->omt_path.empty() ) {
+                    member_npc->travel_overmap( member_npc->omt_path.back() );
+                    changed = true;
+                    approach_progressed = true;
+                }
                 continue;
             }
             const std::vector<tripoint_abs_omt> route = overmap_buffer.get_travel_path(
@@ -1307,6 +1409,19 @@ bool advance_live_bandit_hostile_approaches()
                 order.member_npc->omt_path = std::move( order.route );
                 order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
                 changed = true;
+                while( !order.member_npc->omt_path.empty() &&
+                       order.member_npc->omt_path.back() == order.member_npc->pos_abs_omt() ) {
+                    order.member_npc->omt_path.pop_back();
+                }
+                if( !order.member_npc->omt_path.empty() ) {
+                    order.member_npc->travel_overmap( order.member_npc->omt_path.back() );
+                    changed = true;
+                    approach_progressed = true;
+                }
+            }
+            if( approach_progressed ) {
+                changed |= bandit_live_world::record_hostile_operation_approach_progress(
+                               site, *cursor, current_minutes );
             }
             continue;
         }
@@ -1347,6 +1462,16 @@ bool advance_live_bandit_hostile_returns()
         for( const character_id member_id : reservation.member_ids ) {
             const bandit_live_world::member_record *member = site.find_member( member_id );
             if( reservation.member_is_resolved( member_id ) ) {
+                if( openclaw_harness_bandit_owner_trace_enabled() ) {
+                    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_return"
+                                               << " event=member_resolved member=" << member_id.get_value()
+                                               << " state=" << ( member == nullptr ? "missing" :
+                                                   std::to_string( static_cast<int>( member->state ) ) )
+                                               << " casualty=" << ( std::find( reservation.casualty_ids.begin(),
+                                                   reservation.casualty_ids.end(), member_id ) !=
+                                                   reservation.casualty_ids.end() ? "true" : "false" )
+                                               << '\n';
+                }
                 if( member == nullptr || member->state != bandit_live_world::member_state::dead ||
                     std::find( reservation.casualty_ids.begin(), reservation.casualty_ids.end(),
                                member_id ) == reservation.casualty_ids.end() ) {
@@ -1355,6 +1480,15 @@ bool advance_live_bandit_hostile_returns()
                 continue;
             }
             npc *member_npc = g->find_npc( member_id );
+            if( openclaw_harness_bandit_owner_trace_enabled() ) {
+                DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_return"
+                                           << " event=member_state member=" << member_id.get_value()
+                                           << " resolved=false state=" << ( member == nullptr ? "missing" :
+                                               std::to_string( static_cast<int>( member->state ) ) )
+                                           << " npc_loaded=" << ( member_npc == nullptr ? "false" : "true" )
+                                           << " npc_dead=" << ( member_npc != nullptr && member_npc->is_dead() ?
+                                               "true" : "false" ) << '\n';
+            }
             if( member == nullptr || member->state != bandit_live_world::member_state::outbound ||
                 member_npc == nullptr || member_npc->is_dead() ) {
                 valid_party = false;
@@ -1374,12 +1508,25 @@ bool advance_live_bandit_hostile_returns()
                         overmap_path_params::for_npc() ).points;
             if( route.empty() || route.front() != site.anchor ||
                 route.back() != member_npc->pos_abs_omt() ) {
+                if( openclaw_harness_bandit_owner_trace_enabled() ) {
+                    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_return"
+                                               << " event=route_rejected member=" << member_id.get_value()
+                                               << " route_size=" << route.size()
+                                               << " route_front=" << ( route.empty() ? "none" :
+                                                   route.front().to_string() )
+                                               << " route_back=" << ( route.empty() ? "none" :
+                                                   route.back().to_string() ) << '\n';
+                }
                 valid_party = false;
                 break;
             }
             travel_orders.push_back( { member_npc, route } );
         }
         if( !valid_party ) {
+            if( openclaw_harness_bandit_owner_trace_enabled() ) {
+                DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_return"
+                                           << " event=handoff_blocked site=" << site.site_id << '\n';
+            }
             continue;
         }
         if( !all_home ) {
@@ -1388,6 +1535,11 @@ bool advance_live_bandit_hostile_returns()
                 order.member_npc->omt_path = std::move( order.route );
                 order.member_npc->set_mission( NPC_MISSION_TRAVELLING );
                 changed = true;
+            }
+            if( openclaw_harness_bandit_owner_trace_enabled() ) {
+                DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_return"
+                                           << " event=route_assigned site=" << site.site_id
+                                           << " orders=" << travel_orders.size() << '\n';
             }
             continue;
         }
@@ -1398,11 +1550,19 @@ bool advance_live_bandit_hostile_returns()
                     generation ) ) {
             continue;
         }
-        changed |= bandit_live_world::release_matching_external_reservation( site, activity_id,
+        const bool released = bandit_live_world::release_matching_external_reservation( site, activity_id,
                    generation, operation.operation_kind ==
                    bandit_live_world::hostile_operation_kind::raid ?
                    "cannibal raid survivors physically returned home" :
                    "paid shakedown survivors physically returned home" ).has_value();
+        changed |= released;
+        if( openclaw_harness_bandit_owner_trace_enabled() ) {
+            DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_ui_trace: component=bandit_return"
+                                       << " event=terminal_release site=" << site.site_id
+                                       << " operation=" << activity_id
+                                       << " generation=" << generation
+                                       << " released=" << ( released ? "true" : "false" ) << '\n';
+        }
     }
     return changed;
 }
@@ -3397,6 +3557,75 @@ bool note_live_bandit_aftermath()
     const int current_minutes = live_bandit_current_minutes();
     const int scout_sortie_limit_minutes = bandit_live_world::ordinary_scout_sortie_limit_minutes();
     bool changed = false;
+
+    // A terminal shakedown receipt deliberately outlives its released operation.  Keep this
+    // observer outside the aftermath and reservation writers: it only classifies the persisted
+    // receipt after release, including the stale identity control, and records whether those
+    // reads left the serialized world unchanged.
+    static std::set<std::string> observed_terminal_replay_keys;
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        if( site.active_hostile_operation.is_active() ||
+            site.last_hostile_shakedown_operation_id.empty() ||
+            site.last_hostile_shakedown_report_key.empty() ||
+            site.last_hostile_shakedown_generation <= 0 ) {
+            continue;
+        }
+        const bandit_live_world::hostile_target_opportunity_record *receipt = nullptr;
+        for( const bandit_live_world::hostile_target_opportunity_record &candidate :
+             state.hostile_target_opportunities ) {
+            if( candidate.consumed_operation_id == site.last_hostile_shakedown_operation_id &&
+                candidate.consumed_report_key == site.last_hostile_shakedown_report_key &&
+                candidate.consumed_generation == site.last_hostile_shakedown_generation ) {
+                receipt = &candidate;
+                break;
+            }
+        }
+        if( receipt == nullptr || receipt->revision <= 0 ) {
+            continue;
+        }
+        const std::string replay_key = site.site_id + "|" + receipt->target_id + "|" +
+                                       receipt->consumed_operation_id + "|" +
+                                       receipt->consumed_report_key + "|" +
+                                       std::to_string( receipt->consumed_generation );
+        if( !observed_terminal_replay_keys.insert( replay_key ).second ) {
+            continue;
+        }
+        bandit_live_world::terminal_hostile_shakedown_replay_identity exact = {
+            receipt->target_id, receipt->target_omt, receipt->revision,
+            receipt->consumed_operation_id, receipt->consumed_report_key,
+            receipt->consumed_generation
+        };
+        bandit_live_world::terminal_hostile_shakedown_replay_identity stale = exact;
+        stale.generation = stale.generation == std::numeric_limits<int>::max() ?
+                           stale.generation - 1 : stale.generation + 1;
+        const auto serialized_state = []() {
+            std::ostringstream serialized;
+            JsonOut json( serialized );
+            state.serialize( json );
+            return serialized.str();
+        };
+        const std::string before = serialized_state();
+        const bandit_live_world::terminal_hostile_shakedown_replay_disposition exact_disposition =
+            bandit_live_world::observe_terminal_hostile_shakedown_replay( state, site, exact );
+        const bandit_live_world::terminal_hostile_shakedown_replay_disposition stale_disposition =
+            bandit_live_world::observe_terminal_hostile_shakedown_replay( state, site, stale );
+        const bool byte_stable = serialized_state() == before;
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world terminal_shakedown_replay_observer"
+                                   << " site=" << site.site_id
+                                   << " target=" << exact.target_id
+                                   << " operation=" << exact.operation_id
+                                   << " report_key=" << exact.report_key
+                                   << " generation=" << exact.generation
+                                   << " active_operation=absent"
+                                   << " exact=" << ( exact_disposition ==
+                                           bandit_live_world::terminal_hostile_shakedown_replay_disposition::exact_duplicate ?
+                                           "exact_duplicate" : "rejected" )
+                                   << " stale=" << ( stale_disposition ==
+                                           bandit_live_world::terminal_hostile_shakedown_replay_disposition::stale_replay ?
+                                           "stale_replay" : "rejected" )
+                                   << " byte_stable=" << ( byte_stable ? "yes" : "no" )
+                                   << " outcome_credit=none\n";
+    }
 
     for( bandit_live_world::site_record &site : state.sites ) {
         changed |= live_bandit_apply_shakedown_defender_aftermath( site, u );
@@ -6605,9 +6834,7 @@ bandit_live_world::structural_route_read live_bandit_structural_route_read(
     }
     const bandit_live_world::camp_map_lead *lead =
         site.intelligence_map.find_lead( plan.lead_id );
-    if( ( plan.frontier_sector < 0 && lead == nullptr ) ||
-        ( lead != nullptr &&
-          lead->kind == bandit_live_world::camp_lead_kind::structural_bounty ) ) {
+    if( plan.frontier_sector < 0 && lead == nullptr ) {
         return read;
     }
 
@@ -7120,6 +7347,7 @@ int advance_live_bandit_local_scout_assessments()
 {
     bandit_live_world::world_state &state =
         overmap_buffer.global_state.bandit_live_world;
+    observe_live_bandit_player_target_opportunity();
     const int current_minutes = live_bandit_current_minutes();
     int completed = 0;
     for( bandit_live_world::site_record &site : state.sites ) {
@@ -7129,6 +7357,36 @@ int advance_live_bandit_local_scout_assessments()
             outing.phase != bandit_live_world::scout_phase::observing ||
             outing.last_advanced_minutes > current_minutes ) {
             continue;
+        }
+        avatar &u = get_avatar();
+        const tripoint_abs_omt player_omt = u.pos_abs_omt();
+        const std::string player_target_id = "player@" + live_bandit_omt_token( player_omt );
+        const bandit_live_world::hostile_target_opportunity_record *opportunity =
+            state.find_hostile_target_opportunity( player_target_id, player_omt );
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( site );
+        if( opportunity != nullptr && opportunity->revision > 0 && opportunity->goods_value > 0 &&
+            opportunity->population > 0 && opportunity->activity > 0 && cursor ) {
+            map &here = get_map();
+            for( const character_id &member_id : outing.member_ids ) {
+                const shared_ptr_fast<npc> member = overmap_buffer.find_npc( member_id );
+                if( !member || member->is_dead() ||
+                    member->pos_abs_omt() != outing.selected_watch_omt || !member->sees( here, u ) ) {
+                    continue;
+                }
+                const bandit_live_world::sortie_observation_effect observed =
+                    bandit_live_world::record_physically_observed_player_opportunity( site, *cursor,
+                            member_id, player_target_id, member->pos_abs_omt(), player_omt,
+                            opportunity->revision, current_minutes );
+                if( observed.valid && observed.progress ) {
+                    DebugLog( D_INFO, DC_ALL ) << "bandit_live_world physical_player_observation"
+                                               << " site=" << site.site_id
+                                               << " scout=" << member_id.get_value()
+                                               << " target=" << player_target_id
+                                               << " revision=" << opportunity->revision << '\n';
+                }
+                break;
+            }
         }
         const std::string activity_id = outing.activity_id;
         const int generation = outing.generation;
@@ -8408,6 +8666,12 @@ void complete_live_bandit_homeward_boundary_steps(
                                            << '\n';
                 continue;
             }
+            const bandit_live_world::member_record *home_member =
+                site.find_member( member->getID() );
+            if( home_member == nullptr ) {
+                continue;
+            }
+            member->setpos( home_member->home_spawn_tile, false );
             member->goto_to_this_pos = std::nullopt;
             member->clear_ai_guard_pos();
             member->path.clear();
@@ -9114,8 +9378,9 @@ void overmap_npc_move()
     const int emitted_minutes ) {
         live_sounds.push_back( { source_omt, volume, kind, emitted_minutes } );
     } );
+    int bootstrapped_sites = 0;
     if( signal_cadence_due || structural_cadence_due ) {
-        bootstrap_live_bandit_abstract_sites_near_player();
+        bootstrapped_sites = bootstrap_live_bandit_abstract_sites_near_player();
     }
     if( signal_cadence_due ) {
         live_signals = observe_live_bandit_field_signals_near_player();
@@ -9126,7 +9391,11 @@ void overmap_npc_move()
     if( dispatch_cadence_due || structural_cadence_due ) {
         refresh_live_bandit_member_readiness( bandit_state );
     }
-    if( structural_cadence_due ) {
+    // A camp created on this structural cadence has not yet had an ordinary
+    // loaded player scene in which to observe a target opportunity.  Defer
+    // its first structural maintenance pass until the next cadence, so the
+    // structural scheduler does not consume that initial lead first.
+    if( structural_cadence_due && bootstrapped_sites == 0 ) {
         observe_live_bandit_player_target_opportunity();
         const int adopted_opportunities =
             bandit_live_world::adopt_observed_hostile_player_opportunities(
@@ -9135,6 +9404,8 @@ void overmap_npc_move()
         const bandit_live_world::hostile_target_opportunity_record & opportunity ) {
             return live_bandit_player_opportunity_route_available( site, opportunity );
         } );
+        openclaw_harness_trace_bandit_owner( "adoption_result", u.pos_abs_omt(), nullptr, 0, true,
+                adopted_opportunities );
         if( adopted_opportunities > 0 ) {
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world player_opportunity_adoption adopted="
                                        << adopted_opportunities << '\n';
@@ -9155,6 +9426,18 @@ void overmap_npc_move()
     advance_live_bandit_hostile_returns();
     materialize_live_bandit_structural_handoffs();
     const auto dispatch_done = std::chrono::steady_clock::now();
+    std::set<character_id> hostile_approach_member_ids;
+    for( const bandit_live_world::site_record &site : bandit_state.sites ) {
+        const bandit_live_world::hostile_operation_state &operation =
+            site.active_hostile_operation;
+        const bandit_live_world::active_outing_state &reservation = operation.reservation;
+        if( !site.retired_empty_site && operation.is_active() &&
+            operation.phase == bandit_live_world::hostile_operation_phase::approaching &&
+            reservation.owner == bandit_live_world::simulation_owner::abstract ) {
+            hostile_approach_member_ids.insert( reservation.member_ids.begin(),
+                                                reservation.member_ids.end() );
+        }
+    }
     const std::set<character_id> local_pair_homeward_member_ids =
         bandit_live_world::local_pair_homeward_travel_ids( bandit_state );
     if( structural_cadence_due ) {
@@ -9225,6 +9508,9 @@ void overmap_npc_move()
             continue;
         }
         npc *npc_to_add = elem.get();
+        if( hostile_approach_member_ids.count( npc_to_add->getID() ) > 0 ) {
+            continue;
+        }
         const auto assembly_order = local_pair_assembly_orders.find( npc_to_add->getID() );
         if( assembly_order != local_pair_assembly_orders.end() ) {
             // Assembly owns both members until the authoritative state exposes ingress,

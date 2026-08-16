@@ -1,0 +1,36 @@
+{
+  "audit_route": "startup_harness.audit_saved_bandit_live_world_state",
+  "source": ".userdata/r009-m059/save/McWilliams",
+  "schema_version_line": "# version 39",
+  "status": "required_state_present",
+  "site": {
+    "site_id": "overmap_special:bandit_camp@164,39,0",
+    "member_count": 12,
+    "ready_at_home_count": 12,
+    "active_outside_count": 0,
+    "lead_count": 0,
+    "remembered_target_or_mark": "",
+    "remembered_pressure": "ample",
+    "current_scout_report_present": false,
+    "active_hostile_operation": {
+      "present": true,
+      "is_active": false,
+      "operation_kind": "none",
+      "phase": "assembling",
+      "member_count": 0
+    },
+    "active_outing": {
+      "present": true,
+      "is_active": false,
+      "kind": "none",
+      "member_count": 0
+    },
+    "camp_decision": {
+      "state": "idle",
+      "source_report_revision": 0,
+      "source_report_generation": 0,
+      "target_lead_id": ""
+    }
+  },
+  "interpretation": "No hostile opportunity, lead, scout report, decision, or active operation is present. The executable's ordinary current-format serializer materialized inactive kind=none/idle placeholders only."
+}

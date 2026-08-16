@@ -229,7 +229,7 @@ authorizes a response.
 - [x] `DEBUG_CLAIRVOYANCE` provides a read-only ecology view, selection, bounded watches, compact
   deltas, incident capture, and one labelled casualty intervention through the authoritative death
   route. The observer is not a gameplay owner.
-- [ ] 🔴 R-009 — Save/load at each live lifecycle boundary—including local/abstract handoff, split return,
+- [x] R-009 — Save/load at each live lifecycle boundary—including local/abstract handoff, split return,
   shakedown contact, and cannibal darkness wait—must be proved with the changed executable.
 <!-- DE67:DFS-SLICE:END id=R-009-S001 claim=R-009 -->
 <!-- DE67:DFS-SLICE:BEGIN id=R-010-S001 claim=R-010 -->

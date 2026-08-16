@@ -372,6 +372,7 @@ struct sortie_observation {
     int observed_power_high = 0;
     int equipment_detail = 0;
     int target_revision = 0;
+    int authoritative_opportunity_revision = 0;
     int uncertainty_radius_omt = 0;
     int expiry_minutes = -1;
     sortie_observation_share_state share_state =
@@ -1721,6 +1722,11 @@ structural_signal_record_result record_structural_signal_observations( world_sta
         const std::function<std::vector<structural_signal_read>( const site_record &,
                 const active_outing_state &,
                 const structural_threat_observer_request & )> &signal_lookup );
+sortie_observation_effect record_physically_observed_player_opportunity(
+    site_record &site, const simulation_advance_cursor &expected_cursor,
+    const character_id &observer_id, const std::string &target_id,
+    const tripoint_abs_omt &observer_omt, const tripoint_abs_omt &target_omt,
+    int opportunity_revision, int now_minutes );
 structural_bounty_maintenance_result advance_structural_bounty_maintenance( world_state &state,
         int now_minutes, int scan_budget, int dispatch_cap,
         const std::function<std::optional<std::string>( const tripoint_abs_omt & )> &terrain_lookup,
@@ -1911,6 +1917,8 @@ hostile_operation_transition_result transition_hostile_operation_phase( site_rec
         const simulation_advance_cursor &expected_cursor,
         hostile_operation_phase expected_phase, hostile_operation_phase next_phase,
         int current_minutes, const std::string &reason );
+bool record_hostile_operation_approach_progress( site_record &site,
+        const simulation_advance_cursor &expected_cursor, int current_minutes );
 hostile_operation_plan plan_hostile_operation( const site_record &site,
         hostile_operation_kind operation_kind, const std::vector<tripoint_abs_omt> &route,
         const tripoint_abs_omt &rally_omt, int current_minutes );

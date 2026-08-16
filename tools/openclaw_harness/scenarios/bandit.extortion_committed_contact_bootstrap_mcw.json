@@ -1,0 +1,148 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.extortion_committed_contact_bootstrap_mcw",
+  "description": "Bootstrap one ordinary production cadence from the current-executable R-009 pre-opportunity McWilliams save, then perform a normal full save and capture the resulting world for the next committed-contact setup stage. The dedicated profile deliberately sends no post-load Return key because this build binds Return to the Actions menu; this route never rewrites a save or authoritatively invents hostile state.",
+  "profile": "r009-m068",
+  "world": "McWilliams",
+  "fixture": "r009_m059_preopportunity_bootstrap",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2",
+      "LLM_INTENT_ENABLE": "false"
+    }
+  },
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world hostile_target_observation",
+    "bandit_live_world player_opportunity_adoption",
+    "bandit_live_world structural"
+  ],
+  "capabilities": {
+    "player.hud": ["Move:", "Wield:"],
+    "capabilities.persistence": "full_save_exit_same_world",
+    "capabilities.shakedown.bootstrap": "production_cadence"
+  },
+  "runtime_contract": {
+    "permitted_input": ["long_wait:30m", "press:S", "press:left", "press:enter"],
+    "forbidden_input": ["debug:spawn", "raw-save-rewrite", "fixture-save-transform"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m068",
+    "fixture": "r009_m059_preopportunity_bootstrap",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r009-m068",
+      "fixture": "r009_m059_preopportunity_bootstrap",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": ["long_wait:30m", "press:S", "press:left", "press:enter"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["post_load_preopportunity_hud"],
+    "production_behavior": ["wait_one_dispatch_cadence"],
+    "terminal_persistence": ["confirm_full_save_after_cadence"],
+    "artifact_verdict": ["audit_production_cadence_state"],
+    "disallowed_shortcuts": ["audit_production_cadence_state"],
+    "capability_gates": {
+      "player.hud": {
+        "startup": ["post_load_preopportunity_hud"]
+      },
+      "capabilities.persistence": {
+        "persistence": ["confirm_full_save_after_cadence"]
+      },
+      "capabilities.shakedown.bootstrap": {
+        "interaction": ["wait_one_dispatch_cadence", "audit_production_cadence_state"]
+      }
+    }
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_preopportunity_hud",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "the current executable has loaded the copied production save to the live gameplay HUD",
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_preopportunity_hud_not_visible",
+      "abort_reason": "the current-executable bootstrap save did not reach a real gameplay HUD"
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_one_dispatch_cadence",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "completion_wait_seconds": 12.0,
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "expected_visible_fact": "one ordinary 30-minute gameplay wait gives the production scheduler its next dispatch cadence"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_before_full_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_player_save_missing_before_full_save",
+      "abort_reason": "the copied production-created save was absent before the native Save-and-Quit action"
+    },
+    {
+      "kind": "press",
+      "label": "open_full_save_after_cadence",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "the native Save and quit confirmation prompt is visible before any save-exit confirmation",
+      "expected_screen_text_after_contains": ["Save and quit?"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_native_full_save_prompt_not_visible",
+      "abort_reason": "the native Save and quit confirmation prompt was not visible after the Save command"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_full_save_after_cadence",
+      "keys": ["left", "enter"],
+      "settle_seconds": 5.0,
+      "capture_after": false,
+      "expected_visible_fact": "the native Yes confirmation must produce a newer production save through the following named save-mtime transition",
+      "proof_deferred_to_label": "audit_player_save_after_full_save"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_after_full_save",
+      "changed_since_label": "audit_player_save_before_full_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_native_full_save_not_observed",
+      "abort_reason": "the native Save-and-Quit action did not update the production save"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_production_cadence_state",
+      "required_site_id_contains": "overmap_special:bandit_camp@164,39,0",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_production_cadence_site_missing",
+      "abort_reason": "the production-created bootstrap world no longer contained its named bandit site",
+      "expected_immediate_state": "read-only audit records the production owner's saved opportunity, decision, and reservation state without shaping it"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.extortion_committed_contact_bootstrap_mcw",
+  "evidence_contract": {
+    "claim": "one current-executable production cadence is run from a previous ordinary full-save artifact, then a new ordinary full save captures the resulting state for the next setup stage",
+    "preconditions_and_interventions": "the harness copies a current-executable save with save_transforms=[]; after the HUD gate it only invokes the native wait menu and the Save-and-Quit prompt's visible Yes selection",
+    "terminal": "the run is only setup evidence and stops after a normal full save; it does not claim shakedown behavior"
+  }
+}

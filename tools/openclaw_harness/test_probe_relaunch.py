@@ -171,11 +171,13 @@ class ProbeRelaunchTest(unittest.TestCase):
                 self.assertEqual(harness.run_probe_mode(args), 0)
 
             self.assertEqual([call.args[0] for call in execute.call_args_list], [101, 202])
+            self.assertEqual(execute.call_args_list[1].kwargs["artifact_baseline"], 0)
             self.assertTrue(any(call.args[0] == 202 for call in screenshot.call_args_list))
             finalize.assert_called_once()
             self.assertEqual(finalize.call_args.kwargs["cleanup_pid"], 202)
             report = finalize.call_args.args[1]
             self.assertEqual(report["relaunch"]["status"], "ready")
+            self.assertEqual(report["relaunch"]["artifact_log_pre_relaunch_size"], 0)
             self.assertEqual(report["steps"][-1]["phase"], "post_relaunch")
 
 

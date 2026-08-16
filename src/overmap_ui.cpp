@@ -4,6 +4,7 @@
 #include <array>
 #include <charconv>
 #include <chrono>
+#include <cstdlib>
 #include <functional>
 #include <map>
 #include <memory>
@@ -118,6 +119,57 @@ static const oter_type_str_id oter_type_forest_trail( "forest_trail" );
 
 static const trait_id trait_DEBUG_CLAIRVOYANCE( "DEBUG_CLAIRVOYANCE" );
 static const trait_id trait_DEBUG_NIGHTVISION( "DEBUG_NIGHTVISION" );
+
+static bool openclaw_harness_overmap_input_trace_enabled()
+{
+    const char *enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
+}
+
+static std::string openclaw_harness_quote_overmap_input( const std::string &value )
+{
+    std::string out = "\"";
+    for( const char c : value ) {
+        if( c == '\\' || c == '"' ) {
+            out += '\\';
+        }
+        out += c;
+    }
+    out += '"';
+    return out;
+}
+
+static void openclaw_harness_trace_overmap_input_resolution( const input_event &raw_input,
+        const std::string &resolved_action )
+{
+    if( !openclaw_harness_overmap_input_trace_enabled() || raw_input.type == input_event_t::timeout ) {
+        return;
+    }
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=overmap_route_input"
+            << " event=resolved"
+            << " raw_type=" << static_cast<int>( raw_input.type )
+            << " raw_code=" << raw_input.get_first_input()
+            << " raw_text=" << openclaw_harness_quote_overmap_input( raw_input.text )
+            << " raw_description=" << openclaw_harness_quote_overmap_input(
+                raw_input.long_description() )
+            << " resolved_action=" << openclaw_harness_quote_overmap_input( resolved_action );
+}
+
+static void openclaw_harness_trace_overmap_route( const char *event,
+        const tripoint_abs_omt &dest, const std::size_t path_size, const bool travel_result = false )
+{
+    if( !openclaw_harness_overmap_input_trace_enabled() ) {
+        return;
+    }
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=overmap_route"
+            << " event=" << event
+            << " destination=" << dest.x() << "," << dest.y() << "," << dest.z()
+            << " path_size=" << path_size
+            << " path_nonempty=" << ( path_size > 0 ? "true" : "false" )
+            << " travel_result=" << ( travel_result ? "true" : "false" );
+}
 
 #if defined(__ANDROID__)
 #include <SDL_keyboard.h>
@@ -2914,6 +2966,7 @@ static std::vector<tripoint_abs_omt> get_overmap_path_to( const tripoint_abs_omt
         bool driving, bool direct_travel = false )
 {
     if( overmap_buffer.seen( dest ) == om_vision_level::unseen ) {
+        openclaw_harness_trace_overmap_route( "constructed", dest, 0 );
         return {};
     }
     const Character &player_character = get_player_character();
@@ -2925,6 +2978,7 @@ static std::vector<tripoint_abs_omt> get_overmap_path_to( const tripoint_abs_omt
         const optional_vpart_position vp = here.veh_at( player_character.pos_bub() );
         if( !vp.has_value() ) {
             debugmsg( "Failed to find driven vehicle" );
+            openclaw_harness_trace_overmap_route( "constructed", dest, 0 );
             return {};
         }
         player_veh = &vp->vehicle();
@@ -2943,6 +2997,7 @@ static std::vector<tripoint_abs_omt> get_overmap_path_to( const tripoint_abs_omt
             const bool tiny = player_veh->get_points().size() <= 3;
             params = overmap_path_params::for_land_vehicle( offroad_coeff, tiny, can_float );
         } else {
+            openclaw_harness_trace_overmap_route( "constructed", dest, 0 );
             return {};
         }
     } else {
@@ -2964,9 +3019,13 @@ static std::vector<tripoint_abs_omt> get_overmap_path_to( const tripoint_abs_omt
     // literal "edge" case: the vehicle may be in a different OMT than the player
     const tripoint_abs_omt start_omt_pos = driving ? player_veh->pos_abs_omt() : player_omt_pos;
     if( dest == player_omt_pos || dest == start_omt_pos ) {
+        openclaw_harness_trace_overmap_route( "constructed", dest, 0 );
         return {};
     } else {
-        return overmap_buffer.get_travel_path( start_omt_pos, dest, params ).points;
+        std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path( start_omt_pos,
+                dest, params ).points;
+        openclaw_harness_trace_overmap_route( "constructed", dest, path.size() );
+        return path;
     }
 }
 
@@ -2981,6 +3040,7 @@ static bool try_travel_to_destination( avatar &player_character, const tripoint_
 
     // Still empty, we just don't know how to get there.
     if( path.empty() ) {
+        openclaw_harness_trace_overmap_route( "confirmed", dest, 0, false );
         std::string popupmsg;
         if( dest.z() == player_character.posz() ) {
             popupmsg = _( "Unable to find a path from the current location:" );
@@ -3034,11 +3094,13 @@ static bool try_travel_to_destination( avatar &player_character, const tripoint_
             player_character.reset_move_mode();
             player_character.assign_activity( ACT_TRAVELLING );
         }
+        openclaw_harness_trace_overmap_route( "confirmed", dest, path.size(), true );
         return true;
     }
     if( path_changed ) {
         player_character.omt_path.swap( path );
     }
+    openclaw_harness_trace_overmap_route( "confirmed", dest, path.size(), false );
     return false;
 }
 
@@ -3184,6 +3246,7 @@ static tripoint_abs_omt display()
 #else
         action = ictxt.handle_input( get_option<int>( "BLINK_SPEED" ) );
 #endif
+        openclaw_harness_trace_overmap_input_resolution( ictxt.get_raw_input(), action );
         if( !display_path.empty() ) {
             std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();
             // We go faster per-tile the more we have to go

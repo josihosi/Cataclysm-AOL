@@ -15,6 +15,7 @@ import struct
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from pathlib import Path
 from types import SimpleNamespace
@@ -87,6 +88,8 @@ from startup_harness import (  # noqa: E402
     overmap_file_coords_from_abs_omt,
     overmap_flat_index,
     overmap_layer_index,
+    reacquire_local_focus_after_remote_window_discovery,
+    wait_for_remote_window_discovery,
     peekaboo_focus_pid_with_retry,
     peekaboo_press_sequence,
     peekaboo_switch_app_for_pid,
@@ -2923,6 +2926,89 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
         self.assertEqual(focus.call_count, 2)
         sleep.assert_called_once_with(0.25)
 
+    def test_reacquired_local_focus_requires_same_remote_window_identity(self) -> None:
+        discovered = {
+            "screen_summary": {
+                "window_id": 73,
+                "window_title": "Cataclysm: Dark Days Ahead - test",
+            },
+        }
+        reacquired = {
+            "screen_summary": {
+                "window_id": 73,
+                "window_title": "Cataclysm: Dark Days Ahead - test",
+            },
+        }
+        with (
+            mock.patch(
+                "startup_harness.peekaboo_focus_pid_with_retry",
+                return_value={"ok": True, "attempt_count": 1},
+            ),
+            mock.patch("startup_harness.capture_screenshot", return_value=reacquired),
+        ):
+            result = reacquire_local_focus_after_remote_window_discovery(
+                42, Path("unused"), discovered, label="reacquired"
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["remote_discovery"]["window_id"], 73)
+        self.assertEqual(result["reacquired_screen"]["window_id"], 73)
+
+    def test_remote_window_discovery_waits_for_new_pid_window_before_reacquiring_focus(self) -> None:
+        missing = {"screen_summary": {}}
+        discovered = {
+            "screen_summary": {
+                "window_id": 73,
+                "window_title": "Cataclysm: Dark Days Ahead - test",
+            },
+        }
+        with (
+            mock.patch(
+                "startup_harness.capture_screenshot",
+                side_effect=[missing, discovered],
+            ),
+            mock.patch("startup_harness.time.sleep") as sleep,
+        ):
+            result = wait_for_remote_window_discovery(
+                42,
+                Path("unused"),
+                deadline=time.monotonic() + 1.0,
+                poll_seconds=0.25,
+                label="candidate",
+            )
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["identity"]["window_id"], 73)
+        self.assertEqual(len(result["attempts"]), 2)
+        sleep.assert_called_once()
+
+    def test_reacquired_local_focus_rejects_changed_remote_window(self) -> None:
+        discovered = {
+            "screen_summary": {
+                "window_id": 73,
+                "window_title": "Cataclysm: Dark Days Ahead - test",
+            },
+        }
+        wrong_window = {
+            "screen_summary": {
+                "window_id": 74,
+                "window_title": "Cataclysm: Dark Days Ahead - other",
+            },
+        }
+        with (
+            mock.patch(
+                "startup_harness.peekaboo_focus_pid_with_retry",
+                return_value={"ok": True, "attempt_count": 1},
+            ),
+            mock.patch("startup_harness.capture_screenshot", return_value=wrong_window),
+        ):
+            result = reacquire_local_focus_after_remote_window_discovery(
+                42, Path("unused"), discovered, label="reacquired"
+            )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"], "remote_window_identity_changed_after_local_focus")
+
     def test_foreign_absolute_python_path_does_not_block_platform_fallback(self) -> None:
         with mock.patch("startup_harness.os.name", "posix"):
             mac_result = resolve_configured_python_command(
@@ -3835,6 +3921,51 @@ class BanditLiveWorldAuditContractTest(unittest.TestCase):
         self.assertEqual(summary["active_target_id"], "legacy-target")
         self.assertEqual(summary["active_member_ids"], [7])
         self.assertFalse(summary["active_outing"]["is_active"])
+
+    def test_current_committed_shakedown_reservation_is_auditable_without_legacy_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            site = self.current_pair_site()
+            reservation = site.pop("active_outing")
+            reservation.update({
+                "schema_version": 5,
+                "kind": "hostile_operation",
+                "activity_id": "camp-current#hostile:3",
+                "job_type": "toll",
+                "target_id": "player@140,41,0",
+                "phase": "observing",
+            })
+            reservation["local_handoff"].update({
+                "activity_id": "camp-current#hostile:3",
+                "phase": "observing",
+            })
+            site["active_hostile_operation"] = {
+                "schema_version": 1,
+                "operation_kind": "shakedown",
+                "phase": "committed_contact",
+                "reservation": reservation,
+            }
+            self.write_world(world_dir, site)
+
+            green = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_active_hostile_operation_kind="shakedown",
+                required_active_hostile_operation_phase="committed_contact",
+                required_active_hostile_reservation_job_type="toll",
+                required_active_hostile_reservation_target_id_exact="player@140,41,0",
+                required_active_hostile_reservation_simulation_owner="local",
+                required_active_hostile_reservation_min_member_ids=2,
+            )
+            site["active_hostile_operation"]["phase"] = "returning_home"
+            self.write_world(world_dir, site)
+            wrong_phase = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_active_hostile_operation_phase="committed_contact",
+            )
+
+        self.assertEqual(green["status"], "required_state_present")
+        self.assertTrue(green["observed_sites"][0]["active_hostile_operation"]["is_active"])
+        self.assertEqual(wrong_phase["status"], "required_state_missing")
 
     def test_windows_uses_exe_zzip_helper(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -7506,8 +7637,35 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ["f"],
         )
         self.assertIn("advance_turns", kinds)
+        current_reservation_preflight = next(
+            step for step in steps
+            if step.get("label") == "preflight_current_committed_shakedown_reservation"
+        )
+        self.assertEqual(current_reservation_preflight["kind"], "audit_saved_bandit_live_world_state")
+        self.assertEqual(
+            current_reservation_preflight["required_active_hostile_operation_phase"],
+            "committed_contact",
+        )
+        self.assertEqual(
+            current_reservation_preflight[
+                "required_active_hostile_reservation_min_member_ids"
+            ],
+            2,
+        )
         self.assertIn("audit_authoritative_fight_terminal", [step["label"] for step in steps])
         self.assertIn("audit_one_identity_stable_fight_receipt", [step["label"] for step in steps])
+        self.assertEqual(
+            scenario["post_relaunch"]["terminal_save_step_label"],
+            "confirm_full_fight_terminal_save",
+        )
+        self.assertEqual(
+            scenario["post_relaunch"]["steps"][-1]["label"],
+            "audit_post_relaunch_terminal_replay_inertness",
+        )
+        self.assertIn(
+            "byte_stable=yes",
+            scenario["post_relaunch"]["steps"][-1]["required_line_patterns"][0],
+        )
         save_labels = [step["label"] for step in steps if step.get("kind") == "audit_player_save_mtime"]
         self.assertEqual(save_labels, [
             "audit_player_save_mtime_before_fight_reload",
@@ -7520,6 +7678,44 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                     or step.get("proof_deferred_to_label"),
                     step.get("label"),
                 )
+
+    def test_committed_contact_bootstrap_binds_its_declared_current_schema_camp(self) -> None:
+        scenario = load_scenario("bandit.extortion_committed_contact_bootstrap_mcw")
+        preflight = next(
+            step for step in scenario["steps"]
+            if step.get("label") == "audit_production_cadence_state"
+        )
+
+        self.assertEqual(
+            preflight["required_site_id_contains"],
+            "overmap_special:bandit_camp@164,39,0",
+        )
+
+    def test_committed_contact_bootstrap_rejects_missing_or_false_save_bindings(self) -> None:
+        scenario = load_scenario("bandit.extortion_committed_contact_bootstrap_mcw")
+        steps = {
+            str(step.get("label", "")).strip(): step
+            for step in scenario["steps"]
+        }
+        hud = steps["post_load_preopportunity_hud"]
+        prompt = steps["open_full_save_after_cadence"]
+        confirmation = steps["confirm_full_save_after_cadence"]
+        changed_save = steps["audit_player_save_after_full_save"]
+
+        self.assertTrue(hud["expected_visible_fact"])
+        self.assertEqual(hud["expected_screen_text_after_contains"], ["Move:", "Wield:"])
+        self.assertTrue(prompt["expected_visible_fact"])
+        self.assertEqual(prompt["expected_screen_text_after_contains"], ["Save and quit?"])
+        self.assertTrue(prompt["abort_on_screen_text_expectation_failure"])
+        self.assertTrue(confirmation["expected_visible_fact"])
+        self.assertEqual(
+            confirmation["proof_deferred_to_label"],
+            changed_save["label"],
+        )
+        self.assertEqual(
+            changed_save["changed_since_label"],
+            "audit_player_save_before_full_save",
+        )
 
     def test_scout_to_decision_watch_geography_preflight_matcher_rejects_false_green(self) -> None:
         scenario = load_scenario("bandit.scout_to_decision_observer_live_mcw")
@@ -8574,6 +8770,95 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 if step.get("capture_after")
             )
         )
+
+    def test_r009_m097_ordinary_route_uses_choose_destination_binding(self) -> None:
+        scenario = load_scenario("bandit.r009_m097_choose_destination_route_mcw")
+        steps = {
+            str(step.get("label", "")).strip(): step
+            for step in [*scenario.get("steps", []), *scenario.get("post_relaunch", {}).get("steps", [])]
+        }
+
+        self.assertIn("type:W", scenario["runtime_contract"]["permitted_input"])
+        self.assertNotIn("type:T", scenario["runtime_contract"]["permitted_input"])
+        self.assertEqual(steps["preview_ordinary_route_to_163_36"]["text"], "W")
+        self.assertEqual(steps["confirm_ordinary_route_to_163_36"]["text"], "W")
+        self.assertEqual(
+            steps["audit_choose_destination_route_preview"]["required_line_patterns"],
+            [
+                [
+                    "openclaw_harness_ui_trace: component=overmap_route_input event=resolved",
+                    "resolved_action=\"CHOOSE_DESTINATION\"",
+                ],
+                [
+                    "openclaw_harness_ui_trace: component=overmap_route event=constructed",
+                    "destination=163,36,0",
+                    "path_nonempty=true",
+                ],
+            ],
+        )
+        self.assertEqual(
+            steps["audit_choose_destination_route_confirmation"]["required_line_patterns"],
+            [[
+                "openclaw_harness_ui_trace: component=overmap_route event=confirmed",
+                "destination=163,36,0",
+                "path_nonempty=true",
+                "travel_result=true",
+            ]],
+        )
+        self.assertEqual(
+            steps["post_travel_player_omt"]["required_player_abs_omt"],
+            [163, 36, 0],
+        )
+        self.assertEqual(
+            scenario["post_relaunch"]["terminal_save_step_label"],
+            "confirm_native_process_exit_after_route_arrival",
+        )
+        self.assertEqual(
+            steps["open_native_main_menu_quit_confirmation"]["keys"],
+            ["q"],
+        )
+        self.assertEqual(
+            steps["confirm_native_process_exit_after_route_arrival"]["keys"],
+            ["left", "enter"],
+        )
+        self.assertEqual(
+            steps["dismiss_inherited_actions_overlay"]["expected_screen_text_after_contains"],
+            ["Move:", "Wield:"],
+        )
+        self.assertTrue(steps["dismiss_inherited_actions_overlay"]["expected_visible_fact"])
+        for label in (
+                "post_load_preopportunity_hud",
+                "post_travel_hud",
+                "open_native_full_save_after_route_arrival",
+                "open_native_main_menu_quit_confirmation",
+                "post_route_arrival_reload_hud",
+        ):
+            self.assertTrue(steps[label]["expected_visible_fact"])
+        self.assertEqual(
+            steps["confirm_native_full_save_after_route_arrival"]["proof_deferred_to_label"],
+            "audit_player_save_after_route_arrival_save",
+        )
+        self.assertEqual(
+            steps["confirm_native_process_exit_after_route_arrival"]["proof_deferred_to_label"],
+            "post_route_arrival_reload_hud",
+        )
+        for label in (
+                "open_overmap_for_ordinary_route",
+                "move_overmap_cursor_to_163_36",
+                "preview_ordinary_route_to_163_36",
+        ):
+            self.assertEqual(
+                steps[label]["proof_deferred_to_label"],
+                "audit_choose_destination_route_preview",
+            )
+        for label in (
+                "confirm_ordinary_route_to_163_36",
+                "accept_ordinary_route_confirmation",
+        ):
+            self.assertEqual(
+                steps[label]["proof_deferred_to_label"],
+                "audit_choose_destination_route_confirmation",
+            )
 
     def test_staged_worlds_have_tracked_player_save(self) -> None:
         repo = HARNESS_DIR.parents[1]

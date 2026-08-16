@@ -25,6 +25,7 @@ import scenario_registry_cli  # noqa: E402
 import startup_harness  # noqa: E402
 from scenario_registry_store import (  # noqa: E402
     BindingAdapters,
+    ScenarioRegistryStoreError,
     claim_bootstrap_token_for_launch,
     execute_registry_query,
     issue_registry_bootstrap_token,
@@ -32,6 +33,7 @@ from scenario_registry_store import (  # noqa: E402
     immediate_transaction,
     open_registry,
     parse_registry_query_request,
+    revalidate_current_bootstrap_authority,
     rebuild_manifest_projection,
     reload_bootstrap_token_for_launch,
     reload_selection_token_for_launch,
@@ -270,6 +272,96 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     reload_bootstrap_token_for_launch(connection, bootstrap.token_id, require_claimed=True).reason,
                     "token_invalidated",
                 )
+            finally:
+                connection.close()
+
+    def test_bootstrap_uses_declared_facts_only_for_a_current_stale_manifest(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            manifest_path = scenarios / "bootstrap.json"
+            manifest = self.strict_manifest()
+            self.write_json(manifest_path, manifest)
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"bootstrap runtime")
+            report_path = root / "probe.report.json"
+            self.write_json(report_path, self.report(manifest_path, executable))
+            connection = open_registry(str(root / "registry.sqlite3"))
+            try:
+                request = parse_registry_query_request(self.bootstrap_request())
+                adapters = BindingAdapters(
+                    runtime=lambda _expected: {"status": "compatible", "facts": {}},
+                    fixture=lambda _expected: {"status": "compatible", "facts": {
+                        "source_sha256": hashlib.sha256(b"fixture").hexdigest(),
+                    }},
+                    profile=lambda _expected: {"status": "compatible", "facts": {
+                        "source_sha256": hashlib.sha256(b"profile").hexdigest(),
+                    }},
+                )
+                rebuild_manifest_projection(connection, scenarios)
+                ingested = ingest_report_reference(connection, report_path, adapters=adapters)
+                self.assertEqual(ingested["eligibility"], "hard_proven")
+                already_live = issue_registry_bootstrap_token(
+                    connection, request, runtime_binding=self.bootstrap_runtime(executable)
+                )
+                self.assertFalse(already_live.accepted)
+                self.assertEqual(already_live.reason, "compatible_run_evidence_already_exists")
+
+                manifest["description"] = "current changed manifest with stale prior verification"
+                self.write_json(manifest_path, manifest)
+                rebuild_manifest_projection(connection, scenarios)
+                ordinary = execute_registry_query(connection, request, drafts_root=root / "drafts")
+                self.assertIsNone(ordinary.token_id)
+                current_facts = {
+                    "runtime": self.bootstrap_runtime(executable),
+                    "fixture": {
+                        "status": "compatible",
+                        "name": "",
+                        "profile": "",
+                        "source_path": str(root),
+                        "source_sha256": hashlib.sha256(b"current fixture").hexdigest(),
+                    },
+                    "profile": {
+                        "status": "compatible",
+                        "name": "",
+                        "profile": "",
+                        "source_path": str(root),
+                        "source_sha256": hashlib.sha256(b"current profile").hexdigest(),
+                    },
+                }
+                released = revalidate_current_bootstrap_authority(
+                    connection, request, current_facts=lambda _manifest: current_facts,
+                )
+                self.assertTrue(released["accepted"])
+                canonical = execute_registry_query(connection, request, drafts_root=root / "drafts")
+                self.assertIsNotNone(canonical.token_id)
+                selected = next(
+                    candidate for candidate in canonical.evaluation.candidates
+                    if candidate.scenario_id == released["manifest_id"]
+                )
+                self.assertEqual(selected.facts["player.injured"]["evidence_state"], "declared")
+                reloaded = reload_selection_token_for_launch(connection, str(canonical.token_id))
+                self.assertTrue(reloaded.accepted)
+                self.assertEqual(reloaded.reason, "current_bootstrap_authority")
+                bootstrap = issue_registry_bootstrap_token(
+                    connection, request, runtime_binding=self.bootstrap_runtime(executable)
+                )
+                self.assertTrue(bootstrap.accepted)
+                self.assertTrue(reload_bootstrap_token_for_launch(connection, bootstrap.token_id).accepted)
+
+                invalid = dict(manifest)
+                invalid.pop("runtime_contract")
+                self.write_json(manifest_path, invalid)
+                with self.assertRaises(ScenarioRegistryStoreError):
+                    rebuild_manifest_projection(connection, scenarios)
+
+                manifest_path.unlink()
+                rebuild_manifest_projection(connection, scenarios)
+                absent_bootstrap = issue_registry_bootstrap_token(
+                    connection, request, runtime_binding=self.bootstrap_runtime(executable)
+                )
+                self.assertFalse(absent_bootstrap.accepted)
             finally:
                 connection.close()
 

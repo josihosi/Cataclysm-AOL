@@ -46,6 +46,7 @@ from scenario_registry_store import (
     parse_registry_query_request,
     path_sha256,
     record_migration_run_success,
+    revalidate_current_bootstrap_authority,
     snapshot_migration_run,
 )
 import startup_harness
@@ -170,6 +171,39 @@ def production_binding_adapters() -> BindingAdapters:
         fixture=_fixture_adapter,
         profile=_profile_adapter,
     )
+
+
+def _current_bootstrap_revalidation_facts(declaration: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Observe the live owners used by a stale-route first-run release."""
+    runtime = startup_harness.build_runtime_binding(startup_harness.detect_executable())
+
+    def current_payload(kind: str, name_key: str, profile_key: str, resolver: Any) -> Mapping[str, Any]:
+        name = str(declaration.get(name_key, "")).strip()
+        profile = str(declaration.get(profile_key, "")).strip()
+        try:
+            resolved = resolver(name, profile)
+            source_path = Path(
+                resolved["fixture_dir"] if kind == "fixture" else resolved["snapshot_dir"]
+            )
+            return {
+                "status": "compatible",
+                "name": name,
+                "profile": profile,
+                "source_path": str(source_path.resolve()),
+                "source_sha256": path_sha256(source_path),
+            }
+        except (KeyError, OSError, SystemExit, ScenarioRegistryStoreError) as exc:
+            return {"status": "stale", "reason": str(exc)}
+
+    return {
+        "runtime": runtime,
+        "fixture": current_payload(
+            "fixture", "fixture", "fixture_profile", resolve_fixture_payload,
+        ),
+        "profile": current_payload(
+            "profile", "profile_snapshot", "profile_snapshot_profile", resolve_profile_snapshot_payload,
+        ),
+    }
 
 
 def _default_scenarios_root() -> Path:
@@ -801,6 +835,13 @@ def build_parser() -> argparse.ArgumentParser:
     bootstrap_source = bootstrap.add_mutually_exclusive_group(required=True)
     bootstrap_source.add_argument("--query-file", help="typed bootstrap query JSON file")
     bootstrap_source.add_argument("--query-json", help="typed bootstrap query JSON object")
+    revalidate_bootstrap = commands.add_parser(
+        "registry-revalidate-bootstrap",
+        help="append one current-facts release for a valid stale bootstrap manifest",
+    )
+    revalidate_source = revalidate_bootstrap.add_mutually_exclusive_group(required=True)
+    revalidate_source.add_argument("--query-file", help="typed bootstrap query JSON file")
+    revalidate_source.add_argument("--query-json", help="typed bootstrap query JSON object")
     query = commands.add_parser("registry-query", help="evaluate typed requirements without launching the harness")
     query_source = query.add_mutually_exclusive_group(required=True)
     query_source.add_argument("--query-file", help="typed registry-query JSON file")
@@ -895,6 +936,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                     connection,
                     parse_registry_query_request(_load_query_request(args)),
                     runtime_binding=runtime_binding,
+                ))
+            elif args.command == "registry-revalidate-bootstrap":
+                result = dict(revalidate_current_bootstrap_authority(
+                    connection,
+                    parse_registry_query_request(_load_query_request(args)),
+                    current_facts=_current_bootstrap_revalidation_facts,
                 ))
             elif args.command == "registry-status":
                 result = {"entries": registry_status(

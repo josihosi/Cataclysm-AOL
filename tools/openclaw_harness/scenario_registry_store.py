@@ -714,6 +714,43 @@ def _current_route_evidence(connection: sqlite3.Connection, manifest_id: str) ->
     return tuple(latest[key] for key in sorted(latest))
 
 
+def _current_bootstrap_revalidation(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    route_evidence: Sequence[Mapping[str, Any]],
+) -> Optional[Mapping[str, Any]]:
+    """Return the current release only when it still covers every stale route."""
+    if not route_evidence or any(
+            not isinstance(route, Mapping) or route.get("evidence_state") not in {"stale", "unknown"}
+            for route in route_evidence):
+        return None
+    manifest = connection.execute(
+        "SELECT present, current_sha256 FROM manifest_current WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchone()
+    if manifest is None or not bool(manifest["present"]):
+        return None
+    expected_sha256 = str(manifest["current_sha256"] or "")
+    release: Optional[Mapping[str, Any]] = None
+    for route in route_evidence:
+        row = connection.execute(
+            "SELECT quarantine_kind, details_json FROM quarantine_history "
+            "WHERE manifest_id = ? AND route_key = ? ORDER BY quarantine_event_id DESC LIMIT 1",
+            (manifest_id, str(route["route_key"])),
+        ).fetchone()
+        if row is None or str(row["quarantine_kind"]) != "released_current_bootstrap_authority":
+            return None
+        details = _json_object(str(row["details_json"]), "bootstrap revalidation details")
+        if details.get("manifest_sha256") != expected_sha256:
+            return None
+        if release is None:
+            release = details
+        elif _json_text(release) != _json_text(details):
+            return None
+    return release
+
+
 def _current_lifecycle_state(
     connection: sqlite3.Connection,
     *,
@@ -733,6 +770,9 @@ def _current_lifecycle_state(
     if "contradicted" in states:
         return "quarantined", "route_contradicted"
     if "stale" in states:
+        if _current_bootstrap_revalidation(
+                connection, manifest_id=manifest_id, route_evidence=route_evidence) is not None:
+            return "active", "current_bootstrap_authority"
         return "quarantined", "route_stale"
     latest_quarantine: Dict[str, str] = {}
     for row in connection.execute(
@@ -848,6 +888,9 @@ def build_registry_query_candidate_snapshot(
             continue
         facts: Dict[str, Mapping[str, Any]] = {}
         fact_explanations: Dict[str, Mapping[str, Any]] = {}
+        current_bootstrap_authority = _current_bootstrap_revalidation(
+            connection, manifest_id=manifest_id, route_evidence=route_evidence,
+        )
         capabilities = connection.execute(
             "SELECT capability_key, value_json, declared_state, review_required "
             "FROM manifest_capability_current WHERE manifest_id = ? ORDER BY capability_key",
@@ -856,13 +899,18 @@ def build_registry_query_candidate_snapshot(
         for capability in capabilities:
             key = str(capability["capability_key"])
             value = json.loads(str(capability["value_json"]))
-            evidence_state, proof_depth = _fact_evidence_from_current_authority(
-                connection,
-                manifest_id=manifest_id,
-                capability_key=key,
-                declared_state=str(capability["declared_state"]),
-                route_evidence=route_evidence,
-            )
+            if current_bootstrap_authority is not None:
+                evidence_state, proof_depth = (
+                    _public_evidence_state(str(capability["declared_state"])), None,
+                )
+            else:
+                evidence_state, proof_depth = _fact_evidence_from_current_authority(
+                    connection,
+                    manifest_id=manifest_id,
+                    capability_key=key,
+                    declared_state=str(capability["declared_state"]),
+                    route_evidence=route_evidence,
+                )
             facts[key] = {
                 "present": True,
                 "value": value,
@@ -893,6 +941,7 @@ def build_registry_query_candidate_snapshot(
                 },
                 "lifecycle": {"state": lifecycle_state, "reason": lifecycle_reason},
                 "route_evidence": route_evidence,
+                "bootstrap_authority": current_bootstrap_authority,
                 "facts": fact_explanations,
             },
         ))
@@ -954,6 +1003,148 @@ def _current_verified_route(snapshot: RegistryQueryCandidateSnapshot) -> Optiona
         ):
             return route
     return None
+
+
+def _current_stale_bootstrap_candidate(snapshot: RegistryQueryCandidateSnapshot) -> bool:
+    """Allow one bootstrap run for a valid current manifest with stale route evidence only."""
+    lifecycle = snapshot.explanation.get("lifecycle", {})
+    routes = snapshot.explanation.get("route_evidence", ())
+    if not isinstance(lifecycle, Mapping) or not _current_valid_bootstrap_manifest(snapshot):
+        return False
+    if not isinstance(routes, Sequence) or not routes:
+        return False
+    if snapshot.lifecycle_state != "quarantined" or lifecycle.get("reason") not in {
+            "route_stale", "quarantine_history"}:
+        return False
+    return all(
+        isinstance(route, Mapping) and route.get("evidence_state") in {"stale", "unknown"}
+        for route in routes
+    )
+
+
+def _current_valid_bootstrap_manifest(snapshot: RegistryQueryCandidateSnapshot) -> bool:
+    """Keep bootstrap authority bound to a present strict manifest, never a draft."""
+    manifest = snapshot.explanation.get("manifest", {})
+    if not isinstance(manifest, Mapping):
+        return False
+    validation = manifest.get("validation", {})
+    return (
+        bool(manifest.get("present")) and isinstance(validation, Mapping) and
+        validation.get("status") == "valid" and not bool(validation.get("review_required"))
+    )
+
+
+def _select_registry_bootstrap_candidate(
+    connection: sqlite3.Connection,
+    request: RegistryQueryRequest,
+) -> Optional[RegistryQueryCandidateSnapshot]:
+    """Select normal authority first, then one current manifest quarantined only by stale evidence."""
+    ordinary = evaluate_registry_query_from_store(connection, request)
+    selected_id = ordinary.evaluation.ranked_scenario_ids[0] if ordinary.evaluation.ranked_scenario_ids else None
+    selected = next((candidate for candidate in ordinary.candidates if candidate.scenario_id == selected_id), None)
+    if selected is not None and selected.token_eligible and _current_valid_bootstrap_manifest(selected):
+        return selected
+
+    stale_candidates = tuple(
+        candidate
+        for candidate in build_registry_query_candidate_snapshot(
+            connection, include_lifecycle_states=("quarantined",)
+        )
+        if _current_stale_bootstrap_candidate(candidate)
+    )
+    stale_evaluation = evaluate_registry_query(
+        request,
+        tuple({
+            "scenario_id": candidate.scenario_id,
+            "facts": {
+                key: {
+                    **dict(fact),
+                    "evidence_state": "declared" if fact.get("evidence_state") == "stale" else fact.get(
+                        "evidence_state"),
+                    "proof_depth": None if fact.get("evidence_state") == "stale" else fact.get("proof_depth"),
+                }
+                for key, fact in candidate.facts.items()
+            },
+        } for candidate in stale_candidates),
+    )
+    stale_id = stale_evaluation.ranked_scenario_ids[0] if stale_evaluation.ranked_scenario_ids else None
+    return next((candidate for candidate in stale_candidates if candidate.scenario_id == stale_id), None)
+
+
+def revalidate_current_bootstrap_authority(
+    connection: sqlite3.Connection,
+    request: RegistryQueryRequest,
+    *,
+    current_facts: Callable[[Mapping[str, Any]], Mapping[str, Any]],
+) -> Mapping[str, Any]:
+    """Release only a strict stale manifest after its current launch footing is observed.
+
+    This is not route proof: it appends a SHA-bound authority release for exactly
+    one first canonical run while keeping stale report bindings immutable.
+    """
+    selected = _select_registry_bootstrap_candidate(connection, request)
+    if selected is None or not _current_stale_bootstrap_candidate(selected):
+        return {"accepted": False, "reason": "no_current_stale_bootstrap_candidate"}
+    manifest = selected.explanation["manifest"]
+    manifest_id = str(manifest["manifest_id"])
+    declaration_row = connection.execute(
+        "SELECT declaration_json, current_sha256 FROM manifest_current WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchone()
+    if declaration_row is None:
+        return {"accepted": False, "reason": "manifest_missing"}
+    declaration = _json_object(str(declaration_row["declaration_json"]), "bootstrap manifest declaration")
+    observed = current_facts(declaration)
+    if not isinstance(observed, Mapping):
+        raise ScenarioRegistryStoreError("bootstrap revalidation facts must be an object")
+    runtime = _bootstrap_runtime_binding(observed.get("runtime"))
+    footing: Dict[str, Mapping[str, Any]] = {"runtime": runtime}
+    for kind, name_key, profile_key in (
+            ("fixture", "fixture", "fixture_profile"),
+            ("profile", "profile_snapshot", "profile_snapshot_profile")):
+        item = observed.get(kind)
+        if not isinstance(item, Mapping) or item.get("status") != "compatible":
+            return {"accepted": False, "reason": f"{kind}_not_current"}
+        expected_name = str(declaration.get(name_key, "")).strip()
+        expected_profile = str(declaration.get(profile_key, "")).strip()
+        if str(item.get("name", "")).strip() != expected_name or str(item.get("profile", "")).strip() != expected_profile:
+            return {"accepted": False, "reason": f"{kind}_identity_changed"}
+        source_sha256 = str(item.get("source_sha256", "")).strip().lower()
+        if len(source_sha256) != 64 or any(char not in "0123456789abcdef" for char in source_sha256):
+            return {"accepted": False, "reason": f"{kind}_sha256_invalid"}
+        footing[kind] = {
+            "name": expected_name,
+            "profile": expected_profile,
+            "source_path": str(item.get("source_path", "")).strip(),
+            "source_sha256": source_sha256,
+        }
+    routes = selected.explanation.get("route_evidence", ())
+    if not isinstance(routes, Sequence) or not routes:
+        return {"accepted": False, "reason": "route_evidence_missing"}
+    details = {
+        "authority_kind": "current_bootstrap_revalidation",
+        "manifest_sha256": str(declaration_row["current_sha256"]),
+        "query_sha256": hashlib.sha256(_query_request_json(request).encode("utf-8")).hexdigest(),
+        "current_facts": footing,
+    }
+    with immediate_transaction(connection):
+        for route in routes:
+            if not isinstance(route, Mapping) or route.get("evidence_state") not in {"stale", "unknown"}:
+                return {"accepted": False, "reason": "route_not_revalidatable"}
+            _append_quarantine_if_changed(
+                connection,
+                manifest_id=manifest_id,
+                route_key=str(route["route_key"]),
+                quarantine_kind="released_current_bootstrap_authority",
+                details=details,
+            )
+        _append_lifecycle_if_changed(
+            connection,
+            manifest_id=manifest_id,
+            event_kind="current_bootstrap_authority_revalidated",
+            details=details,
+        )
+    return {"accepted": True, "manifest_id": manifest_id, "details": details}
 
 
 def _query_unmet_capabilities(evaluation: RegistryStoredQueryEvaluation) -> List[Dict[str, Any]]:
@@ -1045,6 +1236,17 @@ def execute_registry_query(
     selected_id = evaluation.evaluation.ranked_scenario_ids[0] if evaluation.evaluation.ranked_scenario_ids else None
     selected = next((candidate for candidate in evaluation.candidates if candidate.scenario_id == selected_id), None)
     route = _current_verified_route(selected) if selected is not None and selected.token_eligible else None
+    bootstrap_authority = (
+        selected.explanation.get("bootstrap_authority")
+        if selected is not None and selected.token_eligible else None
+    )
+    if route is None and isinstance(bootstrap_authority, Mapping):
+        stale_routes = tuple(
+            item for item in selected.explanation.get("route_evidence", ())
+            if isinstance(item, Mapping) and item.get("evidence_state") in {"stale", "unknown"}
+        )
+        if len(stale_routes) == 1:
+            route = stale_routes[0]
     if selected is None or route is None:
         root = drafts_root or repository_root() / ".userdata" / "openclaw_harness" / "drafts"
         draft_path = _write_inert_draft(
@@ -1066,7 +1268,11 @@ def execute_registry_query(
     route_key = str(route["route_key"])
     bindings = route["bindings"]
     verification_ids = tuple(str(binding["verification_id"]) for binding in bindings)
+    authority_kind = "query_selection"
+    if isinstance(bootstrap_authority, Mapping) and route.get("evidence_state") in {"stale", "unknown"}:
+        authority_kind = "current_bootstrap_revalidation"
     token_details = {
+        "authority_kind": authority_kind,
         "query_id": query_id,
         "query_sha256": query_sha256,
         "manifest_id": manifest["manifest_id"],
@@ -1076,6 +1282,8 @@ def execute_registry_query(
         "selected_values": selected.facts,
         "route_evidence": route,
     }
+    if authority_kind == "current_bootstrap_revalidation":
+        token_details["bootstrap_authority"] = dict(bootstrap_authority)
     token_id = _identity(
         "caol-scenario-selection-token-v1",
         query_sha256,
@@ -1098,7 +1306,7 @@ def execute_registry_query(
             (
                 token_id,
                 str(manifest["manifest_id"]),
-                verification_ids[0],
+                verification_ids[0] if verification_ids else None,
                 route_key,
                 _json_text(token_details),
             ),
@@ -1220,6 +1428,8 @@ def reload_selection_token_for_launch(
             expected_revision = receipt.get("manifest_revision")
             expected_sha256 = _string(receipt.get("manifest_sha256"), "selection token manifest_sha256").lower()
             expected_route = _object(receipt.get("route_evidence"), "selection token route_evidence")
+            authority_kind = str(receipt.get("authority_kind", "query_selection"))
+            expected_bootstrap_authority = receipt.get("bootstrap_authority")
         except ScenarioRegistryStoreError as exc:
             return reject("receipt_malformed", error=str(exc))
         if type(expected_revision) is not int:
@@ -1266,6 +1476,23 @@ def reload_selection_token_for_launch(
         )
         if current_route is None:
             return reject("route_missing")
+        if authority_kind == "current_bootstrap_revalidation":
+            if not isinstance(expected_bootstrap_authority, Mapping):
+                return reject("receipt_malformed", error="bootstrap authority is missing")
+            current_authority = _current_bootstrap_revalidation(
+                connection, manifest_id=expected_manifest_id, route_evidence=current_routes,
+            )
+            if current_authority is None or _json_text(current_authority) != _json_text(expected_bootstrap_authority):
+                return reject("bootstrap_authority_changed")
+            if current_route.get("evidence_state") not in {"stale", "unknown"}:
+                return reject("bootstrap_route_no_longer_revalidatable")
+            return RegistryLaunchToken(
+                token_id=token_id,
+                accepted=True,
+                reason="current_bootstrap_authority",
+                scenario=scenario,
+                source_path=str(source_path.resolve()),
+            )
         if _json_text(current_route) != _json_text(expected_route):
             return reject("route_binding_changed")
         bindings = current_route.get("bindings", ())
@@ -1331,10 +1558,8 @@ def issue_registry_bootstrap_token(
     runtime = _bootstrap_runtime_binding(runtime_binding)
     request_json = _query_request_json(request)
     query_sha256 = hashlib.sha256(request_json.encode("utf-8")).hexdigest()
-    evaluation = evaluate_registry_query_from_store(connection, request)
-    selected_id = evaluation.evaluation.ranked_scenario_ids[0] if evaluation.evaluation.ranked_scenario_ids else None
-    selected = next((candidate for candidate in evaluation.candidates if candidate.scenario_id == selected_id), None)
-    if selected is None or not selected.token_eligible:
+    selected = _select_registry_bootstrap_candidate(connection, request)
+    if selected is None:
         return RegistryBootstrapToken("", False, "query_has_no_active_compatible_manifest")
     if _current_verified_route(selected) is not None:
         return RegistryBootstrapToken("", False, "compatible_run_evidence_already_exists")
@@ -1456,10 +1681,8 @@ def reload_bootstrap_token_for_launch(
             return reject("manifest_source_unreadable", error=str(exc))
         if observed_sha256 != expected_sha256:
             return reject("manifest_source_changed")
-        evaluation = evaluate_registry_query_from_store(connection, request)
-        selected_id = evaluation.evaluation.ranked_scenario_ids[0] if evaluation.evaluation.ranked_scenario_ids else None
-        selected = next((candidate for candidate in evaluation.candidates if candidate.scenario_id == selected_id), None)
-        if selected is None or selected.scenario_id != expected_manifest_id or not selected.token_eligible:
+        selected = _select_registry_bootstrap_candidate(connection, request)
+        if selected is None or selected.scenario_id != expected_manifest_id:
             return reject("query_authority_changed")
         if _current_verified_route(selected) is not None:
             return reject("compatible_run_evidence_already_exists")

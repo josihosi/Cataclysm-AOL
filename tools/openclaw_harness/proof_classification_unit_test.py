@@ -1843,6 +1843,34 @@ class ScreenCheckpointVerdictTest(unittest.TestCase):
         self.assertEqual(verdict, "green_step_screen_text_guarded")
         self.assertEqual(issues, [])
 
+    def test_matching_ocr_does_not_rescue_a_missing_visible_fact_binding(self) -> None:
+        verdict, issues = screen_checkpoint_verdict(
+            screen_summary={
+                "peekaboo_success": True,
+                "version_matches_runtime_paths": True,
+            },
+            expected_visible_fact="",
+            text_expectation={"status": "matched"},
+            ocr_requested=True,
+        )
+
+        self.assertEqual(verdict, "yellow_step_screen_text_matched_with_caveats")
+        self.assertIn("missing_expected_visible_fact", issues)
+
+    def test_false_ocr_binding_is_rejected_even_with_a_named_visible_fact(self) -> None:
+        verdict, issues = screen_checkpoint_verdict(
+            screen_summary={
+                "peekaboo_success": True,
+                "version_matches_runtime_paths": True,
+            },
+            expected_visible_fact="native Save and quit confirmation prompt is visible",
+            text_expectation={"status": "missing"},
+            ocr_requested=True,
+        )
+
+        self.assertEqual(verdict, "red_step_expected_screen_text_missing")
+        self.assertIn("expected_screen_text_missing", issues)
+
     def test_matching_ocr_guard_is_not_green_with_unknown_build_identity(self) -> None:
         verdict, issues = screen_checkpoint_verdict(
             screen_summary={

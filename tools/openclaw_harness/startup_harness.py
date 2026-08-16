@@ -5265,6 +5265,7 @@ def audit_saved_game_turn(
     required_min_delta_turns: Optional[int] = None,
     required_time_of_day_seconds: Optional[int] = None,
     required_time_tolerance_seconds: int = 0,
+    required_player_abs_omt: Optional[List[int]] = None,
 ) -> Dict[str, Any]:
     """Read-only saved-player turn audit for proving real local turn advancement."""
     if not world_dir.exists():
@@ -5283,6 +5284,16 @@ def audit_saved_game_turn(
     if isinstance(location_raw, list) and len(location_raw) >= 3:
         player_location = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
         player_abs_omt = [player_location[0] // 24, player_location[1] // 24, player_location[2]]
+
+    normalized_required_player_abs_omt: Optional[List[int]] = None
+    if required_player_abs_omt is not None:
+        if not isinstance(required_player_abs_omt, list) or len(required_player_abs_omt) != 3:
+            raise RuntimeError("required_player_abs_omt must be a three-element list")
+        normalized_required_player_abs_omt = [int(value) for value in required_player_abs_omt]
+    missing_required_player_abs_omt = (
+        normalized_required_player_abs_omt is not None and
+        player_abs_omt != normalized_required_player_abs_omt
+    )
 
     baseline_turn: Optional[int] = None
     observed_delta_turns: Optional[int] = None
@@ -5309,6 +5320,10 @@ def audit_saved_game_turn(
         status = "required_state_present"
     elif baseline_metadata is not None and required_min_delta_turns is not None:
         status = "required_state_missing"
+    elif normalized_required_player_abs_omt is not None and not missing_required_player_abs_omt:
+        status = "required_state_present"
+    elif normalized_required_player_abs_omt is not None:
+        status = "required_state_missing"
     elif required_time_of_day_seconds is not None and not missing_required_time_of_day:
         status = "required_state_present"
     elif required_time_of_day_seconds is not None:
@@ -5334,6 +5349,8 @@ def audit_saved_game_turn(
         "observed_delta_turns": observed_delta_turns,
         "required_min_delta_turns": required_min_delta_turns,
         "missing_required_min_delta_turns": missing_required_min_delta_turns,
+        "required_player_abs_omt": normalized_required_player_abs_omt,
+        "missing_required_player_abs_omt": missing_required_player_abs_omt,
         "player_location_ms": player_location,
         "player_abs_omt": player_abs_omt,
         "status": status,
@@ -6195,6 +6212,19 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
                     "last_outcome": lead.get("last_outcome", ""),
                 })
     active_outing = summarize_bandit_active_outing(site)
+    raw_hostile_operation = site.get("active_hostile_operation")
+    hostile_operation = raw_hostile_operation if isinstance(raw_hostile_operation, dict) else {}
+    raw_hostile_reservation = hostile_operation.get("reservation")
+    hostile_reservation = summarize_bandit_active_outing({
+        "active_outing": raw_hostile_reservation,
+    })
+    hostile_operation_kind = str(hostile_operation.get("operation_kind", "") or "")
+    hostile_operation_phase = str(hostile_operation.get("phase", "") or "")
+    hostile_operation_active = bool(
+        hostile_operation_kind in {"shakedown", "raid"}
+        and hostile_reservation.get("is_active")
+        and hostile_reservation.get("kind") == "hostile_operation"
+    )
     active_member_ids = active_outing.get("member_ids", []) if active_outing.get("is_active") else site.get("active_member_ids", [])
     if not isinstance(active_member_ids, list):
         active_member_ids = []
@@ -6335,6 +6365,14 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         "active_member_ids": active_member_ids,
         "active_member_count": len(active_member_ids),
         "active_outing": active_outing,
+        "active_hostile_operation": {
+            "present": isinstance(raw_hostile_operation, dict),
+            "is_active": hostile_operation_active,
+            "schema_version": hostile_operation.get("schema_version", 0),
+            "operation_kind": hostile_operation_kind,
+            "phase": hostile_operation_phase,
+            "reservation": hostile_reservation,
+        },
         "remembered_target_or_mark": site.get("remembered_target_or_mark", ""),
         "remembered_pressure": site.get("remembered_pressure", ""),
         "known_recent_marks": known_recent_marks,
@@ -6371,6 +6409,12 @@ def audit_saved_bandit_live_world_state(
     required_active_outing_last_advanced_minutes: Optional[int] = None,
     required_active_outing_exact_pair: Optional[bool] = None,
     required_active_outing_pair_contract: Optional[bool] = None,
+    required_active_hostile_operation_kind: str = "",
+    required_active_hostile_operation_phase: str = "",
+    required_active_hostile_reservation_job_type: str = "",
+    required_active_hostile_reservation_target_id_exact: Optional[str] = None,
+    required_active_hostile_reservation_simulation_owner: str = "",
+    required_active_hostile_reservation_min_member_ids: Optional[int] = None,
     required_local_handoff_state: str = "",
     required_local_handoff_exact_pair: Optional[bool] = None,
     required_local_handoff_pair_contract: Optional[bool] = None,
@@ -6564,6 +6608,23 @@ def audit_saved_bandit_live_world_state(
         required_active_outing_simulation_owner or ""
     ).strip()
     required_active_outing_phase = str(required_active_outing_phase or "").strip()
+    required_active_hostile_operation_kind = str(
+        required_active_hostile_operation_kind or ""
+    ).strip()
+    required_active_hostile_operation_phase = str(
+        required_active_hostile_operation_phase or ""
+    ).strip()
+    required_active_hostile_reservation_job_type = str(
+        required_active_hostile_reservation_job_type or ""
+    ).strip()
+    normalized_active_hostile_reservation_target_id_exact = (
+        None
+        if required_active_hostile_reservation_target_id_exact is None
+        else str(required_active_hostile_reservation_target_id_exact)
+    )
+    required_active_hostile_reservation_simulation_owner = str(
+        required_active_hostile_reservation_simulation_owner or ""
+    ).strip()
     required_local_handoff_state = str(required_local_handoff_state or "").strip()
     required_remembered_target_or_mark_prefix = str(required_remembered_target_or_mark_prefix or "").strip()
     required_remembered_pressure = str(required_remembered_pressure or "").strip()
@@ -6626,6 +6687,30 @@ def audit_saved_bandit_live_world_state(
         if required_active_outing_exact_pair is not None and bool(active_outing.get("exact_pair_with_leader", False)) != required_active_outing_exact_pair:
             return False
         if required_active_outing_pair_contract is not None and bool(active_outing.get("pair_contract_valid", False)) != required_active_outing_pair_contract:
+            return False
+        active_hostile_operation = site.get("active_hostile_operation", {})
+        if not isinstance(active_hostile_operation, dict):
+            active_hostile_operation = {}
+        hostile_reservation = active_hostile_operation.get("reservation", {})
+        if not isinstance(hostile_reservation, dict):
+            hostile_reservation = {}
+        if required_active_hostile_operation_kind and str(
+                active_hostile_operation.get("operation_kind", "")) != required_active_hostile_operation_kind:
+            return False
+        if required_active_hostile_operation_phase and str(
+                active_hostile_operation.get("phase", "")) != required_active_hostile_operation_phase:
+            return False
+        if required_active_hostile_reservation_job_type and str(
+                hostile_reservation.get("job_type", "")) != required_active_hostile_reservation_job_type:
+            return False
+        if normalized_active_hostile_reservation_target_id_exact is not None and str(
+                hostile_reservation.get("target_id", "")) != normalized_active_hostile_reservation_target_id_exact:
+            return False
+        if required_active_hostile_reservation_simulation_owner and str(
+                hostile_reservation.get("simulation_owner", "")) != required_active_hostile_reservation_simulation_owner:
+            return False
+        if required_active_hostile_reservation_min_member_ids is not None and int(
+                hostile_reservation.get("member_count", 0) or 0) < required_active_hostile_reservation_min_member_ids:
             return False
         if required_local_handoff_state and str(local_handoff.get("state", "")) != required_local_handoff_state:
             return False
@@ -6793,6 +6878,12 @@ def audit_saved_bandit_live_world_state(
         "required_active_outing_last_advanced_minutes": required_active_outing_last_advanced_minutes,
         "required_active_outing_exact_pair": required_active_outing_exact_pair,
         "required_active_outing_pair_contract": required_active_outing_pair_contract,
+        "required_active_hostile_operation_kind": required_active_hostile_operation_kind,
+        "required_active_hostile_operation_phase": required_active_hostile_operation_phase,
+        "required_active_hostile_reservation_job_type": required_active_hostile_reservation_job_type,
+        "required_active_hostile_reservation_target_id_exact": normalized_active_hostile_reservation_target_id_exact,
+        "required_active_hostile_reservation_simulation_owner": required_active_hostile_reservation_simulation_owner,
+        "required_active_hostile_reservation_min_member_ids": required_active_hostile_reservation_min_member_ids,
         "required_local_handoff_state": required_local_handoff_state,
         "required_local_handoff_exact_pair": required_local_handoff_exact_pair,
         "required_local_handoff_pair_contract": required_local_handoff_pair_contract,
@@ -8300,6 +8391,89 @@ def capture_screenshot(
     }
     json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
     return payload
+
+
+def captured_window_identity(screen: Mapping[str, Any]) -> Dict[str, Any]:
+    summary = screen.get("screen_summary", {}) if isinstance(screen, Mapping) else {}
+    if not isinstance(summary, Mapping):
+        return {}
+    try:
+        window_id = int(summary.get("window_id", 0) or 0)
+    except (TypeError, ValueError):
+        return {}
+    title = str(summary.get("window_title", "") or "").strip()
+    if not window_id or not title:
+        return {}
+    return {"window_id": window_id, "window_title": title}
+
+
+def wait_for_remote_window_discovery(
+    pid: int,
+    run_dir: Path,
+    *,
+    deadline: float,
+    poll_seconds: float,
+    label: str,
+) -> Dict[str, Any]:
+    """Capture until the remote bridge identifies the new process's window."""
+    attempts: List[Dict[str, Any]] = []
+    serial = 1
+    while True:
+        screen = capture_screenshot(pid, run_dir, f"{label}.{serial}")
+        identity = captured_window_identity(screen)
+        attempts.append({"label": f"{label}.{serial}", "identity": identity})
+        if identity:
+            return {
+                "ok": True,
+                "screen": screen,
+                "identity": identity,
+                "attempts": attempts,
+            }
+        remaining_seconds = deadline - time.monotonic()
+        if remaining_seconds <= 0:
+            return {
+                "ok": False,
+                "screen": screen,
+                "identity": {},
+                "attempts": attempts,
+                "error": "remote_window_identity_missing_before_startup_deadline",
+            }
+        time.sleep(min(poll_seconds, remaining_seconds))
+        serial += 1
+
+
+def reacquire_local_focus_after_remote_window_discovery(
+    pid: int,
+    run_dir: Path,
+    remote_screen: Mapping[str, Any],
+    *,
+    label: str,
+) -> Dict[str, Any]:
+    """Require local PID focus only after the remote capture has named its window."""
+    discovered = captured_window_identity(remote_screen)
+    report: Dict[str, Any] = {
+        "pid": pid,
+        "remote_discovery": discovered,
+        "focus": {},
+        "reacquired_screen": {},
+        "ok": False,
+    }
+    if not discovered:
+        report["error"] = "remote_window_identity_missing"
+        return report
+    focus = peekaboo_focus_pid_with_retry(pid)
+    report["focus"] = focus
+    if not focus.get("ok"):
+        report["error"] = "local_focus_after_remote_discovery_failed"
+        return report
+    reacquired_screen = capture_screenshot(pid, run_dir, label)
+    observed = captured_window_identity(reacquired_screen)
+    report["reacquired_screen"] = observed
+    if observed != discovered:
+        report["error"] = "remote_window_identity_changed_after_local_focus"
+        return report
+    report["ok"] = True
+    return report
 
 
 def run_screen_ocr(image_path: Path) -> Dict[str, Any]:
@@ -15160,6 +15334,9 @@ def execute_probe_steps(
             required_active_outing_pair_contract = optional_step_bool(
                 "required_active_outing_pair_contract"
             )
+            required_active_hostile_reservation_min_member_ids = optional_step_int(
+                "required_active_hostile_reservation_min_member_ids"
+            )
             required_local_handoff_exact_pair = optional_step_bool("required_local_handoff_exact_pair")
             required_local_handoff_pair_contract = optional_step_bool(
                 "required_local_handoff_pair_contract"
@@ -15245,6 +15422,24 @@ def execute_probe_steps(
                     required_active_outing_last_advanced_minutes=required_active_outing_last_advanced_minutes,
                     required_active_outing_exact_pair=required_active_outing_exact_pair,
                     required_active_outing_pair_contract=required_active_outing_pair_contract,
+                    required_active_hostile_operation_kind=str(
+                        step.get("required_active_hostile_operation_kind", "") or ""
+                    ).strip(),
+                    required_active_hostile_operation_phase=str(
+                        step.get("required_active_hostile_operation_phase", "") or ""
+                    ).strip(),
+                    required_active_hostile_reservation_job_type=str(
+                        step.get("required_active_hostile_reservation_job_type", "") or ""
+                    ).strip(),
+                    required_active_hostile_reservation_target_id_exact=step.get(
+                        "required_active_hostile_reservation_target_id_exact"
+                    ),
+                    required_active_hostile_reservation_simulation_owner=str(
+                        step.get("required_active_hostile_reservation_simulation_owner", "") or ""
+                    ).strip(),
+                    required_active_hostile_reservation_min_member_ids=(
+                        required_active_hostile_reservation_min_member_ids
+                    ),
                     required_local_handoff_state=str(
                         step.get("required_local_handoff_state", "") or ""
                     ).strip(),
@@ -15410,6 +15605,11 @@ def execute_probe_steps(
             raw_required_time_of_day = step.get("required_time_of_day_seconds")
             required_time_of_day = int(raw_required_time_of_day) if raw_required_time_of_day is not None and str(raw_required_time_of_day).strip() != "" else None
             required_time_tolerance = int(step.get("required_time_tolerance_seconds", 0) or 0)
+            raw_required_player_abs_omt = step.get("required_player_abs_omt")
+            required_player_abs_omt = (
+                [int(value) for value in raw_required_player_abs_omt]
+                if isinstance(raw_required_player_abs_omt, list) else None
+            )
             world_dir = save_dir_for_profile(profile) / world
             metadata_artifact = run_dir / f"{label}.metadata.json"
             try:
@@ -15421,6 +15621,7 @@ def execute_probe_steps(
                     required_min_delta_turns=required_min_delta,
                     required_time_of_day_seconds=required_time_of_day,
                     required_time_tolerance_seconds=required_time_tolerance,
+                    required_player_abs_omt=required_player_abs_omt,
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -15433,6 +15634,7 @@ def execute_probe_steps(
                     "required_min_delta_turns": required_min_delta,
                     "required_time_of_day_seconds": required_time_of_day,
                     "required_time_tolerance_seconds": required_time_tolerance,
+                    "required_player_abs_omt": required_player_abs_omt,
                 }
             metadata["artifact_path"] = str(metadata_artifact)
             metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
@@ -17402,9 +17604,26 @@ def run_startup(args: argparse.Namespace) -> int:
             if post_lastworld_wait > 0:
                 time.sleep(post_lastworld_wait)
             if gui_automation_required:
-                focus_result = peekaboo_focus_pid_with_retry(proc.pid)
+                remote_discovery = wait_for_remote_window_discovery(
+                    proc.pid,
+                    run_dir,
+                    deadline=deadline,
+                    poll_seconds=poll_seconds,
+                    label="success.remote_discovery",
+                )
+                reacquisition = reacquire_local_focus_after_remote_window_discovery(
+                    proc.pid,
+                    run_dir,
+                    remote_discovery.get("screen", {}),
+                    label="success.reacquired",
+                )
+                reacquired_focus = reacquisition.get("focus")
+                focus_result = dict(reacquired_focus) if isinstance(reacquired_focus, dict) else {}
+                focus_result["remote_reacquisition"] = reacquisition
+                focus_result["remote_discovery"] = remote_discovery
                 post_lastworld_continue_keys = startup_cfg.get("post_lastworld_continue_keys", [])
-                if isinstance(post_lastworld_continue_keys, list) and post_lastworld_continue_keys:
+                if (focus_result.get("ok") and isinstance(post_lastworld_continue_keys, list)
+                        and post_lastworld_continue_keys):
                     peekaboo_press_sequence(proc.pid, [str(key) for key in post_lastworld_continue_keys])
                     time.sleep(float(startup_cfg["post_input_wait_seconds"]))
             screen = capture_screenshot(proc.pid, run_dir, "success")
@@ -18985,6 +19204,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     relaunch: Dict[str, Any] = {}
     final_pid = pid
     if post_relaunch is not None:
+        relaunch_artifact_baseline = artifact_log.stat().st_size if artifact_log is not None and artifact_log.exists() else artifact_start
         terminal_step = next(
             (report for report in step_reports
              if str(report.get("label", "") or "").strip() == post_relaunch["terminal_save_step_label"]),
@@ -19007,6 +19227,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 terminal_exit_timeout_seconds=post_relaunch["terminal_exit_timeout_seconds"],
             )
         relaunch["terminal_save_step_label"] = post_relaunch["terminal_save_step_label"]
+        relaunch["artifact_log_pre_relaunch_size"] = relaunch_artifact_baseline
         if int(relaunch.get("pid", 0) or 0) > 0:
             final_pid = int(relaunch["pid"])
         if relaunch.get("status") == "ready":
@@ -19019,7 +19240,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 artifact_log=artifact_log,
                 action_trace_log=feature_debug_log,
                 action_trace_baseline=feature_debug_start,
-                artifact_baseline=artifact_start,
+                artifact_baseline=relaunch_artifact_baseline,
                 filter_debug_noise=filter_debug_noise,
                 artifact_patterns=artifact_patterns,
                 portal_storm_allowed=bool(portal_storm_policy.get("allowed", False)),

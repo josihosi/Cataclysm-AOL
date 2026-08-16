@@ -1,0 +1,278 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.extortion_reopened_fight_continuation_mcw",
+  "description": "Real continuation from the committed McWilliams local-contact export: visibly choose Fight at the reopened shakedown, then use only ordinary gameplay turns to reach an authoritative terminal, save and exit, relaunch the same world with a new focused process, and read exact/stale terminal receipt replays without changing the winner.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2",
+      "LLM_INTENT_ENABLE": "false"
+    }
+  },
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "shakedown_surface_dialogue_window opening=reopened_demand responses=pay/fight payment_surface=npc_trade_ui",
+    "shakedown_surface fight demanded=",
+    "bandit_live_world shakedown_fight_advance",
+    "bandit_live_world local homeward boundary committed",
+    "bandit_live_world physical_player_observation",
+    "bandit_live_world terminal_shakedown_replay_observer"
+  ],
+  "capabilities": {
+    "player.hud": ["Move:", "Wield:"],
+    "local_place.shakedown.reopened_options": ["Pay", "Fight"],
+    "capabilities.shakedown.fight_selection": "visible",
+    "capabilities.shakedown.terminal": ["responder_casualty", "survivor_return"],
+    "capabilities.shakedown.receipt_identity": ["operation", "generation", "epoch", "member", "application_key"],
+    "capabilities.persistence": "full_save_exit_relaunch_same_world",
+    "capabilities.shakedown.replay_observer": ["exact_duplicate", "stale_replay", "byte_stable", "no_outcome_credit"]
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:f", "advance_turns", "press:S", "press:Y"],
+    "forbidden_input": ["debug:spawn", "raw-save-rewrite", "fixture-save-transform"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": ["press:f", "advance_turns", "press:S", "press:Y"],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["post_load_fight_continuation_settle", "preflight_current_committed_shakedown_reservation"],
+    "production_behavior": ["advance_final_turn_to_reopened_fight_dialogue", "audit_reopened_fight_surface", "choose_reopened_fight", "audit_fight_branch_started", "ordinary_combat_to_authoritative_terminal", "advance_one_turn_after_saved_terminal_relaunch"],
+    "terminal_persistence": ["audit_authoritative_fight_terminal", "audit_player_save_mtime_after_fight_save", "audit_one_identity_stable_fight_receipt", "audit_post_relaunch_terminal_replay_inertness"],
+    "artifact_verdict": ["audit_reopened_fight_surface", "audit_fight_branch_started", "audit_authoritative_fight_terminal", "audit_one_identity_stable_fight_receipt", "audit_post_relaunch_terminal_replay_inertness"],
+    "disallowed_shortcuts": ["audit_reopened_fight_surface", "audit_authoritative_fight_terminal"],
+    "capability_gates": {
+      "player.hud": {
+        "startup": ["post_load_fight_continuation_settle"]
+      },
+      "local_place.shakedown.reopened_options": {
+        "interaction": ["advance_final_turn_to_reopened_fight_dialogue", "audit_reopened_fight_surface"]
+      },
+      "capabilities.shakedown.fight_selection": {
+        "interaction": ["choose_reopened_fight", "audit_fight_branch_started"]
+      },
+      "capabilities.shakedown.terminal": {
+        "terminal": ["ordinary_combat_to_authoritative_terminal", "audit_authoritative_fight_terminal"]
+      },
+      "capabilities.shakedown.receipt_identity": {
+        "terminal": ["audit_one_identity_stable_fight_receipt"]
+      },
+      "capabilities.persistence": {
+        "persistence": ["audit_player_save_mtime_after_fight_save", "audit_post_relaunch_terminal_replay_inertness"]
+      },
+      "capabilities.shakedown.replay_observer": {
+        "replay": ["advance_one_turn_after_saved_terminal_relaunch", "audit_post_relaunch_terminal_replay_inertness"]
+      }
+    }
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_fight_continuation_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "expected_visible_fact": "the untouched committed-contact export is loaded to a real gameplay HUD before any feature input"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_current_committed_shakedown_reservation",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_active_hostile_operation_kind": "shakedown",
+      "required_active_hostile_operation_phase": "committed_contact",
+      "required_active_hostile_reservation_job_type": "toll",
+      "required_active_hostile_reservation_target_id_exact": "player@140,41,0",
+      "required_active_hostile_reservation_simulation_owner": "local",
+      "required_active_hostile_reservation_min_member_ids": 2,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_current_committed_shakedown_fixture",
+      "abort_reason": "the copied save did not contain the current committed shakedown reservation that production requires before ordinary turns can open Pay/Fight",
+      "expected_immediate_state": "the untouched save contains one current local shakedown reservation with a toll job, player target, committed-contact phase, and at least two members before ordinary turns begin"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_299_turns_to_reopened_fight_gate",
+      "count": 299,
+      "settle_seconds": 0.5,
+      "capture_after": false,
+      "expected_visible_fact": "ordinary turns reach the reopened local-contact dialogue boundary"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_final_turn_to_reopened_fight_dialogue",
+      "count": 1,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Pay", "Fight"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_reopened_fight_dialogue_not_visible",
+      "abort_reason": "the real reopened local-contact dialogue did not visibly present Pay/Fight before selection"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_reopened_fight_surface",
+      "required_line_patterns": [[
+        "shakedown_surface_dialogue_window opening=reopened_demand responses=pay/fight payment_surface=npc_trade_ui"
+      ], [
+        "local_gate site=overmap_special:bandit_camp@140,51,0",
+        "posture=open_shakedown",
+        "combat_forward=no"
+      ]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_reopened_fight_surface_artifact_missing",
+      "abort_reason": "same-run production log did not prove the visible reopened Pay/Fight surface"
+    },
+    {
+      "kind": "press",
+      "label": "choose_reopened_fight",
+      "keys": ["f"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["fight"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_reopened_fight_selection_not_visible",
+      "abort_reason": "Fight was not visibly selected from the real Pay/Fight dialogue"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_fight_branch_started",
+      "required_line_patterns": [["shakedown_surface fight demanded="]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_fight_branch_not_started",
+      "abort_reason": "the production fight branch did not record its authoritative demand transition"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "ordinary_combat_to_authoritative_terminal",
+      "count": 120,
+      "settle_seconds": 0.5,
+      "auto_acknowledge_interruptions": false,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_authoritative_fight_terminal",
+      "expected_visible_fact": "only ordinary gameplay turns advance the visible combat until a responder casualty or survivor-return terminal is reached"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_authoritative_fight_terminal",
+      "required_any_line_patterns": [
+        ["bandit_live_world shakedown combat", "casualty"],
+        ["bandit_live_world local homeward boundary committed", "members="],
+        ["bandit_live_world physical_player_observation"]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_authoritative_fight_terminal_missing",
+      "abort_reason": "ordinary combat did not produce an authoritative casualty or survivor-return terminal"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_fight_reload",
+      "expected_visible_fact": "the pre-save player-save marker is captured before the full save/reload"
+    },
+    {
+      "kind": "press",
+      "label": "open_full_save_prompt_after_fight_terminal",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["quit", "Case"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_fight_terminal_save_prompt_missing",
+      "abort_reason": "the full case-sensitive save-and-quit prompt was not visible"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_full_fight_terminal_save",
+      "keys": ["Y"],
+      "settle_seconds": 5.0,
+      "expected_visible_fact": "the fight terminal state is fully written before process exit"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_fight_save",
+      "changed_since_label": "audit_player_save_mtime_before_fight_reload",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_fight_terminal_writeback_missing",
+      "abort_reason": "the full save did not advance the player-save marker"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_one_identity_stable_fight_receipt",
+      "required_line_patterns": [[
+        "operation=",
+        "generation=",
+        "epoch=",
+        "member=",
+        "application_key="
+      ]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_identity_stable_fight_receipt_missing",
+      "abort_reason": "the same-run receipt did not expose operation, generation, epoch, member, and application identities"
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "confirm_full_fight_terminal_save",
+    "terminal_exit_timeout_seconds": 5.0,
+    "steps": [
+      {
+        "kind": "advance_turns",
+        "label": "advance_one_turn_after_saved_terminal_relaunch",
+        "count": 1,
+        "settle_seconds": 1.0,
+        "capture_after": true,
+        "extract_text_after_capture": true,
+        "expected_screen_text_after_contains": ["Move:", "Wield:"],
+        "expected_visible_fact": "the canonical startup owner focused a new process on the saved McWilliams world before the read-only replay observer runs"
+      },
+      {
+        "kind": "audit_log_contains",
+        "label": "audit_post_relaunch_terminal_replay_inertness",
+        "required_line_patterns": [[
+          "bandit_live_world terminal_shakedown_replay_observer",
+          "active_operation=absent",
+          "exact=exact_duplicate",
+          "stale=stale_replay",
+          "byte_stable=yes",
+          "outcome_credit=none"
+        ]],
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_post_relaunch_terminal_replay_inertness_missing",
+        "abort_reason": "the new-process log delta did not prove the released winner receipt stayed exact/stale readable, byte-stable, and uncredited"
+      }
+    ]
+  },
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.extortion_reopened_fight_continuation_mcw",
+  "evidence_contract": {
+    "claim": "the committed-contact export reaches the real reopened Pay/Fight surface, Fight is visibly selected, ordinary combat reaches an authoritative responder casualty or survivor-return terminal, one matching receipt exposes its identity tuple, and a full save exits before canonical same-world relaunch proves exact/stale replay inertness",
+    "fixture_binding": "live-debug:bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24 with manifest save_transforms=[]; no raw fixture or authored combat state is allowed",
+    "preconditions_and_interventions": "the only pre-feature setup is harness profile installation and copying the committed export; after the real gameplay HUD and focus gates, the scenario sends visible Fight and ordinary turn inputs only",
+    "terminal": "the run stops at the first missing authoritative terminal, save/exit, new-PID focus, or post-relaunch replay-inertness checkpoint and reports direct evidence",
+    "identity_requirement": "the receipt must expose one operation, generation, epoch, member, and application identity tuple before terminal save",
+    "replay_status": "the post-relaunch audit reads only the new-process debug-log delta; it requires an absent active operation, exact duplicate and stale replay dispositions, byte-stable serialization, and no outcome credit.  It cannot recreate an operation or rewrite the saved world."
+  }
+}

@@ -111,19 +111,29 @@ def _require_string_list(value: Any, *, path: Path, field: str) -> List[str]:
 
 
 def _step_labels(manifest: Mapping[str, Any], *, path: Path) -> List[str]:
-    steps = manifest.get("steps")
-    if not isinstance(steps, list):
+    initial_steps = manifest.get("steps")
+    if not isinstance(initial_steps, list):
         raise _error(path, "steps must be a list for a versioned proof_route")
+    step_groups = [("steps", initial_steps)]
+    post_relaunch = manifest.get("post_relaunch")
+    if post_relaunch is not None:
+        if not isinstance(post_relaunch, dict):
+            raise _error(path, "post_relaunch must be an object for a versioned proof_route")
+        post_relaunch_steps = post_relaunch.get("steps")
+        if not isinstance(post_relaunch_steps, list):
+            raise _error(path, "post_relaunch.steps must be a list for a versioned proof_route")
+        step_groups.append(("post_relaunch.steps", post_relaunch_steps))
     labels: List[str] = []
-    for index, step in enumerate(steps, start=1):
-        if not isinstance(step, dict):
-            raise _error(path, f"steps[{index}] must be an object for a versioned proof_route")
-        label = step.get("label")
-        if not isinstance(label, str) or not label.strip():
-            raise _error(path, f"steps[{index}].label must be a non-empty string for a versioned proof_route")
-        labels.append(label)
+    for group_name, steps in step_groups:
+        for index, step in enumerate(steps, start=1):
+            if not isinstance(step, dict):
+                raise _error(path, f"{group_name}[{index}] must be an object for a versioned proof_route")
+            label = step.get("label")
+            if not isinstance(label, str) or not label.strip():
+                raise _error(path, f"{group_name}[{index}].label must be a non-empty string for a versioned proof_route")
+            labels.append(label)
     if len(set(labels)) != len(labels):
-        raise _error(path, "steps must have unique labels for a versioned proof_route")
+        raise _error(path, "initial and post-relaunch steps must have unique labels for a versioned proof_route")
     return labels
 
 

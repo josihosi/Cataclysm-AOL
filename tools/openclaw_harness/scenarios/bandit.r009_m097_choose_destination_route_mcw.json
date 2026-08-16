@@ -1,0 +1,85 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r009_m097_choose_destination_route_mcw",
+  "description": "R-009 M097 resolves the current executable's ordinary overmap travel input through CHOOSE_DESTINATION: the production-created player at (162,36,0) previews and confirms the nonempty route to (163,36,0) with keyboard-character W, then saves, reloads, and audits the arrived OMT before any camp setup.  On relaunch, the harness waits for the remote bridge to identify the new PID's window, reacquires local focus, and rejects a changed window identity before HUD proof or any post-relaunch input.",
+  "profile": "r009-m097",
+  "world": "McWilliams",
+  "fixture": "r009_m059_preopportunity_bootstrap",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": { "SCALING_FACTOR": "2", "LLM_INTENT_ENABLE": "false" }
+  },
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "capabilities": {
+    "player.hud": ["Move:", "Wield:"],
+    "capabilities.shakedown.route_input": "keyboard_char_W_choose_destination_trace",
+    "capabilities.shakedown.route_arrival": "ordinary_save_reload_163_36_before_camp_creation"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:escape", "press:m", "press:right", "type:W", "press:Y", "press:S", "press:q", "press:left", "press:enter"],
+    "forbidden_input": ["debug:teleport", "debug:spawn", "raw-save-rewrite", "fixture-save-transform", "debug:inject_report", "debug:inject_decision", "debug:inject_operation", "debug:drive", "debug:eligibility"],
+    "disposable_copy": true,
+    "setup_only_debug": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m097",
+    "fixture": "r009_m059_preopportunity_bootstrap",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r009-m097",
+      "fixture": "r009_m059_preopportunity_bootstrap",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": ["press:m", "press:right", "type:W", "press:Y", "press:S", "press:q", "press:left", "press:enter"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["post_load_preopportunity_hud", "audit_choose_destination_route_preview"],
+    "production_behavior": ["confirm_ordinary_route_to_163_36", "audit_choose_destination_route_confirmation"],
+    "terminal_persistence": ["confirm_native_process_exit_after_route_arrival", "post_travel_player_omt"],
+    "artifact_verdict": ["post_travel_player_omt"],
+    "disallowed_shortcuts": ["post_travel_player_omt"]
+  },
+  "steps": [
+    {"kind": "press", "label": "dismiss_inherited_actions_overlay", "keys": ["escape"], "settle_seconds": 0.5, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the inherited Actions overlay is dismissed to the ordinary gameplay HUD", "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r009_m097_inherited_actions_overlay_not_dismissed", "abort_reason": "the copied bootstrap did not dismiss its inherited Actions overlay into ordinary gameplay"},
+    {"kind": "wait", "label": "post_load_preopportunity_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the copied production-created bootstrap is a locally focused ordinary gameplay HUD", "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r009_m097_preopportunity_hud_missing", "abort_reason": "the copied production-created bootstrap save did not reach ordinary gameplay"},
+    {"kind": "press", "label": "open_overmap_for_ordinary_route", "keys": ["m"], "delay_ms": 200, "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the standard overmap is open before selecting the ordinary destination", "proof_deferred_to_label": "audit_choose_destination_route_preview"},
+    {"kind": "press", "label": "move_overmap_cursor_to_163_36", "keys": ["right"], "delay_ms": 200, "settle_seconds": 0.5, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "ordinary overmap cursor movement selects absolute OMT (163,36,0)", "proof_deferred_to_label": "audit_choose_destination_route_preview"},
+    {"kind": "type", "label": "preview_ordinary_route_to_163_36", "text": "W", "delay_ms": 200, "settle_seconds": 0.5, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the keybinding owner's keyboard-character W previews the efficient ordinary route", "proof_deferred_to_label": "audit_choose_destination_route_preview"},
+    {"kind": "audit_log_contains", "label": "audit_choose_destination_route_preview", "since_label": "preview_ordinary_route_to_163_36", "required_line_patterns": [["openclaw_harness_ui_trace: component=overmap_route_input event=resolved", "resolved_action=\"CHOOSE_DESTINATION\""], ["openclaw_harness_ui_trace: component=overmap_route event=constructed", "destination=163,36,0", "path_nonempty=true"]], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r009_m097_choose_destination_preview_missing", "abort_reason": "the current executable did not resolve keyboard-character W to CHOOSE_DESTINATION and construct a nonempty route to (163,36,0)"},
+    {"kind": "type", "label": "confirm_ordinary_route_to_163_36", "text": "W", "delay_ms": 200, "settle_seconds": 0.5, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the same W binding advances the previewed ordinary route to native confirmation", "proof_deferred_to_label": "audit_choose_destination_route_confirmation"},
+    {"kind": "press", "label": "accept_ordinary_route_confirmation", "keys": ["Y"], "delay_ms": 200, "settle_seconds": 20.0, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the native travel confirmation accepts the nonempty ordinary route", "proof_deferred_to_label": "audit_choose_destination_route_confirmation"},
+    {"kind": "audit_log_contains", "label": "audit_choose_destination_route_confirmation", "since_label": "confirm_ordinary_route_to_163_36", "required_line_patterns": [["openclaw_harness_ui_trace: component=overmap_route event=confirmed", "destination=163,36,0", "path_nonempty=true", "travel_result=true"]], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r009_m097_choose_destination_confirmation_missing", "abort_reason": "the nonempty CHOOSE_DESTINATION route did not receive a successful native travel confirmation"},
+    {"kind": "wait", "label": "post_travel_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the confirmed ordinary route returns to the gameplay HUD before native save", "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r009_m097_ordinary_route_did_not_return_to_hud", "abort_reason": "the confirmed ordinary route did not return to gameplay before save"},
+    {"kind": "audit_player_save_mtime", "label": "audit_player_save_before_route_arrival_save", "abort_on_metadata_failure": true, "abort_verdict": "blocked_r009_m097_player_save_missing_before_route_arrival_save", "abort_reason": "the copied production-created save was absent before preserving the ordinary arrival"},
+    {"kind": "press", "label": "open_native_full_save_after_route_arrival", "keys": ["S"], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the native Save-and-Quit confirmation is visibly open after ordinary travel", "expected_screen_text_after_contains": ["Case Sensitive"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r009_m097_route_arrival_save_prompt_missing", "abort_reason": "the normal Save-and-Quit confirmation was not visibly open after ordinary travel"},
+    {"kind": "press", "label": "confirm_native_full_save_after_route_arrival", "keys": ["Y"], "settle_seconds": 4.0, "expected_visible_fact": "the native Save-and-Quit action changes the player save after ordinary travel", "proof_deferred_to_label": "audit_player_save_after_route_arrival_save"},
+    {"kind": "audit_player_save_mtime", "label": "audit_player_save_after_route_arrival_save", "changed_since_label": "audit_player_save_before_route_arrival_save", "abort_on_metadata_failure": true, "abort_verdict": "blocked_r009_m097_route_arrival_save_not_observed", "abort_reason": "the native Save-and-Quit action did not preserve the confirmed ordinary arrival"},
+    {"kind": "press", "label": "open_native_main_menu_quit_confirmation", "keys": ["q"], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the native main-menu quit confirmation is visibly open after saving the ordinary arrival", "expected_screen_text_after_contains": ["Really quit?"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r009_m097_main_menu_quit_prompt_missing", "abort_reason": "Save-and-Quit did not return to the native main menu's quit confirmation"},
+    {"kind": "press", "label": "confirm_native_process_exit_after_route_arrival", "keys": ["left", "enter"], "settle_seconds": 2.0, "expected_visible_fact": "the original route-arrival process exits before the saved player reloads", "proof_deferred_to_label": "post_route_arrival_reload_hud"}
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "confirm_native_process_exit_after_route_arrival",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {"kind": "wait", "label": "post_route_arrival_reload_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the saved player reloads to a green ordinary gameplay HUD after the original process exits", "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r009_m097_route_arrival_save_did_not_reload", "abort_reason": "the native route-arrival save did not reload into gameplay before camp creation"},
+      {"kind": "audit_saved_game_turn", "label": "post_travel_player_omt", "required_player_abs_omt": [163, 36, 0], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r009_m097_player_not_at_route_target_omt", "abort_reason": "ordinary travel did not persist the player at (163,36,0) before camp creation"}
+    ]
+  },
+  "recommended_test_command": "python3 tools/openclaw_harness/scenario_registry_cli.py rebuild && python3 tools/openclaw_harness/scenario_registry_cli.py registry-query --query-json '{\"requirements\":[{\"key\":\"capabilities.shakedown.route_arrival\",\"op\":\"eq\",\"value\":\"ordinary_save_reload_163_36_before_camp_creation\",\"minimum_evidence\":\"declared\"}],\"preferences\":[]}'",
+  "evidence_contract": {
+    "claim": "the current executable resolves W as CHOOSE_DESTINATION, constructs and confirms a nonempty ordinary route to (163,36,0), and preserves the arrival through native save/reload before any camp creation",
+    "preconditions_and_interventions": "the harness copies a production-created save with save_transforms=[] and sends only normal overmap movement, the keybinding owner's keyboard-character W route commands, native confirmation, and native save/reload",
+    "terminal": "this route is a gate only: it creates no follower, camp, hostile state, report, decision, operation, drive, or eligibility evidence"
+  }
+}
