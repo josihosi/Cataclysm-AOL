@@ -14173,6 +14173,99 @@ def normalize_scenario_steps(raw_steps: Any, advance_count: int, settle_seconds:
     return []
 
 
+def normalize_post_relaunch_contract(
+    raw_contract: Any,
+    initial_steps: List[Dict[str, Any]],
+) -> Optional[Dict[str, Any]]:
+    """Validate an opt-in continuation after a saved-world process boundary."""
+    if raw_contract in (None, ""):
+        return None
+    if not isinstance(raw_contract, dict):
+        raise SystemExit("post_relaunch must be an object")
+    terminal_save_step_label = str(raw_contract.get("terminal_save_step_label", "") or "").strip()
+    if not terminal_save_step_label:
+        raise SystemExit("post_relaunch.terminal_save_step_label is required")
+    if terminal_save_step_label not in {
+            str(step.get("label", "") or "").strip() for step in initial_steps}:
+        raise SystemExit("post_relaunch.terminal_save_step_label must name an initial scenario step")
+    timeout = raw_contract.get("terminal_exit_timeout_seconds")
+    if type(timeout) not in {int, float} or timeout <= 0:
+        raise SystemExit("post_relaunch.terminal_exit_timeout_seconds must be a positive number")
+    raw_steps = raw_contract.get("steps")
+    if not isinstance(raw_steps, list) or not raw_steps:
+        raise SystemExit("post_relaunch.steps must be a non-empty list")
+    return {
+        "terminal_save_step_label": terminal_save_step_label,
+        "terminal_exit_timeout_seconds": float(timeout),
+        "steps": normalize_scenario_steps(raw_steps, 0, 0.0),
+    }
+
+
+def run_probe_post_relaunch(
+    *,
+    initial_pid: int,
+    profile: str,
+    config_profile: str,
+    world: str,
+    scenario_name: str,
+    registry_launch_receipt: str,
+    terminal_exit_timeout_seconds: float,
+) -> Dict[str, Any]:
+    """Cross one terminal saved-world process boundary through the canonical startup owner."""
+    exit_observed = wait_for_pid_exit(initial_pid, terminal_exit_timeout_seconds)
+    result: Dict[str, Any] = {
+        "initial_pid": initial_pid,
+        "terminal_exit_timeout_seconds": terminal_exit_timeout_seconds,
+        "original_process_exited": exit_observed,
+    }
+    if not world:
+        result.update({"status": "saved_world_missing", "pid": initial_pid})
+        return result
+    if not exit_observed:
+        result.update({"status": "terminal_process_exit_missing", "pid": initial_pid})
+        return result
+
+    start_cmd = [
+        sys.executable,
+        str(Path(__file__).resolve()),
+        "start",
+        "--profile", profile,
+        "--config-profile", config_profile,
+        "--scenario-identity", scenario_name,
+        "--world", world,
+    ]
+    if registry_launch_receipt:
+        start_cmd.extend(["--registry-launch-receipt", registry_launch_receipt])
+    start_rc, start_result, start_stdout, start_stderr = run_json_command(start_cmd)
+    relaunch_pid = int(start_result.get("pid", 0) or 0)
+    result.update({
+        "status": "startup_failed" if start_rc != 0 or not start_result.get("ok") else "started",
+        "pid": relaunch_pid,
+        "start_command": start_cmd,
+        "startup": start_result,
+        "start_stdout": start_stdout,
+        "start_stderr": start_stderr,
+    })
+    if start_rc != 0 or not start_result.get("ok"):
+        return result
+    if relaunch_pid <= 0:
+        result["status"] = "startup_missing_pid"
+        return result
+    if relaunch_pid == initial_pid:
+        result["status"] = "same_pid_relaunch_rejected"
+        return result
+    startup_classification = start_result.get("proof_classification", {})
+    if not isinstance(startup_classification, dict) or not startup_classification.get("startup_clean_for_feature_steps", False):
+        result["status"] = "relaunch_startup_gate_not_clean"
+        return result
+    focus = start_result.get("focus", {})
+    if not isinstance(focus, dict) or not focus.get("ok"):
+        result["status"] = "relaunch_focus_unproven"
+        return result
+    result["status"] = "ready"
+    return result
+
+
 AUTO_ACKNOWLEDGE_COMPLETED_INTERACTION_KINDS = frozenset({
     "assign_nearby_npc_to_camp_dialog",
     "debug_force_temperature",
@@ -17394,6 +17487,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "fixture_install": fixture_install_result,
                 "flexbuffer_cache_purge": flexbuffer_cache_purge,
                 "peekaboo_permissions": peekaboo_permissions,
+                "focus": focus_result,
                 "post_lastworld_wait_seconds": post_lastworld_wait,
                 "lastworld": data if readiness_kind == "lastworld" else {},
                 "readiness": readiness,
@@ -18425,6 +18519,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     recommended_test_command = args.test_command or str(scenario.get("recommended_test_command", "")).strip()
     artifact_source = str(scenario.get("artifact_source", "debug.log")).strip() or "debug.log"
     steps = normalize_scenario_steps(scenario.get("steps", []), advance_count, settle_seconds)
+    post_relaunch = normalize_post_relaunch_contract(scenario.get("post_relaunch"), steps)
     raw_derived_screens = scenario.get("derived_screens", [])
     derived_screens = [entry for entry in raw_derived_screens if isinstance(entry, dict)] if isinstance(raw_derived_screens, list) else []
     capture_world_after = bool(scenario.get("capture_world_after", False))
@@ -18432,6 +18527,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     mode = "handoff" if handoff else "probe"
     report_filename = "handoff.report.json" if handoff else "probe.report.json"
     post_finalize_hook = getattr(args, "registry_post_finalize_hook", None)
+
+    if handoff and post_relaunch is not None:
+        raise SystemExit("post_relaunch is probe-only and cannot use a deferred handoff")
 
     if blocker_info["status"] == "blocked":
         run_dir = create_run_dir(profile)
@@ -18884,8 +18982,56 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         runtime_commit=runtime_commit,
         runtime_binary=runtime_binary,
     )
+    relaunch: Dict[str, Any] = {}
+    final_pid = pid
+    if post_relaunch is not None:
+        terminal_step = next(
+            (report for report in step_reports
+             if str(report.get("label", "") or "").strip() == post_relaunch["terminal_save_step_label"]),
+            None,
+        )
+        if terminal_step is None or terminal_step.get("stop_after_step"):
+            relaunch = {
+                "status": "terminal_save_step_not_completed",
+                "initial_pid": pid,
+                "terminal_save_step_label": post_relaunch["terminal_save_step_label"],
+            }
+        else:
+            relaunch = run_probe_post_relaunch(
+                initial_pid=pid,
+                profile=profile,
+                config_profile=config_profile,
+                world=world,
+                scenario_name=scenario_name,
+                registry_launch_receipt=registry_launch_receipt,
+                terminal_exit_timeout_seconds=post_relaunch["terminal_exit_timeout_seconds"],
+            )
+        relaunch["terminal_save_step_label"] = post_relaunch["terminal_save_step_label"]
+        if int(relaunch.get("pid", 0) or 0) > 0:
+            final_pid = int(relaunch["pid"])
+        if relaunch.get("status") == "ready":
+            post_reports = execute_probe_steps(
+                final_pid,
+                run_dir,
+                post_relaunch["steps"],
+                profile=profile,
+                world=world,
+                artifact_log=artifact_log,
+                action_trace_log=feature_debug_log,
+                action_trace_baseline=feature_debug_start,
+                artifact_baseline=artifact_start,
+                filter_debug_noise=filter_debug_noise,
+                artifact_patterns=artifact_patterns,
+                portal_storm_allowed=bool(portal_storm_policy.get("allowed", False)),
+                scenario_identity=str(scenario.get("name", args.scenario)),
+                runtime_commit=runtime_commit,
+                runtime_binary=runtime_binary,
+            )
+            for report in post_reports:
+                report["phase"] = "post_relaunch"
+            step_reports.extend(post_reports)
     derived_screen_reports = render_derived_screens(run_dir, derived_screens)
-    screen_after = capture_screenshot(pid, run_dir, f"{mode}_after")
+    screen_after = capture_screenshot(final_pid, run_dir, f"{mode}_after")
     world_snapshot_report: Dict[str, Any] = {}
     if capture_world_after:
         try:
@@ -18908,7 +19054,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         label=f"{mode}_after_feature_guard",
         artifact_name=f"{mode}.feature_debug.log",
         screen_summary=feature_screen_summary,
-        pid=pid,
+        pid=final_pid,
         debug_identity=feature_debug_identity,
     )
 
@@ -19006,7 +19152,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     verdict = "inconclusive_no_artifact_match"
     screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
     version_matches_runtime = screen_summary.get("version_matches_runtime_paths")
-    if abort_report is not None:
+    if post_relaunch is not None and relaunch.get("status") != "ready":
+        verdict = "blocked_" + str(relaunch.get("status", "relaunch_failed"))
+    elif abort_report is not None:
         verdict = str(abort_report.get("verdict", "inconclusive_screen_text_guard"))
     elif version_matches_runtime is False:
         verdict = "inconclusive_version_mismatch"
@@ -19062,11 +19210,13 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "artifact_source": resolved_artifact_source,
             "artifact_patterns": artifact_patterns,
             "steps": steps,
+            "post_relaunch": post_relaunch,
             "derived_screens": derived_screens,
             "capture_world_after": capture_world_after,
             "portal_storm_policy": portal_storm_policy,
         },
         "startup": start_result,
+        "relaunch": relaunch,
         "steps": step_reports,
         "step_ledger": step_ledger,
         "step_ledger_summary": step_ledger_summary,
@@ -19129,7 +19279,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         run_dir,
         report,
         scenario=scenario,
-        cleanup_pid=pid,
+        cleanup_pid=final_pid,
         report_filename=report_filename,
         compact_stdout=bool(getattr(args, "compact_stdout", False)),
         post_finalize_hook=post_finalize_hook,
