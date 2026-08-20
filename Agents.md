@@ -1,15 +1,7 @@
 # Agents
 Follow all instructions in this file.
-Read `.de67/DFS.md` first and treat it as the canonical functional contract and stable red-claim
-ledger. Then read `.de67/test-and-task-guidelines.md`, `.de67/orchestrator-guidelines.md`,
-`.de67/work-ledger.md`, and `.de67/mutation-suggestions.md` before coordinating phase-3 work.
-The active item in `.de67/work-ledger.md` is the default next target; do not invent a different
-chunk. Keep the project-local phase-3 state aligned with reality:
-- `.de67/DFS.md` = frozen contract, ownership, precedence, proof routes, and stable red claims
-- `.de67/work-ledger.md` = current projection of still-red claims only
-- the two guideline files = mutable task/test and orchestration guidance under the mutation cadence
-- `.de67/mutation-suggestions.md` = append-only diagnoses, manual suggestions, and dispositions
-- `.de67/state/` = ignored machine clock state; the Markdown files are tracked project artifacts
+Read `.de67/WEC.md` for user intent, then read `.de67/DFS.md` and treat it as the frozen
+functional contract and stable red-claim ledger.
 Read and follow `COMMIT_POLICY.md` so the repo does not turn into one giant dirty-tree soup.
 When you add a new complicated mechanic, add a brief durable explanation to `TechnicalTome.md`.
 
@@ -108,7 +100,7 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
 - For gameplay changes, use the in-game debug menu, harness tools, or direct agent-side probing first.
 - Josef should be asked for product judgment / feel / priority calls or genuinely human-only interaction, not for tiny technical checks the agent can do.
 - Josef being unavailable is not a stop-work order; move to the next authorized unblocked target
-  from `.de67/work-ledger.md`.
+  from `.de67/work-ledger.md` after phase-3 setup projects the frozen DFS.
 - For code or build-script changes, choose validation proportional to risk:
   - docs-only -> no compile
   - small local code change -> narrow relevant compile/test only
@@ -144,4 +136,4 @@ When editing a file, do not delete and rewrite bystander lines for diff context.
   `make -j$(nproc) TILES=1 SOUND=1 RELEASE=1 LOCALIZE=1 LANGUAGES=all LINTJSON=0 TESTS=0`
 For the full, canonical guidance, see `doc/CONTRIBUTING.md`.
 
-read README.md and .de67/DFS.md.
+Read `README.md` and `.de67/DFS.md`.

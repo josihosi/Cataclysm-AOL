@@ -1,109 +1,85 @@
 # Test and task guidelines
 
-The headings in this document are frozen. Text beneath them is mutable after evidence-backed failure
-review.
+This workspace-local file is active mutable policy. Read only the sections relevant to the task.
+Do not replace it with the packaged template after bootstrap.
+Sol is not an ordinary worker. Model choice is coordinator guidance, not a worker-side gate.
 
-## Task preparation
+## Prepare the task
 
-Read the exact working tree, affected DFS claim, current owner path, relevant tests, and current tool
-state. Choose the smallest task whose deletion would leave that claim unmet or unproven. Name real
-dependencies and likely collision surfaces before parallel dispatch.
-Keep the work ledger at the current causal frontier; durable deadline state owns closed-task timing
-and terminal chronology. Acceptance of one claim is a refill boundary whenever DFS red work remains,
-not a stop condition.
+Read the current tree, claim context, production owner, relevant tests, and available tools. Preserve
+user-owned dirty work. Choose the smallest task whose result is independently useful. Do not ask the
+owner to choose fixtures, scenarios, disposable identities or coordinates, profiles, registry rows,
+or debug tooling when those choices stay inside the frozen outcome.
 
-## Tooling check
+Size the active claim clock for the whole ledger item. Include every known mandatory continuation,
+uncertain work, several relevant playtest runs, and likely code changes, rebuilds, and evidence
+review between runs. This is planning capacity, not a required test count. Stop earlier when the
+acceptance evidence is sufficient.
 
-Confirm the required tool, environment, command, and smallest runnable route before estimating or
-dispatching. Treat setup uncertainty as work to resolve, not as invisible worker time.
-Validate brittle flags, dates, fixtures, and output paths before they consume an implementation
-deadline. When repeated runs cannot expose the needed production fact, stop rerunning the product
-task and add the smallest useful logging or probe capability.
-For a fixture-backed or live-owner proof, preflight the complete evidence chain before dispatch:
-install the exact fixture into the harness profile, launch the exact changed executable, perform the
-actual local input or scenario action, and verify that the named authoritative owner can emit and
-the matcher can consume the required identity-bound result. Read-only feasibility must cover each
-named positive selector and its required contrast on the installed geometry, including route,
-terrain, clock, and watch constraints. Where evidence is parsed from logs, validate the emitted
-record boundaries and normalized matcher representation with representative accepted, rejected, and
-expected-absence owner output. An expected absence requires a bounded, identity-bound completion
-verdict rather than an unbounded wait. A source-only, bridge-only, or synthetic-log pass does not
-establish that chain.
+Use exploration for one concrete unknown. Return a usable strategy and proof route. Use closure when
+the strategy and proof route are already known. A closure task may cover coupled gaps when splitting
+them would leave no independently valid state.
 
-## Task definition
+When consecutive attempts reach different independent prerequisite guards of the same production
+transition, stop repairing fixture fields serially. Establish one coherent valid-state constructor
+and, where the production owner can share it without side effects, one preflight that reports the
+independent prerequisite family. Keep the real consumer fail-closed and prove the valid state plus
+one-prerequisite-invalid controls before resuming integrated proof.
 
-Describe the desired outcome in natural language, bind it to one red DFS claim and the relevant code
-surface, state material boundaries, and name the evidence that will decide acceptance. Before any
-candidate product edit or dispatch, identify the production owner, its direct callers, and its owning
-tests, then complete the read-only pass below; pre-existing candidate product work does not substitute
-for that pass. Before editing
-or executing proof, make a read-only pass through the complete production owner, state transitions,
-precedence, readers, writers, early exits, and intended invariants; classify a contrary result as an
-implementation deviation, contradicted design premise, false test premise, or irrelevant harness
-behavior before proposing another patch or dispatch. State the task's terminal DFS outcome and the
-causal path by which its evidence can reach that outcome. Do not demand a fixed receipt shape. Ask
-the worker to stop and report expected versus observed behavior with direct evidence when a blocker
-or unexpected production result invalidates a task premise.
-Terminalize an exploration attempt as completed only when its result supplies a changed strategy and
-honest proof route ready for immediate closure freezing. If it instead disproves required geometry or
-output, or exposes an external-authority prerequisite, record a worker finding and reconcile it before
-the immutable claim deadline; an attempt terminal does not stop the item clock.
-When a task refreshes a timeout or lease from “progress,” define progress in route/ownership terms
-and name movement that must not refresh it, such as alternating or pacing tiles.
+## Use tools and harnesses
 
-## Worker and model selection
+Confirm the executable, environment, identity, input, and output path needed for the task. A small
+preflight can prevent an expensive opaque run, but preflight is not product proof and is not a
+mandatory ritual. A full run may discover a missing harness capability. Record that result as
+ordinary harness work and improve the reusable scenario or database entry.
 
-Use the weakest sufficient available worker for understood implementation. Use a stronger
-implementation-capable model for ambiguous ownership, causal diagnosis, or risky cross-cutting work.
-Change the route or worker only when evidence supports the change.
-Treat model choice as a capability check: when the launcher exposes no cheaper selector, record that
-fact once until tool state changes and bound the worker's role; do not describe reuse as model selection.
-Keep each worker role-bounded: an implementation worker returns its diff and test evidence, but must
-not commit or accept that checkpoint, edit `.de67/`, dispatch a successor, or launch integrated proof.
+Interactive harnesses should handle harmless popups, avoid preventable character-state noise, and
+provide reusable capabilities for setup, observation, hostile avoidance or removal, terrain,
+lighting, smoke, time, and other test prerequisites. Treat generated setup as evidence only after
+the production consumer accepts it.
 
-## Test definition
+Do not demand that every possible input token, focus state, transition, or downstream consumer be
+pre-proved before the first useful run. After a concrete mismatch, repair the visible family of
+related transitions instead of rediscovering them one key at a time.
 
-Define the smallest honest test that proves the DFS outcome through its authoritative owner. Include
-negative controls only when they distinguish a real competing explanation. Do not substitute test
-volume for coverage of the requested behavior. Separate the mechanism verdict from incidental
-metadata or receipt formatting; an incidental mismatch is fatal only when it can change identity,
-the verdict, or a false-green control.
-Do not add bespoke fixtures, proof matrices, diagnostics, coordination, or receipt layers when
-deleting them preserves the DFS-required behavior, authoritative ownership, and reliable
-discriminator; prefer the smaller proof surface.
-Deadline or lease regressions require paired controls: valid monotonic route advancement that
-survives the prior deadline, and movement-changing but non-advancing oscillation that remains
-bounded. The non-advancing control must distinguish the rejected progress predicate; immobility
-alone is not enough.
+## Implement and test
 
-## Test checking
+Identify the authoritative state owner and the transition the task must change or observe. Inspect
+helpers, callers, competing readers or writers, and owning tests only as needed to settle the
+current uncertainty. Stop blind repetition at the first divergent production transition.
 
-The coordinator checks the actual diff, command result, and relevant artifact or observation. A test
-passes only the claim it exercises. Preserve concise evidence paths; do not encode the same result in
-nested receipts. A blocker or unexpected result is evidence for causal review, never proof that the
-claim passed or automatic authority to weaken its test. Do not rerun an unchanged failing route
-without changed source, tooling, or causal evidence.
-When a finding exposes an adjacent owner, fixture, or matcher premise, decide before follow-up
-dispatch whether the task still has a credible causal path to its terminal DFS outcome. If it does
-not, replace local patch chaining with the read-only whole-owner design pass and simplify the proof
-surface or reframe the task from that result.
-Before further dispatch would add a wait, receipt, or parser token, freeze a finite closure map for
-the ledger item: name every still-required authoritative transition and the source-emitted completion
-predicate that closes it. Findings may change that route, but a new proof requirement is admissible
-only when deleting it leaves the closure map unproven. A token the named owner cannot emit is a task
-or fixture-contract failure, not authority to extend the wait or add another receipt.
-Before accepting a focused progress regression, verify that its non-advancing control would fail
-under the rejected implementation; compile success, diff inspection, and assertion count are not
-substitutes for that discriminator.
-Task acceptance, checkpointing, DFS status updates, and ledger refill never consume mutation
-suggestions; only a successful guarded mutation transaction does.
+Use the smallest honest test through the real owner. Add a negative control only when it excludes a
+real competing explanation. Static inspection, startup, helper output, synthetic setup, a focused
+test, and natural integrated behavior are different evidence classes. Do not present one as
+another.
 
-## Deadline estimation
+During focused-log review, collapse unchanged repeated diagnostics to their count plus first and
+last occurrence while preserving the raw artifact and terminal failure context.
 
-Estimate the whole ledger item from its first dispatch through honest claim acceptance, not only the
-first worker attempt. Derive that estimate from inspected exploration uncertainty, tooling/setup,
-implementation, build, proof, dependencies, and relevant prior tasks, and state the reason in the
-work ledger. On every later attempt, read and preserve the persisted item start, estimate, and
-deadline. An attempt-local duration may guide coordination, but it never replaces or rebases the
-item estimate or deadline; findings and completed attempts do not stop the item clock. Honest late
-work still counts as a deadline miss.
+For compiled proof, bind the executable to the tested source and successful build. For save/load
+proof, inspect the serialized state and its owning normalization. For long or variable playtests,
+include several relevant reruns, repairs between runs, and uncertain runtime in the ledger-item
+estimate. Unknown variability takes time, but it does not require perfect proof or repetition of an
+unchanged failed route.
+
+When preserving or relinking interrupted build products, require one coherent source and
+configuration identity across the archive, replacement objects, linker driver, feature flags, and
+platform or test libraries. Reuse only validated products from that identity. Missing current
+project, framework, or test-runner symbols are concrete provenance evidence: stop hybrid relinking
+and resume the ordinary exact target. Force a broad rebuild only when stale-dependency or provenance
+evidence requires it, and require the executable to postdate its inputs before testing.
+
+Reasonable proof is sufficient. Apply the MSW deletion test to proposed screenshots, logs, reruns,
+and metadata. Do not require an artifact whose removal still leaves the requested behavior honestly
+proved. Preserve uncertainty and state what the test did not cover.
+
+## Return the result
+
+Return what changed, the command or natural route used, the direct evidence, the result, and the
+remaining uncertainty. Use the controlled-English evidence profile. Keep identifiers exact.
+
+Keep an ordinary test failure inside the task. Inspect the first divergent production transition,
+repair it, and rerun the useful route. Return a terminal finding only when the assigned strategy is
+disproved, a materially different route is required, an external blocker exists, or the bounded
+route is exhausted. State the expected behavior, observed behavior, contradicted premise, and direct
+evidence in plain language. A finding does not cause mutation or authorize weaker acceptance.

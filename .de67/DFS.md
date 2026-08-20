@@ -1,1050 +1,452 @@
-# Combined Hostile-Camp AI and Harness Registry Specification
+# Trustworthy Hostile-Ecology Harness Checkpoint Chains DE-67 Functional Specification
 
-Status: Refrozen combined successor for DE-67 phase 3.
+Status: Frozen
 WEC: `.de67/WEC.md`
-Source baseline: `dev@038c2e9e60b39572db864ed7465a618e08e8ba6f` with the preserved hostile-
-ecology/harness frontier listed in the freeze record; inspected 2026-08-15.
-Comparison baseline: `port/cdda-master` at `660057ff728b`.
+Source baseline: `dev@7f4697ee6b17fb897461e3ceb290342b83787a30`; preserved dirty
+hostile-ecology and harness work listed in the freeze record; inspected 2026-08-20.
 
-This document defines what the feature must do in play, how the implementation is divided between
-game systems, and which parts of the inspected `dev` source are complete, partial, or absent. The
-current implementation projection is `.de67/work-ledger.md`; this DFS remains normative.
+## Document authority
 
-## Document authority and supersession
-
-- `.de67/DFS.md` owns the functional contract, mechanisms, authority, precedence, proof routes, and
-  stable red claims. `.de67/work-ledger.md` projects only the current work from those claims.
-- `.de67/test-and-task-guidelines.md` and `.de67/orchestrator-guidelines.md` own mutable phase-3
-  guidance. `.de67/mutation-suggestions.md` owns the append-only diagnosis and suggestion history.
-- Older dated bandit/cannibal packet, audit, and proof documents are implementation archaeology.
-  They may explain why a seam exists, but they cannot add requirements, declare success, or
-  override this contract and current source evidence.
-- `TechnicalTome.md` is chronological mechanic history, not a second current-state specification.
-  If its historical wording conflicts with this file, this file and the inspected game path win.
-- Do not recreate a parallel roadmap. Close a claim only after accepted evidence and the phase-3
-  mutation guard validates the exact status transition, then remove its projection from the work
-  ledger.
+This document is the mechanistic product contract derived from the user-owned WEC and the inspected
+production code. It is not a task-dispatch plan. If this document conflicts with current code about
+what the code does, re-inspect the code. If it conflicts with the WEC about what the product should
+do, the WEC and the user win.
 
 Status markers:
 
-- `[x]` is present in the game path and has proportionate source/test evidence.
-- `[ ] 🔴 R-NNN —` is a stable wrong, incomplete, or unproved primary claim. When accepted, change
-  only that marker to `[x] R-NNN —` through the phase-3 mutation guard.
-- A unit-tested state structure is not considered implemented if no production game path invokes it.
+- `[x]` — present in the production path with proportionate evidence.
+- `[ ] 🔴 R-...` — missing, wrong, or unproved; the stable red item is implementation work.
 
-### Evidence-bound amendment and refreeze policy
-
-Failed production evidence may add or clarify a stable red claim only when deleting the amendment
-would leave the requested outcome unclassified or unprovable. During implementation, non-material
-evidence and proof refinements may be recorded and refrozen. Material behavior, geometry, balance,
-or authority choices return to the user through DE-67 phase 2 for a fresh specification pass.
-No refinement may weaken the requested outcome or legitimize an implementation shortcut.
+The phase-3 work ledger may project the red items in this document. It may not rename, split,
+weaken, reorder, or replace them except under the freeze rule at the end of this document.
 
 ## Functional contract
 
-A naturally generated bandit or cannibal camp is a persistent physical faction. It sends a
-two-person scout party to explore and scavenge, learns only what the scouts can plausibly perceive,
-withdraws coherently when discovered, receives only information carried home by survivors, and
-decides whether it has enough strength and opportunity to act. A favorable bandit decision creates
-a new shakedown party. A favorable cannibal decision creates a new attack party which waits for
-true darkness. Neither faction knows the avatar's coordinates or camp contents by fiat.
+For current bandit and cannibal scenarios, an agent can ask the registry for a scenario, inspect the
+selection, and launch it through the canonical harness entry point. Before the game process starts,
+the harness validates that the scenario has a coherent, observable proof route and that the
+installed save has the required stabilizer state. During execution, the harness evaluates named
+causal proof gates, records structured transition evidence, and captures one durable checkpoint
+after every successful gate. Supporting input remains operational evidence and never becomes a
+proof obligation merely because it lacks an immediate artifact.
 
-Routine scouts travel on foot in this version. Vehicle transport, boarding, routing, fixtures, and
-future vehicle compatibility are outside this DFS. A local/abstract scout handoff clears impossible
-passenger or driver state instead of adding or preserving vehicle behavior.
-
-The player-facing success path is:
-
-```mermaid
-flowchart LR
-    A["Living hostile camp"] --> B["Reserve exact two-person scout party"]
-    B --> C["Travel and search physical OMT route"]
-    C --> D["Observe target from watch ring"]
-    D -->|"not exposed"| E["Complete bounded assessment"]
-    D -->|"burned"| F["Gain close-contact evidence and withdraw"]
-    E --> G["Survivors physically return"]
-    F --> G
-    G --> H["Camp receives survivor-scoped report"]
-    H --> I["Camp compares opportunity, risk, strength, and reserve"]
-    I -->|"hold / rescout / abandon"| A
-    I -->|"bandit favorable"| J["Reserve fresh shakedown party"]
-    I -->|"cannibal favorable"| K["Reserve fresh raid party"]
-    J --> L["Open demand, payment / refusal / combat, aftermath"]
-    K --> M["Wait for true darkness, attack loaded defenders, aftermath"]
-```
-
-## Required behavior and current implementation
-
-### 1. Camp, roster, and dispatch ownership
-
-- [x] Bandit and cannibal camps use the same routine exploration machinery. Cannibals do not need
-  a separate supernatural hunt trigger.
-- [x] Routine scouts are exactly two people. A one-person camp cannot dispatch; a two-person camp
-  sends both; larger camps send two while retaining an at-home reserve where their roster permits.
-  The number two is the agreed product rule, not a tuning guess.
-- [x] The camp owns one serialized roster whose members are unambiguously at home, reserved,
-  outbound, materialized, returning, dead, missing, or retired. A member cannot be simultaneously
-  available to camp jobs and an outing.
-- [x] Routine scouting, returned assessment, and hostile response are different operations with
-  stable IDs, generations, reservation members, and idempotent application keys. A scout mission
-  does not silently turn into a raid.
-- [x] A camp has at most one active external operation. A response cannot reserve members while a
-  scout or another response still owns outside pressure for that camp.
-- [x] A deterministic surviving member replaces a dead leader; the pair retains its shared route
-  and operation identity.
-
-### 2. World truth, private knowledge, and bounty
-
-- [x] Finite structural/ground bounty is global world truth. Each camp stores only its private,
-  possibly stale estimate. Two camps may believe a site is rich, but only the first valid claimant
-  consumes its remaining resource.
-- [x] Bandit and cannibal scouts both search for and collect finite bounty as part of routine
-  scouting.
-- [x] Camp leads carry provenance, observation time, confidence/uncertainty, threat, bounty,
-  approximate position, and aging. Active operations pin referenced evidence so ordinary pruning
-  cannot invalidate a live mission.
-- See `R-008`: player-camp opportunity is not yet a renewable authoritative value. Repeated
-  shakedowns require both the existing cooldown and genuinely renewed camp value from stored goods,
-  population, or activity; a timer alone cannot regenerate loot or authorize repeated demands.
-
-### 3. Perception and discovery
-
-- [x] The production branch's exact-avatar radar (`direct_player_range`, ten OMTs) is absent from
-  the active `dev` path. The remaining `legacy_radar` value is compatibility vocabulary for old
-  saves, not a live sensor.
-- [x] Scouts acquire facts only from a bounded route/frontier query. The ordinary baseline is
-  roughly three OMTs in clear day, two in degraded light/dusk, and one in unlit night, with terrain,
-  weather, elevation, optics, and the actual NPC's sight affecting the result. These numbers are
-  the agreed visibility rule.
-- [x] Optics improve credible observation and assessment; they do not grant arbitrary map-wide
-  player or camp tracking.
-- [x] Smoke, visible light, searchlights, alarms, gunfire, and explosions create approximate leads.
-  A signal may cause investigation, but it does not reveal the avatar's identity, exact inventory,
-  or current coordinates.
-- [x] Terrain supplies a prior danger cost. Live hostile population is sampled only where a scout
-  can legitimately observe it; the camp does not query unseen zombie populations as omniscient
-  route data.
-- [x] Danger has soft and hard effects: risk can increase route cost, while an observed overwhelming
-  threat can reroute, abort, or force immediate self-defense.
-<!-- DE67:DFS-SLICE:BEGIN id=R-002-S001 claim=R-002 -->
-- [ ] 🔴 R-002 — Ordinary-play bounded-discovery fairness and absence of hidden-state radar remain
-  unproved through focused owner tests plus the smallest changed-executable negative/positive
-  production proof named below.
-<!-- DE67:DFS-SLICE:END id=R-002-S001 claim=R-002 -->
-
-### 4. Physical movement, stalking, and exposure
-
-- [x] The strategic operation has one simulation owner at a time: abstract overmap or local loaded
-  NPCs. Handoff epoch and generation checks reject stale or duplicate advancement.
-- Routine scouts are on foot for their entire operation. The handoff adapter must bind them as
-  on-foot NPCs with `in_vehicle == false` and `controlling_vehicle == false`; no vehicle-aware branch
-  is required or permitted by this version.
-- [x] A scout pair has a leader, escort, common route, assigned staging tiles, cohesion rules,
-  regroup behavior, bounded recovery, and casualty-aware continuation.
-- [x] The target camp footprint and a watch position remain distinct. Normal stalking observes from
-  a three-OMT radius—two empty OMTs between the scouts and the camp—and falls farther back when
-  terrain or exposure requires it.
-<!-- DE67:DFS-SLICE:BEGIN id=R-003-S001 claim=R-003 -->
-- [x] Reciprocal ordinary visual contact burns the party. Being burned adds useful close-contact
-  evidence and target alertness, then commits the scouts to egress. It is not deliberately farmed
-  as a scouting tactic.
-- [x] While searching, watching, or withdrawing covertly, scouts are neutral to the player and
-  allied defenders. Generic faction hostility and misleading “gets angry” presentation resume only
-  after attack, refusal/escalation, or committed combat.
-- [x] A burned party has a persistent route out of the target OMT. It is not constrained to pace
-  between adjacent visible tiles while its strategic owner wants to leave.
-- [ ] 🔴 R-003 — Burned-pair evidence, coherent egress, covert neutrality, and identity continuity
-  remain unproved through the natural visible-pair route and its quiet control.
-<!-- DE67:DFS-SLICE:END id=R-003-S001 claim=R-003 -->
-- [x] R-001 — The natural local-to-abstract return handoff is not complete. `T01-M1` through
-  `T01-M5` preserved generation-1 members 4/5 and the unchanged McWilliams route while moving the
-  frontier past safe boundary selection, asymmetric pair travel, and recenter visibility.
-  Checkpoint `0d082eda34` bounds the homeward pair; `7495ec5286` exposes the materialization gate.
-  The current handoff must retain the observing-produced physical resume until its homeward
-  consumer and bind both scouts on foot with impossible vehicle state cleared. `T01-M5` was stopped
-  before acceptance when its candidate added out-of-scope vehicle preservation. The same natural
-  route must still complete physical crossing, camp dematerialization, canonical return, report,
-  and decision; the incident chronology remains in `.de67/mutation-suggestions.md`.
-
-### 5. Report, assessment, and response decision
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-004-S001 claim=R-004 -->
-- [x] A camp learns no useful target dossier until a survivor physically returns. Two dead scouts
-  yield only overdue/missing state. One survivor yields a partial/provisional report restricted to
-  evidence available to that survivor; a later survivor may revise it.
-- [x] Reports identify their source operation, member(s), evidence revisions, timestamps, target,
-  uncertainty, defender bounds, coarse visible equipment, opportunity cues, route risk, exposure,
-  and losses. Applying the same return/report/cargo packet twice is a no-op.
-<!-- DE67:DFS-SLICE:END id=R-004-S001 claim=R-004 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-005-S001 claim=R-005 -->
-- [x] Camp assessment compares pessimistic target strength, uncertainty, alertness, route risk,
-  opportunity, ready camp power, and the required home reserve. It may hold, rescout, abandon, or
-  prepare one faction-specific follow-on.
-- [x] A follow-on response selects and reserves a fresh party from current survivors rather than
-  reusing the scout reservation. The current planner preserves the report revision and operation
-  generation.
-<!-- DE67:DFS-SLICE:BEGIN id=R-004-S002 claim=R-004 -->
-- [x] R-004 — Dead, missing, and split-survivor knowledge, report revision, and mission-slot
-  release remain unproved through the natural authoritative death and return routes.
-<!-- DE67:DFS-SLICE:END id=R-004-S002 claim=R-004 -->
-- [x] R-005 — The production scheduler never calls `plan_hostile_operation`; current calls are confined
-  to tests. `transition_hostile_operation_phase` is likewise exercised by tests and origin-recall
-  cleanup, not by a complete live response lifecycle. The follow-on owner is therefore scaffolding,
-  not an implemented player-facing feature.
-<!-- DE67:DFS-SLICE:END id=R-005-S001 claim=R-005 -->
-
-### 6. Faction-specific consequences
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-006-S001 claim=R-006 -->
-Bandits and cannibals share exploration and assessment. They diverge only after a returned report
-authorizes a response.
-
-- [x] R-006 — **Bandit shakedown:** reserve a fresh response party, travel physically, rally outside the
-  camp at a plausible two-to-three-OMT planning distance, approach openly, suppress premature
-  patrol combat, demand a share of currently reachable camp storage, and resolve payment, refusal,
-  player attack, withdrawal, casualties, and return.
-  The parley-neutrality hook exists, but no natural scout-to-shakedown run proves the lifecycle.
-<!-- DE67:DFS-SLICE:END id=R-006-S001 claim=R-006 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-007-S001 claim=R-007 -->
-- [x] R-007 — **Cannibal raid:** reserve a fresh attack party sized against pessimistic camp strength,
-  travel physically, rally in concealment at a plausible two-to-three-OMT planning distance, wait
-  for true local darkness, and attack the avatar plus all loaded camp defenders. Cannibals never
-  open the payment interface. No invisible offscreen defender deaths are permitted. The state
-  vocabulary exists, but the live lifecycle is not wired or proved.
-<!-- DE67:DFS-SLICE:END id=R-007-S001 claim=R-007 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-008-S001 claim=R-008 -->
-- [x] R-008 — Aftermath must update the attacking camp's casualties, readiness, target alertness,
-  outcome memory, payment/plunder, and future eligibility. A bandit may repeat only after cooldown
-  plus renewed target opportunity; a cannibal may reassess survivors rather than replaying an
-  obsolete report.
-<!-- DE67:DFS-SLICE:END id=R-008-S001 claim=R-008 -->
-- [x] Autonomous inter-camp war is outside this version. Other hostile camps contribute route risk;
-  they do not trigger a second unspecced faction-war simulation.
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-009-S001 claim=R-009 -->
-### 7. Persistence, performance, and proof
-
-- [x] Camps, private leads, finite resources, outings, reservations, reports, decisions, casualties,
-  ownership epochs, and application watermarks have serialization and focused compatibility tests.
-- [x] `DEBUG_CLAIRVOYANCE` provides a read-only ecology view, selection, bounded watches, compact
-  deltas, incident capture, and one labelled casualty intervention through the authoritative death
-  route. The observer is not a gameplay owner.
-- [x] R-009 — Save/load at each live lifecycle boundary—including local/abstract handoff, split return,
-  shakedown contact, and cannibal darkness wait—must be proved with the changed executable.
-<!-- DE67:DFS-SLICE:END id=R-009-S001 claim=R-009 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-010-S001 claim=R-010 -->
-- [ ] 🔴 R-010 — Mac performance/save measurements for the observer and early ecology are not final
-  qualification for the completed feature. Before integration, measure the full production path
-  on macOS, Linux/WSL, and Windows, including scheduler cost, loaded-NPC cost, save-size growth, and
-  save/load latency. Do not run global work every avatar turn merely to satisfy a test.
-- See `R-010`: release qualification remains blocked until the natural scout-to-decision incident,
-  bandit shakedown, cannibal night raid, persistence boundaries, and relevant platform routes are
-  green. `port/cdda-master` remains untouched meanwhile.
-<!-- DE67:DFS-SLICE:END id=R-010-S001 claim=R-010 -->
-
-## Competing AI systems and override direction
-
-The feature does not replace CDDA NPC AI. It supplies a strategic owner and a narrow movement
-intent while an ecology operation is active. Existing survival and combat owners keep precedence
-where their facts are more immediate.
-
-```mermaid
-flowchart TD
-    E["Shared physical facts: terrain, light, smoke, sound, visible threats"] --> S["Hostile-camp strategic owner"]
-    S --> H["Abstract/local handoff adapter"]
-    H --> M["Loaded scout or response-party movement intent"]
-    M --> N["Ordinary npc::move when no ecology order owns this action"]
-
-    X["Field, trap, fire, or adjacent unrelated attacker"] -->|"one-action survival override"| M
-    P["Player/allied attack, refusal, or committed contact"] -->|"end covert state"| C["Generic NPC combat/faction hostility"]
-    C --> N
-    R["Camp patrol alarm"] -->|"active shakedown parley stays neutral"| N
-    O["DEBUG_CLAIRVOYANCE"] -. "read only" .-> S
-
-    E --> G["Horde response policy"]
-    E --> Z["Zombie-rider light memory/policy"]
-    E --> W["Writhing-stalker local policy"]
-```
-
-### Ownership and precedence table
-
-| Situation | Authoritative owner | Override rule |
-|---|---|---|
-| Camp memory, dispatch eligibility, report, decision, reservation | `bandit_live_world` strategic state | No generic NPC behavior may create or advance these facts. |
-| Unloaded travel/search/watch/return | Abstract outing cursor | Only the matching operation generation and owner epoch advances. |
-| Materialization/dematerialization | `do_turn.cpp` handoff adapter plus overmap NPC storage | Commit one physical boundary crossing before abstract ownership resumes; transfer atomically and never let local and abstract loops move the same member. |
-| Loaded route/cohesion/egress | Ecology movement intent for the exact reserved members | Choose only a route-reachable paired physical transition on actual loaded geometry. If none is available, retain or replan ownership without movement, progress, or outcome credit. |
-| Fire, field, trap, impassable tile, adjacent unrelated threat | Existing immediate-survival/combat behavior | May preempt one action without deleting the strategic route or inventing a phase transition. |
-| Player/allied attack, bandit refusal, committed raid/contact | Existing NPC combat and faction attitude | Explicitly terminates covert neutrality; combat becomes authoritative until contact resolves. |
-| Generic faction hostility during covert stalking | Derived covert relationship in `npc::attitude_to` | Suppress hostility only for active, correctly targeted ecology members; never persist a fake faction change. |
-| Player-camp patrol during bandit parley | Camp patrol AI | Treat only the active shakedown party as neutral until escalation. Other hostiles remain hostiles. |
-| Ordinary inactive NPC travel | Existing `overmap_npc_move` / NPC `omt_path` | Must yield for members owned by an active ecology operation to prevent double travel. |
-| Ordinary loaded NPC needs, missions, behavior tree, and optional LLM intent | Existing `npc::move` path | The exact reserved member's valid ecology order owns that action first; ordinary AI resumes when no ecology order applies or covert state ends. LLM output never creates strategic ecology truth. |
-| Debug UI/harness | Read-only observer and labelled authoritative casualty intervention | May reveal state or kill a selected member through the real death route; may not set discovery, phase, report, decision, payment, or raid outcome. |
-
-`bandit_dry_run` and `bandit_pursuit_handoff` are also potential duplicate owners inside the
-feature. Their permitted roles are deliberately narrow: `bandit_dry_run` may evaluate or explain a
-candidate, and `bandit_pursuit_handoff` may validate/transport a transition packet. Neither owns a
-second camp memory, reservation, lifecycle clock, or result. Persisted truth remains in
-`bandit_live_world` and the normal NPC/overmap stores.
-
-### Authoritative return-boundary transition
-
-The returning outing has exactly one movement owner. While its members are loaded, the local owner
-may not return, move toward, or credit an unreachable boundary pair. It must either choose a
-route-reachable paired physical boundary transition on the actual loaded geometry, or retain and
-replan ownership without physical movement, route/ownership progress, or
-return/report/decision credit. The chosen transition remains subject to the existing nonreentry
-rule.
-
-Abstract outing ownership resumes only from the matching committed physical crossing. The transfer
-must preserve the same camp, outing, generation, epoch, and surviving member identities and must
-not use teleportation, geometry edits, direct actor-path assignment, a duplicate movement owner,
-or an abstract-return shortcut. Canonical camp dematerialization, survivor return, final report,
-and decision remain downstream production transitions, not credit implied by selecting a boundary.
-
-If the currently loaded boundary cannot supply a route-reachable paired transition, the ownership
-design is red; the map is not thereby authorized to change. Production proof must discriminate a
-valid alternate or recentered ownership transfer from genuine physical entrapment on the unchanged
-world. A failed transfer must remain inert and may classify the obstruction, but may not manufacture
-success.
-
-### Shared primitives versus separate policies
-
-Hordes, zombie riders, writhing stalkers, bandits, and cannibals may consume the same physical
-emitter primitives. They must not share behavioral memory or ownership merely because they noticed
-the same event.
-
-| Primitive or state | Bandit/cannibal camps | Hordes | Zombie riders | Writhing stalkers |
-|---|---|---|---|---|
-| Physical light/smoke/sound observation | Shared input | Shared input | Shared input | Shared input where its local/overmap contract permits |
-| Terrain and ordinary visibility | Shared engine primitive | Own policy | Own policy | Own policy |
-| Camp intelligence map / dossiers | Own, private per camp | Never | Never | Never |
-| Finite bounty and shakedown value | Own hostile-camp system | Never | Never | Never |
-| Scout/report/response reservations | Own hostile-camp system | Never | Never | Never |
-| Movement and reality-bubble handoff | Exact camp-operation members only | Existing horde owner | Rider owner | Stalker owner |
-| Debug projection | May share observer presentation | May be displayed | May be displayed | May be displayed |
-
-Direction: introduce or retain a small read-only **physical observation** interface at the producer
-boundary, then let each consumer decide what it means. Do not introduce a universal “ecology AI”
-brain, universal target registry, shared pursuit memory, or generic phase setter. For any actor that
-could be claimed by two movement systems, the deciding key is the actor's stable identity plus the
-active owner's generation/epoch; the loser yields without mutating the winner's state.
-
-## Conformance summary: `dev` versus `port/cdda-master`
-
-What is right in `dev`:
-
-- [x] It removes the production branch's ten-OMT avatar radar and replaces it with bounded,
-  provenance-bearing perception.
-- [x] It creates persistent private camp knowledge, global finite-resource truth, two-person
-  scouting, stable reservations, abstract/local ownership, cohesive movement, exposure egress,
-  survivor-scoped reports, camp assessment, and honest observer tooling.
-- [x] It separates a returned scouting operation from a fresh hostile response operation and keeps
-  bandit/cannibal consequences distinct at the policy level.
-- [x] It adds derived covert neutrality instead of permanently editing faction relations, and it
-  gives camp patrols a narrow shakedown-parley exception.
-
-What is incomplete or currently wrong:
-
-- `R-001`: the local owner still returns a known-unreachable boundary pair instead of committing a
-  reachable physical crossing or retaining/replanning ownership inertly.
-- `R-005`: the fresh hostile-operation planner and phase machine are not invoked by the production
-  scheduler, so bandit and cannibal consequences remain test-only scaffolding.
-- `R-008`: renewable player-camp opportunity and complete aftermath/repeat rules are absent.
-- `R-009` and `R-010`: full live save/load, performance/save-growth, and three-platform
-  qualification remain open and must follow the completed gameplay path rather than isolated helper
-  success.
-
-## Acceptance ledger
-
-The feature is complete when these user-visible contracts are crossed off with changed-executable
-evidence. Except for the user-rescoped R-002 route below, focused tests may support a row but cannot
-replace its stated live route.
-
-- `R-001`: one natural bandit camp dispatches its exact pair, watches or burns, commits a
-  route-reachable paired physical boundary crossing on unchanged geometry, physically returns at
-  least one survivor, applies a final report, and enters the matching camp decision without a
-  teleported or abstract-jump return.
-- `R-003`: a burned visible pair gains evidence, exits the target OMT without dancing or false anger,
-  and preserves its route/report identities.
-- `R-004`: killing both scouts prevents an informed response; one survivor produces only a partial
-  report; a later survivor revises rather than duplicates it.
-- `R-006`: a decided bandit response reserves a fresh party, reaches the camp, performs a real
-  shakedown, and resolves payment, refusal/combat, return, and aftermath.
-- `R-007`: a decided cannibal response reserves a fresh party, waits for true darkness, attacks all
-  loaded defenders without a payment UI, and causes no offscreen defender deaths.
-- `R-008`: two camps cannot double-harvest one finite site; a repeated bandit shakedown requires
-  cooldown plus demonstrably renewed player-camp opportunity.
-- `R-002`: focused owner tests cover clear day/dusk/unlit night, forest/weather/optics, signal
-  uncertainty, target relocation, and unseen-versus-observed danger invariants. The smallest live
-  negative/positive production proof establishes that quiet play inside the old radar radius stays
-  undiscovered; a credible real signal can be discovered without a decoy granting exact hidden
-  player truth; relocation does not drag stale target knowledge; and unseen danger does not affect
-  routing until legitimately observed.
-- `R-009` and `R-010`: save/load preserves authority and causality at every phase; full-feature
-  performance and save growth remain acceptable on macOS, Linux/WSL, and Windows.
-
-## Proof routes for remaining claims
-
-Focused proof may isolate an authoritative seam, but only the named natural or integrated route can
-close a claim that requires player-facing production behavior. Evidence must preserve the exact
-source, binary, fixture, scenario, camp, operation, generation, epoch, and member identities that
-matter to the verdict. Incidental artifact metadata is not part of a verdict unless it can change
-identity, the claim result, or a false-green control. R-002 is the user-approved exception to a
-bespoke natural-world route and exact continuity for every matrix row: its focused owner tests own
-the invariant matrix, while one smallest live negative/positive production proof needs only enough
-source/build/scenario provenance and causal observations to exclude a stale binary, setup-only
-artifact, hidden-state injection, or another false green.
-
-### R-001 — Natural local-to-abstract return
+After an interruption or failed expectation, the report identifies the earliest causal divergence,
+the gates already completed, and the latest valid checkpoint. The harness recommends that
+checkpoint but does not choose for the agent. An explicit resume restores the selected checkpoint
+into a disposable run profile and continues the same bound chain. A contiguous, binding-valid chain
+whose ordered gates satisfy the scenario's final proof route is a certification chain. A relevant
+code, data, harness, executable, fixture, profile, or scenario change invalidates the entire chain.
+A changed binding never prevents a new trusted rerun.
 
 ```text
-proof(R-001) =
-  preconditions: exact committed source/binary; unchanged natural McWilliams fixture, geometry,
-                 scenario timing, camp, outing generation, members, and zero intervention
-  -> authoritative owner: matching-generation local ecology movement plus the single
-                          local/abstract handoff adapter
-  -> transition: choose a route-reachable paired physical boundary transition on the actual loaded
-                 geometry and commit it before atomically resuming the matching abstract outing;
-                 otherwise retain/replan ownership inertly
-  -> observable fact: same identities physically cross together, dematerialize at camp, apply a
-                      canonical surviving return and eligible final report, and enter the matching
-                      authoritative decision; or remain explicitly non-credit with an obstruction
-                      classification that distinguishes alternate/recentered transfer from genuine
-                      entrapment
-  -> artifact: identity-bound boundary selector plus compact incident JSON and paired screenshot
-               where UI state matters, with source/binary/fixture/scenario/run hashes
-  -> pass/fail: pass only on the ordered production chain; fail on an unreachable selected pair,
-                movement/progress/outcome credit without crossing, identity mismatch, duplicate
-                owner, geometry/timing mutation, teleport, direct path assignment, abstract-return
-                shortcut, or an unclassified retained stall
+registry query
+  -> explicit selection token
+  -> contract preflight and installed-save preflight
+  -> diagnostic or certification segment
+  -> successful proof gate
+  -> atomic checkpoint and registry receipt
+  -> explicit resume or continued segment
+  -> contiguous chain verification
+  -> authoritative diagnostic report or certification-chain verdict
 ```
 
-The integrated proof is the unchanged natural
-`bandit.scout_to_decision_observer_live_mcw` incident on the exact accepted committed binary. It
-must show paired physical boundary crossing -> camp dematerialization -> canonical surviving return
--> eligible final report -> matching authoritative decision in one identity chain. The focused
-owner proof must make the known unsafe-selection control fail, show a reachable paired transition
-crossing without violating nonreentry, and show that no valid current transition retains or replans
-without physical movement, route/ownership progress, or outcome credit.
+The smallest useful vertical slice is the existing
+`bandit.scout_to_decision_observer_live_mcw` route: preflight it before launch, execute it to the
+first named causal gate, save and capture a bound checkpoint, fail or interrupt later without losing
+that checkpoint, resume it explicitly, and report the same chain's first divergence or final
+certification. The same mechanisms must then prove the existing
+`cannibal.live_world_night_local_contact_pack_mcw` route so the implementation is not accidentally
+bandit-specific.
 
-### R-002 through R-010
+## Project language and terminology
 
-<!-- DE67:DFS-SLICE:BEGIN id=R-002-S002 claim=R-002 -->
-- `R-002`: focused owner tests exercise `structural_observer_omt_sight_range`,
-  `structural_observer_route_is_visible`, structural signal validation/retention, local-zombie
-  eligibility and observation, returned-report lead ownership, and avatar-relocation non-ownership.
-  They cover clear day, dusk, and unlit night; road through forest/weather with and without optics;
-  credible real signal versus decoy uncertainty; relocation; and unseen versus legitimately
-  observed zombie danger. The smallest live negative/positive changed-executable proof then shows,
-  through the ordinary `overmap_npc_move` -> structural maintenance path, all four causal controls:
-  quiet play inside the former radar radius creates no discovery; a credible real signal can create
-  an approximate lead while a decoy cannot grant exact avatar, inventory, defender, storage, or
-  hidden-danger truth; moving the avatar does not move an existing target lead; and route choice is
-  unchanged by unseen danger until an ordinary bounded observation records it. The proof may reuse
-  one compact scenario and the minimum identities needed to distinguish those transitions; it does
-  not require a bespoke natural-world certification run, fixture, operation, or member-identity
-  chain for every invariant row.
-<!-- DE67:DFS-SLICE:END id=R-002-S002 claim=R-002 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-003-S002 claim=R-003 -->
-- `R-003`: one natural visible-burn incident plus a quiet, unattacked control distinguishes burned
-  evidence and committed egress from ordinary covert neutrality. It must show no pacing, false
-  anger, or route/report identity replacement.
-<!-- DE67:DFS-SLICE:END id=R-003-S002 claim=R-003 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-004-S003 claim=R-004 -->
-- `R-004`: both scouts dead yields no informed response and no wedged slot; one survivor yields a
-  partial/provisional report; and a later survivor revises rather than duplicates it. Stable
-  operation, member, and report identities and authoritative deaths are required.
-<!-- DE67:DFS-SLICE:END id=R-004-S003 claim=R-004 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-005-S002 claim=R-005 -->
-- `R-005`: a focused owner control rejects stale or duplicate generations and reuse of the scout
-  reservation. A changed-executable incident naturally turns the matching final decision into one
-  fresh response and advances it through its first production transition, with one strategic owner
-  and no LLM-created ecology truth.
-<!-- DE67:DFS-SLICE:END id=R-005-S002 claim=R-005 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-006-S002 claim=R-006 -->
-- `R-006`: one paid branch and one refusal-or-attack branch distinguish real demand/payment from
-  premature combat and escalation/combat/return from dialogue-only success. Both physically rally,
-  close casualties and survivors, return, and write back exactly once; teleportation, invisible
-  payment, broad patrol neutrality, and missing replay-safe closure fail.
-<!-- DE67:DFS-SLICE:END id=R-006-S002 claim=R-006 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-007-S002 claim=R-007 -->
-- `R-007`: a pre-darkness hold and a later true-dark attack in the same causal route distinguish
-  darkness policy from elapsed-time attack. The incident engages the avatar and all loaded
-  defenders, exposes no payment UI, causes no offscreen defender death, physically reconciles
-  survivors and casualties, and contains no bandit-policy leakage or debug-triggered contact.
-<!-- DE67:DFS-SLICE:END id=R-007-S002 claim=R-007 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-008-S002 claim=R-008 -->
-- `R-008`: two camps contesting one site distinguishes global consumption from duplicated private
-  belief. Repeat attempts before and after real stored-goods, population, or activity renewal
-  distinguish cooldown-only replay from renewed opportunity. Faction aftermath applies exactly
-  once; timer-created value, stale-report replay, and duplicate writeback fail.
-<!-- DE67:DFS-SLICE:END id=R-008-S002 claim=R-008 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-009-S002 claim=R-009 -->
-- `R-009`: one save/reload at each named boundary—local/abstract handoff, split return, shakedown
-  contact, and cannibal darkness wait—preserves generation, epoch, member, and application identity
-  and resumes through production. Schema-only or raw-save-rewrite evidence does not close it.
-<!-- DE67:DFS-SLICE:END id=R-009-S002 claim=R-009 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-010-S002 claim=R-010 -->
-- `R-010`: the same completed production path has named CPU/scheduler, retained-memory,
-  save-size/load-latency, runtime, and packaging evidence on macOS, Linux/WSL, and Windows. Final
-  promotion uses the reviewed orchestrator route and requires fresh explicit authority before
-  touching `port/cdda-master`; no red predecessor may remain. It adds no generic final live run,
-  adversarial review, or full-diff review beyond the explicitly named specification and platform
-  proofs.
-<!-- DE67:DFS-SLICE:END id=R-010-S002 claim=R-010 -->
+The implementation, CLI, report, documentation, and tests use these terms exactly:
 
-### Proof integrity
+- **Contract preflight** — validation completed before the game process is launched.
+- **Proof gate** — a named, causally meaningful contract boundary.
+- **Checkpoint** — captured save state and evidence after a successful proof gate.
+- **Checkpoint chain** — ordered segments joined by verified checkpoint lineage.
+- **Diagnostic run** — execution intended to locate and explain a divergence.
+- **Certification chain** — verified segments that collectively satisfy final proof.
+- **First divergence** — the earliest failed causal expectation in proof-route order.
+- **Structured transition event** — machine-readable evidence emitted when product or harness state
+  changes.
+- **Incidental-hostile suppression** — the non-combat harness facility; do not call it autokill in
+  user-facing output.
+- **Actor receipt** — evidence identifying every entity considered and every entity affected by
+  suppression.
 
-Staged setup ends before the asserted behavior. No helper, mock, raw-save transform, debug setter,
-teleport, handwritten artifact, or test-only code may manufacture gameplay credit. The transition
-comes from the authoritative production owner, and positive or negative controls exist only when
-they distinguish the claimed mechanism.
+`press`, `type`, `wait`, and save/quit/relaunch are supporting actions. They may fail operationally
+and thereby block the next proof gate, but successful delivery without a screen or metadata change
+is not yellow proof. A log substring is diagnostic context, not a product transition fact.
 
-## Preserved hostile-ecology freeze record
+Writhing-stalker behavior, zombie-rider behavior, and production perception hardening are outside
+this specification. No exception to the standard observer traits is permitted for writhing
+stalkers in this round.
 
-- Status: Refrozen
-- Frozen source baseline: `dev@97b8ea09e8d7823c7a4892386b2d77cccf9c3941`; the worktree was clean
-  before `.de67/WEC.md` was imported and this DFS was rescoped on 2026-08-12.
-- User-owned choice: preserve R-002's bounded-real-perception behavior and rescope only its proof
-  burden as stated verbatim in `.de67/WEC.md`; leave R-001 and R-003 through R-010 product
-  requirements unchanged.
-- Evidence-implied refinements: none.
+## Current code map
 
-## Harness scenario selection, registry, execution, and migration
-
-This section is a separate `R-1xx` claim family. It does not change the hostile-camp gameplay
-contract or the status of `R-001` through `R-010`. It makes the existing Python harness dependable
-for finding, explaining, launching, and learning from scenarios that can prove that contract and
-other C-AOL behavior.
-
-### Functional contract
-
-```text
-coordinator query
-  -> hard capability and current-evidence rejection
-  -> preference ordering of survivors only
-  -> explained selection token OR reviewable non-executed draft
-  -> explicit selected launch through the existing startup/probe owner
-  -> separate startup and feature verdicts
-  -> append-only verification/contradiction/staleness history
-```
-
-The inventory route is:
-
-```text
-enumerate every scenario JSON
-  -> create one migration-item row before parsing each path
-  -> import declared facts without prose inference
-  -> explicitly block, attempt canonical probe, or record import failure
-  -> persist one terminal disposition per enumerated path
-  -> prove final filesystem set equals terminal migration-item set
-```
-
-Query never launches. A generated draft is never executable. A launch may begin only from a
-non-stale selection token produced by a successful hard-filter query.
-
-### Project language and compatibility
-
-- The existing JSON files under `tools/openclaw_harness/scenarios/` remain **scenario manifests**.
-  There is no second declaration directory.
-- The SQLite **scenario registry** is a rebuildable index and verification-history store. It does
-  not become the declaration source and does not rewrite manifest intent after a run.
-- A **capability** is a typed fact or transition, never a filename, description substring, or
-  scenario family guess.
-- Evidence states are exactly `declared`, `inspected`, `run-verified`, `contradicted`, and `stale`.
-  Migration dispositions are exactly `attempted`, `imported`, `verified`, `failed`, `blocked`, and
-  `contradicted`.
-- Scenario lifecycle states are exactly `active`, `quarantined`, and `retired`. Lifecycle is registry
-  and review truth, not a second declaration of product intent. Active scenarios alone participate in
-  default query selection. Quarantined and retired scenarios remain explicitly inspectable.
-- A broken, contradicted, or stale scenario is quarantined. Quarantine is retained evidence, not
-  deletion or retirement; a unique broken scenario remains quarantined until a replacement exists.
-- Exact duplicate and likely subsumption are review findings, not lifecycle transitions. Their owner
-  compares normalized hard requirements/capabilities, resolved fixture/profile identity, ordered step
-  sequence, permitted input, and proof contract. It never uses filename, name, description, or prose
-  similarity as evidence, and a result for one scenario never verifies a sibling.
-- **Startup footing** and `feature_proof=false` remain non-gameplay evidence even when Peekaboo,
-  HUD detection, fixture install, artifact capture, and cleanup all succeed.
-- Debug-authored fixture state may prove declared preconditions; only the named production route
-  may prove gameplay behavior.
-- The implementation remains Python and JSON beside `startup_harness.py`, uses the standard-library
-  `sqlite3` module, and stays portable across macOS, Linux/WSL, and Windows. No product C++ owner is
-  added for registry behavior.
-
-### Current code map
-
-| Concern | Current files and symbols | Current behavior at inspected baseline | Gap |
+| Concern | Files and symbols | Current production behavior | Evidence |
 |---|---|---|---|
-| Scenario declaration and lifecycle | `tools/openclaw_harness/scenarios/*.json`; `scenario_path`; `load_scenario`; `scenario_blocker_info` | 168 parseable object files exist. Fields are heterogeneous; capability dimensions and evidence floors are not normalized. `scenario_blocker_info` collapses every non-blocked manifest to `active` and has no quarantine/retirement/history owner. | Names/descriptions and ad hoc proof prose cannot support hard selection, relationship analysis, or lifecycle review. |
-| Listing | `list_scenarios`; `scenario_blocker_info`; CLI `list-scenarios` | Enumerates all 168 JSON files and reports name, description, artifact source, step count, blocker reason, and helpers. The `--profile` option is explicitly ignored. | No typed filtering, ranking, freshness, fixture explanation, or draft. |
-| Fixtures and profiles | `load_fixture_manifest`; `resolve_fixture_payload`; `install_fixture`; `resolve_profile_snapshot_payload`; `install_profile_snapshot`; `load_profile_config` | 107 save-fixture manifests, profile snapshots, alias chains, save transforms, and `master`/`dev-harness` startup policy are real owners. | No searchable normalized binding or capability evidence. |
-| Runtime binding | `runtime_source_binding`; `build_runtime_binding`; `compare_runtime_binding`; `load_runtime_binding` | Binds committed HEAD, relevant dirty source, and executable hash for a run. | Does not bind scenario/fixture/profile/helper inputs into reusable registry evidence. |
-| Canonical startup | `run_startup`; `build_plan`; `require_peekaboo_permissions`; `peekaboo_focus_pid_with_retry`; `launch_game` | Resolves/install footing, checks runtime, launches, verifies Peekaboo permissions/focus, navigates, captures startup evidence, and gates feature steps. | Registry has no safe handoff into this owner. |
-| Canonical feature route | `run_probe_mode`; `execute_probe_steps`; `probe_proof_classification`; `finalize_probe_report`; `cleanup_game_process` | Named scenario runs generate step ledgers, screenshots/OCR, log/save audits, separate startup/feature classifications, reports, and cleanup. Blocked scenarios already refuse launch. | Results are not normalized into searchable capability history. |
-| Step vocabulary | `execute_probe_steps` | 37 current kinds cover input, waiting, capture, debug setup, log checks, and saved-state audits. | Step names alone do not declare scenario capabilities or proof depth. |
-| Guidance | `AGENTS.md`; `Agents.md`; `doc/OPENCLAW_HARNESS.md`; `tools/openclaw_harness/CONTROL_LOOKUP.md` | Names the harness, commands, evidence firewall, current controls, and caveats. | No repository skill or single query-to-launch workflow. |
-| Registry/query/migration | no current owner; no `sqlite3` use in `tools/openclaw_harness` | Absent. | Whole requested harness-registry outcome is red. |
+| Canonical agent entry point | `.agents/skills/caol-harness/SKILL.md` | Query, explicit registry launch, and report inspection use the registry CLI, but checkpoint selection and resume do not exist. | Inspected skill contract. |
+| Scenario contract | `tools/openclaw_harness/scenario_registry.py :: MANIFEST_VERSION`, `_validate_proof_route`, `normalize_relation_contract` | Manifest version 1 relates capability gates to primitive step labels. It checks references but not causal gate ordering, checkpoint safety, or final observability. | `MANIFEST_VERSION = 1`; current validator. |
+| Scenario under motivating failure | `tools/openclaw_harness/scenarios/bandit.scout_to_decision_observer_live_mcw.json` | A long list of input, wait, audit, and save steps is treated as one run. The fixture has inherited `DEBUG_CLAIRVOYANCE` and added `DEBUG_NOTEMP`, not the full WEC stabilizer policy. | Manifest and fixture manifest inspection. |
+| Primitive runner | `tools/openclaw_harness/startup_harness.py :: execute_probe_steps`, `build_probe_step_ledger`, `probe_proof_classification` | One monolithic loop assigns proof colors to primitive steps. Successful transport with no immediate artifact becomes yellow. Only one declared post-relaunch boundary is supported. | Current functions at lines 15664, 10058, 18426, and 15576. |
+| Runtime binding | `startup_harness.py :: RUNTIME_RELEVANT_PATHS`, `runtime_source_binding`, `build_runtime_binding`, `compare_runtime_binding` | Executable and selected source/data paths are bound, but `tools/openclaw_harness` is absent from the relevant source set. | Current tuple and binding functions. |
+| Save capture | `startup_harness.py :: snapshot_world_state`, `finalize_probe_report` | A world copy can be captured at finalization. There is no gate checkpoint manifest, parent lineage, atomic publication, or general restore path. | Current functions at lines 19238 and 19262. |
+| Report | `startup_harness.py :: finalize_scenario_report`, `compact_probe_report_for_stdout` | The full report embeds extensive step evidence; compact output truncates step arrays. It does not lead with a structured first divergence or resume recommendation. | Current finalizer and compact formatter. |
+| Registry authority | `tools/openclaw_harness/scenario_registry_store.py :: reload_selection_token_for_launch`, `ingest_report_reference`, `ingest_token_linked_report_reference` | Token launch revalidates current manifest/runtime evidence. A second different report for one token is invalidated as `multiple_report_runs`; there is no checkpoint-chain history. | Current ingestion path, including `multiple_report_runs`. |
+| Structured product transition seam | `src/bandit_live_world_probe.h/.cpp :: collection_mode::transition_events`, `transition_event`, `record_transition_event` | Focused in-process tests can collect committed transition events. The collection is session-local and bounded; live harness runs do not receive a durable structured stream. | Existing unit probe and calls in `bandit_live_world.cpp`. |
+| Central hostile-ecology transitions | `src/bandit_live_world.cpp :: commit_local_pair_handoff`, `commit_local_pair_dematerialization`, `transition_active_scout_phase_impl`, `transition_hostile_operation_phase`, `accept_current_scout_report_for_assessment`, `transition_camp_decision_state`, `release_structural_outing_reservation`, `advance_structural_bounty_outings`, `apply_dispatch_plan` | These functions own durable state changes and already call or can call the structured transition seam. | Inspected call paths at lines 3988, 4228, 5684, 5779, 5944, 6008, 12360, 14422, and 16730. |
+| Installed-save audit | `startup_harness.py :: apply_player_mutations_transform`, `audit_saved_player_condition` | Fixture transforms can add traits and the audit reads the actual compressed save, but this audit is an ordinary scenario step rather than mandatory pre-launch policy. | Current transform/audit and fixture tests. |
+| Non-death removal primitive | `src/game.cpp :: game::remove_zombie`, `src/creature_tracker.cpp :: creature_tracker::remove` | A loaded monster can be removed from the tracker without invoking `monster::die` and its ordinary death effects. No scenario-scoped eligibility, ecology exclusion, or receipt facility exists. | Current removal path. |
+| Motivating observed run | `.userdata/dev-harness/harness_runs/20260818_160832/probe.report.json` and its referenced artifact log | The run lasted about 18 minutes, ended at homeward materialization because the loaded bubble lacked paired entry or staging positions, colored 18 primitive steps yellow, and repeated identical diagnostics thousands of times. | Direct report and artifact counts from the preserved run. |
 
-Inspected inventory facts are evidence about the source baseline, not permanent numeric limits. A
-later all-scenario migration proves equality against the files present in its own final snapshot;
-it must not hard-code 168 or 19 as acceptance thresholds.
+## Mechanistic requirements
 
-<!-- DE67:DFS-SLICE:BEGIN id=R-101-S001 claim=R-101 -->
-### 8. Authoritative scenario manifests
-
-Mechanism:
-
-- Files and symbols: existing `tools/openclaw_harness/scenarios/<scenario-id>.json`; extend
-  `load_scenario` with validation delegated to a new
-  `tools/openclaw_harness/scenario_registry.py :: validate_manifest`.
-- Required top-level additions: `manifest_version`, `capabilities`, `runtime_contract`, and
-  `proof_route`. Existing `profile`, `world`, `fixture`, `fixture_profile`, `profile_snapshot`,
-  `profile_snapshot_profile`, `required_helpers`, `steps`, `proof_contract`, `evidence_contract`,
-  and blocker fields remain compatible inputs.
-- `capabilities` is a map from stable dotted keys to typed JSON values. Its allowed namespaces are
-  `player.*`, `local_place.*`, `actors.*`, `world.*`, `capabilities.*`, and `runtime.*`. Values may
-  be booleans, strings, numbers, arrays, or bounded objects such as count/range/visibility; schema
-  validation rejects ambiguous shapes instead of flattening them to prose.
-- The schema vocabulary covers every WEC dimension, including player condition/inventory/state;
-  local terrain/camp/light/traversability; friendly, unfriendly, and monster identity/count/range/
-  visibility/load/readiness/availability; world/overmap/time/weather/options/operation identity;
-  movement/dialogue/Pay/Fight/trade/combat/travel/terminal/persistence/replay capabilities; and
-  OS/source/executable/profile/fixture/helper/Peekaboo/input/OCR/cleanup requirements.
-- `runtime_contract` declares permitted input, forbidden input, whether debug is setup-only,
-  disposable-copy policy, required helpers/permissions, and supported platform/profile/fixture
-  footing. It does not grant gameplay proof.
-- `proof_route` names precondition step labels, production-behavior step labels, terminal and
-  persistence step labels, expected artifact/verdict, and disallowed shortcuts. Referenced labels
-  must exist in `steps`.
-- Legacy manifests remain listable and runnable. Migration records missing normalized fields as
-  unknown/review-required. It may map already-structured fields and exact step/report metadata, but
-  may not infer camp, Fight, visibility, injury state, or any capability from name/description prose.
-- A run appends observed evidence; it never edits the declaration block.
-
-Implementation status:
-
-- [x] Existing JSON scenario files, fixture/profile ownership, blocker metadata, step contracts,
-  and proof-classification fields are present and exercised by the production harness CLI.
-- [x] R-101 — Scenario manifests do not yet expose or validate the normalized capability,
-  runtime, and proof-route contract required for hard selection.
-  - Code gap: `startup_harness.py :: load_scenario/list_scenarios` accepts heterogeneous objects and
-    presents descriptions without machine-checkable capability ownership.
-  - Required mechanism: add the compatible manifest validator and normalized blocks above; migrate
-    existing manifests explicitly, retaining unknowns and review requirements instead of prose
-    inference or silent defaults.
-  - Proof: focused tests show typed fields round-trip, every WEC namespace is representable,
-    referenced proof labels are checked, a legacy file stays runnable but cannot hard-match unknown
-    facts, and camp/Fight are not inferred from a filename or description.
-<!-- DE67:DFS-SLICE:END id=R-101-S001 claim=R-101 -->
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-102-S001 claim=R-102 -->
-### 9. SQLite registry, evidence, and binding ownership
+### 1. Contract preflight and proof-gate declarations
 
 Mechanism:
 
-- New file: `tools/openclaw_harness/scenario_registry.py` owns schema creation, transactions,
-  manifest indexing, evidence resolution, querying, selection tokens, drafts, and migration state.
-- Default state root: `.userdata/openclaw_harness/`; default database:
-  `.userdata/openclaw_harness/scenario_registry.sqlite3`; CLI `--registry` may select another path.
-  No database or draft is tracked source.
-- `registry_meta(schema_version, created_at, updated_at)` owns schema compatibility.
-- `scenario_manifest(scenario_id PRIMARY KEY, path UNIQUE, manifest_sha256, manifest_version,
-  name, description, declared_status, blocked_reason, lifecycle_state, lifecycle_reason,
-  canonical_successor_id, source_present, normalized_contract_sha256, raw_manifest_json, source_head,
-  indexed_at, review_state)` is the current declaration projection plus the complete retained last
-  manifest record. While `source_present=1`, the source manifest alone owns declared intent;
-  `raw_manifest_json` is retained history and never becomes an editable declaration source.
-- `scenario_lifecycle_event(event_id PRIMARY KEY, scenario_id, from_state, to_state, reason_code,
-  reason_detail, canonical_successor_id, review_identity, approved_at, source_manifest_sha256,
-  source_removed_at)` is append-only lifecycle history. Automated evidence may enter quarantine but
-  may never create a retired event.
-- `scenario_relation(relation_id PRIMARY KEY, subject_scenario_id, canonical_scenario_id,
-  relation_kind, normalized_requirements_sha256, fixture_profile_binding_sha256,
-  step_sequence_sha256, permitted_input_sha256, proof_contract_sha256, evidence_json, review_state,
-  recorded_at)` stores reviewable `exact_duplicate` and `likely_subsumption` findings. It never changes
-  lifecycle or supplies proof credit.
-- `scenario_capability(scenario_id, capability_key, declared_value_json, declaration_source,
-  PRIMARY KEY(scenario_id, capability_key))` stores only normalized manifest declarations.
-- `scenario_binding(binding_id PRIMARY KEY, scenario_id, manifest_sha256, fixture_binding_sha256,
-  profile_binding_sha256, source_head, runtime_source_sha256, executable_path,
-  executable_sha256, os_name, helpers_json, peekaboo_json, created_at)` binds evidence to all inputs
-  that can invalidate it. Fixture binding hashes every resolved alias manifest and payload file;
-  profile binding hashes every resolved snapshot/config input.
-- `verification_run(run_id PRIMARY KEY, scenario_id, binding_id, mode, started_at, completed_at,
-  report_path, report_sha256, startup_verdict, feature_verdict, feature_proof, proof_depth,
-  disposition, invalidation_reason)` points to the existing full harness report rather than copying
-  its unfilterable body into SQLite.
-- `capability_evidence(evidence_id PRIMARY KEY, scenario_id, capability_key, binding_id, state,
-  observed_value_json, source_kind, source_path, source_sha256, proof_depth, recorded_at,
-  invalidation_reason, superseded_by)` retains declared, inspected, run-verified, contradicted, and
-  stale rows. A later success resolves a contradiction only by explicitly setting `superseded_by`
-  after the same proof route observes the capability under a compatible binding; timestamps alone
-  never launder red evidence.
-- `query_receipt(query_id PRIMARY KEY, query_sha256, request_json, registry_revision, created_at)`
-  and `selection_token(token PRIMARY KEY, query_id, scenario_id, manifest_sha256, binding_id,
-  expires_on_change, created_at, consumed_at)` bind selection to the exact indexed facts. There is no
-  time-based expiry invented by the harness; any manifest, binding, or evidence-revision change
-  invalidates the token.
-- `retirement_action(action_id PRIMARY KEY, scenario_id, manifest_sha256, reason_code,
-  canonical_successor_id, review_identity, approved_at, source_removed_at, completed_at, error)` is
-  the crash-resumable, explicit approval boundary for source removal. It is absent for automated
-  candidate detection and quarantine.
-- `migration_run(migration_id PRIMARY KEY, started_at, completed_at, source_head, initial_count,
-  final_count, disposition)` and `migration_item(migration_id, scenario_path, scenario_sha256,
-  scenario_id, attempted_at, launch_attempted_at, completed_at, disposition, reason, run_id,
-  PRIMARY KEY(migration_id, scenario_path))` make omissions queryable.
-- Manifest-derived tables rebuild in one transaction. Verification, evidence, query, and migration
-  history survive rebuild. Missing source marks `source_present=0`; complete manifest, lifecycle,
-  relation, retirement, verification, and migration history remain inspectable.
-
-Evidence resolution:
-
-1. Recompute manifest, fixture/profile, source/executable, helper, and permission binding facts.
-2. Mark incompatible prior evidence `stale` with the exact changed component; retain the old row.
-   If no compatible current verification remains, atomically quarantine the scenario and invalidate
-   every outstanding selection token.
-3. An unresolved compatible `contradicted` row rejects a hard requirement.
-4. A compatible `run-verified` row may satisfy a gameplay/transition evidence floor; compatible
-   `inspected` may satisfy a static-footing floor.
-5. `declared` alone is explanation and review input, not proof for a hard match.
-6. Missing/unknown and stale facts reject hard predicates and remain visible in explanations.
+- Files and symbols: `scenario_registry.py`, `startup_harness.py`, scenario manifests, fixture
+  manifests, and their existing unit/corpus tests.
+- Entry point: every registry-backed diagnostic or certification launch, after fixture installation
+  and before `launch_game`.
+- Manifest compatibility: retain version-1 loading for unaffected scenarios. A scenario that opts
+  into checkpoint-chain certification uses a versioned contract that declares `run_class`,
+  `observer_character`, ordered `proof_gates`, and a final `proof_route` over gate IDs. It does not
+  silently reinterpret version-1 primitive labels as checkpoint gates.
+- Proof-gate declaration: each gate has a stable ID, a human label, one ordered boundary after a
+  known scenario step, causal expectations backed by structured events or saved-state artifacts,
+  predecessor requirements, and an observable checkpoint-safe UI state. Capability gates refer to
+  proof-gate IDs, not to transport-step labels.
+- Static preflight rejects duplicate or unknown IDs, missing or out-of-order predecessors, route
+  gaps, cycles, a gate whose only evidence is input/wait delivery, a checkpoint boundary without an
+  observable safe UI state, and final proof without terminal observability.
+- Installed-save preflight reads the transformed player save through the existing save audit. Every
+  current scenario requires `DEBUG_LS` and `DEBUG_NOTEMP`. A non-combat scenario additionally
+  requires `DEBUG_STAMINA` and `DEBUG_CARDIO`. An observer character additionally requires standard
+  `DEBUG_CLAIRVOYANCE` and `DEBUG_NIGHTVISION`. The preflight reports requested, observed, missing,
+  and forbidden traits and launches no process when the policy is false.
+- A manifest declares `run_class` as `combat` or `non_combat`; it does not infer the class from the
+  filename. `observer_character` is an explicit boolean. These fields are authoritative for trait
+  policy and suppression eligibility.
+- The two named vertical-slice scenarios declare causally meaningful gates and receive the exact
+  required fixture traits. Fixture work may establish only stabilizer and observer footing; it may
+  not inject a product transition for proof credit.
+- Contract-preflight failure produces a compact, machine-readable report and no run directory that
+  claims execution.
 
 Implementation status:
 
-- [x] R-102 — No registry schema, rebuildable manifest index, binding-aware evidence history, or
-  explicit contradiction/staleness owner exists.
-  - Code gap: reports live only under per-profile run directories; `list_scenarios` reparses files
-    without history, typed evidence, or invalidation.
-  - Required mechanism: implement the tables, transactions, binding rules, and evidence precedence
-    above using standard-library SQLite; integrate report ingestion without changing report truth.
-  - Proof: rebuild tests preserve history, binding changes retain but stale old evidence, unresolved
-    contradiction rejects, explicit same-route supersession can restore eligibility, duplicate
-    ingestion is idempotent, and a database can be deleted/rebuilt from manifests plus retained run
-    artifacts without becoming a competing declaration source.
-<!-- DE67:DFS-SLICE:END id=R-102-S001 claim=R-102 -->
+- [x] Version-1 schema validation, fixture transforms, and read-only saved-player trait audit exist.
+- [ ] 🔴 R-001 — Versioned proof-gate contracts and mandatory pre-launch validation are absent.
+  - Code gap: version 1 binds proof to primitive labels; trait audits run only when a scenario step
+    asks for them; the current bandit fixture lacks required stabilizers.
+  - Required mechanism: add the compatible versioned declarations and validator above, run static
+    and installed-save preflight before `launch_game`, and migrate the named bandit and cannibal
+    vertical slices without granting fixture-produced product credit.
+  - Proof: invalid contracts and missing traits fail before child-process launch; valid installed
+    saves report the exact policy; both named manifests pass corpus validation.
 
-<!-- DE67:DFS-SLICE:BEGIN id=R-103-S001 claim=R-103 -->
-### 10. Hard filtering, preference ranking, explanations, and drafts
+### 2. Structured transition evidence and causal gate evaluation
 
 Mechanism:
 
-- New CLI commands in `startup_harness.py :: build_parser/main`:
-  `registry-build`, `registry-query`, `registry-launch`, `registry-migrate-all`, and
-  `registry-status`, plus the explicit-review-only `registry-retire`. Each accepts `--registry`;
-  query accepts `--query-file` or `--query-json`. Retirement requires scenario ID, reason, active
-  canonical successor, and reviewer approval identity; migration, status, and relation detection
-  never invoke it.
-- Query shape:
-
-```json
-{
-  "requirements": [
-    {"key":"local_place.camp.real","op":"eq","value":true,"minimum_evidence":"inspected"},
-    {"key":"player.condition.critical_injury","op":"eq","value":false,"minimum_evidence":"inspected"},
-    {"key":"actors.friendly_npc.nearby_not_visible","op":"eq","value":true,"minimum_evidence":"inspected"},
-    {"key":"actors.hostile_npc.shakedown_nearby","op":"eq","value":true,"minimum_evidence":"inspected"},
-    {"key":"runtime.input.ordinary_allowed","op":"eq","value":true,"minimum_evidence":"inspected"},
-    {"key":"capabilities.dialogue.choice.fight.visible","op":"eq","value":true,"minimum_evidence":"run-verified"}
-  ],
-  "preferences": []
-}
-```
-
-- Allowed operators are schema-validated typed equality, containment, presence/absence, and numeric
-  range comparisons. Query text is never interpolated into SQL.
-- Every hard predicate is evaluated before ranking. Unknown, wrong, stale, below-floor, or
-  contradicted facts reject the candidate with capability key, expected/observed value, evidence
-  state, source, binding, freshness, and reason.
-- Preferences use the caller's given order as a lexicographic satisfaction vector over hard-valid
-  survivors; no unstated weight, score cutoff, or fuzzy filename similarity exists. Stable ties use
-  `scenario_id` only after all supplied preferences tie.
-- Default query eligibility begins with `lifecycle_state=active`. Repeated `registry-query
-  --include-state quarantined|retired` values may inspect those states but cannot issue a launchable
-  selection token for either state.
-- A valid result includes manifest path/hash, fixture/profile/world, current binding, helpers and
-  Peekaboo prerequisites, each satisfied hard predicate and evidence source, preference result,
-  proof route, and a change-invalidated selection token.
-- If no candidate survives, write
-  `.userdata/openclaw_harness/drafts/<query-sha256>.json` with `review_status: "pending"`,
-  `executable: false`, the exact query, all unmet capabilities, and a candidate manifest block using
-  only known fixture/profile/helper facts. Return its path. Do not call `run_startup`,
-  `run_probe_mode`, `launch_game`, or any Peekaboo input function during query/draft generation.
+- Files and symbols: `bandit_live_world_probe.h/.cpp`, the central transition owners in
+  `bandit_live_world.cpp`, `do_turn.cpp` only where it owns a handoff, and the harness event reader.
+- Entry point: a harness child process receives a run-owned structured-event path in its existing
+  child environment. The product opens that path only when the harness explicitly enables it.
+- The existing transition-event seam becomes a live append-only JSON Lines stream. The live stream
+  is not subject to the in-memory test session's bounded collection. Each committed event includes
+  a schema version, monotonic sequence, product game time, transition owner/domain, faction/site,
+  operation ID, generation/epoch when applicable, previous state, new state, reason, stable actor
+  identities when applicable, and a run correlation ID. Fields not applicable to a transition are
+  explicitly absent; they are not guessed from log text.
+- Every central state writer needed by a declared proof gate emits after the durable transition has
+  committed. Rejected or no-op transitions emit a typed rejection/diagnostic event and cannot
+  satisfy a committed-transition expectation.
+- The harness incrementally validates sequence and run correlation and records the byte/event
+  watermark used by each gate. A malformed or truncated record is a causal diagnostic and cannot
+  be proof.
+- A proof gate evaluates declared predicates over events and referenced saved-state artifacts since
+  its predecessor watermark. It reports expected facts, observed facts, and exact event/artifact
+  references. Log substrings may be attached as context only.
+- Raw structured evidence is stored once. Reports reference event ranges and summarize repeated
+  semantic diagnostics by identity, state/reason, count, first occurrence, and last occurrence.
 
 Implementation status:
 
-- [x] R-103 — The harness cannot hard-filter typed requirements, rank only valid survivors,
-  explain evidence/freshness, or produce a non-executed no-match draft.
-  - Code gap: selection is exact scenario-name lookup; list output is descriptive only.
-  - Required mechanism: implement the query contract, deterministic explanation, token, and draft
-    owner above.
-  - Proof: the WEC vertical-slice query rejects a thirsty forest observer, rejects a camp-named
-    scenario without capability evidence, rejects a current Fight contradiction, and cannot be
-    rescued by preferences; it returns only a fully explained hard-valid scenario or a pending
-    `executable=false` draft, with spies proving no startup/launch/input call occurred.
-<!-- DE67:DFS-SLICE:END id=R-103-S001 claim=R-103 -->
+- [x] A focused, committed-only in-process transition-event recorder exists and has unit coverage.
+- [ ] 🔴 R-002 — Live runs do not expose a durable structured transition stream, and current proof
+  still depends on log-substring archaeology.
+  - Code gap: the existing recorder is session-local and the central transition coverage is not
+    complete for the named proof routes.
+  - Required mechanism: extend the existing seam to the explicit run-owned stream, instrument the
+    central writers needed by both named scenarios, and evaluate gates from typed events and saved
+    artifacts.
+  - Proof: committed transitions satisfy matching gates; rejection/no-op events and identical text
+    logs do not; bandit handoff/return/decision and cannibal dispatch/contact retain stable actor and
+    operation identity across their event ranges.
 
-<!-- DE67:DFS-SLICE:BEGIN id=R-104-S001 claim=R-104 -->
-### 11. One canonical selected launch and run-history ingestion
+### 3. Gate execution, checkpoint capture, and first divergence
 
 Mechanism:
 
-- `registry-launch <selection-token>` reloads the receipt, manifest, registry revision, and complete
-  binding. Any change rejects the launch and records why; it does not silently re-query.
-- A valid token resolves the exact existing manifest and constructs the same argument namespace
-  consumed by `run_probe_mode`. The launch path calls `run_probe_mode`/`run_startup`; it does not
-  duplicate fixture install, runtime binding, Peekaboo permission/focus/input, step execution,
-  artifact capture, proof classification, report writing, or cleanup.
-- `finalize_probe_report` remains the report/cleanup boundary. After the full report is durable and
-  cleanup status is known, a registry ingestion hook records one idempotent `verification_run` and
-  capability evidence derived only from structured proof-route mappings and report fields.
-- Startup/load fields may create `proof_depth=startup` evidence only. Interaction, terminal,
-  persistence, and replay evidence require their named green step-ledger/report gates. Debug setup
-  is tagged as setup and cannot strengthen a production-behavior capability.
-- Handoff records `launched`/startup evidence and deferred cleanup, not feature proof. Later
-  observation may ingest a terminal report but cannot backfill gameplay credit from the initial HUD.
-- Failed, blocked, contradicted, stale, and successful runs all remain visible. Manifest declarations
-  are not rewritten.
+- Files and symbols: `startup_harness.py :: execute_probe_steps`, save/writeback audits,
+  `snapshot_world_state`, report finalizers, and new gate/segment/checkpoint helpers in the same
+  canonical harness.
+- Entry point: after contract preflight, the chain executor partitions the existing ordered scenario
+  steps at declared proof-gate boundaries. `execute_probe_steps` remains the primitive segment
+  executor; it is not a second proof owner.
+- Press/type/wait/relaunch details are recorded as supporting action diagnostics. Only named gate
+  predicates appear in the proof ledger. A supporting action failure becomes the observed cause of
+  the next unmet gate; a supporting action success without immediate artifact is not yellow.
+- When a gate predicate passes and its declared safe UI state is observed, the harness invokes the
+  existing guarded save-and-quit input path, waits for normal child exit, and proves save writeback.
+  Those internal inputs remain supporting actions.
+- The harness copies the complete disposable world and gate evidence into a temporary directory in
+  the current run, writes a checkpoint manifest, validates every referenced hash, and atomically
+  publishes the checkpoint directory. A partial temporary directory is never a checkpoint.
+- The checkpoint manifest binds chain ID, checkpoint ID, predecessor checkpoint hash, gate ID and
+  order, selection token, scenario and manifest hash, fixture and installed-world hash, profile
+  contract, executable/runtime/source/data/harness binding, run options, world snapshot hash,
+  evidence/event range hashes, product game time, and creation outcome.
+- After publication the executor may relaunch that just-saved disposable world for the next segment.
+  A final gate publishes its checkpoint before certification finalization.
+- On interruption, timeout imposed by an explicit scenario/platform contract, child failure, or
+  unmet gate, no checkpoint is created for the incomplete gate. Prior immutable checkpoints remain.
+- The report computes first divergence by proof-route order, not report arrival order. It leads with
+  gate ID and label, expected state, observed state, causal event/artifact references, completed
+  gates, and latest valid checkpoint. If no gate started, it names the contract-preflight failure.
 
 Implementation status:
 
-- [x] `run_probe_mode` already provides the required canonical startup, Peekaboo, input,
-  observation, report, proof-firewall, and cleanup route for a named scenario.
-- [x] R-104 — Registry selection cannot yet enter that route safely, and runs do not strengthen,
-  contradict, or stale indexed evidence without mutating declarations.
-  - Code gap: no token validation or report-ingestion seam surrounds the existing runner.
-  - Required mechanism: add only the token adapter and post-finalization registry ingestion above;
-    keep the existing runner authoritative.
-  - Proof: one selected Mac run shows preflight -> fixture/profile -> runtime binding -> Peekaboo
-    permissions -> PID focus -> ordinary input -> observation -> separate startup/feature verdicts
-    -> report -> cleanup -> registry history. Controls reject a changed manifest/binary token,
-    preserve startup as non-feature evidence, and record a production contradiction without editing
-    the manifest.
-<!-- DE67:DFS-SLICE:END id=R-104-S001 claim=R-104 -->
+- [x] The harness can deliver the game's save/quit sequence, audit writeback, relaunch once, and copy
+  a final world snapshot.
+- [ ] 🔴 R-003 — The runner has no general gate-segment executor, atomic gate checkpoint, or causal
+  first-divergence report, and it incorrectly colors transport actions as proof.
+  - Code gap: one monolithic primitive loop and one post-relaunch contract own current execution.
+  - Required mechanism: add the partitioned executor, gate-only proof ledger, safe save/relaunch
+    boundary, atomic checkpoint manifest, and report fields above.
+  - Proof: an interrupted bandit run retains the checkpoint after its last successful gate; a later
+    transport failure identifies the next gate as first divergence without yellowing earlier input;
+    a deliberately interrupted checkpoint publication leaves no valid partial checkpoint.
 
-<!-- DE67:DFS-SLICE:BEGIN id=R-105-S001 claim=R-105 -->
-### 12. Complete all-scenario inventory and migration
+### 4. Checkpoint-chain authority, resume, certification, and reruns
 
 Mechanism:
 
-- `registry-migrate-all` is the initial exhaustive migration owner. It snapshots every
-  `tools/openclaw_harness/scenarios/*.json` path and hash, creates one `migration_item` row with
-  disposition `attempted` before parsing each file, and then processes every row. Enumeration order
-  is deterministic but has no semantic priority.
-- Invalid JSON/object/schema becomes terminal `failed` and lifecycle `quarantined`, with the exact
-  parser/validator reason. A declared blocker or unavailable required fixture/helper/permission is
-  terminal `blocked` and quarantined without launch. A valid non-executable review-only manifest is
-  terminal `imported` and quarantined with review-required unknown capability rows.
-- Every executable scenario, including a duplicate/subsumption candidate, is attempted once for its
-  path/hash during the initial exhaustive migration through the canonical probe route in a disposable
-  migration profile derived from migration/scenario identity. No scenario is skipped because a
-  sibling ran, and no result is copied between scenario IDs.
-- The migration may install the scenario's declared fixture/profile snapshot into that disposable
-  profile; it may not mutate a user's ordinary profile or bypass the manifest's input/debug
-  restrictions. A no-fixture scenario that cannot obtain legitimate disposable footing is terminal
-  `blocked` or `failed` and quarantined, never skipped.
-- A green named feature route becomes terminal `verified` and lifecycle `active`. An observed
-  incompatible capability becomes terminal `contradicted` and quarantined. Other completed non-green
-  runs become terminal `failed` and quarantined with report/run identity.
-- An interrupted process leaves transitional `attempted`, so `registry-migrate-all --resume
-  <migration-id>` can continue idempotently. A row with `launch_attempted_at` is resumed/reconciled
-  from its durable report/process state rather than launched a second time. Already terminal items
-  with the same path/hash are not silently rerun; changed hashes create a new attempt. This is crash
-  recovery, not a retry limit.
-- Before success, enumerate again and continue processing any newly present path. Deleted paths
-  retain terminal `failed: source_removed_during_migration`. Commit `migration_run` success only when
-  the final filesystem path set exactly equals the terminal item set, every executable final-set item
-  has one launch attempt for its path/hash, and no item remains `attempted`.
-- The summary reports total filesystem paths, terminal database rows, executable attempts,
-  disposition/lifecycle counts, every non-verified reason, and both equality/once-only checks. No
-  numeric scenario count is hard-coded.
-
-Lifecycle and relation analysis:
-
-- `scenario_registry.py :: normalize_relation_contract` canonicalizes only structured hard
-  requirements/capabilities, resolved fixture/profile identity, ordered step kind/arguments/labels,
-  permitted/forbidden input, and proof route/contract. It excludes names, descriptions, comments,
-  recommendation prose, and artifact narration.
-- `detect_scenario_relations` records `exact_duplicate` only when all normalized components are equal.
-  It records `likely_subsumption` only when footing and permitted input are compatible, the proposed
-  successor accepts every subject-valid normalized requirement without adding a narrower hard
-  precondition, contains the subject's ordered production-step sequence, and covers every subject
-  outcome/control at equal or greater proof depth. Both are review candidates only and preserve
-  separate verification identity.
-- `quarantine_scenario` is the sole automated lifecycle writer. Parse/schema/footing failure,
-  blocked/broken execution, contradiction, or stale binding can call it idempotently with evidence.
-  It invalidates selection tokens but never removes a manifest or writes `retired`.
-- `retirement_candidates` may explain only these owner-approved reasons: cannot launch/reach declared
-  footing and has no unique diagnostic value; exact duplicate; fully subsumed; temporary/historical
-  one-off; required fixture/helper no longer exists; or startup-only proof where a stronger scenario
-  proves the same footing plus the feature route. Candidate generation changes no lifecycle state.
-- `approve_retirement` requires explicit reviewer identity/approval, one reason above, and an active
-  canonical successor. In one guarded preparation transaction it verifies the exact source manifest
-  hash and proves that removing the subject leaves active coverage for every required capability,
-  proof route, negative control, and failure control the subject covers. Exact duplicate or likely
-  subsumption alone is insufficient when that coverage check fails.
-- The approved `retirement_action` then removes only the exact bound source manifest. A completion
-  transaction sets lifecycle `retired`, `source_present=0`, records reason/successor/removal time, and
-  retains the complete manifest, normalized projection, relationships, verification runs, evidence,
-  and migration history. If removal fails or the process is interrupted, the scenario remains
-  quarantined and the approved action is inspectable/resumable; it is never reported retired early.
-- A broken unique scenario with no active replacement remains quarantined. `approve_retirement`
-  rejects the last scenario covering any required capability, proof route, negative control, or
-  failure control.
-- `registry-status` searches active scenarios by default and can explicitly include quarantined and
-  retired rows, their reasons, successors, relation evidence, and complete history.
+- Files and symbols: `scenario_registry_store.py`, a new append-only registry migration,
+  `scenario_registry_cli.py :: registry-launch` and status/report commands, startup harness restore,
+  and `.agents/skills/caol-harness/SKILL.md`.
+- The registry is the authoritative index for chains, segments, checkpoints, binding-validation
+  results, and terminal certification/diagnostic outcomes. Checkpoint files remain immutable,
+  hash-referenced artifacts. Registry rows are append-only history; a later validation event changes
+  effective status without rewriting the earlier receipt.
+- Runtime relevance includes `tools/openclaw_harness` in addition to the current executable,
+  product source, data, and build inputs. The chain binding also includes the exact scenario,
+  fixture, installed profile contract, run options, and selection declaration.
+- Before every new segment or resume, the registry recomputes the complete chain binding. Any
+  relevant difference marks the entire existing chain invalid for certification and reports the
+  first differing component. No descendant of an invalid checkpoint may certify.
+- Resume is explicit: the agent passes a checkpoint ID to the registry-backed launch command. The
+  registry validates token authority, chain binding, checkpoint hash, predecessor lineage, gate
+  order, and artifact availability, then restores a copy into a new disposable run profile. It
+  never mutates the source fixture or the checkpoint snapshot.
+- The report recommends the latest binding-valid checkpoint on the selected chain and explains the
+  recommendation. The agent may resume that checkpoint, select another valid checkpoint, or start
+  a new run.
+- A certification chain is green only when checkpoint lineage is contiguous from the declared
+  initial state through every gate in the final proof route, each gate is green from its own bound
+  evidence range, and the final saved-state artifact is green. Diagnostic segments never receive a
+  certification verdict merely because they found the cause.
+- `registry-launch` distinguishes an intended diagnostic run from a certification attempt in its
+  arguments and report. The default documented path remains the certification path.
+- Replace the current one-token/one-report invalidation behavior with multiple immutable attempt
+  records under the same causally unchanged token/binding. A different report does not invalidate a
+  token merely because it is a rerun. Changed bindings invalidate prior certification authority but
+  never forbid querying or launching a fresh trusted attempt.
+- The harness skill documents query, inspection, diagnostic launch, certification launch, explicit
+  resume, report interpretation, invalidation, and the fact that recommendations do not make the
+  agent's choice.
 
 Implementation status:
 
-- [x] R-105 — There is no working exhaustive migration/lifecycle owner that tries every executable
-  scenario once, gives every discovered scenario a terminal disposition, quarantines nonselectable
-  scenarios, detects evidence-grounded duplicate/subsumption candidates, and preserves reviewed
-  retirement history.
-  - Code gap: `list_scenarios` reparses current files in memory; `scenario_blocker_info` has only a
-    derived active/blocked view; no attempt ledger, lifecycle/history store, relation normalization,
-    explicit retirement boundary, coverage guard, or completeness/once-only invariant exists.
-  - Required mechanism: implement the transactional inventory/try/resume, lifecycle, normalized
-    relationship, review/approval, guarded manifest removal, and retained-history mechanisms above
-    around the canonical runner and disposable profiles.
-  - Proof: on the inspected tree the command accounts for all 168 current files, including all 19
-    current declared blockers and the untracked continuation scenario, while deriving acceptance
-    from final set equality and per-path/hash attempt identity rather than those snapshot counts.
-    Every executable scenario has one initial canonical attempt; no sibling result supplies credit.
-    Injected invalid JSON, missing fixture/helper, contradiction, stale binding, process
-    interruption/resume, and a file appearing during migration each receive explicit rows and the
-    required lifecycle. Contract-identical/different-prose and similar-prose/different-contract
-    controls respectively do and do not produce exact-duplicate findings; a stronger same-footing
-    route can produce a reviewable subsumption candidate without changing lifecycle. A unique broken
-    scenario remains quarantined; default query excludes quarantined/retired rows; explicit status
-    can inspect them. Retirement without approval/successor or retirement of last required coverage
-    fails without source deletion. One approved eligible retirement removes only the bound manifest
-    and retains its complete manifest/history/reason/successor row. Omission, representative credit,
-    duplicate launch/terminal processing, automatic retirement, and history loss fail the command.
-<!-- DE67:DFS-SLICE:END id=R-105-S001 claim=R-105 -->
+- [x] Registry tokens and reports are durably bound and revalidated before launch.
+- [ ] 🔴 R-004 — Durable chain lineage, explicit resume, whole-chain invalidation, collective
+  certification, and causally unchanged reruns are absent.
+  - Code gap: there are no chain/checkpoint tables or restore command, harness code is not in the
+    runtime relevance set, and `multiple_report_runs` rejects a second report for one token.
+  - Required mechanism: add append-only chain persistence and validation, explicit restore through
+    the canonical registry launch path, chain certification, repeated-attempt history, and the
+    authoritative skill/CLI/report surfaces above.
+  - Proof: two resumed segments certify only with matching contiguous lineage; changing product
+    source, harness source, data, scenario, fixture, executable, profile, or options invalidates the
+    entire old chain; the same token can record causally unchanged diagnostic/certification reruns;
+    invalidation still permits a fresh query and launch.
 
-<!-- DE67:DFS-SLICE:BEGIN id=R-106-S001 claim=R-106 -->
-### 13. Harness-facing skill and durable guidance
+### 5. Slow-run progress and bounded diagnostic presentation
 
 Mechanism:
 
-- New repository skill: `.agents/skills/caol-harness/SKILL.md`. Repository-root `.agents/skills` is
-  Codex's project-scoped discovery location; the skill contains `name` and `description` metadata
-  and may include a small reference with the query vocabulary.
-- The skill asks the coordinator for or constructs a typed query, runs `registry-build`/status when
-  required, invokes `registry-query`, presents hard rejections/evidence/freshness and the selected
-  proof route, and stops on a draft. It invokes `registry-launch` only for an explicit selected-run
-  request and then reports separate startup/feature verdicts and cleanup from the same full report.
-- The skill never contains its own matcher, fixture selector, key choreography, proof classifier,
-  or direct Peekaboo command. All behavior comes from the CLI owners above.
-- Update `doc/OPENCLAW_HARNESS.md`, `tools/openclaw_harness/CONTROL_LOOKUP.md`, and the harness lines
-  in `AGENTS.md`/`Agents.md` to teach the same query -> explain -> explicit launch -> history flow.
-  Preserve the evidence firewall and label the older speculative C++ architecture as history where
-  needed; do not describe missing files as current implementation.
+- Files and symbols: `execute_probe_steps`, the existing wait loops, child-process monitoring,
+  structured event reader, report finalizers, and compact stdout formatter.
+- At existing step boundaries and existing wait-poll observations, the harness records a progress
+  sample containing wall-clock elapsed time, product game turn/time when observable, child process
+  CPU and resident-memory observations available on the host, current segment/gate, latest
+  structured transition sequence, and artifact byte growth. This contract creates no new sampling
+  cadence or intuitive threshold.
+- Long waits publish progress through the existing harness output/report path while they run. A
+  platform that cannot provide one resource field records it as unavailable and retains the other
+  fields; it does not fabricate zero.
+- Repeated diagnostics are keyed by typed semantic identity. The report stores count, first/last
+  occurrence, and representative event references, while the raw artifact is stored once and
+  referenced by path/hash. Report JSON does not duplicate thousands of identical log lines.
+- Compact output leads with run intent, chain/binding status, current or first-divergent gate,
+  completed gates, latest valid/recommended checkpoint, last product progress, and decisive artifact
+  references. It does not hide causal evidence behind a fixed truncation of primitive-step rows.
 
 Implementation status:
 
-- [x] R-106 — No repository harness skill teaches or invokes the registry-backed canonical
-  workflow, and current guidance starts from manual exact scenario-name selection.
-  - Code gap: `.agents/skills` has no C-AOL harness skill; docs name `list-scenarios` and direct
-    `probe`/`handoff` commands only.
-  - Required mechanism: add the repo skill and align the named durable docs after the CLI exists.
-  - Proof: a fresh Codex invocation discovers the skill, the vertical-slice prompt produces the same
-    query receipt/explanation as direct CLI use, no-match stops at the same non-executed draft, and
-    an explicit selected launch reaches the identical run/report/cleanup IDs rather than a second
-    workflow.
-<!-- DE67:DFS-SLICE:END id=R-106-S001 claim=R-106 -->
+- [x] Existing steps and waits already supply observation boundaries, and the child process and
+  artifact paths are known to the harness.
+- [ ] 🔴 R-005 — Slow runs lack useful live progress/resource evidence, and reports duplicate or
+  foreground repeated diagnostics and primitive-step colors.
+  - Code gap: the current compact formatter truncates arrays while the full report embeds extensive
+    repeated evidence; no progress record joins wall time, game time, resources, and latest event.
+  - Required mechanism: collect at existing boundaries, aggregate typed repetition, store raw
+    evidence once, and make the causal chain summary the report's primary surface.
+  - Proof: a controlled wait exposes advancing or stalled product time plus resource observations;
+    unavailable metrics are explicit; the motivating repeated diagnostic is represented by one
+    aggregate and artifact reference; first divergence remains visible in compact output.
 
-## Harness competing systems and override direction
+### 6. Non-combat incidental-hostile suppression
+
+Mechanism:
+
+- Files and symbols: versioned scenario contract and preflight, a narrow harness-only live-game
+  command near the existing harness UI trace integration, `game::remove_zombie`, hostile-ecology
+  actor identity lookup, structured event/receipt writer, and focused game/harness tests.
+- A non-combat scenario may explicitly declare incidental-hostile suppression. A combat scenario,
+  an undeclared scenario, or a version-1 scenario cannot invoke it.
+- The declaration supplies the exact spatial eligibility region and eligible loaded monster
+  selectors. There is no implicit radius or filename-based policy. Current scope does not remove
+  NPCs; a hostile NPC is ineligible and remains ordinary product state.
+- Before mutation, the command takes one loaded-world snapshot of all candidates and verifies every
+  candidate's monster type, absolute position, tracker identity, hostile attitude, selector match,
+  and non-membership in the bandit/cannibal operation under test. Duplicate identity, missing
+  identity, changed position/state, unknown ecology ownership, or any mixed eligible/ambiguous batch
+  fails closed before removing any actor.
+- After full-batch validation, the command removes only the selected monsters through
+  `game::remove_zombie`/creature-tracker removal, never `die`, damage, debug kill-area, or an ecology
+  casualty intervention. It then verifies absence. Ordinary drops, kill events, morale, anger,
+  death callbacks, bounty, camp evidence, and operation casualties do not occur.
+- One actor receipt per considered entity records run/chain, command ID, type, stable observed
+  identity, absolute position, attitude, eligibility decision/reason, ecology-exclusion result, and
+  mutation/verification outcome. A batch receipt records atomic success or fail-closed rejection.
+  Receipts are bound into the next checkpoint evidence but never satisfy a product transition gate.
+
+Implementation status:
+
+- [x] A direct no-death-effect loaded-monster removal primitive exists.
+- [ ] 🔴 R-006 — Scenario-scoped eligibility, fail-closed ecology exclusion, atomic suppression, and
+  actor receipts do not exist.
+  - Code gap: existing debug kill paths use normal death semantics or ecology intervention semantics
+    and cannot meet the non-combat boundary.
+  - Required mechanism: add the explicit versioned declaration and the narrow validated removal
+    command above; do not reuse ordinary combat/death or claim proof from suppression.
+  - Proof: an eligible incidental hostile is removed with complete receipts and no death side
+    effects; an ecology actor, hostile NPC, ambiguous identity, combat scenario, or changed candidate
+    causes atomic rejection and leaves all actors untouched.
+
+## Competing systems and override direction
 
 | State or action | Readers | Writers / competing owners | Authoritative decision |
 |---|---|---|---|
-| Declared scenario intent/capabilities | Registry importer, query explanation, reviewer, skill | Scenario JSON versus SQLite projection or run observations | Scenario manifest alone writes declaration truth. Registry rebuilds from it; evidence never edits it. |
-| Fixture/profile/world footing | Existing install/resolve/startup functions, query explanation | Scenario fields, fixture/profile alias manifests, CLI overrides | Manifest declares intended footing; existing resolvers own actual install. A selection token binds both. Unsafe or incompatible overrides reject. |
-| Registry manifest projection | Query/migration/status/lifecycle review | Rebuild/import transaction | `scenario_registry.py` transaction is sole writer; exact path/hash identity makes duplicate import idempotent, while missing/retired sources retain complete historical rows. |
-| Verification/evidence history | Query, status, migration resume, reviewer | Final report ingestion, explicit stale resolver | Durable report remains source artifact; registry appends normalized pointers/states. Duplicate report hash/run ID is a no-op. |
-| Contradiction resolution | Hard matcher, reviewer | Later compatible run could compete by timestamp | Unresolved contradiction wins. Only explicit same-route supersession under compatible binding yields. |
-| Evidence freshness | Hard matcher and explanations | Manifest/fixture/profile/source/executable/helper/permission changes | Recomputed complete binding owns invalidation. Changed component retains old row as stale, quarantines when no compatible verification remains, and invalidates tokens. |
-| Query eligibility | CLI, skill, coordinator | Lifecycle, hard predicates, preference scorer | Active lifecycle is the default first gate; hard matcher then runs and is absolute. Preferences see survivors only and cannot restore quarantined, retired, or predicate-rejected rows. |
-| Selection | Registry launch adapter | Exact-name direct launch remains available for developers | Registry workflow requires bound token. Direct `probe` remains compatible but is not represented as query-selected unless its report is ingested with a matching manifest binding. |
-| Draft | Reviewer | No-match generator versus launcher | Draft generator writes `executable=false`; launch parser rejects draft path/token. Only human review and promotion into a real manifest can transfer ownership. |
-| Startup/fixture/Peekaboo/input/steps | Query layer versus `run_probe_mode`/`run_startup` | Risk of a second launcher | Existing startup/probe functions alone act. Registry passes identity and ingests results; it never sends input itself. |
-| Startup versus feature verdict | Registry, skill, migration | HUD/artifact success could compete with step proof | Existing `probe_proof_classification` and step ledgers remain authoritative; startup never upgrades feature depth. |
-| Game process cleanup | Report finalizer, handoff reviewer, migration | Probe cleanup versus deferred handoff | Existing `finalize_probe_report`/`cleanup_game_process` owns probe cleanup. Migration never uses deferred handoff; handoff remains explicitly deferred. |
-| Migration completeness and attempt identity | Status/reviewer | Filesystem enumeration versus successful-only inserts or sibling credit | Preinserted migration items, per-path/hash launch identity, and final set equality own completeness; failures/blocks/contradictions are retained and representative results never verify siblings. |
-| Duplicate/subsumption relation | Reviewer/status | Normalized contract evidence versus filename/prose similarity | `detect_scenario_relations` may write a review candidate only from the five normalized contract components; it never changes lifecycle or evidence. |
-| Quarantine/retirement | Query/status/reviewer | Automated run outcomes, candidate detector, explicit reviewer | Evidence may quarantine idempotently. Only `approve_retirement` with exact hash, reason, active successor, and surviving required coverage may remove a manifest and finalize retired history. |
-| Skill behavior | Codex/coordinator | Skill prose could duplicate matcher or key paths | Skill invokes the CLI only. CLI/database/report identities are the shared truth. |
+| Scenario intent and proof route | Registry query, preflight, chain executor, report | Scenario manifest versus primitive step list | The versioned manifest owns intent and ordered proof-gate IDs. Primitive steps support the route and cannot add proof requirements. |
+| Product transition truth | Gate evaluator, report, registry ingestion | Central hostile-ecology writers versus text logs/screens | A committed structured transition or bound saved-state artifact owns truth. Logs and screens are supporting context unless a gate explicitly requires a saved visual artifact. |
+| Step execution | Segment executor | Existing `execute_probe_steps` versus new chain executor | Primitive executor owns delivery within one segment; chain executor alone owns gate evaluation, save boundaries, and segment order. |
+| Save state at a gate | Checkpoint publisher and later restore | Live disposable world, source fixture, checkpoint snapshot | Normal game save/writeback produces state; atomic publisher captures it. Source fixtures and prior checkpoints are immutable. |
+| Chain history and status | CLI, report, selection verification | Filesystem artifacts versus SQLite registry | Registry append-only receipts own lineage/status; artifact hashes prove referenced bytes. Neither may silently repair the other. |
+| Resume selection | Agent and registry launch | Harness recommendation versus automatic recovery | Harness recommends and explains; agent explicitly chooses; registry only validates. |
+| Certification | Registry verification | Individual green segments, diagnostic reports, sibling runs | Only one contiguous binding-valid checkpoint chain over the declared route certifies. Sibling or diagnostic success cannot fill a gap. |
+| Rerun authority | Agent | Existing `multiple_report_runs` policy versus history retention | Causally unchanged reruns are permitted and recorded as attempts. Binding change invalidates old certification but does not prohibit new execution. |
+| Observer/stabilizer state | Installed-save preflight | Fixture declarations versus actual compressed save | Actual installed save is authoritative; declarations specify expected policy but cannot prove it. |
+| Incidental-hostile removal | Suppression command | Ordinary combat/death, ecology casualty intervention, generic debug kill | Only the validated non-combat suppression batch owns this removal. It yields entirely on ambiguity and cannot mutate ecology actors. |
 
-## Harness acceptance and production proof
+Ownership transfer is atomic at two boundaries. A proof gate transfers from live execution to a
+checkpoint only after product evidence, normal save writeback, complete snapshot hashing, and atomic
+publication. A resume transfers from an immutable checkpoint to a new disposable profile only after
+registry binding and parent-lineage validation. Failure before either commit leaves the previous
+owner and checkpoint status unchanged.
+
+## Acceptance and proof
+
+For every red ID, the proof route is:
+
+```text
+declared preconditions
+  -> canonical registry/harness owner
+  -> real product or harness transition
+  -> named observable outcome
+  -> immutable artifact and registry receipt
+  -> explicit pass/fail classification
+```
 
 | Red ID | Outcome test | Required evidence | False-green controls |
 |---|---|---|---|
-<!-- DE67:DFS-SLICE:BEGIN id=R-101-S002 claim=R-101 -->
-| `R-101` | Current and legacy manifests validate into typed declarations/unknowns without changing run compatibility. | Schema tests plus all-current-manifest validation report bound to path/hash. | Filename/description inference, camp-implies-Fight, and unknown-as-false/true fail. |
-<!-- DE67:DFS-SLICE:END id=R-101-S002 claim=R-101 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-102-S002 claim=R-102 -->
-| `R-102` | Rebuildable SQLite index retains binding-aware run history, exact evidence state, complete lifecycle history, and last known manifest content. | Schema/rebuild/idempotency/staleness/contradiction/lifecycle tests and inspected DB rows. | Dropped red/retired history, timestamp-only green override, opaque copied report prose, and evidence rewriting declaration truth fail. |
-<!-- DE67:DFS-SLICE:END id=R-102-S002 claim=R-102 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-103-S002 claim=R-103 -->
-| `R-103` | WEC query searches active scenarios by default and returns only a hard-valid explained scenario or an inert draft. | Query receipt, lifecycle/candidate/rejection explanations, selection token or draft artifact. | Preference rescue, stale/contradicted/quarantined/retired match, prose similarity, and any launch/input call during query fail. |
-<!-- DE67:DFS-SLICE:END id=R-103-S002 claim=R-103 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-104-S002 claim=R-104 -->
-| `R-104` | Explicit token launch uses one canonical Mac production harness route and records its result. | Bound selection receipt; existing plan/runtime binding; Peekaboo permission/focus; step ledger; full report; cleanup; matching DB run/evidence rows. | Changed token inputs, HUD-only proof, debug-created behavior credit, second launcher, or missing cleanup fail. |
-<!-- DE67:DFS-SLICE:END id=R-104-S002 claim=R-104 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-105-S002 claim=R-105 -->
-| `R-105` | Initial exhaustive migration accounts for every final-enumeration scenario, attempts every executable path/hash once, assigns lifecycle, and exposes guarded relation/retirement review without losing history. | Migration summary; SQL final-set/terminal/once-only queries; per-scenario run/report IDs; lifecycle/relation/retirement rows; source/history checks for one approved retirement. | Successful-only inventory, skipped blocked/invalid files, representative sibling credit, fixed count assumption, normal-profile mutation, lingering `attempted`, prose-based relation, automatic retirement/deletion, last-coverage retirement, or lost history fail. |
-<!-- DE67:DFS-SLICE:END id=R-105-S002 claim=R-105 -->
-<!-- DE67:DFS-SLICE:BEGIN id=R-106-S002 claim=R-106 -->
-| `R-106` | Repo skill produces the same query/launch/history behavior as direct CLI. | Fresh skill discovery/invocation transcript plus identical query, selection, run, report, and cleanup IDs. | Embedded matcher, direct Peekaboo choreography, auto-launched draft, or guidance for nonexistent owners fail. |
-<!-- DE67:DFS-SLICE:END id=R-106-S002 claim=R-106 -->
+| `R-001` | Preflight valid and invalid versioned bandit/cannibal contracts before child launch. Install fixtures and audit the actual saves. | Versioned normalized contract, preflight report, fixture transform report, saved-player audit, proof that no child PID/run execution exists on rejection. | Filename inference, manifest prose, requested-but-not-present trait, v1 primitive label, transport-only gate, writhing exception, or fixture-injected transition cannot pass. |
+| `R-002` | Drive committed and rejected bandit/cannibal transitions through central production writers. | Ordered JSONL events with run correlation, identities, generation/epoch, previous/new state, reason, watermarks, saved-artifact references, and gate predicate results. | Matching log text, rejected/no-op event, wrong operation/generation/actor, malformed tail, or event outside the gate range cannot pass. |
+| `R-003` | Run the bandit route through one successful gate, interrupt/fail later, and inspect then resume the published checkpoint. Inject a checkpoint-publication failure. | Gate-only ledger, normal save/writeback evidence, atomic checkpoint manifest/hashes, retained previous checkpoint, first-divergence block, no published partial checkpoint. | Successful keypress without artifact is not proof or yellow; copied live memory without save is not a checkpoint; a failed/incomplete gate creates none. |
+| `R-004` | Complete the named bandit route using resumed segments and complete the named cannibal route through the same chain machinery. Mutate each binding class in isolated tests and perform unchanged reruns. | Append-only chain/segment/checkpoint rows, parent hashes, restore-copy evidence, complete binding comparisons, certification verdicts, repeated attempt history, CLI and harness-skill output. | Noncontiguous segments, sibling reports, missing checkpoint, stale/changed binding, diagnostic-only success, automatic resume, source-fixture mutation, or `multiple_report_runs` rejection cannot certify. |
+| `R-005` | Observe a controlled long wait and the motivating repeated-diagnostic shape. | Progress samples from existing boundaries, explicit unavailable fields, semantic aggregates, one raw artifact path/hash, compact first-divergence and checkpoint summary. | Invented zero resource value, fixed-array truncation that hides cause, duplicated raw lines, or activity in wall time without product-turn progress cannot claim product progress. |
+| `R-006` | Suppress a declared eligible incidental loaded monster in a non-combat route, then exercise each rejected class. | Candidate snapshot, per-actor and batch receipts, tracker removal verification, event/death-effect negative evidence, next-checkpoint binding. | Ecology actor, NPC, ambiguous/changed identity, out-of-region monster, combat/undeclared scenario, partial batch, `die`, damage, kill-area, or casualty intervention must fail or remain untouched. |
 
-The smallest integrated production proof is:
+Integrated acceptance uses the registry-backed commands documented by the harness skill and the
+current executable. It must preserve the motivating physical-return failure as an honest first
+divergence until product behavior actually crosses that gate. The chain machinery does not convert
+an incomplete hostile-ecology path into green product evidence.
 
-```text
-complete manifest inventory with one attempt per executable path/hash
-  -> active/quarantined lifecycle and review-only retirement candidates
-  -> current binding-aware registry
-  -> camp/not-critical/nearby-hidden-friendly/nearby-shakedown/input/Fight query
-  -> reject forest observer, name-only camp, and unresolved Fight contradiction
-  -> explained hard-valid selection OR inert draft without launch
-  -> explicit selected launch through existing Mac startup/probe route
-  -> separate startup and terminal/persistence feature evidence
-  -> cleanup
-  -> registry history visible without manifest mutation
-```
+## Failure cases
 
-## Combined freeze record
+- The game launches before static and installed-save preflight complete.
+- A gate is satisfied by key delivery, elapsed wait, filename, prose, or an unbound log substring.
+- A copied world lacks proven normal save writeback or is published before all hashes validate.
+- Resume mutates a fixture/checkpoint, skips a gate, changes actor/operation identity, or joins a
+  segment from another binding.
+- A relevant change invalidates only a suffix instead of the entire certification chain.
+- An unchanged trusted rerun is refused because a previous report exists.
+- A diagnostic run, sibling run, or old green report silently supplies final certification.
+- Report ordering hides the earliest causal divergence behind later noisy errors.
+- Slow-run reporting shows wall activity as gameplay progress when product game time is stalled.
+- Incidental-hostile suppression runs in combat, guesses a radius, kills through ordinary death,
+  touches an ecology actor, partially mutates an ambiguous batch, or omits an actor receipt.
+- Writhing-stalker or zombie-rider work enters this round, or observer perception traits are removed
+  as a workaround.
 
-- Status: Refrozen
-- Frozen source baseline: `dev@038c2e9e60b39572db864ed7465a618e08e8ba6f`, tree
-  `95508f27c81bdf6673b33cffcc98f6a7cf56cb13`, inspected 2026-08-15 on
-  `Josefs-Mac-mini.local` as `josefhorvath`.
-- Relevant preserved dirty frontier: `src/bandit_live_world.cpp`,
-  `src/bandit_live_world.h`, `src/do_turn.cpp`, `tests/bandit_live_world_test.cpp`,
-  `tools/openclaw_harness/proof_classification_unit_test.py`,
-  `tools/openclaw_harness/startup_harness.py`, and
-  `tools/openclaw_harness/test_fixture_contract.py`; their combined binary diff SHA-256 is
-  `bef986e09880b2ff49d2c126d165b7c867d0db7859075bd6a2d1cc2288ea6852`.
-- Relevant untracked scenario:
-  `tools/openclaw_harness/scenarios/bandit.extortion_reopened_fight_continuation_mcw.json`,
-  SHA-256 `a5d0098e27fe8e96d39d168d6cc5c6110649d4a56c0c1f1c14b6da4f3a77806b`.
-- Other preserved unrelated dirty state at freeze: `.de67/work-ledger.md` and
-  `.de67/mutation-suggestions.md`. This Phase 2 did not read, rewrite, stage, or checkpoint them.
-- User-owned choices: preserve the previous hostile-ecology WEC/DFS contract; preserve the R-002
-  proof rescope and all `R-001`/`R-003`-`R-010` behavior; add the harness registry/rework as a
-  separate `R-1xx` family in this combined successor; manifests remain declarations; SQLite is a
-  rebuildable index/history store; hard mismatches cannot rank; drafts do not run; all scenarios
-  receive explicit migration dispositions; existing startup/probe is the only launcher.
-- Refreeze owner choices: initial exhaustive migration attempts every executable scenario once and
-  gives every discovered scenario a terminal disposition; lifecycle is active/quarantined/retired;
-  broken, contradicted, and stale scenarios quarantine; active is the default search state;
-  duplicate/subsumption evidence uses normalized requirements, fixture/profile identity, ordered
-  steps, permitted input, and proof contract; representative runs never verify siblings; retirement
-  is explicit review/approval only, records reason and active canonical successor, preserves complete
-  history, and cannot remove unique or last required coverage.
-- Inspected current harness inventory: 168 scenario JSON objects, 149 currently active and 19
-  explicitly blocked, 107 save-fixture manifests, two startup-profile configs, and 37 current step
-  kinds. These are source facts, not future acceptance limits.
-- Evidence-implied refinements: none; this refreeze incorporates the user-owned lifecycle and
-  exhaustive-migration decision.
+## Freeze record
+
+- Status: Frozen.
+- Frozen source baseline: `dev@7f4697ee6b17fb897461e3ceb290342b83787a30`, with the pre-existing
+  dirty hostile-ecology source/tests, harness/registry/scenario/fixture work, phase-3 runtime files,
+  and unrelated artifacts preserved. This phase changes specification/setup artifacts only.
+- Relevant inspected dirty frontier: `.agents/skills/caol-harness/SKILL.md`,
+  `src/bandit_live_world.cpp`, `src/bandit_live_world.h`, `src/do_turn.cpp`, focused hostile-ecology
+  tests, `tools/openclaw_harness/startup_harness.py`, registry schema/store/CLI/tests, the named
+  bandit scenario and fixture, and related existing scenarios/fixtures.
+- User-owned choices: all clauses in `.de67/WEC.md`, including full-chain invalidation, agent-owned
+  resume choice, causally unchanged rerun authority, standard observer traits, non-combat-only
+  suppression, and explicit round boundaries.
+- Evidence-implied refinements: none. The mechanisms above are the smallest code-grounded route
+  through existing registry, harness, save, transition-event, and creature-removal seams.
+- Worker capability probes completed before setup: default model (intended `gpt-5.6-luna`) at
+  medium and high effort, and explicit `gpt-5.6-terra` at medium and high effort, each returned its
+  exact nonce and performed no task work.
+
+After freeze, automation may only close an existing red item after its named proof and remove that
+red marker; make an evidence-implied nonmaterial clarification; or append a uniquely implied
+same-contract mechanism, ownership/proof detail, and necessary stable red claim after a verified
+phase-3 worker finding. Existing claim identities, text, status, accepted work, and acceptance
+strength remain fixed. Refreeze immediately. Product intent, project language, permissions,
+user-visible behavior, balance, and materially different design choices remain user-owned.

@@ -1,74 +1,112 @@
 # Orchestrator guidelines
 
-The headings in this document are frozen. Text beneath them is mutable on the broader mutation
-cadence or after an integrity breach.
+This workspace-local file is active mutable policy. Read the sections needed for the current route.
+Do not replace it with the packaged template after bootstrap.
 
-## Read state
+## Read and route state
 
-Begin fresh from the DFS, both guidance documents, both ledgers, timer status, repository identity,
-current code, and returned worker evidence. Preserve accepted work; do not inherit unsupported claims
-from the previous coordinator.
+Read the compact clock status, active and blocked ledger entries, pending mutation suggestions,
+repository state, and the DFS context needed for the next decision. DFS slices are a token-saving
+index, not an access prohibition. Read more of the DFS when the decision genuinely needs it. Do not
+read predecessor transcripts or packaged DE67 prose as a startup ritual.
 
-## Assess failures
+Keep ordinary implementation, testing, fixture construction, scenario repair, and debug-tool work
+inside the coordinator-worker route. Ask the owner only for a material outcome choice, unavailable
+external authority or credentials, or irreversible user-data risk.
 
-Separate product failure, proof failure, task-definition failure, tooling failure, estimate failure,
-external wait, integrity breach, and a same-contract DFS specification gap. Locate the first
-contradicted premise and distinguish a late but useful result from a false completion. A worker
-finding is evidence to classify, not the worker's authority to choose the lane. Repeated inability
-to observe the same fact is a tooling diagnosis, not evidence that more identical product runs or a
-second reviewer will help.
+Use the first relevant route:
 
-## Investigate causes
+- accepted evidence that changes DFS state -> DFS review;
+- a deadline or integrity incident -> incident mutation review;
+- a due random review -> its stored lane;
+- implementation, exploration, test, build, debug, or operation -> worker;
+- proved outcome with no open gap or live state gate -> stop.
 
-Inspect the authoritative owner, its helpers and callers, every competing reader/writer of the same
-state, owning tests, relevant history, and the natural execution path. Require changed causal evidence
-before repeating a route. Expand the DFS only when this review leaves exactly one necessary
-same-contract refinement; task, test, tooling, evidence, and external-authority gaps stay out of it.
+These labels describe responsibility. They do not require packaged role files.
+Use the packaged command help when a durable transition needs exact arguments. Execute scripts as
+tools; do not read packaged prose or script source as policy.
 
-## Plan the work ledger
+## Plan and dispatch
 
-When the current batch is empty, project no more than ten necessary still-red DFS claims into the
-work ledger. Re-read code and define tests at planning time. Keep task mechanics out of the frozen DFS.
-Before dispatching a fixture or live-proof row, make one source-exact feasibility pass over its hard
-selector, route, terrain, clock, and assertion constraints, and enumerate the minimal contrast rows
-needed by the DFS. Reject premises that current code or fixture state disproves read-only, reuse one
-viable footing across its contrasts, and do not discover a named counterfactual only after accepting
-its positive row.
-Keep only the immediate causal frontier in the work ledger. Once a terminal task is reconciled,
-compact its timer and step-by-step narrative while retaining accepted prerequisites and evidence that
-can still change the next task; durable deadline state and Git own terminal chronology and diffs.
+Put the currently actionable red claims in `.de67/work-ledger.md`. Keep each entry short and point it
+to the DFS context needed for the work. Do not impose a batch-size limit. A missing or imperfect
+slice can be repaired, but it must not prevent necessary read-only context gathering.
 
-## Coordinate workers
+Use exploration when ownership, mechanism, strategy, or proof is unknown. Use closure immediately
+when the strategy, finite gaps, and proof route are already known. A task may cover more than one
+gap when the work and proof form one inseparable authority boundary.
 
-Give workers compact natural-language briefs and use parallelism only for disjoint work. Workers own
-implementation/build/test operations; the coordinator owns routing, evidence judgment, and ledgers.
-Avoid permits, transcript ingestion, hash maps, or field-complete handoff schemas unless a concrete
-external integrity boundary actually requires them. The coordinator remains responsible for the
-next causal decision; reading or rewriting a predecessor handoff is not product progress. Add an
-independent high-reasoning review only when a deadline incident or genuinely new ambiguity requires
-one, and give it the smallest evidence that can change the decision.
-Before accepting a proof-only checkpoint that gates a live run, exercise the actual harness parser
-and matcher on representative passing and forbidden artifact lines after the same normalization used
-by the runner. Scenario syntax alone does not prove that a positive, negative, or nonempty predicate
-is representable.
+Choose Luna by default for ordinary implementation, builds, harness execution, focused tests, and
+bounded debugging. Use Terra for ambiguous ownership, difficult diagnosis, risky cross-cutting
+work, or demanding exploration. Choose effort from uncertainty: low for a known mechanical route,
+medium for ordinary work, high for substantial research, and max for genuinely open-ended research.
+Do not use Terra at max or Sol for ordinary work. These are recommendations; a mismatch does not
+stop delivery.
 
-## Accept work and update DFS
+Set one generous deadline for the whole ledger item. Include setup, implementation, builds, repeated
+test runs, repairs between runs, review, disposition, downstream work, and the uncertainty of the
+route. Unknown work does not take zero time. Variable playtesting needs room for several relevant
+runs and material code changes between them. One worker attempt or playtest does not replace or
+rebase the item deadline. Finish early when possible. Do not turn an attempt estimate, test finding,
+or revised plan into a deadline miss. A deadline miss occurs only when the item clock expires.
 
-Judge the real diff and honest test. Only then remove the claim's red marker and its active work item.
-Preserve failure evidence without preserving failed product mutations as the accepted frontier. A
-validated DFS expansion appends necessary mechanisms, proof, and stable red claims while preserving
-every existing claim and accepted result; it never closes the blocked claim. Count progress by a new
-accepted product transition, not by tests run, artifacts written, reviews completed, or handoffs read.
+Give each worker a self-contained brief. Require the worker to read the relevant sections of
+`.de67/test-and-task-guidelines.md`. Use parallel workers only when their work is genuinely disjoint.
 
-## Mutate and hand over
+## Receive results
 
-After each incident, consume the independent diagnosis, read all earlier short verdicts, mutate the
-smallest relevant guidance, validate frozen headings/scope, and retire. The successor is a fresh
-coordinator reading durable state, not a prose reconstruction of the predecessor. DFS expansion and
-deadline-guidance mutation are independent: perform both when the same evidence activates both.
+Judge the actual diff and direct evidence. A focused test proves only the route it exercised. An
+ordinary failed test stays inside the worker route: inspect, repair, and rerun. Record a terminal
+finding only when the assigned strategy is disproved, a materially different route is required, an
+external blocker exists, or the bounded route is exhausted. A finding does not cause mutation or a
+coordinator restart. Revise the DFS only when accepted evidence changes the requested outcome or its
+authoritative decomposition.
 
-## Continue and stop
+When a callback-local postcondition passes but a later enclosing assertion fails, inspect every
+subsequent owner or mutation between that postcondition and the assertion before naming the first
+contradicted premise. Do not infer callback failure from end-of-call state.
 
-Continue after misses, rejected attempts, mutations, and coordinator retirement. Stop only for an
-all-green DFS with integrated proof, revoked authority, a material phase-2 owner choice, or a genuine
-permission/environment blocker after materially different routes are exhausted.
+Do not repeat an unchanged failing route. Change the implementation, setup, observation, tooling,
+or causal hypothesis. After the MSW three-round fuse, replace narrower probes with the smallest
+implementation or observation that crosses the first still-unproved authoritative transition. The
+same attempt may continue through its downstream consumer when that integrated proof is sensible.
+
+Accept a claim only from direct evidence that covers its remaining gaps. Preserve prior attempts,
+misses, findings, and accepted evidence. New contradictory evidence may reopen accepted work.
+
+## Mutate guidance
+
+The active mutation targets are the workspace-local files:
+
+- `.de67/orchestrator-guidelines.md`;
+- `.de67/test-and-task-guidelines.md`;
+- `.de67/DFS.md` when the selected route authorizes a same-outcome DFS change.
+
+Start from the exact live file. Prefer deleting or generalizing redundant situational prose. Use the
+trajectory sidecar when pending owner guidance requires it or when repeated direction makes it
+useful. The sidecar advises; it does not decide acceptance.
+
+Every deadline or integrity incident gets a practical recovery. Add a repeatable method change only
+when the evidence supports one; otherwise record `no change required`. A random review examines its
+stored lane. If part of a suggestion is valid, apply that part. Move unapplied owner-visible ideas
+to `.de67/human-todo.md`, clear the consumed scratch, resolve the review honestly, and continue.
+Neither an unapplied suggestion nor a failed candidate may freeze ordinary delivery indefinitely.
+
+Use a fresh `gpt-5.6-sol` reviewer at medium for ordinary incident and random mutation review. The
+rare stored `30 + DFS` route may use Sol at ultra when the due-time capability snapshot proves it.
+That rare review returns an isolated candidate for owner-authorized promotion; it does not edit live
+state or promote itself. Use the mutation guard for the selected local guideline or DFS candidate.
+
+Use guarded DFS transitions for acceptance, reopen, or same-outcome expansion. A guard protects
+existing accepted work and evidence; it does not require a packaged role document.
+
+A successful local mutation requests one fresh coordinator. The external supervisor owns that
+restart. Publishing a generalized rule to `de67-lab` is a separate owner-authorized maintenance
+action and is not required for local delivery.
+
+## Stop or block
+
+Stop when the requested outcome is honestly proved and no product gap or required state transition
+remains. Block only when no executable route exists without a material owner choice, unavailable
+external authority, or irreversible user-data risk. An optional dashboard, sidecar, or blocker
+adapter never blocks ordinary DE67 work.

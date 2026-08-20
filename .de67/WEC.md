@@ -1,63 +1,92 @@
-# Combined hostile-ecology and harness-registry WEC
+# WEC
 
-## Preserved hostile-ecology proof rescope
+*User intent and language brief*
 
-Preserve R-002’s product behavior: hostile scouts must discover the player, signals, and danger fairly through bounded real perception, never hidden-state radar. Rescope only R-002’s proof burden: focused owner tests should cover the visibility/perception invariants; the smallest live negative/positive production proof should establish quiet play is not discovered by the old radar, a credible real signal can be discovered without a decoy granting exact hidden truth, relocation does not drag stale target knowledge, and unseen danger does not affect routing until legitimately observed. Remove the requirement for a bespoke natural-world/live certification route for every matrix row and remove exact per-row binary/fixture/operation/member continuity where deleting it does not leave the fairness contract unmet or unproved. Do not weaken the gameplay behavior, and leave R-001 and R-003 through R-010 product requirements unchanged.
+## User outcome
 
-## Harness scenario registry and canonical proof workflow
+Agents can run trustworthy bandit and cannibal harness scenarios without waiting through long monolithic runs only to discover a missing proof obligation or invisible final state.
 
-### User outcome
+The harness should detect invalid contracts early, explain the first causal failure, preserve completed work through checkpoints, and produce authoritative evidence across a verified checkpoint chain.
 
-C-AOL should have a dependable harness where coordinators can describe gameplay conditions and proof route; find only scenarios genuinely satisfying hard prerequisites; rank valid scenarios by preferences; understand matches/failures/staleness; launch through one normalized startup, Peekaboo, input, observation and cleanup route; and receive a reviewable scenario draft when nothing qualifies. Scenario selection must stop being the recurring weakest point in gameplay proof. The stronger requested outcome includes a working inventory/migration step that tries every existing scenario and defines it in the database, preserving failures/contradictions instead of skipping them.
+## Intended experience
 
-The initial exhaustive migration catalogues every discovered scenario and attempts every executable scenario once for its path/hash through the canonical disposable-profile route. Every discovered scenario receives an explicit terminal disposition; a representative result never verifies a sibling. The registry also owns explicit active, quarantined, and retired lifecycle states without silently deleting source manifests or their history.
+Before launch, the harness checks that the scenario’s proof route is coherent and observable.
 
-Exact-duplicate and likely-subsumption findings must come from normalized requirements, resolved fixture/profile identity, ordered step sequence, permitted input, and proof contract. Filename, name, description, or other prose similarity alone is never relationship evidence.
+During execution:
 
-### Intended experience
+- Successful named proof gates create checkpoints.
+- Structured transition events explain product progress.
+- Transport actions and keypresses are supporting actions, not individual proof obligations.
+- Slow runs expose game-turn progress, wall time, resource use, and useful diagnostics.
+- A failure report leads with the first causal divergence, its expected and observed states, and the latest valid checkpoint.
 
-A coordinator states requirements such as real camp, player condition, nearby-but-not-visible friendlies, hostile NPC capable of Fight, ordinary input permitted, terminal aftermath and save/reload. Harness rejects any hard mismatch, ranks valid survivors, explains evidence/freshness, identifies profile/fixture/world/executable/permissions/helpers, performs canonical preflight/launch, records actual verification or contradiction, and never credits startup/load as feature proof. No match explains every missing capability and produces a reviewable manifest draft but does not run it.
+After interruption or failure, the harness recommends the latest valid checkpoint and explains it. The agent decides whether to resume it, choose another checkpoint, or rerun.
 
-### Terminology
+A verified chain of resumed segments may collectively certify the scenario. Any relevant code, data, or scenario change invalidates the whole certification chain.
 
-Scenario manifest = reviewable declared intent/requirements/capabilities/proof contract. Scenario registry = searchable SQLite index built from manifests and observed evidence. Capability = supported condition or transition. Hard requirement rejects; preference ranks valid survivors. Evidence states: declared, inspected, run-verified, contradicted, stale. Lifecycle states: active, quarantined, retired. Active scenarios are searched by default. Quarantined scenarios remain inspectable but cannot be selected automatically. Retired scenarios and their complete database/history rows remain inspectable after approved source-manifest removal. Proof route is precondition through production behavior to artifact/verdict. Startup footing is never gameplay proof. Scenario draft is non-executed candidate manifest.
+## Project language and terminology
 
-### Required dimensions
+Use these terms consistently:
 
-Player: overall/per-part health, wounds/bleeding/bites/infection/treatment, pain, thirst, hunger/calories, stamina, fatigue/sleepiness, temperature/wetness/exposure, radiation, effects/diseases, mutations/traits/bionics, movement/encumbrance, wielded/worn/carried inventory, charges/ammo/tools, relevant faction/mission/dialogue state.
+- **Contract preflight** — validation performed before launching the game.
+- **Proof gate** — a named, causally meaningful contract boundary.
+- **Checkpoint** — captured state and evidence after a successful proof gate.
+- **Checkpoint chain** — ordered segments that collectively prove the scenario.
+- **Diagnostic run** — execution intended to locate and explain divergence.
+- **Certification chain** — verified execution segments that satisfy final proof.
+- **First divergence** — the earliest failed causal expectation.
+- **Structured transition event** — machine-readable evidence emitted by product or harness state changes.
+- **Incidental-hostile suppression** — the non-combat harness facility informally called “autokill.”
+- **Actor receipt** — evidence identifying every entity affected by suppression.
 
-Local place: forest/field/road/shelter/building/camp/etc, indoor/outdoor/weather protection, terrain/furniture/fields/traps, camp ownership/facilities, vehicles, traversability/escape, light/visibility, position relative to interaction owner.
+Avoid describing ordinary input delivery as failed proof merely because it produced no immediate artifact.
 
-Actors: friendly NPCs, unfriendly NPCs, monsters; presence/absence, identity/type/faction/attitude/role, count, distance/range, visible/out-of-sight/nearby, loaded vs overmap-only, health/readiness, reservation/assignment/availability, ability to reach/participate.
+## Boundaries
 
-World/overmap: nearby terrain/specials/camps/shelters/roads/cities/hostile sites, overmap NPCs/hordes/threats, time/season/moon/light, weather/portal-storm policy, world options/mods, generation/operation/report/cursor/receipt identity, save/reload/persistence.
+Current behavior under test is limited to bandits and cannibals.
 
-Capabilities: ordinary movement/waiting, dialogue, Pay/Fight/named choices, trade, combat, NPC/monster travel, local/overmap transitions, terminal aftermath, survivor return, save/reload, exactly-once, duplicate/stale/replay rejection, visible/log/persisted evidence.
+Writhing-stalker behavior, zombie-rider behavior, and the later hardening of production perception logic are outside this round. The known writhing-stalker interaction with debug clairvoyance does not create a current harness exception.
 
-Runtime: OS, branch/commit/dirty source/executable binding, profile/snapshot/world/fixture compatibility, helpers, Peekaboo capture/input permissions, PID focus, permitted/forbidden input, safe-mode/interruption, OCR, permitted debug setup vs required production behavior, cleanup/restoration/disposable-copy policy.
+The harness must not refuse causally unchanged reruns. It may retain history, explain similarities, and recommend actions, but agents retain authority to rerun.
 
-Evidence retains state, source manifest/fixture, source/executable binding, run/proof artifact, observed preconditions, invalidation reason, relevant verification, and proof depth (startup/interaction/terminal/persistence/replay).
+Current stabilizer policy:
 
-### Boundaries and decisions
+- `DEBUG_LS` and `DEBUG_NOTEMP` are mandatory everywhere.
+- `DEBUG_STAMINA` and `DEBUG_CARDIO` are mandatory for non-combat scenarios.
+- `DEBUG_CLAIRVOYANCE` and `DEBUG_NIGHTVISION` are standard observer-character traits.
+- Vision-sensitive product hardening is later work.
 
-Manifests remain authoritative for declared intent. SQLite is rebuildable search index and verification-history store, not opaque replacement. Hard requirements cannot be ranked around. Names/descriptions are not capability evidence. Startup/load is distinct from gameplay proof. Debug-authored state is not production proof. Contradicted/stale evidence remains visible. Generated drafts require review and are not auto-launched. Rework fits existing harness/fixtures/profiles/artifact checks/Peekaboo rather than a disconnected harness. Do not choose product behavior beyond this intent. Current hostile-ecology delivery should not be blocked if safe isolation is possible. Canonical workflow covers startup, Peekaboo permissions, PID focus, input, observation, reporting, cleanup. A harness-facing skill teaches/invokes the same workflow.
+Incidental-hostile suppression is non-combat only. It must affect only eligible nearby incidental hostiles, exclude ecology actors under test, fail closed when identity is ambiguous, avoid ordinary combat/death side effects, and emit actor receipts.
 
-Broken, contradicted, or stale scenarios become quarantined and are never selected automatically. A broken but unique scenario remains quarantined until a replacement exists. Duplicate/subsumption analysis may nominate a reviewable retirement candidate, but never skips the scenario's required initial attempt, never changes lifecycle by itself, and never lets one scenario's result verify another.
+## Decisions
 
-A scenario may become a retirement candidate when it cannot launch or reach its declared footing and has no unique diagnostic value; is exactly duplicated; is fully subsumed by a stronger scenario; is a temporary or historical one-off; requires a fixture or helper that no longer exists; or proves only startup where a stronger scenario proves the same footing plus the feature route. Retirement is never automatic. It requires explicit review/approval, a recorded reason and canonical successor, and a check that it is not the last scenario covering a required capability, proof route, negative control, or failure control. Only that approved action may remove the source manifest, and it must preserve the complete database/history row. A unique broken scenario with no replacement cannot be retired.
+- Checkpoint chains may count as final certification.
+- Any relevant code, data, or scenario change resets the entire certification chain.
+- The harness recommends a resume point; the agent chooses.
+- Every successful named proof gate creates a checkpoint.
+- Observer traits remain standard; production perception hardening is deferred.
+- The harness informs agents but does not restrict trusted reruns.
+- Structured events and gate-level evidence replace log-substring archaeology and per-keypress proof accounting.
 
-### Smallest useful vertical slice
+## Prototype or reaction questions
 
-Query: real camp; player not critically injured; friendly NPC nearby but not visible; hostile shakedown NPC nearby; input allowed; visible Fight required. System filters active manifests by default; rejects recent Fight-contradicted scenario; explains rejection; returns only hard-valid scenario or a non-executed draft; does not launch during query. Additionally, the migration/inventory step processes every existing scenario into the registry, attempts every executable scenario once during the initial exhaustive migration, records every terminal disposition, quarantines broken/contradicted/stale scenarios, and exposes retirement candidates without retiring or deleting them.
+Concrete prototypes should resolve:
 
-### Acceptance
+- How the report presents the first divergence, completed gates, and recommended checkpoint.
+- How checkpoint-chain lineage and invalidation are shown clearly.
+- How diagnostic and certification states are distinguished without adding operator friction.
+- How incidental-hostile receipts appear in the report.
 
-Thirsty forest observer cannot qualify for camp/Fight. Recent camp scenario cannot qualify by name alone. Contradicted capability excluded from hard matches. Preferences cannot rescue hard mismatch. Valid result explains manifest/fixture/evidence. No-match identifies unmet needs and produces non-executed draft. Selected launch uses canonical preflight and separate startup/feature verdicts. Runs strengthen/contradict/stale indexed evidence without rewriting manifest intent. Every existing scenario is represented in the database, every executable scenario is attempted once during initial exhaustive migration, every item reaches an explicit imported/verified/failed/blocked/contradicted terminal disposition, and none is silently omitted or credited from a sibling result. Active scenarios are searched by default; quarantined/retired scenarios remain inspectable and cannot be auto-selected. Duplicate/subsumption findings cite normalized contract evidence. Retirement without explicit approval, reason, active canonical successor, retained history, and surviving required coverage is rejected.
+## Handoff to DE-67-2
 
-### Failure cases
+The working repository is `/Users/josefhorvath/Schanigarten/Cataclysm-AOL-hostile-ecology-dev`, branch `dev`, observed at `7f4697ee6b17fb897461e3ceb290342b83787a30`. It is heavily dirty; preserve all existing work.
 
-Filename/prose similarity selection or duplicate detection; camp implies Fight; Peekaboo/HUD implies gameplay proof; auto-running draft; retaining green after binding changes; competing declaration sources; unfilterable free-form evidence; registry explains but cannot reject; silent omission during all-scenario migration; representative success silently verifying siblings; auto-selecting quarantined/retired scenarios; auto-retiring or deleting manifests; retiring unique or last-coverage scenarios; losing retired history; turning this into a disconnected second harness.
+Primary artifacts:
 
-### Prototype/reaction outputs for later
+- `.agents/skills/caol-harness/SKILL.md`
+- `.de67/work-ledger.md`
+- `tools/openclaw_harness/scenarios/bandit.scout_to_decision_observer_live_mcw.json`
 
-Concrete coordinator query/explanation, manifest capability block, SQLite result with evidence states, generated no-match draft, canonical harness-skill invocation.
+The latest inspected run lasted about 18 minutes and failed at homeward materialization because the loaded bubble lacked paired entry or staging positions. Its large report also treated many successful transport actions as yellow and repeated the same diagnostic thousands of times. DE-67-2 should preserve this as the motivating failure shape.
+
+No repository files were changed. This completes DE67 phase 1 only.
