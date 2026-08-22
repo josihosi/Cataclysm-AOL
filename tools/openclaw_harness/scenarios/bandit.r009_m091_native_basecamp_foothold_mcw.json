@@ -1,0 +1,179 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r009_m091_native_basecamp_foothold_mcw",
+  "description": "R-009 M091 disposable setup: load the current-executable pre-opportunity save, use the harness's current-build debug follower setup primitive only because that save has no physical follower, then use ordinary follower dialogue to create a real player basecamp at the player OMT (162,36,0), within the hostile camp's production search radius. This setup declares no hostile outcome and performs no save transform.",
+  "profile": "r009-m091",
+  "world": "McWilliams",
+  "fixture": "r009_m059_preopportunity_bootstrap",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2",
+      "LLM_INTENT_ENABLE": "false"
+    }
+  },
+  "replace_existing_worlds": true,
+  "capture_world_after": false,
+  "capabilities": {
+    "player.hud": ["Move:", "Wield:"],
+    "capabilities.shakedown.footing": "native_player_basecamp_creation_at_162_36"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:escape", "debug_spawn_follower_npc", "type:C", "type:t", "type:d", "type:n", "type:a", "type:M091 foothold", "press:enter", "long_wait:30m", "press:S", "press:left"],
+    "forbidden_input": ["debug:teleport", "raw-save-rewrite", "fixture-save-transform"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m091",
+    "fixture": "r009_m059_preopportunity_bootstrap",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r009-m091",
+      "fixture": "r009_m059_preopportunity_bootstrap",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": ["press:escape", "debug_spawn_follower_npc", "type:C", "type:t", "type:d", "type:n", "type:a", "type:M091 foothold", "press:enter", "long_wait:30m", "press:S", "press:left"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["post_load_hud"],
+    "production_behavior": ["post_load_hud"],
+    "terminal_persistence": ["post_load_hud"],
+    "artifact_verdict": ["post_load_hud"],
+    "disallowed_shortcuts": ["post_load_hud"]
+  },
+  "steps": [
+    {
+      "kind": "press",
+      "label": "dismiss_inherited_actions_overlay",
+      "keys": ["escape"],
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "the inherited Actions overlay is dismissed before the HUD gate"
+    },
+    {
+      "kind": "wait",
+      "label": "post_load_hud",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_preopportunity_hud_not_visible",
+      "abort_reason": "the current-executable save did not reach the gameplay HUD"
+    },
+    {
+      "kind": "debug_spawn_follower_npc",
+      "label": "setup_spawn_disposable_follower",
+      "count": 1,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "the fixture-only debug primitive creates one physical follower, enabling the subsequent native camp dialogue"
+    },
+    {
+      "kind": "type",
+      "label": "open_follower_dialogue",
+      "text": "C",
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "type",
+      "label": "select_talk_to_disposable_follower",
+      "text": "t",
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "type",
+      "label": "open_follower_work_or_camp_choices",
+      "text": "d",
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "type",
+      "label": "open_native_camp_creation_choices",
+      "text": "n",
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "type",
+      "label": "select_native_build_camp_here",
+      "text": "a",
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "press",
+      "label": "select_bare_bones_basecamp",
+      "keys": ["enter"],
+      "settle_seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "type",
+      "label": "name_native_basecamp",
+      "text": "M091 foothold",
+      "settle_seconds": 0.25,
+      "capture_after": false
+    },
+    {
+      "kind": "press",
+      "label": "confirm_native_basecamp_name",
+      "keys": ["enter"],
+      "settle_seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "the native faction-camp creation dialog has returned to the gameplay HUD"
+    },
+    {
+      "kind": "long_wait",
+      "label": "run_ordinary_post_camp_dispatch_cadence",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "completion_wait_seconds": 12.0,
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "expected_visible_fact": "an ordinary 30-minute gameplay wait crosses the next production scheduler cadence after native camp creation"
+    },
+    {
+      "kind": "press",
+      "label": "open_post_camp_full_save",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "press",
+      "label": "confirm_post_camp_full_save",
+      "keys": ["left", "enter"],
+      "settle_seconds": 5.0,
+      "capture_after": false
+    }
+  ],
+  "evidence_contract": {
+    "claim": "stage only the current-executable disposable source save for a native player-basecamp creation route",
+    "preconditions_and_interventions": "the harness copies the production-created save with save_transforms=[]; the subsequent player-basecamp creation must use game UI only",
+    "terminal": "this handoff is setup evidence only; hostile observation, adoption, and persistence require later direct artifacts"
+  }
+}

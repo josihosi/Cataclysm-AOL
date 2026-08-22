@@ -28,19 +28,14 @@ falsify evidence, exceed authority, or erase attempt accounting.
 
 ## Pending suggestions
 
-- Owner preference — Encourage coordinators to use multiple Luna workers in parallel when the
-  tasks are genuinely disjoint and their results can be judged independently. Do not impose a
-  worker ratio, minimum count, dispatch gate, or parallelism ritual. Keep coupled work together and
-  avoid parallel workers when coordination cost would exceed the useful work.
-
-- Owner override — Remove or reframe the deadline text that says useful work may proceed without a
-  complete future-gap model and that a new generation may simply continue the claim. Mandatory
-  unknown work must not count as zero time. Use the authorized playtest planning floor of
-  approximately five times the longest relevant measured run, plus known code changes, builds,
-  focused reruns, evidence review, disposition, and mandatory downstream work. A finding ends its
-  attempt, but must not manufacture a deadline miss merely because the unchanged original estimate
-  is required to fit again after time was consumed. Carry the ledger-item clock across attempts, or
-  estimate the genuinely remaining route after subtracting completed components; do not reset an
-  attempt-sized clock and call it the whole-item deadline. Reframe the work ledger so `824s` is
-  clearly one partial component measurement, never the estimate for all of `R-010`. Apply this as
-  one compact correction and remove redundant situational deadline prose to reduce mutation churn.
+- Owner-authorized DE67 Phase-3 instruction — At the next safe mutation boundary, use the guarded
+  same-outcome DFS expansion route to restore only the unfinished improved-harness playtest tail as
+  authoritative red DFS work so that it later projects into an emptied work ledger. The restored
+  qualification tail must cover natural bandit and cannibal lifecycle qualification; the
+  persistence/save-relaunch boundary matrix; integrated wait, performance, and memory observation;
+  and macOS, Linux/WSL, and Windows technical witnesses. Still-needed orthogonal stabilizers and
+  observer instrumentation are setup support only and must not change ecology, movement, or
+  visibility behavior. These qualification runs earn zero continuous-final-certification credit
+  and must not restore the obsolete checkpoint-splicing model. Keep already completed work absent.
+  Preserve current R-005 as one continuous final certification round and R-006 as Josef's Windows
+  feel gate.

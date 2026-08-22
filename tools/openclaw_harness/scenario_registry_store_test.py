@@ -59,6 +59,12 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
         "migration_run",
         "migration_item",
         "migration_run_event",
+        "certification_round",
+        "certification_round_component",
+        "certification_round_lifecycle",
+        "certification_round_invalidation",
+        "certification_round_lease_history",
+        "certification_save_capability",
     }
 
     def test_default_and_override_paths(self) -> None:
@@ -107,6 +113,11 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
             self.assertTrue(connection.execute("PRAGMA foreign_key_list( verification_history )").fetchall())
             self.assertTrue(connection.execute("PRAGMA foreign_key_list( token_history )").fetchall())
             self.assertTrue(connection.execute("PRAGMA foreign_key_list( migration_item )").fetchall())
+            self.assertTrue(connection.execute("PRAGMA foreign_key_list( certification_round_component )").fetchall())
+            self.assertTrue(connection.execute("PRAGMA foreign_key_list( certification_round_lifecycle )").fetchall())
+            self.assertTrue(connection.execute("PRAGMA foreign_key_list( certification_round_invalidation )").fetchall())
+            self.assertTrue(connection.execute("PRAGMA foreign_key_list( certification_round_lease_history )").fetchall())
+            self.assertTrue(connection.execute("PRAGMA foreign_key_list( certification_save_capability )").fetchall())
             indexes = {
                 row[1] for row in connection.execute("PRAGMA index_list( verification_history )")
             }
@@ -440,8 +451,9 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
                 conn.execute("CREATE TABLE should_not_survive( value TEXT )")
                 raise RuntimeError("forced migration failure")
 
+            forced_version = SCHEMA_VERSION + 1
             with self.assertRaisesRegex(RuntimeError, "forced migration failure"):
-                apply_migrations(connection, ((6, "forced_failure", failing_migration),))
+                apply_migrations(connection, ((forced_version, "forced_failure", failing_migration),))
             self.assertEqual(
                 connection.execute("SELECT source_path FROM manifest_current WHERE manifest_id = 'manifest-a'").fetchone()[0],
                 "/scenario/a.json",
@@ -454,7 +466,8 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
             self.assertEqual(connection.execute("PRAGMA user_version").fetchone()[0], SCHEMA_VERSION)
             self.assertIsNone(
                 connection.execute(
-                    "SELECT version FROM schema_migration_history WHERE version = 6"
+                    "SELECT version FROM schema_migration_history WHERE version = ?",
+                    (forced_version,)
                 ).fetchone()
             )
             connection.close()

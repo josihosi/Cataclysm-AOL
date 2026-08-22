@@ -28,6 +28,8 @@ from startup_harness import (  # noqa: E402
     advance_turns,
     audit_saved_weather_state,
     apply_direct_child_liveness,
+    classify_blocking_interruption,
+    classify_wait_screen_text,
     build_feature_debug_guard,
     build_runtime_binding,
     build_probe_step_ledger,
@@ -39,16 +41,19 @@ from startup_harness import (  # noqa: E402
     classify_wait_step_ledger,
     compare_runtime_binding,
     declared_screen_artifact_matches,
-    classify_blocking_interruption,
     compact_probe_report_for_stdout,
     collect_weather_audits_from_step_reports,
     count_pause_dispatches_since,
     extract_window_build_info,
     execute_long_wait_action,
+    debug_map_editor_select_feature_and_apply,
     execute_probe_steps,
     filter_debug_log_text,
     log_file_identity,
     missing_peekaboo_capabilities,
+    poll_wait_artifact_completion,
+    peekaboo_press_sequence,
+    peekaboo_physical_hotkey_for_key,
     peekaboo_command,
     peekaboo_focus_pid,
     portal_storm_policy_from_scenario,
@@ -70,6 +75,130 @@ from startup_harness import (  # noqa: E402
     summarize_probe_step_ledger,
     summarize_wait_step_ledgers,
 )
+
+
+class WaitScreenClassificationTest(unittest.TestCase):
+    def test_stale_completion_accepts_ocr_variant_of_activity_none(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            report_path = Path(temporary_directory) / "screen_text.json"
+            report_path.write_text(
+                json.dumps({"text": "Hctivity: None\nYou finish waiting."}),
+                encoding="utf-8",
+            )
+            result = classify_wait_screen_text(
+                {"json_path": str(report_path)},
+                ["You finish waiting"],
+                [],
+                {"You finish waiting"},
+            )
+
+        self.assertEqual(result["status"], "completed")
+        self.assertTrue(result["completion_persisted_after_wait"])
+
+    def test_stale_completion_accepts_missing_activity_label_after_wait(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            report_path = Path(temporary_directory) / "screen_text.json"
+            report_path.write_text(
+                json.dumps({"text": "You finish waiting."}),
+                encoding="utf-8",
+            )
+            result = classify_wait_screen_text(
+                {"json_path": str(report_path)},
+                ["You finish waiting"],
+                [],
+                {"You finish waiting"},
+            )
+
+        self.assertEqual(result["status"], "completed")
+        self.assertTrue(result["completion_persisted_after_wait"])
+
+    def test_ocr_truncated_finish_waiting_with_no_activity_is_completed(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            report_path = Path(temporary_directory) / "screen_text.json"
+            report_path.write_text(
+                json.dumps({"text": "You nish waiting."}),
+                encoding="utf-8",
+            )
+            result = classify_wait_screen_text(
+                {"json_path": str(report_path)},
+                ["You finish waiting"],
+                [],
+                set(),
+            )
+
+        self.assertEqual(result["status"], "completed")
+        self.assertTrue(result["ocr_completion_fragment"])
+
+
+class AdvanceTurnInputContractTest(unittest.TestCase):
+    @patch("startup_harness.peekaboo_type_text")
+    def test_periods_use_text_batch(self, type_mock):
+        peekaboo_press_sequence(17, [".", ".", "."], delay_ms=50)
+        type_mock.assert_called_once_with(17, "...", delay_ms=50)
+
+    @patch("startup_harness.peekaboo_type_text")
+    @patch("startup_harness.peekaboo_focus_pid", return_value={"ok": True})
+    def test_bounded_period_batch_focuses_once_and_types_once(self, focus_mock, type_mock):
+        peekaboo_press_sequence(17, ["."] * 5, delay_ms=50, focus_once=True)
+        focus_mock.assert_called_once_with(17)
+        type_mock.assert_called_once_with(17, ".....", delay_ms=50, focus_pid=False)
+
+    @patch("startup_harness.peekaboo_focus_pid", return_value={"ok": False, "error": "unfocused"})
+    def test_bounded_period_batch_propagates_focus_failure(self, focus_mock):
+        with self.assertRaisesRegex(RuntimeError, "focus failed"):
+            peekaboo_press_sequence(17, ["."], focus_once=True)
+        focus_mock.assert_called_once_with(17)
+
+    @patch("startup_harness.run_peekaboo_interaction")
+    @patch("startup_harness.peekaboo_command", return_value=["press"])
+    def test_single_key_callers_keep_normal_focus_path(self, command_mock, run_mock):
+        peekaboo_press_sequence(17, ["enter"])
+        run_mock.assert_called_once()
+        self.assertNotIn("focus_pid", run_mock.call_args.kwargs)
+
+    def test_debug_menu_brace_uses_physical_hotkey(self):
+        self.assertEqual(peekaboo_physical_hotkey_for_key("}"), "shift,]")
+
+    def test_named_navigation_keys_use_physical_press_mapping(self):
+        self.assertEqual(peekaboo_physical_hotkey_for_key("left"), "left")
+        self.assertEqual(peekaboo_physical_hotkey_for_key("right"), "right")
+        self.assertEqual(peekaboo_physical_hotkey_for_key("up"), "up")
+        self.assertEqual(peekaboo_physical_hotkey_for_key("down"), "down")
+
+    @patch("startup_harness.run_peekaboo_interaction")
+    @patch("startup_harness.peekaboo_command", return_value=["press"])
+    @patch("startup_harness.peekaboo_focus_pid", return_value={"ok": True})
+    def test_named_navigation_batch_focuses_once_and_preserves_order(
+        self, focus_mock, command_mock, run_mock
+    ):
+        peekaboo_press_sequence(17, ["right", "up", "left", "down"], focus_once=True)
+        focus_mock.assert_called_once_with(17)
+        command_mock.assert_called_once()
+        self.assertEqual(command_mock.call_args.args[0][1:5], ["right", "up", "left", "down"])
+        run_mock.assert_called_once_with(17, ["press"], focus_pid=False)
+
+    @patch("startup_harness.peekaboo_focus_pid", return_value={"ok": True})
+    def test_focus_once_rejects_unknown_named_key(self, focus_mock):
+        with self.assertRaisesRegex(ValueError, "physical key mappings"):
+            peekaboo_press_sequence(17, ["page-down"], focus_once=True)
+        focus_mock.assert_not_called()
+
+    @patch("startup_harness.peekaboo_focus_pid", return_value={"ok": True})
+    def test_focus_once_rejects_mixed_period_and_named_key(self, focus_mock):
+        with self.assertRaisesRegex(ValueError, "physical key mappings"):
+            peekaboo_press_sequence(17, [".", "right"], focus_once=True)
+        focus_mock.assert_not_called()
+
+    @patch("startup_harness.time.sleep")
+    @patch("startup_harness.peekaboo_press_sequence")
+    @patch("startup_harness.apply_uilist_filter")
+    @patch("startup_harness.run_debug_menu_shortcut_path")
+    def test_map_editor_target_batch_uses_sequence_focus(self, shortcut_mock, filter_mock, press_mock, sleep_mock):
+        debug_map_editor_select_feature_and_apply(
+            17, selector_key="t", query="palisade", target_keys=["right"], exit_editor=False
+        )
+        target_call = next(call for call in press_mock.call_args_list if call.args[1] == ["right"])
+        self.assertTrue(target_call.kwargs["focus_once"])
 
 
 class RuntimeBindingContractTest(unittest.TestCase):
@@ -948,11 +1077,25 @@ class BlockingInterruptionTest(unittest.TestCase):
         )
         self.assertTrue(debug_popup["release_blocking"])
         self.assertEqual((activity_prompt["classification"], activity_prompt["response_key"]), ("activity_distraction_prompt", "I"))
+        spotted_activity_prompt = self.classify(
+            "Spotted! Stop waiting?\nIgnore this distraction and continue"
+        )
+        self.assertEqual(
+            (spotted_activity_prompt["classification"], spotted_activity_prompt["response_key"]),
+            ("activity_distraction_prompt", "I"),
+        )
+        tired_wait_prompt = self.classify(
+            "You're feeling tired. Stop waiting? (Case Sensitive)\n[Yes] [No]"
+        )
+        self.assertEqual(
+            (tired_wait_prompt["classification"], tired_wait_prompt["response_key"]),
+            ("tired_wait_continue_prompt", "N"),
+        )
         self.assertEqual((portal_query["classification"], portal_query["response_key"]), ("portal_storm_activity_prompt", "Y"))
         self.assertTrue(portal_query["contaminating"])
         self.assertEqual((portal_notice["classification"], portal_notice["response_key"]), ("portal_storm_notice", "space"))
 
-    def test_safe_mode_spotted_hostile_prompt_turns_safe_mode_off(self) -> None:
+    def test_safe_mode_spotted_hostile_prompt_is_release_blocking_without_input(self) -> None:
         prompt = self.classify(
             "Spotted zombie rider 17 tiles to the west\n"
             "Safe mode is ON. Press ' to turn it off, press \" to ignore monster."
@@ -961,14 +1104,17 @@ class BlockingInterruptionTest(unittest.TestCase):
         degraded_ocr = self.classify("off, press\nto ignore monster) x 17 it\n19 tiles\nturnu")
         repeated_ocr = self.classify("safe mode\npress\ntiles\nt0\nLIe u")
 
-        self.assertEqual(prompt["status"], "known_prompt")
+        self.assertEqual(prompt["status"], "unknown_prompt")
         self.assertEqual(prompt["classification"], "safe_mode_spotted_hostile_prompt")
-        self.assertEqual(prompt["response_key"], "'")
+        self.assertEqual(prompt["response_key"], "")
+        self.assertTrue(prompt["release_blocking"])
         self.assertFalse(prompt["contaminating"])
-        self.assertEqual(degraded_ocr["status"], "known_prompt")
-        self.assertEqual(degraded_ocr["response_key"], "'")
-        self.assertEqual(repeated_ocr["status"], "known_prompt")
-        self.assertEqual(repeated_ocr["response_key"], "'")
+        self.assertEqual(degraded_ocr["status"], "unknown_prompt")
+        self.assertEqual(degraded_ocr["response_key"], "")
+        self.assertTrue(degraded_ocr["release_blocking"])
+        self.assertEqual(repeated_ocr["status"], "unknown_prompt")
+        self.assertEqual(repeated_ocr["response_key"], "")
+        self.assertTrue(repeated_ocr["release_blocking"])
         self.assertEqual(partial["status"], "unknown_prompt")
         self.assertEqual(partial["response_key"], "")
 
@@ -982,6 +1128,25 @@ class BlockingInterruptionTest(unittest.TestCase):
         self.assertEqual(unknown_prompt["status"], "unknown_prompt")
         self.assertEqual(unknown_prompt["response_key"], "")
         self.assertEqual(gameplay_hud["status"], "clear")
+
+    def test_map_editor_save_control_is_allowed_only_in_explicit_editor_state(self) -> None:
+        editor = classify_blocking_interruption(
+            {"ok": True, "text": "MAP EDITOR\nSave and quit"},
+            allow_map_editor_save_and_quit=True,
+        )
+        main_menu = classify_blocking_interruption(
+            {"ok": True, "text": "MAIN MENU\nSave and quit"},
+            allow_map_editor_save_and_quit=True,
+        )
+        lookalike = classify_blocking_interruption(
+            {"ok": True, "text": "MAP EDITOR\nSave and quit? Y/N"},
+            allow_map_editor_save_and_quit=False,
+        )
+
+        self.assertEqual(editor["classification"], "map_editor_save_and_quit_control")
+        self.assertEqual(editor["status"], "clear")
+        self.assertEqual(main_menu["status"], "unsafe_prompt")
+        self.assertEqual(lookalike["status"], "unsafe_prompt")
 
     def test_partial_source_specific_prompts_fail_closed_with_their_evidence_flags(self) -> None:
         partial_debug = self.classify("An error has occurred! Press space bar to continue the game.")
@@ -1384,6 +1549,51 @@ class BlockingInterruptionTest(unittest.TestCase):
         self.assertTrue(handler_mock.call_args.kwargs["stop_on_unknown"])
         self.assertEqual([call.args[1] for call in press_mock.call_args_list], [["|"], ["3"]])
 
+    def test_long_wait_scopes_hostile_auto_move_cancel_authorization(self) -> None:
+        handler_result = {
+            "status": "clear",
+            "acknowledgement_count": 0,
+            "acknowledgements": [],
+            "release_blocking": False,
+            "contaminating": False,
+        }
+        with patch("startup_harness.peekaboo_press_sequence"), \
+                patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": "HUD"},
+                ), \
+                patch("startup_harness.classify_wait_screen_text") as wait_classify_mock, \
+                patch(
+                    "startup_harness.classify_wait_step_ledger",
+                    return_value={"verdict": "green_wait_step_proven", "issues": []},
+                ), \
+                patch(
+                    "startup_harness.acknowledge_blocking_interruptions",
+                    return_value=handler_result,
+                ) as handler_mock:
+            wait_classify_mock.side_effect = [
+                {"status": "interrupted_or_prompt_visible"},
+                {"status": "completed"},
+            ]
+            with tempfile.TemporaryDirectory() as temp_dir:
+                execute_long_wait_action(
+                    42,
+                    Path(temp_dir),
+                    "authorized_hostile_wait",
+                    {
+                        "choice_key": "3",
+                        "allow_hostile_auto_move_cancel": True,
+                        "menu_settle_seconds": -1,
+                        "pre_menu_settle_seconds": -1,
+                        "after_choice_settle_seconds": -1,
+                        "completion_wait_seconds": -1,
+                        "interrupt_response_wait_seconds": -1,
+                    },
+                )
+
+        self.assertTrue(handler_mock.call_args.kwargs["allow_hostile_auto_move_cancel"])
+
     def test_long_wait_never_uses_static_key_on_unsafe_prompt(self) -> None:
         handler_result = {
             "status": "blocked_unsafe_prompt",
@@ -1493,6 +1703,44 @@ class BlockingInterruptionTest(unittest.TestCase):
             ["verdict"],
             "yellow_step_acknowledged_contaminating_popup",
         )
+
+
+class CompletionPollInterruptionTest(unittest.TestCase):
+    def test_blocked_prompt_terminates_poll_when_auto_ack_is_disabled(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            log = root / "debug.log"
+            log.write_text("scheduler_hour=169\nnow_minutes=10180\n", encoding="utf-8")
+            result = poll_wait_artifact_completion(
+                log, root, "blocked_prompt", 0,
+                ["scheduler_hour=170", "now_minutes=10200"],
+                timeout_seconds=10, poll_seconds=1, filter_debug_noise=False,
+                interruption_handler=lambda: {
+                    "status": "blocked_acknowledgement_limit",
+                    "acknowledgement_count": 0,
+                    "release_blocking": False,
+                    "contaminating": False,
+                },
+            )
+
+        self.assertEqual(result["status"], "aborted_interruption")
+        self.assertEqual(result["abort_reason"], "blocked_acknowledgement_limit")
+
+    def test_clear_progression_still_completes_without_interruption_handler(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            log = root / "debug.log"
+            log.write_text("scheduler_hour=170\nnow_minutes=10200\n", encoding="utf-8")
+            handler_calls = []
+            result = poll_wait_artifact_completion(
+                log, root, "clear_progression", 0,
+                ["scheduler_hour=170", "now_minutes=10200"],
+                timeout_seconds=10, poll_seconds=1, filter_debug_noise=False,
+                interruption_handler=lambda: handler_calls.append(True),
+            )
+
+        self.assertEqual(result["status"], "matched")
+        self.assertEqual(handler_calls, [])
 
 
 class StartupScreenGateTest(unittest.TestCase):
@@ -1909,6 +2157,26 @@ class ScreenCheckpointVerdictTest(unittest.TestCase):
 
         self.assertEqual(ledger[0]["verdict"], "green_step_proof_deferred_to_guard")
         self.assertEqual(ledger[0]["evidence_artifact"], "decisive-audit.metadata.json")
+
+    def test_deferred_guard_must_be_later_than_the_step_it_proves(self) -> None:
+        ledger = build_probe_step_ledger([
+            {
+                "label": "already_complete_audit",
+                "kind": "audit_log_contains",
+                "metadata": {
+                    "status": "required_state_present",
+                    "artifact_path": "already-complete.metadata.json",
+                },
+            },
+            {
+                "label": "later_action",
+                "kind": "press",
+                "proof_deferred_to_label": "already_complete_audit",
+            },
+        ])
+
+        self.assertEqual(ledger[1]["verdict"], "yellow_step_deferred_guard_not_later")
+        self.assertIn("deferred_guard_not_later", ledger[1]["issues"])
 
 
 class ProbeProofClassificationTest(unittest.TestCase):

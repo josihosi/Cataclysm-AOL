@@ -7,9 +7,11 @@ import argparse
 from dataclasses import asdict
 import hashlib
 import json
+import os
 from pathlib import Path
 import sqlite3
 import sys
+import uuid
 from typing import Any, Dict, Mapping, Sequence
 
 from scenario_registry import ManifestValidationError, validate_manifest
@@ -17,13 +19,19 @@ from scenario_registry_store import (
     BindingAdapters,
     RegistryBootstrapToken,
     RegistryLaunchToken,
+    RegistryRepairToken,
     ScenarioRegistryStoreError,
     approve_retirement,
     claim_migration_item_launch,
+    create_certification_round,
     execute_registry_query,
+    final_gate_eligibility,
+    issue_wec_authority,
     issue_registry_bootstrap_token,
+    issue_registry_repair_token,
     ingest_report_reference,
     ingest_bootstrap_token_linked_report_reference,
+    ingest_repair_token_linked_report_reference,
     ingest_token_linked_report_reference,
     migration_item_current,
     migration_run_snapshot,
@@ -40,8 +48,12 @@ from scenario_registry_store import (
     reconcile_report_bindings,
     record_selection_token_rejection,
     record_bootstrap_token_rejection,
+    record_repair_token_rejection,
+    terminalize_repair_token_cleanup_without_report,
     claim_bootstrap_token_for_launch,
+    claim_repair_token_for_launch,
     reload_bootstrap_token_for_launch,
+    reload_repair_token_for_launch,
     reload_selection_token_for_launch,
     parse_registry_query_request,
     path_sha256,
@@ -204,6 +216,11 @@ def _current_bootstrap_revalidation_facts(declaration: Mapping[str, Any]) -> Map
             "profile", "profile_snapshot", "profile_snapshot_profile", resolve_profile_snapshot_payload,
         ),
     }
+
+
+def _current_repair_binding(declaration: Mapping[str, Any]) -> Mapping[str, Any]:
+    """Observe the exact runtime, fixture, and profile footing for one repair token."""
+    return _current_bootstrap_revalidation_facts(declaration)
 
 
 def _default_scenarios_root() -> Path:
@@ -781,6 +798,18 @@ def _registry_bootstrap_probe_namespace(selection: RegistryBootstrapToken) -> ar
     return startup_harness.build_parser().parse_args(["probe", selection.scenario])
 
 
+def _registry_repair_probe_namespace(selection: RegistryRepairToken) -> argparse.Namespace:
+    """Adapt a separately authorized repair run into the same canonical probe route."""
+    source_path = Path(selection.source_path).resolve()
+    canonical_path = startup_harness.scenario_path(selection.scenario).resolve()
+    if canonical_path != source_path:
+        raise ScenarioRegistryStoreError(
+            "Repair scenario source is not the canonical probe manifest: "
+            f"{source_path}"
+        )
+    return startup_harness.build_parser().parse_args(["probe", selection.scenario])
+
+
 def _registry_post_finalize_ingest(receipt: str) -> Any:
     """Return the narrow callback that links a durable probe report to its token."""
     def ingest(report_path: Path, _report: Mapping[str, Any]) -> Dict[str, Any]:
@@ -796,6 +825,13 @@ def _registry_post_finalize_ingest(receipt: str) -> Any:
             try:
                 if payload.get("authority_kind") == "registry_bootstrap_first_compatible_run":
                     return ingest_bootstrap_token_linked_report_reference(
+                        connection,
+                        token_id,
+                        report_path,
+                        adapters=production_binding_adapters(),
+                    )
+                if payload.get("authority_kind") == "registry_repair_exact_contradiction":
+                    return ingest_repair_token_linked_report_reference(
                         connection,
                         token_id,
                         report_path,
@@ -828,6 +864,7 @@ def build_parser() -> argparse.ArgumentParser:
     ingest = commands.add_parser("ingest-report", help="ingest one immutable report reference")
     ingest.add_argument("--report", required=True, help="full probe or handoff report JSON path")
     commands.add_parser("reconcile", help="recompute report bindings from their authoritative owners")
+    commands.add_parser("final-gates", help="derive automated-certification and Windows-feel eligibility")
     bootstrap = commands.add_parser(
         "registry-bootstrap",
         help="issue one manifest-SHA/query/runtime-bound first-evidence authority",
@@ -876,11 +913,37 @@ def build_parser() -> argparse.ArgumentParser:
         help="reload one selection token and run its canonical probe route",
     )
     launch.add_argument("selection_token", help="selection token returned by registry-query")
+    launch.add_argument(
+        "--certification-inputs",
+        help="authoritative installed-input JSON for a registry-owned certification launch",
+    )
     bootstrap_launch = commands.add_parser(
         "registry-bootstrap-launch",
         help="claim one bootstrap authority and run its canonical probe route",
     )
     bootstrap_launch.add_argument("bootstrap_token", help="token returned by registry-bootstrap")
+    repair = commands.add_parser(
+        "registry-repair-bootstrap",
+        help="issue one exact manifest/route/red-verification repair authority",
+    )
+    repair_source = repair.add_mutually_exclusive_group(required=True)
+    repair_source.add_argument("--query-file", help="typed repair query JSON file")
+    repair_source.add_argument("--query-json", help="typed repair query JSON object")
+    repair.add_argument("--manifest-id", required=True)
+    repair.add_argument("--route-key", required=True)
+    repair.add_argument("--red-verification-id", required=True)
+    repair_launch = commands.add_parser(
+        "registry-repair-launch",
+        help="claim one repair authority and run its canonical probe route",
+    )
+    repair_launch.add_argument("repair_token", help="token returned by registry-repair-bootstrap")
+    repair_terminal = commands.add_parser(
+        "registry-repair-finalize-no-report",
+        help="append accepted cleanup for one claimed repair that produced no probe report",
+    )
+    repair_terminal.add_argument("repair_token")
+    repair_terminal.add_argument("--run-dir", required=True)
+    repair_terminal.add_argument("--cleanup-json", required=True)
     migrate = commands.add_parser(
         "registry-migrate-all",
         help="claim and classify one immutable scenario inventory snapshot",
@@ -915,6 +978,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             elif args.command == "reconcile":
                 result = reconcile_report_bindings(connection, adapters=production_binding_adapters())
+            elif args.command == "final-gates":
+                result = final_gate_eligibility(connection)
             elif args.command == "registry-query":
                 request = parse_registry_query_request(_load_query_request(args))
                 result = asdict(execute_registry_query(
@@ -936,6 +1001,35 @@ def main(argv: Sequence[str] | None = None) -> int:
                     connection,
                     parse_registry_query_request(_load_query_request(args)),
                     runtime_binding=runtime_binding,
+                ))
+            elif args.command == "registry-repair-bootstrap":
+                manifest = connection.execute(
+                    "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?",
+                    (args.manifest_id,),
+                ).fetchone()
+                if manifest is None:
+                    result = asdict(RegistryRepairToken("", False, "manifest_absent"))
+                else:
+                    declaration = json.loads(str(manifest["declaration_json"]))
+                    if not isinstance(declaration, Mapping):
+                        raise ScenarioRegistryStoreError("repair manifest declaration must be an object")
+                    result = asdict(issue_registry_repair_token(
+                        connection,
+                        parse_registry_query_request(_load_query_request(args)),
+                        manifest_id=args.manifest_id,
+                        route_key=args.route_key,
+                        red_verification_id=args.red_verification_id,
+                        binding=_current_repair_binding(declaration),
+                    ))
+            elif args.command == "registry-repair-finalize-no-report":
+                cleanup = json.loads(args.cleanup_json)
+                if not isinstance(cleanup, Mapping):
+                    raise ScenarioRegistryStoreError("repair cleanup must be an object")
+                result = asdict(terminalize_repair_token_cleanup_without_report(
+                    connection,
+                    args.repair_token,
+                    run_dir=Path(args.run_dir),
+                    cleanup=cleanup,
                 ))
             elif args.command == "registry-revalidate-bootstrap":
                 result = dict(revalidate_current_bootstrap_authority(
@@ -999,12 +1093,57 @@ def main(argv: Sequence[str] | None = None) -> int:
                             ))
                             probe_namespace = None
                         else:
+                            if args.certification_inputs:
+                                producer_inputs = startup_harness._certification_recheck_producer_inputs(
+                                    args.certification_inputs
+                                )
+                                route = connection.execute(
+                                    "SELECT route_key FROM token_history WHERE token_id = ? AND event_kind = 'issued' "
+                                    "ORDER BY token_event_id LIMIT 1", (selection.token_id,),
+                                ).fetchone()
+                                if route is None:
+                                    raise ScenarioRegistryStoreError("selected launch token has no route")
+                                created = create_certification_round(
+                                    connection,
+                                    scenario_lineage_id=Path(selection.source_path).stem,
+                                    producer_inputs=producer_inputs,
+                                    launch_token=selection.token_id,
+                                    launch_source_path=Path(selection.source_path),
+                                    launch_route_key=str(route["route_key"]),
+                                    current_executable_sha256=str(runtime_binding["executable_sha256"]),
+                                )
+                                round_dir = registry_path.parent / "certification_rounds" / created["manifest"]["round_id"]
+                                round_dir.mkdir(parents=True, exist_ok=False)
+                                manifest_path = round_dir / "round.manifest.json"
+                                recheck_path = round_dir / "current-inputs.json"
+                                manifest_path.write_text(
+                                    json.dumps(created["manifest"], ensure_ascii=False, sort_keys=True),
+                                    encoding="utf-8",
+                                )
+                                recheck_path.write_text(
+                                    json.dumps(json.loads(Path(args.certification_inputs).read_text(encoding="utf-8")),
+                                               ensure_ascii=False, sort_keys=True),
+                                    encoding="utf-8",
+                                )
+                                probe_namespace.certification_registry = str(registry_path)
+                                probe_namespace.certification_round_manifest = str(manifest_path)
+                                probe_namespace.certification_lease_id = uuid.uuid4().hex
+                                probe_namespace.certification_recheck_inputs = str(recheck_path)
+                                probe_namespace.certification_save_capability = created["save_capability"]
+                                wec_authority = created["authority"]
+                            else:
+                                wec_authority = issue_wec_authority(
+                                    connection, evidence_class="focused feature proof", authority="registry",
+                                    run_id=selection.token_id, binding_id=str(runtime_binding.get("executable_sha256", "")),
+                                    source_sha256=path_sha256(Path(selection.source_path)),
+                                )
                             probe_namespace.registry_launch_receipt = json.dumps({
                                 "schema": 1,
                                 "registry_path": str(registry_path),
                                 "token_id": selection.token_id,
                                 "source_path": selection.source_path,
                                 "runtime_binding": runtime_binding,
+                                "wec_authority": wec_authority,
                             }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
                             probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
                                 probe_namespace.registry_launch_receipt
@@ -1044,6 +1183,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     selection.token_id, False, "canonical_probe_source_mismatch",
                                 ))
                             else:
+                                wec_authority = issue_wec_authority(
+                                    connection, evidence_class="focused feature proof", authority="registry",
+                                    run_id=selection.token_id, binding_id=str(selection.runtime_binding.get("executable_sha256", "")),
+                                    source_sha256=path_sha256(Path(selection.source_path)),
+                                )
                                 probe_namespace.registry_launch_receipt = json.dumps({
                                     "schema": 1,
                                     "authority_kind": "registry_bootstrap_first_compatible_run",
@@ -1051,11 +1195,83 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     "token_id": selection.token_id,
                                     "source_path": selection.source_path,
                                     "runtime_binding": selection.runtime_binding,
+                                    "wec_authority": wec_authority,
                                 }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
                                 probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
                                     probe_namespace.registry_launch_receipt
                                 )
                                 result = asdict(selection)
+            elif args.command == "registry-repair-launch":
+                issued = connection.execute(
+                    "SELECT manifest_id, verification_id FROM token_history "
+                    "WHERE token_id = ? AND event_kind = 'repair_issued' "
+                    "ORDER BY token_event_id LIMIT 1",
+                    (args.repair_token,),
+                ).fetchone()
+                if issued is None:
+                    result = asdict(RegistryRepairToken(args.repair_token, False, "token_unknown"))
+                else:
+                    manifest = connection.execute(
+                        "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?",
+                        (str(issued["manifest_id"]),),
+                    ).fetchone()
+                    if manifest is None:
+                        result = asdict(RegistryRepairToken(args.repair_token, False, "manifest_absent"))
+                    else:
+                        declaration = json.loads(str(manifest["declaration_json"]))
+                        if not isinstance(declaration, Mapping):
+                            raise ScenarioRegistryStoreError("repair manifest declaration must be an object")
+                        binding = _current_repair_binding(declaration)
+                        selection = reload_repair_token_for_launch(
+                            connection, args.repair_token, binding=binding,
+                        )
+                        if not selection.accepted:
+                            result = asdict(selection)
+                        else:
+                            comparison = startup_harness.compare_runtime_binding(selection.runtime_binding)
+                            if comparison.get("status") != "matched":
+                                record_repair_token_rejection(
+                                    connection,
+                                    selection.token_id,
+                                    reason="runtime_binding_changed",
+                                    details={"comparison": dict(comparison)},
+                                )
+                                result = asdict(RegistryRepairToken(
+                                    selection.token_id, False, "runtime_binding_changed",
+                                ))
+                            else:
+                                selection = claim_repair_token_for_launch(
+                                    connection, selection.token_id, binding=binding,
+                                )
+                                if not selection.accepted:
+                                    result = asdict(selection)
+                                else:
+                                    try:
+                                        probe_namespace = _registry_repair_probe_namespace(selection)
+                                    except ScenarioRegistryStoreError as exc:
+                                        record_repair_token_rejection(
+                                            connection,
+                                            selection.token_id,
+                                            reason="canonical_probe_source_mismatch",
+                                            details={"error": str(exc)},
+                                        )
+                                        result = asdict(RegistryRepairToken(
+                                            selection.token_id, False, "canonical_probe_source_mismatch",
+                                        ))
+                                    else:
+                                        probe_namespace.registry_launch_receipt = json.dumps({
+                                            "schema": 1,
+                                            "authority_kind": "registry_repair_exact_contradiction",
+                                            "registry_path": str(registry_path),
+                                            "token_id": selection.token_id,
+                                            "red_verification_id": str(issued["verification_id"]),
+                                            "source_path": selection.source_path,
+                                            "runtime_binding": selection.runtime_binding,
+                                        }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                                        probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
+                                            probe_namespace.registry_launch_receipt
+                                        )
+                                        result = asdict(selection)
             elif args.command == "registry-migrate-all":
                 if args.resume:
                     migration = migration_run_snapshot(connection, str(args.resume))
@@ -1094,7 +1310,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, sqlite3.Error, ScenarioRegistryStoreError, SystemExit, ValueError) as exc:
         _write_result({"ok": False, "command": args.command, "error": str(exc)}, stream=sys.stderr)
         return 1
-    if args.command in {"registry-launch", "registry-bootstrap-launch"}:
+    if args.command in {"registry-launch", "registry-bootstrap-launch", "registry-repair-launch"}:
         if probe_namespace is None:
             _write_result({
                 "ok": False,
@@ -1103,7 +1319,18 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "result": result,
             }, stream=sys.stderr)
             return 1
-        return startup_harness.run_probe_mode(probe_namespace)
+        capability = str(getattr(probe_namespace, "certification_save_capability", "") or "")
+        prior_capability = os.environ.get("OPENCLAW_CERTIFICATION_SAVE_CAPABILITY")
+        if capability:
+            os.environ["OPENCLAW_CERTIFICATION_SAVE_CAPABILITY"] = capability
+        try:
+            return startup_harness.run_probe_mode(probe_namespace)
+        finally:
+            if capability:
+                if prior_capability is None:
+                    os.environ.pop("OPENCLAW_CERTIFICATION_SAVE_CAPABILITY", None)
+                else:
+                    os.environ["OPENCLAW_CERTIFICATION_SAVE_CAPABILITY"] = prior_capability
     _write_result({
         "ok": True,
         "command": args.command,

@@ -171,6 +171,19 @@ static void openclaw_harness_trace_overmap_route( const char *event,
             << " travel_result=" << ( travel_result ? "true" : "false" );
 }
 
+static void openclaw_harness_trace_overmap_cursor( const char *event,
+        const tripoint_abs_omt &cursor, const std::string &action = "" )
+{
+    if( !openclaw_harness_overmap_input_trace_enabled() ) {
+        return;
+    }
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=overmap_route_cursor"
+            << " event=" << event
+            << " position=" << cursor.x() << "," << cursor.y() << "," << cursor.z()
+            << " action=" << openclaw_harness_quote_overmap_input( action );
+}
+
 #if defined(__ANDROID__)
 #include <SDL_keyboard.h>
 #endif
@@ -3155,6 +3168,7 @@ static tripoint_abs_omt display()
     if( data.ecology_observer_controls ) {
         overmap_ui::restore_ecology_observer_controls( data );
     }
+    openclaw_harness_trace_overmap_cursor( "entered", curs );
     data.ecology_enabled = data.ecology_observer_controls &&
                            get_avatar().has_trait( trait_DEBUG_CLAIRVOYANCE );
     // Configure input context for navigating the map.
@@ -3500,6 +3514,10 @@ static tripoint_abs_omt display()
             uistate.overmap_sidebar_state.set_all( false );
         } else if( action == "EXPAND_OVERMAP_SIDEBAR_HEADERS" ) {
             uistate.overmap_sidebar_state.set_all( true );
+        }
+
+        if( action != "TIMEOUT" ) {
+            openclaw_harness_trace_overmap_cursor( "position", curs, action );
         }
 
         std::chrono::time_point<std::chrono::steady_clock> now = std::chrono::steady_clock::now();

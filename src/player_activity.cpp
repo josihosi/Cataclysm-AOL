@@ -54,6 +54,7 @@ static const activity_id ACT_WORKOUT_ACTIVE( "ACT_WORKOUT_ACTIVE" );
 static const activity_id ACT_WORKOUT_HARD( "ACT_WORKOUT_HARD" );
 static const activity_id ACT_WORKOUT_LIGHT( "ACT_WORKOUT_LIGHT" );
 static const activity_id ACT_WORKOUT_MODERATE( "ACT_WORKOUT_MODERATE" );
+static const trait_id trait_DEBUG_STAMINA( "DEBUG_STAMINA" );
 
 static const efftype_id effect_nausea( "nausea" );
 
@@ -308,7 +309,8 @@ void player_activity::do_turn( Character &you )
                     act_id == ACT_WORKOUT_ACTIVE ||
                     act_id == ACT_WORKOUT_MODERATE ||
                     act_id == ACT_WORKOUT_LIGHT;
-    if( !excluded && adjusted_stamina < previous_stamina &&
+    if( !excluded && !you.has_trait( trait_DEBUG_STAMINA ) &&
+        adjusted_stamina < previous_stamina &&
         you.get_stamina() < you.get_stamina_max() / 3 ) {
         if( one_in( 50 ) ) {
             you.add_msg_if_player( _( "You pause for a moment to catch your breath." ) );

@@ -144,6 +144,22 @@ enum class simulation_owner_transition_result {
     applied,
 };
 
+enum class local_projection_reconciliation_result {
+    rejected,
+    unchanged,
+    repaired,
+};
+
+struct local_projection_claim {
+    character_id npc_id;
+    std::string site_id;
+    std::string activity_id;
+    std::string owner;
+    int generation = -1;
+    int handoff_epoch = -1;
+    int last_advanced_minutes = -1;
+};
+
 struct simulation_advance_cursor {
     std::string activity_id;
     int generation = 0;
@@ -472,6 +488,11 @@ struct local_handoff_member_read {
     tripoint_abs_ms staging_position;
 };
 
+struct local_handoff_preflight {
+    bool valid = false;
+    std::vector<std::string> failed_prerequisites;
+};
+
 struct local_pair_casualty_read {
     character_id npc_id;
     member_state state = member_state::dead;
@@ -499,6 +520,14 @@ struct local_dematerialization_member_read {
     bool readable = false;
     bool dead = false;
     bool homeward_route_confirmed = false;
+    int hp_percent = 0;
+    tripoint_abs_ms current_position;
+};
+
+struct local_abstract_resume_progress_read {
+    character_id npc_id;
+    bool readable = false;
+    bool dead = false;
     int hp_percent = 0;
     tripoint_abs_ms current_position;
 };
@@ -682,6 +711,28 @@ struct camp_decision_record {
 };
 
 struct active_outing_state {
+    struct crossing_receipt {
+        std::vector<character_id> actor_ids;
+        std::string activity_id;
+        int generation = 0;
+        simulation_owner prior_owner = simulation_owner::abstract;
+        simulation_owner next_owner = simulation_owner::abstract;
+        int handoff_epoch = -1;
+        int cursor_minutes = -1;
+        int cursor_waypoint = -1;
+        std::string outcome;
+        bool persistence_acknowledged = false;
+
+        bool pending() const {
+            return !activity_id.empty() && !persistence_acknowledged;
+        }
+        void clear() {
+            *this = crossing_receipt();
+        }
+        void serialize( JsonOut &json ) const;
+        void deserialize( const JsonObject &jo );
+    };
+
     int schema_version = 5;
     outing_kind kind = outing_kind::none;
     std::string activity_id;
@@ -709,10 +760,12 @@ struct active_outing_state {
     simulation_owner owner = simulation_owner::abstract;
     int handoff_epoch = 0;
     int last_advanced_minutes = -1;
+    bool local_projection_reconciliation_rejected = false;
     std::string return_application_key;
     std::string report_application_key;
     std::string cargo_application_key;
     std::vector<structural_member_return_receipt> member_return_receipts;
+    crossing_receipt crossing;
     local_handoff_snapshot local_handoff;
     abstract_encounter_state abstract_encounter;
     int abstract_detour_attempts = 0;
@@ -1048,6 +1101,16 @@ struct site_record {
 };
 
 struct world_state {
+    struct crossing_receipt_identity {
+        std::string site_id;
+        std::string activity_id;
+        int generation = 0;
+        int handoff_epoch = -1;
+        int cursor_minutes = -1;
+        int cursor_waypoint = -1;
+        simulation_owner prior_owner = simulation_owner::abstract;
+        simulation_owner next_owner = simulation_owner::abstract;
+    };
     int schema_version = 7;
     std::string owner_id = "hells_raiders_live_owner_v0";
     int routine_scheduler_cursor = 0;
@@ -1060,6 +1123,8 @@ struct world_state {
     void clear();
     void serialize( JsonOut &json ) const;
     void deserialize( const JsonObject &jo );
+    std::vector<crossing_receipt_identity> acknowledge_persisted_crossings();
+    void rollback_persisted_crossings( const std::vector<crossing_receipt_identity> &tokens );
 
     site_record *find_site( const std::string &site_id );
     const site_record *find_site( const std::string &site_id ) const;
@@ -1595,6 +1660,8 @@ finite_resource_record finite_resource_snapshot( const world_state &state,
         const tripoint_abs_omt &omt, int undiscovered_units );
 std::string finite_resource_claim_application_key( const std::string &operation_id,
         int operation_generation, const tripoint_abs_omt &omt );
+bool authoritative_player_target_observation_is_local_to_basecamp(
+    const tripoint_abs_omt &player_omt, const std::optional<tripoint_abs_omt> &basecamp_omt );
 bool observe_authoritative_hostile_target_opportunity( world_state &state,
         const std::string &target_id, const tripoint_abs_omt &target_omt,
         const hostile_target_opportunity_evidence &evidence );
@@ -1802,7 +1869,9 @@ sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &curre
         bool current_exposure, bool recent_exposure,
         const std::vector<sight_avoid_candidate> &candidates, bool current_smoke_obscured = false );
 std::optional<simulation_advance_cursor> current_external_simulation_cursor(
-    const site_record &site );
+        const site_record &site );
+local_projection_reconciliation_result reconcile_loaded_local_projections(
+        world_state &state, const std::vector<local_projection_claim> &claims );
 bool note_active_sortie_started( site_record &site,
                                  const simulation_advance_cursor &expected_cursor,
                                  int current_minutes );
@@ -1838,6 +1907,9 @@ simulation_owner_transition_result advance_external_simulation( site_record &sit
 local_handoff_plan plan_local_pair_handoff( const site_record &site,
         const simulation_advance_cursor &expected_cursor, int current_minutes,
         const std::vector<local_handoff_member_read> &member_reads );
+local_handoff_preflight preflight_local_pair_handoff( const site_record &site,
+        const simulation_advance_cursor &expected_cursor, int current_minutes,
+        const std::vector<local_handoff_member_read> &member_reads );
 local_handoff_commit_result commit_local_pair_handoff( site_record &site,
         const local_handoff_plan &plan,
         const std::function<bool( const local_handoff_member_snapshot & )> &bind_member,
@@ -1850,6 +1922,9 @@ local_handoff_commit_result commit_local_pair_dematerialization( site_record &si
         const local_dematerialization_plan &plan,
         const std::function<bool( const local_handoff_member_snapshot & )> &quiesce_member,
         const std::function<void( const local_handoff_member_snapshot & )> &rollback_member );
+bool record_local_pair_abstract_resume_progress( site_record &site,
+        const simulation_advance_cursor &expected_cursor, int current_minutes,
+        const std::vector<local_abstract_resume_progress_read> &member_reads );
 bool record_structural_member_physical_return( site_record &site,
         const simulation_advance_cursor &expected_cursor, character_id member_id,
         const tripoint_abs_omt &returned_omt, int current_minutes );

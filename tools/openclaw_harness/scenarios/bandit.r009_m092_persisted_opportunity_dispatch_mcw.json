@@ -1,0 +1,162 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r009_m092_persisted_opportunity_dispatch_mcw",
+  "description": "R-009 M092 continuation from the M091 ordinary full-save. It reloads an unmodified current-schema player-basecamp opportunity, crosses the remaining deterministic routine boundary through normal six-hour waits, and stops for a saved-state audit of the first structural scout producer-to-consumer transition.",
+  "profile": "r009-m092",
+  "world": "McWilliams",
+  "fixture": "r009_m092_m091_fullsave_current_schema",
+  "fixture_profile": "r009-m091",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2",
+      "LLM_INTENT_ENABLE": "false"
+    }
+  },
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "capabilities": {
+    "player.hud": ["Move:", "Wield:"],
+    "capabilities.shakedown.persisted_opportunity_dispatch": "authoritative_player_opportunity_revision_1_to_structural_scout"
+  },
+  "runtime_contract": {
+    "permitted_input": ["long_wait:6h", "press:S", "press:Y"],
+    "forbidden_input": ["debug:teleport", "raw-save-rewrite", "fixture-save-transform", "debug:inject_report", "debug:inject_decision", "debug:inject_operation", "debug:drive", "debug:eligibility"],
+    "disposable_copy": true,
+    "setup_only_debug": false,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m092",
+    "fixture": "r009_m092_m091_fullsave_current_schema",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r009-m092",
+      "fixture": "r009_m092_m091_fullsave_current_schema",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": ["long_wait:6h", "press:S", "press:Y"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["audit_persisted_authoritative_opportunity"],
+    "production_behavior": ["wait_second_6_hours_through_force_due"],
+    "terminal_persistence": ["audit_first_structural_scout_consumer"],
+    "artifact_verdict": ["audit_same_run_structural_scout_dispatch"],
+    "disallowed_shortcuts": ["audit_persisted_authoritative_opportunity"]
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_reload_hud",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r009_m092_persisted_full_save_did_not_reload",
+      "abort_reason": "the exact M091 current-schema full save did not reach ordinary gameplay"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_persisted_authoritative_opportunity",
+      "required_site_id_contains": "overmap_special:bandit_camp@164,39,0",
+      "required_member_count": 12,
+      "required_ready_at_home_count": 12,
+      "required_active_outside_count": 0,
+      "required_min_leads": 2,
+      "required_lead_kind": "terrain_opportunity",
+      "required_lead_target_id": "player@162,36,0",
+      "required_lead_source_contains": "authoritative_player_opportunity",
+      "required_lead_status": "suspected",
+      "required_scout_report_present": false,
+      "required_camp_decision_state": "idle",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r009_m092_persisted_opportunity_identity_missing",
+      "abort_reason": "the M091 full save lost the authoritative player opportunity or its exact revision-1 terrain-opportunity lead"
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_first_6_hours_toward_force_due",
+      "choice_key": "8",
+      "expected_duration": "6h",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "allow_exact_artifact_meridiem_ambiguity": true,
+      "pre_menu_choice_key": "w",
+      "completion_wait_seconds": 90.0,
+      "completion_artifact_timeout_seconds": 420.0,
+      "artifact_state_patterns": ["bandit_live_world structural maintenance:"],
+      "expected_visible_fact": "ordinary gameplay advances six hours toward the exact camp identity's force-due boundary"
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_second_6_hours_through_force_due",
+      "choice_key": "8",
+      "expected_duration": "6h",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "allow_exact_artifact_meridiem_ambiguity": true,
+      "pre_menu_choice_key": "w",
+      "completion_wait_seconds": 90.0,
+      "completion_artifact_timeout_seconds": 420.0,
+      "artifact_state_patterns": ["bandit_live_world structural maintenance:"],
+      "expected_visible_fact": "ordinary gameplay crosses the deterministic force-due boundary without altering producer inputs"
+    },
+    {
+      "kind": "press",
+      "label": "open_native_full_save_after_force_due",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["quit", "Case"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r009_m092_native_save_prompt_missing",
+      "abort_reason": "the normal Save and quit prompt was not visible before persistence audit"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_native_full_save_after_force_due",
+      "keys": ["Y"],
+      "settle_seconds": 4.0,
+      "capture_after": true
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_first_structural_scout_consumer",
+      "required_site_id_contains": "overmap_special:bandit_camp@164,39,0",
+      "required_member_count": 12,
+      "required_min_active_member_ids": 2,
+      "required_active_outing_kind": "structural_sortie",
+      "required_active_outing_activity_id_contains": "#structural",
+      "required_active_outing_generation": 1,
+      "required_active_job_type": "scout",
+      "required_active_target_id_contains": "player@162,36,0",
+      "required_active_outing_exact_pair": true,
+      "required_active_outing_pair_contract": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r009_m092_authoritative_opportunity_did_not_consume_into_structural_scout",
+      "abort_reason": "the force-due scheduler did not persist one exact structural scout consumer for the authoritative player opportunity"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_same_run_structural_scout_dispatch",
+      "required_line_patterns": [[
+        "structural maintenance dispatched site=overmap_special:bandit_camp@164,39,0",
+        "lead=overmap_special:bandit_camp@164,39,0#lead:terrain_opportunity:player@162,36,0@162,36,0"
+      ]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r009_m092_structural_scout_dispatch_artifact_missing",
+      "abort_reason": "the same run lacks a producer-to-consumer dispatch artifact for the exact authoritative lead"
+    }
+  ],
+  "evidence_contract": {
+    "claim": "the persisted authoritative player opportunity retains its identity across a full save/reload and naturally produces one exact structural scout consumer",
+    "failure_rule": "terminalize at the first failed producer-to-consumer transition; do not inject or repair subsequent report, decision, operation, drive, or eligibility state"
+  }
+}

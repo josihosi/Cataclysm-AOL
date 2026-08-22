@@ -1632,6 +1632,8 @@ TEST_CASE( "ecology_covert_scout_relationship_is_exact_and_actor_specific",
           tripoint_abs_ms( partner_entry.x(), partner_entry.y() + 1, partner_entry.z() ),
           partner_entry, 100, false }
     };
+    outing.local_handoff.cohesion_best_staging_distances.assign(
+        outing.local_handoff.members.size(), 0 );
     const tripoint_abs_omt target_camp_omt = outing.target_omt;
     live_state.sites.push_back( std::move( site ) );
 
@@ -1823,6 +1825,8 @@ static bandit_live_world::site_record make_live_covert_optics_site(
           tripoint_abs_ms( partner_entry.x(), partner_entry.y() + 1, partner_entry.z() ),
           partner_entry, 100, false }
     };
+    outing.local_handoff.cohesion_best_staging_distances.assign(
+        outing.local_handoff.members.size(), 0 );
     return site;
 }
 
@@ -3329,6 +3333,15 @@ TEST_CASE( "live_covert_burn_tracks_environmental_visibility_changes",
     };
     const auto refresh_visibility = [&]( const time_point &when ) {
         set_time( when );
+        g->reset_light_level();
+        here.invalidate_visibility_cache();
+        here.update_visibility_cache( player_character.posz() );
+        here.invalidate_map_cache( player_character.posz() );
+        here.build_map_cache( player_character.posz() );
+        here.invalidate_visibility_cache();
+        here.update_visibility_cache( player_character.posz() );
+        here.invalidate_map_cache( player_character.posz() );
+        here.build_map_cache( player_character.posz() );
         for( Character *actor : { static_cast<Character *>( &player_character ),
                                   static_cast<Character *>( &defender ),
                                   static_cast<Character *>( &scout ),
@@ -3485,6 +3498,8 @@ TEST_CASE( "live_covert_burn_avoids_pair_owned_soft_danger_evidence",
           tripoint_abs_ms( partner_entry.x(), partner_entry.y() + 1, partner_entry.z() ),
           partner_entry, 100, false }
     };
+    outing.local_handoff.cohesion_best_staging_distances.assign(
+        outing.local_handoff.members.size(), 0 );
     REQUIRE( bandit_live_world::structural_watch_shared_route_is_canonical(
                  outing.shared_route, site.anchor, outing.selected_watch_omt,
                  outing.target_footprint ) );
@@ -3754,6 +3769,217 @@ TEST_CASE( "live_covert_burn_yields_to_actor_visible_field_survival",
     CHECK( site.active_outing.generation == generation );
     CHECK( site.active_outing.target_id == target_id );
     CHECK( site.active_outing.target_omt == target_omt );
+}
+
+TEST_CASE( "visible_observer_burn_preserves_exact_covert_pair_neutrality_and_egress",
+           "[npc][bandit][covert_burn][covert_disposition][natural_turn]" )
+{
+    g->faction_manager_ptr->create_if_needed();
+    clear_map_without_vision();
+    clear_avatar();
+    set_time_to_day();
+
+    map &here = get_map();
+    avatar &player_character = get_avatar();
+    player_character.setpos( here, tripoint_bub_ms( 10, 10, 0 ) );
+    npc &defender = spawn_npc( point_bub_ms( 54, 50 ), "test_talker" );
+    npc &scout = spawn_npc( point_bub_ms( 58, 50 ), "thug" );
+    npc &partner = spawn_npc( point_bub_ms( 58, 51 ), "thug" );
+    npc &unrelated = spawn_npc( point_bub_ms( 48, 48 ), "thug" );
+    defender.set_fac( faction_your_followers );
+    REQUIRE( defender.is_player_ally() );
+    REQUIRE( defender.is_active() );
+
+    const std::vector<character_id> generated_ids = {
+        defender.getID(), scout.getID(), partner.getID(), unrelated.getID()
+    };
+    on_out_of_scope remove_generated_npcs( [generated_ids]() {
+        for( const character_id id : generated_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+    } );
+
+    bandit_live_world::world_state &live_state =
+        overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::world_state previous_live_state = live_state;
+    on_out_of_scope restore_live_state( [previous_live_state]() {
+        overmap_buffer.global_state.bandit_live_world = previous_live_state;
+    } );
+    const int current_minutes = to_minutes<int>(
+                                    calendar::turn - calendar::start_of_cataclysm );
+    live_state = bandit_live_world::world_state();
+    live_state.sites.push_back( make_live_covert_optics_site(
+                                    scout, partner, current_minutes ) );
+    bandit_live_world::site_record &site = live_state.sites.front();
+    bandit_live_world::active_outing_state &outing = site.active_outing;
+    const std::vector<character_id> exact_pair_ids = outing.member_ids;
+    const std::string activity_id = outing.activity_id;
+    const int generation = outing.generation;
+    const std::string target_id = outing.target_id;
+    const tripoint_abs_omt target_omt = outing.target_omt;
+
+    REQUIRE_FALSE( overmap_buffer.has_camp( target_omt ) );
+    basecamp target_camp( "visible observer target camp", target_omt );
+    target_camp.set_owner( faction_id::NULL_ID() );
+    overmap_buffer.add_camp( target_camp );
+    on_out_of_scope remove_target_camp( [target_omt]() {
+        overmap_buffer.remove_camp( target_omt.xy() );
+    } );
+    REQUIRE( overmap_buffer.is_player_camp_omt( target_omt ) );
+
+    const auto check_pair_neutrality = [&]() {
+        for( const npc *member : { &scout, &partner } ) {
+            CHECK( member->has_ecology_covert_noncombat_relationship( player_character ) );
+            CHECK( member->has_ecology_covert_noncombat_relationship( defender ) );
+            CHECK( member->attitude_to( player_character ) == Creature::Attitude::NEUTRAL );
+            CHECK( player_character.attitude_to( *member ) == Creature::Attitude::NEUTRAL );
+            CHECK( member->attitude_to( defender ) == Creature::Attitude::NEUTRAL );
+            CHECK( defender.attitude_to( *member ) == Creature::Attitude::NEUTRAL );
+            CHECK_FALSE( member->guaranteed_hostile() );
+        }
+    };
+
+    outing.phase = bandit_live_world::scout_phase::searching;
+    outing.local_handoff.phase = outing.phase;
+    check_pair_neutrality();
+    CHECK_FALSE( unrelated.has_ecology_covert_noncombat_relationship( player_character ) );
+    CHECK( unrelated.guaranteed_hostile() );
+
+    outing.phase = bandit_live_world::scout_phase::observing;
+    outing.local_handoff.phase = outing.phase;
+    check_pair_neutrality();
+    const efftype_id effect_blind_local( "blind" );
+    defender.add_effect( effect_blind_local, 1_hours );
+    defender.recalc_sight_limits();
+    REQUIRE( defender.is_blind() );
+    REQUIRE_FALSE( defender.sees_without_clairvoyance( here, scout ) );
+    REQUIRE( scout.sees_without_clairvoyance( here, defender ) );
+
+    const tripoint_abs_ms quiet_scout_position = scout.pos_abs();
+    const tripoint_abs_ms quiet_partner_position = partner.pos_abs();
+    const tripoint_abs_ms quiet_defender_position = defender.pos_abs();
+    const tripoint_abs_ms quiet_unrelated_position = unrelated.pos_abs();
+    for( npc *actor : { &scout, &partner, &defender, &unrelated } ) {
+        actor->set_moves( -1000 );
+    }
+    bandit_live_world_probe::snapshot quiet_events;
+    {
+        bandit_live_world_probe::session event_session(
+            bandit_live_world_probe::collection_mode::transition_events );
+        process_monsters_and_npcs_turn_for_test();
+        quiet_events = event_session.result();
+    }
+    CHECK( quiet_events.transition_events.empty() );
+    CHECK( quiet_events.dropped_transition_events == 0 );
+    CHECK( outing.phase == bandit_live_world::scout_phase::observing );
+    CHECK( std::none_of( outing.observations.begin(), outing.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+    } ) );
+    CHECK( scout.pos_abs() == quiet_scout_position );
+    CHECK( partner.pos_abs() == quiet_partner_position );
+    CHECK( defender.pos_abs() == quiet_defender_position );
+    CHECK( unrelated.pos_abs() == quiet_unrelated_position );
+    check_pair_neutrality();
+
+    defender.remove_effect( effect_blind_local );
+    defender.recalc_sight_limits();
+    REQUIRE_FALSE( defender.is_blind() );
+    REQUIRE( defender.sees_without_clairvoyance( here, scout ) );
+    REQUIRE( scout.sees_without_clairvoyance( here, defender ) );
+    for( npc *member : { &scout, &partner } ) {
+        member->goto_to_this_pos = std::nullopt;
+        member->clear_ai_guard_pos();
+        member->path.clear();
+        member->goal = npc::no_goal_point;
+        member->omt_path.clear();
+        member->set_mission( NPC_MISSION_GUARD );
+        member->set_moves( 1 - member->get_speed() );
+    }
+    defender.set_moves( -1000 );
+    unrelated.set_moves( -1000 );
+
+    const tripoint_abs_ms visible_scout_position = scout.pos_abs();
+    const tripoint_abs_ms visible_partner_position = partner.pos_abs();
+    const tripoint_abs_ms visible_unrelated_position = unrelated.pos_abs();
+    bandit_live_world_probe::snapshot burn_events;
+    {
+        bandit_live_world_probe::session event_session(
+            bandit_live_world_probe::collection_mode::transition_events );
+        process_monsters_and_npcs_turn_for_test();
+        burn_events = event_session.result();
+    }
+
+    REQUIRE( outing.phase == bandit_live_world::scout_phase::burned_withdrawal );
+    REQUIRE( burn_events.transition_events.size() == 1 );
+    CHECK( burn_events.transition_events.front().operation_id == activity_id );
+    CHECK( burn_events.transition_events.front().generation == generation );
+    CHECK( burn_events.transition_events.front().previous_phase == "observing" );
+    CHECK( burn_events.transition_events.front().new_phase == "burned_withdrawal" );
+    CHECK( burn_events.dropped_transition_events == 0 );
+    const std::vector<bandit_live_world::sortie_observation> burn_observations = [&outing]() {
+        std::vector<bandit_live_world::sortie_observation> result;
+        std::copy_if( outing.observations.begin(), outing.observations.end(),
+                      std::back_inserter( result ),
+        []( const bandit_live_world::sortie_observation & observation ) {
+            return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+        } );
+        return result;
+    }();
+    REQUIRE( burn_observations.size() == 1 );
+    const std::string defender_id = "npc:" + std::to_string( defender.getID().get_value() );
+    CHECK( burn_observations.front().defender_ids == std::vector<std::string> { defender_id } );
+    CHECK( outing.member_ids == exact_pair_ids );
+    CHECK( outing.activity_id == activity_id );
+    CHECK( outing.generation == generation );
+    CHECK( outing.target_id == target_id );
+    CHECK( outing.target_omt == target_omt );
+
+    const tripoint_abs_omt selected_egress = outing.local_handoff.egress_omt;
+    REQUIRE_FALSE( outing.current_covert_egress_route_omts.empty() );
+    CHECK( std::find( outing.current_covert_egress_route_omts.begin(),
+                      outing.current_covert_egress_route_omts.end(), selected_egress ) !=
+           outing.current_covert_egress_route_omts.end() );
+    for( const npc *member : { &scout, &partner } ) {
+        CHECK( member->goal == selected_egress );
+        CHECK( member->is_travelling() );
+        CHECK_FALSE( member->omt_path.empty() );
+    }
+    CHECK( scout.pos_abs() != visible_scout_position );
+    CHECK( partner.pos_abs() != visible_partner_position );
+    CHECK( unrelated.pos_abs() == visible_unrelated_position );
+    check_pair_neutrality();
+
+    scout.set_moves( -1000 );
+    partner.set_moves( -1000 );
+    defender.set_moves( -1000 );
+    unrelated.set_moves( -1000 );
+    bandit_live_world_probe::snapshot replay_events;
+    {
+        bandit_live_world_probe::session event_session(
+            bandit_live_world_probe::collection_mode::transition_events );
+        process_monsters_and_npcs_turn_for_test();
+        replay_events = event_session.result();
+    }
+    CHECK( replay_events.transition_events.empty() );
+    CHECK( replay_events.dropped_transition_events == 0 );
+    CHECK( outing.local_handoff.egress_omt == selected_egress );
+    CHECK( std::count_if( outing.observations.begin(), outing.observations.end(),
+    []( const bandit_live_world::sortie_observation & observation ) {
+        return observation.kind == bandit_live_world::sortie_observation_kind::burn;
+    } ) == 1 );
+    check_pair_neutrality();
+
+    scout.on_attacked( player_character );
+    CHECK_FALSE( scout.has_ecology_covert_noncombat_relationship( player_character ) );
+    CHECK( scout.is_enemy() );
+    CHECK( scout.attitude_to( player_character ) == Creature::Attitude::HOSTILE );
+    CHECK( partner.has_ecology_covert_noncombat_relationship( player_character ) );
+    CHECK( partner.has_ecology_covert_noncombat_relationship( defender ) );
+    CHECK( partner.attitude_to( player_character ) == Creature::Attitude::NEUTRAL );
+    CHECK( player_character.attitude_to( partner ) == Creature::Attitude::NEUTRAL );
+    CHECK( unrelated.pos_abs() == visible_unrelated_position );
 }
 
 TEST_CASE( "loaded_covert_pair_movement_has_bounded_route_work",

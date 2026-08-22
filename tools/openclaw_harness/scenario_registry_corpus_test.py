@@ -100,6 +100,90 @@ class ScenarioRegistryCorpusContractTest(unittest.TestCase):
                         self.assertEqual(field_binding["state"], "unknown")
                         self.assertIsNone(field_binding["value"])
 
+    def test_cannibal_dispatch_fixture_has_idle_observed_footing(self) -> None:
+        cannibal = json.loads((scenarios_root() / "cannibal.live_world_night_local_contact_pack_mcw.json").read_text())
+        cannibal_fixture = json.loads((
+            HARNESS_DIR / "fixtures" / "saves" / "live-debug"
+            / "cannibal_live_world_night_local_contact_pack_v0_2026-04-28" / "manifest.json"
+        ).read_text())
+
+        self.assertEqual(cannibal["manifest_version"], 2)
+        self.assertEqual(cannibal["run_class"], "combat")
+        self.assertFalse(cannibal["observer_character"])
+        self.assertNotIn("status", cannibal)
+        self.assertNotIn("blocked_reason", cannibal)
+        cannibal_preflight = next(
+            step for step in cannibal["steps"]
+            if step["label"] == "preflight_observed_idle_cannibal_dispatch_footing"
+        )
+        self.assertEqual(cannibal_preflight["required_profile"], "cannibal_camp")
+        self.assertEqual(cannibal_preflight["required_member_count"], 2)
+        self.assertEqual(cannibal_preflight["required_active_outside_count"], 0)
+        self.assertEqual(
+            [(transform["kind"], transform.get("site_id", transform.get("new_site_id", "")))
+             for transform in cannibal_fixture["save_transforms"]],
+            [
+                ("game_turn", ""),
+                ("seed_overmap_special_near_player", ""),
+                ("map_fields_near_player", ""),
+                ("bandit_clone_site", "overmap_special:cannibal_camp@140,51,0"),
+                ("bandit_site_roster_shape", "overmap_special:bandit_camp@140,51,0"),
+                ("bandit_site_roster_shape", "overmap_special:cannibal_camp@140,51,0"),
+                ("bandit_clear_site_evidence", "overmap_special:cannibal_camp@140,51,0"),
+                ("bandit_camp_map_lead", "overmap_special:cannibal_camp@140,51,0"),
+                ("player_mutations", ""),
+            ],
+        )
+        disturbance = cannibal_fixture["save_transforms"][2]
+        cannibal_clone = cannibal_fixture["save_transforms"][3]
+        cannibal_roster = cannibal_fixture["save_transforms"][5]
+        self.assertEqual(
+            [field["field_id"] for field in disturbance["fields"]],
+            ["fd_fire", "fd_smoke"],
+        )
+        self.assertEqual(cannibal_clone["new_hostile_profile"], "cannibal_camp")
+        self.assertEqual(cannibal_clone["new_anchor"], [140, 51, 0])
+        self.assertEqual(cannibal_roster["living_member_count"], 2)
+        self.assertEqual(cannibal_roster["active_outside_member_count"], 0)
+
+    def test_r002_m040_post_abort_recenter_continuation_is_noncredit_and_source_bound(self) -> None:
+        path = scenarios_root() / "bandit.r002_m040_post_abort_recenter_return_mcw.json"
+        raw = json.loads(path.read_text(encoding="utf-8"))
+        labels = [step["label"] for step in raw["steps"]]
+
+        self.assertEqual(raw["manifest_version"], 2)
+        self.assertEqual(
+            raw["fixture"],
+            "bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22",
+        )
+        self.assertFalse(raw["runtime_contract"]["grants_gameplay_proof"])
+        self.assertEqual(
+            raw["runtime_contract"]["forbidden_input"],
+            ["debug:ecology_edit", "debug:inject_report", "debug:inject_decision",
+             "debug:inject_operation", "debug:spawn_npc", "raw-save-rewrite",
+             "fixture-save-transform-after-install"],
+        )
+        self.assertLess(labels.index("preflight_exact_post_abort_pair"),
+                        labels.index("load_zero_slot_abort_resume_omt"))
+        self.assertLess(labels.index("accept_zero_slot_abort_resume_route"),
+                        labels.index("audit_recenter_gate_and_local_rebind"))
+        self.assertLess(labels.index("audit_recenter_gate_and_local_rebind"),
+                        labels.index("audit_ordered_physical_return_receipts"))
+        self.assertLess(labels.index("audit_ordered_physical_return_receipts"),
+                        labels.index("audit_saved_pair_home_after_recenter"))
+
+        preflight = next(step for step in raw["steps"]
+                         if step["label"] == "preflight_exact_post_abort_pair")
+        self.assertEqual(preflight["required_active_outing_handoff_epoch"], 2)
+        self.assertTrue(preflight["required_local_handoff_cohesion_abort_return"])
+        self.assertFalse(preflight["required_local_handoff_cohesion_assembled"])
+        self.assertEqual(preflight["required_local_handoff_route_position"], [164, 36, 0])
+        route = next(step for step in raw["steps"]
+                     if step["label"] == "load_zero_slot_abort_resume_omt")
+        self.assertEqual(route["origin_omt"], [161, 36, 0])
+        self.assertEqual(route["destination_omt"], [164, 36, 0])
+        self.assertEqual(route["cursor_keys"], ["right", "right", "right"])
+
 
 if __name__ == "__main__":
     unittest.main()

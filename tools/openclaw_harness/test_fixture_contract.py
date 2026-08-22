@@ -52,6 +52,7 @@ from startup_harness import (  # noqa: E402
     audit_log_contains,
     audit_log_not_contains,
     audit_saved_bandit_live_world_state,
+    audit_saved_phase4_shadow_warning_wait_footings,
     apply_bandit_camp_map_lead_transform,
     apply_bandit_clear_site_evidence_transform,
     apply_bandit_clone_site_transform,
@@ -59,18 +60,26 @@ from startup_harness import (  # noqa: E402
     apply_game_turn_to_payload,
     apply_overmap_terrain_id_at_abs_omt_transform,
     apply_option_overrides_to_file,
+    apply_player_basecamp_at_omt_transform,
     apply_player_mutations_transform,
+    apply_player_view_seen_omt_transform,
+    apply_player_worn_items_transform,
+    apply_remove_inherited_shadow_flavor_producer_global_eocs_transform,
     apply_repair_basecamp_npc_assignments_transform,
     apply_remove_overmap_npcs_transform,
     artifact_delta_matches_all_patterns,
     classify_blocking_interruption,
     classify_wait_screen_text,
+    is_hostile_auto_move_cancel_modal,
+    is_retained_hostile_auto_move_cancelled_hud_message,
     classify_wait_step_ledger,
+    committed_revision_matches,
     cleanup_extracted_overmap,
     capture_wait_artifact_delta,
     debug_map_editor_place_field,
     debug_map_editor_place_item,
     decode_overmap_layer,
+    decode_player_view_sequence,
     encode_overmap_layer,
     extract_clock_or_turn_evidence,
     extract_overmap_payload,
@@ -78,6 +87,7 @@ from startup_harness import (  # noqa: E402
     execute_probe_steps,
     ecology_incident_artifact_baseline,
     evaluate_screen_text_expectation,
+    find_screen_text_matches,
     launch_game,
     latest_now_minutes_marker,
     load_player_abs_omt,
@@ -85,6 +95,7 @@ from startup_harness import (  # noqa: E402
     load_scenario,
     normalize_screen_text_patterns,
     normalize_fixture_save_transforms,
+    remove_inherited_shadow_flavor_producer_global_eocs_from_payload,
     overmap_file_coords_from_abs_omt,
     overmap_flat_index,
     overmap_layer_index,
@@ -97,6 +108,7 @@ from startup_harness import (  # noqa: E402
     provision_llm_api_key_environment,
     read_active_eoc_popup_trace,
     read_active_activity_query_trace,
+    recover_harmless_wilderness_flavor_wait,
     read_secure_llm_credential,
     resolve_configured_python_command,
     resolve_fixture_payload,
@@ -261,6 +273,27 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertEqual(observed_ocr["classification"], "activity_distraction_prompt")
         self.assertEqual(observed_ocr["response_key"], "I")
 
+    def test_emergency_wait_distraction_modal_accepts_scattered_observed_ocr(self) -> None:
+        observed_ocr = (
+            'Heard [Y]es "EMERGENCY, [N]o Upen EMERGENCY! CMlanager Stop '
+            '[Ilgnore waiting? this (Case distraction Sensitivel and continue'
+        )
+
+        result = classify_blocking_interruption({"ok": True, "text": observed_ocr})
+
+        self.assertEqual(result["status"], "known_prompt")
+        self.assertEqual(result["classification"], "emergency_wait_distraction_prompt")
+        self.assertEqual(result["response_key"], "I")
+
+    def test_partial_emergency_wait_text_remains_fail_closed(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": "EMERGENCY! [I]gnore this distraction and continue",
+        })
+
+        self.assertEqual(result["status"], "unknown_prompt")
+        self.assertEqual(result["response_key"], "")
+
     def test_in_progress_wait_overlay_is_clear_across_ocr_layouts(self) -> None:
         cases = (
             "Waiting 42%\nPress | to interrupt waiting\nTiles",
@@ -335,35 +368,559 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertEqual(result["classification"], "partial_safe_mode_spotted_hostile_prompt")
         self.assertEqual(result["response_key"], "")
 
+    def test_unknown_command_input_is_release_blocking_before_safe_mode_fallback(self) -> None:
+        result = classify_blocking_interruption({
+            "ok": True,
+            "text": "Unknown command: \"SPACE\" (32)\nPress ? at any time",
+        })
+
+        self.assertEqual(result["status"], "unknown_prompt")
+        self.assertEqual(result["classification"], "unexpected_default_command_input")
+        self.assertEqual(result["response_key"], "")
+        self.assertTrue(result["release_blocking"])
+
     def test_genuine_safe_mode_prompts_remain_fail_closed(self) -> None:
         cases = (
             (
                 "Safe mode\nPress a key\nTiles",
-                "known_prompt",
+                "unknown_prompt",
                 "safe_mode_spotted_hostile_prompt",
+                True,
             ),
             (
                 "Spotted hostile while waiting\nPress | to interrupt waiting",
                 "unknown_prompt",
                 "partial_safe_mode_spotted_hostile_prompt",
+                False,
             ),
             (
                 "Safe mode\nPress\nTiles\nPress . to interrupt waiting",
-                "known_prompt",
+                "unknown_prompt",
                 "safe_mode_spotted_hostile_prompt",
+                True,
             ),
             (
                 "Safe mode\nPress . to interrupt waiting",
                 "unknown_prompt",
                 "partial_safe_mode_spotted_hostile_prompt",
+                False,
             ),
         )
-        for body, expected_status, expected_classification in cases:
+        for body, expected_status, expected_classification, release_blocking in cases:
             with self.subTest(body=body):
                 result = classify_blocking_interruption({"ok": True, "text": body})
 
                 self.assertEqual(result["status"], expected_status)
                 self.assertEqual(result["classification"], expected_classification)
+                self.assertEqual(result["response_key"], "")
+                self.assertEqual(result["release_blocking"], release_blocking)
+
+    def test_resolved_hostile_auto_move_message_on_hud_is_not_a_prompt(self) -> None:
+        observed_ocr = (
+            "Move:\nSafe: Off\nActivity: None\nWield:\n"
+            "Hostile\nsurvivor spotted! Huto move\ncanceled.\n"
+            "You finish waiting."
+        )
+        interruption = classify_blocking_interruption({"ok": True, "text": observed_ocr})
+        wait = classify_wait_screen_text(
+            {"ok": True, "text": observed_ocr},
+            ["You finish waiting"],
+            ["spotted"],
+        )
+
+        self.assertEqual(interruption["status"], "clear")
+        self.assertEqual(
+            interruption["classification"],
+            "retained_hostile_auto_move_cancelled_hud_message",
+        )
+        self.assertEqual(wait["status"], "completed")
+
+    def test_reordered_resolved_auto_move_ocr_on_hud_is_not_a_prompt(self) -> None:
+        observed_ocr = (
+            "Move:\nHctivity: None\nWield:\nHostile survivor spotted!\n"
+            "canceled. Auto move"
+        )
+
+        self.assertTrue(
+            is_retained_hostile_auto_move_cancelled_hud_message(
+                {"ok": True, "text": observed_ocr}
+            )
+        )
+        interruption = classify_blocking_interruption({"ok": True, "text": observed_ocr})
+        self.assertEqual(interruption["status"], "clear")
+        self.assertEqual(
+            interruption["classification"],
+            "retained_hostile_auto_move_cancelled_hud_message",
+        )
+
+    def test_split_resolved_auto_move_ocr_on_hud_is_not_a_prompt(self) -> None:
+        observed_ocr = (
+            "Move:\nHctivity: None\nWield:\n"
+            "Hostile survivor spotted! Auto move\n"
+            "Dionne Ashby, Bandit gets angry!\nThe\ncanceled."
+        )
+
+        self.assertTrue(
+            is_retained_hostile_auto_move_cancelled_hud_message(
+                {"ok": True, "text": observed_ocr}
+            )
+        )
+        interruption = classify_blocking_interruption({"ok": True, "text": observed_ocr})
+        self.assertEqual(interruption["status"], "clear")
+        self.assertEqual(
+            interruption["classification"],
+            "retained_hostile_auto_move_cancelled_hud_message",
+        )
+
+    def test_fully_scattered_resolved_auto_move_ocr_on_hud_is_not_a_prompt(self) -> None:
+        observed_ocr = (
+            "Move:\nHctivity: None\nWield:\nHostile\nsurvivor\n"
+            "Bandit gets angry!\ncanceled.\nspotted!\nAuto move"
+        )
+
+        self.assertTrue(
+            is_retained_hostile_auto_move_cancelled_hud_message(
+                {"ok": True, "text": observed_ocr}
+            )
+        )
+        interruption = classify_blocking_interruption({"ok": True, "text": observed_ocr})
+        self.assertEqual(interruption["status"], "clear")
+        self.assertEqual(
+            interruption["classification"],
+            "retained_hostile_auto_move_cancelled_hud_message",
+        )
+
+    def test_split_activity_hud_still_requires_complete_resolved_auto_move_message(self) -> None:
+        observed_ocr = (
+            "Move:\nHctivity:\nSafe:\nNone\nWield:\nHostile survivor spotted! "
+            "Auto move canceled."
+        )
+
+        self.assertTrue(
+            is_retained_hostile_auto_move_cancelled_hud_message(
+                {"ok": True, "text": observed_ocr}
+            )
+        )
+
+    def test_hostile_auto_move_modal_remains_fail_closed(self) -> None:
+        modal = classify_blocking_interruption({
+            "ok": True,
+            "text": (
+                "Move:\nWield:\nHostile survivor spotted! Cancel auto move? "
+                "(Case Sensitive) [Yes] [No]"
+            ),
+        })
+
+        self.assertEqual(modal["status"], "unknown_prompt")
+        self.assertNotEqual(
+            modal["classification"],
+            "retained_hostile_auto_move_cancelled_hud_message",
+        )
+
+    def test_hostile_auto_move_modal_requires_explicit_wait_authorization(self) -> None:
+        modal = classify_blocking_interruption({
+            "ok": True,
+            "text": (
+                "Move:\nWield:\nHostile survivor spotted! Cancel auto move? "
+                "(Case Sensitive) [Yes] [No]"
+            ),
+        }, allow_hostile_auto_move_cancel=True)
+
+        self.assertEqual(modal["status"], "known_prompt")
+        self.assertEqual(modal["classification"], "authorized_hostile_auto_move_cancel")
+        self.assertEqual(modal["response_key"], "Y")
+
+    def test_hostile_auto_move_modal_accepts_split_observed_markers(self) -> None:
+        observed_ocr = (
+            "Monsters\nspotted! Cancel\nauto move? (Case\n[Y]es\nSensitive)"
+        )
+
+        self.assertTrue(is_hostile_auto_move_cancel_modal({"ok": True, "text": observed_ocr}))
+        self.assertFalse(
+            is_retained_hostile_auto_move_cancelled_hud_message(
+                {"ok": True, "text": observed_ocr}
+            )
+        )
+
+    def test_hostile_auto_move_handler_types_uppercase_y_only_for_modal(self) -> None:
+        modal = "Monsters\nspotted! Cancel\nauto move? (Case\n[Y]es\nSensitive)"
+        hud = "Move:\nSafe: Off\nActivity: None\nWield:\nTiles"
+        with (
+            tempfile.TemporaryDirectory() as temp_dir,
+            mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+            mock.patch(
+                "startup_harness.capture_screen_text_artifact",
+                side_effect=[{"ok": True, "text": modal}, {"ok": True, "text": hud}],
+            ),
+            mock.patch(
+                "startup_harness.find_screen_text_matches",
+                side_effect=lambda report, patterns: [
+                    {"pattern": pattern, "line": pattern}
+                    for pattern in patterns
+                    if pattern in str(report.get("text", ""))
+                ],
+            ),
+            mock.patch("startup_harness.peekaboo_type_text") as type_text,
+            mock.patch("startup_harness.time.sleep"),
+        ):
+            report = execute_probe_steps(
+                42,
+                Path(temp_dir),
+                [{"kind": "acknowledge_hostile_auto_move_interrupt", "label": "modal"}],
+                profile="dev-harness",
+                world="McWilliams",
+            )[0]
+
+        type_text.assert_called_once_with(42, "Y", delay_ms=200, focus_pid=True)
+        self.assertEqual(report["response_semantics"], "cancel_auto_move_before_hostile_contact")
+        self.assertNotIn("abort", report)
+
+    def test_hostile_auto_move_handler_never_inputs_for_resolved_hud_or_generic_hud(self) -> None:
+        resolved = (
+            "Move:\nSafe: Off\nActivity: None\nWield:\n"
+            "Hostile survivor spotted! Huto move canceled."
+        )
+        generic = "Move:\nSafe: Off\nActivity: None\nWield:\nTiles"
+        for body, expected_abort in ((resolved, False), (generic, True)):
+            with self.subTest(body=body):
+                with (
+                    tempfile.TemporaryDirectory() as temp_dir,
+                    mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                    mock.patch(
+                        "startup_harness.capture_screen_text_artifact",
+                        return_value={"ok": True, "text": body},
+                    ),
+                    mock.patch("startup_harness.peekaboo_type_text") as type_text,
+                ):
+                    report = execute_probe_steps(
+                        42,
+                        Path(temp_dir),
+                        [{"kind": "acknowledge_hostile_auto_move_interrupt", "label": "state"}],
+                        profile="dev-harness",
+                        world="McWilliams",
+                    )[0]
+
+                type_text.assert_not_called()
+                if expected_abort:
+                    self.assertEqual(
+                        report["abort"]["verdict"],
+                        "blocked_expected_hostile_auto_move_modal_or_resolved_hud_missing",
+                    )
+                else:
+                        self.assertEqual(
+                            report["response_semantics"],
+                            "hostile_auto_move_already_cancelled_on_hud_no_input",
+                        )
+
+    def test_native_travel_stabilization_continues_two_exact_modals_for_two_route_legs(self) -> None:
+        modal = "Monsters spotted! Cancel auto move? (Case Sensitive) [Y]es [N]o"
+        travelling_hud = "Move:\nActivity: Moderate\nWield:"
+        completed_hud = "Move:\nHctivity: None\nWield:"
+        for label in (
+                "accept_first_resumed_native_leg_to_persisted_homeward_resume_omt",
+                "accept_ordinary_route_to_selected_watch_for_pair_handoff",
+        ):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temp_dir, \
+                    mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                    mock.patch(
+                        "startup_harness.capture_screen_text_artifact",
+                        side_effect=[
+                            {"ok": True, "text": modal},
+                            {"ok": True, "text": travelling_hud},
+                            {"ok": True, "text": modal},
+                            {"ok": True, "text": completed_hud},
+                        ],
+                    ), \
+                    mock.patch(
+                        "startup_harness.find_screen_text_matches",
+                        side_effect=lambda report, patterns: [
+                            {"pattern": pattern, "line": pattern}
+                            for pattern in patterns if pattern in str(report.get("text", ""))
+                        ],
+                    ), \
+                    mock.patch("startup_harness.peekaboo_type_text") as type_text, \
+                    mock.patch("startup_harness.time.sleep"):
+                report = execute_probe_steps(
+                    42,
+                    Path(temp_dir),
+                    [{
+                        "kind": "type",
+                        "label": label,
+                        "text": "Y",
+                        "delay_ms": 200,
+                        "settle_seconds": 1.0,
+                        "native_travel_stabilization": {
+                            "mode": "continue_exact_hostile_auto_move_until_hud",
+                        },
+                    }],
+                    profile="dev-harness",
+                    world="McWilliams",
+                )[0]
+
+            self.assertNotIn("abort", report)
+            self.assertEqual(
+                report["native_travel_stabilization"]["status"],
+                "continued_exact_hostile_auto_move_to_hud",
+            )
+            self.assertEqual(report["native_travel_stabilization"]["acknowledgement_count"], 2)
+            self.assertEqual(
+                [entry.args[1] for entry in type_text.call_args_list],
+                ["Y", "N", "N"],
+            )
+
+    def test_native_travel_stabilization_blocks_unknown_prompt_after_response(self) -> None:
+        modal = "Monsters spotted! Cancel auto move? (Case Sensitive) [Y]es [N]o"
+        unknown = "Unknown command: unexpected route confirmation"
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    side_effect=[
+                        {"ok": True, "text": modal},
+                        {"ok": True, "text": unknown},
+                    ],
+                ), \
+                mock.patch("startup_harness.peekaboo_type_text") as type_text, \
+                mock.patch("startup_harness.time.sleep"):
+            report = execute_probe_steps(
+                42,
+                Path(temp_dir),
+                [{
+                    "kind": "type",
+                    "label": "accept_unknown_route",
+                    "text": "Y",
+                    "delay_ms": 200,
+                    "settle_seconds": 1.0,
+                    "native_travel_stabilization": {
+                        "mode": "continue_exact_hostile_auto_move_until_hud",
+                    },
+                }],
+                profile="dev-harness",
+                world="McWilliams",
+            )[0]
+
+        self.assertEqual(report["abort"]["verdict"], "blocked_native_travel_unknown_prompt")
+        self.assertEqual([entry.args[1] for entry in type_text.call_args_list], ["Y", "N"])
+
+    def test_native_travel_stabilization_accepts_partial_lifeless_flavor_on_idle_hud(self) -> None:
+        completed_hud_with_flavor = (
+            "Move:\nActivity: None\nWield:\n"
+            "You suddenly realize this area seems almost devoid of life."
+        )
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": completed_hud_with_flavor},
+                ), \
+                mock.patch(
+                    "startup_harness.find_screen_text_matches",
+                    side_effect=lambda report, patterns: [
+                        {"pattern": pattern, "line": pattern}
+                        for pattern in patterns if pattern in str(report.get("text", ""))
+                    ],
+                ), \
+                mock.patch("startup_harness.peekaboo_type_text") as type_text, \
+                mock.patch("startup_harness.time.sleep"):
+            report = execute_probe_steps(
+                42,
+                Path(temp_dir),
+                [{
+                    "kind": "type",
+                    "label": "accept_returned_pair_resume",
+                    "text": "Y",
+                    "delay_ms": 200,
+                    "settle_seconds": 1.0,
+                    "native_travel_stabilization": {
+                        "mode": "continue_exact_hostile_auto_move_until_hud",
+                    },
+                }],
+                profile="dev-harness",
+                world="McWilliams",
+            )[0]
+
+        self.assertNotIn("abort", report)
+        stabilization = report["native_travel_stabilization"]
+        self.assertTrue(stabilization["noninteractive_wilderness_flavor_on_idle_hud"])
+        self.assertEqual(stabilization["status"], "clear_hud_without_hostile_auto_move_prompt")
+
+    def test_native_travel_stabilization_polls_active_hud_with_shadow_flavor(self) -> None:
+        active_hud_with_flavor = (
+            "Move:\nActivity: Moderate\nWield:\n"
+            "You have a vague feeling of being watched."
+        )
+        completed_hud = "Move:\nActivity: None\nWield:"
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    side_effect=[
+                        {"ok": True, "text": active_hud_with_flavor},
+                        {"ok": True, "text": completed_hud},
+                    ],
+                ), \
+                mock.patch(
+                    "startup_harness.find_screen_text_matches",
+                    side_effect=lambda report, patterns: [
+                        {"pattern": pattern, "line": pattern}
+                        for pattern in patterns if pattern in str(report.get("text", ""))
+                    ],
+                ), \
+                mock.patch("startup_harness.peekaboo_type_text") as type_text, \
+                mock.patch("startup_harness.time.sleep"):
+            report = execute_probe_steps(
+                42,
+                Path(temp_dir),
+                [{
+                    "kind": "type",
+                    "label": "accept_returned_pair_resume",
+                    "text": "Y",
+                    "delay_ms": 200,
+                    "settle_seconds": 1.0,
+                    "native_travel_stabilization": {
+                        "mode": "continue_exact_hostile_auto_move_until_hud",
+                    },
+                }],
+                profile="dev-harness",
+                world="McWilliams",
+            )[0]
+
+        self.assertNotIn("abort", report)
+        stabilization = report["native_travel_stabilization"]
+        self.assertEqual(stabilization["status"], "clear_hud_without_hostile_auto_move_prompt")
+        self.assertEqual(stabilization["response_keys"], [])
+        self.assertEqual([entry.args[1] for entry in type_text.call_args_list], ["Y"])
+        type_text.assert_called_once_with(42, "Y", delay_ms=200, focus_pid=True)
+
+    def test_native_travel_stabilization_leaves_shadow_flavor_on_idle_hud_untouched(self) -> None:
+        completed_hud_with_shadow_flavor = (
+            "Move:\nActivity: None\nWield:\n"
+            "Your ears perk up as something rustles in the bushes.\n"
+            "Wait, this can not have happened on its own."
+        )
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": completed_hud_with_shadow_flavor},
+                ), \
+                mock.patch(
+                    "startup_harness.find_screen_text_matches",
+                    side_effect=lambda report, patterns: [
+                        {"pattern": pattern, "line": pattern}
+                        for pattern in patterns if pattern in str(report.get("text", ""))
+                    ],
+                ), \
+                mock.patch("startup_harness.peekaboo_type_text") as type_text, \
+                mock.patch("startup_harness.time.sleep"):
+            report = execute_probe_steps(
+                42,
+                Path(temp_dir),
+                [{
+                    "kind": "type",
+                    "label": "accept_returned_pair_resume",
+                    "text": "Y",
+                    "delay_ms": 200,
+                    "settle_seconds": 1.0,
+                    "native_travel_stabilization": {
+                        "mode": "continue_exact_hostile_auto_move_until_hud",
+                    },
+                }],
+                profile="dev-harness",
+                world="McWilliams",
+            )[0]
+
+        self.assertNotIn("abort", report)
+        stabilization = report["native_travel_stabilization"]
+        self.assertEqual(
+            stabilization["after_classification"]["classification"],
+            "shadow_warning_wilderness_flavor_popup",
+        )
+        self.assertTrue(stabilization["noninteractive_wilderness_flavor_on_idle_hud"])
+        self.assertEqual(stabilization["response_keys"], [])
+        type_text.assert_called_once_with(42, "Y", delay_ms=200, focus_pid=True)
+
+    def test_native_travel_completion_accepts_spatial_normalized_hctivity_none_row(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            payload_path = Path(temp_dir) / "screen_text.json"
+            payload_path.write_text(json.dumps({
+                "lines": ["Move:", "Hctivity:", "Safe:", "None", "Off", "Wield:"],
+                "text": "Move:\nHctivity:\nSafe:\nNone\nOff\nWield:",
+                "observations": [
+                    {"text": "Hctivity:", "x": 0.70, "y": 0.10, "h": 0.02},
+                    {"text": "None", "x": 0.82, "y": 0.10, "h": 0.02},
+                    {"text": "Safe:", "x": 0.70, "y": 0.13, "h": 0.02},
+                    {"text": "Off", "x": 0.82, "y": 0.13, "h": 0.02},
+                ],
+            }), encoding="utf-8")
+            completed_hud = {
+                "ok": True,
+                "text": "Move:\nHctivity:\nSafe:\nNone\nOff\nWield:",
+                "json_path": str(payload_path),
+            }
+            modal = "Monsters spotted! Cancel auto move? (Case Sensitive) [Y]es [N]o"
+            with mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                    mock.patch(
+                        "startup_harness.capture_screen_text_artifact",
+                        side_effect=[{"ok": True, "text": modal}, completed_hud],
+                    ), \
+                    mock.patch("startup_harness.peekaboo_type_text") as type_text, \
+                    mock.patch("startup_harness.time.sleep"):
+                report = execute_probe_steps(
+                    42,
+                    Path(temp_dir),
+                    [{
+                        "kind": "type",
+                        "label": "accept_spatial_normalized_idle_route",
+                        "text": "Y",
+                        "delay_ms": 200,
+                        "settle_seconds": 1.0,
+                        "native_travel_stabilization": {
+                            "mode": "continue_exact_hostile_auto_move_until_hud",
+                        },
+                    }],
+                    profile="dev-harness",
+                    world="McWilliams",
+                )[0]
+
+        self.assertNotIn("abort", report)
+        stabilization = report["native_travel_stabilization"]
+        self.assertEqual(stabilization["status"], "continued_exact_hostile_auto_move_to_hud")
+        self.assertEqual(
+            stabilization["screen_after_text_expectation"]["matches"][-1],
+            {
+                "pattern": "Activity: None",
+                "line": "Hctivity: None",
+                "source": "spatial_normalized_ocr_activity_none",
+            },
+        )
+        self.assertEqual([entry.args[1] for entry in type_text.call_args_list], ["Y", "N"])
+
+    def test_generic_hud_cannot_be_an_already_cancelled_auto_move(self) -> None:
+        generic_hud = "Move:\nSafe: Off\nActivity: None\nWield:\nTiles"
+        incomplete_history = (
+            "Move:\nActivity: None\nWield:\nHostile survivor spotted!"
+        )
+        unrelated_cancellation = (
+            "Move:\nActivity: None\nWield:\nHostile survivor spotted!\n"
+            "You canceled your previous activity."
+        )
+
+        self.assertFalse(
+            is_retained_hostile_auto_move_cancelled_hud_message(
+                {"ok": True, "text": generic_hud}
+            )
+        )
+        self.assertFalse(
+            is_retained_hostile_auto_move_cancelled_hud_message(
+                {"ok": True, "text": incomplete_history}
+            )
+        )
+        self.assertFalse(
+            is_retained_hostile_auto_move_cancelled_hud_message(
+                {"ok": True, "text": unrelated_cancellation}
+            )
+        )
 
     def test_scattered_wait_words_remain_fail_closed(self) -> None:
         body = "Press any key.\n" + ( "unrelated status text " * 12 ) + "\nwaiting for changes to interrupt"
@@ -596,10 +1153,11 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         cases = (
             (
                 "ur hove a veuee vod ny ur ueiny satcheu\nSafe mode\nPress a key\nTiles",
-                "known_prompt",
+                "unknown_prompt",
                 "safe_mode_spotted_hostile_prompt",
                 False,
-                "'",
+                "",
+                True,
             ),
             (
                 "ur hove a veuee vod ny ur ueiny satcheu\nSpotted hostile while waiting.",
@@ -607,6 +1165,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                 "partial_safe_mode_spotted_hostile_prompt",
                 False,
                 "",
+                False,
             ),
             (
                 "ur hove a veuee vod ny ur ueiny satcheu\n"
@@ -615,6 +1174,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                 "portal_storm_notice",
                 True,
                 "space",
+                False,
             ),
             (
                 "ur hove a veuee vod ny ur ueiny satcheu\nApply changes? (y/n)",
@@ -622,9 +1182,10 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                 "unhandled_blocking_menu",
                 False,
                 "",
+                False,
             ),
         )
-        for body, expected_status, expected_classification, contaminating, response_key in cases:
+        for body, expected_status, expected_classification, contaminating, response_key, release_blocking in cases:
             with self.subTest(body=body):
                 result = classify_blocking_interruption({"ok": True, "text": body})
 
@@ -632,6 +1193,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                 self.assertEqual(result["classification"], expected_classification)
                 self.assertEqual(result["contaminating"], contaminating)
                 self.assertEqual(result["response_key"], response_key)
+                self.assertEqual(result["release_blocking"], release_blocking)
 
     def test_partial_garbled_warning_does_not_override_wait_text(self) -> None:
         result = classify_blocking_interruption({
@@ -1389,6 +1951,47 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         self.assertEqual(activity_receipt["structured_activity_query_trace"]["type"], "eoc")
         self.assertEqual(activity_receipt["response_action"], "IGNORE")
 
+    def test_harmless_flavor_wait_recovery_uses_only_space_then_i(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            trace_log = run_dir / "debug.log"
+            popup = ('openclaw_harness_ui_trace: component=eoc_popup event=open '
+                     'message="The wind sure is howling tonight" truncated=no popup_flag=0\n')
+            query = ('openclaw_harness_ui_trace: component=activity_distraction_query '
+                     'event=open type=eoc text="" truncated=no action=none\n')
+            trace_log.write_text(popup, encoding="utf-8")
+            pressed_keys: List[List[str]] = []
+
+            def press(_pid: int, keys: List[str], **_kwargs: Any) -> None:
+                pressed_keys.append(keys)
+                with trace_log.open("a", encoding="utf-8") as stream:
+                    if keys == ["space"]:
+                        stream.write(popup.replace("event=open", "event=return"))
+                        stream.write(query)
+                    elif keys == ["I"]:
+                        stream.write(query.replace("event=open", "event=return").replace("action=none", "action=IGNORE"))
+                    else:
+                        self.fail(f"unexpected key {keys}")
+            with mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                    mock.patch("startup_harness.capture_screen_text_artifact", return_value={"ok": True, "text": ""}), \
+                    mock.patch("startup_harness.peekaboo_press_sequence", side_effect=press), \
+                    mock.patch("startup_harness.time.sleep"):
+                result = recover_harmless_wilderness_flavor_wait(42, run_dir, "wait", delay_ms=1,
+                    action_trace_log=trace_log, action_trace_start_offset=0)
+        self.assertEqual(result["status"], "recovered_harmless_flavor_wait_sequence")
+        self.assertEqual(result["response_keys"], ["space", "I"])
+        self.assertEqual(pressed_keys, [["space"], ["I"]])
+        self.assertNotIn(["enter"], pressed_keys)
+
+    def test_wait_completion_rejects_pre_screen_finish_text(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            text_path = Path(temp_dir) / "screen.json"
+            text_path.write_text(json.dumps({"lines": ["You finish waiting."]}), encoding="utf-8")
+            result = classify_wait_screen_text({"json_path": str(text_path)}, ["You finish waiting"], [],
+                                               {"You finish waiting"})
+        self.assertEqual(result["status"], "unknown_after_wait")
+        self.assertEqual(len(result["stale_complete_matches_rejected"]), 1)
+
     def test_structured_activity_query_malformed_truncated_unknown_and_stale_fail_closed(self) -> None:
         cases = (
             (
@@ -2123,6 +2726,77 @@ class WaitStepLedgerContractTest(unittest.TestCase):
         self.assertEqual(report["interruption_handling"]["response_keys"], ["space", "I"])
         self.assertFalse(report["stop_after_step"] if "stop_after_step" in report else False)
 
+    def test_opted_in_final_wait_boundary_uses_harmless_recovery_only(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            artifact_log = run_dir / "debug.log"
+            artifact_log.write_text("before\n", encoding="utf-8")
+            mid_poll_report = {
+                "status": "matched",
+                "aborted": False,
+                "abort_reason": "",
+                "match": {"matched": True, "missing_patterns": []},
+                "interruption_handling": {
+                    "status": "clear",
+                    "acknowledgement_count": 0,
+                    "response_keys": [],
+                    "release_blocking": False,
+                    "contaminating": False,
+                    "reports": [],
+                },
+            }
+            recovered = {
+                "status": "recovered_harmless_flavor_wait_sequence",
+                "acknowledgement_count": 2,
+                "response_keys": ["space", "I"],
+                "acknowledgements": [
+                    {"response_key": "space"},
+                    {"response_key": "I"},
+                ],
+                "release_blocking": False,
+                "contaminating": False,
+            }
+
+            def screen_text(_run_dir: Path, label: str, _capture: Dict[str, Any], **_kwargs: Any) -> Dict[str, Any]:
+                if label.endswith(".wait_menu"):
+                    return {"ok": True, "text": "Wait a while: 6 hours"}
+                if label.endswith(".initial_wait_menu"):
+                    return {"ok": True, "text": "Set an alarm or wait"}
+                return {"ok": True, "text": "Time: 4:00:00PM"}
+
+            with (
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}),
+                mock.patch("startup_harness.capture_screen_text_artifact", side_effect=screen_text),
+                mock.patch("startup_harness.peekaboo_press_sequence"),
+                mock.patch("startup_harness.time.sleep"),
+                mock.patch(
+                    "startup_harness.poll_wait_artifact_completion",
+                    return_value=mid_poll_report,
+                ),
+                mock.patch(
+                    "startup_harness.recover_harmless_wilderness_flavor_wait",
+                    return_value=recovered,
+                ) as recovery,
+                mock.patch("startup_harness.acknowledge_blocking_interruptions") as generic,
+            ):
+                report = execute_long_wait_action(
+                    42,
+                    run_dir,
+                    "wait_contract",
+                    {
+                        "choice_key": "8",
+                        "expected_duration": "6h",
+                        "completion_artifact_timeout_seconds": 1.0,
+                        "artifact_state_patterns": ["endpoint"],
+                        "allow_harmless_flavor_popup_wait_recovery": True,
+                    },
+                    artifact_log=artifact_log,
+                )
+
+        recovery.assert_called_once()
+        generic.assert_not_called()
+        self.assertEqual(report["interruption_handling"]["response_keys"], ["space", "I"])
+
     def test_execute_real_poll_aborts_unknown_without_response_input(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = Path(temp_dir)
@@ -2401,6 +3075,33 @@ class FreshEcologyIncidentPairContractTest(unittest.TestCase):
         self.assertEqual(report["observed_selected_id"], self.SELECTED_ID)
         self.assertEqual(report["observed_delta_count"], 1)
 
+    def test_accepts_documented_commit_version_shapes(self) -> None:
+        cases = (
+            ("clean_sdl3", self.COMMIT + "+SDL3", True),
+            ("dirty_sdl3", self.COMMIT + "-dirty+SDL3", True),
+            ("dirty", self.COMMIT + "-dirty", True),
+            ("exact_clean", self.COMMIT, True),
+            ("wrong_sha_dirty", "0000000000-dirty", False),
+            ("nonhex_prefix", "g46f8f45ca-dirty+SDL3", False),
+            ("embedded_dirty", self.COMMIT + "-not-dirty+SDL3", False),
+            ("malformed_suffix", self.COMMIT + "-dirty+", False),
+            ("suffix_order", self.COMMIT + "+SDL3-dirty", False),
+            ("suffix_only", "-dirty+SDL3", False),
+        )
+        for label, observed, expected in cases:
+            with self.subTest(label=label):
+                self.assertEqual(committed_revision_matches(observed, self.COMMIT), expected)
+
+    def test_audit_accepts_dirty_sdl3_commit(self) -> None:
+        with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
+            run_dir = Path(temp_dir)
+            payload = self.payload(run_dir.name)
+            payload["identity"]["commit"] = self.COMMIT + "-dirty+SDL3"
+            self.write_pair(run_dir, payload=payload)
+            report = self.audit(run_dir)
+
+        self.assertEqual(report["status"], "required_state_present")
+
     def test_rejects_missing_pair(self) -> None:
         with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
             report = self.audit(Path(temp_dir))
@@ -2467,7 +3168,7 @@ class FreshEcologyIncidentPairContractTest(unittest.TestCase):
         with tempfile.TemporaryDirectory(prefix="incident_contract_") as temp_dir:
             run_dir = Path(temp_dir)
             payload = self.payload(run_dir.name)
-            payload["identity"]["commit"] = "0000000000+SDL3"
+            payload["identity"]["commit"] = "0000000000-dirty+SDL3"
             self.write_pair(run_dir, payload=payload)
             report = self.audit(run_dir)
         self.assert_red(report, "incident_commit_mismatch")
@@ -3407,6 +4108,32 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
             self.assertNotIn("OPENCLAW_HARNESS_SCENARIO", launched_environment)
             self.assertEqual(child_environment["OPENCLAW_HARNESS_SCENARIO"], "stale.parent")
 
+    def test_launch_game_can_publish_child_artifacts_to_parent_continuation_run(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir) / "child"
+            artifact_run_dir = Path(temp_dir) / "parent"
+            run_dir.mkdir()
+            artifact_run_dir.mkdir()
+            with (
+                mock.patch("startup_harness.detect_executable", return_value=Path("game")),
+                mock.patch("startup_harness.repo_root", return_value=Path("repo")),
+                mock.patch("startup_harness.subprocess.Popen") as popen,
+            ):
+                launch_game(
+                    "test-profile",
+                    "Test World",
+                    run_dir,
+                    artifact_run_dir=artifact_run_dir,
+                )
+                launched_environment = popen.call_args.kwargs["env"]
+                popen.call_args.kwargs["stdout"].close()
+                popen.call_args.kwargs["stderr"].close()
+
+            self.assertEqual(
+                launched_environment["OPENCLAW_HARNESS_RUN_DIR"],
+                str(artifact_run_dir.resolve()),
+            )
+
     def test_launch_game_refuses_missing_enabled_api_credential(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             run_dir = Path(temp_dir)
@@ -3642,12 +4369,19 @@ class BanditLiveWorldAuditContractTest(unittest.TestCase):
         }
 
     @staticmethod
-    def write_world(world_dir: Path, site: Dict[str, Any]) -> None:
+    def write_world(
+        world_dir: Path,
+        site: Dict[str, Any],
+        hostile_target_opportunities: Optional[List[Dict[str, Any]]] = None,
+    ) -> None:
         (world_dir / "dimension_data.gsav").write_text(
             "# version 39\n"
             + json.dumps({
                 "overmapbuffer": {
-                    "bandit_live_world": {"sites": [site]},
+                    "bandit_live_world": {
+                        "sites": [site],
+                        "hostile_target_opportunities": hostile_target_opportunities or [],
+                    },
                 },
             }),
             encoding="utf-8",
@@ -3765,7 +4499,43 @@ class BanditLiveWorldAuditContractTest(unittest.TestCase):
                 "target_lead_id": report_identity["target_lead_id"],
                 "target_lead_revision": report_identity["target_lead_revision"],
             }
-            self.write_world(world_dir, site)
+            hostile_reservation = {
+                "schema_version": 5,
+                "kind": "hostile_operation",
+                "activity_id": "camp-current#hostile:4",
+                "camp_id": "camp-current",
+                "generation": 4,
+                "member_ids": [101, 102],
+                "leader_id": 101,
+                "shared_route": [[1, 1, 0], [2, 1, 0], [3, 1, 0]],
+                "target_id": report_identity["target_id"],
+                "target_omt": report_identity["target_omt"],
+                "target_lead_revision": report_identity["target_lead_revision"],
+                "job_type": "toll",
+                "phase": "assembling",
+            }
+            site["active_hostile_operation"] = {
+                "schema_version": 1,
+                "operation_kind": "shakedown",
+                "phase": "assembling",
+                "reservation": hostile_reservation,
+                "source_report_revision": report_identity["revision"],
+                "source_report_generation": report_identity["source_generation"],
+                "source_report_activity_id": report_identity["source_activity_id"],
+                "source_report_application_key": report_identity["application_key"],
+            }
+            receipt = {
+                "target_id": report_identity["target_id"],
+                "target_omt": report_identity["target_omt"],
+                "goods_value": 100,
+                "population": 3,
+                "activity": 1,
+                "revision": report_identity["target_lead_revision"],
+                "consumed_operation_id": hostile_reservation["activity_id"],
+                "consumed_report_key": report_identity["application_key"],
+                "consumed_generation": hostile_reservation["generation"],
+            }
+            self.write_world(world_dir, site, [receipt])
 
             matching = audit_saved_bandit_live_world_state(
                 world_dir,
@@ -3775,12 +4545,20 @@ class BanditLiveWorldAuditContractTest(unittest.TestCase):
                 required_scout_report_min_observations=1,
                 required_camp_decision_state="report_awaiting_assessment",
                 required_report_decision_identity_match=True,
+                required_report_hostile_operation_claim_match=True,
             )
             site["camp_decision"]["target_lead_revision"] = 3
-            self.write_world(world_dir, site)
+            self.write_world(world_dir, site, [receipt])
             mismatched = audit_saved_bandit_live_world_state(
                 world_dir,
                 required_report_decision_identity_match=True,
+            )
+            site["camp_decision"]["target_lead_revision"] = report_identity["target_lead_revision"]
+            receipt["consumed_report_key"] = "wrong-report"
+            self.write_world(world_dir, site, [receipt])
+            unclaimed = audit_saved_bandit_live_world_state(
+                world_dir,
+                required_report_hostile_operation_claim_match=True,
             )
 
         self.assertEqual(matching["status"], "required_state_present")
@@ -3788,7 +4566,10 @@ class BanditLiveWorldAuditContractTest(unittest.TestCase):
         self.assertFalse(matched_site["current_scout_report"]["provisional"])
         self.assertEqual(matched_site["current_scout_report"]["observation_count"], 1)
         self.assertTrue(matched_site["report_decision_identity_matches"])
+        self.assertTrue(matched_site["report_hostile_operation_identity_matches"])
+        self.assertTrue(matched_site["report_hostile_operation_claim_matches"])
         self.assertEqual(mismatched["status"], "required_state_missing")
+        self.assertEqual(unclaimed["status"], "required_state_missing")
 
     def test_home_survivor_audit_accepts_wounded_carrier_and_rejects_all_loss(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -4068,6 +4849,220 @@ class PlayerMutationsTransformContractTest(unittest.TestCase):
         )
 
 
+class PlayerBasecampTransformContractTest(unittest.TestCase):
+    @staticmethod
+    def fake_zzip(path: Path) -> None:
+        if path.suffix == ".zzip":
+            path.with_suffix("").write_bytes(path.read_bytes())
+        else:
+            path.with_suffix(f"{path.suffix}.zzip").write_bytes(path.read_bytes())
+
+    def test_registers_one_named_player_camp_at_loaded_avatar_omt(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "World"
+            overmaps_dir = world_dir / "overmaps"
+            overmaps_dir.mkdir(parents=True)
+            player_save = world_dir / "player.sav.zzip"
+            player_save.write_text(json.dumps({
+                "player": {"location": [3900, 876, 0], "camps": [{"pos": [1, 2, 0]}]},
+            }), encoding="utf-8")
+            overmap_path = overmaps_dir / "o.0.0.zzip"
+            overmap_path.write_bytes(b"fixture")
+            plain_path = overmaps_dir / "o.0.0"
+            plain_path.write_text("fixture", encoding="utf-8")
+            overmap_payload = {"camps": [{"owner": "your_followers", "name": "Existing", "pos": [1, 2, 0]}]}
+            transform = {
+                "kind": "player_basecamp_at_omt",
+                "player_save": player_save.name,
+                "camp_name": "Observer Camp",
+                "owner": "your_followers",
+            }
+
+            with (
+                mock.patch("startup_harness.run_zzip", side_effect=self.fake_zzip),
+                mock.patch(
+                    "startup_harness.extract_overmap_payload",
+                    return_value=(plain_path, "# version 1", overmap_payload),
+                ),
+                mock.patch("startup_harness.write_overmap_payload") as write_payload,
+                mock.patch("startup_harness.cleanup_extracted_overmap"),
+            ):
+                first_report = apply_player_basecamp_at_omt_transform(world_dir, transform)
+                first_player = json.loads(player_save.read_text(encoding="utf-8"))
+                second_report = apply_player_basecamp_at_omt_transform(world_dir, transform)
+                second_player = json.loads(player_save.read_text(encoding="utf-8"))
+
+        self.assertEqual(first_report["player_omt"], [162, 36, 0])
+        self.assertEqual(first_report["camp_omt"], [162, 36, 0])
+        self.assertFalse(first_report["player_registry_present"])
+        self.assertTrue(first_report["camp_added"])
+        self.assertTrue(second_report["player_registry_present"])
+        self.assertFalse(second_report["camp_added"])
+        self.assertEqual(first_player, second_player)
+        self.assertIn({"pos": [162, 36, 0]}, second_player["player"]["camps"])
+        matching_camps = [camp for camp in overmap_payload["camps"] if camp.get("pos") == [162, 36, 0]]
+        self.assertEqual(matching_camps, [{"owner": "your_followers", "name": "Observer Camp", "pos": [162, 36, 0]}])
+        self.assertEqual(write_payload.call_count, 1)
+
+
+class PlayerWornItemsTransformContractTest(unittest.TestCase):
+    @staticmethod
+    def fake_zzip(path: Path) -> None:
+        if path.suffix == ".zzip":
+            path.with_suffix("").write_bytes(path.read_bytes())
+        else:
+            path.with_suffix(f"{path.suffix}.zzip").write_bytes(path.read_bytes())
+
+    def test_adds_fitted_clothing_without_replacing_inherited_wear(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "McWilliams"
+            world_dir.mkdir()
+            player_save = world_dir / "player.sav.zzip"
+            player_save.write_text(json.dumps({
+                "turn": 5306460,
+                "player": {
+                    "worn": {"worn": [{"typeid": "longshirt", "item_tags": ["FIT"]}]},
+                },
+            }), encoding="utf-8")
+            transform = {
+                "kind": "player_worn_items",
+                "player_save": player_save.name,
+                "items": ["hoodie", "winter_gloves_army", "hoodie"],
+                "fitted": True,
+            }
+
+            with mock.patch("startup_harness.run_zzip", side_effect=self.fake_zzip):
+                first_report = apply_player_worn_items_transform(world_dir, transform)
+                first_payload = json.loads(player_save.read_text(encoding="utf-8"))
+                second_report = apply_player_worn_items_transform(world_dir, transform)
+                second_payload = json.loads(player_save.read_text(encoding="utf-8"))
+
+        worn = first_payload["player"]["worn"]["worn"]
+        self.assertEqual(first_report["added_items"], ["hoodie", "winter_gloves_army"])
+        self.assertEqual(first_report["already_present"], ["hoodie"])
+        self.assertEqual([item["typeid"] for item in worn], ["longshirt", "hoodie", "winter_gloves_army"])
+        self.assertEqual(worn[1]["item_tags"], ["FIT"])
+        self.assertEqual(worn[2]["item_tags"], ["FIT"])
+        self.assertEqual(second_report["added_items"], [])
+        self.assertEqual(second_payload, first_payload)
+
+
+class ShadowFlavorProducerGlobalEocRemovalTransformContractTest(unittest.TestCase):
+    @staticmethod
+    def fake_zzip(path: Path) -> None:
+        if path.suffix == ".zzip":
+            path.with_suffix("").write_bytes(path.read_bytes())
+        else:
+            path.with_suffix(f"{path.suffix}.zzip").write_bytes(path.read_bytes())
+
+    def test_round_trip_removes_only_inherited_shadow_flavor_producer_roots(self) -> None:
+        retained_before = [
+            {"time": 5306500, "eoc": "EOC_RETAINED_ONE", "context": {"camp": "a"}},
+            {"time": 5306600, "eoc": "EOC_RETAINED_TWO", "context": {}},
+        ]
+        payload = {
+            "turn": 5306460,
+            "queued_global_effect_on_conditions": [
+                {"time": 5306460, "eoc": "EOC_LIEUTENANT_ACTIVATE_SHADOW", "context": {}},
+                retained_before[0],
+                {"time": 5333624, "eoc": "EOC_LIEUTENANT_SPAWN_SHADOW", "context": {}},
+                retained_before[1],
+            ],
+            "player": {"queued_effect_on_conditions": []},
+        }
+        expected_retained = json.loads(json.dumps(retained_before))
+        receipt = remove_inherited_shadow_flavor_producer_global_eocs_from_payload(payload)
+
+        self.assertEqual(payload["turn"], 5306460)
+        self.assertEqual(payload["queued_global_effect_on_conditions"], expected_retained)
+        self.assertEqual(receipt["popup_producer_eoc"], "EOC_LIEUTENANT_SHADOW_WARN")
+        self.assertEqual(receipt["target_eocs"], [
+            "EOC_LIEUTENANT_ACTIVATE_SHADOW", "EOC_LIEUTENANT_SPAWN_SHADOW",
+        ])
+        self.assertEqual([(entry["eoc"], entry["time"]) for entry in receipt["removed"]], [
+            ("EOC_LIEUTENANT_ACTIVATE_SHADOW", 5306460),
+            ("EOC_LIEUTENANT_SPAWN_SHADOW", 5333624),
+        ])
+        self.assertEqual(receipt["turn_before"], receipt["turn_after"])
+        self.assertTrue(receipt["retained_identities_and_timestamps_byte_equivalent"])
+        self.assertEqual([entry["eoc"] for entry in receipt["before"]], [
+            "EOC_LIEUTENANT_ACTIVATE_SHADOW", "EOC_RETAINED_ONE",
+            "EOC_LIEUTENANT_SPAWN_SHADOW", "EOC_RETAINED_TWO",
+        ])
+        self.assertEqual([entry["time"] for entry in receipt["after"]], [5306500, 5306600])
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "McWilliams"
+            world_dir.mkdir()
+            player_save = world_dir / "player.sav.zzip"
+            player_save.write_text(json.dumps({
+                "turn": 5306460,
+                "queued_global_effect_on_conditions": [
+                    {"time": 5306460, "eoc": "EOC_LIEUTENANT_ACTIVATE_SHADOW", "context": {}},
+                    expected_retained[0],
+                    {"time": 5333624, "eoc": "EOC_LIEUTENANT_SPAWN_SHADOW", "context": {}},
+                    expected_retained[1],
+                ],
+                "player": {"queued_effect_on_conditions": []},
+            }), encoding="utf-8")
+            with mock.patch("startup_harness.run_zzip", side_effect=self.fake_zzip):
+                round_trip = apply_remove_inherited_shadow_flavor_producer_global_eocs_transform(world_dir, {
+                    "kind": "remove_inherited_shadow_flavor_producer_global_eocs",
+                    "player_save": player_save.name,
+                })
+            rewritten = json.loads(player_save.read_text(encoding="utf-8"))
+
+        self.assertEqual(rewritten["turn"], 5306460)
+        self.assertEqual(rewritten["queued_global_effect_on_conditions"], expected_retained)
+        self.assertEqual(round_trip["removed"], receipt["removed"])
+        self.assertEqual(round_trip["before"], receipt["before"])
+        self.assertEqual(round_trip["after"], receipt["after"])
+
+    def test_fails_closed_for_missing_duplicate_or_unexpected_queue_schema(self) -> None:
+        base = {
+            "turn": 5306460,
+            "player": {"queued_effect_on_conditions": []},
+        }
+        invalid_payloads = [
+            ({**base, "queued_global_effect_on_conditions": [
+                {"time": 1, "eoc": "EOC_LIEUTENANT_SPAWN_SHADOW", "context": {}},
+            ]}, "found no EOC_LIEUTENANT_ACTIVATE_SHADOW"),
+            ({**base, "queued_global_effect_on_conditions": [
+                {"time": 0, "eoc": "EOC_LIEUTENANT_ACTIVATE_SHADOW", "context": {}},
+                {"time": 1, "eoc": "EOC_LIEUTENANT_SPAWN_SHADOW", "context": {}},
+                {"time": 2, "eoc": "EOC_LIEUTENANT_SPAWN_SHADOW", "context": {}},
+            ]}, "duplicate"),
+            ({**base, "queued_global_effect_on_conditions": [
+                {"time": 0, "eoc": "EOC_LIEUTENANT_ACTIVATE_SHADOW", "context": {}},
+                {"time": 1, "eoc": "EOC_LIEUTENANT_SPAWN_SHADOW", "context": {}, "extra": True},
+            ]}, "unexpected schema"),
+        ]
+        for invalid_payload, expected_error in invalid_payloads:
+            with self.subTest(expected_error=expected_error):
+                with self.assertRaisesRegex(SystemExit, expected_error):
+                    remove_inherited_shadow_flavor_producer_global_eocs_from_payload(invalid_payload)
+
+
+class ShadowFlavorProducerSourceContractTest(unittest.TestCase):
+    def test_wind_popup_is_produced_by_warn_reached_from_the_two_queued_roots(self) -> None:
+        source = json.loads(Path("data/json/monsters/singularities.json").read_text(encoding="utf-8"))
+        by_id = {entry.get("id"): entry for entry in source if isinstance(entry, dict) and entry.get("id")}
+        warning = by_id["EOC_LIEUTENANT_SHADOW_WARN"]
+        parent = by_id["EOC_LIEUTENANT_SPAWN_SHADOW"]
+        activation = by_id["EOC_LIEUTENANT_ACTIVATE_SHADOW"]
+        early_snippets = next(entry for entry in source if entry.get("category") == "Shadow_Warnings_Snippets_early")
+
+        self.assertIn("The wind faintly cries into the night.", early_snippets["text"])
+        self.assertIn("Shadow_Warnings_Snippets_early", json.dumps(warning["effect"]))
+        self.assertIn("EOC_LIEUTENANT_SHADOW_WARN", json.dumps(parent["false_effect"]))
+        self.assertTrue(activation["global"])
+        self.assertEqual(activation["recurrence"], "1 second")
+        self.assertEqual(
+            [entry["math"][0] for entry in activation["effect"]],
+            ["Lieutenants_active = 1", "Shadow_Lurking = 1"],
+        )
+
+
 class BanditCloneSiteTransformContractTest(unittest.TestCase):
     def test_clone_can_set_cannibal_profile_explicitly(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -4266,6 +5261,61 @@ class OvermapTerrainIdAtAbsOmtTransformContractTest(unittest.TestCase):
                     )
                 write_payload.assert_not_called()
                 self.assertEqual(json.dumps(payload, sort_keys=True), original_payload)
+
+
+class PlayerViewSeenOmtTransformContractTest(unittest.TestCase):
+    @staticmethod
+    def fake_zzip(path: Path) -> None:
+        if path.suffix == ".zzip":
+            path.with_suffix("").write_bytes(path.read_bytes())
+        else:
+            path.with_suffix(f"{path.suffix}.zzip").write_bytes(path.read_bytes())
+
+    def test_creates_authoritative_view_and_changes_only_typed_cell(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "McWilliams"
+            world_dir.mkdir()
+            player_save = world_dir / "player.sav.zzip"
+            player_save.write_text(
+                json.dumps({"savegame_loading_version": 39}),
+                encoding="utf-8",
+            )
+            transform = {
+                "kind": "player_view_seen_omt",
+                "player_save": player_save.name,
+                "abs_omt": [160, 39, 0],
+                "vision_level": "full",
+            }
+            normalized = normalize_fixture_save_transforms(
+                [transform],
+                manifest_path=world_dir / "manifest.json",
+            )
+            with mock.patch("startup_harness.run_zzip", side_effect=self.fake_zzip):
+                reports = apply_fixture_save_transforms(world_dir, normalized)
+            view_path = world_dir / "player.seen.0.0"
+            payload = json.loads(view_path.read_text(encoding="utf-8").split("\n", 1)[1])
+            visible = decode_player_view_sequence(payload["visible"][10], context="test")
+
+        target_index = overmap_flat_index((160, 39, 0))
+        changed = [index for index, value in enumerate(visible) if value != 0]
+        self.assertEqual(changed, [target_index])
+        self.assertEqual(visible[target_index], 4)
+        self.assertEqual(reports[0]["abs_omt"], [160, 39, 0])
+        self.assertTrue(reports[0]["setup_only"])
+        self.assertFalse(reports[0]["gameplay_credit"])
+        self.assertTrue(reports[0]["created_view"])
+
+    def test_normalization_rejects_untyped_view_binding(self) -> None:
+        with self.assertRaisesRegex(SystemExit, "vision_level must be vague, outlines, details, or full"):
+            normalize_fixture_save_transforms(
+                [{
+                    "kind": "player_view_seen_omt",
+                    "player_save": "player.sav.zzip",
+                    "abs_omt": [160, 39, 0],
+                    "vision_level": 4,
+                }],
+                manifest_path=Path("manifest.json"),
+            )
 
 
 class BanditRosterShapeTransformContractTest(unittest.TestCase):
@@ -5295,7 +6345,73 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(hordes["mon_writhing_stalker"]["offset_ms"], [72, 72, 0])
         self.assertGreater(max(abs(value) for value in hordes["mon_writhing_stalker"]["offset_ms"][:2]), 60)
 
-    def test_phase4_observer_handoff_inherits_cloak_and_adds_only_clairvoyance(self) -> None:
+    def test_r002_m040_post_abort_fixture_binds_exact_abstract_pair_without_credit(self) -> None:
+        fixture_name = "bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22"
+        resolved = resolve_fixture_payload(fixture_name, "live-debug")
+        scenario = load_scenario("bandit.r002_m040_post_abort_recenter_return_mcw")
+        metadata = audit_saved_bandit_live_world_state(
+            resolved["save_src"] / "McWilliams",
+            required_site_id_contains="overmap_special:bandit_camp@164,39,0",
+            required_member_count=19,
+            required_active_outside_count=2,
+            required_active_outing_kind="structural_sortie",
+            required_active_outing_activity_id_contains="#structural",
+            required_active_outing_generation=1,
+            required_active_outing_simulation_owner="abstract",
+            required_active_outing_handoff_epoch=2,
+            required_active_outing_phase="returning_home",
+            required_active_outing_waypoint_index=2,
+            required_active_outing_exact_pair=True,
+            required_local_handoff_state="abstract_resume",
+            required_local_handoff_exact_pair=True,
+            required_local_handoff_cohesion_assembled=False,
+            required_local_handoff_cohesion_abort_return=True,
+            required_local_handoff_route_position=[164, 36, 0],
+        )
+
+        self.assertEqual(resolved["source_chain"], [("live-debug", fixture_name)])
+        self.assertEqual(metadata["status"], "required_state_present")
+        self.assertFalse(resolved["manifest"]["fixture_grants_gameplay_proof"])
+        self.assertEqual(
+            [transform["kind"] for transform in resolved["save_transforms"]],
+            ["player_location_offset_ms", "player_condition", "player_mutations",
+             "active_monsters_near_player"],
+        )
+        self.assertEqual(scenario["fixture"], fixture_name)
+        self.assertFalse(scenario["runtime_contract"]["grants_gameplay_proof"])
+        self.assertNotIn("debug:teleport", scenario["runtime_contract"]["permitted_input"])
+        steps = {step["label"]: step for step in scenario["steps"]}
+        self.assertEqual(
+            steps["preflight_exact_post_abort_pair"]["required_local_handoff_route_position"],
+            [164, 36, 0],
+        )
+        self.assertEqual(
+            steps["load_zero_slot_abort_resume_omt"],
+            {
+                "kind": "ordinary_overmap_route_constructor",
+                "label": "load_zero_slot_abort_resume_omt",
+                "origin_omt": [161, 36, 0],
+                "destination_omt": [164, 36, 0],
+                "cursor_keys": ["right", "right", "right"],
+                "route_key": "W",
+                "delay_ms": 200,
+                "open_settle_seconds": 1,
+                "cursor_settle_seconds": 0.5,
+                "route_settle_seconds": 0.5,
+                "abort_on_metadata_failure": True,
+                "abort_verdict": "blocked_r002_m040_zero_slot_resume_route_missing",
+                "abort_reason": "ordinary travel could not load the exact previously rejected resume OMT at (164,36,0)",
+                "expected_visible_fact": "the ordinary overmap cursor enters at (161,36,0), binds the retained zero-slot resume OMT at (164,36,0), and leaves the abstract pair unchanged",
+            },
+        )
+        self.assertEqual(
+            steps["audit_recenter_gate_and_local_rebind"]["required_line_patterns"],
+            [["bandit_live_world local_handoff committed",
+              "site=overmap_special:bandit_camp@164,39,0", "generation=1", "epoch=3",
+              "phase=returning_home", "recenter_gate=yes", "recentered=yes", "members=2"]],
+        )
+
+    def test_phase4_observer_handoff_has_passive_observer_and_outdoor_wait_footing(self) -> None:
         resolved = resolve_fixture_payload(
             "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
             "live-debug",
@@ -5309,20 +6425,132 @@ class ScenarioFixtureContractTest(unittest.TestCase):
 
         self.assertEqual(
             [transform["mutations"] for transform in mutation_transforms[-2:]],
-            [["DEBUG_CLOAK"], ["DEBUG_CLAIRVOYANCE"]],
+            [["DEBUG_CLOAK"], ["DEBUG_NOTEMP", "DEBUG_LS"]],
         )
         self.assertEqual(
             mutation_transforms[-1],
             {
                 "kind": "player_mutations",
                 "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
-                "mutations": ["DEBUG_CLAIRVOYANCE"],
+                "mutations": ["DEBUG_NOTEMP", "DEBUG_LS"],
+            },
+        )
+        self.assertNotIn("DEBUG_CLAIRVOYANCE", mutation_transforms[-1]["mutations"])
+        self.assertNotIn(
+            "remove_inherited_shadow_flavor_producer_global_eocs",
+            [transform["kind"] for transform in resolved["save_transforms"]],
+        )
+        worn_transforms = [
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "player_worn_items"
+        ]
+        condition_transforms = [
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "player_condition"
+        ]
+        self.assertEqual(
+            worn_transforms[-1],
+            {
+                "kind": "player_worn_items",
+                "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                "items": ["hoodie", "balclava", "gloves_light"],
+                "fitted": True,
+            },
+        )
+        self.assertEqual(
+            condition_transforms[-1],
+            {
+                "kind": "player_condition",
+                "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                "hp_percent": 100,
+                "stamina": 8500,
+                "hunger": 0,
+                "thirst": 0,
+                "sleepiness": 0,
             },
         )
         self.assertEqual(scenario["profile"], "dev-harness")
         self.assertEqual(scenario["world"], "McWilliams")
         self.assertEqual(scenario["fixture"], resolved["source_chain"][0][1])
         self.assertIn("--launch-only", scenario["recommended_test_command"])
+        structural_signal = load_scenario("bandit.phase4_structural_signal_matrix_live_mcw")
+        self.assertIn("type:.", structural_signal["runtime_contract"]["permitted_input"])
+        self.assertNotIn("press:.", structural_signal["runtime_contract"]["permitted_input"])
+        self.assertIn("type:.", structural_signal["runtime_contract"]["requirements"]["input"])
+        self.assertNotIn("press:.", structural_signal["runtime_contract"]["requirements"]["input"])
+        outdoor_preflight = next(
+            step for step in structural_signal["steps"]
+            if step["label"] == "preflight_phase4_passive_observer_outdoor_footing"
+        )
+        self.assertEqual(outdoor_preflight["required_items"], ["hoodie", "balclava", "gloves_light"])
+        self.assertTrue(outdoor_preflight["abort_on_metadata_failure"])
+        baseline = next(step for step in structural_signal["steps"] if step["label"] == "preflight_phase4_passive_observer_fed_hydrated_baseline")
+        self.assertEqual(baseline["required_traits"], ["DEBUG_NOTEMP", "DEBUG_LS"])
+        self.assertEqual(baseline["forbidden_traits"], ["DEBUG_CLAIRVOYANCE"])
+        safe_wait_footings = next(
+            step for step in structural_signal["steps"]
+            if step["label"] == "preflight_phase4_shadow_warning_safe_wait_footings"
+        )
+        self.assertEqual(
+            safe_wait_footings["kind"],
+            "audit_saved_phase4_shadow_warning_wait_footings",
+        )
+        self.assertEqual(safe_wait_footings["footings"], [
+            {
+                "label": "road_before_and_through_sound",
+                "abs_omt": [137, 48, 0],
+                "required_terrain": "road_ns",
+                "expected_loaded": {"target": True, "approach": False, "watch": False, "camp": False},
+            },
+            {
+                "label": "camp_for_physical_return_only",
+                "abs_omt": [140, 51, 0],
+                "required_terrain": "bandit_camp_3_east",
+                "expected_loaded": {"target": False, "approach": True, "watch": True, "camp": True},
+            },
+        ])
+        self.assertTrue(safe_wait_footings["abort_on_metadata_failure"])
+        footing_metadata = audit_saved_phase4_shadow_warning_wait_footings(
+            resolved["save_src"] / "McWilliams",
+            footings=safe_wait_footings["footings"],
+            geometry=safe_wait_footings["geometry"],
+        )
+        self.assertEqual(footing_metadata["status"], "required_state_present")
+        self.assertTrue(all(
+            footing["terrain_blocks_shadow_warning"]
+            for footing in footing_metadata["footings"]
+        ))
+        wrong_footings = json.loads(json.dumps(safe_wait_footings["footings"]))
+        wrong_footings[0]["required_terrain"] = "field"
+        self.assertEqual(
+            audit_saved_phase4_shadow_warning_wait_footings(
+                resolved["save_src"] / "McWilliams",
+                footings=wrong_footings,
+                geometry=safe_wait_footings["geometry"],
+            )["status"],
+            "required_state_missing",
+        )
+
+    def test_phase4_wait_cold_and_injury_prompts_remain_fail_closed(self) -> None:
+        scenario = load_scenario("bandit.phase4_structural_signal_matrix_live_mcw")
+        waits = [step for step in scenario["steps"] if step["kind"] == "long_wait"]
+
+        for prompt_text in (
+            "You are freezing! Stop waiting?\n[I]gnore this distraction and continue",
+            "You are overheating! Stop waiting?\n[I]gnore this distraction and continue",
+            "You were hurt! Stop waiting?\n[I]gnore this distraction and continue",
+        ):
+            with self.subTest(prompt_text=prompt_text):
+                prompt = classify_blocking_interruption({"ok": True, "text": prompt_text})
+                self.assertEqual(prompt["status"], "unknown_prompt")
+                self.assertEqual(prompt["response_key"], "")
+        self.assertTrue(waits)
+        self.assertTrue(all(step.get("auto_acknowledge_interruptions") is False for step in waits))
+        recovery_steps = [
+            step["label"] for step in waits
+            if step.get("allow_harmless_flavor_popup_wait_recovery") is True
+        ]
+        self.assertEqual(recovery_steps, ["wait_1_hour_for_schema10_signal_approach"])
 
     def test_phase4_signal_matrix_observes_natural_dispatch_before_return(self) -> None:
         scenario = load_scenario("bandit.phase4_structural_signal_matrix_live_mcw")
@@ -5335,6 +6563,22 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertLess(
             labels.index("audit_phase4_sound_fact"),
             labels.index("audit_no_returned_signal_lead_before_physical_return"),
+        )
+        abstract_transition = labels.index("audit_source_road_abstract_transition_before_return_setup")
+        return_setup = labels.index("open_debug_long_teleport_after_abstract_report_transition")
+        self.assertLess(labels.index("wait_second_1_hour_for_sound_pair_report_transition"), abstract_transition)
+        self.assertLess(abstract_transition, return_setup)
+        self.assertIn(
+            ["bandit_live_world local_handoff committed"],
+            steps[abstract_transition]["forbidden_line_patterns"],
+        )
+        self.assertIn(
+            ["local_handoff physical death"],
+            steps[abstract_transition]["forbidden_line_patterns"],
+        )
+        self.assertIn(
+            ["structural outing closed with no survivor report"],
+            steps[abstract_transition]["forbidden_line_patterns"],
         )
         for removed_label in (
             "open_natural_phase4_ecology_overmap",
@@ -5357,32 +6601,37 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertNotIn("audit_phase4_three_active_signal_facts", labels)
         self.assertIn("wait_5_minutes_for_abstract_watch_arrival", labels)
         self.assertIn("audit_phase4_sound_fact", labels)
-        west_relocation = labels.index("relocate_passive_avatar_three_omt_west_before_signal_approach")
-        guarded_waits = [
-            index for index, step in enumerate(steps)
-            if step["kind"] == "long_wait" and index > west_relocation
-        ]
-        self.assertTrue(guarded_waits)
-        for wait_index in guarded_waits:
-            self.assertEqual(
-                steps[wait_index - 1]["kind"],
-                "debug_run_local_reality_safety_preflight",
-            )
+        self.assertNotIn("debug_run_local_reality_safety_preflight", [step["kind"] for step in steps])
+        footing_preflight = steps[labels.index("preflight_phase4_shadow_warning_safe_wait_footings")]
+        self.assertEqual(footing_preflight["kind"], "audit_saved_phase4_shadow_warning_wait_footings")
         self.assertLess(
-            labels.index("relocate_passive_avatar_three_omt_west_before_signal_approach"),
-            labels.index("preflight_local_reality_before_signal_approach_wait"),
+            labels.index("preflight_phase4_shadow_warning_safe_wait_footings"),
+            labels.index("wait_first_6_hours_toward_phase4_structural_signal_due"),
         )
         self.assertLess(
-            labels.index("relocate_passive_avatar_three_omt_east_for_signal_return"),
-            labels.index("preflight_local_reality_before_carried_sound_wait"),
+            labels.index("audit_phase4_sound_fact"),
+            labels.index("relocate_passive_avatar_to_nonfield_camp_return_footing"),
         )
-        self.assertIn("target remains loaded", scenario["description"])
-        self.assertIn("approach/watch remain abstract", scenario["description"])
+        self.assertLess(
+            labels.index("wait_second_1_hour_for_sound_pair_report_transition"),
+            labels.index("relocate_passive_avatar_to_nonfield_camp_return_footing"),
+        )
+        self.assertIn("road keeps target loaded", scenario["description"])
+        self.assertIn("approach/watch/camp remain abstract", scenario["description"])
         harness_source = (HARNESS_DIR / "startup_harness.py").read_text(encoding="utf-8")
         self.assertIn("missing, malformed, or unsafe preflight output blocks", harness_source)
         self.assertIn("audit_local_reality_safety_preflight_text", harness_source)
         self.assertIn("same_z_possible_reach", harness_source)
         self.assertNotIn("ecology_incident", scenario["evidence_contract"]["observer_artifact_requirement"])
+        local_receipts = steps[labels.index("audit_phase4_local_return_receipts_before_handoff")]
+        self.assertIn(
+            ["bandit_live_world local physical return receipt committed", "receipts=1", "owner=local"],
+            local_receipts["required_line_patterns"],
+        )
+        self.assertIn(
+            ["bandit_live_world local physical return receipt committed", "receipts=2", "owner=abstract"],
+            local_receipts["required_line_patterns"],
+        )
         return_audit = steps[labels.index("audit_phase4_structural_signal_physical_return")]
         self.assertIn(["scheduler_hour=172", "members_returned=2"], return_audit["required_line_patterns"])
         self.assertIn(["structural outing returned signal leads=1"], return_audit["required_line_patterns"])
@@ -5393,7 +6642,10 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             ),
             1,
         )
-        self.assertEqual(labels[-2:], [
+        self.assertEqual(labels[-5:], [
+            "audit_phase4_local_return_receipts_before_handoff",
+            "audit_phase4_no_returned_lead_before_authoritative_handoff",
+            "wait_final_1_hour_for_signal_pair_physical_return",
             "audit_phase4_structural_signal_physical_return",
             "audit_phase4_returned_signal_leads_have_no_player_token",
         ])
@@ -5630,10 +6882,11 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ]
         self.assertEqual(
             [transform["kind"] for transform in positioning_transforms],
-            ["player_near_overmap_special", "player_location_offset_ms"],
+            ["player_near_overmap_special", "player_location_offset_ms", "player_location_offset_ms"],
         )
         self.assertEqual(positioning_transforms[0]["offset_omt"], [0, -12, 0])
         self.assertEqual(positioning_transforms[1]["offset_ms"], [-36, 239, 0])
+        self.assertEqual(positioning_transforms[2]["offset_ms"], [-48, -24, 0])
         with tempfile.TemporaryDirectory() as temp_dir:
             installed_world = Path(temp_dir) / "McWilliams"
             shutil.copytree(resolved["save_src"] / "McWilliams", installed_world)
@@ -5647,67 +6900,38 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 ((140, 39, 0), [3372, 948, 0]),
             )
             apply_fixture_save_transforms(installed_world, [positioning_transforms[1]])
+            apply_fixture_save_transforms(installed_world, [positioning_transforms[2]])
             installed_player_omt, player_abs_ms = load_player_abs_omt(
                 installed_world, player_save
             )
-        self.assertEqual((installed_player_omt, player_abs_ms), ((139, 49, 0), [3336, 1187, 0]))
-        west_relocation = steps[labels.index("relocate_passive_avatar_three_omt_west_before_signal_approach")]
-        east_relocation = steps[labels.index("relocate_passive_avatar_three_omt_east_for_signal_return")]
-        self.assertEqual(west_relocation["keys"], ["left", "left", "left", "enter"])
-        self.assertEqual(east_relocation["keys"], ["right", "right", "right", "enter"])
-        self.assertLess(
-            labels.index("relocate_passive_avatar_three_omt_west_before_signal_approach"),
-            labels.index("wait_1_hour_for_schema10_signal_approach"),
+        self.assertEqual((installed_player_omt, player_abs_ms), ((137, 48, 0), [3288, 1163, 0]))
+        return_relocation = steps[labels.index("relocate_passive_avatar_to_nonfield_camp_return_footing")]
+        self.assertEqual(
+            return_relocation["keys"],
+            ["right", "right", "right", "down", "down", "down", "enter"],
         )
         self.assertLess(
             labels.index("audit_phase4_sound_fact"),
-            labels.index("relocate_passive_avatar_three_omt_east_for_signal_return"),
+            labels.index("relocate_passive_avatar_to_nonfield_camp_return_footing"),
         )
         self.assertEqual(
             steps[labels.index("audit_no_local_handoff_through_signal_observation")]["since_label"],
-            "relocate_passive_avatar_three_omt_west_before_signal_approach",
+            "wait_first_6_hours_toward_phase4_structural_signal_due",
         )
-        west_player_abs_ms = [player_abs_ms[0] - 72, player_abs_ms[1], player_abs_ms[2]]
-        self.assertEqual(west_player_abs_ms, [3264, 1187, 0])
-        source_abs_ms = [west_player_abs_ms[0] + 36, west_player_abs_ms[1], west_player_abs_ms[2]]
-        self.assertEqual((west_player_abs_ms, source_abs_ms), ([3264, 1187, 0], [3300, 1187, 0]))
+        road_player_abs_ms = player_abs_ms
+        source_abs_ms = [road_player_abs_ms[0] + 12, road_player_abs_ms[1] + 24, road_player_abs_ms[2]]
+        self.assertEqual((road_player_abs_ms, source_abs_ms), ([3288, 1163, 0], [3300, 1187, 0]))
         self.assertEqual(tuple(value // 24 for value in source_abs_ms[:2]) + (0,), target)
-        west_avatar_omt = (136, 49, 0)
+        road_avatar_omt = (137, 48, 0)
         loaded_handoff_radius_sm = 4
-        two_west_avatar_omt = (137, 49, 0)
-        three_west_route_delta_sm = (
-            2 * abs(approach[0] - west_avatar_omt[0]),
-            2 * abs(approach[1] - west_avatar_omt[1]),
-        )
-        two_west_route_delta_sm = (
-            2 * abs(approach[0] - two_west_avatar_omt[0]),
-            2 * abs(approach[1] - two_west_avatar_omt[1]),
-        )
-        self.assertEqual(three_west_route_delta_sm, (6, 4))
-        self.assertEqual(two_west_route_delta_sm, (4, 4))
-        self.assertEqual(max(two_west_route_delta_sm), loaded_handoff_radius_sm)
-        self.assertGreater(max(three_west_route_delta_sm), loaded_handoff_radius_sm)
         self.assertEqual(
-            (2 * abs(target[0] - west_avatar_omt[0]), 2 * abs(target[1] - west_avatar_omt[1])),
-            (2, 0),
-        )
-
-        def distance_to_omt(point_ms: List[int], omt: tuple[int, int, int]) -> int:
-            distances = []
-            for axis in range(2):
-                lower = omt[axis] * 24
-                upper = lower + 23
-                distances.append(max(lower - point_ms[axis], point_ms[axis] - upper, 0))
-            return max(distances)
-
-        self.assertEqual(
-            (
-                distance_to_omt(west_player_abs_ms, target),
-                distance_to_omt(west_player_abs_ms, approach),
-                distance_to_omt(west_player_abs_ms, camp),
-                distance_to_omt(west_player_abs_ms, watch),
-            ),
-            (24, 72, 96, 61),
+            {
+                "target": max(2 * abs(target[0] - road_avatar_omt[0]), 2 * abs(target[1] - road_avatar_omt[1])) <= loaded_handoff_radius_sm,
+                "approach": max(2 * abs(approach[0] - road_avatar_omt[0]), 2 * abs(approach[1] - road_avatar_omt[1])) <= loaded_handoff_radius_sm,
+                "watch": max(2 * abs(watch[0] - road_avatar_omt[0]), 2 * abs(watch[1] - road_avatar_omt[1])) <= loaded_handoff_radius_sm,
+                "camp": max(2 * abs(camp[0] - road_avatar_omt[0]), 2 * abs(camp[1] - road_avatar_omt[1])) <= loaded_handoff_radius_sm,
+            },
+            {"target": True, "approach": False, "watch": False, "camp": False},
         )
         resolved_profile = resolve_profile_snapshot_payload(
             scenario["profile_snapshot"], scenario["profile_snapshot_profile"]
@@ -5742,6 +6966,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         screen_direction_delta = {
             "left": (-1, 0),
             "right": (1, 0),
+            "down": (0, 1),
         }
         rotate_direction_vec = (1, 2, 5, 0, 4, 8, 3, 6, 7)
 
@@ -5759,22 +6984,44 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 world_y += screen_y
             return world_x, world_y
 
+        return_delta = profile_world_delta(return_relocation["keys"][:-1])
+        return_avatar_omt = (
+            road_avatar_omt[0] + return_delta[0],
+            road_avatar_omt[1] + return_delta[1],
+            road_avatar_omt[2],
+        )
+        self.assertEqual(return_avatar_omt, camp)
+        self.assertLessEqual(
+            max(
+                2 * abs(approach[0] - return_avatar_omt[0]),
+                2 * abs(approach[1] - return_avatar_omt[1]),
+            ),
+            loaded_handoff_radius_sm,
+        )
+        self.assertLessEqual(
+            max(
+                2 * abs(camp[0] - return_avatar_omt[0]),
+                2 * abs(camp[1] - return_avatar_omt[1]),
+            ),
+            loaded_handoff_radius_sm,
+        )
+
         for setup_label in ("stage_active_explosive_after_watch_arrival",):
             setup = steps[labels.index(setup_label)]
             self.assertEqual(len(setup["target_keys"]), 36)
-            self.assertEqual(set(setup["target_keys"]), {"right"})
+            self.assertEqual(set(setup["target_keys"]), {"right", "down"})
             world_delta = profile_world_delta(setup["target_keys"])
             placed_abs_ms = [
-                west_player_abs_ms[0] + world_delta[0],
-                west_player_abs_ms[1] + world_delta[1],
-                west_player_abs_ms[2],
+                road_player_abs_ms[0] + world_delta[0],
+                road_player_abs_ms[1] + world_delta[1],
+                road_player_abs_ms[2],
             ]
             placed_omt = tuple(value // 24 for value in placed_abs_ms[:2]) + (0,)
-            self.assertEqual(world_delta, (36, 0))
+            self.assertEqual(world_delta, (12, 24))
             self.assertEqual(placed_abs_ms, source_abs_ms)
             self.assertEqual(placed_omt, target)
             self.assertIn(
-                "36 screen-right non-isometric EDITMAP actions",
+                "12 screen-right then 24 screen-down non-isometric EDITMAP actions",
                 setup["expected_visible_fact"],
             )
 
@@ -5784,30 +7031,23 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "wait_5_minutes_for_post_arrival_sound_fact": ("now_minutes=10085",),
             "wait_1_hour_with_carried_sound_fact": ("scheduler_hour=169", "now_minutes=10140"),
             "wait_second_1_hour_for_sound_pair_report_transition": ("scheduler_hour=170", "now_minutes=10200"),
-            "wait_third_1_hour_for_sound_pair_homeward_transition": ("scheduler_hour=171", "now_minutes=10260"),
-            "wait_final_1_hour_for_signal_pair_physical_return": ("scheduler_hour=172", "now_minutes=10320"),
         }
         for label, clock_patterns in expected_clocks.items():
             patterns = steps[labels.index(label)]["artifact_state_patterns"]
             self.assertTrue(all(pattern in patterns for pattern in clock_patterns))
-        homeward_transition = steps[labels.index(
-            "wait_third_1_hour_for_sound_pair_homeward_transition"
-        )]
+        homeward_transition = steps[labels.index("wait_third_1_hour_for_sound_pair_homeward_transition")]
         final_return = steps[labels.index("wait_final_1_hour_for_signal_pair_physical_return")]
-        completed_assessment = (
-            "structural outing completed its watch assessment "
-            "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"
-        )
-        secured_return = (
-            "structural outing secured its normal watch report and began return "
-            "lead=overmap_special:bandit_camp@140,51,0:terrain_opportunity:137,49,0:road"
-        )
-        self.assertIn(completed_assessment, homeward_transition["artifact_state_patterns"])
-        self.assertNotIn(secured_return, homeward_transition["artifact_state_patterns"])
-        self.assertIn(secured_return, final_return["artifact_state_patterns"])
-        self.assertIn("structural outing returned signal leads=1", final_return["artifact_state_patterns"])
-        self.assertIn("members_returned=2", final_return["artifact_state_patterns"])
-        self.assertIn("origin=returned_report", final_return["artifact_state_patterns"])
+        self.assertEqual(homeward_transition["kind"], "advance_turns")
+        self.assertEqual(homeward_transition["count"], 3250)
+        self.assertEqual(final_return["kind"], "advance_turns")
+        self.assertEqual(final_return["count"], 3600)
+        self.assertIn("scheduler hour 171 at minute 10260", final_return["expected_visible_fact"])
+        self.assertIn("hour-172 reduction at minute 10320", final_return["expected_visible_fact"])
+        motor_audit = steps[labels.index("audit_phase4_ordinary_homeward_motor_before_receipts")]
+        self.assertTrue(any(
+            "member=4" in group and "route_assigned=yes" in group
+            for group in motor_audit["required_line_patterns"]
+        ))
         expected_staging_clocks = {
             "wait_30_minutes_toward_schema10_watch_boundary": 10050,
             "wait_first_5_minutes_toward_schema10_watch_boundary": 10055,
@@ -5839,11 +7079,40 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
         self.assertLess(
             labels.index("audit_no_local_handoff_through_signal_observation"),
-            labels.index("relocate_passive_avatar_three_omt_east_for_signal_return"),
+            labels.index("relocate_passive_avatar_to_nonfield_camp_return_footing"),
+        )
+        deferred_audits = {
+            "stage_active_explosive_after_watch_arrival": "audit_phase4_sound_fact",
+            "advance_turns_for_post_arrival_active_explosive": "audit_phase4_sound_fact",
+            "open_debug_long_teleport_after_abstract_report_transition": "preflight_camp_saved_map_opaque_return_footing",
+            "relocate_passive_avatar_to_nonfield_camp_return_footing": "preflight_camp_saved_map_opaque_return_footing",
+            "stage_disposable_camp_wall_east": "preflight_camp_saved_map_opaque_return_footing",
+            "stage_disposable_camp_wall_north": "preflight_camp_saved_map_opaque_return_footing",
+            "stage_disposable_camp_wall_south": "preflight_camp_saved_map_opaque_return_footing",
+            "stage_disposable_camp_wall_northeast": "preflight_camp_saved_map_opaque_return_footing",
+            "stage_disposable_camp_wall_southeast": "preflight_camp_saved_map_opaque_return_footing",
+            "stage_disposable_camp_wall_southwest": "preflight_camp_saved_map_opaque_return_footing",
+            "stage_disposable_camp_wall_northwest": "preflight_camp_saved_map_opaque_return_footing",
+            "wait_third_1_hour_for_sound_pair_homeward_transition": "audit_phase4_ordinary_homeward_motor_before_receipts",
+            "wait_final_1_hour_for_signal_pair_physical_return": "audit_phase4_structural_signal_physical_return",
+        }
+        for source_label, guard_label in deferred_audits.items():
+            self.assertEqual(steps[labels.index(source_label)]["proof_deferred_to_label"], guard_label)
+            self.assertLess(labels.index(source_label), labels.index(guard_label))
+        self.assertEqual(
+            scenario["proof_route"]["capability_gates"],
+            {
+                "capabilities.phase4.scenario": {
+                    "terminal": ["audit_phase4_structural_signal_physical_return"],
+                },
+                "capabilities.phase4.control": {
+                    "terminal": ["audit_phase4_structural_signal_physical_return"],
+                },
+            },
         )
         self.assertLess(labels.index("audit_no_returned_signal_lead_before_physical_return"), labels.index("wait_final_1_hour_for_signal_pair_physical_return"))
         self.assertNotIn("screen-left", json.dumps(scenario, sort_keys=True))
-        self.assertNotIn("136,51,0", json.dumps(scenario, sort_keys=True))
+        self.assertNotIn("relocate_passive_avatar_three_omt_west_before_signal_approach", labels)
 
     def test_phase4_signal_matrix_log_groups_use_normalized_runner_matchers(self) -> None:
         scenario = load_scenario("bandit.phase4_structural_signal_matrix_live_mcw")
@@ -7234,10 +8503,92 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                     "kind": "player_location_offset_ms",
                     "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
                     "offset_ms": [0, 24, 0],
+                },
+                {
+                    "kind": "player_basecamp_at_omt",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "camp_name": "OpenClaw Southwest Observer Camp",
+                    "owner": "your_followers",
+                },
+                {
+                    "kind": "overmap_terrain_id_at_abs_omt",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "abs_omt": [163, 32, 0],
+                    "terrain_id": "road_ns",
+                },
+                {
+                    "kind": "overmap_terrain_id_at_abs_omt",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "abs_omt": [164, 34, 0],
+                    "terrain_id": "road_ns",
+                },
+                {
+                    "kind": "player_view_seen_omt",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "abs_omt": [163, 33, 0],
+                    "vision_level": "full",
+                },
+                {
+                    "kind": "player_view_seen_omt",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "abs_omt": [162, 36, 0],
+                    "vision_level": "full",
+                },
+                {
+                    "kind": "player_view_seen_omt",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "abs_omt": [161, 37, 0],
+                    "vision_level": "full",
+                },
+                {
+                    "kind": "player_view_seen_omt",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "abs_omt": [160, 38, 0],
+                    "vision_level": "full",
+                },
+                {
+                    "kind": "player_view_seen_omt",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "abs_omt": [160, 39, 0],
+                    "vision_level": "full",
+                },
+                {
+                    "kind": "player_condition",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "hp_percent": 100,
+                    "stamina": 8500,
+                    "hunger": 0,
+                    "thirst": 0,
+                    "sleepiness": 0,
+                },
+                {
+                    "kind": "player_mutations",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "mutations": [
+                        "DEBUG_LS",
+                        "DEBUG_NOTEMP",
+                        "DEBUG_STAMINA",
+                        "DEBUG_CARDIO",
+                        "DEBUG_CLAIRVOYANCE",
+                        "DEBUG_NIGHTVISION",
+                        "DEBUG_NODMG",
+                    ],
+                },
+                {
+                    "kind": "active_monsters_near_player",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "clear_existing": True,
+                    "monsters": [],
+                },
+                {
+                    "kind": "remove_overmap_npcs",
+                    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                    "scan_all_overmaps": False,
+                    "npc_ids": [25],
                 }
             ],
         )
-        child_transforms = resolved["save_transforms"][:-1]
+        child_transforms = resolved["save_transforms"][:-13]
         self.assertEqual(
             [transform["kind"] for transform in child_transforms],
             [
@@ -7305,16 +8656,82 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             },
         )
         self.assertEqual(child_transform["mutations"], ["DEBUG_CLAIRVOYANCE"])
-        self.assertEqual(
-            resolved["save_transforms"][-1],
-            derived_manifest["save_transforms"][0],
-        )
+        self.assertEqual(resolved["save_transforms"][-13:], derived_manifest["save_transforms"])
 
     def test_scout_to_decision_observer_scenario_preserves_causal_boundary(self) -> None:
         scenario = load_scenario("bandit.scout_to_decision_observer_live_mcw")
-        steps = list(scenario["steps"])
+        initial_steps = list(scenario["steps"])
+        post_relaunch_steps = list(scenario["post_relaunch"]["steps"])
+        steps = [*initial_steps, *post_relaunch_steps]
         labels = [step["label"] for step in steps]
         exact_target = "lead=frontier_probe:0"
+
+        self.assertEqual(
+            scenario["post_relaunch"]["terminal_save_step_label"],
+            "confirm_native_process_exit_after_selected_watch_arrival",
+        )
+        self.assertEqual(
+            post_relaunch_steps[0]["label"],
+            "audit_selected_watch_arrival_for_pair_handoff",
+        )
+        self.assertNotIn(
+            "audit_selected_watch_arrival_for_pair_handoff",
+            [step["label"] for step in initial_steps],
+        )
+        self.assertEqual(
+            initial_steps[-1]["label"],
+            "audit_player_save_mtime_after_selected_watch_save",
+        )
+        selected_watch_save = next(
+            step for step in initial_steps
+            if step["label"] == "open_native_save_prompt_after_selected_watch_arrival"
+        )
+        selected_watch_confirmation = next(
+            step for step in initial_steps
+            if step["label"] == "confirm_native_process_exit_after_selected_watch_arrival"
+        )
+        self.assertEqual(selected_watch_save["kind"], "press")
+        self.assertEqual(selected_watch_save["keys"], ["S"])
+        self.assertTrue(selected_watch_save["capture_after"])
+        self.assertEqual(
+            selected_watch_save["expected_screen_text_after_contains"],
+            ["Save and quit?"],
+        )
+        self.assertTrue(selected_watch_save["abort_on_screen_text_expectation_failure"])
+        self.assertEqual(selected_watch_confirmation["keys"], ["left", "enter"])
+        self.assertEqual(
+            selected_watch_confirmation["proof_deferred_to_label"],
+            "audit_player_save_mtime_after_selected_watch_save",
+        )
+        self.assertLess(
+            labels.index("audit_player_save_mtime_before_selected_watch_save"),
+            labels.index("open_native_save_prompt_after_selected_watch_arrival"),
+        )
+        self.assertLess(
+            labels.index("open_native_save_prompt_after_selected_watch_arrival"),
+            labels.index("confirm_native_process_exit_after_selected_watch_arrival"),
+        )
+        self.assertLess(
+            labels.index("confirm_native_process_exit_after_selected_watch_arrival"),
+            labels.index("audit_player_save_mtime_after_selected_watch_save"),
+        )
+
+        self.assertEqual(
+            scenario["proof_route"]["capability_gates"],
+            {
+                "capabilities.bandit.scout_to_claim": {
+                    "terminal": ["bandit_report_claim"],
+                    "persistence": ["bandit_pair_return"],
+                },
+                "capabilities.bandit.scout_to_claim_observer": {
+                    "terminal": ["bandit_pair_handoff"],
+                    "persistence": ["bandit_pair_return"],
+                },
+            },
+        )
+        self.assertEqual(scenario["manifest_version"], 2)
+        self.assertEqual(scenario["run_class"], "non_combat")
+        self.assertTrue(scenario["observer_character"])
 
         self.assertEqual(
             scenario["fixture"],
@@ -7328,6 +8745,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertNotIn("(166,35,0)", scenario["description"])
         self.assertNotIn("two OMTs east", scenario["description"])
         self.assertIn("(164,30,0)", scenario["description"])
+        self.assertIn("(163,32,0)", scenario["description"])
+        self.assertIn("(163,33,0)", scenario["description"])
         self.assertIn(
             "structural maintenance dispatched site=overmap_special:bandit_camp@164,39,0",
             scenario["artifact_patterns"],
@@ -7356,7 +8775,11 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertIn("selected_omt=", production_owner)
         self.assertIn("outcome=", production_owner)
         self.assertIn(
-            "moves only the player observer from (162,35,0) to (162,36,0)",
+            "moves the player observer from (162,35,0) to (162,36,0)",
+            scenario["evidence_contract"]["preconditions_and_interventions"],
+        )
+        self.assertIn(
+            "installs one setup-only road terrain at (163,32,0)",
             scenario["evidence_contract"]["preconditions_and_interventions"],
         )
         self.assertIn(
@@ -7381,12 +8804,14 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 ("7", "3h"),
                 ("3", "5m"),
                 ("8", "6h"),
+                ("8", "6h"),
+                ("5", "1h"),
             ],
         )
         dispatch_wait = steps[labels.index("wait_1_hour_for_real_frontier_dispatch")]
         self.assertEqual(
             dispatch_wait["artifact_state_patterns"],
-            ["bandit_live_world watch_geography_preflight"],
+            ["scheduler_hour=139"],
         )
         watch_preflight = steps[labels.index("audit_watch_geography_fixture_preflight")]
         self.assertEqual(
@@ -7395,17 +8820,20 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 "bandit_live_world watch_geography_preflight",
                 "site=overmap_special:bandit_camp@164,39,0",
                 "target=(164,30,0)",
-                "footprint=4",
-                "candidates=",
-                "visible=",
-                "route_reachable=",
-                "selected_omt=",
-                "selected_route_cost=",
+                "footprint=1",
+                "visible=1",
+                "qualified=1",
+                "nonadjacent=1",
+                "route_reads=1",
+                "route_reachable=1",
+                "selected_omt=(163,33,0)",
+                "selected_route_cost=16",
+                "outcome=selected",
             ]],
         )
         self.assertEqual(
             watch_preflight["required_any_line_patterns"],
-            [["outcome=selected"], ["outcome=no_bounded_safe_watch_geography"]],
+            [["outcome=selected"]],
         )
         self.assertTrue(watch_preflight["abort_on_metadata_failure"])
         self.assertLess(
@@ -7428,6 +8856,63 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             labels.index("audit_watch_geography_fixture_preflight"),
             labels.index("audit_watch_geography_preflight_rejects_false_selected_route"),
         )
+        selected_watch_route = steps[
+            labels.index("preview_ordinary_route_to_selected_watch_for_pair_handoff")
+        ]
+        self.assertEqual(selected_watch_route["origin_omt"], [161, 38, 0])
+        self.assertEqual(selected_watch_route["destination_omt"], [163, 33, 0])
+        self.assertEqual(
+            selected_watch_route["cursor_keys"],
+            ["right", "right", "up", "up", "up", "up", "up"],
+        )
+        self.assertTrue(selected_watch_route["abort_on_metadata_failure"])
+        self.assertLess(
+            labels.index("audit_watch_geography_preflight_rejects_false_selected_route"),
+            labels.index("preview_ordinary_route_to_selected_watch_for_pair_handoff"),
+        )
+        self.assertLess(
+            labels.index("selected_watch_loaded_for_pair_handoff"),
+            labels.index("wait_3_hours_for_real_pair_handoff"),
+        )
+        selected_accept = next(
+            step for step in steps
+            if step["label"] == "accept_ordinary_route_to_selected_watch_for_pair_handoff"
+        )
+        self.assertEqual(selected_accept["settle_seconds"], 180.0)
+        self.assertEqual(
+            selected_accept["native_travel_stabilization"],
+            {"mode": "continue_exact_hostile_auto_move_until_hud"},
+        )
+        selected_watch_arrival = next(
+            step for step in steps
+            if step["label"] == "audit_selected_watch_arrival_for_pair_handoff"
+        )
+        self.assertEqual(selected_watch_arrival["kind"], "audit_saved_game_turn")
+        self.assertEqual(selected_watch_arrival["required_player_abs_omt"], [163, 33, 0])
+        self.assertTrue(selected_watch_arrival["abort_on_metadata_failure"])
+        self.assertLess(
+            labels.index("accept_ordinary_route_to_selected_watch_for_pair_handoff"),
+            labels.index("selected_watch_loaded_for_pair_handoff"),
+        )
+        self.assertLess(
+            labels.index("selected_watch_loaded_for_pair_handoff"),
+            labels.index("audit_selected_watch_arrival_for_pair_handoff"),
+        )
+        self.assertLess(
+            labels.index("audit_selected_watch_arrival_for_pair_handoff"),
+            labels.index("wait_3_hours_for_real_pair_handoff"),
+        )
+        for step in steps:
+            if str(step.get("label", "")).startswith("accept_ordinary_route") or \
+                    str(step.get("label", "")).startswith("accept_first_resumed") or \
+                    str(step.get("label", "")).startswith("accept_final_native") or \
+                    str(step.get("label", "")).startswith("accept_reverse_"):
+                self.assertEqual(step["kind"], "type")
+                self.assertEqual(step["text"], "Y")
+                self.assertEqual(
+                    step["native_travel_stabilization"],
+                    {"mode": "continue_exact_hostile_auto_move_until_hud"},
+                )
         self.assertLess(
             labels.index("wait_3_hours_for_real_pair_handoff"),
             labels.index("wait_5_minutes_through_real_pair_handoff_cadence"),
@@ -7443,7 +8928,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         )
         self.assertEqual(
             steps[selection_index]["keys"],
-            ["right", "up", "up", "up", "["],
+            ["["],
         )
         reselection_index = labels.index("settled_reselect_authoritative_dispatch")
         self.assertEqual(reselection_index, selection_index + 1)
@@ -7474,6 +8959,15 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         boundary_wait = steps[labels.index("wait_5_minutes_through_real_pair_handoff_cadence")]
         self.assertEqual(boundary_wait["choice_key"], "3")
         self.assertEqual(boundary_wait["expected_duration"], "5m")
+        self.assertNotIn("allow_harmless_flavor_popup_wait_recovery", boundary_wait)
+        recovery_waits = [
+            step["label"] for step in steps
+            if step.get("allow_harmless_flavor_popup_wait_recovery") is True
+        ]
+        self.assertEqual(
+            recovery_waits,
+            [],
+        )
         self.assertEqual(
             boundary_wait["proof_deferred_to_label"],
             "audit_real_pair_handoff_and_cohesion",
@@ -7517,6 +9011,14 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertLess(
             labels.index("advance_initial_6_hour_post_observation_window"),
             labels.index("record_post_window_ecology_incident"),
+        )
+        self.assertLess(
+            labels.index("accept_ordinary_route_to_returned_pair_resume"),
+            labels.index("advance_6_hours_through_staged_physical_home_return"),
+        )
+        self.assertLess(
+            labels.index("advance_6_hours_through_staged_physical_home_return"),
+            labels.index("audit_same_run_survivor_physical_return"),
         )
         reopen_index = labels.index("reopen_console_after_natural_window")
         self.assertNotIn("rearm_selected_watch_after_natural_window", labels)
@@ -7570,6 +9072,28 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             return_audit_index,
             labels.index("audit_player_save_mtime_before_scout_to_decision_save"),
         )
+        follow_on_wait = steps[labels.index("wait_1_hour_for_authoritative_report_follow_on")]
+        self.assertEqual(follow_on_wait["choice_key"], "5")
+        self.assertEqual(follow_on_wait["expected_duration"], "1h")
+        follow_on_audit = steps[
+            labels.index("audit_next_hour_consumes_exact_report_into_claimed_follow_on")
+        ]
+        self.assertEqual(
+            follow_on_audit["required_line_patterns"],
+            [["bandit_live_world structural maintenance:", "response_operations_applied=1"]],
+        )
+        self.assertLess(
+            return_audit_index,
+            labels.index("wait_1_hour_for_authoritative_report_follow_on"),
+        )
+        self.assertLess(
+            labels.index("wait_1_hour_for_authoritative_report_follow_on"),
+            labels.index("audit_next_hour_consumes_exact_report_into_claimed_follow_on"),
+        )
+        self.assertLess(
+            labels.index("audit_next_hour_consumes_exact_report_into_claimed_follow_on"),
+            labels.index("audit_player_save_mtime_before_scout_to_decision_save"),
+        )
         self.assertLess(
             return_audit_index,
             labels.index("audit_saved_survivors_home_and_outing_closed"),
@@ -7608,9 +9132,13 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertNotIn("required_scout_report_min_observations", final_audit)
         self.assertEqual(
             final_audit["required_camp_decision_state"],
-            "report_awaiting_assessment",
+            "preparing_follow_on",
         )
         self.assertTrue(final_audit["required_report_decision_identity_match"])
+        self.assertEqual(final_audit["required_active_hostile_operation_kind"], "shakedown")
+        self.assertEqual(final_audit["required_active_hostile_operation_phase"], "assembling")
+        self.assertEqual(final_audit["required_active_hostile_reservation_job_type"], "toll")
+        self.assertTrue(final_audit["required_report_hostile_operation_claim_match"])
         self.assertIn("final non-provisional report", scenario["evidence_contract"]["pass_fail_rule"])
         self.assertIn(
             "not by the bounded wait-menu completion token",
@@ -7739,19 +9267,19 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         selected_line = (
             "bandit_live_world watch_geography_preflight "
             "site=overmap_special:bandit_camp@164,39,0 target=(164,30,0) "
-            "footprint=4 candidates=256 concealed=8 clear=8 visible=1 qualified=1 "
-            "nonadjacent=1 route_reads=1 route_reachable=1 selected_omt=(161,27,0) "
-            "selected_route_cost=8 outcome=selected"
+            "footprint=1 candidates=96 concealed=90 clear=90 visible=1 qualified=1 "
+            "nonadjacent=1 route_reads=1 route_reachable=1 selected_omt=(163,33,0) "
+            "selected_route_cost=16 outcome=selected"
         )
         rejected_line = (
             "bandit_live_world watch_geography_preflight "
             "site=overmap_special:bandit_camp@164,39,0 target=(164,30,0) "
-            "footprint=4 candidates=256 concealed=8 clear=8 visible=0 qualified=0 "
+            "footprint=1 candidates=96 concealed=90 clear=90 visible=0 qualified=0 "
             "nonadjacent=0 route_reads=0 route_reachable=0 selected_omt=none "
             "selected_route_cost=-1 outcome=no_bounded_safe_watch_geography"
         )
         false_green_line = selected_line.replace(
-            "selected_omt=(161,27,0)", "selected_omt=none"
+            "selected_omt=(163,33,0)", "selected_omt=none"
         )
 
         with tempfile.TemporaryDirectory() as tmp:
@@ -7790,7 +9318,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
 
         self.assertEqual(selected["status"], "required_state_present")
         self.assertEqual(selected_clean["status"], "required_state_present")
-        self.assertEqual(rejected["status"], "required_state_present")
+        self.assertEqual(rejected["status"], "required_state_missing")
         self.assertEqual(false_green["status"], "required_state_missing")
         self.assertEqual(missing_outcome["status"], "required_state_missing")
 

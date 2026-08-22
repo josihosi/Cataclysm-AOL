@@ -839,6 +839,23 @@ std::string convert_talk_topic( talk_topic_enum old_value );
 
 class npc_template;
 
+// Persisted only while this NPC is the local projection of a live-world outing.
+// The durable outing remains authoritative; this lease lets load reconcile the
+// physical projection before either simulation owner advances.
+struct bandit_live_world_projection_lease {
+    bool present = false;
+    std::string site_id;
+    std::string activity_id;
+    std::string owner;
+    int generation = -1;
+    int handoff_epoch = -1;
+    int last_advanced_minutes = -1;
+
+    void clear() {
+        *this = bandit_live_world_projection_lease();
+    }
+};
+
 enum class llm_intent_action : int {
     none = 0,
     follow_close,
@@ -1542,6 +1559,10 @@ class npc : public Character
         bool set_camp_patrol_order( const tripoint_abs_ms &target, npc_mission patrol_mission );
         void clear_camp_patrol_order();
         bool has_camp_patrol_order() const;
+        const bandit_live_world_projection_lease &get_bandit_live_world_projection_lease() const;
+        void set_bandit_live_world_projection_lease(
+            const bandit_live_world_projection_lease &lease );
+        void clear_bandit_live_world_projection_lease();
         bool has_activity() const;
         bool has_job() const {
             return job.has_job();
@@ -1575,6 +1596,7 @@ class npc : public Character
         npc_attitude previous_attitude = NPCATT_NULL;
         bool has_ecology_covert_player_camp_assignment() const;
         bool camp_patrol_order_active = false;
+        bandit_live_world_projection_lease bandit_live_world_projection_lease;
         bool known_to_u = false; // Does the player know this NPC?
         // Type of complaint->last time we complained about this type
         std::map<std::string, time_point> complaints;

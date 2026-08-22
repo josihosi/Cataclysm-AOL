@@ -91,6 +91,45 @@ class ScenarioRegistryContractTest(unittest.TestCase):
             },
         }
 
+    def checkpoint_manifest(self) -> dict:
+        declaration = self.versioned_manifest()
+        declaration["manifest_version"] = 2
+        declaration["run_class"] = "non_combat"
+        declaration["observer_character"] = True
+        declaration["installed_save_player"] = "#player.sav.zzip"
+        declaration["proof_gates"] = [
+            {
+                "id": "handoff",
+                "label": "Committed handoff",
+                "boundary_step": "production",
+                "predecessors": [],
+                "expectations": [{
+                    "kind": "structured_event",
+                    "predicate": {"transition": "handoff", "committed": True},
+                }],
+                "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]},
+            },
+            {
+                "id": "saved",
+                "label": "Saved result",
+                "boundary_step": "terminal",
+                "predecessors": ["handoff"],
+                "expectations": [{
+                    "kind": "saved_artifact",
+                    "predicate": {"audit": "saved_state", "committed": True},
+                }],
+                "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]},
+            },
+        ]
+        declaration["proof_route"] = {
+            "gates": ["handoff", "saved"],
+            "terminal": ["saved"],
+            "capability_gates": {
+                "capabilities.pay": {"terminal": ["saved"]},
+            },
+        }
+        return declaration
+
     def test_versioned_declaration_round_trips_typed_values_and_source_binding(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -112,6 +151,65 @@ class ScenarioRegistryContractTest(unittest.TestCase):
                 set(result["normalized"]["capabilities"]["value"]),
                 set(declaration["capabilities"]),
             )
+
+    def test_checkpoint_contract_requires_ordered_causal_gates_without_reinterpreting_v1(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            declaration = self.checkpoint_manifest()
+            path = self.write_manifest(root, "checkpoint.json", declaration)
+            result = validate_manifest(declaration, path=path)
+            self.assertEqual(result["validation"]["status"], "valid")
+            self.assertEqual(result["validation"]["manifest_version"], 2)
+            for field in (
+                    "run_class", "observer_character", "installed_save_player", "proof_gates"):
+                self.assertEqual(result["normalized"][field]["state"], "declared")
+                self.assertEqual(result["normalized"][field]["value"], declaration[field])
+            relation = normalize_relation_contract(declaration)
+            self.assertIsNotNone(relation)
+            self.assertEqual(relation["checkpoint_contract"], {
+                "manifest_version": 2,
+                "run_class": declaration["run_class"],
+                "observer_character": declaration["observer_character"],
+                "installed_save_player": declaration["installed_save_player"],
+                "capabilities": declaration["capabilities"],
+                "runtime_contract": declaration["runtime_contract"],
+                "proof_gates": declaration["proof_gates"],
+                "proof_route": declaration["proof_route"],
+            })
+
+            invalid_cases = []
+
+            duplicate_id = copy.deepcopy(declaration)
+            duplicate_id["proof_gates"][1]["id"] = "handoff"
+            invalid_cases.append(duplicate_id)
+
+            out_of_order_predecessor = copy.deepcopy(declaration)
+            out_of_order_predecessor["proof_gates"][1]["predecessors"] = ["saved"]
+            invalid_cases.append(out_of_order_predecessor)
+
+            route_gap = copy.deepcopy(declaration)
+            route_gap["proof_route"]["gates"] = ["saved"]
+            invalid_cases.append(route_gap)
+
+            transport_only = copy.deepcopy(declaration)
+            transport_only["proof_gates"][0]["expectations"] = [{
+                "kind": "input_delivery", "predicate": {"step": "production"},
+            }]
+            invalid_cases.append(transport_only)
+
+            missing_safe_ui = copy.deepcopy(declaration)
+            missing_safe_ui["proof_gates"][0]["checkpoint_safe_ui"] = {}
+            invalid_cases.append(missing_safe_ui)
+
+            missing_terminal_observability = copy.deepcopy(declaration)
+            missing_terminal_observability["proof_route"]["terminal"] = ["handoff"]
+            invalid_cases.append(missing_terminal_observability)
+
+            for index, invalid in enumerate(invalid_cases):
+                with self.subTest(index=index):
+                    invalid_path = self.write_manifest(root, f"checkpoint-invalid-{index}.json", invalid)
+                    with self.assertRaises(ManifestValidationError):
+                        validate_manifest(invalid, path=invalid_path)
 
     def test_legacy_text_never_becomes_camp_fight_visibility_or_injury_facts(self) -> None:
         legacy = {

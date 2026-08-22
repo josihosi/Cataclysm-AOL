@@ -1,0 +1,7 @@
+{
+  "profile_name": "r009-m092",
+  "startup": {
+    "post_lastworld_wait_seconds": 15.0,
+    "post_lastworld_continue_keys": []
+  }
+}

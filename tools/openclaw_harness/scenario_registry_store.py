@@ -12,8 +12,10 @@ from contextlib import contextmanager
 from dataclasses import dataclass
 import hashlib
 import json
+import secrets
 from pathlib import Path
 import sqlite3
+import uuid
 from typing import Any, Callable, Dict, Iterator, List, Mapping, Optional, Sequence, Tuple
 
 from scenario_registry import (
@@ -23,9 +25,17 @@ from scenario_registry import (
     relation_contract_likely_subsumes,
     validate_manifest,
 )
+from wec_evidence import derive_final_gate_eligibility, validate_authority_fact
+from identity_binding import (
+    RoundManifestError,
+    _plain,
+    _validate_round_manifest,
+    authoritative_identity_binding,
+    seal_complete_round_manifest,
+)
 
 
-SCHEMA_VERSION = 5
+SCHEMA_VERSION = 9
 Migration = Tuple[int, str, Callable[[sqlite3.Connection], None]]
 
 
@@ -210,6 +220,18 @@ class RegistryLaunchToken:
 @dataclass(frozen=True)
 class RegistryBootstrapToken:
     """One separate, single-use authority for an initial compatible probe."""
+
+    token_id: str
+    accepted: bool
+    reason: str
+    scenario: str = ""
+    source_path: str = ""
+    runtime_binding: Mapping[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class RegistryRepairToken:
+    """One separate, single-use authority to repair one contradicted route."""
 
     token_id: str
     accepted: bool
@@ -733,9 +755,10 @@ def _current_bootstrap_revalidation(
         return None
     expected_sha256 = str(manifest["current_sha256"] or "")
     release: Optional[Mapping[str, Any]] = None
+    release_event_ids = []
     for route in route_evidence:
         row = connection.execute(
-            "SELECT quarantine_kind, details_json FROM quarantine_history "
+            "SELECT quarantine_event_id, quarantine_kind, details_json FROM quarantine_history "
             "WHERE manifest_id = ? AND route_key = ? ORDER BY quarantine_event_id DESC LIMIT 1",
             (manifest_id, str(route["route_key"])),
         ).fetchone()
@@ -748,7 +771,12 @@ def _current_bootstrap_revalidation(
             release = details
         elif _json_text(release) != _json_text(details):
             return None
-    return release
+        release_event_ids.append(int(row["quarantine_event_id"]))
+    if release is None:
+        return None
+    current_release = dict(release)
+    current_release["release_event_ids"] = release_event_ids
+    return current_release
 
 
 def _current_lifecycle_state(
@@ -989,19 +1017,38 @@ def _query_request_json(request: RegistryQueryRequest) -> str:
     })
 
 
+def _authoritative_current_route(route: Mapping[str, Any]) -> Optional[Mapping[str, Any]]:
+    """Project one current hard-proven route without erasing stale audit history."""
+    if route.get("evidence_state") != "run-verified":
+        return None
+    details = route.get("details", {})
+    bindings = route.get("bindings", ())
+    if not isinstance(details, Mapping) or not isinstance(bindings, Sequence):
+        return None
+    hard_proven_ids = details.get("hard_proven_verification_ids")
+    if not isinstance(hard_proven_ids, Sequence) or isinstance(hard_proven_ids, (str, bytes)):
+        return None
+    authorized_ids = {str(verification_id) for verification_id in hard_proven_ids}
+    current_bindings = tuple(
+        binding for binding in bindings
+        if isinstance(binding, Mapping)
+        and binding.get("resolution") == "compatible"
+        and str(binding.get("verification_id", "")) in authorized_ids
+    )
+    if not current_bindings:
+        return None
+    return {**dict(route), "bindings": current_bindings}
+
+
 def _current_verified_route(snapshot: RegistryQueryCandidateSnapshot) -> Optional[Mapping[str, Any]]:
     routes = snapshot.explanation.get("route_evidence", ())
     if not isinstance(routes, Sequence):
         return None
     for route in routes:
-        if not isinstance(route, Mapping) or route.get("evidence_state") != "run-verified":
-            continue
-        bindings = route.get("bindings", ())
-        if isinstance(bindings, Sequence) and bindings and all(
-            isinstance(binding, Mapping) and binding.get("resolution") == "compatible"
-            for binding in bindings
-        ):
-            return route
+        if isinstance(route, Mapping):
+            current_route = _authoritative_current_route(route)
+            if current_route is not None:
+                return current_route
     return None
 
 
@@ -1103,7 +1150,7 @@ def revalidate_current_bootstrap_authority(
             ("fixture", "fixture", "fixture_profile"),
             ("profile", "profile_snapshot", "profile_snapshot_profile")):
         item = observed.get(kind)
-        if not isinstance(item, Mapping) or item.get("status") != "compatible":
+        if not isinstance(item, Mapping) or item.get("status", "compatible") != "compatible":
             return {"accepted": False, "reason": f"{kind}_not_current"}
         expected_name = str(declaration.get(name_key, "")).strip()
         expected_profile = str(declaration.get(profile_key, "")).strip()
@@ -1147,41 +1194,61 @@ def revalidate_current_bootstrap_authority(
     return {"accepted": True, "manifest_id": manifest_id, "details": details}
 
 
-def _query_unmet_capabilities(evaluation: RegistryStoredQueryEvaluation) -> List[Dict[str, Any]]:
-    explanations = {candidate.scenario_id: candidate.explanation for candidate in evaluation.candidates}
-    unmet: List[Dict[str, Any]] = []
-    for candidate in evaluation.evaluation.candidates:
-        failed = [
-            {
-                "key": result.key,
-                "expected": result.expected,
-                "observed": result.observed,
-                "evidence_state": result.evidence_state,
-                "reason": result.reason,
-            }
+def _query_result_json(result: RegistryQueryPredicateResult) -> Dict[str, Any]:
+    return {
+        "key": result.key,
+        "expected": result.expected,
+        "observed": result.observed,
+        "evidence_state": result.evidence_state,
+        "reason": result.reason,
+    }
+
+
+def _closest_draft_candidate(
+    evaluation: RegistryStoredQueryEvaluation,
+) -> Optional[RegistryQueryCandidateResult]:
+    """Select useful build footing without pretending that it is executable."""
+    useful_reasons = {
+        "below_minimum_evidence",
+        "contradicted",
+        "containment_mismatch",
+        "equality_mismatch",
+        "fact_absent",
+        "fact_present",
+        "non_container_value",
+        "non_numeric_value",
+        "outside_range",
+        "stale",
+    }
+
+    def score(candidate: RegistryQueryCandidateResult) -> Tuple[int, int, str]:
+        passed = sum(result.passed for result in candidate.hard_results)
+        known = sum(
+            result.passed or result.reason in useful_reasons
             for result in candidate.hard_results
-            if not result.passed
-        ]
-        if failed:
-            unmet.append({
-                "scenario_id": candidate.scenario_id,
-                "manifest": explanations[candidate.scenario_id]["manifest"],
-                "unmet": failed,
-            })
-    return unmet
+        )
+        return -passed, -known, candidate.scenario_id
+
+    useful = [
+        candidate for candidate in evaluation.evaluation.candidates
+        if any(result.passed or result.reason in useful_reasons for result in candidate.hard_results)
+    ]
+    if not useful:
+        return None
+    return min(useful, key=score)
 
 
-def _known_draft_footing(candidates: Sequence[RegistryQueryCandidateSnapshot]) -> Dict[str, Any]:
-    known: Dict[str, Any] = {}
-    for candidate in candidates:
-        manifest = candidate.explanation.get("manifest", {})
-        footing = manifest.get("known_footing") if isinstance(manifest, Mapping) else None
-        if not isinstance(footing, Mapping):
-            continue
-        for field, value in footing.items():
-            if value not in (None, "", [], {}):
-                known[field] = value
-    return known
+def _known_draft_footing(candidate: Optional[RegistryQueryCandidateSnapshot]) -> Dict[str, Any]:
+    if candidate is None:
+        return {}
+    manifest = candidate.explanation.get("manifest", {})
+    footing = manifest.get("known_footing") if isinstance(manifest, Mapping) else None
+    if not isinstance(footing, Mapping):
+        return {}
+    return {
+        field: value for field, value in footing.items()
+        if value not in (None, "", [], {})
+    }
 
 
 def _write_inert_draft(
@@ -1193,12 +1260,50 @@ def _write_inert_draft(
 ) -> str:
     drafts_root.mkdir(parents=True, exist_ok=True)
     path = drafts_root / f"{query_sha256}.json"
+    closest_result = _closest_draft_candidate(evaluation)
+    closest_snapshot = next((
+        candidate for candidate in evaluation.candidates
+        if closest_result is not None and candidate.scenario_id == closest_result.scenario_id
+    ), None)
+    satisfied = [] if closest_result is None else [
+        _query_result_json(result) for result in closest_result.hard_results if result.passed
+    ]
+    if closest_result is None:
+        missing = [{
+            "key": predicate["key"],
+            "expected": (
+                {"minimum": predicate.get("minimum"), "maximum": predicate.get("maximum")}
+                if predicate["op"] == "range" else predicate.get("value", predicate["op"])
+            ),
+            "observed": None,
+            "evidence_state": "unknown",
+            "reason": "unknown_fact",
+        } for predicate in json.loads(request_json)["requirements"]]
+    else:
+        missing = [
+            _query_result_json(result) for result in closest_result.hard_results if not result.passed
+        ]
+    closest = None if closest_snapshot is None else {
+        "scenario_id": closest_snapshot.scenario_id,
+        "lifecycle_state": closest_snapshot.lifecycle_state,
+        "manifest": closest_snapshot.explanation.get("manifest", {}),
+        "satisfied_requirements": satisfied,
+        "missing_requirements": missing,
+    }
     payload = {
         "review_status": "pending",
         "executable": False,
         "query": json.loads(request_json),
-        "unmet_capabilities": _query_unmet_capabilities(evaluation),
-        "candidate_manifest": _known_draft_footing(evaluation.candidates),
+        "build_action": "repair_closest_scenario" if closest is not None else "create_scenario",
+        "closest_candidate": closest,
+        "satisfied_requirements": satisfied,
+        "missing_requirements": missing,
+        "unmet_capabilities": [] if closest is None else [{
+            "scenario_id": closest_snapshot.scenario_id,
+            "manifest": closest_snapshot.explanation.get("manifest", {}),
+            "unmet": missing,
+        }],
+        "candidate_manifest": _known_draft_footing(closest_snapshot),
     }
     path.write_text(json.dumps(payload, ensure_ascii=False, indent=2, sort_keys=True) + "\n", encoding="utf-8")
     return str(path)
@@ -1403,6 +1508,19 @@ def reload_selection_token_for_launch(
             (token_id,),
         ).fetchone()
         if issued is None:
+            repair = _repair_token_details(connection, token_id)
+            if repair is not None:
+                _record_repair_token_rejection(
+                    connection,
+                    issued=repair,
+                    reason="ordinary_registry_launch",
+                    details={},
+                )
+                return RegistryLaunchToken(
+                    token_id=token_id,
+                    accepted=False,
+                    reason="repair_token_requires_repair_launch",
+                )
             return RegistryLaunchToken(token_id=token_id, accepted=False, reason="token_unknown")
 
         def reject(reason: str, **details: Any) -> RegistryLaunchToken:
@@ -1493,12 +1611,14 @@ def reload_selection_token_for_launch(
                 scenario=scenario,
                 source_path=str(source_path.resolve()),
             )
-        if _json_text(current_route) != _json_text(expected_route):
+        current_authoritative_route = _authoritative_current_route(current_route)
+        if current_authoritative_route is None:
+            return reject("route_binding_ineligible")
+        if _json_text(current_authoritative_route) != _json_text(expected_route):
             return reject("route_binding_changed")
-        bindings = current_route.get("bindings", ())
+        bindings = current_authoritative_route.get("bindings", ())
         if (
-            current_route.get("evidence_state") != "run-verified"
-            or not isinstance(bindings, Sequence)
+            not isinstance(bindings, Sequence)
             or not bindings
             or not all(
                 isinstance(binding, Mapping) and binding.get("resolution") == "compatible"
@@ -1583,6 +1703,25 @@ def issue_registry_bootstrap_token(
     )
     with immediate_transaction(connection):
         existing = _bootstrap_token_details(connection, token_id)
+        if existing is not None and connection.execute(
+                "SELECT 1 FROM token_history WHERE token_id = ? "
+                "AND event_kind IN ( 'bootstrap_claimed', 'bootstrap_invalidated' ) LIMIT 1",
+                (token_id,)).fetchone() is not None:
+            retry_ordinal = connection.execute(
+                "SELECT COUNT(*) FROM token_history WHERE manifest_id = ? AND route_key = ? "
+                "AND event_kind = 'bootstrap_issued'",
+                (manifest_id, "bootstrap:" + query_sha256),
+            ).fetchone()[0]
+            token_id = _identity(
+                "caol-scenario-bootstrap-token-v1",
+                manifest_id,
+                manifest_sha256,
+                query_sha256,
+                _json_text(runtime),
+                "retry",
+                str(retry_ordinal),
+            )
+            existing = _bootstrap_token_details(connection, token_id)
         if existing is None:
             connection.execute(
                 "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
@@ -1710,6 +1849,507 @@ def claim_bootstrap_token_for_launch(
             (selection.token_id, str(issued["manifest_id"]), str(issued["route_key"])),
         )
     return reload_bootstrap_token_for_launch(connection, selection.token_id, require_claimed=True)
+
+
+def _repair_token_details(
+    connection: sqlite3.Connection,
+    token_id: str,
+) -> Optional[sqlite3.Row]:
+    return connection.execute(
+        "SELECT token_id, manifest_id, verification_id, route_key, details_json FROM token_history "
+        "WHERE token_id = ? AND event_kind = 'repair_issued' ORDER BY token_event_id LIMIT 1",
+        (token_id,),
+    ).fetchone()
+
+
+def _repair_binding(
+    raw: Any,
+    declaration: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """Normalize the live footing a repair receipt must retain exactly."""
+    if not isinstance(raw, Mapping):
+        raise ScenarioRegistryStoreError("repair binding must be an object")
+    runtime = _bootstrap_runtime_binding(raw.get("runtime"))
+    normalized: Dict[str, Mapping[str, Any]] = {"runtime": runtime}
+    for kind, name_key, profile_key in (
+            ("fixture", "fixture", "fixture_profile"),
+            ("profile", "profile_snapshot", "profile_snapshot_profile")):
+        item = raw.get(kind)
+        if not isinstance(item, Mapping) or item.get("status", "compatible") != "compatible":
+            raise ScenarioRegistryStoreError(f"repair {kind} binding is not compatible")
+        expected_name = str(declaration.get(name_key, "")).strip()
+        expected_profile = str(declaration.get(profile_key, "")).strip()
+        actual_name = str(item.get("name", "")).strip()
+        actual_profile = str(item.get("profile", "")).strip()
+        source_path = str(item.get("source_path", "")).strip()
+        source_sha256 = str(item.get("source_sha256", "")).strip().lower()
+        if actual_name != expected_name or actual_profile != expected_profile:
+            raise ScenarioRegistryStoreError(f"repair {kind} identity changed")
+        if not source_path or len(source_sha256) != 64 or any(
+                character not in "0123456789abcdef" for character in source_sha256):
+            raise ScenarioRegistryStoreError(f"repair {kind} binding is incomplete")
+        normalized[kind] = {
+            "name": expected_name,
+            "profile": expected_profile,
+            "source_path": source_path,
+            "source_sha256": source_sha256,
+        }
+    return normalized
+
+
+def _repair_route_current(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    route_key: str,
+    red_verification_id: str,
+) -> bool:
+    routes = _current_route_evidence(connection, manifest_id)
+    route = next((item for item in routes if str(item.get("route_key", "")) == route_key), None)
+    if route is None or route.get("evidence_state") != "contradicted":
+        return False
+    details = route.get("details", {})
+    if not isinstance(details, Mapping) or red_verification_id not in {
+            str(item) for item in details.get("unresolved_contradiction_ids", ())}:
+        return False
+    red = connection.execute(
+        "SELECT verification_id, manifest_id, route_key, details_json FROM verification_history "
+        "WHERE verification_id = ?",
+        (red_verification_id,),
+    ).fetchone()
+    return bool(
+        red is not None
+        and str(red["manifest_id"]) == manifest_id
+        and str(red["route_key"]) == route_key
+        and _verification_evidence_state(red) == "contradicted"
+    )
+
+
+def _repair_query_matches_manifest(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    request: RegistryQueryRequest,
+) -> bool:
+    snapshots = build_registry_query_candidate_snapshot(
+        connection, include_lifecycle_states=("quarantined",),
+    )
+    snapshot = next((item for item in snapshots if item.scenario_id == manifest_id), None)
+    if snapshot is None:
+        return False
+    # This is only an exact-value query binding check.  It never makes the
+    # contradicted route selectable: issuance still requires that contradiction.
+    lowered_facts = {
+        key: {
+            **dict(fact),
+            "evidence_state": "run-verified" if fact.get("evidence_state") == "contradicted" else fact.get("evidence_state"),
+            "proof_depth": None if fact.get("evidence_state") == "contradicted" else fact.get("proof_depth"),
+        }
+        for key, fact in snapshot.facts.items()
+    }
+    evaluation = evaluate_registry_query(
+        request, ({"scenario_id": manifest_id, "facts": lowered_facts},),
+    )
+    return bool(evaluation.candidates and evaluation.candidates[0].hard_valid)
+
+
+def _record_repair_token_rejection(
+    connection: sqlite3.Connection,
+    *,
+    issued: sqlite3.Row,
+    reason: str,
+    details: Mapping[str, Any],
+) -> None:
+    connection.execute(
+        "INSERT OR IGNORE INTO token_history( "
+        "token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json "
+        ") VALUES( ?, ?, ?, ?, 'repair_invalidated', ?, ? )",
+        (
+            str(issued["token_id"]), str(issued["manifest_id"]), issued["verification_id"],
+            str(issued["route_key"]), reason, _json_text(dict(details)),
+        ),
+    )
+
+
+def record_repair_token_rejection(
+    connection: sqlite3.Connection,
+    token_id: str,
+    *,
+    reason: str,
+    details: Mapping[str, Any],
+) -> bool:
+    with immediate_transaction(connection):
+        issued = _repair_token_details(connection, str(token_id).strip())
+        if issued is None:
+            return False
+        _record_repair_token_rejection(connection, issued=issued, reason=reason, details=details)
+        return True
+
+
+_REPAIR_ACCEPTED_CLEANUP_STATUSES = frozenset({
+    "already_exited",
+    "terminated",
+    "terminated_during_kill_escalation",
+    "killed",
+})
+
+
+def terminalize_repair_token_cleanup_without_report(
+    connection: sqlite3.Connection,
+    token_id: str,
+    *,
+    run_dir: Path,
+    cleanup: Mapping[str, Any],
+) -> RegistryRepairToken:
+    """Append one claimed repair's verified cleanup when no durable report exists."""
+    token_id = str(token_id).strip()
+    resolved_run_dir = run_dir.resolve()
+    if not token_id:
+        return RegistryRepairToken("", False, "token_missing")
+    if not resolved_run_dir.is_dir():
+        return RegistryRepairToken(token_id, False, "run_dir_absent")
+    if (resolved_run_dir / "probe.report.json").exists():
+        return RegistryRepairToken(token_id, False, "report_present")
+    cleanup_status = str(cleanup.get("status", "")).strip()
+    if cleanup_status not in _REPAIR_ACCEPTED_CLEANUP_STATUSES:
+        return RegistryRepairToken(token_id, False, "cleanup_not_accepted")
+    with immediate_transaction(connection):
+        issued = _repair_token_details(connection, token_id)
+        if issued is None:
+            return RegistryRepairToken(token_id, False, "token_unknown")
+        terminal = connection.execute(
+            "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_no_report_terminal' "
+            "LIMIT 1",
+            (token_id,),
+        ).fetchone()
+        if terminal is not None:
+            return RegistryRepairToken(token_id, True, "cleanup_no_report_terminal")
+        claimed = connection.execute(
+            "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_claimed' LIMIT 1",
+            (token_id,),
+        ).fetchone() is not None
+        if not claimed:
+            return RegistryRepairToken(token_id, False, "token_not_claimed")
+        if connection.execute(
+                "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_verification_run' LIMIT 1",
+                (token_id,),
+        ).fetchone() is not None:
+            return RegistryRepairToken(token_id, False, "report_disposition_exists")
+        if connection.execute(
+                "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_invalidated' LIMIT 1",
+                (token_id,),
+        ).fetchone() is not None:
+            return RegistryRepairToken(token_id, False, "token_invalidated")
+        details = {
+            "run_dir": str(resolved_run_dir),
+            "cleanup": dict(cleanup),
+            "report_path": str((resolved_run_dir / "probe.report.json").resolve()),
+            "report_present": False,
+        }
+        connection.execute(
+            "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, ?, ?, 'repair_no_report_terminal', 'canonical_cleanup_no_report', ? )",
+            (
+                token_id, str(issued["manifest_id"]), issued["verification_id"], str(issued["route_key"]),
+                _json_text(details),
+            ),
+        )
+        _record_repair_token_rejection(
+            connection,
+            issued=issued,
+            reason="cleanup_no_report_terminal",
+            details=details,
+        )
+    return RegistryRepairToken(token_id, True, "cleanup_no_report_terminal")
+
+
+def _repair_authority_id(
+    *,
+    manifest_id: str,
+    manifest_revision: int,
+    manifest_sha256: str,
+    route_key: str,
+    red_verification_id: str,
+    query_sha256: str,
+    binding: Mapping[str, Any],
+) -> str:
+    """Identify the immutable contradiction authority across retry attempts."""
+    return _identity(
+        "caol-scenario-repair-authority-v1", manifest_id, str(manifest_revision), manifest_sha256,
+        route_key, red_verification_id, query_sha256, _json_text(binding),
+    )
+
+
+def _repair_attempts_for_authority(
+    connection: sqlite3.Connection,
+    *,
+    authority_id: str,
+    legacy_token_id: str,
+) -> list[sqlite3.Row]:
+    """Read the append-only attempts, retaining the pre-sequence first authority."""
+    attempts: list[sqlite3.Row] = []
+    for issued in connection.execute(
+            "SELECT token_event_id, token_id, manifest_id, verification_id, route_key, details_json "
+            "FROM token_history WHERE event_kind = 'repair_issued' ORDER BY token_event_id"
+    ).fetchall():
+        try:
+            details = _json_object(str(issued["details_json"]), "repair token details")
+        except ScenarioRegistryStoreError:
+            continue
+        if str(issued["token_id"]) == legacy_token_id or details.get("authority_id") == authority_id:
+            attempts.append(issued)
+    return attempts
+
+
+def issue_registry_repair_token(
+    connection: sqlite3.Connection,
+    request: RegistryQueryRequest,
+    *,
+    manifest_id: str,
+    route_key: str,
+    red_verification_id: str,
+    binding: Mapping[str, Any],
+) -> RegistryRepairToken:
+    """Issue a distinct authority for exactly one current unresolved contradiction."""
+    manifest = connection.execute(
+        "SELECT source_path, present, revision, current_sha256, declaration_json, validation_json "
+        "FROM manifest_current WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchone()
+    if manifest is None or not bool(manifest["present"]):
+        return RegistryRepairToken("", False, "manifest_absent")
+    validation = _json_object(str(manifest["validation_json"]), "repair manifest validation")
+    if validation.get("status") != "valid" or bool(validation.get("review_required")):
+        return RegistryRepairToken("", False, "manifest_not_current_valid")
+    declaration = _json_object(str(manifest["declaration_json"]), "repair manifest declaration")
+    try:
+        current_binding = _repair_binding(binding, declaration)
+    except ScenarioRegistryStoreError as exc:
+        return RegistryRepairToken("", False, "binding_invalid:" + str(exc))
+    source_path = Path(str(manifest["source_path"]))
+    try:
+        source_sha256 = hashlib.sha256(source_path.read_bytes()).hexdigest()
+    except OSError:
+        return RegistryRepairToken("", False, "manifest_source_unreadable")
+    if source_sha256 != str(manifest["current_sha256"] or "").lower():
+        return RegistryRepairToken("", False, "manifest_source_changed")
+    if not _repair_route_current(
+            connection, manifest_id=manifest_id, route_key=route_key,
+            red_verification_id=red_verification_id):
+        return RegistryRepairToken("", False, "route_not_current_contradiction")
+    if not _repair_query_matches_manifest(connection, manifest_id=manifest_id, request=request):
+        return RegistryRepairToken("", False, "query_not_matched_by_contradicted_manifest")
+    request_json = _query_request_json(request)
+    details = {
+        "authority_kind": "registry_repair_exact_contradiction",
+        "query_json": json.loads(request_json),
+        "query_sha256": hashlib.sha256(request_json.encode("utf-8")).hexdigest(),
+        "manifest_id": manifest_id,
+        "manifest_revision": int(manifest["revision"]),
+        "manifest_sha256": source_sha256,
+        "source_path": str(source_path.resolve()),
+        "route_key": route_key,
+        "red_verification_id": red_verification_id,
+        "binding": current_binding,
+    }
+    authority_id = _repair_authority_id(
+        manifest_id=manifest_id,
+        manifest_revision=int(manifest["revision"]),
+        manifest_sha256=source_sha256,
+        route_key=route_key,
+        red_verification_id=red_verification_id,
+        query_sha256=str(details["query_sha256"]),
+        binding=current_binding,
+    )
+    legacy_token_id = _identity(
+        "caol-scenario-repair-token-v1", manifest_id, str(manifest["revision"]), source_sha256,
+        route_key, red_verification_id, details["query_sha256"], _json_text(current_binding),
+    )
+    with immediate_transaction(connection):
+        attempts = _repair_attempts_for_authority(
+            connection, authority_id=authority_id, legacy_token_id=legacy_token_id,
+        )
+        predecessor: Mapping[str, Any] | None = None
+        attempt_sequence = 1
+        if attempts:
+            current = attempts[-1]
+            current_token_id = str(current["token_id"])
+            invalidation = connection.execute(
+                "SELECT token_event_id, reason, details_json FROM token_history "
+                "WHERE token_id = ? AND event_kind = 'repair_invalidated' "
+                "ORDER BY token_event_id DESC LIMIT 1",
+                (current_token_id,),
+            ).fetchone()
+            claimed = connection.execute(
+                "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_claimed' LIMIT 1",
+                (current_token_id,),
+            ).fetchone() is not None
+            if invalidation is None:
+                if claimed:
+                    return RegistryRepairToken(
+                        current_token_id, False, "token_already_claimed", source_path.stem,
+                        str(source_path.resolve()), current_binding["runtime"],
+                    )
+                return RegistryRepairToken(
+                    current_token_id, True, "current", source_path.stem,
+                    str(source_path.resolve()), current_binding["runtime"],
+                )
+            current_details = _json_object(str(current["details_json"]), "repair token details")
+            prior_sequence = current_details.get("attempt_sequence", 1)
+            if type(prior_sequence) is not int or prior_sequence < 1:
+                return RegistryRepairToken(current_token_id, False, "attempt_sequence_malformed")
+            attempt_sequence = prior_sequence + 1
+            predecessor = {
+                "token_id": current_token_id,
+                "attempt_sequence": prior_sequence,
+                "terminal_event": {
+                    "token_event_id": int(invalidation["token_event_id"]),
+                    "event_kind": "repair_invalidated",
+                    "reason": str(invalidation["reason"]),
+                    "details": _json_object(str(invalidation["details_json"]), "repair invalidation details"),
+                },
+            }
+        token_id = legacy_token_id if attempt_sequence == 1 else _identity(
+            "caol-scenario-repair-token-v2", authority_id, str(attempt_sequence),
+        )
+        details["authority_id"] = authority_id
+        details["attempt_sequence"] = attempt_sequence
+        if predecessor is not None:
+            details["predecessor"] = predecessor
+        if _repair_token_details(connection, token_id) is None:
+            connection.execute(
+                "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+                "VALUES( ?, ?, ?, ?, 'repair_issued', 'exact_contradiction_repair', ? )",
+                (token_id, manifest_id, red_verification_id, route_key, _json_text(details)),
+            )
+            _append_query_audit(
+                connection,
+                query_id=_identity("caol-scenario-repair-query-v1", details["query_sha256"], str(attempt_sequence)),
+                request_json=request_json,
+                result={"kind": "repair", "token_id": token_id, "manifest_id": manifest_id,
+                        "route_key": route_key, "red_verification_id": red_verification_id,
+                        "attempt_sequence": attempt_sequence},
+            )
+    return RegistryRepairToken(
+        token_id, True, "issued", source_path.stem, str(source_path.resolve()), current_binding["runtime"],
+    )
+
+
+def reload_repair_token_for_launch(
+    connection: sqlite3.Connection,
+    token_id: str,
+    *,
+    require_claimed: bool = False,
+    binding: Mapping[str, Any] | None = None,
+) -> RegistryRepairToken:
+    """Revalidate the exact contradiction and all receipt identities before repair launch."""
+    token_id = str(token_id).strip()
+    if not token_id:
+        return RegistryRepairToken("", False, "token_missing")
+    with immediate_transaction(connection):
+        issued = _repair_token_details(connection, token_id)
+        if issued is None:
+            return RegistryRepairToken(token_id, False, "token_unknown")
+
+        def reject(reason: str, **details: Any) -> RegistryRepairToken:
+            _record_repair_token_rejection(connection, issued=issued, reason=reason, details=details)
+            return RegistryRepairToken(token_id, False, reason)
+
+        if connection.execute(
+                "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_invalidated' LIMIT 1",
+                (token_id,)).fetchone() is not None:
+            return reject("token_invalidated")
+        claimed = connection.execute(
+            "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_claimed' LIMIT 1",
+            (token_id,)).fetchone() is not None
+        if claimed != require_claimed:
+            return reject("token_already_claimed" if claimed else "token_not_claimed")
+        try:
+            receipt = _json_object(str(issued["details_json"]), "repair token details")
+            request = parse_registry_query_request(receipt.get("query_json"))
+            expected_manifest_id = _string(receipt.get("manifest_id"), "repair token manifest_id")
+            expected_revision = receipt.get("manifest_revision")
+            expected_sha256 = _string(receipt.get("manifest_sha256"), "repair token manifest_sha256").lower()
+            expected_source_path = _string(receipt.get("source_path"), "repair token source_path")
+            expected_route_key = _string(receipt.get("route_key"), "repair token route_key")
+            expected_red_id = _string(receipt.get("red_verification_id"), "repair token red_verification_id")
+            expected_query_sha256 = _string(receipt.get("query_sha256"), "repair token query_sha256")
+            expected_binding = receipt.get("binding")
+        except (ScenarioRegistryStoreError, ScenarioRegistryQueryError) as exc:
+            return reject("receipt_malformed", error=str(exc))
+        if type(expected_revision) is not int:
+            return reject("receipt_malformed", error="repair token manifest_revision must be an integer")
+        if expected_manifest_id != str(issued["manifest_id"]) or expected_red_id != str(issued["verification_id"]):
+            return reject("receipt_identity_mismatch")
+        if expected_route_key != str(issued["route_key"]):
+            return reject("receipt_route_mismatch")
+        if hashlib.sha256(_query_request_json(request).encode("utf-8")).hexdigest() != expected_query_sha256:
+            return reject("query_sha256_changed")
+        manifest = connection.execute(
+            "SELECT source_path, present, revision, current_sha256, declaration_json FROM manifest_current WHERE manifest_id = ?",
+            (expected_manifest_id,),
+        ).fetchone()
+        if manifest is None or not bool(manifest["present"]):
+            return reject("manifest_absent")
+        if int(manifest["revision"]) != expected_revision:
+            return reject("manifest_revision_changed")
+        if str(manifest["current_sha256"] or "").lower() != expected_sha256:
+            return reject("manifest_sha256_changed")
+        if str(Path(str(manifest["source_path"])).resolve()) != expected_source_path:
+            return reject("manifest_source_path_changed")
+        try:
+            observed_sha256 = hashlib.sha256(Path(str(manifest["source_path"])).read_bytes()).hexdigest()
+        except OSError as exc:
+            return reject("manifest_source_unreadable", error=str(exc))
+        if observed_sha256 != expected_sha256:
+            return reject("manifest_source_changed")
+        if not _repair_route_current(
+                connection, manifest_id=expected_manifest_id, route_key=expected_route_key,
+                red_verification_id=expected_red_id):
+            return reject("route_not_current_contradiction")
+        if not _repair_query_matches_manifest(connection, manifest_id=expected_manifest_id, request=request):
+            return reject("query_authority_changed")
+        try:
+            normalized_expected = _repair_binding(expected_binding, _json_object(
+                str(manifest["declaration_json"]), "repair manifest declaration"))
+        except ScenarioRegistryStoreError as exc:
+            return reject("receipt_malformed", error=str(exc))
+        if binding is not None:
+            try:
+                current_binding = _repair_binding(binding, _json_object(
+                    str(manifest["declaration_json"]), "repair manifest declaration"))
+            except ScenarioRegistryStoreError as exc:
+                return reject("binding_invalid", error=str(exc))
+            if _json_text(current_binding) != _json_text(normalized_expected):
+                return reject("binding_changed")
+        return RegistryRepairToken(
+            token_id, True, "claimed" if claimed else "current", Path(str(manifest["source_path"])).stem,
+            str(Path(str(manifest["source_path"])).resolve()), normalized_expected["runtime"],
+        )
+
+
+def claim_repair_token_for_launch(
+    connection: sqlite3.Connection,
+    token_id: str,
+    *,
+    binding: Mapping[str, Any],
+) -> RegistryRepairToken:
+    """Consume the repair authority before its only canonical probe begins."""
+    selection = reload_repair_token_for_launch(connection, token_id, binding=binding)
+    if not selection.accepted:
+        return selection
+    with immediate_transaction(connection):
+        issued = _repair_token_details(connection, selection.token_id)
+        if issued is None:
+            return RegistryRepairToken(selection.token_id, False, "token_unknown")
+        connection.execute(
+            "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, ?, ?, 'repair_claimed', 'canonical_repair_probe_launch', '{}' )",
+            (selection.token_id, str(issued["manifest_id"]), issued["verification_id"], str(issued["route_key"])),
+        )
+    return reload_repair_token_for_launch(
+        connection, selection.token_id, require_claimed=True, binding=binding,
+    )
 
 
 @dataclass(frozen=True)
@@ -2120,12 +2760,153 @@ def _migration_005_retirement_actions(connection: sqlite3.Connection) -> None:
     _create_history_append_only_triggers(connection, "retirement_action_history")
 
 
+def _migration_006_wec_authority_history(connection: sqlite3.Connection) -> None:
+    """Own WEC authority outside mutable reports."""
+    connection.executescript(
+        """
+        CREATE TABLE wec_authority_history (
+            authority_id TEXT PRIMARY KEY,
+            evidence_class TEXT NOT NULL,
+            authority TEXT NOT NULL,
+            run_id TEXT NOT NULL UNIQUE,
+            binding_id TEXT NOT NULL,
+            source_sha256 TEXT NOT NULL,
+            owner TEXT NOT NULL DEFAULT '',
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    _create_history_append_only_triggers(connection, "wec_authority_history")
+
+
+def _migration_007_certification_round_records(connection: sqlite3.Connection) -> None:
+    """Persist sealed round facts and append-only lifecycle/lease history."""
+    connection.executescript(
+        """
+        CREATE TABLE certification_round (
+            round_id TEXT PRIMARY KEY,
+            scenario_lineage_id TEXT NOT NULL,
+            authority_id TEXT NOT NULL,
+            authority_kind TEXT NOT NULL,
+            event_stream_id TEXT NOT NULL,
+            binding_id TEXT NOT NULL,
+            manifest_sha256 TEXT NOT NULL UNIQUE,
+            manifest_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE certification_round_component (
+            round_id TEXT NOT NULL REFERENCES certification_round(round_id) ON DELETE RESTRICT,
+            component_sequence INTEGER NOT NULL CHECK(component_sequence > 0),
+            component_name TEXT NOT NULL,
+            fact_sha256 TEXT NOT NULL,
+            fact_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY(round_id, component_sequence),
+            UNIQUE(round_id, component_name)
+        );
+        CREATE TABLE certification_round_lifecycle (
+            lifecycle_event_id INTEGER PRIMARY KEY,
+            round_id TEXT NOT NULL REFERENCES certification_round(round_id) ON DELETE RESTRICT,
+            event_sequence INTEGER NOT NULL CHECK(event_sequence > 0),
+            event_kind TEXT NOT NULL,
+            scenario_lineage_id TEXT NOT NULL,
+            authority_id TEXT NOT NULL,
+            binding_id TEXT NOT NULL,
+            event_stream_id TEXT NOT NULL,
+            details_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(round_id, event_sequence)
+        );
+        CREATE TABLE certification_round_invalidation (
+            round_id TEXT PRIMARY KEY REFERENCES certification_round(round_id) ON DELETE RESTRICT,
+            reason TEXT NOT NULL,
+            component_name TEXT NOT NULL,
+            observed_sequence INTEGER,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE certification_round_lease_history (
+            lease_event_id INTEGER PRIMARY KEY,
+            round_id TEXT NOT NULL REFERENCES certification_round(round_id) ON DELETE RESTRICT,
+            lease_id TEXT NOT NULL,
+            event_sequence INTEGER NOT NULL CHECK(event_sequence > 0),
+            event_kind TEXT NOT NULL,
+            process_identity TEXT NOT NULL,
+            world_identity TEXT NOT NULL,
+            details_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(round_id, lease_id, event_sequence)
+        );
+        CREATE INDEX idx_cert_round_lifecycle ON certification_round_lifecycle(round_id, event_sequence);
+        CREATE INDEX idx_cert_round_lease ON certification_round_lease_history(round_id, lease_event_id);
+        """
+    )
+    for table in (
+        "certification_round", "certification_round_component", "certification_round_lifecycle",
+        "certification_round_invalidation", "certification_round_lease_history",
+    ):
+        _create_history_append_only_triggers(connection, table)
+
+
+def _migration_008_certification_save_capabilities(connection: sqlite3.Connection) -> None:
+    """Keep only a verification commitment for each game save emitter."""
+    connection.executescript(
+        """
+        CREATE TABLE certification_save_capability (
+            round_id TEXT PRIMARY KEY REFERENCES certification_round(round_id) ON DELETE RESTRICT,
+            capability_commitment TEXT NOT NULL,
+            owner_identity TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        """
+    )
+    _create_history_append_only_triggers(connection, "certification_save_capability")
+
+
+def _migration_009_diagnostic_capsule_candidates(connection: sqlite3.Connection) -> None:
+    """Persist preserved, bound diagnostic states as immutable candidates."""
+    connection.executescript(
+        """
+        CREATE TABLE diagnostic_capsule_candidate (
+            candidate_id TEXT PRIMARY KEY,
+            report_id TEXT NOT NULL REFERENCES report_ingestion_history(report_id) ON DELETE RESTRICT,
+            verification_id TEXT NOT NULL REFERENCES verification_history(verification_id) ON DELETE RESTRICT,
+            run_id TEXT NOT NULL,
+            report_path TEXT NOT NULL,
+            report_sha256 TEXT NOT NULL,
+            artifact_path TEXT NOT NULL,
+            artifact_sha256 TEXT NOT NULL,
+            binding_id TEXT NOT NULL,
+            binding_json TEXT NOT NULL,
+            site_id TEXT NOT NULL,
+            operation TEXT NOT NULL,
+            generation TEXT NOT NULL,
+            actor_ids_json TEXT NOT NULL,
+            owner TEXT NOT NULL,
+            gate_id TEXT NOT NULL,
+            gate_index INTEGER NOT NULL CHECK(gate_index >= 0),
+            durable_timestamp TEXT NOT NULL,
+            source_kind TEXT NOT NULL,
+            details_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE(report_id, verification_id, candidate_id)
+        );
+        CREATE INDEX idx_diagnostic_capsule_binding
+        ON diagnostic_capsule_candidate(binding_id, gate_index, durable_timestamp);
+        """
+    )
+    _create_history_append_only_triggers(connection, "diagnostic_capsule_candidate")
+
+
 SCHEMA_MIGRATIONS: Sequence[Migration] = (
     (1, "initial_registry_surface", _migration_001_initial),
     (2, "inventory_migration_history", _migration_002_inventory_migration_history),
     (3, "migration_item_transition_guards", _migration_003_migration_item_transition_guards),
     (4, "migration_run_events", _migration_004_migration_run_events),
     (5, "retirement_actions", _migration_005_retirement_actions),
+    (6, "wec_authority_history", _migration_006_wec_authority_history),
+    (7, "certification_round_records", _migration_007_certification_round_records),
+    (8, "certification_save_capabilities", _migration_008_certification_save_capabilities),
+    (9, "diagnostic_capsule_candidates", _migration_009_diagnostic_capsule_candidates),
 )
 
 
@@ -2194,6 +2975,373 @@ def manifest_identity(source_path: Path) -> str:
     canonical_path = str(source_path.resolve())
     source = b"caol-scenario-manifest-path-v1\0" + canonical_path.encode("utf-8")
     return hashlib.sha256(source).hexdigest()
+
+
+_CERTIFICATION_COMPONENT_ORDER = (
+    "worktree", "executable", "data_config", "harness", "scenario",
+    "fixture", "profile", "world_save", "player", "actors",
+)
+
+
+def _round_manifest_json(manifest: Mapping[str, Any]) -> str:
+    """Canonicalize a sealed (possibly MappingProxyType) manifest."""
+    def plain(value: Any) -> Any:
+        if isinstance(value, Mapping):
+            return {key: plain(item) for key, item in value.items()}
+        if isinstance(value, (list, tuple)):
+            return [plain(item) for item in value]
+        return value
+    return _json_text(plain(manifest))
+
+
+def register_certification_round(
+    connection: sqlite3.Connection, manifest: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Register one valid sealed manifest and its immutable component facts."""
+    try:
+        _validate_round_manifest(manifest)
+    except (RoundManifestError, TypeError, ValueError) as exc:
+        raise ScenarioRegistryStoreError(f"invalid sealed certification manifest: {exc}") from exc
+    manifest_json = _round_manifest_json(manifest)
+    # A manifest producer freezes nested values to prevent later mutation.
+    # Registry facts are JSON records, so continue from the verified plain
+    # serialization instead of handing ``mappingproxy`` values to sqlite.
+    manifest = json.loads(manifest_json)
+    binding = manifest["binding"]
+    authoritative = binding["authoritative_components"]
+    components = tuple(
+        (name, authoritative[name]) for name in _CERTIFICATION_COMPONENT_ORDER
+    )
+    with immediate_transaction(connection):
+        authority = connection.execute(
+            "SELECT authority_id,evidence_class,authority,run_id,binding_id,source_sha256,owner "
+            "FROM wec_authority_history WHERE authority_id = ?",
+            (str(manifest["authority_id"]),),
+        ).fetchone()
+        if authority is None:
+            raise ScenarioRegistryStoreError("certification round authority is not registry-issued")
+        scenario = authoritative["scenario"]
+        scenario_sha256 = str(scenario.get("content_sha256", "") if isinstance(scenario, Mapping) else "")
+        expected_authority = {
+            "evidence_class": "automated continuous-round certification",
+            "authority": "certification",
+            "run_id": str(manifest["round_id"]),
+            "binding_id": str(manifest["binding_id"]),
+            "source_sha256": scenario_sha256,
+        }
+        if (str(manifest["authority_kind"]) != "automated-certification" or not scenario_sha256 or
+                not str(authority["owner"]).startswith("registry-certification-launch:") or
+                any(str(authority[key]) != value for key, value in expected_authority.items())):
+            raise ScenarioRegistryStoreError(
+                "certification round authority does not match route, source, run, and binding"
+            )
+        existing = connection.execute(
+            "SELECT * FROM certification_round WHERE round_id = ?", (str(manifest["round_id"]),)
+        ).fetchone()
+        if existing is not None:
+            if str(existing["manifest_json"]) != manifest_json:
+                raise ScenarioRegistryStoreError("certification round ID already has different immutable facts")
+            return {"round_id": str(manifest["round_id"]), "binding_id": str(manifest["binding_id"]), "idempotent": True}
+        try:
+            connection.execute(
+                "INSERT INTO certification_round(round_id, scenario_lineage_id, authority_id, authority_kind, "
+                "event_stream_id, binding_id, manifest_sha256, manifest_json) VALUES(?,?,?,?,?,?,?,?)",
+                (str(manifest["round_id"]), str(manifest["scenario_lineage_id"]), str(manifest["authority_id"]),
+                 str(manifest["authority_kind"]), str(manifest["event_stream_id"]), str(manifest["binding_id"]),
+                 str(manifest["manifest_sha256"]), manifest_json),
+            )
+            for sequence, (name, fact) in enumerate(components, 1):
+                fact_json = _json_text(fact)
+                connection.execute(
+                    "INSERT INTO certification_round_component(round_id, component_sequence, component_name, fact_sha256, fact_json) "
+                    "VALUES(?,?,?,?,?)",
+                    (str(manifest["round_id"]), sequence, name,
+                     hashlib.sha256(fact_json.encode("utf-8")).hexdigest(), fact_json),
+                )
+        except sqlite3.IntegrityError as exc:
+            raise ScenarioRegistryStoreError("certification round conflicts with an existing sealed manifest") from exc
+    return {"round_id": str(manifest["round_id"]), "binding_id": str(manifest["binding_id"]), "idempotent": False}
+
+
+def _issue_registry_certification_authority(
+    connection: sqlite3.Connection, *, round_id: str, binding_id: str,
+    source_sha256: str, launch_token: str,
+) -> Dict[str, str]:
+    """Issue final authority only inside the canonical registry launch transaction."""
+    authority_id = hashlib.sha256(
+        ("caol-registry-certification-authority-v1:" + uuid.uuid4().hex).encode()
+    ).hexdigest()
+    fact = {
+        "authority_id": authority_id,
+        "evidence_class": "automated continuous-round certification",
+        "authority": "certification",
+        "run_id": round_id,
+        "binding_id": binding_id,
+        "source_sha256": source_sha256.lower(),
+        "owner": "registry-certification-launch:" + launch_token,
+    }
+    connection.execute(
+        "INSERT INTO wec_authority_history( authority_id, evidence_class, authority, run_id, binding_id, source_sha256, owner ) "
+        "VALUES( ?, ?, ?, ?, ?, ?, ? )",
+        tuple(fact.values()),
+    )
+    return fact
+
+
+def _validate_certification_launch_inputs(
+    connection: sqlite3.Connection, *, launch_token: str, launch_source_path: Path,
+    launch_route_key: str, binding: Mapping[str, Any], current_executable_sha256: str,
+) -> None:
+    """Reject caller-crafted final launches before any final authority is issued."""
+    token = str(launch_token).strip()
+    route = str(launch_route_key).strip()
+    if not token or not route:
+        raise ScenarioRegistryStoreError("certification launch requires a registry token and route")
+    selection = reload_selection_token_for_launch(connection, token)
+    if not selection.accepted:
+        raise ScenarioRegistryStoreError("certification launch token is not currently executable")
+    source = Path(selection.source_path).resolve()
+    if source != launch_source_path.resolve():
+        raise ScenarioRegistryStoreError("certification launch source does not match its registry token")
+    issued = connection.execute(
+        "SELECT route_key FROM token_history WHERE token_id = ? AND event_kind = 'issued' "
+        "ORDER BY token_event_id LIMIT 1", (token,)
+    ).fetchone()
+    if issued is None or str(issued["route_key"]) != route:
+        raise ScenarioRegistryStoreError("certification launch route does not match its registry token")
+    scenario = binding["authoritative_components"]["scenario"]
+    executable = binding["authoritative_components"]["executable"]
+    if Path(str(scenario.get("path", ""))).resolve() != source:
+        raise ScenarioRegistryStoreError("certification manifest scenario is not the selected source")
+    current_sha256 = str(current_executable_sha256).strip().lower()
+    if (len(current_sha256) != 64 or current_sha256 !=
+            str(executable.get("content_sha256", "")).strip().lower()):
+        raise ScenarioRegistryStoreError("certification launch executable is not current")
+
+
+def create_certification_round(
+    connection: sqlite3.Connection, *, scenario_lineage_id: str,
+    producer_inputs: Mapping[str, Any], launch_token: str, launch_source_path: Path,
+    launch_route_key: str, current_executable_sha256: str,
+    event_stream_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Create and register one production round through the registry owner.
+
+    No caller controls the round id, binding id, authority id, or outer seal.
+    The registry derives all of them from current canonical inputs in one
+    owner path, then returns the immutable manifest facts for launch/reporting.
+    """
+    lineage = str(scenario_lineage_id).strip()
+    if not lineage:
+        raise ScenarioRegistryStoreError("certification round scenario lineage is required")
+    try:
+        binding = authoritative_identity_binding(**dict(producer_inputs))
+    except (TypeError, ValueError) as exc:
+        raise ScenarioRegistryStoreError(f"certification round inputs are invalid: {exc}") from exc
+    scenario = binding["authoritative_components"]["scenario"]
+    source_sha256 = str(scenario.get("content_sha256", ""))
+    executable = binding["authoritative_components"]["executable"]
+    if len(source_sha256) != 64 or len(str(executable.get("content_sha256", ""))) != 64:
+        raise ScenarioRegistryStoreError("certification round source/executable facts are incomplete")
+    _validate_certification_launch_inputs(
+        connection, launch_token=launch_token, launch_source_path=launch_source_path,
+        launch_route_key=launch_route_key, binding=binding,
+        current_executable_sha256=current_executable_sha256,
+    )
+    round_id = uuid.uuid4().hex
+    stream_id = str(event_stream_id or uuid.uuid4().hex).strip()
+    if not stream_id:
+        raise ScenarioRegistryStoreError("certification event stream is required")
+    with immediate_transaction(connection):
+        authority = _issue_registry_certification_authority(
+            connection, round_id=round_id, binding_id=str(binding["sha256"]),
+            source_sha256=source_sha256, launch_token=str(launch_token).strip(),
+        )
+    manifest = seal_complete_round_manifest(
+        round_id=round_id,
+        scenario_lineage_id=lineage,
+        authority_id=authority["authority_id"],
+        authority_kind="automated-certification",
+        event_stream_id=stream_id,
+        **dict(producer_inputs),
+    )
+    registered = register_certification_round(connection, manifest)
+    append_certification_lifecycle_event(
+        connection,
+        round_id=round_id,
+        event_sequence=1,
+        event_kind="started",
+        details={
+            "launch_token": str(launch_token).strip(),
+            "launch_route_key": str(launch_route_key).strip(),
+        },
+    )
+    save_capability = secrets.token_urlsafe(32)
+    commitment = hashlib.sha256(save_capability.encode("utf-8")).hexdigest()
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT INTO certification_save_capability(round_id, capability_commitment, owner_identity) VALUES(?,?,?)",
+            (round_id, commitment, "registry-certification-launch:" + str(launch_token).strip()),
+        )
+    return {
+        "manifest": _plain(manifest),
+        "certification_round": certification_round_facts(connection, round_id),
+        "authority": authority,
+        "save_capability": save_capability,
+        **registered,
+    }
+
+
+def certification_round_facts(connection: sqlite3.Connection, round_id: str) -> Dict[str, str]:
+    """Return the only reportable certification facts, derived from registry rows."""
+    row = connection.execute(
+        "SELECT round_id,authority_id,binding_id,event_stream_id,manifest_sha256 "
+        "FROM certification_round WHERE round_id = ?", (str(round_id),),
+    ).fetchone()
+    if row is None:
+        raise ScenarioRegistryStoreError("certification round is not registered")
+    lifecycle = connection.execute(
+        "SELECT event_kind FROM certification_round_lifecycle WHERE round_id = ? "
+        "ORDER BY event_sequence DESC LIMIT 1", (str(round_id),),
+    ).fetchone()
+    return {
+        "round_id": str(row["round_id"]),
+        "authority_id": str(row["authority_id"]),
+        "binding_id": str(row["binding_id"]),
+        "event_stream_id": str(row["event_stream_id"]),
+        "manifest_sha256": str(row["manifest_sha256"]),
+        "lifecycle_state": str(lifecycle["event_kind"]) if lifecycle is not None else "registered",
+        "registry_derived": "true",
+    }
+
+
+def certification_round_authority_facts(
+    connection: sqlite3.Connection, round_id: str,
+) -> Dict[str, str]:
+    """Return the registry-issued final authority attached to one round."""
+    row = connection.execute(
+        "SELECT authority.authority_id,authority.evidence_class,authority.authority,authority.run_id, "
+        "authority.binding_id,authority.source_sha256,authority.owner "
+        "FROM certification_round AS round "
+        "JOIN wec_authority_history AS authority ON authority.authority_id = round.authority_id "
+        "WHERE round.round_id = ?", (str(round_id),),
+    ).fetchone()
+    if row is None:
+        raise ScenarioRegistryStoreError("certification round authority is not registry-issued")
+    return {key: str(row[key]) for key in (
+        "authority_id", "evidence_class", "authority", "run_id", "binding_id", "source_sha256", "owner",
+    )}
+
+
+def verify_certification_save_capability(
+    connection: sqlite3.Connection, *, round_id: str, capability: str,
+) -> bool:
+    """Verify the child-only save capability without ever returning its secret."""
+    value = str(capability).strip()
+    if not value:
+        return False
+    row = connection.execute(
+        "SELECT capability_commitment FROM certification_save_capability WHERE round_id = ?",
+        (str(round_id),),
+    ).fetchone()
+    if row is None:
+        return False
+    observed = hashlib.sha256(value.encode("utf-8")).hexdigest()
+    return secrets.compare_digest(observed, str(row["capability_commitment"]))
+
+
+def append_certification_lifecycle_event(
+    connection: sqlite3.Connection, *, round_id: str, event_sequence: int,
+    event_kind: str, details: Optional[Mapping[str, Any]] = None,
+    authority_id: Optional[str] = None, binding_id: Optional[str] = None,
+    event_stream_id: Optional[str] = None, scenario_lineage_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Append the next ordered event; an exact replay is idempotent."""
+    if event_sequence < 1 or not event_kind.strip():
+        raise ScenarioRegistryStoreError("lifecycle event sequence and kind are required")
+    with immediate_transaction(connection):
+        round_row = connection.execute("SELECT * FROM certification_round WHERE round_id = ?", (round_id,)).fetchone()
+        if round_row is None:
+            raise ScenarioRegistryStoreError("certification round is not registered")
+        identity = {
+            "scenario_lineage_id": scenario_lineage_id or str(round_row["scenario_lineage_id"]),
+            "authority_id": authority_id or str(round_row["authority_id"]),
+            "binding_id": binding_id or str(round_row["binding_id"]),
+            "event_stream_id": event_stream_id or str(round_row["event_stream_id"]),
+        }
+        if any(identity[key] != str(round_row[key]) for key in identity):
+            raise ScenarioRegistryStoreError("lifecycle identity does not match sealed round")
+        details_json = _json_text(details or {})
+        prior = connection.execute(
+            "SELECT event_kind, details_json, scenario_lineage_id, authority_id, binding_id, event_stream_id "
+            "FROM certification_round_lifecycle WHERE round_id = ? AND event_sequence = ?", (round_id, event_sequence)
+        ).fetchone()
+        if prior is not None:
+            if (str(prior["event_kind"]), str(prior["details_json"]), *(str(prior[key]) for key in identity)) == \
+                    (event_kind, details_json, *(identity[key] for key in identity)):
+                return {"round_id": round_id, "event_sequence": event_sequence, "idempotent": True}
+            raise ScenarioRegistryStoreError("lifecycle sequence already has different immutable facts")
+        next_sequence = connection.execute(
+            "SELECT COALESCE(MAX(event_sequence), 0) + 1 FROM certification_round_lifecycle WHERE round_id = ?", (round_id,)
+        ).fetchone()[0]
+        if event_sequence != int(next_sequence):
+            raise ScenarioRegistryStoreError("lifecycle events must be appended in order")
+        connection.execute(
+            "INSERT INTO certification_round_lifecycle(round_id,event_sequence,event_kind,scenario_lineage_id,authority_id,binding_id,event_stream_id,details_json) VALUES(?,?,?,?,?,?,?,?)",
+            (round_id, event_sequence, event_kind, identity["scenario_lineage_id"], identity["authority_id"], identity["binding_id"], identity["event_stream_id"], details_json),
+        )
+    return {"round_id": round_id, "event_sequence": event_sequence, "idempotent": False}
+
+
+def invalidate_certification_round(
+    connection: sqlite3.Connection, *, round_id: str, reason: str, component_name: str,
+    observed_sequence: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Record exactly one first invalidation while retaining later lifecycle history."""
+    if not reason.strip() or not component_name.strip():
+        raise ScenarioRegistryStoreError("invalidation reason and component are required")
+    with immediate_transaction(connection):
+        if connection.execute("SELECT 1 FROM certification_round WHERE round_id = ?", (round_id,)).fetchone() is None:
+            raise ScenarioRegistryStoreError("certification round is not registered")
+        prior = connection.execute("SELECT * FROM certification_round_invalidation WHERE round_id = ?", (round_id,)).fetchone()
+        if prior is not None:
+            return {"round_id": round_id, "first_reason": str(prior["reason"]), "first_component": str(prior["component_name"]), "preserved": True}
+        connection.execute(
+            "INSERT INTO certification_round_invalidation(round_id,reason,component_name,observed_sequence) VALUES(?,?,?,?)",
+            (round_id, reason, component_name, observed_sequence),
+        )
+    return {"round_id": round_id, "first_reason": reason, "first_component": component_name, "preserved": False}
+
+
+def append_certification_lease_event(
+    connection: sqlite3.Connection, *, round_id: str, lease_id: str, event_sequence: int,
+    event_kind: str, process_identity: str, world_identity: str,
+    details: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Define append-only lease history; acquisition/signalling stays with G4."""
+    if not all(value.strip() for value in (lease_id, event_kind, process_identity, world_identity)) or event_sequence < 1:
+        raise ScenarioRegistryStoreError("lease identity and positive sequence are required")
+    with immediate_transaction(connection):
+        if connection.execute("SELECT 1 FROM certification_round WHERE round_id = ?", (round_id,)).fetchone() is None:
+            raise ScenarioRegistryStoreError("certification round is not registered")
+        details_json = _json_text(details or {})
+        prior = connection.execute(
+            "SELECT event_kind,process_identity,world_identity,details_json FROM certification_round_lease_history WHERE round_id=? AND lease_id=? AND event_sequence=?",
+            (round_id, lease_id, event_sequence),
+        ).fetchone()
+        facts = (event_kind, process_identity, world_identity, details_json)
+        if prior is not None:
+            if tuple(str(prior[key]) for key in ("event_kind", "process_identity", "world_identity", "details_json")) == facts:
+                return {"round_id": round_id, "lease_id": lease_id, "event_sequence": event_sequence, "idempotent": True}
+            raise ScenarioRegistryStoreError("lease sequence already has different immutable facts")
+        next_sequence = connection.execute("SELECT COALESCE(MAX(event_sequence),0)+1 FROM certification_round_lease_history WHERE round_id=? AND lease_id=?", (round_id, lease_id)).fetchone()[0]
+        if event_sequence != int(next_sequence):
+            raise ScenarioRegistryStoreError("lease events must be appended in order")
+        connection.execute(
+            "INSERT INTO certification_round_lease_history(round_id,lease_id,event_sequence,event_kind,process_identity,world_identity,details_json) VALUES(?,?,?,?,?,?,?)",
+            (round_id, lease_id, event_sequence, event_kind, process_identity, world_identity, details_json),
+        )
+    return {"round_id": round_id, "lease_id": lease_id, "event_sequence": event_sequence, "idempotent": False}
 
 
 def _json_text(value: Any) -> str:
@@ -3097,6 +4245,10 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
     contract = report.get("contract") if isinstance(report.get("contract"), dict) else {}
     startup = report.get("startup") if isinstance(report.get("startup"), dict) else {}
     screen = startup.get("screen") if isinstance(startup.get("screen"), dict) else {}
+    # Compact probe JSON flattens startup.screen to startup_screen.  Keep the
+    # canonical extractor pointed at the same runtime owner in both forms.
+    if not screen and isinstance(report.get("startup_screen"), dict):
+        screen = report["startup_screen"]
     proof_source = report.get("proof_classification")
     if not isinstance(proof_source, dict):
         proof_source = startup.get("proof_classification")
@@ -3113,6 +4265,10 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
             supersedes_verification_id,
             "supersedes_verification_id",
         )
+    certification_round = dict(report.get("certification_round")) if isinstance(report.get("certification_round"), Mapping) else {}
+    for key in ("round_id", "authority_id", "binding_id", "event_stream_id", "manifest_sha256", "lifecycle_state"):
+        if key not in certification_round and report.get(key) is not None:
+            certification_round[key] = report.get(key)
     runtime = {
         "runtime_binding_status": screen.get("runtime_binding_status"),
         "runtime_binding_observed": _selected_mapping(
@@ -3155,8 +4311,79 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
         "fixture": fixture,
         "profile": profile,
         "proof": proof,
+        "wec_authority": validate_authority_fact(report.get("wec_authority")),
+        "certification_round": certification_round,
         "supersedes_verification_id": supersedes_verification_id,
     }
+
+
+def _is_diagnostic_replay_report(report: Mapping[str, Any], facts: Mapping[str, Any]) -> bool:
+    """Identify replay authority from immutable report classification fields."""
+    if report.get("diagnostic_replay") is True:
+        return True
+    if str(report.get("mode", "")).strip().lower() in {"diagnostic_replay", "diagnostic-replay"}:
+        return True
+    proof = facts.get("proof")
+    if isinstance(proof, Mapping) and str(proof.get("evidence_class", "")).strip().lower() == "diagnostic replay":
+        return True
+    authority = facts.get("wec_authority")
+    return (
+        isinstance(authority, Mapping)
+        and isinstance(authority.get("fact"), Mapping)
+        and str(authority["fact"].get("evidence_class", "")).strip().lower() == "diagnostic replay"
+    )
+
+
+def _certification_round_check(
+    connection: sqlite3.Connection, *, authority: Mapping[str, Any],
+    round_facts: Mapping[str, Any], report_facts: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Check final-round credit against registry-owned, current round facts."""
+    round_id = str(round_facts.get("round_id", "") or "").strip()
+    if not round_id:
+        return {"eligible": False, "reason": "missing_certification_round"}
+    row = connection.execute("SELECT * FROM certification_round WHERE round_id = ?", (round_id,)).fetchone()
+    if row is None:
+        return {"eligible": False, "reason": "unregistered_certification_round", "round_id": round_id}
+    derived = certification_round_facts(connection, round_id)
+    expected = {key: derived[key] for key in (
+        "round_id", "authority_id", "binding_id", "event_stream_id", "manifest_sha256",
+    )}
+    for key, value in expected.items():
+        supplied = str(round_facts.get(key, "") or "").strip()
+        if not supplied:
+            return {"eligible": False, "reason": f"missing_certification_round_{key}", "round_id": round_id}
+        if supplied != value:
+            return {"eligible": False, "reason": f"certification_round_{key}_mismatch", "round_id": round_id}
+    if str(authority.get("authority_id", "")) != expected["authority_id"]:
+        return {"eligible": False, "reason": "certification_round_authority_mismatch", "round_id": round_id}
+    if str(authority.get("run_id", "")) != round_id or str(authority.get("binding_id", "")) != expected["binding_id"]:
+        return {"eligible": False, "reason": "certification_round_authority_identity_mismatch", "round_id": round_id}
+    lifecycle = connection.execute(
+        "SELECT event_kind, scenario_lineage_id, authority_id, binding_id, event_stream_id "
+        "FROM certification_round_lifecycle WHERE round_id = ? ORDER BY event_sequence DESC LIMIT 1", (round_id,)
+    ).fetchone()
+    state = str(round_facts.get("lifecycle_state", "") or "").strip().lower()
+    if lifecycle is None or str(lifecycle["event_kind"]).lower() not in {"active", "complete", "completed", "started"}:
+        return {"eligible": False, "reason": "certification_round_lifecycle_not_active", "round_id": round_id}
+    current_state = str(lifecycle["event_kind"]).lower()
+    if state and state not in {current_state, "complete" if current_state == "completed" else current_state}:
+        return {"eligible": False, "reason": "certification_round_lifecycle_mismatch", "round_id": round_id}
+    if any(str(lifecycle[key]) != expected[key] for key in ("authority_id", "binding_id", "event_stream_id")):
+        return {"eligible": False, "reason": "certification_round_event_identity_mismatch", "round_id": round_id}
+    manifest = json.loads(str(row["manifest_json"]))
+    authoritative = manifest["binding"]["authoritative_components"]
+    expected_source = str(authoritative["scenario"].get("content_sha256", ""))
+    observed_source = str((report_facts.get("manifest") or {}).get("source_sha256", "") or "").strip()
+    if not expected_source or expected_source != observed_source:
+        return {"eligible": False, "reason": "certification_round_manifest_source_mismatch", "round_id": round_id}
+    expected_runtime = str(authoritative["executable"].get("content_sha256", ""))
+    observed_runtime = str(((report_facts.get("runtime") or {}).get("runtime_binding_observed") or {}).get("executable_sha256", "") or "").strip()
+    if not expected_runtime or expected_runtime != observed_runtime:
+        return {"eligible": False, "reason": "certification_round_current_executable_mismatch", "round_id": round_id}
+    if connection.execute("SELECT 1 FROM certification_round_invalidation WHERE round_id = ?", (round_id,)).fetchone() is not None:
+        return {"eligible": False, "reason": "certification_round_invalidated", "round_id": round_id}
+    return {"eligible": True, "reason": "current_certification_round", "round_id": round_id}
 
 
 def _report_named_gate_verdicts(
@@ -3406,12 +4633,13 @@ def _append_route_evidence_if_changed(
         _json_text(details),
     )
     existing = connection.execute(
-        "SELECT capability_evidence_id FROM capability_evidence_history "
+        "SELECT value_sha256 FROM capability_evidence_history "
         "WHERE manifest_id = ? AND verification_id IS NULL AND capability_key = '_registry.proof_route' "
-        "AND evidence_kind = 'route_resolution' AND value_sha256 = ?",
-        (manifest_id, value_sha256),
+        "AND evidence_kind = 'route_resolution' "
+        "ORDER BY capability_evidence_id DESC LIMIT 1",
+        (manifest_id,),
     ).fetchone()
-    if existing is None:
+    if existing is None or str(existing["value_sha256"]) != value_sha256:
         connection.execute(
             "INSERT INTO capability_evidence_history( "
             "manifest_id, capability_key, evidence_kind, evidence_state, value_json, value_sha256, details_json "
@@ -4069,12 +5297,12 @@ def _resolve_route_evidence(
 ) -> str:
     """Append the current route decision without rewriting report or declaration history."""
     rows = connection.execute(
-        "SELECT verification_id, proof_status, supersedes_verification_id, details_json FROM verification_history "
+        "SELECT verification_id, proof_status, supersedes_verification_id, details_json FROM verification_history AS verification "
         "WHERE manifest_id = ? AND route_key = ? AND EXISTS( "
         "SELECT 1 FROM verification_resolution_history AS resolution "
-        "WHERE resolution.verification_id = verification_history.verification_id "
+        "WHERE resolution.verification_id = verification.verification_id "
         "AND resolution.resolution_event_id = ( SELECT MAX( latest.resolution_event_id ) "
-        "FROM verification_resolution_history AS latest WHERE latest.verification_id = verification_history.verification_id ) "
+        "FROM verification_resolution_history AS latest WHERE latest.verification_id = verification.verification_id ) "
         "AND resolution.resolution_kind = 'compatible' )",
         (manifest_id, route_key),
     ).fetchall()
@@ -4121,7 +5349,12 @@ def _resolve_route_evidence(
         evidence_state=evidence_state,
         details=details,
     )
-    if not rows:
+    current_bootstrap_authority = _current_bootstrap_revalidation(
+        connection,
+        manifest_id=manifest_id,
+        route_evidence=_current_route_evidence(connection, manifest_id),
+    )
+    if not rows and current_bootstrap_authority is None:
         quarantine_scenario(
             connection,
             manifest_id=manifest_id,
@@ -4131,6 +5364,13 @@ def _resolve_route_evidence(
             quarantine_kind="quarantined_no_compatible_verification",
             lifecycle_event_kind="proof_route_stale",
             invalidation_reason="proof_route_stale",
+        )
+    elif not rows:
+        _append_lifecycle_if_changed(
+            connection,
+            manifest_id=manifest_id,
+            event_kind="current_bootstrap_authority_retained",
+            details=current_bootstrap_authority,
         )
     elif connection.execute(
         "SELECT quarantine_event_id FROM quarantine_history WHERE manifest_id = ? AND route_key = ?",
@@ -4230,6 +5470,265 @@ def _evaluation_for_facts(
     return manifest_id, aggregate, statuses
 
 
+def _capsule_binding_from_report(
+    connection: sqlite3.Connection, report: Mapping[str, Any], facts: Mapping[str, Any]
+) -> Tuple[str, Mapping[str, Any]]:
+    """Resolve a complete immutable round binding or an explicit focused binding."""
+    round_facts = facts.get("certification_round")
+    round_id = str(round_facts.get("round_id", "")).strip() if isinstance(round_facts, Mapping) else ""
+    if round_id:
+        row = connection.execute(
+            "SELECT binding_id, manifest_json FROM certification_round WHERE round_id = ?", (round_id,)
+        ).fetchone()
+        if row is None:
+            raise ScenarioRegistryStoreError("diagnostic capsule round binding is not registry-owned")
+        manifest = _json_object(str(row["manifest_json"]), "certification round manifest")
+        binding = manifest.get("binding")
+        if not isinstance(binding, Mapping) or str(binding.get("sha256", "")) != str(row["binding_id"]):
+            raise ScenarioRegistryStoreError("diagnostic capsule round binding is stale")
+        return str(row["binding_id"]), binding
+    raw = report.get("capsule_binding")
+    if not isinstance(raw, Mapping):
+        raw = report.get("diagnostic_capsule_binding")
+    if not isinstance(raw, Mapping):
+        raise ScenarioRegistryStoreError("diagnostic capsule binding is missing")
+    required = ("state", "player", "actors", "owner")
+    if any(key not in raw or raw[key] in (None, "", [], {}) for key in required):
+        raise ScenarioRegistryStoreError("diagnostic capsule binding is incomplete")
+    binding = json.loads(json.dumps(raw, sort_keys=True, separators=(",", ":")))
+    binding_id = str(raw.get("binding_id", raw.get("sha256", ""))).strip()
+    if not binding_id:
+        binding_id = hashlib.sha256(_json_text(binding).encode("utf-8")).hexdigest()
+    return binding_id, binding
+
+
+def _append_capsule_candidate_for_report(
+    connection: sqlite3.Connection,
+    *, report: Mapping[str, Any], facts: Mapping[str, Any], report_id: str,
+    verification_id: str, report_path: str, report_sha256: str,
+) -> Optional[Dict[str, Any]]:
+    """Append one candidate only after report verification and artifact checks."""
+    raw = report.get("diagnostic_capsule_candidate")
+    if raw is None:
+        raw = report.get("capsule_candidate")
+    if raw is None:
+        return None
+    if not isinstance(raw, Mapping):
+        raise ScenarioRegistryStoreError("diagnostic capsule candidate must be an object")
+    source_kind = str(raw.get("source_kind", raw.get("kind", "focused"))).strip().lower()
+    if source_kind in {"diagnostic_replay", "replay", "diagnostic-replay"}:
+        raise ScenarioRegistryStoreError("diagnostic replay cannot create a capsule candidate")
+    proof = facts.get("proof") if isinstance(facts.get("proof"), Mapping) else {}
+    if str(proof.get("status", "")).strip().lower() not in {"green", "passed", "complete", "completed"}:
+        raise ScenarioRegistryStoreError("diagnostic capsule candidate requires a green proof")
+    cleanup = raw.get("cleanup", report.get("cleanup"))
+    if isinstance(cleanup, Mapping):
+        accepted = cleanup.get("accepted", cleanup.get("status") in {"accepted", "green", "complete"})
+        if accepted is not True:
+            raise ScenarioRegistryStoreError("diagnostic capsule candidate requires accepted cleanup")
+    artifact = raw.get("saved_artifact", raw.get("saved_receipt", raw.get("artifact")))
+    if not isinstance(artifact, Mapping):
+        raise ScenarioRegistryStoreError("diagnostic capsule saved artifact is missing")
+    artifact_path = str(artifact.get("path", "")).strip()
+    artifact_sha256 = str(artifact.get("sha256", artifact.get("hash", ""))).strip().lower()
+    if not artifact_path or len(artifact_sha256) != 64 or any(c not in "0123456789abcdef" for c in artifact_sha256):
+        raise ScenarioRegistryStoreError("diagnostic capsule artifact reference is malformed")
+    try:
+        artifact_bytes = Path(artifact_path).resolve(strict=True).read_bytes()
+    except OSError as exc:
+        raise ScenarioRegistryStoreError("diagnostic capsule artifact is unreadable") from exc
+    if hashlib.sha256(artifact_bytes).hexdigest() != artifact_sha256:
+        raise ScenarioRegistryStoreError("diagnostic capsule artifact hash mismatch")
+    binding_id, binding = _capsule_binding_from_report(connection, report, facts)
+    site_id = _string(raw.get("site_id", raw.get("site", "")), "diagnostic_capsule_candidate.site_id")
+    operation = _string(raw.get("operation", ""), "diagnostic_capsule_candidate.operation")
+    generation = str(raw.get("generation", "")).strip()
+    owner = _string(raw.get("owner", binding.get("owner", "")), "diagnostic_capsule_candidate.owner")
+    actor_ids = raw.get("actor_ids", raw.get("actors"))
+    if not isinstance(actor_ids, list) or not actor_ids or not all(isinstance(item, str) and item.strip() for item in actor_ids):
+        raise ScenarioRegistryStoreError("diagnostic capsule candidate actors are missing")
+    if not generation:
+        raise ScenarioRegistryStoreError("diagnostic capsule candidate generation is missing")
+    gate_id = _string(raw.get("gate_id", ""), "diagnostic_capsule_candidate.gate_id")
+    gate_index = raw.get("gate_index")
+    if type(gate_index) is not int or gate_index < 0:
+        raise ScenarioRegistryStoreError("diagnostic capsule candidate gate index is invalid")
+    if str(raw.get("gate_verdict", raw.get("verdict", "green"))).lower() not in {"green", "passed", "complete", "completed"}:
+        raise ScenarioRegistryStoreError("diagnostic capsule candidate gate is not green")
+    startup_gates, step_gates = _report_named_gate_verdicts(report)
+    proven_verdicts = startup_gates.get(gate_id, ()) + step_gates.get(gate_id, ())
+    if not proven_verdicts or not all(verdict.startswith("green") for verdict in proven_verdicts):
+        raise ScenarioRegistryStoreError("diagnostic capsule candidate gate is not report-proven")
+    durable_timestamp = _string(raw.get("durable_timestamp", raw.get("timestamp", "")), "diagnostic_capsule_candidate.durable_timestamp")
+    run_id = _string(report.get("run_id", raw.get("run_id", "")), "diagnostic_capsule_candidate.run_id")
+    candidate_id = _identity(
+        "caol-diagnostic-capsule-candidate-v1", artifact_path, artifact_sha256, binding_id, site_id, operation, generation,
+        _json_text(sorted(actor_ids)), owner, gate_id, str(gate_index), durable_timestamp,
+    )
+    payload = {
+        "candidate_id": candidate_id, "report_id": report_id, "verification_id": verification_id,
+        "run_id": run_id, "report_path": report_path, "report_sha256": report_sha256,
+        "artifact_path": str(Path(artifact_path).resolve()), "artifact_sha256": artifact_sha256,
+        "binding_id": binding_id, "binding_json": _json_text(binding), "site_id": site_id,
+        "operation": operation, "generation": generation, "actor_ids_json": _json_text(sorted(actor_ids)),
+        "owner": owner, "gate_id": gate_id, "gate_index": gate_index,
+        "durable_timestamp": durable_timestamp, "source_kind": source_kind,
+        "details_json": _json_text({"source_run_id": run_id, "source_report_id": report_id}),
+    }
+    existing = connection.execute(
+        "SELECT * FROM diagnostic_capsule_candidate WHERE candidate_id = ?", (candidate_id,)
+    ).fetchone()
+    if existing is not None:
+        if any(str(existing[key]) != str(payload[key]) for key in payload if key != "candidate_id"):
+            raise ScenarioRegistryStoreError("conflicting duplicate diagnostic capsule candidate")
+        return {"candidate_id": candidate_id, "idempotent": True}
+    connection.execute(
+        "INSERT INTO diagnostic_capsule_candidate( "
+        "candidate_id, report_id, verification_id, run_id, report_path, report_sha256, artifact_path, artifact_sha256, "
+        "binding_id, binding_json, site_id, operation, generation, actor_ids_json, owner, gate_id, gate_index, "
+        "durable_timestamp, source_kind, details_json ) VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )",
+        tuple(payload.values()),
+    )
+    return {"candidate_id": candidate_id, "idempotent": False}
+
+
+def query_diagnostic_capsule_candidates(
+    connection: sqlite3.Connection, *, binding_id: str, run_id: Optional[str] = None,
+) -> Tuple[Mapping[str, Any], ...]:
+    """Return immutable compatible candidates; never expose the querying run's own row."""
+    params: List[Any] = [binding_id]
+    sql = "SELECT * FROM diagnostic_capsule_candidate WHERE binding_id = ?"
+    if run_id is not None:
+        sql += " AND run_id <> ?"
+        params.append(run_id)
+    sql += " ORDER BY gate_index DESC, durable_timestamp DESC, candidate_id"
+    rows = connection.execute(sql, params).fetchall()
+    return tuple(dict(row) for row in rows)
+
+
+_CAPSULE_BINDING_DIMENSIONS = ("state", "player", "actors", "owner")
+_CAPSULE_IDENTITY_DIMENSIONS = ("site_id", "operation", "generation", "actor_ids", "owner")
+
+
+def _capsule_selector_value(value: Any) -> Any:
+    """Canonicalize a selector value without accepting missing values."""
+    return json.loads(_json_text(value))
+
+
+def select_diagnostic_capsule_candidate(
+    connection: sqlite3.Connection, *, failed_run: Mapping[str, Any], run_id: Optional[str] = None,
+) -> Mapping[str, Any]:
+    """Recommend a compatible immutable capsule, without changing registry state.
+
+    Every binding and identity dimension is checked independently.  Historical
+    candidates that fail compatibility remain in the result with reasons; this
+    is deliberately a recommendation only and never issues launch authority.
+    """
+    if not isinstance(failed_run, Mapping):
+        raise ScenarioRegistryQueryError("failed_run must be an object")
+    binding = failed_run.get("binding", failed_run.get("capsule_binding"))
+    if not isinstance(binding, Mapping):
+        raise ScenarioRegistryQueryError("failed_run binding is missing")
+    expected_binding = {
+        key: binding.get(key) for key in _CAPSULE_BINDING_DIMENSIONS
+    }
+    expected_binding_id = str(failed_run.get("binding_id", failed_run.get("sha256", ""))).strip()
+    expected_identity = {
+        "site_id": failed_run.get("site_id", failed_run.get("site")),
+        "operation": failed_run.get("operation"),
+        "generation": failed_run.get("generation"),
+        "actor_ids": failed_run.get("actor_ids", failed_run.get("actors")),
+        "owner": failed_run.get("owner", binding.get("owner")),
+    }
+    missing = [key for key, value in (("binding_id", expected_binding_id), *expected_binding.items(), *expected_identity.items())
+               if value in (None, "", [], {})]
+    if missing:
+        raise ScenarioRegistryQueryError("failed_run dimensions missing: " + ", ".join(missing))
+    expected_identity["actor_ids"] = sorted(str(item) for item in expected_identity["actor_ids"])
+
+    source_run_id = str(run_id if run_id is not None else failed_run.get("run_id", "")).strip()
+    rows = connection.execute(
+        "SELECT * FROM diagnostic_capsule_candidate ORDER BY candidate_id"
+    ).fetchall()
+    compatible: List[Mapping[str, Any]] = []
+    rejected: List[Mapping[str, Any]] = []
+    for sqlite_row in rows:
+        row = dict(sqlite_row)
+        if source_run_id and str(row.get("run_id", "")) == source_run_id:
+            continue
+        reasons: List[Mapping[str, Any]] = []
+
+        def reject(dimension: str, reason: str, observed: Any = None) -> None:
+            reasons.append({"dimension": dimension, "reason": reason, "observed": observed})
+
+        if not row.get("binding_id"):
+            reject("binding_id", "missing")
+        elif str(row["binding_id"]) != expected_binding_id:
+            reject("binding_id", "unequal", row["binding_id"])
+        try:
+            candidate_binding = json.loads(str(row.get("binding_json", "")))
+        except (TypeError, ValueError):
+            candidate_binding = None
+        if not isinstance(candidate_binding, Mapping):
+            reject("binding", "stale")
+        else:
+            for dimension, expected in expected_binding.items():
+                if dimension not in candidate_binding or candidate_binding[dimension] in (None, "", [], {}):
+                    reject("binding." + dimension, "missing")
+                elif _capsule_selector_value(candidate_binding[dimension]) != _capsule_selector_value(expected):
+                    reject("binding." + dimension, "unequal", candidate_binding[dimension])
+        for dimension, expected in expected_identity.items():
+            column = "actor_ids_json" if dimension == "actor_ids" else dimension
+            raw_observed = row.get(column)
+            if raw_observed in (None, "", [], {}):
+                reject(dimension, "missing")
+                continue
+            if dimension == "actor_ids":
+                try:
+                    observed = sorted(str(item) for item in json.loads(str(raw_observed)))
+                except (TypeError, ValueError):
+                    reject(dimension, "stale", raw_observed)
+                    continue
+            else:
+                observed = str(raw_observed)
+            if observed != expected:
+                reject(dimension, "unequal", observed)
+        gate_index = row.get("gate_index")
+        if type(gate_index) is not int or gate_index < 0:
+            reject("gate_index", "stale", gate_index)
+        if not str(row.get("durable_timestamp", "")).strip():
+            reject("durable_timestamp", "missing")
+        if reasons:
+            rejected.append({"candidate": row, "reasons": tuple(reasons)})
+        else:
+            compatible.append(row)
+
+    # Stable passes make each ranking dimension explicit: ID ascending breaks
+    # exact ties, then durable time descending, then proven gate descending.
+    compatible.sort(key=lambda row: str(row["candidate_id"]))
+    compatible.sort(key=lambda row: str(row["durable_timestamp"]), reverse=True)
+    compatible.sort(key=lambda row: int(row["gate_index"]), reverse=True)
+    selected = compatible[0] if compatible else None
+    if selected is None:
+        rank_reason = "no compatible diagnostic capsule"
+    else:
+        rank_reason = (
+            "highest proven gate index; then latest durable timestamp; then lexicographically smallest candidate_id "
+            f"({selected['candidate_id']})"
+        )
+    return {
+        "selected_candidate": selected,
+        "selected": selected,
+        "selection_reason": rank_reason,
+        "rank_reason": rank_reason,
+        "compatible_candidates": tuple(compatible),
+        "rejected_candidates": tuple(rejected),
+    }
+
+
+select_diagnostic_capsule = select_diagnostic_capsule_candidate
+
+
 def ingest_report_reference(
     connection: sqlite3.Connection,
     report_path: Path,
@@ -4246,10 +5745,14 @@ def ingest_report_reference(
         (canonical_path, report_sha256),
     ).fetchone()
     if existing is not None:
+        non_authoritative = str(existing["ingestion_status"]) == "ingested_non_authoritative"
         return {
             "report_id": str(existing["report_id"]),
-            "status": str(existing["ingestion_status"]),
+            "status": "ingested" if non_authoritative else str(existing["ingestion_status"]),
+            "classification": "diagnostic replay" if non_authoritative else None,
+            "non_authoritative": non_authoritative,
             "error": str(existing["error_text"]),
+            "final_gates": {"automated_certification": False, "windows_feel": False} if non_authoritative else None,
             "idempotent": True,
         }
     try:
@@ -4257,6 +5760,52 @@ def ingest_report_reference(
         if not isinstance(report, dict):
             raise ScenarioRegistryStoreError("Report top level must be an object")
         facts = _extract_report_facts(report)
+        if _is_diagnostic_replay_report(report, facts):
+            with immediate_transaction(connection):
+                connection.execute(
+                    "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status ) "
+                    "VALUES( ?, ?, ?, 'diagnostic replay', 'ingested_non_authoritative' )",
+                    (report_id, canonical_path, report_sha256),
+                )
+            return {
+                "report_id": report_id,
+                "status": "ingested",
+                "classification": "diagnostic replay",
+                "non_authoritative": True,
+                "verification_id": None,
+                "final_gates": {"automated_certification": False, "windows_feel": False},
+                "diagnostic_capsule": None,
+                "idempotent": False,
+            }
+        raw_authority = report.get("wec_authority")
+        if isinstance(raw_authority, Mapping) and str(raw_authority.get("authority_id", "")).strip():
+            authority_row = connection.execute(
+                "SELECT authority_id, evidence_class, authority, run_id, binding_id, source_sha256, owner "
+                "FROM wec_authority_history WHERE authority_id = ?",
+                (str(raw_authority["authority_id"]),),
+            ).fetchone()
+            if authority_row is None:
+                raise ScenarioRegistryStoreError("WEC authority is not registry-owned")
+            stored_source = str(authority_row["source_sha256"])
+            if stored_source != str(facts["manifest"]["source_sha256"]):
+                raise ScenarioRegistryStoreError("WEC authority source does not match report manifest")
+            if str(report.get("run_id", "")) != str(authority_row["run_id"]):
+                raise ScenarioRegistryStoreError("WEC authority run does not match report run")
+            if str(report.get("binding_id", "")) != str(authority_row["binding_id"]):
+                raise ScenarioRegistryStoreError("WEC authority binding does not match report binding")
+            facts["wec_authority"] = {
+                "status": "sealed",
+                "fact": {key: str(authority_row[key]) for key in (
+                    "authority_id", "evidence_class", "authority", "run_id", "binding_id", "source_sha256", "owner",
+                )},
+            }
+        authority_fact = facts["wec_authority"].get("fact") if isinstance(facts["wec_authority"], Mapping) else None
+        round_check = {"eligible": False, "reason": "not_certification_authority"}
+        if isinstance(authority_fact, Mapping) and authority_fact.get("evidence_class") == "automated continuous-round certification":
+            round_check = _certification_round_check(
+                connection, authority=authority_fact,
+                round_facts=facts["certification_round"], report_facts=facts,
+            )
     except (UnicodeDecodeError, json.JSONDecodeError, ScenarioRegistryStoreError) as exc:
         with immediate_transaction(connection):
             connection.execute(
@@ -4281,6 +5830,24 @@ def ingest_report_reference(
                 facts=facts,
                 adapters=adapters,
             )
+            authority_fact = facts["wec_authority"].get("fact") if isinstance(facts["wec_authority"], Mapping) else None
+            if isinstance(authority_fact, Mapping) and authority_fact.get("authority_id"):
+                runtime_binding_row = None
+                for candidate in connection.execute(
+                    "SELECT payload_json FROM binding_history WHERE manifest_id = ? AND binding_kind = 'runtime' "
+                    "ORDER BY binding_event_id DESC",
+                    (manifest_id,),
+                ):
+                    candidate_payload = _json_object(str(candidate["payload_json"]), "runtime binding payload")
+                    if candidate_payload.get("verification_id") == verification_id:
+                        runtime_binding_row = candidate_payload
+                        break
+                if runtime_binding_row is None:
+                    raise ScenarioRegistryStoreError("WEC authority runtime binding is missing")
+                runtime_facts = runtime_binding_row.get("facts", {})
+                if (authority_fact.get("evidence_class") != "automated continuous-round certification" and
+                        str(authority_fact.get("binding_id", "")) != str(runtime_facts.get("executable_sha256", ""))):
+                    raise ScenarioRegistryStoreError("WEC authority binding does not match current runtime executable")
         except ScenarioRegistryStoreError as exc:
             connection.execute(
                 "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status, error_text ) "
@@ -4342,9 +5909,22 @@ def ingest_report_reference(
                     "scenario": facts["scenario"],
                     "proof": proof,
                     "manifest": facts["manifest"],
+                    "runtime": facts["runtime"],
                     "requested_supersedes_verification_id": facts["supersedes_verification_id"],
+                    "wec_authority": facts["wec_authority"],
+                    "certification_round": facts["certification_round"],
+                    "certification_round_check": round_check,
                 }),
             ),
+        )
+        capsule_result = _append_capsule_candidate_for_report(
+            connection,
+            report=report,
+            facts=facts,
+            report_id=report_id,
+            verification_id=verification_id,
+            report_path=canonical_path,
+            report_sha256=report_sha256,
         )
         declaration_row = connection.execute(
             "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?",
@@ -4380,8 +5960,102 @@ def ingest_report_reference(
         "status": "ingested",
         "resolution": resolution,
         "eligibility": eligibility,
+        "final_gates": derive_final_gate_eligibility(
+            facts["wec_authority"].get("fact"),
+            proof_status=str(proof.get("status", "")),
+            resolution=resolution,
+            registry_owned=bool(
+                isinstance(facts["wec_authority"].get("fact"), Mapping)
+                and facts["wec_authority"]["fact"].get("authority_id")
+            ),
+            certification_round_valid=bool(round_check.get("eligible")),
+        ),
+        "diagnostic_capsule": capsule_result,
         "idempotent": False,
     }
+
+
+def issue_wec_authority(
+    connection: sqlite3.Connection, *, evidence_class: str, authority: str,
+    run_id: str, binding_id: str, source_sha256: str, owner: str = "",
+) -> Dict[str, str]:
+    """Persist non-final WEC authority before execution.
+
+    Final authority is intentionally absent from this public API.  It is issued
+    only by ``create_certification_round`` after that owner has reloaded a
+    current registry selection token and canonical launch facts.
+    """
+    from wec_evidence import WEC_CLASS_SET
+    if evidence_class not in WEC_CLASS_SET or not run_id.strip() or not binding_id.strip():
+        raise ScenarioRegistryStoreError("invalid WEC authority inputs")
+    if evidence_class == "diagnostic replay":
+        raise ScenarioRegistryStoreError("diagnostic replay cannot create registry authority")
+    if evidence_class in {"automated continuous-round certification", "Windows feel evidence"}:
+        raise ScenarioRegistryStoreError("final-gate authority is registry-owned and cannot be caller-issued")
+    if len(source_sha256) != 64 or any(char not in "0123456789abcdef" for char in source_sha256.lower()):
+        raise ScenarioRegistryStoreError("WEC source SHA-256 must be a hexadecimal digest")
+    existing = connection.execute(
+        "SELECT authority_id, evidence_class, authority, run_id, binding_id, source_sha256, owner "
+        "FROM wec_authority_history WHERE run_id = ?", (run_id,)
+    ).fetchone()
+    if existing is not None:
+        return {key: str(existing[key]) for key in (
+            "authority_id", "evidence_class", "authority", "run_id", "binding_id", "source_sha256", "owner",
+        )}
+    authority_id = hashlib.sha256(("caol-wec-authority-v1:" + uuid.uuid4().hex).encode()).hexdigest()
+    fact = {
+        "authority_id": authority_id, "evidence_class": evidence_class, "authority": authority,
+        "run_id": run_id, "binding_id": binding_id, "source_sha256": source_sha256.lower(), "owner": owner,
+    }
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT INTO wec_authority_history( authority_id, evidence_class, authority, run_id, binding_id, source_sha256, owner ) "
+            "VALUES( ?, ?, ?, ?, ?, ?, ? )",
+            tuple(fact.values()),
+        )
+    return fact
+
+
+def final_gate_eligibility(connection: sqlite3.Connection) -> Dict[str, Any]:
+    """Derive the two final gates from immutable verification details only."""
+    result = {
+        "automated_certification": False,
+        "windows_feel": False,
+        "authoritative_verification_ids": [],
+    }
+    rows = connection.execute(
+        "SELECT verification.verification_id, verification.proof_status, verification.details_json, "
+        "COALESCE((SELECT resolution_kind FROM verification_resolution_history AS resolution "
+        "WHERE resolution.verification_id = verification.verification_id "
+        "ORDER BY resolution.resolution_event_id DESC LIMIT 1), 'unknown') AS resolution_kind "
+        "FROM verification_history AS verification ORDER BY verification.recorded_at, verification.verification_id"
+    ).fetchall()
+    for row in rows:
+        details = _json_object(str(row["details_json"]), "verification details")
+        authority = details.get("wec_authority", {})
+        authority_fact = authority.get("fact") if isinstance(authority, Mapping) else None
+        current_round = {"eligible": False, "reason": "not_certification_authority"}
+        if isinstance(authority_fact, Mapping) and authority_fact.get("evidence_class") == "automated continuous-round certification":
+            current_round = _certification_round_check(
+                connection, authority=authority_fact,
+                round_facts=details.get("certification_round", {}), report_facts=details,
+            )
+        gates = derive_final_gate_eligibility(
+            authority_fact,
+            proof_status=str(row["proof_status"]),
+            resolution=str(row["resolution_kind"]),
+            registry_owned=bool(
+                isinstance(authority, Mapping)
+                and isinstance(authority.get("fact"), Mapping)
+                and authority["fact"].get("authority_id")
+            ),
+            certification_round_valid=bool(current_round.get("eligible")),
+        )
+        if gates["automated_certification"] or gates["windows_feel"]:
+            result["authoritative_verification_ids"].append(str(row["verification_id"]))
+        result["automated_certification"] = result["automated_certification"] or gates["automated_certification"]
+        result["windows_feel"] = result["windows_feel"] or gates["windows_feel"]
+    return result
 
 
 def ingest_token_linked_report_reference(
@@ -4547,10 +6221,118 @@ def ingest_bootstrap_token_linked_report_reference(
     return {"status": "ingested", "token_id": selection.token_id, "report_id": str(ingested["report_id"])}
 
 
+def ingest_repair_token_linked_report_reference(
+    connection: sqlite3.Connection,
+    token_id: str,
+    report_path: Path,
+    *,
+    adapters: BindingAdapters,
+) -> Dict[str, Any]:
+    """Accept terminal authority only from one hard proof superseding the bound red verification."""
+    selection = reload_repair_token_for_launch(connection, token_id, require_claimed=True)
+    if not selection.accepted:
+        return {"status": "rejected_token", "reason": selection.reason, "token_id": selection.token_id}
+    canonical_path, report_bytes = _report_path_and_bytes(report_path)
+    report_id = _identity("caol-scenario-report-v1", canonical_path, hashlib.sha256(report_bytes).hexdigest())
+    prior = connection.execute(
+        "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_verification_run'",
+        (selection.token_id,),
+    ).fetchone()
+    if prior is not None:
+        record_repair_token_rejection(
+            connection, selection.token_id, reason="multiple_report_runs", details={"report_id": report_id},
+        )
+        return {"status": "rejected_multiple_reports", "token_id": selection.token_id, "report_id": report_id}
+
+    ingested = ingest_report_reference(connection, report_path, adapters=adapters)
+    issued = _repair_token_details(connection, selection.token_id)
+    if issued is None:
+        raise ScenarioRegistryStoreError("repair token disappeared during report ingestion")
+
+    def consume(reason: str, details: Mapping[str, Any]) -> None:
+        with immediate_transaction(connection):
+            connection.execute(
+                "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+                "VALUES( ?, ?, ?, ?, 'repair_verification_run', ?, ? )",
+                (
+                    selection.token_id, str(issued["manifest_id"]), issued["verification_id"],
+                    str(issued["route_key"]), reason, _json_text(dict(details)),
+                ),
+            )
+            _record_repair_token_rejection(
+                connection, issued=issued, reason=reason, details=details,
+            )
+
+    if str(ingested.get("status", "")) != "ingested":
+        details = {"report_id": str(ingested.get("report_id", "")), "status": str(ingested.get("status", "")),
+                   "error": str(ingested.get("error", ""))}
+        consume("report_ingest_" + str(ingested.get("status", "unknown")), details)
+        return {"status": "rejected_report", "token_id": selection.token_id, **details}
+    verification = connection.execute(
+        "SELECT verification_id, manifest_id, route_key, supersedes_verification_id, details_json "
+        "FROM verification_history WHERE report_id = ?",
+        (str(ingested["report_id"]),),
+    ).fetchone()
+    if verification is None:
+        consume("report_verification_missing", {"report_id": str(ingested["report_id"])})
+        return {"status": "rejected_report_identity", "token_id": selection.token_id}
+    failure = ""
+    if str(verification["manifest_id"]) != str(issued["manifest_id"]) or str(verification["route_key"]) != str(issued["route_key"]):
+        failure = "report_verification_identity_mismatch"
+    elif str(verification["supersedes_verification_id"] or "") != str(issued["verification_id"]):
+        failure = "required_supersession_missing_or_wrong"
+    elif _verification_evidence_state(verification) != "hard_proven":
+        failure = "report_not_hard_proven"
+    else:
+        resolution = connection.execute(
+            "SELECT resolution_kind FROM verification_resolution_history WHERE verification_id = ? "
+            "ORDER BY resolution_event_id DESC LIMIT 1",
+            (str(verification["verification_id"]),),
+        ).fetchone()
+        if resolution is None or str(resolution["resolution_kind"]) != "compatible":
+            failure = "report_binding_not_compatible"
+    if failure:
+        consume(failure, {
+            "report_id": str(ingested["report_id"]),
+            "verification_id": str(verification["verification_id"]),
+            "supersedes_verification_id": str(verification["supersedes_verification_id"] or ""),
+        })
+        return {"status": "rejected_report", "reason": failure, "token_id": selection.token_id,
+                "report_id": str(ingested["report_id"])}
+    route = next(
+        (item for item in _current_route_evidence(connection, str(issued["manifest_id"]))
+         if str(item.get("route_key", "")) == str(issued["route_key"])),
+        None,
+    )
+    details = route.get("details", {}) if isinstance(route, Mapping) else {}
+    if (
+            route is None or route.get("evidence_state") != "run-verified"
+            or str(issued["verification_id"]) not in {
+                str(item) for item in details.get("superseded_contradiction_ids", ())}):
+        consume("route_supersession_not_authoritative", {
+            "report_id": str(ingested["report_id"]), "verification_id": str(verification["verification_id"]),
+        })
+        return {"status": "rejected_report", "reason": "route_supersession_not_authoritative",
+                "token_id": selection.token_id, "report_id": str(ingested["report_id"])}
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, ?, ?, 'repair_verification_run', 'report_ingested_authoritative', ? )",
+            (
+                selection.token_id, str(issued["manifest_id"]), str(verification["verification_id"]),
+                str(issued["route_key"]), _json_text({"report_id": str(ingested["report_id"]),
+                "red_verification_id": str(issued["verification_id"])}),
+            ),
+        )
+    return {"status": "ingested", "token_id": selection.token_id, "report_id": str(ingested["report_id"]),
+            "verification_id": str(verification["verification_id"]), "idempotent": False}
+
+
 def reconcile_report_bindings(connection: sqlite3.Connection, *, adapters: BindingAdapters) -> Dict[str, int]:
     """Recompute report/manifest/runtime/fixture/profile compatibility by reference."""
     reconciled = 0
     stale = 0
+    touched_routes: set[Tuple[str, str]] = set()
     references = connection.execute(
         "SELECT report_id, report_path, report_sha256 FROM report_ingestion_history WHERE ingestion_status = 'ingested'"
     ).fetchall()
@@ -4579,6 +6361,7 @@ def reconcile_report_bindings(connection: sqlite3.Connection, *, adapters: Bindi
             verification_id = str(verification["verification_id"])
             manifest_id = str(verification["manifest_id"])
             route_key = str(verification["route_key"])
+            touched_routes.add((manifest_id, route_key))
             if facts is None:
                 fingerprint = _append_binding(
                     connection,
@@ -4665,4 +6448,15 @@ def reconcile_report_bindings(connection: sqlite3.Connection, *, adapters: Bindi
             )
             reconciled += 1
             stale += int(resolution == "stale")
+    # Individual report reconciliation can temporarily retain a prior compatible
+    # verdict while a later report on the same route becomes stale.  Reduce each
+    # touched route once after every bound report has been refreshed, so lifecycle
+    # and bootstrap authority see the current aggregate rather than that transient.
+    for manifest_id, route_key in touched_routes:
+        with immediate_transaction(connection):
+            _resolve_route_evidence(
+                connection,
+                manifest_id=manifest_id,
+                route_key=route_key,
+            )
     return {"reconciled": reconciled, "stale": stale}

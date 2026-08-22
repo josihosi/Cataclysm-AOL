@@ -2204,6 +2204,22 @@ npc_opinion npc::get_opinion_values( const Character &you ) const
     return npc_values;
 }
 
+const struct bandit_live_world_projection_lease &npc::get_bandit_live_world_projection_lease() const
+{
+    return bandit_live_world_projection_lease;
+}
+
+void npc::set_bandit_live_world_projection_lease(
+    const struct bandit_live_world_projection_lease &lease )
+{
+    bandit_live_world_projection_lease = lease;
+}
+
+void npc::clear_bandit_live_world_projection_lease()
+{
+    bandit_live_world_projection_lease.clear();
+}
+
 void npc::mutiny()
 {
     const map &here = get_map();

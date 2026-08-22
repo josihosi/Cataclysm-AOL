@@ -19,6 +19,7 @@ from __future__ import annotations
 import argparse
 import copy
 import hashlib
+import hmac
 import json
 import math
 import os
@@ -30,14 +31,46 @@ import subprocess
 import sys
 import tempfile
 import time
+import uuid
 from datetime import datetime
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Pattern, Sequence, Set, Tuple
 
 from bandit_live_world_audit import load_special_placements as load_bandit_special_placements
-from scenario_registry import ManifestValidationError, validate_manifest
-from scenario_registry_store import path_sha256
+from scenario_registry import (
+    CHECKPOINT_CHAIN_MANIFEST_VERSION,
+    ManifestValidationError,
+    validate_manifest,
+)
+from scenario_registry_store import (
+    append_certification_lifecycle_event,
+    certification_round_authority_facts,
+    certification_round_facts,
+    invalidate_certification_round,
+    open_registry,
+    path_sha256,
+    register_certification_round,
+    select_diagnostic_capsule_candidate,
+    verify_certification_save_capability,
+)
+from certification_process_lease import (
+    CertificationLeaseError,
+    SystemProcessInspector,
+    load_certification_manifest,
+    release_certification_lease_handle,
+    reserve_certification_lease,
+    transfer_certification_lease,
+)
+from identity_binding import (
+    authoritative_identity_binding,
+    canonical_digest,
+    compare_round_manifest,
+    complete_identity_binding,
+    first_certification_mismatch,
+    order_certification_mismatches,
+)
+from wec_evidence import WEC_CLASS_SET, authority_commitment
 
 
 IGNORABLE_DEBUG_LOG_PATTERNS: List[Pattern[str]] = [
@@ -91,6 +124,17 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
 )
 PROFILE_SNAPSHOT_SKIP_ENTRIES = {"manifest.json", "save", "harness_runs", "cache"}
 RUNTIME_BINDING_FILENAME = "runtime.binding.json"
+CONTRACT_PREFLIGHT_FILENAME = "contract.preflight.json"
+TRANSITION_EVENT_FILENAME = "transition.events.jsonl"
+TRANSITION_EVENT_BINDING_FILENAME = "transition.events.binding.json"
+TRANSITION_EVENT_SCHEMA_VERSION = 1
+TRANSITION_EVENT_REQUIRED_FIELDS = {
+    "schema_version", "sequence", "run_id", "game_minutes", "domain", "transition", "outcome",
+}
+TRANSITION_EVENT_OPTIONAL_FIELDS = {
+    "site_id", "operation_id", "generation", "handoff_epoch", "previous_state", "new_state",
+    "reason", "actor_ids",
+}
 
 PATROL_CACHE_RE = re.compile(
     r"camp patrol: cache camp=(?P<camp>.+?) shift=(?P<shift>\w+)(?: alarm=(?P<alarm>\w+))? workers=(?P<workers>\d+) "
@@ -216,6 +260,772 @@ class StartupPlan:
     harness_new_world: str = ""
     harness_raw_seed: str = ""
     harness_bandit_feasibility: bool = False
+
+
+@dataclass
+class TransitionEventReaderState:
+    """Binary cursor for the run-owned append-only transition stream."""
+
+    byte_offset: int = 0
+    last_sequence: int = 0
+    run_id: str = ""
+    integrity_epoch: int = 0
+    integrity_poisoned: bool = False
+    consumed_prefix_sha256: str = ""
+
+
+class StructuredTransitionEventReader:
+    """Incrementally read and validate one harness run's JSONL event stream.
+
+    The cursor never consumes an unterminated final line. This lets a later
+    poll complete a record written by a still-running game without inventing
+    proof from a truncated tail. Valid non-committed events are retained as
+    diagnostics/context, but the gate evaluator filters them from proof.
+    """
+
+    def __init__(self, path: Path, run_id: str, state: Optional[TransitionEventReaderState] = None) -> None:
+        self.path = Path(path)
+        self.run_id = str(run_id).strip()
+        if not self.run_id:
+            raise ValueError("structured transition reader requires a run_id")
+        self.state = state or TransitionEventReaderState(run_id=self.run_id)
+        if self.state.run_id and self.state.run_id != self.run_id:
+            raise ValueError("structured transition reader state run_id mismatch")
+        self.state.run_id = self.run_id
+        self.events: List[Dict[str, Any]] = []
+        self.diagnostics: List[Dict[str, Any]] = []
+
+    def watermark(self) -> Dict[str, Any]:
+        return {
+            "byte_offset": int(self.state.byte_offset),
+            "last_sequence": int(self.state.last_sequence),
+            "run_id": self.run_id,
+            "event_count": len(self.events),
+            "integrity_epoch": int(self.state.integrity_epoch),
+            "integrity_poisoned": bool(self.state.integrity_poisoned),
+            "consumed_prefix_sha256": self.state.consumed_prefix_sha256,
+        }
+
+    def poll(self) -> Dict[str, Any]:
+        start_offset = int(self.state.byte_offset)
+        result = {"events": [], "diagnostics": [], "watermark": self.watermark()}
+        try:
+            size = self.path.stat().st_size
+        except FileNotFoundError:
+            result["diagnostics"].append({"kind": "stream_missing", "path": str(self.path)})
+            self.diagnostics.extend(result["diagnostics"])
+            return result
+        except OSError as exc:
+            result["diagnostics"].append({"kind": "stream_read_error", "path": str(self.path), "error": str(exc)})
+            self.diagnostics.extend(result["diagnostics"])
+            return result
+        if size < start_offset:
+            self.state.integrity_epoch += 1
+            self.state.integrity_poisoned = True
+            self.events.clear()
+            result["diagnostics"].append({
+                "kind": "stream_truncated_or_replaced", "byte_offset": start_offset,
+                "byte_start": 0, "byte_end": max(start_offset, size), "current_size": size,
+                "integrity_epoch": self.state.integrity_epoch, "integrity_poisoned": True,
+            })
+            result["discard_prior_events"] = True
+            self.state.byte_offset = 0
+            self.state.last_sequence = 0
+            self.state.consumed_prefix_sha256 = ""
+            start_offset = 0
+        consumed_prefix = b""
+        try:
+            with self.path.open("rb") as stream:
+                if start_offset > 0:
+                    consumed_prefix = stream.read(start_offset)
+                    observed_prefix_sha256 = hashlib.sha256(consumed_prefix).hexdigest()
+                    if (
+                        len(consumed_prefix) != start_offset or
+                        not self.state.consumed_prefix_sha256 or
+                        observed_prefix_sha256 != self.state.consumed_prefix_sha256
+                    ):
+                        self.state.integrity_epoch += 1
+                        self.state.integrity_poisoned = True
+                        self.events.clear()
+                        result["diagnostics"].append({
+                            "kind": "stream_truncated_or_replaced",
+                            "replacement_reason": "consumed_prefix_mismatch",
+                            "byte_offset": start_offset, "byte_start": 0,
+                            "byte_end": start_offset, "current_size": size,
+                            "expected_prefix_sha256": self.state.consumed_prefix_sha256,
+                            "observed_prefix_sha256": observed_prefix_sha256,
+                            "integrity_epoch": self.state.integrity_epoch,
+                            "integrity_poisoned": True,
+                        })
+                        result["discard_prior_events"] = True
+                        self.state.byte_offset = 0
+                        self.state.last_sequence = 0
+                        self.state.consumed_prefix_sha256 = ""
+                        start_offset = 0
+                        consumed_prefix = b""
+                stream.seek(start_offset)
+                payload = stream.read()
+        except OSError as exc:
+            result["diagnostics"].append({"kind": "stream_read_error", "path": str(self.path), "error": str(exc)})
+            self.diagnostics.extend(result["diagnostics"])
+            return result
+        complete_length = payload.rfind(b"\n") + 1
+        if complete_length <= 0:
+            if payload:
+                result["diagnostics"].append({
+                    "kind": "truncated_tail", "byte_offset": start_offset, "byte_length": len(payload),
+                })
+            self.diagnostics.extend(result["diagnostics"])
+            result["watermark"] = self.watermark()
+            return result
+        complete = payload[:complete_length]
+        if complete_length < len(payload):
+            result["diagnostics"].append({
+                "kind": "truncated_tail", "byte_offset": start_offset + complete_length,
+                "byte_length": len(payload) - complete_length,
+            })
+        for raw_line in complete.splitlines(keepends=True):
+            line_start = start_offset
+            start_offset += len(raw_line)
+            line = raw_line.rstrip(b"\r\n")
+            if not line.strip():
+                continue
+            try:
+                event = json.loads(line.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError) as exc:
+                result["diagnostics"].append({
+                    "kind": "malformed_record", "byte_start": line_start,
+                    "byte_end": start_offset, "error": str(exc),
+                })
+                continue
+            validation = self._validate_event(event, line_start, start_offset)
+            if validation is not None:
+                result["diagnostics"].append(validation)
+                continue
+            event["_stream_byte_start"] = line_start
+            event["_stream_byte_end"] = start_offset
+            self.state.last_sequence = int(event["sequence"])
+            self.events.append(event)
+            result["events"].append(event)
+        self.state.byte_offset = start_offset
+        prefix_hasher = hashlib.sha256()
+        prefix_hasher.update(consumed_prefix)
+        prefix_hasher.update(complete)
+        self.state.consumed_prefix_sha256 = prefix_hasher.hexdigest()
+        self.diagnostics.extend(result["diagnostics"])
+        result["watermark"] = self.watermark()
+        return result
+
+    def _validate_event(self, event: Any, byte_start: int, byte_end: int) -> Optional[Dict[str, Any]]:
+        if not isinstance(event, dict):
+            return {"kind": "malformed_record", "byte_start": byte_start, "byte_end": byte_end, "error": "record is not an object"}
+        missing = sorted(TRANSITION_EVENT_REQUIRED_FIELDS - set(event))
+        if missing:
+            return {"kind": "invalid_record", "byte_start": byte_start, "byte_end": byte_end, "error": "missing_fields", "fields": missing}
+        if event.get("schema_version") != TRANSITION_EVENT_SCHEMA_VERSION:
+            return {"kind": "invalid_record", "byte_start": byte_start, "byte_end": byte_end, "error": "schema_version", "observed": event.get("schema_version")}
+        sequence = event.get("sequence")
+        expected_sequence = self.state.last_sequence + 1
+        if isinstance(sequence, bool) or not isinstance(sequence, int) or sequence != expected_sequence:
+            return {"kind": "invalid_sequence", "byte_start": byte_start, "byte_end": byte_end, "sequence": sequence, "last_sequence": self.state.last_sequence, "expected_sequence": expected_sequence}
+        if event.get("run_id") != self.run_id:
+            return {"kind": "run_correlation_mismatch", "byte_start": byte_start, "byte_end": byte_end, "sequence": sequence, "run_id": event.get("run_id"), "expected_run_id": self.run_id}
+        if isinstance(event.get("game_minutes"), bool) or not isinstance(event.get("game_minutes"), (int, float)):
+            return {"kind": "invalid_record", "byte_start": byte_start, "byte_end": byte_end, "error": "game_minutes"}
+        for key in ("domain", "transition", "outcome"):
+            if not isinstance(event.get(key), str) or not event[key].strip():
+                return {"kind": "invalid_record", "byte_start": byte_start, "byte_end": byte_end, "error": key}
+        if "actor_ids" in event:
+            actor_ids = event["actor_ids"]
+            if (not isinstance(actor_ids, list) or not actor_ids or any(
+                    isinstance(item, bool) or
+                    (not isinstance(item, (int, str))) or
+                    (isinstance(item, str) and not item.strip())
+                    for item in actor_ids)):
+                return {"kind": "invalid_record", "byte_start": byte_start, "byte_end": byte_end, "error": "actor_ids"}
+        return None
+
+
+def read_transition_event_stream(path: Path, run_id: str, state: Optional[TransitionEventReaderState] = None) -> Dict[str, Any]:
+    """One-shot convenience API used by focused tests and small integrations."""
+    reader = StructuredTransitionEventReader(path, run_id, state)
+    return reader.poll()
+
+
+def _transition_event_value(event: Mapping[str, Any], key: str) -> Any:
+    if key == "owner":
+        # ``domain`` identifies a stream, not the layer allowed to advance it.
+        # Never manufacture an authoritative owner from that unrelated field.
+        return event.get("simulation_owner", event.get("owner"))
+    if key == "committed":
+        return str(event.get("outcome", "")).strip().lower() == "committed"
+    return event.get(key)
+
+
+def _structured_event_matches(event: Mapping[str, Any], predicate: Mapping[str, Any]) -> bool:
+    if str(event.get("outcome", "")).strip().lower() != "committed":
+        return False
+    for key, expected in predicate.items():
+        if key in {"identity_fields", "continuity_fields"}:
+            if not isinstance(expected, list) or any(
+                    field not in event or event.get(field) in (None, "", [], {})
+                    for field in expected):
+                return False
+            continue
+        if key == "committed":
+            if bool(expected) is not True:
+                return False
+            continue
+        observed = _transition_event_value(event, key)
+        if key == "actor_ids" and isinstance(expected, list):
+            if observed != expected:
+                return False
+        elif observed != expected:
+            return False
+    return True
+
+
+def _saved_artifact_matches(artifact: Mapping[str, Any], predicate: Mapping[str, Any], run_id: str) -> bool:
+    for key, expected in predicate.items():
+        if key == "same_run":
+            if expected is True and artifact.get("run_id") != run_id:
+                return False
+            continue
+        if key == "committed":
+            if expected is True and not (artifact.get("committed") is True or artifact.get("status") == "required_state_present"):
+                return False
+            continue
+        if key in {"continuity_fields", "identity_fields"}:
+            identity = artifact.get("identity") if isinstance(artifact.get("identity"), Mapping) else artifact
+            if not isinstance(expected, list) or any(
+                    field not in identity or identity.get(field) in (None, "", [], {})
+                    for field in expected):
+                return False
+            continue
+        if key == "required_fields":
+            observed = artifact.get("required_fields")
+            if not isinstance(observed, Mapping) or not isinstance(expected, Mapping) or any(
+                    observed.get(field) != value for field, value in expected.items()):
+                return False
+            continue
+        if key.startswith("required_field."):
+            field = key.split(".", 1)[1]
+            observed_fields = artifact.get("required_fields")
+            if not isinstance(observed_fields, Mapping) or observed_fields.get(field) != expected:
+                return False
+            continue
+        if key == "artifact_hash_present":
+            if bool(expected) and not str(artifact.get("artifact_sha256", "") or "").strip():
+                return False
+            continue
+        if key == "artifact_kind":
+            if artifact.get("artifact_kind") != expected:
+                return False
+            continue
+        if artifact.get(key) != expected:
+            return False
+    return True
+
+
+def summarize_transition_diagnostics(diagnostics: Sequence[Mapping[str, Any]]) -> List[Dict[str, Any]]:
+    """Compact repeated stream diagnostics while retaining first/last evidence."""
+    grouped: Dict[str, Dict[str, Any]] = {}
+    for diagnostic in diagnostics:
+        identity = json.dumps({
+            key: diagnostic.get(key)
+            for key in ("kind", "error", "sequence", "run_id", "expected_run_id")
+            if key in diagnostic
+        }, sort_keys=True, ensure_ascii=False)
+        row = grouped.setdefault(identity, {
+            "identity": json.loads(identity), "count": 0,
+            "first": diagnostic, "last": diagnostic,
+        })
+        row["count"] += 1
+        row["last"] = diagnostic
+    return list(grouped.values())
+
+
+def summarize_noncommitted_transition_events(
+    events: Sequence[Mapping[str, Any]],
+) -> List[Dict[str, Any]]:
+    """Aggregate valid semantic non-commit outcomes without duplicating raw JSONL."""
+    grouped: Dict[str, Dict[str, Any]] = {}
+    semantic_outcomes = {"rejected", "unchanged", "diagnostic"}
+    identity_keys = (
+        "domain", "transition", "outcome", "site_id", "operation_id", "generation",
+        "handoff_epoch", "actor_ids", "previous_state", "new_state", "reason",
+    )
+    for event in events:
+        outcome = str(event.get("outcome", "") or "").strip().lower()
+        if outcome not in semantic_outcomes:
+            continue
+        identity = {
+            key: event.get(key)
+            for key in identity_keys
+            if key in event
+        }
+        key = json.dumps(identity, sort_keys=True, ensure_ascii=False)
+        reference = {
+            "sequence": event.get("sequence"),
+            "byte_start": event.get("_stream_byte_start"),
+            "byte_end": event.get("_stream_byte_end"),
+        }
+        row = grouped.setdefault(key, {
+            "identity": identity,
+            "count": 0,
+            "first_reference": reference,
+            "last_reference": reference,
+        })
+        row["count"] += 1
+        row["last_reference"] = reference
+    return list(grouped.values())
+
+
+def normalize_saved_artifact_receipt(
+    metadata: Mapping[str, Any], artifact_kind: str, *,
+    producer_step_label: str = "", producer_step_index: int = 0,
+) -> Dict[str, Any]:
+    """Bind a saved-state audit to its owner, hash, and normalized identity."""
+    receipt = dict(metadata)
+    receipt["artifact_kind"] = artifact_kind
+    receipt["producer_step_label"] = str(producer_step_label)
+    receipt["producer_step_index"] = int(producer_step_index)
+    dimension_path = Path(str(metadata.get("dimension_path", "") or ""))
+    if dimension_path.exists() and dimension_path.is_file():
+        try:
+            receipt["artifact_sha256"] = path_sha256(dimension_path)
+        except OSError:
+            receipt["artifact_sha256"] = ""
+    matching_sites = metadata.get("matching_sites", [])
+    site = matching_sites[0] if isinstance(matching_sites, list) and matching_sites and isinstance(matching_sites[0], Mapping) else {}
+    active_outing = site.get("active_outing", {}) if isinstance(site.get("active_outing"), Mapping) else {}
+    hostile_operation = site.get("active_hostile_operation", {}) if isinstance(site.get("active_hostile_operation"), Mapping) else {}
+    reservation = hostile_operation.get("reservation", {}) if isinstance(hostile_operation.get("reservation"), Mapping) else {}
+    report = site.get("current_scout_report", {}) if isinstance(site.get("current_scout_report"), Mapping) else {}
+    report_present = bool(report.get("present")) or bool(
+        report.get("source_activity_id") and report.get("source_generation")
+    )
+    if report_present:
+        actor_ids = report.get("carrier_ids", [])
+        operation_id = report.get("source_activity_id", "")
+        generation = report.get("source_generation", 0)
+        identity_source = "current_scout_report"
+    else:
+        actor_ids = active_outing.get("member_ids", [])
+        if not isinstance(actor_ids, list) or not actor_ids:
+            actor_ids = active_outing.get("local_handoff", {}).get("member_ids", []) \
+                if isinstance(active_outing.get("local_handoff"), Mapping) else []
+        if not isinstance(actor_ids, list) or not actor_ids:
+            actor_ids = reservation.get("member_ids", [])
+        operation_id = active_outing.get("activity_id") or reservation.get("activity_id") or ""
+        generation = active_outing.get("generation", 0) or reservation.get("generation", 0)
+        identity_source = "active_outing" if active_outing.get("activity_id") else "active_hostile_operation"
+    receipt["identity"] = {
+        "site_id": site.get("site_id", ""),
+        "operation_id": operation_id,
+        "generation": generation,
+        "actor_ids": actor_ids,
+        "source": identity_source,
+    }
+    # Preserve an owner only when the saved producer actually supplied one.
+    # An absent owner is meaningful and remains absent for fail-closed callers.
+    owner = (active_outing.get("simulation_owner") or active_outing.get("owner") or
+             reservation.get("simulation_owner") or reservation.get("owner"))
+    if owner not in (None, ""):
+        receipt["identity"]["simulation_owner"] = owner
+    return receipt
+
+
+def evaluate_structured_proof_gates(
+    proof_gates: Sequence[Mapping[str, Any]],
+    *,
+    events: Sequence[Mapping[str, Any]],
+    watermarks: Mapping[str, Mapping[str, Any]],
+    saved_artifacts: Optional[Sequence[Mapping[str, Any]]] = None,
+    step_reports: Optional[Sequence[Mapping[str, Any]]] = None,
+    diagnostics: Optional[Sequence[Mapping[str, Any]]] = None,
+    run_id: str = "",
+) -> Dict[str, Any]:
+    """Evaluate v2 predicates only over each gate's predecessor/current range."""
+    artifacts = list(saved_artifacts or [])
+    for report in step_reports or []:
+        metadata = report.get("metadata") if isinstance(report, Mapping) else None
+        if isinstance(metadata, Mapping):
+            artifact = dict(metadata)
+            artifact.setdefault("producer_step_label", str(report.get("label", "")))
+            artifact.setdefault("producer_step_index", int(report.get("index", 0) or 0))
+            artifact.setdefault("producer_watermark", report.get("structured_event_watermark", {}))
+            artifacts.append(artifact)
+    by_id = {str(gate.get("id", "")): gate for gate in proof_gates}
+    evidence: List[Dict[str, Any]] = []
+    previous_watermark: Mapping[str, Any] = {"last_sequence": 0, "byte_offset": 0, "run_id": run_id}
+    continuity_context: Dict[str, Any] = {}
+    integrity_poisoned = any(
+        diagnostic.get("kind") == "stream_truncated_or_replaced" or
+        bool(diagnostic.get("integrity_poisoned"))
+        for diagnostic in diagnostics or []
+    )
+    all_green = True
+    for gate in proof_gates:
+        gate_id = str(gate.get("id", "")).strip()
+        predecessor_ids = gate.get("predecessors", [])
+        if predecessor_ids:
+            predecessor = by_id.get(str(predecessor_ids[-1]), {})
+            predecessor_boundary = str(predecessor.get("boundary_step", ""))
+            predecessor_watermark = watermarks.get(predecessor_boundary, previous_watermark)
+        else:
+            predecessor_watermark = previous_watermark
+        current_boundary = str(gate.get("boundary_step", ""))
+        current_watermark = watermarks.get(current_boundary, {})
+        gate_integrity_poisoned = bool(
+            integrity_poisoned or predecessor_watermark.get("integrity_poisoned") or
+            current_watermark.get("integrity_poisoned")
+        )
+        start_sequence = int(predecessor_watermark.get("last_sequence", 0) or 0)
+        end_sequence = int(current_watermark.get("last_sequence", start_sequence) or start_sequence)
+        start_offset = int(predecessor_watermark.get("byte_offset", 0) or 0)
+        end_offset = int(current_watermark.get("byte_offset", start_offset) or start_offset)
+        start_step_index = int(predecessor_watermark.get("step_index", 0) or 0)
+        end_step_index = int(current_watermark.get("step_index", 0) or 0)
+        in_range = [
+            event for event in events
+            if start_sequence < int(event.get("sequence", 0) or 0) <= end_sequence
+            and start_offset <= int(event.get("_stream_byte_start", start_offset) or start_offset) < end_offset
+            and event.get("run_id") == run_id
+        ]
+        integrity_kinds = {
+            "malformed_record", "invalid_record", "invalid_sequence",
+            "run_correlation_mismatch", "truncated_tail", "stream_truncated_or_replaced",
+        }
+        range_diagnostics = []
+        for diagnostic in diagnostics or []:
+            if diagnostic.get("kind") not in integrity_kinds:
+                continue
+            diagnostic_start = int(diagnostic.get("byte_start", diagnostic.get("byte_offset", 0)) or 0)
+            diagnostic_end = int(diagnostic.get("byte_end", diagnostic_start) or diagnostic_start)
+            overlaps = diagnostic_start < end_offset and diagnostic_end >= start_offset
+            pending_tail_at_boundary = diagnostic.get("kind") == "truncated_tail" and diagnostic_start <= end_offset
+            if overlaps or pending_tail_at_boundary:
+                range_diagnostics.append(diagnostic)
+        expectation_results: List[Dict[str, Any]] = []
+        for expectation in gate.get("expectations", []):
+            kind = str(expectation.get("kind", ""))
+            predicate = expectation.get("predicate", {})
+            if not isinstance(predicate, Mapping):
+                predicate = {}
+            if kind == "structured_event":
+                matched = [event for event in in_range if _structured_event_matches(event, predicate)]
+                refs = [{"sequence": event.get("sequence"), "byte_start": event.get("_stream_byte_start"), "byte_end": event.get("_stream_byte_end")} for event in matched]
+                expectation_results.append({"kind": kind, "predicate": dict(predicate), "matched": bool(matched), "event_references": refs, "_matched_events": matched})
+            elif kind == "saved_artifact":
+                matched_artifacts = [
+                    artifact for artifact in artifacts
+                    if start_step_index < int(artifact.get("producer_step_index", 0) or 0) <= end_step_index
+                    and _saved_artifact_matches(artifact, predicate, run_id)
+                ]
+                refs = [{
+                    "artifact_path": artifact.get("artifact_path", artifact.get("metadata_path", "")),
+                    "run_id": artifact.get("run_id", ""),
+                    "producer_step_label": artifact.get("producer_step_label", ""),
+                    "producer_step_index": artifact.get("producer_step_index", 0),
+                    "producer_watermark": artifact.get("producer_watermark", {}),
+                } for artifact in matched_artifacts]
+                expectation_results.append({"kind": kind, "predicate": dict(predicate), "matched": bool(matched_artifacts), "artifact_references": refs, "_matched_artifacts": matched_artifacts})
+            else:
+                expectation_results.append({"kind": kind, "predicate": dict(predicate), "matched": False, "reason": "unsupported_expectation_kind"})
+        identity_expectations = [
+            result for result in expectation_results
+            if result.get("kind") in {"structured_event", "saved_artifact"}
+            and isinstance(result.get("predicate"), Mapping)
+            and (result["predicate"].get("continuity_fields") or result["predicate"].get("identity_fields"))
+        ]
+        identity_fields: List[str] = []
+        for result in identity_expectations:
+            fields = result["predicate"].get("continuity_fields") or result["predicate"].get("identity_fields", [])
+            for field in fields:
+                if field not in identity_fields:
+                    identity_fields.append(str(field))
+        identity_values: Dict[str, Any] = {}
+        identity_correlation_ok = True
+        identity_events = [
+            event for result in identity_expectations
+            for event in result.get("_matched_events", [])
+        ]
+        identity_artifacts = [
+            artifact for result in identity_expectations
+            for artifact in result.get("_matched_artifacts", [])
+        ]
+        if identity_expectations and not identity_events and not identity_artifacts:
+            identity_correlation_ok = False
+        for field in identity_fields:
+            observed_values = [event.get(field) for event in identity_events]
+            for result in identity_expectations:
+                for artifact in result.get("_matched_artifacts", []):
+                    identity = artifact.get("identity") if isinstance(artifact.get("identity"), Mapping) else artifact
+                    if field in identity:
+                        observed_values.append(identity.get(field))
+            if not observed_values or any(value != observed_values[0] for value in observed_values[1:]):
+                identity_correlation_ok = False
+            elif observed_values:
+                identity_values[field] = observed_values[0]
+            if field in continuity_context and observed_values and observed_values[0] != continuity_context[field]:
+                identity_correlation_ok = False
+        for result in identity_expectations:
+            result["identity_correlation"] = {
+                "status": "matched" if identity_correlation_ok else "mismatch",
+                "fields": identity_fields,
+                "values": identity_values,
+            }
+        gate_green = bool(expectation_results) and all(result.get("matched") for result in expectation_results) and identity_correlation_ok and not range_diagnostics and not gate_integrity_poisoned
+        if identity_correlation_ok and identity_values:
+            continuity_context.update(identity_values)
+        for result in expectation_results:
+            result.pop("_matched_events", None)
+            result.pop("_matched_artifacts", None)
+        all_green = all_green and gate_green
+        evidence.append({
+            "id": gate_id, "label": str(gate.get("label", "")), "status": "green" if gate_green else "red",
+            "boundary_step": current_boundary, "predecessor_watermark": dict(predecessor_watermark),
+            "watermark": dict(current_watermark),
+            "event_range": {"sequence_start_exclusive": start_sequence, "sequence_end_inclusive": end_sequence, "byte_start": start_offset, "byte_end_exclusive": end_offset},
+            "artifact_step_range": {
+                "step_index_start_exclusive": start_step_index,
+                "step_index_end_inclusive": end_step_index,
+            },
+            "expectations": expectation_results,
+            "identity_correlation": {
+                "status": "matched" if identity_correlation_ok else ("not_declared" if not identity_expectations else "mismatch"),
+                "fields": identity_fields,
+                "values": identity_values,
+                "continuity_context": dict(continuity_context),
+            },
+            "diagnostic_count": len(diagnostics or []),
+            "integrity_diagnostics": range_diagnostics,
+            "integrity_poisoned": gate_integrity_poisoned,
+        })
+        previous_watermark = current_watermark
+    return {
+        "status": "green" if all_green and evidence else "red", "run_id": run_id,
+        "gates": evidence, "diagnostics": list(diagnostics or []),
+        "diagnostic_summary": summarize_transition_diagnostics(diagnostics or []),
+    }
+
+
+def build_first_divergence_diagnostic(
+    proof_gates: Sequence[Mapping[str, Any]],
+    gate_evidence: Sequence[Mapping[str, Any]],
+    *,
+    events: Sequence[Mapping[str, Any]] = (),
+    saved_artifacts: Sequence[Mapping[str, Any]] = (),
+    capsule_candidates: Sequence[Mapping[str, Any]] = (),
+    binding_id: str = "",
+    run_id: str = "",
+    repeated_noncommitted_summary: Sequence[Mapping[str, Any]] = (),
+) -> Dict[str, Any]:
+    """Build a pure, fail-closed first-divergence diagnostic.
+
+    This deliberately consumes the evaluator's gate evidence rather than
+    re-evaluating predicates. It recommends a capsule but does not persist or
+    select registry history. A malformed causal chain returns only a rejection
+    reason and no diagnostic claims.
+    """
+    gates = list(proof_gates or [])
+    evidence = list(gate_evidence or [])
+    if not gates or len(gates) != len(evidence):
+        return {"status": "rejected", "reason": "gate_evidence_length_mismatch"}
+    ids = [str(gate.get("id", "")).strip() for gate in gates]
+    if any(not gate_id for gate_id in ids) or len(set(ids)) != len(ids):
+        return {"status": "rejected", "reason": "causal_chain_gate_ids_ambiguous"}
+    for index, gate in enumerate(gates):
+        predecessors = gate.get("predecessors", [])
+        if not isinstance(predecessors, list):
+            return {"status": "rejected", "reason": "causal_chain_predecessors_not_a_list"}
+        expected = [] if index == 0 else [ids[index - 1]]
+        if [str(item) for item in predecessors] != expected:
+            return {"status": "rejected", "reason": "causal_chain_predecessor_mismatch", "gate_id": ids[index]}
+    evidence_ids = [str(row.get("id", "")).strip() for row in evidence]
+    if evidence_ids != ids:
+        return {"status": "rejected", "reason": "gate_evidence_order_mismatch"}
+
+    red_index = next((index for index, row in enumerate(evidence) if row.get("status") != "green"), None)
+    if red_index is None:
+        return {"status": "green", "run_id": run_id, "causal_prefix": ids, "last_green": ids[-1]}
+    gate = gates[red_index]
+    row = evidence[red_index]
+    gate_id = ids[red_index]
+    expected_predicates = [
+        {"kind": str(expectation.get("kind", "")), "predicate": dict(expectation.get("predicate", {}))}
+        for expectation in gate.get("expectations", [])
+        if isinstance(expectation, Mapping) and isinstance(expectation.get("predicate", {}), Mapping)
+    ]
+    event_range = row.get("event_range", {}) if isinstance(row.get("event_range"), Mapping) else {}
+    start_sequence = int(event_range.get("sequence_start_exclusive", 0) or 0)
+    end_sequence = int(event_range.get("sequence_end_inclusive", 0) or 0)
+    in_range_events = [event for event in events if start_sequence < int(event.get("sequence", 0) or 0) <= end_sequence]
+    committed_events = [event for event in in_range_events if str(event.get("outcome", "")).lower() == "committed"]
+    step_range = row.get("artifact_step_range", {}) if isinstance(row.get("artifact_step_range"), Mapping) else {}
+    start_step = int(step_range.get("step_index_start_exclusive", 0) or 0)
+    end_step = int(step_range.get("step_index_end_inclusive", 0) or 0)
+    in_range_artifacts = [artifact for artifact in saved_artifacts
+                          if start_step < int(artifact.get("producer_step_index", 0) or 0) <= end_step]
+
+    identity_keys = ("site_id", "operation_id", "generation", "actor_ids", "handoff_epoch", "simulation_owner", "owner")
+    expected_identity: Dict[str, Any] = {}
+    for item in expected_predicates:
+        predicate = item["predicate"]
+        for key in identity_keys:
+            if key in predicate:
+                expected_identity[key] = predicate[key]
+    observed_identity: Dict[str, Any] = {}
+    competing_observations: List[Dict[str, Any]] = []
+    for event in committed_events:
+        identity = {key: event.get(key) for key in identity_keys if event.get(key) not in (None, "", [])}
+        competing_observations.append({"kind": "structured_event", "sequence": event.get("sequence"), "identity": identity})
+        for key, value in identity.items():
+            observed_identity.setdefault(key, value)
+    for artifact in in_range_artifacts:
+        identity = artifact.get("identity") if isinstance(artifact.get("identity"), Mapping) else artifact
+        identity = {key: identity.get(key) for key in identity_keys if identity.get(key) not in (None, "", [])}
+        competing_observations.append({"kind": "saved_artifact", "path": artifact.get("artifact_path", artifact.get("metadata_path", "")), "identity": identity})
+        for key, value in identity.items():
+            observed_identity.setdefault(key, value)
+    expected_owner = expected_identity.get("simulation_owner", expected_identity.get("owner"))
+    observed_owner = observed_identity.get("simulation_owner", observed_identity.get("owner"))
+    owner_mismatch = (expected_owner not in (None, "") and observed_owner not in (None, "") and
+                      expected_owner != observed_owner)
+    # The observed stream is authoritative for the current owner. Never fill a
+    # missing observation from the predicate: that would turn a failed gate
+    # into a false green diagnostic.
+    owner_state = {
+        "value": observed_owner if observed_owner not in (None, "") else None,
+        "expected": expected_owner if expected_owner not in (None, "") else None,
+        "observed": observed_owner if observed_owner not in (None, "") else None,
+        "status": "mismatch" if owner_mismatch else ("known" if observed_owner not in (None, "") else "missing_fail_closed"),
+    }
+    next_probe = f"probe gate {gate_id} ({str(gate.get('label', '')).strip() or gate_id}) with the declared predicates"
+    if owner_state["status"] == "missing_fail_closed":
+        next_probe += "; capture the authoritative simulation owner"
+    return {
+        "status": "red", "run_id": run_id, "first_divergence": {
+            "gate_id": gate_id, "label": str(gate.get("label", "")), "index": red_index,
+            "expected_predicates": expected_predicates,
+            "observed_committed_events": committed_events,
+            "observed_saved_receipts": in_range_artifacts,
+            "closest_competing_observations": competing_observations,
+            "expected_identity": expected_identity, "observed_identity": observed_identity,
+            "authoritative_simulation_owner": owner_state,
+        },
+        "causal_prefix": ids[:red_index + 1], "last_green": ids[red_index - 1] if red_index else None,
+        "earliest_first_red": {"gate_id": gate_id, "label": str(gate.get("label", "")), "index": red_index},
+        "repeated_noncommitted_summary": list(repeated_noncommitted_summary or []),
+        # Capsule compatibility/ranking is deliberately owned by G3. G1 only
+        # leaves an explicit, non-selected placeholder for the report shape.
+        "capsule_recommendation": {"selected": False, "capsule": None,
+                                   "reason": "capsule selection deferred to G3"},
+        "smallest_next_probe": next_probe,
+    }
+
+
+# Descriptive alias for callers that work in terms of the structured gate route.
+build_structured_failure_diagnostic = build_first_divergence_diagnostic
+
+
+def diagnostic_registry_path(
+    registry_launch_receipt: str = "", certification_registry: str = "",
+) -> str:
+    """Resolve the registry owner for diagnostics from authoritative inputs only."""
+    if str(certification_registry or "").strip():
+        return str(certification_registry).strip()
+    try:
+        receipt = json.loads(str(registry_launch_receipt or ""))
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return ""
+    if not isinstance(receipt, Mapping):
+        return ""
+    path = receipt.get("registry_path")
+    return str(path).strip() if isinstance(path, str) and path.strip() else ""
+
+
+def attach_first_divergence_diagnostic(
+    report: Dict[str, Any], *, proof_gates: Sequence[Mapping[str, Any]],
+    gate_evidence: Mapping[str, Any], events: Sequence[Mapping[str, Any]] = (),
+    saved_artifacts: Sequence[Mapping[str, Any]] = (),
+    repeated_noncommitted_summary: Sequence[Mapping[str, Any]] = (),
+    registry_path: str = "", capsule_binding: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Attach causal failure and a read-only historical capsule recommendation."""
+    evidence = gate_evidence.get("gates", ()) if isinstance(gate_evidence, Mapping) else ()
+    diagnostic = build_first_divergence_diagnostic(
+        proof_gates, evidence, events=events, saved_artifacts=saved_artifacts,
+        binding_id=str(report.get("binding_id", "")), run_id=str(report.get("run_id", "")),
+        repeated_noncommitted_summary=repeated_noncommitted_summary,
+    )
+    if diagnostic.get("status") != "red":
+        report["first_divergence_diagnostic"] = diagnostic
+        return diagnostic
+    binding = capsule_binding or report.get("capsule_binding") or report.get("diagnostic_capsule_binding")
+    if not isinstance(binding, Mapping):
+        round_facts = report.get("certification_round")
+        if isinstance(round_facts, Mapping):
+            binding = round_facts.get("binding")
+    if not registry_path or not isinstance(binding, Mapping):
+        report["first_divergence_diagnostic"] = diagnostic
+        return diagnostic
+    divergence = diagnostic.get("first_divergence", {})
+    observed_identity = divergence.get("observed_identity", {})
+    declared_identity = divergence.get("expected_identity", {})
+    # Selection binds to the failed run's declared identity when the failed
+    # gate produced no committed observation; the diagnostic itself remains
+    # fail-closed about that missing observation.
+    identity = {**declared_identity, **observed_identity}
+    failed_run = {
+        "run_id": report.get("run_id", diagnostic.get("run_id", "")),
+        "binding_id": report.get("binding_id", ""), "binding": binding,
+        "site_id": identity.get("site_id", binding.get("site_id")),
+        "operation": identity.get("operation", identity.get("operation_id", binding.get("operation"))),
+        "generation": identity.get("generation", binding.get("generation")),
+        "actor_ids": identity.get("actor_ids", binding.get("actor_ids")),
+        "owner": identity.get("owner", identity.get("simulation_owner", binding.get("owner"))),
+    }
+    try:
+        connection = open_registry(registry_path, writable=False)
+        try:
+            selection = select_diagnostic_capsule_candidate(connection, failed_run=failed_run)
+        finally:
+            connection.close()
+    except Exception as exc:
+        selection = {"selected_candidate": None, "selection_reason": "selector_rejected: " + str(exc),
+                     "compatible_candidates": (), "rejected_candidates": ()}
+    diagnostic["capsule_recommendation"] = {
+        "selected": selection.get("selected_candidate") is not None,
+        "capsule": selection.get("selected_candidate"),
+        "reason": selection.get("selection_reason", ""),
+        "compatible_candidates": selection.get("compatible_candidates", ()),
+        "rejected_candidates": selection.get("rejected_candidates", ()),
+    }
+    report["first_divergence_diagnostic"] = diagnostic
+    return diagnostic
+
+
+class _WatermarkedReports(list):
+    def __init__(self, reader: Optional[StructuredTransitionEventReader], events: Optional[List[Dict[str, Any]]], diagnostics: Optional[List[Dict[str, Any]]]) -> None:
+        super().__init__()
+        self.reader = reader
+        self.events = events if events is not None else []
+        self.diagnostics = diagnostics if diagnostics is not None else []
+
+    def append(self, report: Dict[str, Any]) -> None:
+        if self.reader is not None:
+            polled = self.reader.poll()
+            if polled.get("discard_prior_events"):
+                self.events.clear()
+            self.events.extend(polled["events"])
+            self.diagnostics.extend(polled["diagnostics"])
+            watermark = dict(polled["watermark"])
+            watermark["step_index"] = int(report.get("index", 0) or 0)
+            watermark["step_label"] = str(report.get("label", ""))
+            report["structured_event_watermark"] = watermark
+        super().append(report)
 
 
 def repo_root() -> Path:
@@ -470,6 +1280,28 @@ def runtime_source_binding() -> Dict[str, Any]:
     }
 
 
+def build_complete_identity_binding(*, worktree: Any, data_config: Any, world_save: Any,
+                                    player: Mapping[str, Any],
+                                    actors: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+    """Canonical identity composition for a future complete round manifest.
+
+    Existing runtime/fixture/profile/save/bandit owners feed these arguments;
+    this helper intentionally does not infer or replace any of those owners.
+    """
+    return complete_identity_binding(
+        worktree=worktree,
+        data_config=data_config,
+        world_save=world_save,
+        player=player,
+        actors=actors,
+    )
+
+
+def build_authoritative_identity_binding(**kwargs: Any) -> Dict[str, Any]:
+    """Expose the explicit installed-input producer to future manifest code."""
+    return authoritative_identity_binding(**kwargs)
+
+
 def build_runtime_binding(executable: Path) -> Dict[str, Any]:
     """Capture the immutable run inputs used by the changed executable."""
     executable_path = executable.resolve()
@@ -604,6 +1436,74 @@ def validate_registry_launch_receipt_before_launch(
             return {
                 "status": "compatible",
                 "token_id": token_id,
+                "source_path": selection.source_path,
+                "runtime_binding": comparison,
+            }
+        if receipt.get("authority_kind") == "registry_repair_exact_contradiction":
+            from scenario_registry_store import (
+                record_repair_token_rejection,
+                reload_repair_token_for_launch,
+            )
+
+            selection = reload_repair_token_for_launch(
+                connection, token_id, require_claimed=True,
+            )
+            if not selection.accepted:
+                return {
+                    "status": "rejected",
+                    "reason": f"repair_{selection.reason}",
+                    "token_id": token_id,
+                }
+
+            def reject_repair(reason: str, **details: Any) -> Dict[str, Any]:
+                record_repair_token_rejection(
+                    connection,
+                    token_id,
+                    reason=reason,
+                    details=details,
+                )
+                return {"status": "rejected", "reason": reason, "token_id": token_id}
+
+            issued = connection.execute(
+                "SELECT verification_id FROM token_history "
+                "WHERE token_id = ? AND event_kind = 'repair_issued' "
+                "ORDER BY token_event_id LIMIT 1",
+                (token_id,),
+            ).fetchone()
+            red_verification_id = str(receipt.get("red_verification_id", "")).strip()
+            if (
+                issued is None
+                or not red_verification_id
+                or red_verification_id != str(issued["verification_id"])
+            ):
+                return reject_repair(
+                    "receipt_contradiction_changed",
+                    receipt_red_verification_id=red_verification_id,
+                )
+
+            if selection.source_path != str(Path(source_path).resolve()):
+                return reject_repair(
+                    "receipt_source_changed",
+                    expected_source_path=source_path,
+                    current_source_path=selection.source_path,
+                )
+            expected_executable = str(runtime_binding.get("executable_path", "")).strip()
+            if not expected_executable or Path(expected_executable).resolve() != executable.resolve():
+                return reject_repair(
+                    "runtime_executable_changed",
+                    expected_executable=expected_executable,
+                    current_executable=str(executable.resolve()),
+                )
+            comparison = compare_runtime_binding(runtime_binding)
+            if comparison.get("status") != "matched":
+                return reject_repair(
+                    "runtime_binding_changed",
+                    comparison=dict(comparison),
+                )
+            return {
+                "status": "compatible",
+                "token_id": token_id,
+                "red_verification_id": red_verification_id,
                 "source_path": selection.source_path,
                 "runtime_binding": comparison,
             }
@@ -1718,6 +2618,7 @@ def run_peekaboo_interaction(
     cmd: List[str],
     *,
     retry_delay_seconds: float = 0.15,
+    focus_pid: bool = True,
 ) -> Dict[str, Any]:
     report: Dict[str, Any] = {
         "command": list(cmd),
@@ -1725,7 +2626,8 @@ def run_peekaboo_interaction(
         "attempts": [],
     }
     for attempt in range(2):
-        report["focus_attempts"].append(peekaboo_focus_pid(pid))
+        if focus_pid:
+            report["focus_attempts"].append(peekaboo_focus_pid(pid))
         if attempt > 0 and retry_delay_seconds > 0:
             time.sleep(retry_delay_seconds)
         try:
@@ -1797,10 +2699,23 @@ SHIFT_SYMBOL_HOTKEYS = {
     "*": "shift,8",
     "(": "shift,9",
     ")": "shift,0",
+    "{": "shift,[",
+    "}": "shift,]",
+}
+
+# Peekaboo's press action accepts these named physical keys directly.  Keep
+# them explicit so focus-once batches cannot silently fall back to text input.
+PHYSICAL_NAMED_KEYS = {
+    "left": "left",
+    "right": "right",
+    "up": "up",
+    "down": "down",
 }
 
 
 def peekaboo_physical_hotkey_for_key(key: str) -> str:
+    if key in PHYSICAL_NAMED_KEYS:
+        return PHYSICAL_NAMED_KEYS[key]
     if key == "[":
         return key
     if len(key) == 1 and key.isalpha() and key.isupper():
@@ -1808,8 +2723,34 @@ def peekaboo_physical_hotkey_for_key(key: str) -> str:
     return SHIFT_SYMBOL_HOTKEYS.get(key, "")
 
 
-def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> None:
+def peekaboo_press_sequence(
+    pid: int,
+    keys: List[str],
+    delay_ms: int = 200,
+    *,
+    focus_once: bool = False,
+) -> None:
     if not keys:
+        return
+    if focus_once:
+        normalized = [normalize_peekaboo_key(raw_key) for raw_key in keys]
+        if all(key == "." for key in normalized):
+            focus_report = peekaboo_focus_pid(pid)
+            if not focus_report.get("ok"):
+                raise RuntimeError("Peekaboo sequence focus failed: " + json.dumps(focus_report, ensure_ascii=False))
+            peekaboo_type_text(pid, "".join(normalized), delay_ms=delay_ms, focus_pid=False)
+            return
+        physical = [peekaboo_physical_hotkey_for_key(key) for key in normalized]
+        if any(not key for key in physical):
+            raise ValueError("focus_once requires keys with physical key mappings")
+        focus_report = peekaboo_focus_pid(pid)
+        if not focus_report.get("ok"):
+            raise RuntimeError("Peekaboo sequence focus failed: " + json.dumps(focus_report, ensure_ascii=False))
+        cmd = peekaboo_command(
+            ["press", *physical, "--pid", str(pid), "--delay", str(delay_ms)],
+            channel="input",
+        )
+        run_peekaboo_interaction(pid, cmd, focus_pid=False)
         return
     text_buffer: List[str] = []
     special_key_buffer: List[str] = []
@@ -1840,7 +2781,11 @@ def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> N
             continue
         if is_printable_text_key(key):
             flush_special_key_buffer()
-            text_buffer.append(key)
+            if key.isalpha():
+                flush_text_buffer()
+                peekaboo_hotkey(pid, key, hold_ms=max(30, min(delay_ms, 200)))
+            else:
+                text_buffer.append(key)
             continue
         flush_text_buffer()
         special_key_buffer.append(key)
@@ -1848,7 +2793,7 @@ def peekaboo_press_sequence(pid: int, keys: List[str], delay_ms: int = 200) -> N
     flush_special_key_buffer()
 
 
-def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
+def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20, *, focus_pid: bool = True) -> None:
     if not text:
         return
     max_chunk_len = 20
@@ -1858,7 +2803,7 @@ def peekaboo_type_text(pid: int, text: str, delay_ms: int = 20) -> None:
             ["type", chunk, "--pid", str(pid), "--delay", str(delay_ms), "--profile", "linear"],
             channel="input",
         )
-        run_peekaboo_interaction(pid, cmd)
+        run_peekaboo_interaction(pid, cmd, focus_pid=focus_pid)
 
 
 def count_pause_dispatches_since(log_path: Path, start_offset: int) -> int:
@@ -2015,7 +2960,7 @@ def advance_turns(
         interruption_reports: List[Dict[str, Any]] = []
         while accepted_count < batch_count:
             missing_count = batch_count - accepted_count
-            peekaboo_press_sequence(pid, ["."] * missing_count)
+            peekaboo_press_sequence(pid, ["."] * missing_count, focus_once=True)
             if action_trace_log is not None:
                 observed_count = wait_for_pause_dispatch_count(
                     action_trace_log,
@@ -2208,16 +3153,304 @@ LONG_WAIT_MENU_CHOICES = {
 }
 
 
+def is_retained_hostile_auto_move_cancelled_hud_message(
+    screen_text_report: Dict[str, Any],
+) -> bool:
+    """Recognize the resolved hostile auto-move message only on a live HUD.
+
+    The game retains this message in the log after the modal has been answered.
+    It is not safe-mode UI and must not turn a completed wait into a synthetic
+    prompt; a current modal or a HUD-less partial OCR remains fail-closed.
+    """
+    body = screen_text_body( screen_text_report )
+    normalized = re.sub( r"[^a-z0-9]+", " ", body.lower() ).strip()
+    has_resolved_message = (
+        "hostile" in normalized
+        and "survivor" in normalized
+        and "spotted" in normalized
+        and bool( re.search( r"(?:auto|huto) move", normalized ) )
+        and bool( re.search( r"cancel(?:ed|led)?", normalized ) )
+    )
+    has_hud = all( marker in body for marker in ( "Move:", "Wield:" ) ) and bool(
+        re.search( r"(?:activity|.ctivity)", normalized )
+    ) and bool( re.search( r"\b(?:none|n(?:one)?)\b", normalized ) )
+    has_modal = "cancel auto move" in normalized or "case sensitive" in normalized
+    return has_resolved_message and has_hud and not has_modal
+
+
+def is_hostile_auto_move_cancel_modal( screen_text_report: Dict[str, Any] ) -> bool:
+    """Recognize the current case-sensitive hostile auto-move modal.
+
+    OCR commonly separates the prompt over several lines and may label the
+    spotted creature generically.  The action prompt and its case-sensitive
+    marker are the stable modal contract; a retained cancellation log lacks
+    both together.
+    """
+    normalized = re.sub(
+        r"[^a-z0-9]+", " ", screen_text_body( screen_text_report ).lower()
+    ).strip()
+    return (
+        "cancel auto move" in normalized
+        and "case" in normalized
+        and "sensitive" in normalized
+    )
+
+
+def stabilize_native_travel_after_route_confirmation(
+    pid: int,
+    run_dir: Path,
+    label: str,
+    *,
+    delay_ms: int,
+    timeout_seconds: float,
+) -> Dict[str, Any]:
+    """Stabilize native travel after a route confirmation without guessing input.
+
+    The scenario-owned settlement is the sole timeout.  The complete
+    case-sensitive auto-move modal is continued with N.  Exact wilderness
+    flavor retained in the message log is nonblocking only when the gameplay
+    HUD is still visible; every other prompt remains terminal.
+    """
+    if timeout_seconds <= 0:
+        raise ValueError("native_travel_stabilization requires positive settle_seconds")
+
+    def capture_state(suffix: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+        capture = capture_screenshot(pid, run_dir, f"{label}.native_travel_stabilization.{suffix}")
+        return capture, capture_screen_text_artifact(
+            run_dir,
+            f"{label}.native_travel_stabilization.{suffix}",
+            capture,
+            tail_lines=64,
+        )
+
+    acknowledgement_count = 0
+    response_keys: List[str] = []
+    observation_count = 0
+    deadline = time.monotonic() + timeout_seconds
+
+    def activity_none_matches(screen_text: Dict[str, Any]) -> List[Dict[str, str]]:
+        matches = find_screen_text_matches(screen_text, ["Activity: None"])
+        if matches:
+            return matches
+        json_path_value = str(screen_text.get("json_path", "")).strip()
+        if json_path_value:
+            try:
+                payload = json.loads(Path(json_path_value).read_text(encoding="utf-8"))
+            except Exception:
+                payload = {}
+            if isinstance(payload, dict):
+                for row_text in spatial_ocr_row_texts(payload):
+                    normalized_row = re.sub(r"[^a-z0-9]+", " ", row_text.lower()).strip()
+                    if re.search(r"(?:activity|.ctivity) none", normalized_row):
+                        return [{
+                            "pattern": "Activity: None",
+                            "line": row_text,
+                            "source": "spatial_normalized_ocr_activity_none",
+                        }]
+        normalized_body = re.sub(
+            r"[^a-z0-9]+", " ", screen_text_body(screen_text).lower()
+        ).strip()
+        if re.search(r"(?:activity|.ctivity) none", normalized_body):
+            return [{
+                "pattern": "Activity: None",
+                "line": "Activity: None",
+                "source": "normalized_ocr_activity_none",
+            }]
+        return []
+
+    def is_nonblocking_wilderness_flavor_on_hud(
+        interruption: Dict[str, Any], screen_text: Dict[str, Any],
+    ) -> bool:
+        # These exact classifiers are retained message-log flavor, not modals,
+        # when the HUD remains visible.  Never acknowledge them: while travel is
+        # active, keep observing; once idle, accept the recovered HUD.  All other
+        # unknown or interactive surfaces retain the fail-closed route below.
+        return (
+            str(interruption.get("classification", "")) in {
+                "shadow_warning_wilderness_flavor_popup",
+                "partial_lifeless_grass_wilderness_flavor_popup",
+            }
+            and len(find_screen_text_matches(screen_text, ["Move:", "Wield:"])) == 2
+            and not is_hostile_auto_move_cancel_modal(screen_text)
+        )
+
+    def is_noninteractive_wilderness_flavor_on_idle_hud(
+        interruption: Dict[str, Any], screen_text: Dict[str, Any],
+    ) -> bool:
+        return is_nonblocking_wilderness_flavor_on_hud(
+            interruption, screen_text,
+        ) and bool(activity_none_matches(screen_text))
+
+    def wait_for_next_observation() -> bool:
+        remaining_seconds = deadline - time.monotonic()
+        if remaining_seconds <= 0:
+            return False
+        time.sleep(min(delay_ms / 1000.0, remaining_seconds))
+        return time.monotonic() <= deadline
+
+    wait_for_next_observation()
+    before_capture, before_text = capture_state("before")
+    observation_count += 1
+    before_classification = classify_blocking_interruption(
+        before_text, allow_hostile_auto_move_cancel=True,
+    )
+    after_capture = before_capture
+    after_text = before_text
+    classification = before_classification
+    travel_activity_complete = False
+    while True:
+        status = str(classification.get("status", ""))
+        classification_name = str(classification.get("classification", ""))
+        modal_present = is_hostile_auto_move_cancel_modal(after_text)
+        hud_matches = find_screen_text_matches(after_text, ["Move:", "Wield:"])
+        nonblocking_wilderness_flavor_on_hud = \
+            is_nonblocking_wilderness_flavor_on_hud( classification, after_text )
+        noninteractive_wilderness_flavor_on_idle_hud = \
+            is_noninteractive_wilderness_flavor_on_idle_hud( classification, after_text )
+        if status == "known_prompt" and \
+                classification_name == "authorized_hostile_auto_move_cancel":
+            if time.monotonic() >= deadline:
+                break
+            peekaboo_type_text(pid, "N", delay_ms=delay_ms)
+            acknowledgement_count += 1
+            response_keys.append("N")
+            if not wait_for_next_observation():
+                break
+            after_capture, after_text = capture_state(
+                f"poll_{acknowledgement_count:02d}"
+            )
+            observation_count += 1
+            classification = classify_blocking_interruption(
+                after_text, allow_hostile_auto_move_cancel=True,
+            )
+            continue
+        if ( status == "clear" or nonblocking_wilderness_flavor_on_hud ) and \
+                len(hud_matches) == 2 and not modal_present:
+            travel_activity_complete = bool(activity_none_matches(after_text))
+            if travel_activity_complete:
+                break
+            if not wait_for_next_observation():
+                break
+            after_capture, after_text = capture_state(
+                f"travel_poll_{observation_count:02d}"
+            )
+            observation_count += 1
+            classification = classify_blocking_interruption(
+                after_text, allow_hostile_auto_move_cancel=True,
+            )
+            continue
+        if noninteractive_wilderness_flavor_on_idle_hud:
+            travel_activity_complete = True
+            break
+        break
+
+    hud_matches = find_screen_text_matches(after_text, ["Move:", "Wield:"])
+    activity_matches = activity_none_matches(after_text)
+    modal_present = is_hostile_auto_move_cancel_modal(after_text)
+    nonblocking_wilderness_flavor_on_hud = \
+        is_nonblocking_wilderness_flavor_on_hud( classification, after_text )
+    noninteractive_wilderness_flavor_on_idle_hud = \
+        is_noninteractive_wilderness_flavor_on_idle_hud( classification, after_text )
+    result: Dict[str, Any] = {
+        "response_key": response_keys[-1] if response_keys else "",
+        "response_keys": response_keys,
+        "acknowledgement_count": acknowledgement_count,
+        "observation_count": observation_count,
+        "recognized_prompt": str(before_classification.get("classification", "")),
+        "before_classification": before_classification,
+        "after_classification": classification,
+        "noninteractive_wilderness_flavor_on_idle_hud":
+        noninteractive_wilderness_flavor_on_idle_hud,
+        "screen_before": before_capture.get("screen_summary", {}),
+        "screen_after": after_capture.get("screen_summary", {}),
+        "screen_after_text_expectation": {
+            "status": "matched" if len(hud_matches) == 2 and travel_activity_complete and not modal_present else "missing",
+            "patterns": ["Move:", "Activity: None", "Wield:"],
+            "matches": [*hud_matches, *activity_matches],
+            "missing": [] if len(hud_matches) == 2 and travel_activity_complete and not modal_present else [
+                marker for marker in ("Move:", "Wield:")
+                if not any(match.get("pattern") == marker for match in hud_matches)
+            ] + ([] if travel_activity_complete else ["Activity: None"]),
+            "modal_present": modal_present,
+            "source": str(run_dir / f"{label}.native_travel_stabilization.after.screen_text.json"),
+        },
+    }
+    if str(classification.get("status", "")) != "clear" and not modal_present and \
+            not nonblocking_wilderness_flavor_on_hud:
+        result.update({
+            "status": "blocked_native_travel_unknown_prompt",
+            "verdict": "blocked_native_travel_unknown_prompt",
+            "reason": "route travel reached a prompt outside the exact authorized hostile auto-move modal",
+        })
+    elif modal_present:
+        result.update({
+            "status": "blocked_native_travel_hostile_auto_move_modal_persisted",
+            "verdict": "blocked_native_travel_hostile_auto_move_modal_persisted",
+            "reason": "the exact hostile auto-move modal remained after the authorized N response",
+        })
+    elif len(hud_matches) != 2:
+        result.update({
+            "status": "blocked_native_travel_hud_recovery_missing",
+            "verdict": "blocked_native_travel_hud_recovery_missing",
+            "reason": "route travel did not return to an unobstructed gameplay HUD",
+        })
+    elif not travel_activity_complete:
+        result.update({
+            "status": "blocked_native_travel_completion_timeout",
+            "verdict": "blocked_native_travel_completion_timeout",
+            "reason": "route travel did not reach an idle HUD before its scenario-owned timeout",
+        })
+    else:
+        result.update({
+            "status": (
+                "continued_exact_hostile_auto_move_to_hud"
+                if acknowledgement_count else "clear_hud_without_hostile_auto_move_prompt"
+            ),
+            "verdict": "green_native_travel_stabilized",
+        })
+    return result
+
+
 def classify_wait_screen_text(
     screen_text_report: Dict[str, Any],
     complete_patterns: List[str],
     interrupt_patterns: List[str],
+    preexisting_complete_patterns: Optional[Set[str]] = None,
 ) -> Dict[str, Any]:
     complete_matches = find_screen_text_matches(screen_text_report, complete_patterns)
+    stale_complete_matches = [
+        match for match in complete_matches
+        if match.get("pattern") in (preexisting_complete_patterns or set())
+    ]
+    complete_matches = [
+        match for match in complete_matches
+        if match.get("pattern") not in (preexisting_complete_patterns or set())
+    ]
     interrupt_matches = find_screen_text_matches(screen_text_report, interrupt_patterns)
+    retained_auto_move_cancel = is_retained_hostile_auto_move_cancelled_hud_message(
+        screen_text_report
+    )
+    ignored_interrupt_matches: List[Dict[str, Any]] = []
+    if retained_auto_move_cancel:
+        ignored_interrupt_matches = [
+            match for match in interrupt_matches
+            if str( match.get( "pattern", "" ) ).lower() in {
+                "spotted", "hostile spotted"
+            }
+        ]
+        interrupt_matches = [
+            match for match in interrupt_matches
+            if match not in ignored_interrupt_matches
+        ]
+    normalized_body = re.sub(r"[^a-z0-9]+", " ", screen_text_body(screen_text_report).lower()).strip()
+    activity_is_complete_or_omitted = bool( re.search( r"(?:activity|.ctivity) none", normalized_body ) ) or "activity" not in normalized_body
+    completion_persisted_after_wait = bool(stale_complete_matches) and (
+        activity_is_complete_or_omitted
+    )
+    ocr_completion_fragment = bool( re.search( r"\b(?:finish|nish) waiting\b", normalized_body ) ) and activity_is_complete_or_omitted
     if interrupt_matches:
         status = "interrupted_or_prompt_visible"
-    elif complete_matches:
+    elif complete_matches or completion_persisted_after_wait or ocr_completion_fragment:
         status = "completed"
     else:
         status = "unknown_after_wait"
@@ -2226,7 +3459,11 @@ def classify_wait_screen_text(
         "complete_patterns": complete_patterns,
         "interrupt_patterns": interrupt_patterns,
         "complete_matches": complete_matches,
+        "stale_complete_matches_rejected": stale_complete_matches,
+        "completion_persisted_after_wait": completion_persisted_after_wait,
+        "ocr_completion_fragment": ocr_completion_fragment,
         "interrupt_matches": interrupt_matches,
+        "ignored_retained_auto_move_cancel_matches": ignored_interrupt_matches,
     }
 
 
@@ -2255,7 +3492,12 @@ def screen_text_body( screen_text_report: Dict[str, Any] ) -> str:
     return ""
 
 
-def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[str, Any]:
+def classify_blocking_interruption(
+    screen_text_report: Dict[str, Any],
+    *,
+    allow_map_editor_save_and_quit: bool = False,
+    allow_hostile_auto_move_cancel: bool = False,
+) -> Dict[str, Any]:
     body = screen_text_body(screen_text_report).strip()
     lowered = body.lower()
     normalized_ocr_body = re.sub(r"[^a-z0-9]+", " ", lowered).strip()
@@ -2288,6 +3530,15 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
         )
         if marker in lowered
     ]
+    if unsafe_markers == ["save and quit"] and allow_map_editor_save_and_quit and \
+            "map editor" in normalized_ocr_body:
+        return {
+            **base,
+            "status": "clear",
+            "classification": "map_editor_save_and_quit_control",
+            "matched_markers": unsafe_markers,
+            "expected_state_marker": "map editor",
+        }
     if unsafe_markers:
         return {
             **base,
@@ -2323,6 +3574,28 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "matched_markers": debug_markers,
         }
 
+    emergency_wait_distraction_markers = []
+    if normalized_ocr_body.count("emergency") >= 2:
+        emergency_wait_distraction_markers.append("emergency title")
+    if "stop" in normalized_ocr_body and "waiting" in normalized_ocr_body:
+        emergency_wait_distraction_markers.append("stop waiting")
+    if "case" in normalized_ocr_body and re.search(r"\bsensitiv[a-z]*\b", normalized_ocr_body):
+        emergency_wait_distraction_markers.append("case sensitive")
+    if re.search(r"\b(?:open|upen)\b", normalized_ocr_body) and \
+            re.search(r"\b(?:c?m|m)l?anager\b", normalized_ocr_body):
+        emergency_wait_distraction_markers.append("open manager")
+    if re.search(r"\b(?:i|l|il)gnore\b", normalized_ocr_body) and \
+            "distraction" in normalized_ocr_body and "continue" in normalized_ocr_body:
+        emergency_wait_distraction_markers.append("ignore distraction and continue")
+    if len(emergency_wait_distraction_markers) == 5:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "emergency_wait_distraction_prompt",
+            "response_key": "I",
+            "matched_markers": emergency_wait_distraction_markers,
+        }
+
     activity_markers = []
     if (
         "ignore this distraction and continue" in lowered
@@ -2339,12 +3612,55 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "response_key": "I",
             "matched_markers": activity_markers,
         }
+    # During an ordinary wait, OCR can misread "Open manager" while the
+    # safe-mode sighting text and the explicit ignore-continuation choice
+    # remain legible.  The latter is sufficient to choose the documented
+    # non-contaminating continuation.
+    if activity_markers and "spotted" in lowered and "waiting" in lowered:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "activity_distraction_prompt",
+            "response_key": "I",
+            "matched_markers": activity_markers + ["spotted", "waiting"],
+        }
     if activity_markers:
         return {
             **base,
             "status": "unknown_prompt",
             "classification": "partial_activity_distraction_prompt",
             "matched_markers": activity_markers,
+        }
+
+    if "unknown command:" in lowered:
+        return {
+            **base,
+            "status": "unknown_prompt",
+            "classification": "unexpected_default_command_input",
+            "release_blocking": True,
+            "matched_markers": ["unknown command:"],
+        }
+
+    if is_retained_hostile_auto_move_cancelled_hud_message( screen_text_report ):
+        return {
+            **base,
+            "status": "clear",
+            "classification": "retained_hostile_auto_move_cancelled_hud_message",
+            "matched_markers": [
+                "hostile survivor spotted",
+                "auto move cancelled",
+                "gameplay hud",
+            ],
+        }
+
+    if allow_hostile_auto_move_cancel and is_hostile_auto_move_cancel_modal(
+            screen_text_report ):
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "authorized_hostile_auto_move_cancel",
+            "response_key": "Y",
+            "matched_markers": ["cancel auto move", "case sensitive"],
         }
 
     semantic_safe_mode_markers = [
@@ -2450,9 +3766,9 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
     ):
         return {
             **base,
-            "status": "known_prompt",
+            "status": "unknown_prompt",
             "classification": "safe_mode_spotted_hostile_prompt",
-            "response_key": "'",
+            "release_blocking": True,
             "matched_markers": safe_mode_markers,
         }
     if safe_mode_markers and (
@@ -2525,6 +3841,15 @@ def classify_blocking_interruption(screen_text_report: Dict[str, Any]) -> Dict[s
             "classification": "continue_popup",
             "response_key": "space",
             "matched_markers": continue_markers,
+        }
+
+    if "stop waiting" in lowered and "case sensitive" in normalized_ocr_body:
+        return {
+            **base,
+            "status": "known_prompt",
+            "classification": "tired_wait_continue_prompt",
+            "response_key": "N",
+            "matched_markers": ["stop waiting", "case sensitive"],
         }
 
     unknown_markers = []
@@ -3174,13 +4499,15 @@ def png_header_issue(path: Path) -> str:
 
 
 def committed_revision_matches(observed: str, expected: str) -> bool:
-    observed_revision = str(observed or "").strip().split("+", 1)[0]
-    expected_revision = str(expected or "").strip().split("+", 1)[0]
-    revision_pattern = re.compile(r"^[0-9a-f]{10,40}$")
-    if not revision_pattern.fullmatch(observed_revision) or not revision_pattern.fullmatch(
-        expected_revision
-    ):
+    version_pattern = re.compile(
+        r"^(?P<revision>[0-9a-f]{7,40})(?:-dirty)?(?:\+[A-Za-z0-9][A-Za-z0-9._]*)*$"
+    )
+    expected_pattern = re.compile(r"^[0-9a-f]{7,40}$")
+    observed_match = version_pattern.fullmatch(str(observed or "").strip())
+    expected_revision = str(expected or "").strip()
+    if observed_match is None or not expected_pattern.fullmatch(expected_revision):
         return False
+    observed_revision = observed_match.group("revision")
     return observed_revision.startswith(expected_revision) or expected_revision.startswith(
         observed_revision
     )
@@ -3383,6 +4710,68 @@ def audit_log_contains(
         "matched_lines": [line for entry in matches_by_pattern for line in entry.get("lines", [])],
         "line_count": len(log_lines) if text else 0,
     }
+
+
+def audit_ordinary_overmap_route_constructor(
+    run_dir: Path,
+    label: str,
+    *,
+    artifact_log: Optional[Path],
+    artifact_baseline: int,
+    origin_omt: Sequence[int],
+    destination_omt: Sequence[int],
+    filter_debug_noise: bool = False,
+) -> Dict[str, Any]:
+    """Verify the real overmap route constructor from entry through preview."""
+    def format_omt(value: Sequence[int], field: str) -> str:
+        if len(value) != 3:
+            raise ValueError(f"{field} must contain exactly three coordinates")
+        try:
+            return ",".join(str(int(component)) for component in value)
+        except (TypeError, ValueError) as exc:
+            raise ValueError(f"{field} must contain integer coordinates") from exc
+
+    origin = format_omt(origin_omt, "origin_omt")
+    destination = format_omt(destination_omt, "destination_omt")
+    required_line_patterns = [
+        [
+            "openclaw_harness_ui_trace: component=overmap_route_cursor event=entered",
+            f"position={origin}",
+        ],
+        [
+            "openclaw_harness_ui_trace: component=overmap_route_cursor event=position",
+            f"position={destination}",
+        ],
+        [
+            "openclaw_harness_ui_trace: component=overmap_route_input event=resolved",
+            'resolved_action="CHOOSE_DESTINATION"',
+        ],
+        [
+            "openclaw_harness_ui_trace: component=overmap_route event=constructed",
+            f"destination={destination}",
+            "path_nonempty=true",
+        ],
+    ]
+    metadata = audit_log_contains(
+        run_dir,
+        label,
+        artifact_log=artifact_log,
+        artifact_baseline=artifact_baseline,
+        patterns=[],
+        required_line_patterns=required_line_patterns,
+        filter_debug_noise=filter_debug_noise,
+    )
+    metadata.update({
+        "origin_omt": origin,
+        "destination_omt": destination,
+        "constructor_stages": [
+            "overmap_entered",
+            "cursor_bound_to_destination",
+            "choose_destination_resolved",
+            "nonempty_route_constructed",
+        ],
+    })
+    return metadata
 
 
 def parse_structural_route_analyzer_line(line: str) -> Optional[Dict[str, str]]:
@@ -3793,6 +5182,12 @@ def execute_long_wait_action(
     ).strip()
     max_interrupt_responses = int(step.get("max_interrupt_responses", 6) or 0)
     auto_acknowledge_interruptions = bool(step.get("auto_acknowledge_interruptions", True))
+    allow_hostile_auto_move_cancel = bool(
+        step.get("allow_hostile_auto_move_cancel", False)
+    )
+    allow_harmless_flavor_popup_wait_recovery = bool(
+        step.get("allow_harmless_flavor_popup_wait_recovery", False)
+    )
     report: Dict[str, Any] = {
         "wait_key": wait_key,
         "choice_key": choice_key,
@@ -3838,6 +5233,12 @@ def execute_long_wait_action(
     report["screen_before"] = before_capture.get("screen_summary", {})
     before_text = capture_screen_text_artifact(run_dir, f"{label}.before", before_capture, tail_lines=tail_lines)
     report["screen_before_text"] = before_text
+    preexisting_complete_patterns = {
+        match.get("pattern", "")
+        for match in find_screen_text_matches(before_text, complete_patterns)
+        if match.get("pattern", "")
+    }
+    report["preexisting_complete_patterns"] = sorted(preexisting_complete_patterns)
     pre_wait_screen_classification = classify_blocking_interruption( before_text )
     report["pre_wait_screen_classification"] = pre_wait_screen_classification
     if pre_wait_screen_classification.get( "classification" ) == "wait_activity_in_progress":
@@ -3908,7 +5309,11 @@ def execute_long_wait_action(
             remaining_acknowledgements = max(
                 0, max_interrupt_responses - poll_acknowledgement_count
             )
-            interruption = acknowledge_blocking_interruptions(
+            interruption = recover_harmless_wilderness_flavor_wait(
+                pid, run_dir, f"{label}.completion_poll_interrupt_{poll_scan_count:02d}",
+                delay_ms=delay_ms, action_trace_log=action_trace_log,
+                action_trace_start_offset=structured_popup_trace_start_offset,
+            ) if allow_harmless_flavor_popup_wait_recovery else acknowledge_blocking_interruptions(
                 pid,
                 run_dir,
                 f"{label}.completion_poll_interrupt_{poll_scan_count:02d}",
@@ -3919,6 +5324,7 @@ def execute_long_wait_action(
                 suppress_retained_shadow_warning=poll_shadow_warning_acknowledged,
                 structured_popup_trace_log=action_trace_log,
                 structured_popup_trace_start_offset=structured_popup_trace_start_offset,
+                allow_hostile_auto_move_cancel=allow_hostile_auto_move_cancel,
             )
             poll_acknowledgement_count += int(
                 interruption.get("acknowledgement_count", 0) or 0
@@ -3930,6 +5336,21 @@ def execute_long_wait_action(
                 if isinstance(acknowledgement, dict)
             )
             return interruption
+
+        def detect_poll_interruption() -> Dict[str, Any]:
+            """Classify a prompt without sending input when auto-ack is disabled."""
+            return acknowledge_blocking_interruptions(
+                pid,
+                run_dir,
+                f"{label}.completion_poll_interrupt_detect",
+                max_acknowledgements=0,
+                delay_ms=delay_ms,
+                stop_on_unknown=True,
+                continue_after_contaminating=portal_storm_allowed,
+                structured_popup_trace_log=action_trace_log,
+                structured_popup_trace_start_offset=structured_popup_trace_start_offset,
+                allow_hostile_auto_move_cancel=allow_hostile_auto_move_cancel,
+            )
 
         report["completion_artifact_poll"] = poll_wait_artifact_completion(
             artifact_log,
@@ -3944,8 +5365,9 @@ def execute_long_wait_action(
             minimum_elapsed_minutes=minimum_artifact_elapsed_minutes,
             interruption_handler=(
                 handle_poll_interruption
-                if auto_acknowledge_interruptions and max_interrupt_responses > 0
-                else None
+                if ( auto_acknowledge_interruptions or allow_harmless_flavor_popup_wait_recovery ) and
+                max_interrupt_responses > 0
+                else (detect_poll_interruption if max_interrupt_responses > 0 else None)
             ),
             continue_after_contaminating=portal_storm_allowed,
         )
@@ -3969,7 +5391,7 @@ def execute_long_wait_action(
     )
     classification_text = after_text
     report["wait_classification"] = classify_wait_screen_text(
-        classification_text, complete_patterns, interrupt_patterns
+        classification_text, complete_patterns, interrupt_patterns, preexisting_complete_patterns
     )
 
     if configured_interrupt_response_key:
@@ -4003,7 +5425,14 @@ def execute_long_wait_action(
                 for acknowledgement in handler.get("acknowledgements", [])
                 if isinstance(handler, dict) and isinstance(acknowledgement, dict)
             )
-            interruption = acknowledge_blocking_interruptions(
+            interruption = recover_harmless_wilderness_flavor_wait(
+                pid,
+                run_dir,
+                f"{label}.interrupt_handler_{len(interruption_reports) + 1:02d}",
+                delay_ms=delay_ms,
+                action_trace_log=action_trace_log,
+                action_trace_start_offset=structured_popup_trace_start_offset,
+            ) if allow_harmless_flavor_popup_wait_recovery else acknowledge_blocking_interruptions(
                 pid,
                 run_dir,
                 f"{label}.interrupt_handler_{len(interruption_reports) + 1:02d}",
@@ -4021,6 +5450,7 @@ def execute_long_wait_action(
                 ),
                 structured_popup_trace_log=action_trace_log,
                 structured_popup_trace_start_offset=structured_popup_trace_start_offset,
+                allow_hostile_auto_move_cancel=allow_hostile_auto_move_cancel,
             )
             interruption_reports.append(interruption)
             acknowledged = int(interruption.get("acknowledgement_count", 0) or 0)
@@ -4081,7 +5511,7 @@ def execute_long_wait_action(
                 filter_debug_noise=filter_debug_noise,
             )
             response_classification = classify_wait_screen_text(
-                response_text, complete_patterns, interrupt_patterns
+                response_text, complete_patterns, interrupt_patterns, preexisting_complete_patterns
             )
             responses.append({
                 "response_index": response_count,
@@ -4654,6 +6084,189 @@ def audit_map_tiles_near_player(
     }
 
 
+def audit_saved_map_opaque_tile(
+    world_dir: Path,
+    *,
+    abs_omt: List[int],
+    local_ms: List[int],
+    required_terrain: str,
+    required_flags: Optional[List[str]] = None,
+    barrier_local_ms: Optional[List[int]] = None,
+    barrier_terrain: str = "",
+    barrier_flags: Optional[List[str]] = None,
+    require_enclosed: bool = False,
+    player_save: str = "",
+    opaque_overlays: Optional[List[Dict[str, Any]]] = None,
+    require_opaque_neighbors: bool = False,
+) -> Dict[str, Any]:
+    """Prove an exact saved-map opaque footing from map and terrain layers.
+
+    The overmap terrain is deliberately not used as an opacity proxy: this
+    reads the saved submap tile, then resolves the terrain definition and its
+    declared blocking flags.
+    """
+    if len(abs_omt) != 3 or len(local_ms) != 3:
+        raise RuntimeError("saved-map opaque tile needs three-dimensional coordinates")
+    if any(isinstance(value, bool) or not isinstance(value, int) for value in abs_omt + local_ms):
+        raise RuntimeError("saved-map opaque tile coordinates must be integers")
+    required_flags = list(required_flags or [])
+    barrier_flags = list(barrier_flags or [])
+    shielded_avatar = barrier_local_ms is not None
+    if not required_terrain or (not required_flags and not shielded_avatar):
+        raise RuntimeError("saved-map tile needs terrain and either blocking flags or a shield relation")
+    target = [abs_omt[0] * 24 + local_ms[0], abs_omt[1] * 24 + local_ms[1], abs_omt[2] + local_ms[2]]
+    abs_sm = (target[0] // 12, target[1] // 12, target[2])
+    local = (target[0] - abs_sm[0] * 12, target[1] - abs_sm[1] * 12, target[2])
+    maps_dir = world_dir / "maps"
+    pack_stem = f"{abs_omt[0] // 32}.{abs_omt[1] // 32}.{abs_omt[2]}"
+    pack_dir = maps_dir / pack_stem
+    extracted = False
+    if not pack_dir.exists():
+        pack_path = maps_dir / f"{pack_stem}.zzip"
+        if not pack_path.exists():
+            raise RuntimeError(f"saved-map opaque tile pack missing: {pack_path}")
+        run_zzip(pack_path)
+        extracted = True
+    map_path = pack_dir / f"{abs_omt[0]}.{abs_omt[1]}.{abs_omt[2]}.map"
+    try:
+        payload = json.loads(map_path.read_text(encoding="utf-8"))
+        submap = next((entry for entry in payload if isinstance(entry, dict) and entry.get("coordinates") == list(abs_sm)), None)
+        if not isinstance(submap, dict):
+            raise RuntimeError(f"saved-map opaque tile submap missing: {abs_sm}")
+        observed_terrain = str(submap_rle_value_at(submap.get("terrain"), local, context=f"{map_path}:{local}"))
+        if observed_terrain != required_terrain:
+            raise RuntimeError(f"saved-map opaque tile terrain mismatch: {observed_terrain} != {required_terrain}")
+        definitions: List[Dict[str, Any]] = []
+        for definition_path in (Path(__file__).resolve().parents[2] / "data/json/furniture_and_terrain").glob("*.json"):
+            try:
+                raw = json.loads(definition_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                continue
+            values = raw if isinstance(raw, list) else [raw]
+            definitions.extend(value for value in values if isinstance(value, dict) and value.get("id") == observed_terrain)
+        flags = sorted({str(flag) for definition in definitions for flag in definition.get("flags", [])})
+        missing_flags = sorted(set(required_flags) - set(flags))
+        if missing_flags:
+            raise RuntimeError(f"saved-map opaque tile definition missing flags: {missing_flags}")
+        result = {
+            "status": "required_state_present",
+            "abs_omt": list(abs_omt),
+            "local_ms": list(local_ms),
+            "target_location_ms": target,
+            "submap": list(abs_sm),
+            "terrain": observed_terrain,
+            "definition_flags": flags,
+            "required_flags": sorted(set(required_flags)),
+            "opacity_proof": "saved_submap_terrain_definition_flags",
+        }
+        if shielded_avatar:
+            if len(barrier_local_ms or []) != 3 or not barrier_terrain or not barrier_flags:
+                raise RuntimeError("shield relation needs barrier coordinates, terrain, and flags")
+            if abs(int(barrier_local_ms[0]) - int(local_ms[0])) + abs(int(barrier_local_ms[1]) - int(local_ms[1])) != 1:
+                raise RuntimeError("saved-map barrier is disconnected from avatar tile")
+            barrier_target = [abs_omt[0] * 24 + barrier_local_ms[0], abs_omt[1] * 24 + barrier_local_ms[1], abs_omt[2] + barrier_local_ms[2]]
+            barrier_sm = (barrier_target[0] // 12, barrier_target[1] // 12, barrier_target[2])
+            barrier_loc = (barrier_target[0] - barrier_sm[0] * 12, barrier_target[1] - barrier_sm[1] * 12, barrier_target[2])
+            barrier_submap = next((entry for entry in payload if isinstance(entry, dict) and entry.get("coordinates") == list(barrier_sm)), None)
+            if not isinstance(barrier_submap, dict):
+                raise RuntimeError(f"saved-map barrier submap missing: {barrier_sm}")
+            observed_barrier = str(submap_rle_value_at(barrier_submap.get("terrain"), barrier_loc, context=f"{map_path}:{barrier_loc}"))
+            if observed_barrier != barrier_terrain:
+                raise RuntimeError(f"saved-map barrier terrain mismatch: {observed_barrier} != {barrier_terrain}")
+            barrier_defs = [definition for definition in definitions if definition.get("id") == observed_barrier]
+            if not barrier_defs:
+                for definition_path in (Path(__file__).resolve().parents[2] / "data/json/furniture_and_terrain").glob("*.json"):
+                    try:
+                        raw = json.loads(definition_path.read_text(encoding="utf-8"))
+                    except (OSError, json.JSONDecodeError):
+                        continue
+                    values = raw if isinstance(raw, list) else [raw]
+                    barrier_defs.extend(value for value in values if isinstance(value, dict) and value.get("id") == observed_barrier)
+            barrier_observed_flags = sorted({str(flag) for definition in barrier_defs for flag in definition.get("flags", [])})
+            missing_barrier_flags = sorted(set(barrier_flags) - set(barrier_observed_flags))
+            if missing_barrier_flags:
+                raise RuntimeError(f"saved-map barrier definition missing flags: {missing_barrier_flags}")
+            if "WALL" in flags or "SUPPORTS_ROOF" in flags:
+                raise RuntimeError("saved-map avatar tile is not passable")
+            result.update({
+                "avatar_local_ms": list(local_ms),
+                "avatar_terrain": observed_terrain,
+                "avatar_definition_flags": flags,
+                "barrier_local_ms": list(barrier_local_ms),
+                "barrier_terrain": observed_barrier,
+                "barrier_definition_flags": barrier_observed_flags,
+                "barrier_proof": "passable_avatar_adjacent_to_source_defined_wall",
+            })
+        if require_enclosed:
+            overlay_tiles = {
+                (int(entry["local_ms"][0]), int(entry["local_ms"][1])): str(entry["terrain"])
+                for entry in (opaque_overlays or [])
+                if isinstance(entry, dict) and isinstance(entry.get("local_ms"), list) and len(entry["local_ms"]) >= 2
+            }
+            source_flags: Dict[str, Set[str]] = {}
+            for definition_path in (Path(__file__).resolve().parents[2] / "data/json/furniture_and_terrain").glob("*.json"):
+                try:
+                    raw = json.loads(definition_path.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                values = raw if isinstance(raw, list) else [raw]
+                for definition in values:
+                    if isinstance(definition, dict) and definition.get("id"):
+                        source_flags[str(definition["id"])] = {str(flag) for flag in definition.get("flags", [])}
+            for overlay in (opaque_overlays or []):
+                overlay_id = str(overlay.get("terrain", "")) if isinstance(overlay, dict) else ""
+                if not (source_flags.get(overlay_id, set()) & {"WALL", "SUPPORTS_ROOF", "BLOCK_WIND"}):
+                    raise RuntimeError(f"saved-map overlay lacks source-defined opacity: {overlay_id}")
+            def tile_is_opaque(x: int, y: int) -> bool:
+                if (x, y) in overlay_tiles:
+                    return True
+                global_x, global_y = abs_omt[0] * 24 + x, abs_omt[1] * 24 + y
+                sm = (global_x // 12, global_y // 12, abs_omt[2])
+                sm_entry = next(entry for entry in payload if isinstance(entry, dict) and entry.get("coordinates") == list(sm))
+                loc = (global_x % 12, global_y % 12, abs_omt[2])
+                ids = [str(submap_rle_value_at(sm_entry.get("terrain"), loc, context=f"{map_path}:{loc}"))]
+                ids.extend(str(value) for fx, fy, value in iter_map_triples(sm_entry.get("furniture")) if fx == loc[0] and fy == loc[1])
+                return any(source_flags.get(tile_id, set()) & {"WALL", "SUPPORTS_ROOF", "BLOCK_WIND"} for tile_id in ids)
+            start = (local_ms[0], local_ms[1])
+            if not (0 <= start[0] < 24 and 0 <= start[1] < 24) or tile_is_opaque(*start):
+                raise RuntimeError("saved-map avatar tile is not a passable topology origin")
+            if require_opaque_neighbors:
+                neighbors = [(start[0] + dx, start[1] + dy) for dy in (-1, 0, 1) for dx in (-1, 0, 1) if (dx, dy) != (0, 0)]
+                missing_neighbors = [list(point) for point in neighbors if not tile_is_opaque(*point)]
+                if missing_neighbors:
+                    raise RuntimeError(f"saved-map avatar has transparent neighbor gaps: {missing_neighbors}")
+            component = {start}; pending = [start]
+            while pending:
+                x, y = pending.pop()
+                for neighbor in ((x + 1, y), (x - 1, y), (x, y + 1), (x, y - 1)):
+                    if 0 <= neighbor[0] < 24 and 0 <= neighbor[1] < 24 and neighbor not in component and not tile_is_opaque(*neighbor):
+                        component.add(neighbor); pending.append(neighbor)
+            boundary = sorted(point for point in component if point[0] in (0, 23) or point[1] in (0, 23))
+            if boundary:
+                raise RuntimeError(f"saved-map avatar component reaches exterior: {boundary[:8]}")
+            hostile_inside: List[Dict[str, Any]] = []
+            if player_save:
+                save_path = world_dir / player_save
+                extracted_save = save_path.with_suffix("")
+                run_zzip(save_path)
+                try:
+                    save_payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+                    for actor in save_payload.get("active_monsters", []):
+                        location = actor.get("location", []) if isinstance(actor, dict) else []
+                        if len(location) >= 3 and int(location[0]) // 24 == abs_omt[0] and int(location[1]) // 24 == abs_omt[1] and (int(location[0]) % 24, int(location[1]) % 24) in component:
+                            hostile_inside.append({"typeid": actor.get("typeid", ""), "location_ms": list(location)})
+                finally:
+                    if extracted_save.exists():
+                        extracted_save.unlink()
+            if hostile_inside:
+                raise RuntimeError(f"saved-map hostile actor inside avatar component: {hostile_inside}")
+            result.update({"component_size": len(component), "component_boundary": boundary, "hostile_actors_in_component": hostile_inside, "topology_proof": "closed_passable_component"})
+        return result
+    finally:
+        if extracted and pack_dir.exists():
+            shutil.rmtree(pack_dir)
+
+
 def audit_player_save_mtime(
     world_dir: Path,
     *,
@@ -5017,6 +6630,155 @@ def audit_saved_player_items(
         "missing_required_weapon": missing_required_weapon,
         "missing_required_weapon_ammo": missing_required_weapon_ammo,
         "status": status,
+    }
+
+
+def audit_saved_player_condition(
+    world_dir: Path, *, player_save: str, required_needs: Dict[str, int],
+    required_traits: List[str], forbidden_traits: List[str],
+) -> Dict[str, Any]:
+    player_save_path = world_dir / player_save
+    extracted_save = player_save_path.with_suffix("")
+    run_zzip(player_save_path)
+    try:
+        payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    finally:
+        if extracted_save.exists():
+            extracted_save.unlink()
+    player = payload.get("player", {}) if isinstance(payload, dict) else {}
+    observed_needs = {key: player.get(key) for key in required_needs}
+    traits = player.get("traits", []) if isinstance(player, dict) else []
+    observed_traits = sorted(str(trait) for trait in traits) if isinstance(traits, list) else []
+    missing_needs = [key for key, value in required_needs.items() if observed_needs.get(key) != value]
+    missing_traits = [trait for trait in required_traits if trait not in observed_traits]
+    observed_forbidden_traits = [trait for trait in forbidden_traits if trait in observed_traits]
+    return {
+        "world": world_dir.name, "player_save": player_save,
+        "required_needs": required_needs, "observed_needs": observed_needs,
+        "required_traits": required_traits, "observed_traits": observed_traits,
+        "forbidden_traits": forbidden_traits,
+        "missing_needs": missing_needs, "missing_traits": missing_traits,
+        "observed_forbidden_traits": observed_forbidden_traits,
+        "status": "required_state_present" if not missing_needs and not missing_traits and not observed_forbidden_traits else "required_state_missing",
+    }
+
+
+def audit_saved_phase4_shadow_warning_wait_footings(
+    world_dir: Path,
+    *,
+    footings: List[Dict[str, Any]],
+    geometry: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Prove saved non-field/non-forest wait footing and its route geometry.
+
+    ``EOC_LIEUTENANT_SHADOW_WARN`` needs both an outside avatar and one of
+    field/forest/forest_thick.  These saved-terrain checks deliberately prove
+    the terrain conjunct false, so they do not infer an indoor state from an
+    overmap tile.  The geometry checks keep the fixture's loaded/abstract
+    boundary explicit rather than treating the safer avatar footing as a
+    route or ecology change.
+    """
+    required_geometry = {"target", "approach", "watch", "camp", "loaded_handoff_radius_sm"}
+    if set(geometry) != required_geometry:
+        raise RuntimeError(
+            "Phase-4 shadow-warning footing geometry must contain exactly "
+            f"{sorted(required_geometry)}"
+        )
+    radius = geometry["loaded_handoff_radius_sm"]
+    if isinstance(radius, bool) or not isinstance(radius, int) or radius < 0:
+        raise RuntimeError("Phase-4 shadow-warning footing radius must be a non-negative integer")
+
+    route_points: Dict[str, Tuple[int, int, int]] = {}
+    for name in ("target", "approach", "watch", "camp"):
+        raw_point = geometry[name]
+        if not isinstance(raw_point, list) or len(raw_point) != 3 or any(
+                isinstance(value, bool) or not isinstance(value, int) for value in raw_point):
+            raise RuntimeError(f"Phase-4 shadow-warning footing geometry {name} is invalid")
+        route_points[name] = (raw_point[0], raw_point[1], raw_point[2])
+
+    if not isinstance(footings, list) or not footings:
+        raise RuntimeError("Phase-4 shadow-warning footing preflight needs at least one footing")
+    expected_footing_keys = {"label", "abs_omt", "required_terrain", "expected_loaded"}
+    forbidden_shadow_warn_terrains = {"field", "forest", "forest_thick"}
+    decoded_layers: Dict[Tuple[int, int, int], List[str]] = {}
+    extracted: List[Tuple[Path, bool]] = []
+    observations: List[Dict[str, Any]] = []
+    issues: List[str] = []
+    try:
+        for raw_footing in footings:
+            if not isinstance(raw_footing, dict) or set(raw_footing) != expected_footing_keys:
+                raise RuntimeError(
+                    "Phase-4 shadow-warning footing has unexpected schema; expected "
+                    f"{sorted(expected_footing_keys)}"
+                )
+            label = str(raw_footing["label"] or "").strip()
+            point_raw = raw_footing["abs_omt"]
+            required_terrain = str(raw_footing["required_terrain"] or "").strip()
+            expected_loaded = raw_footing["expected_loaded"]
+            if not label or not required_terrain:
+                raise RuntimeError("Phase-4 shadow-warning footing needs non-empty label and terrain")
+            if not isinstance(point_raw, list) or len(point_raw) != 3 or any(
+                    isinstance(value, bool) or not isinstance(value, int) for value in point_raw):
+                raise RuntimeError(f"Phase-4 shadow-warning footing {label} has invalid abs_omt")
+            if not isinstance(expected_loaded, dict) or set(expected_loaded) != set(route_points):
+                raise RuntimeError(
+                    f"Phase-4 shadow-warning footing {label} needs exact loaded-state keys "
+                    f"{sorted(route_points)}"
+                )
+            if any(not isinstance(value, bool) for value in expected_loaded.values()):
+                raise RuntimeError(f"Phase-4 shadow-warning footing {label} has non-boolean loaded state")
+            point = (point_raw[0], point_raw[1], point_raw[2])
+            overmap_x, overmap_y, local_point = overmap_file_coords_from_abs_omt(point)
+            layer_key = (overmap_x, overmap_y, point[2])
+            if layer_key not in decoded_layers:
+                overmap_path = world_dir / "overmaps" / f"o.{overmap_x}.{overmap_y}.zzip"
+                plain_path, _version_line, payload = extract_overmap_payload(overmap_path)
+                extracted.append((plain_path, not bool(payload.get("_created_plain", False))))
+                layers = payload.get("layers")
+                if not isinstance(layers, list):
+                    raise RuntimeError(f"Phase-4 shadow-warning footing overmap has no layers: {overmap_path}")
+                layer_index = overmap_layer_index(point[2])
+                if layer_index >= len(layers):
+                    raise RuntimeError(f"Phase-4 shadow-warning footing overmap misses z={point[2]}")
+                decoded_layers[layer_key] = decode_overmap_layer(
+                    layers[layer_index], context=f"{overmap_path} z={point[2]}"
+                )
+            observed_terrain = decoded_layers[layer_key][overmap_flat_index(local_point)]
+            loaded = {
+                name: max(2 * abs(point[0] - route_point[0]), 2 * abs(point[1] - route_point[1])) <= radius
+                for name, route_point in route_points.items()
+            }
+            terrain_blocks_warning = observed_terrain not in forbidden_shadow_warn_terrains
+            observation = {
+                "label": label,
+                "abs_omt": list(point),
+                "required_terrain": required_terrain,
+                "observed_terrain": observed_terrain,
+                "terrain_blocks_shadow_warning": terrain_blocks_warning,
+                "outside_state": "not_inferred_terrain_conjunct_false" if terrain_blocks_warning else "terrain_conjunct_may_pass",
+                "expected_loaded": expected_loaded,
+                "observed_loaded": loaded,
+                "is_signal_target": point == route_points["target"],
+            }
+            observations.append(observation)
+            if observed_terrain != required_terrain:
+                issues.append(f"{label}:terrain_mismatch")
+            if not terrain_blocks_warning:
+                issues.append(f"{label}:shadow_warning_terrain_not_blocked")
+            if observation["is_signal_target"]:
+                issues.append(f"{label}:signal_target_footing_forbidden")
+            if loaded != expected_loaded:
+                issues.append(f"{label}:loaded_geometry_mismatch")
+    finally:
+        for plain_path, keep in extracted:
+            cleanup_extracted_overmap(plain_path, keep=keep)
+    return {
+        "world": world_dir.name,
+        "footings": observations,
+        "geometry": geometry,
+        "shadow_warning_location_condition": "false_from_terrain_conjunct",
+        "status": "required_state_present" if not issues else "required_state_missing",
+        "issues": sorted(issues),
     }
 
 
@@ -6071,7 +7833,7 @@ def summarize_bandit_active_outing(site: Dict[str, Any]) -> Dict[str, Any]:
     )
     handoff_state = "empty"
     if handoff_activity_id:
-        if handoff_schema in {1, 2, 3} and handoff_epoch_value > 0:
+        if handoff_schema in {1, 2, 3, 4} and handoff_epoch_value > 0:
             handoff_state = "local" if handoff_epoch_value % 2 == 1 else "abstract_resume"
         else:
             handoff_state = "malformed"
@@ -6122,6 +7884,7 @@ def summarize_bandit_active_outing(site: Dict[str, Any]) -> Dict[str, Any]:
         "structural_route_valid": structural_route_valid,
         "target_id": str(outing.get("target_id", "") or ""),
         "target_omt": outing.get("target_omt", []),
+        "target_lead_revision": integer_field(outing, "target_lead_revision", 0),
         "job_type": str(outing.get("job_type", "") or ""),
         "phase": str(outing.get("phase", "") or ""),
         "simulation_owner": simulation_owner,
@@ -6155,6 +7918,8 @@ def summarize_bandit_active_outing(site: Dict[str, Any]) -> Dict[str, Any]:
             "waypoint_index": integer_field(handoff, "waypoint_index", -1),
             "phase": str(handoff.get("phase", "") or ""),
             "cohesion_leader_id": handoff.get("cohesion_leader_id"),
+            "cohesion_assembled": bool(handoff.get("cohesion_assembled", False)),
+            "cohesion_abort_return": bool(handoff.get("cohesion_abort_return", False)),
             "route_position": handoff.get("route_position", []),
             "committed_minutes": handoff_committed_minutes,
             "member_ids": handoff_member_ids,
@@ -6296,6 +8061,8 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
         "action_policy": str(raw_report.get("action_policy", "") or ""),
         "source_activity_id": str(raw_report.get("source_activity_id", "") or ""),
         "source_generation": persisted_int(raw_report, "source_generation", 0),
+        "carrier_ids": raw_report.get("carrier_ids", [])
+        if isinstance(raw_report.get("carrier_ids", []), list) else [],
         "source_job_type": str(raw_report.get("source_job_type", "") or ""),
         "target_id": str(raw_report.get("target_id", "") or ""),
         "target_omt": raw_report.get("target_omt", []),
@@ -6371,6 +8138,12 @@ def summarize_bandit_live_world_site(site: Dict[str, Any]) -> Dict[str, Any]:
             "schema_version": hostile_operation.get("schema_version", 0),
             "operation_kind": hostile_operation_kind,
             "phase": hostile_operation_phase,
+            "source_report_revision": persisted_int(hostile_operation, "source_report_revision", 0),
+            "source_report_generation": persisted_int(hostile_operation, "source_report_generation", 0),
+            "source_report_activity_id": str(hostile_operation.get("source_report_activity_id", "") or ""),
+            "source_report_application_key": str(
+                hostile_operation.get("source_report_application_key", "") or ""
+            ),
             "reservation": hostile_reservation,
         },
         "remembered_target_or_mark": site.get("remembered_target_or_mark", ""),
@@ -6418,6 +8191,9 @@ def audit_saved_bandit_live_world_state(
     required_local_handoff_state: str = "",
     required_local_handoff_exact_pair: Optional[bool] = None,
     required_local_handoff_pair_contract: Optional[bool] = None,
+    required_local_handoff_cohesion_assembled: Optional[bool] = None,
+    required_local_handoff_cohesion_abort_return: Optional[bool] = None,
+    required_local_handoff_route_position: Optional[List[int]] = None,
     required_member_count: Optional[int] = None,
     required_ready_at_home_count: Optional[int] = None,
     required_min_ready_at_home_count: Optional[int] = None,
@@ -6455,6 +8231,7 @@ def audit_saved_bandit_live_world_state(
     required_scout_report_min_observations: Optional[int] = None,
     required_camp_decision_state: str = "",
     required_report_decision_identity_match: Optional[bool] = None,
+    required_report_hostile_operation_claim_match: Optional[bool] = None,
 ) -> Dict[str, Any]:
     """Read-only saved dimension-data audit for persisted bandit_live_world state."""
     if not world_dir.exists():
@@ -6481,6 +8258,38 @@ def audit_saved_bandit_live_world_state(
         raise RuntimeError(f"bandit_live_world.sites is not a list: {dimension_path}")
 
     observed_sites = [summarize_bandit_live_world_site(site) for site in raw_sites if isinstance(site, dict)]
+    raw_hostile_opportunities = bandit_world.get("hostile_target_opportunities", [])
+    if not isinstance(raw_hostile_opportunities, list):
+        raw_hostile_opportunities = []
+    for observed_site in observed_sites:
+        report = observed_site.get("current_scout_report", {})
+        operation = observed_site.get("active_hostile_operation", {})
+        reservation = operation.get("reservation", {}) if isinstance(operation, dict) else {}
+        source_identity_matches = bool(
+            isinstance(report, dict)
+            and isinstance(operation, dict)
+            and isinstance(reservation, dict)
+            and report.get("present")
+            and operation.get("is_active")
+            and operation.get("source_report_revision") == report.get("revision")
+            and operation.get("source_report_generation") == report.get("source_generation")
+            and operation.get("source_report_activity_id") == report.get("source_activity_id")
+            and operation.get("source_report_application_key") == report.get("application_key")
+            and reservation.get("target_id") == report.get("target_id")
+            and reservation.get("target_omt") == report.get("target_omt")
+            and reservation.get("target_lead_revision") == report.get("target_lead_revision")
+        )
+        claim_matches = source_identity_matches and any(
+            isinstance(opportunity, dict)
+            and opportunity.get("target_id") == reservation.get("target_id")
+            and opportunity.get("target_omt") == reservation.get("target_omt")
+            and opportunity.get("consumed_operation_id") == reservation.get("activity_id")
+            and opportunity.get("consumed_report_key") == operation.get("source_report_application_key")
+            and opportunity.get("consumed_generation") == reservation.get("generation")
+            for opportunity in raw_hostile_opportunities
+        )
+        observed_site["report_hostile_operation_identity_matches"] = source_identity_matches
+        observed_site["report_hostile_operation_claim_matches"] = claim_matches
 
     selected_player_save = str(player_save or "").strip()
     player_location_ms: List[int] = []
@@ -6626,6 +8435,15 @@ def audit_saved_bandit_live_world_state(
         required_active_hostile_reservation_simulation_owner or ""
     ).strip()
     required_local_handoff_state = str(required_local_handoff_state or "").strip()
+    normalized_local_handoff_route_position: Optional[List[int]] = None
+    if required_local_handoff_route_position is not None:
+        if len(required_local_handoff_route_position) < 3:
+            raise RuntimeError("required_local_handoff_route_position needs [x,y,z]")
+        normalized_local_handoff_route_position = [
+            int(required_local_handoff_route_position[0]),
+            int(required_local_handoff_route_position[1]),
+            int(required_local_handoff_route_position[2]),
+        ]
     required_remembered_target_or_mark_prefix = str(required_remembered_target_or_mark_prefix or "").strip()
     required_remembered_pressure = str(required_remembered_pressure or "").strip()
     required_lead_source_contains = str(required_lead_source_contains or "").strip()
@@ -6718,6 +8536,15 @@ def audit_saved_bandit_live_world_state(
             return False
         if required_local_handoff_pair_contract is not None and bool(local_handoff.get("pair_contract_valid", False)) != required_local_handoff_pair_contract:
             return False
+        if required_local_handoff_cohesion_assembled is not None and bool(
+                local_handoff.get("cohesion_assembled", False)) != required_local_handoff_cohesion_assembled:
+            return False
+        if required_local_handoff_cohesion_abort_return is not None and bool(
+                local_handoff.get("cohesion_abort_return", False)) != required_local_handoff_cohesion_abort_return:
+            return False
+        if normalized_local_handoff_route_position is not None and list(
+                local_handoff.get("route_position", [])) != normalized_local_handoff_route_position:
+            return False
         if required_member_count is not None and int(site.get("member_count", 0) or 0) != required_member_count:
             return False
         if required_ready_at_home_count is not None and int(site.get("ready_at_home_count", 0) or 0) != required_ready_at_home_count:
@@ -6755,6 +8582,9 @@ def audit_saved_bandit_live_world_state(
         if required_camp_decision_state and str(camp_decision.get("state", "")) != required_camp_decision_state:
             return False
         if required_report_decision_identity_match is not None and bool(site.get("report_decision_identity_matches", False)) != required_report_decision_identity_match:
+            return False
+        if required_report_hostile_operation_claim_match is not None and bool(
+                site.get("report_hostile_operation_claim_matches", False)) != required_report_hostile_operation_claim_match:
             return False
         if required_min_active_member_ids is not None and int(site.get("active_member_count", 0) or 0) < required_min_active_member_ids:
             return False
@@ -6887,6 +8717,9 @@ def audit_saved_bandit_live_world_state(
         "required_local_handoff_state": required_local_handoff_state,
         "required_local_handoff_exact_pair": required_local_handoff_exact_pair,
         "required_local_handoff_pair_contract": required_local_handoff_pair_contract,
+        "required_local_handoff_cohesion_assembled": required_local_handoff_cohesion_assembled,
+        "required_local_handoff_cohesion_abort_return": required_local_handoff_cohesion_abort_return,
+        "required_local_handoff_route_position": normalized_local_handoff_route_position,
         "required_member_count": required_member_count,
         "required_ready_at_home_count": required_ready_at_home_count,
         "required_min_ready_at_home_count": required_min_ready_at_home_count,
@@ -6923,6 +8756,7 @@ def audit_saved_bandit_live_world_state(
         "required_scout_report_min_observations": required_scout_report_min_observations,
         "required_camp_decision_state": required_camp_decision_state,
         "required_report_decision_identity_match": required_report_decision_identity_match,
+        "required_report_hostile_operation_claim_match": required_report_hostile_operation_claim_match,
     }
     has_requirement = any(value not in (None, "", []) for value in required_fields.values())
     matching_sites = [site for site in observed_sites if site_matches(site)]
@@ -7336,7 +9170,7 @@ def debug_map_editor_select_feature_and_apply(
         menu_settle_seconds=menu_settle_seconds,
     )
     if target_keys:
-        peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
+        peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms, focus_once=True)
         time.sleep(prompt_settle_seconds)
     peekaboo_press_sequence(pid, [selector_key], delay_ms=delay_ms)
     time.sleep(prompt_settle_seconds)
@@ -8811,6 +10645,10 @@ def acknowledge_blocking_interruptions(
     suppress_inactive_structured_shadow_warning: bool = False,
     structured_popup_trace_log: Optional[Path] = None,
     structured_popup_trace_start_offset: int = 0,
+    allowed_classifications: Optional[Set[str]] = None,
+    response_key_overrides: Optional[Dict[str, str]] = None,
+    allow_map_editor_save_and_quit: bool = False,
+    allow_hostile_auto_move_cancel: bool = False,
 ) -> Dict[str, Any]:
     acknowledgements: List[Dict[str, Any]] = []
     scan_count = 0
@@ -8831,7 +10669,11 @@ def acknowledge_blocking_interruptions(
             scan_dir = Path(temp_path)
             capture = capture_screenshot(pid, scan_dir, "scan")
             screen_text = capture_screen_text_artifact(scan_dir, "scan", capture, tail_lines=48)
-            classification = classify_blocking_interruption(screen_text)
+            classification = classify_blocking_interruption(
+                screen_text,
+                allow_map_editor_save_and_quit=allow_map_editor_save_and_quit,
+                allow_hostile_auto_move_cancel=allow_hostile_auto_move_cancel,
+            )
             structured_popup = read_active_eoc_popup_trace(
                 structured_popup_trace_log,
                 structured_popup_trace_start_offset,
@@ -8989,6 +10831,21 @@ def acknowledge_blocking_interruptions(
         release_blocking = release_blocking or bool(classification.get("release_blocking", False))
         contaminating = contaminating or bool(classification.get("contaminating", False))
 
+        if status == "known_prompt" and allowed_classifications is not None and \
+                classification_name not in allowed_classifications:
+            classification = {
+                **classification,
+                "status": "unknown_prompt",
+                "classification": "structured_wait_prompt_not_authorized",
+                "response_key": "",
+                "rejected_classification": classification_name,
+            }
+            status = "unknown_prompt"
+        if status == "known_prompt" and response_key_overrides is not None:
+            override = response_key_overrides.get(classification_name, "")
+            if override:
+                classification = {**classification, "response_key": override}
+
         if status == "known_prompt":
             current_release_blocking = bool(classification.get("release_blocking", False))
             current_contaminating = bool(classification.get("contaminating", False))
@@ -9059,6 +10916,56 @@ def acknowledge_blocking_interruptions(
             "release_blocking": release_blocking,
             "contaminating": contaminating,
         }
+
+
+def recover_harmless_wilderness_flavor_wait(
+    pid: int,
+    run_dir: Path,
+    label: str,
+    *,
+    delay_ms: int,
+    action_trace_log: Optional[Path],
+    action_trace_start_offset: int,
+) -> Dict[str, Any]:
+    """Recover exactly the owner-approved flavor popup then continue-wait query."""
+    popup = acknowledge_blocking_interruptions(
+        pid, run_dir, f"{label}.flavor_popup", max_acknowledgements=1,
+        delay_ms=delay_ms, stop_on_unknown=True,
+        structured_popup_trace_log=action_trace_log,
+        structured_popup_trace_start_offset=action_trace_start_offset,
+        allowed_classifications={"shadow_warning_wilderness_flavor_popup"},
+        response_key_overrides={"shadow_warning_wilderness_flavor_popup": "space"},
+    )
+    if popup.get("status") == "clear":
+        return {"status": "clear", "acknowledgement_count": 0, "acknowledgements": []}
+    popup_acks = popup.get("acknowledgements", [])
+    if popup.get("status") not in {"clear", "blocked_acknowledgement_limit", "blocked_unknown_prompt"} or len(popup_acks) != 1 or \
+            popup_acks[0].get("response_key") != "space" or \
+            popup_acks[0].get("classification", {}).get("provenance") != "structured_eoc_popup_trace":
+        return {**popup, "status": "blocked_harmless_flavor_popup_sequence"}
+    activity = acknowledge_blocking_interruptions(
+        pid, run_dir, f"{label}.continue_wait", max_acknowledgements=1,
+        delay_ms=delay_ms, stop_on_unknown=True,
+        structured_popup_trace_log=action_trace_log,
+        structured_popup_trace_start_offset=action_trace_start_offset,
+        allowed_classifications={
+            "activity_distraction_prompt",
+            "tired_wait_continue_prompt",
+        },
+    )
+    activity_acks = activity.get("acknowledgements", [])
+    activity_trace = activity_acks[0].get("classification", {}).get("structured_activity_query_trace", {}) \
+        if len(activity_acks) == 1 else {}
+    if activity.get("status") != "clear" or len(activity_acks) != 1 or \
+            activity_acks[0].get("response_key") != "I" or activity_trace.get("type") != "eoc":
+        return {**activity, "status": "blocked_harmless_flavor_continue_sequence"}
+    return {
+        "status": "recovered_harmless_flavor_wait_sequence",
+        "acknowledgement_count": 2,
+        "response_keys": ["space", "I"],
+        "acknowledgements": popup_acks + activity_acks,
+        "wait_continues_proof": "pending_authoritative_post_input_artifact",
+    }
 
 
 def normalize_screen_text_patterns(raw_value: Any) -> List[str]:
@@ -9421,8 +11328,11 @@ def step_interruption_flags(report: Dict[str, Any]) -> Dict[str, bool]:
 
 def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     ledger: List[Dict[str, Any]] = []
-    reports_by_label = {str(report.get("label", "")).strip(): report for report in step_reports}
-    for report in step_reports:
+    reports_by_label = {
+        str(report.get("label", "")).strip(): (position, report)
+        for position, report in enumerate(step_reports)
+    }
+    for position, report in enumerate(step_reports):
         label = str(report.get("label", "")).strip()
         kind = str(report.get("kind", "")).strip().lower()
         expected_visible_fact = str(report.get("expected_visible_fact", "")).strip()
@@ -9474,8 +11384,9 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
             verdict, issues = metadata_checkpoint_verdict(metadata_summary)
         elif str(report.get("proof_deferred_to_label", "")).strip():
             deferred_label = str(report.get("proof_deferred_to_label", "")).strip()
-            target_report = reports_by_label.get(deferred_label)
-            if target_report:
+            target_entry = reports_by_label.get(deferred_label)
+            if target_entry and target_entry[0] > position:
+                _, target_report = target_entry
                 target_verdict, target_issues, deferred_evidence_artifact = direct_report_checkpoint_verdict(target_report)
                 if target_verdict.startswith("green"):
                     verdict = "green_step_proof_deferred_to_guard"
@@ -9486,6 +11397,9 @@ def build_probe_step_ledger(step_reports: List[Dict[str, Any]]) -> List[Dict[str
                 else:
                     verdict = "yellow_step_deferred_guard_incomplete"
                     issues = ["deferred_guard_incomplete"] + target_issues
+            elif target_entry:
+                verdict = "yellow_step_deferred_guard_not_later"
+                issues = ["deferred_guard_not_later"]
             else:
                 verdict = "yellow_step_deferred_guard_missing"
                 issues = ["deferred_guard_missing"]
@@ -9744,6 +11658,502 @@ def kill_existing_game_processes() -> List[int]:
     return pids
 
 
+def certification_startup_lease_context(
+    args: argparse.Namespace,
+    *,
+    executable: Path,
+    target_world: str,
+) -> Optional[Dict[str, Any]]:
+    """Resolve the explicit certification-only lease inputs before process launch.
+
+    Ordinary probes retain their existing global legacy cleanup path.  A bound
+    certification run instead owns only the exact world/process named by its
+    sealed manifest and registry path.
+    """
+    registry_path = str(getattr(args, "certification_registry", "") or "").strip()
+    manifest_path = str(getattr(args, "certification_round_manifest", "") or "").strip()
+    lease_id = str(getattr(args, "certification_lease_id", "") or "").strip()
+    recheck_path = str(getattr(args, "certification_recheck_inputs", "") or "").strip()
+    supplied = (registry_path, manifest_path, lease_id)
+    if not any(supplied):
+        return None
+    if not all(supplied):
+        raise SystemExit(
+            "certification startup requires explicit --certification-registry, "
+            "--certification-round-manifest, and --certification-lease-id"
+        )
+    try:
+        manifest = load_certification_manifest(manifest_path)
+        authoritative = manifest["binding"]["authoritative_components"]
+        sealed_executable = Path(str(authoritative["executable"]["path"])).resolve()
+        sealed_world = Path(str(authoritative["world_save"]["world"])).name
+        if sealed_executable != executable.resolve():
+            raise CertificationLeaseError("sealed manifest executable does not match the startup executable")
+        if sealed_world != str(target_world).strip():
+            raise CertificationLeaseError("sealed manifest world does not match the startup world")
+        supplied_event_stream = str(getattr(args, "harness_run_id", "") or "").strip()
+        if hasattr(args, "harness_run_id") and supplied_event_stream != str(manifest["event_stream_id"]):
+            raise CertificationLeaseError("sealed manifest event stream does not match the startup run ID")
+        executable_sha256 = path_sha256(executable)
+        connection = open_registry(registry_path)
+    except (CertificationLeaseError, KeyError, OSError, ValueError) as exc:
+        raise SystemExit(f"certification startup lease rejected: {exc}") from exc
+    return {
+        "connection": connection,
+        "manifest": manifest,
+        "lease_id": lease_id,
+        "recheck_inputs_path": recheck_path,
+        "executable_path": str(executable.resolve()),
+        "executable_sha256": executable_sha256,
+        "inspector": SystemProcessInspector(),
+    }
+
+
+def certification_save_child_environment(context: Mapping[str, Any]) -> Dict[str, str]:
+    """Inject the registry-issued save capability only into the game child."""
+    capability = os.environ.get("OPENCLAW_CERTIFICATION_SAVE_CAPABILITY", "")
+    manifest = context["manifest"]
+    if not verify_certification_save_capability(
+            context["connection"], round_id=str(manifest["round_id"]), capability=capability):
+        raise CertificationLeaseError("certification save capability is absent or does not match the registry commitment")
+    chain = _certification_world_save_chain(context["connection"], manifest)
+    if not chain.get("ok"):
+        raise CertificationLeaseError("certification save chain is not current")
+    accepted = chain["accepted"]
+    # The production save owner receives only sealed predecessor facts and
+    # hashes its completed world tree before writing the receipt.
+    return {
+        "OPENCLAW_CERTIFICATION_ROUND_ID": str(manifest["round_id"]),
+        "OPENCLAW_CERTIFICATION_LEASE_ID": str(context["lease_id"]),
+        "OPENCLAW_CERTIFICATION_SAVE_CAPABILITY": capability,
+        "OPENCLAW_CERTIFICATION_SAVE_SEQUENCE": str(int(chain["save_sequence"]) + 1),
+        "OPENCLAW_CERTIFICATION_PREVIOUS_WORLD_TREE_SHA256": accepted["world_tree_sha256"],
+        "OPENCLAW_CERTIFICATION_PREVIOUS_WORLD_SAVE_SHA256": accepted["world_save_sha256"],
+    }
+
+
+def _certification_recheck_producer_inputs(path_text: str) -> Dict[str, Any]:
+    """Load the explicit current-input adapter used to recheck a sealed round.
+
+    The adapter names current installed inputs; it does not carry a binding ID
+    or any sealed value.  ``compare_round_manifest`` recomputes every identity
+    from these inputs, so a caller cannot make a stale manifest pass by merely
+    echoing its binding ID back into the command line.
+    """
+    path = Path(path_text).expanduser().resolve()
+    try:
+        raw = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise CertificationLeaseError(
+            f"certification recheck inputs are unreadable: {path}: {exc}"
+        ) from exc
+    if not isinstance(raw, dict):
+        raise CertificationLeaseError("certification recheck inputs must be an object")
+    required = {
+        "repo_root", "executable", "runtime_paths", "data_config_roots",
+        "harness_roots", "scenario_path", "fixture_path", "profile_path",
+        "world_dir", "player_save", "saved_player_payload", "ecology_audit",
+    }
+    missing = sorted(required - set(raw))
+    if missing:
+        raise CertificationLeaseError(
+            "certification recheck inputs are missing: " + ", ".join(missing)
+        )
+    if not isinstance(raw["runtime_paths"], list) or not all(
+            isinstance(value, str) and value.strip() for value in raw["runtime_paths"]):
+        raise CertificationLeaseError("certification recheck runtime_paths must be a non-empty string list")
+    for name in ("data_config_roots", "harness_roots"):
+        if not isinstance(raw[name], list) or not raw[name]:
+            raise CertificationLeaseError(f"certification recheck {name} must be a non-empty list")
+    for name in ("saved_player_payload", "ecology_audit"):
+        if not isinstance(raw[name], dict):
+            raise CertificationLeaseError(f"certification recheck {name} must be an object")
+    return {
+        "repo_root": Path(str(raw["repo_root"])).expanduser().resolve(),
+        "executable": Path(str(raw["executable"])).expanduser().resolve(),
+        "runtime_paths": list(raw["runtime_paths"]),
+        "data_config_roots": [Path(str(value)).expanduser().resolve()
+                              for value in raw["data_config_roots"]],
+        "harness_roots": [Path(str(value)).expanduser().resolve()
+                          for value in raw["harness_roots"]],
+        "scenario_path": Path(str(raw["scenario_path"])).expanduser().resolve(),
+        "fixture_path": Path(str(raw["fixture_path"])).expanduser().resolve(),
+        "profile_path": Path(str(raw["profile_path"])).expanduser().resolve(),
+        "world_dir": Path(str(raw["world_dir"])).expanduser().resolve(),
+        "player_save": str(raw["player_save"]),
+        "saved_player_payload": raw["saved_player_payload"],
+        "ecology_audit": raw["ecology_audit"],
+    }
+
+
+def _certification_plain(value: Any) -> Any:
+    if isinstance(value, Mapping):
+        return {key: _certification_plain(item) for key, item in value.items()}
+    if isinstance(value, (list, tuple)):
+        return [_certification_plain(item) for item in value]
+    return value
+
+
+def _certification_world_save_fact(world_save: Mapping[str, Any]) -> Dict[str, str]:
+    """Return the complete mutable-world fact used by the round progression chain."""
+    tree = world_save.get("tree") if isinstance(world_save, Mapping) else None
+    tree_sha256 = str(tree.get("sha256", "") if isinstance(tree, Mapping) else "").strip()
+    if len(tree_sha256) != 64:
+        raise CertificationLeaseError("world/save identity has no complete tree digest")
+    return {
+        "world_tree_sha256": tree_sha256,
+        "world_save_sha256": tree_sha256,
+    }
+
+
+def _certification_world_save_chain(
+    connection: sqlite3.Connection, manifest: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Derive the only accepted mutable-world successor from registry history."""
+    sealed_world = manifest["binding"]["authoritative_components"]["world_save"]
+    accepted = _certification_world_save_fact(sealed_world)
+    save_sequence = 0
+    rows = connection.execute(
+        "SELECT event_sequence,event_stream_id,details_json FROM certification_round_lifecycle "
+        "WHERE round_id = ? AND event_kind = 'world_save_progressed' ORDER BY event_sequence",
+        (str(manifest["round_id"]),),
+    ).fetchall()
+    for row in rows:
+        if str(row["event_stream_id"]) != str(manifest["event_stream_id"]):
+            return {"ok": False, "reason": "world_save_progression_event_stream_mismatch"}
+        try:
+            details = json.loads(str(row["details_json"]))
+        except json.JSONDecodeError:
+            return {"ok": False, "reason": "world_save_progression_details_invalid"}
+        if not isinstance(details, dict):
+            return {"ok": False, "reason": "world_save_progression_details_invalid"}
+        if details.get("event_stream_id") != str(manifest["event_stream_id"]):
+            return {"ok": False, "reason": "world_save_progression_receipt_other_stream"}
+        expected_sequence = save_sequence + 1
+        if details.get("save_sequence") != expected_sequence:
+            return {"ok": False, "reason": "world_save_progression_sequence_gap"}
+        previous = {
+            key: str(details.get("previous_" + key, ""))
+            for key in ("world_tree_sha256", "world_save_sha256")
+        }
+        current = {
+            key: str(details.get("current_" + key, ""))
+            for key in ("world_tree_sha256", "world_save_sha256")
+        }
+        if previous != accepted:
+            return {"ok": False, "reason": "world_save_progression_predecessor_mismatch"}
+        if any(len(value) != 64 for value in current.values()) or current == previous:
+            return {"ok": False, "reason": "world_save_progression_successor_invalid"}
+        accepted = current
+        save_sequence = expected_sequence
+    return {"ok": True, "accepted": accepted, "save_sequence": save_sequence}
+
+
+def _certification_bound_process_identity(
+    connection: sqlite3.Connection, manifest: Mapping[str, Any], lease_id: str,
+) -> str:
+    """Read the last bound process identity; caller input never supplies it."""
+    row = connection.execute(
+        "SELECT process_identity FROM certification_round_lease_history "
+        "WHERE round_id = ? AND lease_id = ? ORDER BY event_sequence DESC LIMIT 1",
+        (str(manifest["round_id"]), str(lease_id)),
+    ).fetchone()
+    return str(row["process_identity"]) if row is not None else ""
+
+
+def _certification_bound_process_pid(
+    connection: sqlite3.Connection, manifest: Mapping[str, Any], lease_id: str,
+) -> int:
+    """Read the PID from the exact active lease receipt, if one exists."""
+    row = connection.execute(
+        "SELECT details_json FROM certification_round_lease_history "
+        "WHERE round_id = ? AND lease_id = ? ORDER BY event_sequence DESC LIMIT 1",
+        (str(manifest["round_id"]), str(lease_id)),
+    ).fetchone()
+    if row is None:
+        return 0
+    try:
+        details = json.loads(str(row["details_json"]))
+    except json.JSONDecodeError:
+        return 0
+    pid = details.get("pid", 0) if isinstance(details, Mapping) else 0
+    return int(pid) if isinstance(pid, int) and pid > 0 else 0
+
+
+def _certification_save_receipt(
+    context: Mapping[str, Any], *, manifest: Mapping[str, Any],
+    chain: Mapping[str, Any], current: Mapping[str, str],
+) -> Dict[str, Any]:
+    """Consume one game-event-stream save receipt for the next world successor."""
+    path_text = str(context.get("event_stream_path", "") or "").strip()
+    if not path_text:
+        return {"ok": False, "reason": "world_save_progression_receipt_path_missing"}
+    polled = read_transition_event_stream(Path(path_text), str(manifest["event_stream_id"]))
+    if polled.get("diagnostics"):
+        return {"ok": False, "reason": "world_save_progression_receipt_stream_invalid"}
+    expected_sequence = int(chain["save_sequence"]) + 1
+    process_identity = _certification_bound_process_identity(
+        context["connection"], manifest, str(context.get("lease_id", "")))
+    if not process_identity:
+        return {"ok": False, "reason": "world_save_progression_receipt_lease_missing"}
+    matches: List[Mapping[str, Any]] = []
+    for event in polled.get("events", []):
+        receipt = event.get("certification_save_receipt")
+        if not isinstance(receipt, Mapping):
+            continue
+        if (event.get("domain") == "certification" and event.get("transition") == "save_receipt" and
+                event.get("outcome") == "committed"):
+            matches.append(receipt)
+    if len(matches) != 1:
+        return {"ok": False, "reason": "world_save_progression_receipt_missing_or_ambiguous"}
+    receipt = matches[0]
+    if "authentication" in receipt:
+        return {"ok": False, "reason": "world_save_progression_receipt_legacy_authentication_forbidden"}
+    expected = {
+        "round_id": str(manifest["round_id"]),
+        "event_stream_id": str(manifest["event_stream_id"]),
+        "lease_id": str(context.get("lease_id", "")),
+        "save_sequence": expected_sequence,
+        **{"previous_" + key: value for key, value in chain["accepted"].items()},
+        **{"current_" + key: value for key, value in current.items()},
+    }
+    if any(receipt.get(key) != value for key, value in expected.items()):
+        return {"ok": False, "reason": "world_save_progression_receipt_identity_or_digest_mismatch"}
+    bound_pid = _certification_bound_process_pid(
+        context["connection"], manifest, str(context.get("lease_id", "")),
+    )
+    if receipt.get("process_identity") != process_identity and (
+            not bound_pid or receipt.get("process_pid") != bound_pid):
+        return {"ok": False, "reason": "world_save_progression_receipt_process_mismatch"}
+    capability = str(
+        context.get("save_capability", "") or
+        os.environ.get("OPENCLAW_CERTIFICATION_SAVE_CAPABILITY", "")
+    ).strip()
+    if not verify_certification_save_capability(
+            context["connection"], round_id=str(manifest["round_id"]), capability=capability):
+        return {"ok": False, "reason": "world_save_progression_receipt_proof_unavailable"}
+    proof = str(receipt.get("proof", "") or "").strip().lower()
+    canonical_facts = "\n".join([
+        str(receipt.get("round_id", "")),
+        str(receipt.get("lease_id", "")),
+        str(receipt.get("save_sequence", "")),
+        str(receipt.get("previous_world_tree_sha256", "")),
+        str(receipt.get("previous_world_save_sha256", "")),
+        str(receipt.get("current_world_tree_sha256", "")),
+        str(receipt.get("current_world_save_sha256", "")),
+        str(receipt.get("process_pid", "")),
+    ])
+    expected_proof = hmac.new(
+        capability.encode("utf-8"), canonical_facts.encode("utf-8"), hashlib.sha256
+    ).hexdigest()
+    if not proof:
+        return {"ok": False, "reason": "world_save_progression_receipt_authentication_rejected"}
+    if not hmac.compare_digest(proof, expected_proof):
+        return {"ok": False, "reason": "world_save_progression_receipt_proof_rejected"}
+    # Capabilities prove origin but are never copied to a lifecycle row or
+    # report.  The raw event stream remains the game-produced evidence.
+    persisted_receipt = dict(receipt)
+    persisted_receipt.pop("proof", None)
+    return {"ok": True, "receipt": persisted_receipt}
+
+
+def certification_record_world_save_progression(
+    context: Mapping[str, Any], *, event_stream_id: str,
+) -> Dict[str, Any]:
+    """Accept exactly one persisted ordinary-save successor for a round.
+
+    This is the only path that moves the mutable world/save fact past the
+    sealed generation-zero digest.  A game-owned append-only event receipt
+    must prove the next predecessor/successor digest chain; same-path bytes or
+    caller JSON cannot authorize progression.
+    """
+    manifest = context["manifest"]
+    connection = context["connection"]
+    register_certification_round(connection, manifest)
+    def reject(reason: str, **details: Any) -> Dict[str, Any]:
+        row = connection.execute(
+            "SELECT COALESCE(MAX(event_sequence), 0) + 1 FROM certification_round_lifecycle WHERE round_id = ?",
+            (str(manifest["round_id"]),),
+        ).fetchone()
+        lifecycle_sequence = int(row[0])
+        append_certification_lifecycle_event(
+            connection,
+            round_id=str(manifest["round_id"]),
+            event_sequence=lifecycle_sequence,
+            event_kind="world_save_progression_rejected",
+            details={"reason": reason, **details},
+        )
+        invalidation = invalidate_certification_round(
+            connection,
+            round_id=str(manifest["round_id"]),
+            reason="world_save_progression_rejected",
+            component_name="world_save",
+            observed_sequence=lifecycle_sequence,
+        )
+        return {"ok": False, "reason": reason, "first_mismatch": "world_save",
+                "lifecycle_sequence": lifecycle_sequence,
+                "invalidation": invalidation, **details}
+    if event_stream_id != str(manifest["event_stream_id"]):
+        return reject("world_save_progression_event_stream_mismatch")
+    chain = _certification_world_save_chain(connection, manifest)
+    if not chain.get("ok"):
+        return reject(str(chain["reason"]))
+    try:
+        inputs = _certification_recheck_producer_inputs(context["recheck_inputs_path"])
+        current_binding = authoritative_identity_binding(**inputs)
+        comparison = compare_round_manifest(
+            manifest,
+            round_id=str(manifest["round_id"]),
+            scenario_lineage_id=str(manifest["scenario_lineage_id"]),
+            authority_id=str(manifest["authority_id"]),
+            authority_kind=str(manifest["authority_kind"]),
+            event_stream_id=str(manifest["event_stream_id"]),
+            **inputs,
+        )
+        current = _certification_world_save_fact(
+            current_binding["authoritative_components"]["world_save"]
+        )
+    except Exception as exc:
+        return reject("world_save_progression_recheck_failed", error=str(exc))
+    mismatches = set(comparison.get("mismatches", []))
+    if mismatches - {"world_save", "binding_id"}:
+        return reject("world_save_progression_binding_drift", mismatches=sorted(mismatches))
+    if current == chain["accepted"]:
+        return reject("world_save_progression_not_advanced")
+    receipt = _certification_save_receipt(
+        context, manifest=manifest, chain=chain, current=current,
+    )
+    if not receipt.get("ok"):
+        return reject(str(receipt["reason"]))
+    row = connection.execute(
+        "SELECT COALESCE(MAX(event_sequence), 0) + 1 FROM certification_round_lifecycle WHERE round_id = ?",
+        (str(manifest["round_id"]),),
+    ).fetchone()
+    lifecycle_sequence = int(row[0])
+    save_sequence = int(chain["save_sequence"]) + 1
+    append_certification_lifecycle_event(
+        connection,
+        round_id=str(manifest["round_id"]),
+        event_sequence=lifecycle_sequence,
+        event_kind="world_save_progressed",
+        details={
+            "save_sequence": save_sequence,
+            "event_stream_id": event_stream_id,
+            **{"previous_" + key: value for key, value in chain["accepted"].items()},
+            **{"current_" + key: value for key, value in current.items()},
+            "game_save_receipt": receipt["receipt"],
+        },
+    )
+    return {"ok": True, "save_sequence": save_sequence,
+            "lifecycle_sequence": lifecycle_sequence, "accepted": current}
+
+
+def certification_recheck_round(
+    context: Mapping[str, Any], *, segment: str,
+) -> Dict[str, Any]:
+    """Recompute a sealed round before an evidence-bearing segment.
+
+    The registry is the lifecycle owner: every recheck receives the next
+    immutable sequence, and the first failed component invalidates only this
+    round.  Focused artifacts remain outside these tables and are untouched.
+    """
+    manifest = context["manifest"]
+    connection = context["connection"]
+    register_certification_round(connection, manifest)
+    try:
+        inputs = _certification_recheck_producer_inputs(context["recheck_inputs_path"])
+        current_binding = authoritative_identity_binding(**inputs)
+        result = compare_round_manifest(
+            manifest,
+            round_id=str(manifest["round_id"]),
+            scenario_lineage_id=str(manifest["scenario_lineage_id"]),
+            authority_id=str(manifest["authority_id"]),
+            authority_kind=str(manifest["authority_kind"]),
+            event_stream_id=str(manifest["event_stream_id"]),
+            **inputs,
+        )
+        chain = _certification_world_save_chain(connection, manifest)
+        current_world = _certification_world_save_fact(
+            current_binding["authoritative_components"]["world_save"]
+        )
+        if not chain.get("ok"):
+            result = {"ok": False, "mismatches": ["world_save"], "error": chain["reason"]}
+        elif current_world != chain["accepted"]:
+            mismatches = list(result.get("mismatches", []))
+            if "world_save" not in mismatches:
+                mismatches.append("world_save")
+            result = {"ok": False, "mismatches": order_certification_mismatches(mismatches),
+                      "error": "world_save_progression_not_accepted"}
+        else:
+            mismatches = [
+                mismatch for mismatch in result.get("mismatches", [])
+                if mismatch not in {"world_save", "binding_id"}
+            ]
+            result = {
+                "ok": not mismatches,
+                "mismatches": order_certification_mismatches(mismatches),
+                "world_save_progression": chain,
+            }
+    except Exception as exc:
+        result = {"ok": False, "mismatches": ["recheck_inputs"], "error": str(exc)}
+    result["mismatches"] = order_certification_mismatches(result.get("mismatches", []))
+    result["first_mismatch"] = first_certification_mismatch(result["mismatches"])
+    row = connection.execute(
+        "SELECT COALESCE(MAX(event_sequence), 0) + 1 FROM certification_round_lifecycle WHERE round_id = ?",
+        (str(manifest["round_id"]),),
+    ).fetchone()
+    sequence = int(row[0])
+    event_kind = "segment_rechecked" if result.get("ok") else "segment_recheck_failed"
+    append_certification_lifecycle_event(
+        connection,
+        round_id=str(manifest["round_id"]),
+        event_sequence=sequence,
+        event_kind=event_kind,
+        details={"segment": segment, "recheck": result},
+    )
+    if not result.get("ok"):
+        mismatches = result.get("mismatches", [])
+        component = first_certification_mismatch(mismatches) or "recheck_inputs"
+        invalidation = invalidate_certification_round(
+            connection,
+            round_id=str(manifest["round_id"]),
+            reason="binding_recheck_failed",
+            component_name=component,
+            observed_sequence=sequence,
+        )
+        return {"ok": False, "segment": segment, "sequence": sequence,
+                "first_mismatch": component,
+                "recheck": result, "invalidation": invalidation}
+    return {"ok": True, "segment": segment, "sequence": sequence, "recheck": result}
+
+
+def certification_recheck_evidence_segment(args: argparse.Namespace, *, segment: str) -> Optional[Dict[str, Any]]:
+    """Open the registry only long enough to bind one probe evidence segment."""
+    registry_path = str(getattr(args, "certification_registry", "") or "").strip()
+    manifest_path = str(getattr(args, "certification_round_manifest", "") or "").strip()
+    lease_id = str(getattr(args, "certification_lease_id", "") or "").strip()
+    recheck_path = str(getattr(args, "certification_recheck_inputs", "") or "").strip()
+    supplied = (registry_path, manifest_path, lease_id, recheck_path)
+    if not any(supplied):
+        return None
+    if not all(supplied):
+        return {
+            "ok": False,
+            "segment": segment,
+            "recheck": {"ok": False, "mismatches": ["certification_arguments"]},
+        }
+    connection = open_registry(registry_path)
+    try:
+        return certification_recheck_round({
+            "connection": connection,
+            "manifest": load_certification_manifest(manifest_path),
+            "lease_id": lease_id,
+            "recheck_inputs_path": recheck_path,
+        }, segment=segment)
+    finally:
+        connection.close()
+
+
 def validate_enabled_api_runtime(options: Dict[str, str]) -> None:
     if not llm_api_mode_enabled(options):
         return
@@ -9790,15 +12200,33 @@ def game_child_environment(profile: str) -> Dict[str, str]:
     return env
 
 
+def bind_transition_event_stream(
+    run_dir: Path,
+    *,
+    run_id: str = "",
+    event_path: str = "",
+) -> Dict[str, str]:
+    """Create the explicit run binding consumed by the game child."""
+    resolved_run_id = str(run_id).strip() or uuid.uuid4().hex
+    resolved_path = Path(event_path).expanduser() if str(event_path).strip() else run_dir / TRANSITION_EVENT_FILENAME
+    resolved_path = resolved_path.resolve()
+    ensure_dir(resolved_path.parent)
+    resolved_path.touch(exist_ok=True)
+    return {"run_id": resolved_run_id, "event_path": str(resolved_path)}
+
+
 def launch_game(
     profile: str,
     target_world: str,
     run_dir: Path,
     *,
+    artifact_run_dir: Optional[Path] = None,
     child_environment: Optional[Dict[str, str]] = None,
     scenario: str = "",
     harness_new_world: str = "",
     harness_raw_seed: str = "",
+    transition_event_run_id: str = "",
+    transition_event_path: str = "",
 ) -> subprocess.Popen[str]:
     exe = detect_executable()
     cmd = build_game_command(
@@ -9809,9 +12237,14 @@ def launch_game(
         harness_raw_seed=harness_raw_seed,
     )
     env = dict(child_environment or game_child_environment(profile))
-    env["OPENCLAW_HARNESS_RUN_DIR"] = str(run_dir.resolve())
+    env["OPENCLAW_HARNESS_RUN_DIR"] = str((artifact_run_dir or run_dir).resolve())
     env["OPENCLAW_HARNESS_PROFILE"] = profile
     env["OPENCLAW_HARNESS_WORLD"] = target_world
+    binding = bind_transition_event_stream(
+        run_dir, run_id=transition_event_run_id, event_path=transition_event_path
+    )
+    env["OPENCLAW_HARNESS_RUN_ID"] = binding["run_id"]
+    env["OPENCLAW_HARNESS_TRANSITION_EVENT_PATH"] = binding["event_path"]
     env.pop("OPENCLAW_HARNESS_SCENARIO", None)
     if scenario:
         env["OPENCLAW_HARNESS_SCENARIO"] = scenario
@@ -10137,6 +12570,16 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
         if not player_save:
             raise SystemExit(f"Fixture save_transforms[{index}] needs player_save in {manifest_path}")
 
+        if kind == "remove_inherited_shadow_flavor_producer_global_eocs":
+            unexpected_keys = sorted(set(raw) - {"kind", "player_save"})
+            if unexpected_keys:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] remove_inherited_shadow_flavor_producer_global_eocs "
+                    f"has unexpected keys {unexpected_keys} in {manifest_path}"
+                )
+            transforms.append({"kind": kind, "player_save": player_save})
+            continue
+
         if kind == "player_mutations":
             mutations = normalize_string_list(raw.get("mutations", []))
             if not mutations:
@@ -10206,6 +12649,18 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "player_worn_items":
+            items = normalize_string_list(raw.get("items", []))
+            if not items:
+                raise SystemExit(f"Fixture save_transforms[{index}] needs worn item ids in {manifest_path}")
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "items": items,
+                "fitted": bool(raw.get("fitted", True)),
+            })
+            continue
+
         if kind == "player_condition":
             normalized: Dict[str, Any] = {"kind": kind, "player_save": player_save}
             if "hp_percent" in raw:
@@ -10230,7 +12685,10 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 normalized["effect_body_part"] = str(raw.get("effect_body_part", "torso") or "torso").strip()
                 normalized["effect_duration"] = int(raw.get("effect_duration", 600) or 600)
                 normalized["effect_intensity"] = int(raw.get("effect_intensity", 1) or 1)
-            if not any(key in normalized for key in ("hp_percent", "stamina", "effects")):
+            for key in ("hunger", "thirst", "sleepiness"):
+                if key in raw:
+                    normalized[key] = int(raw.get(key))
+            if not any(key in normalized for key in ("hp_percent", "stamina", "effects", "hunger", "thirst", "sleepiness")):
                 raise SystemExit(
                     f"Fixture save_transforms[{index}] player_condition needs hp_percent, stamina, or effects in {manifest_path}"
                 )
@@ -10253,6 +12711,25 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "kind": kind,
                 "player_save": player_save,
                 "offset_ms": offset_ms,
+            })
+            continue
+
+        if kind == "player_basecamp_at_omt":
+            camp_name = str(raw.get("camp_name", "") or "").strip()
+            owner = str(raw.get("owner", "your_followers") or "").strip()
+            if not camp_name:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] player_basecamp_at_omt needs camp_name in {manifest_path}"
+                )
+            if owner != "your_followers":
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] player_basecamp_at_omt owner must be your_followers in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "camp_name": camp_name,
+                "owner": owner,
             })
             continue
 
@@ -10304,6 +12781,29 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "player_save": player_save,
                 "abs_omt": list(abs_omt_raw),
                 "terrain_id": terrain_id,
+            })
+            continue
+
+        if kind == "player_view_seen_omt":
+            abs_omt_raw = raw.get("abs_omt")
+            if not isinstance(abs_omt_raw, list) or len(abs_omt_raw) != 3 or any(
+                    isinstance(value, bool) or not isinstance(value, int)
+                    for value in abs_omt_raw):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] player_view_seen_omt "
+                    f"needs abs_omt=[integer x, integer y, integer z] in {manifest_path}"
+                )
+            vision_level = str(raw.get("vision_level", "") or "").strip().lower()
+            if vision_level not in {"vague", "outlines", "details", "full"}:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] player_view_seen_omt vision_level "
+                    f"must be vague, outlines, details, or full in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "abs_omt": list(abs_omt_raw),
+                "vision_level": vision_level,
             })
             continue
 
@@ -10667,9 +13167,10 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
 
         if kind == "active_monsters_near_player":
             raw_monsters = raw.get("monsters", [])
-            if not isinstance(raw_monsters, list) or not raw_monsters:
+            clear_existing = bool(raw.get("clear_existing", True))
+            if not isinstance(raw_monsters, list) or ( not raw_monsters and not clear_existing ):
                 raise SystemExit(
-                    f"Fixture save_transforms[{index}] needs non-empty monsters list in {manifest_path}"
+                    f"Fixture save_transforms[{index}] needs monsters or clear_existing=true in {manifest_path}"
                 )
             monsters: List[Dict[str, Any]] = []
             for monster_index, monster_raw in enumerate(raw_monsters):
@@ -10755,7 +13256,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             transforms.append({
                 "kind": kind,
                 "player_save": player_save,
-                "clear_existing": bool(raw.get("clear_existing", True)),
+                "clear_existing": clear_existing,
                 "monsters": monsters,
             })
             continue
@@ -10848,18 +13349,6 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "times_checked_empty": int(raw.get("times_checked_empty", 0) or 0),
                 "times_harvested": int(raw.get("times_harvested", 0) or 0),
                 "last_outcome": str(raw.get("last_outcome", "still_valid") or "still_valid").strip(),
-                "routine_activated_minutes": (
-                    None if raw.get("routine_activated_minutes") is None else
-                    int(raw.get("routine_activated_minutes"))
-                ),
-                "next_routine_dispatch_eligible_minutes": (
-                    None if raw.get("next_routine_dispatch_eligible_minutes") is None else
-                    int(raw.get("next_routine_dispatch_eligible_minutes"))
-                ),
-                "last_routine_resolved_minutes": (
-                    None if raw.get("last_routine_resolved_minutes") is None else
-                    int(raw.get("last_routine_resolved_minutes"))
-                ),
                 "clear_active_pressure": bool(raw.get("clear_active_pressure", True)),
                 "mark_cleared_active_members_unready": bool(raw.get("mark_cleared_active_members_unready", True)),
             })
@@ -10934,6 +13423,16 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "clear_intelligence_map": bool(raw.get("clear_intelligence_map", True)),
                 "clear_remembered_pressure": bool(raw.get("clear_remembered_pressure", True)),
                 "reset_shakedown_history": bool(raw.get("reset_shakedown_history", False)),
+                "new_supply_units": (
+                    None if raw.get("new_supply_units") is None else
+                    max(0, int(raw.get("new_supply_units")))
+                ),
+                "new_supply_last_update_minutes": int(
+                    raw.get("new_supply_last_update_minutes", -1)
+                ),
+                "new_supply_accounted_living_total": max(
+                    0, int(raw.get("new_supply_accounted_living_total", 0))
+                ),
             })
             continue
 
@@ -10979,8 +13478,8 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
 
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
-            "supported kinds: player_mutations, player_items, player_condition, player_location_offset_ms, player_near_overmap_special, "
-            "overmap_terrain_id_at_abs_omt, seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
+            "supported kinds: player_mutations, player_items, player_worn_items, player_condition, player_location_offset_ms, player_basecamp_at_omt, player_near_overmap_special, "
+            "overmap_terrain_id_at_abs_omt, player_view_seen_omt, seed_overmap_special_near_player, map_fields_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
             "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
@@ -11291,6 +13790,75 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
     }
 
 
+def apply_player_worn_items_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Add ordinary fitted clothing to a copied fixture player save."""
+    player_save_name = str(transform.get("player_save", "")).strip()
+    player_save = world_dir / player_save_name
+    if not player_save.exists():
+        raise SystemExit(f"Fixture player-worn-items transform target not found: {player_save}")
+    if player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture player-worn-items transform expects .zzip save path: {player_save}")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture player-worn-items transform did not extract save: {extracted_save}")
+
+    payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    if not isinstance(payload, dict):
+        raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+    player = payload.get("player")
+    if not isinstance(player, dict):
+        raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+    worn_payload = player.setdefault("worn", {"worn": []})
+    if isinstance(worn_payload, dict):
+        worn = worn_payload.setdefault("worn", [])
+    else:
+        worn = worn_payload
+    if not isinstance(worn, list):
+        raise SystemExit(f"Player worn items are not a list in {extracted_save}")
+
+    requested_items = normalize_string_list(transform.get("items", []))
+    fitted = bool(transform.get("fitted", True))
+    existing_typeids = {
+        str(item.get("typeid", "")).strip()
+        for item in worn if isinstance(item, dict)
+    }
+    turn = int(payload.get("turn", 0) or 0)
+    added_items: List[str] = []
+    already_present: List[str] = []
+    for typeid in requested_items:
+        if typeid in existing_typeids:
+            already_present.append(typeid)
+            continue
+        item: Dict[str, Any] = {
+            "typeid": typeid,
+            "bday": turn,
+            "last_temp_check": 0,
+            "template_traits": [],
+        }
+        if fitted:
+            item["item_tags"] = ["FIT"]
+        worn.append(item)
+        existing_typeids.add(typeid)
+        added_items.append(typeid)
+
+    extracted_save.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    run_zzip(extracted_save)
+    if extracted_save.exists():
+        extracted_save.unlink()
+
+    return {
+        "kind": "player_worn_items",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "requested_items": requested_items,
+        "added_items": added_items,
+        "already_present": already_present,
+        "fitted": fitted,
+    }
+
+
 def apply_player_condition_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     """Apply a small harness-only player condition restage to a copied fixture save."""
     player_save_name = str(transform.get("player_save", "")).strip()
@@ -11333,6 +13901,12 @@ def apply_player_condition_transform(world_dir: Path, transform: Dict[str, Any])
         updated_stamina = max(0, int(transform.get("stamina", 0) or 0))
         player["stamina"] = updated_stamina
 
+    normalized_needs: Dict[str, Optional[int]] = {}
+    for key in ("hunger", "thirst", "sleepiness"):
+        if key in transform:
+            normalized_needs[key] = int(transform[key])
+            player[key] = normalized_needs[key]
+
     added_effects: List[str] = []
     effects = player.setdefault("effects", {})
     if not isinstance(effects, dict):
@@ -11368,6 +13942,7 @@ def apply_player_condition_transform(world_dir: Path, transform: Dict[str, Any])
         "hp_percent": hp_percent_raw,
         "updated_body_parts": updated_body_parts,
         "stamina": updated_stamina,
+        "needs": normalized_needs,
         "added_effects": added_effects,
     }
 
@@ -11531,6 +14106,171 @@ def overmap_flat_index(point: Tuple[int, int, int]) -> int:
     if x < 0 or x >= OMAPX or y < 0 or y >= OMAPY:
         raise SystemExit(f"Overmap point out of bounds for transform: {point}")
     return y * OMAPX + x
+
+
+PLAYER_VIEW_VISION_VALUES = {
+    "vague": 1,
+    "outlines": 2,
+    "details": 3,
+    "full": 4,
+}
+PLAYER_VIEW_LAYER_COUNT = 1 + OVERMAP_DEPTH + 10
+
+
+def decode_player_view_sequence(raw_sequence: Any, *, context: str) -> List[int]:
+    if not isinstance(raw_sequence, list):
+        raise SystemExit(f"Player-view sequence is not a list in {context}")
+    flat: List[int] = []
+    for entry in raw_sequence:
+        if not isinstance(entry, list) or len(entry) != 2:
+            raise SystemExit(f"Player-view RLE entry is invalid in {context}: {entry!r}")
+        try:
+            value = int(entry[0])
+            count = int(entry[1])
+        except (TypeError, ValueError):
+            raise SystemExit(f"Player-view RLE entry is not numeric in {context}: {entry!r}")
+        if value < 0 or value > PLAYER_VIEW_VISION_VALUES["full"]:
+            raise SystemExit(f"Player-view vision value is invalid in {context}: {entry!r}")
+        if count <= 0:
+            raise SystemExit(f"Player-view RLE count must be positive in {context}: {entry!r}")
+        flat.extend([value] * count)
+    expected = OMAPX * OMAPY
+    if len(flat) != expected:
+        raise SystemExit(
+            f"Player-view sequence decoded to {len(flat)} cells, expected {expected} in {context}"
+        )
+    return flat
+
+
+def encode_player_view_sequence(flat: List[int]) -> List[List[int]]:
+    if not flat:
+        return []
+    encoded: List[List[int]] = []
+    current = flat[0]
+    count = 1
+    for value in flat[1:]:
+        if value == current:
+            count += 1
+            continue
+        encoded.append([current, count])
+        current = value
+        count = 1
+    encoded.append([current, count])
+    return encoded
+
+
+def player_view_path(world_dir: Path, player_save_name: str, overmap_x: int, overmap_y: int) -> Path:
+    player_save = world_dir / player_save_name
+    suffix = ".sav.zzip"
+    if not player_save.name.endswith(suffix):
+        raise SystemExit(
+            f"Fixture player-view transform expects a .sav.zzip player save: {player_save}"
+        )
+    return world_dir / f"{player_save.name[:-len(suffix)]}.seen.{overmap_x}.{overmap_y}"
+
+
+def player_save_version(world_dir: Path, player_save_name: str) -> int:
+    player_save = world_dir / player_save_name
+    if not player_save.exists():
+        raise SystemExit(f"Fixture player-view transform target not found: {player_save}")
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    try:
+        payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"Fixture player-view transform cannot read {extracted_save}: {exc}") from exc
+    finally:
+        if extracted_save.exists():
+            extracted_save.unlink()
+    try:
+        version = int(payload["savegame_loading_version"])
+    except (KeyError, TypeError, ValueError):
+        raise SystemExit(
+            f"Fixture player-view transform player save has no integer savegame_loading_version: {player_save}"
+        )
+    return version
+
+
+def apply_player_view_seen_omt_transform(
+    world_dir: Path,
+    transform: Dict[str, Any],
+) -> Dict[str, Any]:
+    abs_omt_raw = transform.get("abs_omt")
+    if not isinstance(abs_omt_raw, list) or len(abs_omt_raw) != 3 or any(
+            isinstance(value, bool) or not isinstance(value, int)
+            for value in abs_omt_raw):
+        raise SystemExit("Fixture player-view transform needs abs_omt=[integer x, integer y, integer z]")
+    abs_omt = (abs_omt_raw[0], abs_omt_raw[1], abs_omt_raw[2])
+    vision_name = str(transform.get("vision_level", "") or "").strip().lower()
+    if vision_name not in PLAYER_VIEW_VISION_VALUES:
+        raise SystemExit(
+            "Fixture player-view transform vision_level must be vague, outlines, details, or full"
+        )
+    overmap_x, overmap_y, local_omt = overmap_file_coords_from_abs_omt(abs_omt)
+    layer_index = overmap_layer_index(abs_omt[2])
+    view_path = player_view_path(
+        world_dir,
+        str(transform.get("player_save", "") or "").strip(),
+        overmap_x,
+        overmap_y,
+    )
+    target_index = overmap_flat_index(local_omt)
+    created = not view_path.exists()
+    if created:
+        version = player_save_version(world_dir, str(transform.get("player_save", "") or "").strip())
+        payload: Dict[str, Any] = {
+            "visible": [
+                encode_player_view_sequence([0] * (OMAPX * OMAPY))
+                for _ in range(PLAYER_VIEW_LAYER_COUNT)
+            ],
+            "explored": [
+                [[False, OMAPX * OMAPY]]
+                for _ in range(PLAYER_VIEW_LAYER_COUNT)
+            ],
+            "notes": [[] for _ in range(PLAYER_VIEW_LAYER_COUNT)],
+            "extras": [[] for _ in range(PLAYER_VIEW_LAYER_COUNT)],
+        }
+        version_line = f"# version {version}"
+    else:
+        text = view_path.read_text(encoding="utf-8")
+        version_line, separator, payload_text = text.partition("\n")
+        if not separator:
+            raise SystemExit(f"Player-view payload missing version header newline: {view_path}")
+        try:
+            payload = json.loads(payload_text)
+        except json.JSONDecodeError as exc:
+            raise SystemExit(f"Player-view payload is not JSON: {view_path}: {exc}") from exc
+        if not isinstance(payload, dict):
+            raise SystemExit(f"Player-view payload is not an object: {view_path}")
+
+    visible = payload.get("visible")
+    if not isinstance(visible, list) or layer_index >= len(visible):
+        raise SystemExit(f"Player-view payload has no visible z={abs_omt[2]} layer: {view_path}")
+    layer = decode_player_view_sequence(
+        visible[layer_index],
+        context=f"{view_path} z={abs_omt[2]}",
+    )
+    previous_value = layer[target_index]
+    layer[target_index] = PLAYER_VIEW_VISION_VALUES[vision_name]
+    visible[layer_index] = encode_player_view_sequence(layer)
+    view_path.write_text(
+        version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return {
+        "kind": "player_view_seen_omt",
+        "world": world_dir.name,
+        "player_save": str(transform.get("player_save", "") or "").strip(),
+        "abs_omt": list(abs_omt),
+        "local_omt": list(local_omt),
+        "overmap": f"{overmap_x},{overmap_y}",
+        "view_path": str(view_path.relative_to(world_dir)),
+        "previous_vision_level": previous_value,
+        "vision_level": PLAYER_VIEW_VISION_VALUES[vision_name],
+        "created_view": created,
+        "setup_only": True,
+        "gameplay_credit": False,
+    }
 
 
 
@@ -12034,6 +14774,95 @@ def apply_player_location_offset_ms_transform(world_dir: Path, transform: Dict[s
             updated_load_anchor["offset_sm_y"],
             updated_load_anchor["offset_sm_z"],
         ],
+    }
+
+
+def apply_player_basecamp_at_omt_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Register a setup-only player camp at the loaded avatar OMT in both save owners."""
+    player_save_name = str(transform.get("player_save", "") or "").strip()
+    player_save = world_dir / player_save_name
+    if not player_save.exists() or player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture player-basecamp transform target is not a .zzip save: {player_save}")
+
+    camp_name = str(transform.get("camp_name", "") or "").strip()
+    owner = str(transform.get("owner", "your_followers") or "").strip()
+    if not camp_name or owner != "your_followers":
+        raise SystemExit("Fixture player-basecamp transform needs a named your_followers camp")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture player-basecamp transform did not extract save: {player_save}")
+    try:
+        player_payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+        player = player_payload.get("player") if isinstance(player_payload, dict) else None
+        if not isinstance(player, dict):
+            raise SystemExit(f"Fixture player-basecamp transform is missing player object: {extracted_save}")
+        location = player.get("location", [])
+        if not isinstance(location, list) or len(location) < 3:
+            raise SystemExit(f"Fixture player-basecamp transform is missing player location: {extracted_save}")
+        player_omt = [int(location[0]) // 24, int(location[1]) // 24, int(location[2])]
+        camps = player.setdefault("camps", [])
+        if not isinstance(camps, list):
+            raise SystemExit(f"Fixture player-basecamp transform player camps is not a list: {extracted_save}")
+        player_registry_present = any(
+            isinstance(camp, dict) and camp.get("pos") == player_omt for camp in camps
+        )
+        if not player_registry_present:
+            camps.append({"pos": list(player_omt)})
+        extracted_save.write_text(
+            json.dumps(player_payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8"
+        )
+        run_zzip(extracted_save)
+    finally:
+        if extracted_save.exists():
+            extracted_save.unlink()
+
+    overmap_x, overmap_y, _local_omt = overmap_file_coords_from_abs_omt(
+        (player_omt[0], player_omt[1], player_omt[2])
+    )
+    overmap_path = world_dir / "overmaps" / f"o.{overmap_x}.{overmap_y}.zzip"
+    if not overmap_path.exists():
+        raise SystemExit(f"Fixture player-basecamp transform overmap not found: {overmap_path}")
+    plain_path: Optional[Path] = None
+    payload: Dict[str, Any] = {}
+    try:
+        plain_path, version_line, payload = extract_overmap_payload(overmap_path)
+        camps = payload.setdefault("camps", [])
+        if not isinstance(camps, list):
+            raise SystemExit(f"Fixture player-basecamp transform overmap camps is not a list: {overmap_path}")
+        matching_camps = [
+            camp for camp in camps
+            if isinstance(camp, dict) and camp.get("pos") == player_omt
+        ]
+        if len(matching_camps) > 1:
+            raise SystemExit(f"Fixture player-basecamp transform found duplicate camps at {player_omt}: {overmap_path}")
+        camp_added = False
+        if matching_camps:
+            camp = matching_camps[0]
+            if str(camp.get("owner", "") or "") != owner or not str(camp.get("name", "") or "").strip():
+                raise SystemExit(
+                    f"Fixture player-basecamp transform found non-player or unnamed camp at {player_omt}: {overmap_path}"
+                )
+        else:
+            camps.append({"owner": owner, "name": camp_name, "pos": list(player_omt)})
+            camp_added = True
+            write_overmap_payload(plain_path, version_line, payload)
+    finally:
+        if plain_path is not None and plain_path.exists():
+            cleanup_extracted_overmap(plain_path, keep=not bool(payload.get("_created_plain", False)))
+
+    return {
+        "kind": "player_basecamp_at_omt",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "player_omt": player_omt,
+        "camp_omt": player_omt,
+        "camp_name": camp_name,
+        "owner": owner,
+        "overmap": str(overmap_path.relative_to(world_dir)),
+        "player_registry_present": player_registry_present,
+        "camp_added": camp_added,
     }
 
 
@@ -13441,6 +16270,151 @@ def apply_game_turn_to_payload(
     }
 
 
+SHADOW_FLAVOR_POPUP_PRODUCER_EOC = "EOC_LIEUTENANT_SHADOW_WARN"
+INHERITED_SHADOW_FLAVOR_PRODUCER_GLOBAL_EOCS = (
+    "EOC_LIEUTENANT_ACTIVATE_SHADOW",
+    "EOC_LIEUTENANT_SPAWN_SHADOW",
+)
+
+
+def queued_global_eoc_identity_records(payload: Dict[str, Any]) -> List[Dict[str, Any]]:
+    """Return canonical queued-global identities, rejecting an unknown player-save schema."""
+    queued = payload.get("queued_global_effect_on_conditions")
+    if not isinstance(queued, list):
+        raise SystemExit("Player save queued_global_effect_on_conditions is not a list")
+
+    records: List[Dict[str, Any]] = []
+    for index, entry in enumerate(queued):
+        if not isinstance(entry, dict):
+            raise SystemExit(f"Player save queued_global_effect_on_conditions[{index}] is not an object")
+        expected_keys = {"time", "eoc", "context"}
+        if set(entry) != expected_keys:
+            raise SystemExit(
+                f"Player save queued_global_effect_on_conditions[{index}] has unexpected schema "
+                f"keys {sorted(entry)}; expected {sorted(expected_keys)}"
+            )
+        timestamp = entry["time"]
+        if isinstance(timestamp, bool) or not isinstance(timestamp, int):
+            raise SystemExit(f"Player save queued_global_effect_on_conditions[{index}] has non-integer time")
+        eoc = entry["eoc"]
+        if not isinstance(eoc, str) or not eoc:
+            raise SystemExit(f"Player save queued_global_effect_on_conditions[{index}] has invalid eoc identity")
+        context = entry["context"]
+        if not isinstance(context, dict):
+            raise SystemExit(f"Player save queued_global_effect_on_conditions[{index}] has non-object context")
+        records.append({
+            "index": index,
+            "eoc": eoc,
+            "time": timestamp,
+            "context": context,
+            "serialized_identity": json.dumps(entry, ensure_ascii=False, sort_keys=True, separators=(",", ":")),
+        })
+    return records
+
+
+def remove_inherited_shadow_flavor_producer_global_eocs_from_payload(payload: Dict[str, Any]) -> Dict[str, Any]:
+    """Remove the two queued roots that can reach the source-proved shadow warning popup."""
+    turn_before = payload.get("turn")
+    if isinstance(turn_before, bool) or not isinstance(turn_before, int):
+        raise SystemExit("Player save shadow-flavor producer removal needs integer top-level turn")
+    before = queued_global_eoc_identity_records(payload)
+    removed: List[Dict[str, Any]] = []
+    for target_eoc in INHERITED_SHADOW_FLAVOR_PRODUCER_GLOBAL_EOCS:
+        matches = [record for record in before if record["eoc"] == target_eoc]
+        if not matches:
+            raise SystemExit(f"Player save shadow-flavor producer removal found no {target_eoc} entry")
+        if len(matches) != 1:
+            raise SystemExit(f"Player save shadow-flavor producer removal found duplicate {target_eoc} entries")
+        if matches[0]["context"] != {}:
+            raise SystemExit(
+                "Player save shadow-flavor producer removal found unexpected target context "
+                f"for {target_eoc}"
+            )
+        removed.append(matches[0])
+
+    queued = payload["queued_global_effect_on_conditions"]
+    for record in sorted(removed, key=lambda item: int(item["index"]), reverse=True):
+        del queued[record["index"]]
+    after = queued_global_eoc_identity_records(payload)
+    retained_before = [record["serialized_identity"] for record in before if record not in removed]
+    retained_after = [record["serialized_identity"] for record in after]
+    if retained_after != retained_before:
+        raise SystemExit("Player save shadow-flavor producer removal changed a retained queued EOC identity")
+    if payload.get("turn") != turn_before:
+        raise SystemExit("Player save shadow-flavor producer removal changed top-level turn")
+
+    return {
+        "popup_producer_eoc": SHADOW_FLAVOR_POPUP_PRODUCER_EOC,
+        "target_eocs": list(INHERITED_SHADOW_FLAVOR_PRODUCER_GLOBAL_EOCS),
+        "turn_before": turn_before,
+        "turn_after": payload["turn"],
+        "before": before,
+        "removed": removed,
+        "after": after,
+        "retained_identities_and_timestamps_byte_equivalent": True,
+    }
+
+
+def apply_remove_inherited_shadow_flavor_producer_global_eocs_transform(
+    world_dir: Path,
+    transform: Dict[str, Any],
+) -> Dict[str, Any]:
+    player_save_name = str(transform.get("player_save", "")).strip()
+    player_save = world_dir / player_save_name
+    if not player_save.exists():
+        raise SystemExit(f"Fixture shadow-flavor producer transform target not found: {player_save}")
+    if player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture shadow-flavor producer transform expects .zzip save path: {player_save}")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture shadow-flavor producer transform did not extract save: {extracted_save}")
+    try:
+        payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+        if not isinstance(payload, dict):
+            raise SystemExit(f"Extracted player save is not a JSON object: {extracted_save}")
+        report = remove_inherited_shadow_flavor_producer_global_eocs_from_payload(payload)
+        extracted_save.write_text(
+            json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+            encoding="utf-8",
+        )
+        run_zzip(extracted_save)
+    finally:
+        if extracted_save.exists():
+            extracted_save.unlink()
+
+    return {
+        "kind": "remove_inherited_shadow_flavor_producer_global_eocs",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        **report,
+    }
+
+
+def audit_saved_inherited_shadow_flavor_producer_global_eocs_absence(
+    world_dir: Path,
+    *,
+    player_save: str,
+) -> Dict[str, Any]:
+    """Read-only preflight for the source-proved shadow-warning queue roots."""
+    selected_player_save, player_save_path, payload, _stat = load_saved_player_payload(world_dir, player_save)
+    records = queued_global_eoc_identity_records(payload)
+    observed = [record for record in records if record["eoc"] in INHERITED_SHADOW_FLAVOR_PRODUCER_GLOBAL_EOCS]
+    return {
+        "world": world_dir.name,
+        "world_dir": str(world_dir),
+        "player_save": selected_player_save,
+        "player_save_path": str(player_save_path),
+        "popup_producer_eoc": SHADOW_FLAVOR_POPUP_PRODUCER_EOC,
+        "target_eocs": list(INHERITED_SHADOW_FLAVOR_PRODUCER_GLOBAL_EOCS),
+        "turn": payload.get("turn"),
+        "queued_global_eoc_count": len(records),
+        "observed_target_entries": observed,
+        "status": "required_state_present" if not observed else "required_state_missing",
+    }
+
+
 def apply_game_turn_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     player_save_name = str(transform.get("player_save", "")).strip()
     player_save = world_dir / player_save_name
@@ -13924,6 +16898,16 @@ def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]
     cloned_site["active_sortie_local_contact_minutes"] = -1
     cloned_site["retired_empty_site"] = False
     cloned_site["retirement_summary"] = ""
+    if transform.get("new_supply_units") is not None:
+        cloned_site["supply_units"] = max(0, int(transform.get("new_supply_units")))
+        cloned_site["schema_version"] = max(6, int(cloned_site.get("schema_version", 5)))
+        cloned_site["supply_last_update_minutes"] = int(
+            transform.get("new_supply_last_update_minutes", -1)
+        )
+        cloned_site["supply_accounted_living_total"] = max(
+            0, int(transform.get("new_supply_accounted_living_total", 0))
+        )
+        cloned_site["supply_member_minute_remainder"] = 0
     if bool(transform.get("clear_intelligence_map", True)):
         cloned_site["intelligence_map"] = {"leads": []}
     if bool(transform.get("clear_remembered_pressure", True)):
@@ -13965,6 +16949,11 @@ def apply_bandit_clone_site_transform(world_dir: Path, transform: Dict[str, Any]
         "clear_intelligence_map": bool(transform.get("clear_intelligence_map", True)),
         "clear_remembered_pressure": bool(transform.get("clear_remembered_pressure", True)),
         "reset_shakedown_history": bool(transform.get("reset_shakedown_history", False)),
+        "new_supply_units": cloned_site.get("supply_units"),
+        "new_supply_last_update_minutes": cloned_site.get("supply_last_update_minutes"),
+        "new_supply_accounted_living_total": cloned_site.get(
+            "supply_accounted_living_total"
+        ),
     }
 
 
@@ -14130,17 +17119,26 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
         if kind == "player_items":
             reports.append(apply_player_items_transform(world_dir, transform))
             continue
+        if kind == "player_worn_items":
+            reports.append(apply_player_worn_items_transform(world_dir, transform))
+            continue
         if kind == "player_condition":
             reports.append(apply_player_condition_transform(world_dir, transform))
             continue
         if kind == "player_location_offset_ms":
             reports.append(apply_player_location_offset_ms_transform(world_dir, transform))
             continue
+        if kind == "player_basecamp_at_omt":
+            reports.append(apply_player_basecamp_at_omt_transform(world_dir, transform))
+            continue
         if kind == "player_near_overmap_special":
             reports.append(apply_player_near_overmap_special_transform(world_dir, transform))
             continue
         if kind == "overmap_terrain_id_at_abs_omt":
             reports.append(apply_overmap_terrain_id_at_abs_omt_transform(world_dir, transform))
+            continue
+        if kind == "player_view_seen_omt":
+            reports.append(apply_player_view_seen_omt_transform(world_dir, transform))
             continue
         if kind == "seed_overmap_special_near_player":
             reports.append(apply_seed_overmap_special_near_player_transform(world_dir, transform))
@@ -14174,6 +17172,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "horde_entity_near_player":
             reports.append(apply_horde_entity_near_player_transform(world_dir, transform))
+            continue
+        if kind == "remove_inherited_shadow_flavor_producer_global_eocs":
+            reports.append(apply_remove_inherited_shadow_flavor_producer_global_eocs_transform(world_dir, transform))
             continue
         if kind == "game_turn":
             reports.append(apply_game_turn_transform(world_dir, transform))
@@ -14384,6 +17385,13 @@ def run_probe_post_relaunch(
     scenario_name: str,
     registry_launch_receipt: str,
     terminal_exit_timeout_seconds: float,
+    artifact_run_dir: Optional[Path] = None,
+    transition_event_run_id: str = "",
+    transition_event_path: str = "",
+    certification_registry: str = "",
+    certification_round_manifest: str = "",
+    certification_lease_id: str = "",
+    certification_recheck_inputs: str = "",
 ) -> Dict[str, Any]:
     """Cross one terminal saved-world process boundary through the canonical startup owner."""
     exit_observed = wait_for_pid_exit(initial_pid, terminal_exit_timeout_seconds)
@@ -14407,9 +17415,42 @@ def run_probe_post_relaunch(
         "--config-profile", config_profile,
         "--scenario-identity", scenario_name,
         "--world", world,
+        "--harness-run-id", transition_event_run_id,
+        "--transition-event-path", transition_event_path,
     ]
     if registry_launch_receipt:
         start_cmd.extend(["--registry-launch-receipt", registry_launch_receipt])
+    if artifact_run_dir is not None:
+        start_cmd.extend(["--harness-artifact-run-dir", str(artifact_run_dir.resolve())])
+    certification_args = (
+        certification_registry, certification_round_manifest,
+        certification_lease_id, certification_recheck_inputs,
+    )
+    if any(certification_args):
+        if not all(certification_args):
+            result.update({"status": "certification_arguments_incomplete", "pid": initial_pid})
+            return result
+        connection = open_registry(certification_registry)
+        try:
+            progression = certification_record_world_save_progression({
+                "connection": connection,
+                "manifest": load_certification_manifest(certification_round_manifest),
+                "lease_id": certification_lease_id,
+                "recheck_inputs_path": certification_recheck_inputs,
+                "event_stream_path": transition_event_path,
+            }, event_stream_id=transition_event_run_id)
+        finally:
+            connection.close()
+        result["world_save_progression"] = progression
+        if not progression.get("ok"):
+            result.update({"status": "world_save_progression_rejected", "pid": initial_pid})
+            return result
+        start_cmd.extend([
+            "--certification-registry", certification_registry,
+            "--certification-round-manifest", certification_round_manifest,
+            "--certification-lease-id", certification_lease_id,
+            "--certification-recheck-inputs", certification_recheck_inputs,
+        ])
     start_rc, start_result, start_stdout, start_stderr = run_json_command(start_cmd)
     relaunch_pid = int(start_result.get("pid", 0) or 0)
     result.update({
@@ -14480,8 +17521,13 @@ def execute_probe_steps(
     scenario_identity: str = "",
     runtime_commit: str = "",
     runtime_binary: str = "",
+    structured_event_reader: Optional[StructuredTransitionEventReader] = None,
+    structured_events: Optional[List[Dict[str, Any]]] = None,
+    structured_event_diagnostics: Optional[List[Dict[str, Any]]] = None,
 ) -> List[Dict[str, Any]]:
-    reports: List[Dict[str, Any]] = []
+    reports: List[Dict[str, Any]] = _WatermarkedReports(
+        structured_event_reader, structured_events, structured_event_diagnostics
+    )
     for index, step in enumerate(steps, start=1):
         kind = str(step.get("kind", "")).strip().lower()
         label = str(step.get("label", f"step_{index:02d}")).strip() or f"step_{index:02d}"
@@ -14522,14 +17568,59 @@ def execute_probe_steps(
                 report["ecology_incident_artifact_baseline"] = ecology_incident_artifact_baseline(
                     run_dir
                 )
-            peekaboo_press_sequence(pid, keys, delay_ms=delay_ms)
+            focusable_prefix = keys[:-1] if keys and normalize_peekaboo_key(keys[-1]) in {"enter", "return"} else keys
+            prefix_physical = bool(focusable_prefix) and all(
+                peekaboo_physical_hotkey_for_key(normalize_peekaboo_key(key))
+                for key in focusable_prefix
+            )
+            if prefix_physical and len(focusable_prefix) < len(keys):
+                peekaboo_press_sequence(pid, focusable_prefix, delay_ms=delay_ms, focus_once=True)
+                peekaboo_press_sequence(pid, keys[-1:], delay_ms=delay_ms)
+            else:
+                peekaboo_press_sequence(pid, keys, delay_ms=delay_ms)
             report.update({"keys": keys, "delay_ms": delay_ms})
         elif kind == "type":
             text = str(step.get("text", ""))
             if not text:
                 raise SystemExit(f"Scenario step '{label}' has no text")
             delay_ms = int(step.get("delay_ms", 20) or 20)
-            peekaboo_type_text(pid, text, delay_ms=delay_ms)
+            focus_once = bool(step.get("focus_once", False))
+            if focus_once:
+                focus_report = peekaboo_focus_pid(pid)
+                if not focus_report.get("ok"):
+                    raise RuntimeError("Peekaboo type focus failed: " + json.dumps(focus_report, ensure_ascii=False))
+            peekaboo_type_text(pid, text, delay_ms=delay_ms, focus_pid=not focus_once)
+            if bool(step.get("post_type_allow_hostile_auto_move_cancel", False)):
+                post_type_timeout_seconds = float(
+                    step.get("post_type_timeout_seconds", 1.0) or 0.0
+                )
+                deadline = time.monotonic() + post_type_timeout_seconds
+                recovery = {"status": "unobservable"}
+                while time.monotonic() <= deadline:
+                    recovery = acknowledge_blocking_interruptions(
+                        pid, run_dir, f"{label}.post_type_hostile_auto_move",
+                        max_acknowledgements=1, delay_ms=delay_ms, stop_on_unknown=True,
+                        allow_hostile_auto_move_cancel=True,
+                        response_key_overrides=(
+                            {"authorized_hostile_auto_move_cancel": "N"}
+                            if bool(step.get("post_type_continue_hostile_auto_move", False))
+                            else None
+                        ),
+                    )
+                    if str(recovery.get("status", "")) == "clear":
+                        break
+                    if str(recovery.get("status", "")).startswith("blocked_"):
+                        break
+                    time.sleep(1.0)
+                report["post_type_hostile_auto_move_recovery"] = recovery
+                if str(recovery.get("status", "")) not in {"clear", "blocked_acknowledgement_limit"}:
+                    report["abort"] = {
+                        "status": "blocked_post_type_hostile_auto_move_recovery",
+                        "verdict": "blocked_post_type_hostile_auto_move_recovery",
+                        "reason": "selected-route transport reached an unrecognized prompt",
+                    }
+                    reports.append(report)
+                    return reports
             submit = bool(step.get("submit", False))
             submit_settle_seconds = float(step.get("submit_settle_seconds", 0.2) or 0.0)
             report.update({"text": text, "delay_ms": delay_ms, "submit": submit})
@@ -14544,6 +17635,228 @@ def execute_probe_steps(
                     "submit_delay_ms": submit_delay_ms,
                     "submit_settle_seconds": submit_settle_seconds,
                 })
+        elif kind == "dismiss_harmless_narrative_popup":
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            capture = capture_screenshot(pid, run_dir, f"{label}.before")
+            screen_text = capture_screen_text_artifact(run_dir, f"{label}.before", capture, tail_lines=64)
+            popup_markers = ["You suddenly realize", "what happened to the grass"]
+            popup_matches = find_screen_text_matches(screen_text, popup_markers)
+            report["screen_before"] = screen_text
+            report["popup_matches"] = popup_matches
+            if len(popup_matches) == len(popup_markers):
+                peekaboo_press_sequence(pid, ["space"], delay_ms=delay_ms)
+                report["dismissal"] = {"status": "acknowledged", "response_key": "space"}
+            else:
+                report["dismissal"] = {"status": "blocked_expected_popup_not_observed"}
+            report["response_key"] = "space"
+            report["harmless_popup_classification"] = "shadow_warning_wilderness_flavor_popup"
+            if report["dismissal"].get("status") != "acknowledged":
+                report["abort"] = {
+                    "status": "blocked_harmless_narrative_popup_dismissal",
+                    "verdict": "blocked_harmless_narrative_popup_dismissal",
+                    "reason": "the expected no-choice narrative popup was not safely acknowledged",
+                }
+        elif kind == "observe_passive_activity_completion":
+            observation_seconds = float(step.get("observation_seconds", 0.0) or 0.0)
+            poll_seconds = float(step.get("poll_seconds", 2.0) or 2.0)
+            if observation_seconds <= 0 or poll_seconds <= 0:
+                raise SystemExit(f"Scenario step '{label}' needs positive observation_seconds and poll_seconds")
+            started = time.monotonic()
+            observations: List[Dict[str, Any]] = []
+            completed = False
+            while True:
+                capture = capture_screenshot(pid, run_dir, f"{label}.poll_{len(observations) + 1:03d}")
+                text_report = capture_screen_text_artifact(
+                    run_dir, f"{label}.poll_{len(observations) + 1:03d}", capture, tail_lines=48
+                )
+                catching = bool(find_screen_text_matches(text_report, ["catching breath"]))
+                hud = find_screen_text_matches(text_report, ["Move:", "Wield:"])
+                observation = {
+                    "elapsed_seconds": time.monotonic() - started,
+                    "catching_breath": catching,
+                    "hud_matches": hud,
+                }
+                observations.append(observation)
+                if not catching and len(hud) == 2:
+                    completed = True
+                    break
+                if observation["elapsed_seconds"] >= observation_seconds:
+                    break
+                time.sleep(min(poll_seconds, observation_seconds - observation["elapsed_seconds"]))
+            report["passive_observation"] = {
+                "observation_seconds": observation_seconds,
+                "poll_seconds": poll_seconds,
+                "completed": completed,
+                "observations": observations,
+            }
+            if not completed:
+                report["abort"] = {
+                    "status": "blocked_passive_activity_completion",
+                    "verdict": "blocked_passive_activity_completion",
+                    "reason": "native catching-breath activity did not end during the measured passive observation window",
+                }
+        elif kind == "ordinary_overmap_route_constructor":
+            raw_origin = step.get("origin_omt", [])
+            raw_destination = step.get("destination_omt", [])
+            raw_cursor_keys = step.get("cursor_keys", [])
+            if not isinstance(raw_origin, list) or not isinstance(raw_destination, list):
+                raise SystemExit(f"Scenario step '{label}' needs origin_omt and destination_omt arrays")
+            if isinstance(raw_cursor_keys, str):
+                cursor_keys = [raw_cursor_keys] if raw_cursor_keys.strip() else []
+            elif isinstance(raw_cursor_keys, list):
+                cursor_keys = [str(key) for key in raw_cursor_keys if str(key).strip()]
+            else:
+                cursor_keys = []
+            if not cursor_keys:
+                raise SystemExit(f"Scenario step '{label}' needs cursor_keys")
+            route_key = str(step.get("route_key", "W") or "").strip()
+            if not route_key:
+                raise SystemExit(f"Scenario step '{label}' needs route_key")
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            open_settle_seconds = float(step.get("open_settle_seconds", 1.0) or 0.0)
+            cursor_settle_seconds = float(step.get("cursor_settle_seconds", 0.5) or 0.0)
+            route_settle_seconds = float(step.get("route_settle_seconds", 0.5) or 0.0)
+            focus_report = peekaboo_focus_pid(pid)
+            if not focus_report.get("ok"):
+                raise RuntimeError("Peekaboo route-constructor focus failed: " + json.dumps(focus_report, ensure_ascii=False))
+            # Open the overmap through a physical key event.  Text injection
+            # can be accepted by the focused window while the game remains in
+            # a post-travel modal state, leaving the route constructor absent.
+            peekaboo_hotkey(pid, "m", hold_ms=max(30, min(delay_ms, 200)))
+            if open_settle_seconds > 0:
+                time.sleep(open_settle_seconds)
+            peekaboo_press_sequence(pid, cursor_keys, delay_ms=delay_ms, focus_once=True)
+            if cursor_settle_seconds > 0:
+                time.sleep(cursor_settle_seconds)
+            peekaboo_type_text(pid, route_key, delay_ms=delay_ms)
+            if route_settle_seconds > 0:
+                time.sleep(route_settle_seconds)
+            try:
+                metadata = audit_ordinary_overmap_route_constructor(
+                    run_dir,
+                    label,
+                    artifact_log=artifact_log,
+                    artifact_baseline=artifact_log_start_size,
+                    origin_omt=raw_origin,
+                    destination_omt=raw_destination,
+                    filter_debug_noise=filter_debug_noise,
+                )
+            except ValueError as exc:
+                raise SystemExit(f"Scenario step '{label}' {exc}") from exc
+            metadata["artifact_path"] = str(run_dir / f"{label}.metadata.json")
+            write_json(run_dir / f"{label}.metadata.json", metadata)
+            report.update({
+                "origin_omt": raw_origin,
+                "destination_omt": raw_destination,
+                "cursor_keys": cursor_keys,
+                "route_key": route_key,
+                "delay_ms": delay_ms,
+                "metadata": metadata,
+                "action_description": "open ordinary overmap, bind its cursor, and preview the real route",
+                "expected_immediate_state": "the production overmap entered at the source OMT, accepted the destination cursor, resolved CHOOSE_DESTINATION, and built a nonempty route",
+                "failure_rule": "a missing entry, cursor binding, route input, or route construction leaves the return route unproved",
+            })
+            if metadata.get("status") != "required_state_present" and bool(
+                    step.get("abort_on_metadata_failure", False)):
+                report["abort"] = {
+                    "guard": "ordinary_overmap_route_constructor",
+                    "status": "aborted_by_metadata_guard",
+                    "verdict": str(step.get(
+                        "abort_verdict", "blocked_ordinary_overmap_route_constructor_missing"
+                    )),
+                    "reason": str(step.get(
+                        "abort_reason", "the ordinary overmap route constructor was incomplete"
+                    )),
+                    "missing_required_items": metadata.get("missing_required_items", []),
+                }
+                reports.append(report)
+                return reports
+        elif kind == "acknowledge_hostile_auto_move_interrupt":
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            settle_seconds = float(step.get("settle_seconds", 1.0) or 0.0)
+            capture_before = capture_screenshot(pid, run_dir, f"{label}.before")
+            before_text = capture_screen_text_artifact(
+                run_dir, f"{label}.before", capture_before, tail_lines=64
+            )
+            required_markers = ["Cancel auto move", "Case Sensitive"]
+            before_matches = find_screen_text_matches(before_text, required_markers)
+            modal_present = is_hostile_auto_move_cancel_modal( before_text )
+            resolved_on_hud = is_retained_hostile_auto_move_cancelled_hud_message(
+                before_text
+            )
+            report["screen_before"] = capture_before.get("screen_summary", {})
+            report["screen_before_text"] = before_text
+            report["required_modal_markers"] = required_markers
+            report["modal_matches"] = before_matches
+            report["modal_present"] = modal_present
+            report["resolved_hostile_auto_move_cancelled_on_hud"] = resolved_on_hud
+            if modal_present:
+                response_key = str(step.get("response_key", "Y") or "Y").strip().upper()
+                if response_key not in {"Y", "N"}:
+                    raise SystemExit(
+                        f"Scenario step '{label}' response_key must be Y or N"
+                    )
+                peekaboo_type_text(pid, response_key, delay_ms=delay_ms)
+                if settle_seconds > 0:
+                    time.sleep(settle_seconds)
+                capture_after = capture_screenshot(pid, run_dir, f"{label}.after")
+                after_text = capture_screen_text_artifact(
+                    run_dir, f"{label}.after", capture_after, tail_lines=64
+                )
+                after_hud_matches = find_screen_text_matches(after_text, ["Move:", "Wield:"])
+                report["screen_after"] = capture_after.get("screen_summary", {})
+                report["screen_after_text"] = after_text
+                report["screen_after_text_expectation"] = {
+                    "status": "matched" if len(after_hud_matches) == 2 else "missing",
+                    "patterns": ["Move:", "Wield:"],
+                    "matches": after_hud_matches,
+                    "missing": [] if len(after_hud_matches) == 2 else [
+                        marker for marker in ("Move:", "Wield:")
+                        if not any(match.get("pattern") == marker for match in after_hud_matches)
+                    ],
+                    "source": str(run_dir / f"{label}.after.screen_text.json"),
+                }
+                report["response_key"] = response_key
+                report["response_semantics"] = (
+                    "continue_auto_move_before_hostile_contact"
+                    if response_key == "N" else
+                    "cancel_auto_move_before_hostile_contact"
+                )
+                if is_hostile_auto_move_cancel_modal( after_text ) and not (
+                        response_key == "N" and len(after_hud_matches) == 2):
+                    report["abort"] = {
+                        "status": "blocked_hostile_auto_move_modal_persisted",
+                        "verdict": "blocked_hostile_auto_move_modal_persisted",
+                        "reason": (
+                            "the hostile auto-move modal remained after its explicit "
+                            f"{response_key} response"
+                        ),
+                    }
+                elif len(after_hud_matches) != 2:
+                    report["abort"] = {
+                        "status": "blocked_hostile_auto_move_cancel_not_returned_to_hud",
+                        "verdict": "blocked_hostile_auto_move_cancel_not_returned_to_hud",
+                        "reason": "cancelling auto-move did not return to unobstructed gameplay HUD",
+                    }
+            elif resolved_on_hud:
+                after_hud_matches = find_screen_text_matches(before_text, ["Move:", "Wield:"])
+                report["screen_after"] = capture_before.get("screen_summary", {})
+                report["screen_after_text"] = before_text
+                report["screen_after_text_expectation"] = {
+                    "status": "matched",
+                    "patterns": ["Move:", "Wield:"],
+                    "matches": after_hud_matches,
+                    "missing": [],
+                    "source": str(run_dir / f"{label}.before.screen_text.json"),
+                }
+                report["response_key"] = ""
+                report["response_semantics"] = "hostile_auto_move_already_cancelled_on_hud_no_input"
+            else:
+                report["abort"] = {
+                    "status": "blocked_expected_hostile_auto_move_modal_or_resolved_hud_missing",
+                    "verdict": "blocked_expected_hostile_auto_move_modal_or_resolved_hud_missing",
+                    "reason": "neither the current hostile auto-move modal nor its exact resolved HUD state was visibly present",
+                }
         elif kind == "advance_turns":
             count = int(step.get("count", 0) or 0)
             if count <= 0:
@@ -15214,6 +18527,7 @@ def execute_probe_steps(
             )
             report.update({
                 "terrain_query": terrain_query,
+                "edited_local_ms": step.get("edited_local_ms"),
                 "target_keys": target_keys,
                 "delay_ms": delay_ms,
                 "type_delay_ms": type_delay_ms,
@@ -15341,6 +18655,21 @@ def execute_probe_steps(
             required_local_handoff_pair_contract = optional_step_bool(
                 "required_local_handoff_pair_contract"
             )
+            required_local_handoff_cohesion_assembled = optional_step_bool(
+                "required_local_handoff_cohesion_assembled"
+            )
+            required_local_handoff_cohesion_abort_return = optional_step_bool(
+                "required_local_handoff_cohesion_abort_return"
+            )
+            raw_local_handoff_route_position = step.get("required_local_handoff_route_position")
+            required_local_handoff_route_position: Optional[List[int]] = None
+            if isinstance(raw_local_handoff_route_position, list) and len(
+                    raw_local_handoff_route_position) >= 3:
+                required_local_handoff_route_position = [
+                    int(raw_local_handoff_route_position[0]),
+                    int(raw_local_handoff_route_position[1]),
+                    int(raw_local_handoff_route_position[2]),
+                ]
             required_scout_report_present = optional_step_bool("required_scout_report_present")
             required_scout_report_provisional = optional_step_bool(
                 "required_scout_report_provisional"
@@ -15350,6 +18679,9 @@ def execute_probe_steps(
             )
             required_report_decision_identity_match = optional_step_bool(
                 "required_report_decision_identity_match"
+            )
+            required_report_hostile_operation_claim_match = optional_step_bool(
+                "required_report_hostile_operation_claim_match"
             )
             required_home_side_signal_count = optional_step_int("required_home_side_signal_count")
             required_lead_bounty = optional_step_int("required_lead_bounty")
@@ -15445,6 +18777,11 @@ def execute_probe_steps(
                     ).strip(),
                     required_local_handoff_exact_pair=required_local_handoff_exact_pair,
                     required_local_handoff_pair_contract=required_local_handoff_pair_contract,
+                    required_local_handoff_cohesion_assembled=
+                    required_local_handoff_cohesion_assembled,
+                    required_local_handoff_cohesion_abort_return=
+                    required_local_handoff_cohesion_abort_return,
+                    required_local_handoff_route_position=required_local_handoff_route_position,
                     required_member_count=required_member_count,
                     required_ready_at_home_count=required_ready_at_home_count,
                     required_min_ready_at_home_count=required_min_ready_at_home_count,
@@ -15494,6 +18831,9 @@ def execute_probe_steps(
                         step.get("required_camp_decision_state", "") or ""
                     ).strip(),
                     required_report_decision_identity_match=required_report_decision_identity_match,
+                    required_report_hostile_operation_claim_match=(
+                        required_report_hostile_operation_claim_match
+                    ),
                 )
             except (Exception, SystemExit) as exc:
                 metadata = {
@@ -15535,6 +18875,9 @@ def execute_probe_steps(
                         step.get("required_camp_decision_state", "") or ""
                     ).strip(),
                     "required_report_decision_identity_match": required_report_decision_identity_match,
+                    "required_report_hostile_operation_claim_match": (
+                        required_report_hostile_operation_claim_match
+                    ),
                     "player_save": str(step.get("player_save", "") or "").strip(),
                     "required_min_leads": required_min_leads,
                     "required_max_leads": required_max_leads,
@@ -15557,6 +18900,9 @@ def execute_probe_steps(
                     ).strip(),
                 }
             metadata["artifact_path"] = str(metadata_artifact)
+            metadata = normalize_saved_artifact_receipt(
+                metadata, kind, producer_step_label=label, producer_step_index=index
+            )
             metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
             report.update({
                 "world_dir": str(world_dir),
@@ -15878,6 +19224,129 @@ def execute_probe_steps(
                                 "required player-save mtime progress was missing or unreadable",
                             )
                         ),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
+        elif kind == "audit_saved_player_condition":
+            player_save = str(step.get("player_save", "") or "").strip()
+            required_needs = {
+                key: int(step[key]) for key in ("hunger", "thirst", "sleepiness") if key in step
+            }
+            required_traits = normalize_string_list(step.get("required_traits", []))
+            forbidden_traits = normalize_string_list(step.get("forbidden_traits", []))
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_player_condition(world_dir, player_save=player_save,
+                    required_needs=required_needs, required_traits=required_traits,
+                    forbidden_traits=forbidden_traits)
+            except (Exception, SystemExit) as exc:
+                metadata = {"status": "failed", "error": str(exc), "required_needs": required_needs,
+                            "required_traits": required_traits, "forbidden_traits": forbidden_traits}
+            metadata["artifact_path"] = str(metadata_artifact)
+            write_json(metadata_artifact, metadata)
+            report["metadata"] = metadata
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {"guard": "metadata", "status": "aborted_by_metadata_guard",
+                                       "verdict": str(step.get("abort_verdict", "blocked_passive_observer_baseline")),
+                                       "reason": str(step.get("abort_reason", "passive observer condition was not trusted")),
+                                       "issues": metadata_issues}
+                    reports.append(report)
+                    return reports
+        elif kind == "audit_saved_phase4_shadow_warning_wait_footings":
+            footings = step.get("footings", [])
+            geometry = step.get("geometry", {})
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_phase4_shadow_warning_wait_footings(
+                    world_dir,
+                    footings=footings,
+                    geometry=geometry,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {"status": "failed", "error": str(exc), "footings": footings,
+                            "geometry": geometry}
+            metadata["artifact_path"] = str(metadata_artifact)
+            write_json(metadata_artifact, metadata)
+            report["metadata"] = metadata
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(step.get("abort_verdict", "blocked_phase4_shadow_warning_wait_footing")),
+                        "reason": str(step.get("abort_reason", "phase-4 wait footing was not safely bounded")),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
+        elif kind == "audit_saved_map_opaque_tile":
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_map_opaque_tile(
+                    world_dir,
+                    abs_omt=[int(value) for value in step.get("abs_omt", [])],
+                    local_ms=[int(value) for value in step.get("local_ms", [])],
+                    required_terrain=str(step.get("required_terrain", "")),
+                    required_flags=[str(value) for value in step.get("required_flags", [])],
+                    barrier_local_ms=([int(value) for value in step["barrier_local_ms"]]
+                                      if isinstance(step.get("barrier_local_ms"), list) else None),
+                    barrier_terrain=str(step.get("barrier_terrain", "")),
+                    barrier_flags=[str(value) for value in step.get("barrier_flags", [])],
+                    require_enclosed=bool(step.get("require_enclosed", False)),
+                    player_save=str(step.get("player_save", "") or ""),
+                    opaque_overlays=step.get("opaque_overlays", []),
+                    require_opaque_neighbors=bool(step.get("require_opaque_neighbors", False)),
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {"status": "failed", "error": str(exc)}
+            metadata["artifact_path"] = str(metadata_artifact)
+            write_json(metadata_artifact, metadata)
+            report["metadata"] = metadata
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(step.get("abort_verdict", "blocked_saved_map_opaque_tile")),
+                        "reason": str(step.get("abort_reason", "saved-map opaque footing was not proven")),
+                        "issues": metadata_issues,
+                    }
+                    reports.append(report)
+                    return reports
+        elif kind == "audit_saved_inherited_shadow_flavor_producer_global_eocs_absence":
+            player_save = str(step.get("player_save", "") or "").strip()
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_inherited_shadow_flavor_producer_global_eocs_absence(
+                    world_dir,
+                    player_save=player_save,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "player_save": player_save,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            write_json(metadata_artifact, metadata)
+            report["metadata"] = metadata
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(step.get("abort_verdict", "blocked_shadow_flavor_producer_present")),
+                        "reason": str(step.get("abort_reason", "removed copied-player shadow-flavor roots were not absent")),
                         "issues": metadata_issues,
                     }
                     reports.append(report)
@@ -16345,7 +19814,42 @@ def execute_probe_steps(
                     return reports
         else:
             raise SystemExit(f"Unsupported scenario step kind: {kind or '<empty>'}")
-        if settle_seconds > 0:
+        native_travel_stabilization = step.get("native_travel_stabilization")
+        if native_travel_stabilization is not None:
+            if kind != "type" or str(step.get("text", "")).upper() != "Y":
+                raise SystemExit(
+                    f"Scenario step '{label}' native_travel_stabilization requires a Y type confirmation"
+                )
+            if not isinstance(native_travel_stabilization, dict):
+                raise SystemExit(
+                    f"Scenario step '{label}' native_travel_stabilization must be an object"
+                )
+            if str(native_travel_stabilization.get("mode", "")) != \
+                    "continue_exact_hostile_auto_move_until_hud":
+                raise SystemExit(
+                    f"Scenario step '{label}' native_travel_stabilization has no supported mode"
+                )
+            try:
+                stabilization = stabilize_native_travel_after_route_confirmation(
+                    pid,
+                    run_dir,
+                    label,
+                    delay_ms=delay_ms,
+                    timeout_seconds=settle_seconds,
+                )
+            except ValueError as exc:
+                raise SystemExit(f"Scenario step '{label}' {exc}") from exc
+            report["native_travel_stabilization"] = stabilization
+            if not str(stabilization.get("verdict", "")).startswith("green_"):
+                report["abort"] = {
+                    "guard": "native_travel_stabilization",
+                    "status": str(stabilization.get("status", "blocked_native_travel_stabilization")),
+                    "verdict": str(stabilization.get("verdict", "blocked_native_travel_stabilization")),
+                    "reason": str(stabilization.get("reason", "native route travel did not stabilize")),
+                }
+                reports.append(report)
+                return reports
+        elif settle_seconds > 0:
             time.sleep(settle_seconds)
         if should_auto_acknowledge_after_step(kind, step):
             interruption_handling = acknowledge_blocking_interruptions(
@@ -16360,6 +19864,7 @@ def execute_probe_steps(
                 suppress_inactive_structured_shadow_warning=True,
                 structured_popup_trace_log=action_trace_log,
                 structured_popup_trace_start_offset=action_trace_baseline,
+                allow_map_editor_save_and_quit=(kind == "debug_map_editor_place_item"),
             )
             report["portal_storm_allowed"] = portal_storm_allowed
             if interruption_handling.get("acknowledgement_count") or interruption_handling.get("status") in {
@@ -17101,6 +20606,7 @@ def probe_proof_classification(
     wait_step_summary: Optional[Dict[str, Any]] = None,
     abort_report: Optional[Dict[str, Any]] = None,
     step_ledger_summary: Optional[Dict[str, Any]] = None,
+    structured_gate_evidence: Optional[Dict[str, Any]] = None,
 ) -> Dict[str, Any]:
     step_count = len(step_reports)
     matched_artifacts = bool(matches_by_pattern) and all(entry.get("lines") for entry in matches_by_pattern)
@@ -17116,6 +20622,9 @@ def probe_proof_classification(
         "red_step_local_proof_failed",
         "yellow_step_local_proof_incomplete",
     }
+    structured_gate_status = str((structured_gate_evidence or {}).get("status", "not_declared"))
+    structured_gate_blocker = structured_gate_status == "red"
+    structured_gate_green = structured_gate_status == "green"
     if abort_report is not None:
         status = "red" if str(verdict).startswith("blocked") else "yellow"
         feature_proof = False
@@ -17127,6 +20636,10 @@ def probe_proof_classification(
         feature_proof = False
         if verdict == "artifacts_matched":
             verdict = step_ledger_status
+    elif structured_gate_blocker:
+        status = "red"
+        feature_proof = False
+        verdict = "blocked_structured_proof_gate"
     elif step_count <= 0:
         status = "yellow"
         feature_proof = False
@@ -17135,7 +20648,7 @@ def probe_proof_classification(
         status = "yellow" if startup_status != "red" else "red"
         feature_proof = False
         verdict = "startup_gate_not_clean_artifact_match_inconclusive"
-    elif verdict == "artifacts_matched" and step_count > 0 and matched_artifacts:
+    elif (verdict == "artifacts_matched" or structured_gate_green) and step_count > 0 and (matched_artifacts or structured_gate_green):
         if step_ledger_status == "green_step_local_proof":
             status = "green"
             feature_proof = True
@@ -17164,6 +20677,8 @@ def probe_proof_classification(
         "matched_artifact_patterns": [entry.get("pattern", "") for entry in matches_by_pattern if entry.get("lines")],
         "wait_step_status": wait_status,
         "step_ledger_status": step_ledger_status,
+        "structured_gate_status": structured_gate_status,
+        "structured_gate_evidence": structured_gate_evidence or {},
         "rule": "Startup/load evidence is never feature proof; feature classification requires a clean startup gate, green step-local ledger rows, matched positive artifacts or explicit negative artifact guards, and no blocked/yellow wait ledger.",
     }
 
@@ -17259,6 +20774,136 @@ def success_from_world_save_marker(
     return True, marker
 
 
+def load_checkpoint_contract(path_text: str, *, scenario_identity: str) -> Dict[str, Any]:
+    """Read the exact scenario declaration used for a post-install preflight."""
+    path = Path(path_text).resolve()
+    try:
+        declaration = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise SystemExit(f"Could not read scenario contract {path}: {exc}") from exc
+    try:
+        validated = validate_manifest(declaration, path=path)
+    except ManifestValidationError as exc:
+        raise SystemExit(str(exc)) from exc
+    if not isinstance(declaration, dict):
+        raise SystemExit(f"Scenario contract {path} is not an object")
+    name = str(declaration.get("name", path.stem)).strip()
+    if scenario_identity and name != scenario_identity:
+        raise SystemExit(
+            f"Scenario contract identity mismatch: expected {scenario_identity!r}, got {name!r}"
+        )
+    normalized_fields = validated["normalized"]
+    normalized_contract = {
+        "name": name,
+        **{
+            field: copy.deepcopy(normalized_fields[field]["value"])
+            for field in normalized_fields
+            if isinstance(normalized_fields.get(field), Mapping)
+            and normalized_fields[field].get("state") == "declared"
+        },
+    }
+    return {
+        "declaration": declaration,
+        "normalized_contract": normalized_contract,
+        "source": validated["source"],
+        "validation": validated["validation"],
+    }
+
+
+def checkpoint_contract_trait_policy(contract: Mapping[str, Any]) -> Dict[str, Any]:
+    """Derive the frozen stabilizer policy only from an opted-in v2 contract."""
+    if contract.get("manifest_version") != CHECKPOINT_CHAIN_MANIFEST_VERSION:
+        return {
+            "applicable": False,
+            "required_traits": [],
+            "forbidden_traits": [],
+        }
+    required_traits = ["DEBUG_LS", "DEBUG_NOTEMP"]
+    if contract.get("run_class") == "non_combat":
+        required_traits.extend(["DEBUG_STAMINA", "DEBUG_CARDIO"])
+    if contract.get("observer_character") is True:
+        required_traits.extend(["DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"])
+    declared_traits_raw = contract.get("required_stabilizer_traits")
+    declaration_error = ""
+    if declared_traits_raw is not None:
+        if not isinstance(declared_traits_raw, list) or any(
+                not isinstance(value, str) or not value.strip() for value in declared_traits_raw):
+            declaration_error = "required_stabilizer_traits must be a non-empty string list"
+        elif list(dict.fromkeys(declared_traits_raw)) != required_traits:
+            declaration_error = (
+                "required_stabilizer_traits must exactly match derived policy: "
+                + json.dumps(required_traits, ensure_ascii=False)
+            )
+    return {
+        "applicable": True,
+        "required_traits": required_traits,
+        "forbidden_traits": [],
+        "declared_required_traits": declared_traits_raw,
+        "declaration_error": declaration_error,
+    }
+
+
+def run_checkpoint_contract_preflight(
+    contract: Mapping[str, Any],
+    *,
+    source: Mapping[str, Any],
+    validation: Mapping[str, Any],
+    profile: str,
+    world: str,
+    fixture_install: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Audit the installed save before any child process may be created."""
+    policy = checkpoint_contract_trait_policy(contract)
+    result: Dict[str, Any] = {
+        "schema": "caol-contract-preflight-v1",
+        "execution_status": "not_started",
+        "scenario": str(contract.get("name", "")).strip(),
+        "scenario_source": dict(source),
+        "static_validation": dict(validation),
+        "manifest_version": contract.get("manifest_version"),
+        "normalized_contract": copy.deepcopy(dict(contract)),
+        "profile": profile,
+        "world": world,
+        "fixture_install": dict(fixture_install),
+        "trait_policy": policy,
+    }
+    if not policy["applicable"]:
+        result.update({"status": "not_applicable_legacy_contract", "accepted": True})
+        return result
+    if policy.get("declaration_error"):
+        result.update({
+            "status": "rejected_static_trait_policy",
+            "accepted": False,
+            "error": policy["declaration_error"],
+        })
+        return result
+    try:
+        audit = audit_saved_player_condition(
+            save_dir_for_profile(profile) / world,
+            player_save=str(contract["installed_save_player"]),
+            required_needs={},
+            required_traits=list(policy["required_traits"]),
+            forbidden_traits=list(policy["forbidden_traits"]),
+        )
+    except (Exception, SystemExit) as exc:
+        audit = {
+            "status": "required_state_missing",
+            "error": str(exc),
+            "required_traits": list(policy["required_traits"]),
+            "forbidden_traits": list(policy["forbidden_traits"]),
+            "observed_traits": [],
+            "missing_traits": list(policy["required_traits"]),
+            "observed_forbidden_traits": [],
+        }
+    accepted = audit.get("status") == "required_state_present"
+    result.update({
+        "installed_save_audit": audit,
+        "status": "accepted" if accepted else "rejected_installed_save_policy",
+        "accepted": accepted,
+    })
+    return result
+
+
 def run_startup(args: argparse.Namespace) -> int:
     profile = resolve_profile_name(args.profile)
     config_profile = resolve_profile_name(getattr(args, "config_profile", "") or profile)
@@ -17281,6 +20926,17 @@ def run_startup(args: argparse.Namespace) -> int:
             raise SystemExit(f"harness new-world target already exists: {harness_new_world}")
     profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
     profile_option_overrides = parse_profile_option_args(getattr(args, "profile_option", []) or [])
+    artifact_run_dir_value = str(getattr(args, "harness_artifact_run_dir", "") or "").strip()
+    artifact_run_dir: Optional[Path] = None
+    if artifact_run_dir_value:
+        artifact_run_dir = Path(artifact_run_dir_value).expanduser().resolve()
+        harness_runs_root = (userdir_for_profile(profile) / "harness_runs").resolve()
+        try:
+            artifact_run_dir.relative_to(harness_runs_root)
+        except ValueError as error:
+            raise SystemExit("harness artifact run directory must be within the profile harness runs") from error
+        if not artifact_run_dir.is_dir():
+            raise SystemExit("harness artifact run directory must already exist")
 
     if args.dry_run:
         plan = build_plan(
@@ -17328,6 +20984,15 @@ def run_startup(args: argparse.Namespace) -> int:
     )
     run_dir = Path(plan.run_dir)
     write_json(run_dir / "plan.json", asdict(plan))
+    transition_binding = bind_transition_event_stream(
+        run_dir,
+        run_id=str(getattr(args, "harness_run_id", "") or ""),
+        event_path=str(getattr(args, "transition_event_path", "") or ""),
+    )
+    write_json(run_dir / TRANSITION_EVENT_BINDING_FILENAME, {
+        "schema_version": TRANSITION_EVENT_SCHEMA_VERSION,
+        **transition_binding,
+    })
     runtime_binding = build_runtime_binding(Path(plan.executable))
     if not runtime_binding.get("ok"):
         raise SystemExit(
@@ -17336,7 +21001,80 @@ def run_startup(args: argparse.Namespace) -> int:
         )
     write_json(run_dir / RUNTIME_BINDING_FILENAME, runtime_binding)
 
+    scenario_contract_path = str(getattr(args, "scenario_contract_path", "") or "").strip()
+    if scenario_contract_path:
+        try:
+            loaded_contract = load_checkpoint_contract(
+                scenario_contract_path,
+                scenario_identity=str(getattr(args, "scenario_identity", "") or "").strip(),
+            )
+            contract_preflight = run_checkpoint_contract_preflight(
+                loaded_contract["normalized_contract"],
+                source=loaded_contract["source"],
+                validation=loaded_contract["validation"],
+                profile=profile,
+                world=plan.target_world,
+                fixture_install=fixture_install_result,
+            )
+        except SystemExit as exc:
+            contract_preflight = {
+                "schema": "caol-contract-preflight-v1",
+                "execution_status": "not_started",
+                "status": "rejected_static_contract",
+                "accepted": False,
+                "scenario_contract_path": scenario_contract_path,
+                "error": str(exc),
+            }
+        write_json(run_dir / CONTRACT_PREFLIGHT_FILENAME, contract_preflight)
+        if not contract_preflight.get("accepted", False):
+            result = {
+                "ok": False,
+                "reason": "contract_preflight_rejected",
+                "execution_status": "not_started",
+                "profile": profile,
+                "config_profile": config_profile,
+                "fixture_install": fixture_install_result,
+                "run_dir": str(run_dir),
+                "contract_preflight": contract_preflight,
+                "contract_preflight_path": str(run_dir / CONTRACT_PREFLIGHT_FILENAME),
+                "evidence_class": "contract-preflight",
+                "feature_proof": False,
+            }
+            write_json(run_dir / "startup.result.json", result)
+            print(json.dumps(result, indent=2, ensure_ascii=False))
+            return 1
+
+    certification_lease = certification_startup_lease_context(
+        args,
+        executable=Path(plan.executable),
+        target_world=plan.target_world,
+    )
+    if certification_lease is not None:
+        try:
+            if not certification_lease["recheck_inputs_path"]:
+                raise CertificationLeaseError(
+                    "certification startup requires --certification-recheck-inputs before launch"
+                )
+            certification_lease["startup_recheck"] = certification_recheck_round(
+                certification_lease, segment="startup_prelaunch"
+            )
+            if not certification_lease["startup_recheck"].get("ok"):
+                raise CertificationLeaseError("sealed certification round no longer matches current inputs")
+            certification_lease["lease"] = reserve_certification_lease(
+                certification_lease["connection"],
+                manifest=certification_lease["manifest"],
+                lease_id=certification_lease["lease_id"],
+                executable_path=certification_lease["executable_path"],
+                executable_sha256=certification_lease["executable_sha256"],
+                inspector=certification_lease["inspector"],
+            )
+        except CertificationLeaseError as exc:
+            certification_lease["connection"].close()
+            raise SystemExit(f"certification startup lease rejected: {exc}") from exc
+
     child_environment = game_child_environment(profile)
+    if certification_lease is not None:
+        child_environment.update(certification_save_child_environment(certification_lease))
     child_environment.pop("OPENCLAW_HARNESS_BANDIT_FEASIBILITY", None)
     if plan.harness_bandit_feasibility:
         child_environment["OPENCLAW_HARNESS_BANDIT_FEASIBILITY"] = "1"
@@ -17349,7 +21087,10 @@ def run_startup(args: argparse.Namespace) -> int:
             "status": "not_required_harness_new_world",
             "gui_automation": False,
         }
-    killed_pids = kill_existing_game_processes()
+    # This legacy broad matching behavior is deliberately unavailable to a
+    # bound certification round.  Its reservation already excluded only the
+    # sealed world/process identity without touching unrelated game sessions.
+    killed_pids = [] if certification_lease is not None else kill_existing_game_processes()
     ensure_dir(config_dir_for_profile(profile))
     debug_log = config_dir_for_profile(profile) / "debug.log"
     lastworld = config_dir_for_profile(profile) / "lastworld.json"
@@ -17373,18 +21114,45 @@ def run_startup(args: argparse.Namespace) -> int:
         profile,
         plan.target_world,
         run_dir,
+        artifact_run_dir=artifact_run_dir,
         child_environment=child_environment,
         scenario=str(getattr(args, "scenario_identity", "") or ""),
         harness_new_world=plan.harness_new_world,
         harness_raw_seed=plan.harness_raw_seed,
+        transition_event_run_id=transition_binding["run_id"],
+        transition_event_path=transition_binding["event_path"],
     )
+    if certification_lease is not None:
+        try:
+            certification_lease["lease"] = transfer_certification_lease(
+                certification_lease["connection"],
+                manifest=certification_lease["manifest"],
+                lease_id=certification_lease["lease_id"],
+                pid=proc.pid,
+                executable_path=certification_lease["executable_path"],
+                executable_sha256=certification_lease["executable_sha256"],
+                inspector=certification_lease["inspector"],
+            )
+        except CertificationLeaseError as exc:
+            certification_lease["connection"].close()
+            raise SystemExit(
+                "certification process launched but could not be identity-bound; "
+                f"no process was signalled: {exc}"
+            ) from exc
     write_json(run_dir / "process.json", {
         "pid": proc.pid,
         "command": list(proc.args) if isinstance(proc.args, (list, tuple)) else str(proc.args),
         "harness_new_world": plan.harness_new_world,
         "harness_raw_seed": plan.harness_raw_seed,
         "harness_bandit_feasibility": plan.harness_bandit_feasibility,
+        "transition_event_run_id": transition_binding["run_id"],
+        "transition_event_path": transition_binding["event_path"],
         "killed_previous_pids": killed_pids,
+        "certification_lease": (
+            {key: value for key, value in certification_lease["lease"].items()
+             if key not in {"command"}}
+            if certification_lease is not None else None
+        ),
     })
 
     startup_cfg = config["startup"]
@@ -17742,7 +21510,16 @@ def run_startup(args: argparse.Namespace) -> int:
         time.sleep(poll_seconds)
 
     if plan.strategy == "harness_new_world":
-        cleanup = cleanup_game_process(proc.pid)
+        if certification_lease is None:
+            cleanup = cleanup_game_process(proc.pid)
+        else:
+            cleanup = release_certification_lease_handle(
+                certification_lease["connection"],
+                manifest=certification_lease["manifest"],
+                lease=certification_lease["lease"],
+                inspector=certification_lease["inspector"],
+            )
+            certification_lease["connection"].close()
         try:
             proc.wait(timeout=1.0)
         except subprocess.TimeoutExpired:
@@ -17755,6 +21532,7 @@ def run_startup(args: argparse.Namespace) -> int:
             "terminated_during_kill_escalation",
             "killed",
             "reaped_after_kill",
+            "signaled",
         }
         world_cleanup = (
             cleanup_harness_world(profile, plan.harness_new_world, run_dir)
@@ -17981,6 +21759,25 @@ def finalize_scenario_report(
     )
 
 
+def seal_wec_authority(
+    *, evidence_class: str, authority: str, run_id: str, binding_id: str,
+    source_sha256: str, owner: str = "",
+) -> Dict[str, str]:
+    """Create the immutable report-start WEC fact used by registry ingestion."""
+    if evidence_class not in WEC_CLASS_SET:
+        raise ValueError(f"unknown WEC evidence class: {evidence_class}")
+    fact: Dict[str, str] = {
+        "evidence_class": evidence_class,
+        "authority": authority,
+        "run_id": run_id,
+        "binding_id": binding_id,
+        "source_sha256": source_sha256,
+        "owner": owner,
+    }
+    fact["commitment"] = authority_commitment(**fact)
+    return fact
+
+
 def compact_probe_report_for_stdout(
     report: Dict[str, Any],
     *,
@@ -18008,6 +21805,29 @@ def compact_probe_report_for_stdout(
     step_ledger_summary = report.get("step_ledger_summary", {}) if isinstance(report.get("step_ledger_summary"), dict) else {}
     step_ledger = report.get("step_ledger", []) if isinstance(report.get("step_ledger"), list) else []
     portal_storm_warning = report.get("portal_storm_warning", {}) if isinstance(report.get("portal_storm_warning"), dict) else {}
+    full_diagnostic = report.get("first_divergence_diagnostic", {}) if isinstance(report.get("first_divergence_diagnostic"), dict) else {}
+    full_recommendation = full_diagnostic.get("capsule_recommendation", {}) if isinstance(full_diagnostic.get("capsule_recommendation"), dict) else {}
+    compact_diagnostic = {
+        "status": full_diagnostic.get("status", ""),
+        "earliest_first_red": full_diagnostic.get("earliest_first_red", {}),
+        "last_green": full_diagnostic.get("last_green"),
+        "smallest_next_probe": full_diagnostic.get("smallest_next_probe", ""),
+        "capsule_recommendation": {
+            "selected": bool(full_recommendation.get("selected")),
+            "candidate_id": (full_recommendation.get("capsule") or {}).get("candidate_id", "")
+            if isinstance(full_recommendation.get("capsule"), dict) else "",
+            "reason": full_recommendation.get("reason", ""),
+            "compatible_candidate_ids": [
+                row.get("candidate_id", "") for row in full_recommendation.get("compatible_candidates", ())
+                if isinstance(row, dict)
+            ],
+            "rejected_candidates": [
+                {"candidate_id": item.get("candidate", {}).get("candidate_id", ""), "reasons": item.get("reasons", ())}
+                for item in full_recommendation.get("rejected_candidates", ())
+                if isinstance(item, dict) and isinstance(item.get("candidate"), dict)
+            ],
+        },
+    }
     non_green_steps = [
         {
             "label": str(row.get("label", "")),
@@ -18039,6 +21859,15 @@ def compact_probe_report_for_stdout(
         "ok": bool(report.get("ok")),
         "scenario": str(report.get("scenario", "")),
         "mode": str(report.get("mode", "")),
+        # Keep the immutable identity and binding inputs in the compact form.
+        # Registry ingestion is allowed to consume this JSON by reference; it
+        # must not silently lose the source/runtime owner facts just because
+        # stdout was requested in compact mode.
+        "scenario_manifest": report.get("scenario_manifest", {}),
+        "contract": contract,
+        "run_id": str(report.get("run_id", "")),
+        "binding_id": str(report.get("binding_id", "")),
+        "wec_authority": report.get("wec_authority", {}),
         "profile": str(report.get("profile", "") or startup.get("profile", "") or contract.get("profile", "")),
         "config_profile": str(report.get("config_profile", "") or startup.get("config_profile", "") or contract.get("config_profile", "")),
         "world": str(report.get("world", "")),
@@ -18058,6 +21887,8 @@ def compact_probe_report_for_stdout(
             "window_title": str(startup_screen.get("window_title", "")),
             "screenshot": str(startup_screen.get("png_path", startup_screen.get("screenshot", ""))),
             "version_matches_runtime_paths": startup_screen.get("version_matches_runtime_paths"),
+            "runtime_binding_status": startup_screen.get("runtime_binding_status", ""),
+            "runtime_binding_observed": startup_screen.get("runtime_binding_observed", {}),
             "capture_backend": str(startup_screen.get("capture_backend", "")),
             "peekaboo_stderr": str(startup_screen.get("peekaboo_stderr", "")),
             "capture_warnings": startup_screen.get("capture_warnings", []),
@@ -18083,6 +21914,7 @@ def compact_probe_report_for_stdout(
             "step_artifact_matches": compact_step_matches,
         },
         "step_ledger_summary": step_ledger_summary,
+        "first_divergence_diagnostic": compact_diagnostic,
         "feature_debug_guard": {
             "status": str(feature_debug_guard.get("status", "")),
             "verdict": str(feature_debug_guard.get("verdict", "")),
@@ -18583,13 +22415,88 @@ def run_launch_only_handoff(
             )
             return 1
 
+        try:
+            scenario_contract_path = str(scenario.get("path", "")).strip()
+            if scenario_contract_path:
+                loaded_contract = load_checkpoint_contract(
+                    scenario_contract_path,
+                    scenario_identity=scenario_name,
+                )
+                checkpoint_contract = loaded_contract["normalized_contract"]
+                checkpoint_source = loaded_contract["source"]
+                checkpoint_validation = loaded_contract["validation"]
+            else:
+                checkpoint_contract = scenario
+                checkpoint_source = (
+                    scenario_manifest.get("source", {})
+                    if isinstance(scenario_manifest.get("source"), dict) else {}
+                )
+                checkpoint_validation = (
+                    scenario_manifest.get("validation", {})
+                    if isinstance(scenario_manifest.get("validation"), dict) else {}
+                )
+            contract_preflight = run_checkpoint_contract_preflight(
+                checkpoint_contract,
+                source=checkpoint_source,
+                validation=checkpoint_validation,
+                profile=profile,
+                world=plan.target_world,
+                fixture_install=fixture_install_result,
+            )
+        except SystemExit as exc:
+            contract_preflight = {
+                "schema": "caol-contract-preflight-v1",
+                "execution_status": "not_started",
+                "status": "rejected_static_contract",
+                "accepted": False,
+                "error": str(exc),
+            }
+        write_json(run_dir / CONTRACT_PREFLIGHT_FILENAME, contract_preflight)
+        if not contract_preflight.get("accepted", False):
+            report = {
+                "ok": False,
+                "mode": "handoff",
+                "scenario": scenario_name,
+                "profile": profile,
+                "config_profile": config_profile,
+                "world": plan.target_world,
+                "fixture": fixture,
+                "reason": "contract_preflight_rejected",
+                "execution_status": "not_started",
+                "contract": contract,
+                "contract_preflight": contract_preflight,
+                "contract_preflight_path": str(run_dir / CONTRACT_PREFLIGHT_FILENAME),
+                "verdict": "contract_preflight_rejected",
+                "evidence_class": "contract-preflight",
+                "feature_proof": False,
+            }
+            finalize_scenario_report(
+                run_dir,
+                report,
+                scenario=scenario,
+                report_filename=report_filename,
+                compact_stdout=bool(getattr(args, "compact_stdout", False)),
+            )
+            return 1
+
         ensure_dir(config_dir_for_profile(profile))
-        proc = launch_game(profile, plan.target_world, run_dir, scenario=scenario_name)
+        transition_binding = bind_transition_event_stream(run_dir)
+        write_json(run_dir / TRANSITION_EVENT_BINDING_FILENAME, {
+            "schema_version": TRANSITION_EVENT_SCHEMA_VERSION,
+            **transition_binding,
+        })
+        proc = launch_game(
+            profile, plan.target_world, run_dir, scenario=scenario_name,
+            transition_event_run_id=transition_binding["run_id"],
+            transition_event_path=transition_binding["event_path"],
+        )
         process = {
             "pid": proc.pid,
             "command": [plan.executable, "--userdir", f".userdata/{profile}/", "--world", plan.target_world],
             "killed_previous_pids": [],
             "launch_only": True,
+            "transition_event_run_id": transition_binding["run_id"],
+            "transition_event_path": transition_binding["event_path"],
         }
         write_json(run_dir / "process.json", process)
         (run_dir / "handoff.pid").write_text(f"{proc.pid}\n", encoding="utf-8")
@@ -18669,6 +22576,11 @@ def run_launch_only_handoff(
                 "run_dir": str(run_dir),
                 "report_path": str(run_dir / report_filename),
             },
+            "structured_transition_events": {
+                "schema_version": TRANSITION_EVENT_SCHEMA_VERSION,
+                "run_id": transition_binding["run_id"],
+                "path": transition_binding["event_path"],
+            },
             "run_dir": str(run_dir),
             "report_path": str(run_dir / report_filename),
             "verdict": "manual_handoff_started",
@@ -18713,6 +22625,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     scenario = load_scenario(args.scenario)
     scenario_manifest = scenario_manifest_binding(scenario)
     scenario_name = str(scenario.get("name", args.scenario))
+    transition_event_run_id = uuid.uuid4().hex
     blocker_info = scenario_blocker_info(scenario)
     profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
     config_profile = resolve_startup_config_profile(scenario, profile)
@@ -18746,6 +22659,27 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     mode = "handoff" if handoff else "probe"
     report_filename = "handoff.report.json" if handoff else "probe.report.json"
     post_finalize_hook = getattr(args, "registry_post_finalize_hook", None)
+    certification_registry = str(getattr(args, "certification_registry", "") or "").strip()
+    certification_round_manifest = str(getattr(args, "certification_round_manifest", "") or "").strip()
+    certification_lease_id = str(getattr(args, "certification_lease_id", "") or "").strip()
+    certification_recheck_inputs = str(getattr(args, "certification_recheck_inputs", "") or "").strip()
+    certification_args = (
+        certification_registry, certification_round_manifest,
+        certification_lease_id, certification_recheck_inputs,
+    )
+    if any(certification_args) and not all(certification_args):
+        raise SystemExit(
+            "certification probe requires --certification-registry, "
+            "--certification-round-manifest, --certification-lease-id, and "
+            "--certification-recheck-inputs"
+        )
+    if certification_args and all(certification_args):
+        try:
+            transition_event_run_id = str(
+                load_certification_manifest(certification_round_manifest)["event_stream_id"]
+            )
+        except CertificationLeaseError as exc:
+            raise SystemExit(f"certification probe manifest rejected: {exc}") from exc
 
     if handoff and post_relaunch is not None:
         raise SystemExit("post_relaunch is probe-only and cannot use a deferred handoff")
@@ -18867,7 +22801,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         config_profile,
         "--scenario-identity",
         scenario_name,
+        "--harness-run-id",
+        transition_event_run_id,
     ]
+    scenario_contract_path = str(scenario.get("path", "")).strip()
+    if scenario_contract_path:
+        start_cmd.extend(["--scenario-contract-path", scenario_contract_path])
     if world:
         start_cmd.extend(["--world", world])
     if profile_snapshot:
@@ -18885,6 +22824,13 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     registry_launch_receipt = getattr(args, "registry_launch_receipt", "")
     if registry_launch_receipt:
         start_cmd.extend(["--registry-launch-receipt", str(registry_launch_receipt)])
+    if certification_args and all(certification_args):
+        start_cmd.extend([
+            "--certification-registry", certification_registry,
+            "--certification-round-manifest", certification_round_manifest,
+            "--certification-lease-id", certification_lease_id,
+            "--certification-recheck-inputs", certification_recheck_inputs,
+        ])
     if args.dry_run:
         start_cmd.append("--dry-run")
 
@@ -19168,6 +23114,38 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     except (TypeError, ValueError):
         feature_debug_start = feature_debug_log.stat().st_size if feature_debug_log.exists() else 0
     artifact_start = artifact_log.stat().st_size if artifact_log.exists() else 0
+    transition_event_path = run_dir / TRANSITION_EVENT_FILENAME
+    transition_event_reader = StructuredTransitionEventReader(
+        transition_event_path, transition_event_run_id
+    )
+    structured_events: List[Dict[str, Any]] = []
+    structured_event_diagnostics: List[Dict[str, Any]] = []
+    certification_initial_segment = certification_recheck_evidence_segment(
+        args, segment="initial_evidence_segment"
+    )
+    if certification_initial_segment is not None and not certification_initial_segment.get("ok"):
+        report = {
+            "ok": False,
+            "mode": mode,
+            "scenario": scenario_name,
+            "profile": profile,
+            "config_profile": config_profile,
+            "world": world,
+            "reason": "certification_binding_recheck_failed",
+            "startup": start_result,
+            "certification": {"initial_evidence_segment": certification_initial_segment},
+            "steps": [],
+            "verdict": "certification_binding_recheck_failed",
+            "evidence_class": "startup/load-or-inconclusive",
+            "feature_proof": False,
+        }
+        finalize_scenario_report(
+            run_dir, report, scenario=scenario, cleanup_pid=pid,
+            report_filename=report_filename,
+            compact_stdout=bool(getattr(args, "compact_stdout", False)),
+            post_finalize_hook=post_finalize_hook,
+        )
+        return 2
     screen_before = capture_screenshot(pid, run_dir, f"{mode}_before")
     startup_screen = (
         start_result.get("screen", {})
@@ -19200,8 +23178,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         scenario_identity=str(scenario.get("name", args.scenario)),
         runtime_commit=runtime_commit,
         runtime_binary=runtime_binary,
+        structured_event_reader=transition_event_reader,
+        structured_events=structured_events,
+        structured_event_diagnostics=structured_event_diagnostics,
     )
     relaunch: Dict[str, Any] = {}
+    certification_post_relaunch_segment: Optional[Dict[str, Any]] = None
     final_pid = pid
     if post_relaunch is not None:
         relaunch_artifact_baseline = artifact_log.stat().st_size if artifact_log is not None and artifact_log.exists() else artifact_start
@@ -19225,11 +23207,27 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 scenario_name=scenario_name,
                 registry_launch_receipt=registry_launch_receipt,
                 terminal_exit_timeout_seconds=post_relaunch["terminal_exit_timeout_seconds"],
+                artifact_run_dir=run_dir,
+                transition_event_run_id=transition_event_run_id,
+                transition_event_path=str(transition_event_path),
+                certification_registry=certification_registry,
+                certification_round_manifest=certification_round_manifest,
+                certification_lease_id=certification_lease_id,
+                certification_recheck_inputs=certification_recheck_inputs,
             )
         relaunch["terminal_save_step_label"] = post_relaunch["terminal_save_step_label"]
         relaunch["artifact_log_pre_relaunch_size"] = relaunch_artifact_baseline
         if int(relaunch.get("pid", 0) or 0) > 0:
             final_pid = int(relaunch["pid"])
+        if relaunch.get("status") == "ready":
+            certification_post_relaunch_segment = certification_recheck_evidence_segment(
+                args, segment="post_relaunch_evidence_segment"
+            )
+            if certification_post_relaunch_segment is not None and not certification_post_relaunch_segment.get("ok"):
+                relaunch["status"] = "certification_binding_recheck_failed"
+                relaunch["certification_recheck"] = certification_post_relaunch_segment
+            else:
+                relaunch["certification_recheck"] = certification_post_relaunch_segment
         if relaunch.get("status") == "ready":
             post_reports = execute_probe_steps(
                 final_pid,
@@ -19247,6 +23245,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 scenario_identity=str(scenario.get("name", args.scenario)),
                 runtime_commit=runtime_commit,
                 runtime_binary=runtime_binary,
+                structured_event_reader=transition_event_reader,
+                structured_events=structured_events,
+                structured_event_diagnostics=structured_event_diagnostics,
             )
             for report in post_reports:
                 report["phase"] = "post_relaunch"
@@ -19370,6 +23371,38 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         "step_ledger": step_ledger,
     })
 
+    final_transition_poll = transition_event_reader.poll()
+    if final_transition_poll.get("discard_prior_events"):
+        structured_events.clear()
+    structured_events.extend(final_transition_poll["events"])
+    structured_event_diagnostics.extend(final_transition_poll["diagnostics"])
+    saved_artifacts_for_gates: List[Dict[str, Any]] = []
+    for step_report in step_reports:
+        metadata = step_report.get("metadata") if isinstance(step_report, dict) else None
+        if isinstance(metadata, dict):
+            artifact = dict(metadata)
+            artifact.setdefault("run_id", transition_event_run_id)
+            artifact.setdefault("producer_step_label", str(step_report.get("label", "")))
+            artifact.setdefault("producer_step_index", int(step_report.get("index", 0) or 0))
+            artifact.setdefault(
+                "producer_watermark", step_report.get("structured_event_watermark", {})
+            )
+            saved_artifacts_for_gates.append(artifact)
+    structured_gate_evidence = evaluate_structured_proof_gates(
+        scenario.get("proof_gates", []) if isinstance(scenario.get("proof_gates", []), list) else [],
+        events=structured_events,
+        watermarks={
+            str(step.get("label", "")): step.get("structured_event_watermark", {})
+            for step in step_reports
+            if isinstance(step, dict) and isinstance(step.get("structured_event_watermark"), dict)
+        },
+        saved_artifacts=saved_artifacts_for_gates,
+        diagnostics=structured_event_diagnostics,
+        run_id=transition_event_run_id,
+    )
+    if scenario.get("proof_gates"):
+        write_json(run_dir / "proof.gates.json", structured_gate_evidence)
+
     verdict = "inconclusive_no_artifact_match"
     screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
     version_matches_runtime = screen_summary.get("version_matches_runtime_paths")
@@ -19391,6 +23424,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         verdict = "blocked_step_local_proof"
     elif step_ledger_summary["status"] == "yellow_step_local_proof_incomplete":
         verdict = "yellow_step_local_proof_incomplete"
+    elif structured_gate_evidence.get("status") == "red":
+        verdict = "blocked_structured_proof_gate"
+    elif structured_gate_evidence.get("status") == "green":
+        verdict = "structured_gates_matched"
     elif matches_by_pattern and all(entry["lines"] for entry in matches_by_pattern):
         verdict = "artifacts_matched"
     elif any(entry["lines"] for entry in matches_by_pattern):
@@ -19411,6 +23448,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         wait_step_summary=wait_step_summary,
         abort_report=abort_report,
         step_ledger_summary=step_ledger_summary,
+        structured_gate_evidence=structured_gate_evidence,
     )
 
     report = {
@@ -19438,6 +23476,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         },
         "startup": start_result,
         "relaunch": relaunch,
+        "certification": {
+            "initial_evidence_segment": certification_initial_segment,
+            "post_relaunch_evidence_segment": certification_post_relaunch_segment,
+        },
         "steps": step_reports,
         "step_ledger": step_ledger,
         "step_ledger_summary": step_ledger_summary,
@@ -19465,6 +23507,22 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         "wait_step_summary": wait_step_summary,
         "portal_storm_warning": portal_storm_warning,
         "feature_debug_guard": feature_debug_guard,
+        "structured_transition_events": {
+            "schema_version": TRANSITION_EVENT_SCHEMA_VERSION,
+            "run_id": transition_event_run_id,
+            "path": str(transition_event_path),
+            "raw_stream_stored_once": transition_event_path.exists(),
+            "watermark": transition_event_reader.watermark(),
+            "event_count": len(structured_events),
+            "diagnostics": structured_event_diagnostics,
+            "diagnostic_summary": summarize_transition_diagnostics(structured_event_diagnostics),
+            "noncommitted_semantic_summary": summarize_noncommitted_transition_events(
+                structured_events
+            ),
+            "semantic_summary_raw_stream_reference": str(transition_event_path),
+            "gate_evidence_path": str(run_dir / "proof.gates.json") if scenario.get("proof_gates") else "",
+        },
+        "structured_gate_evidence": structured_gate_evidence,
         "runtime_warnings": runtime_warnings,
         "abort": abort_report,
         "proof_classification": proof_classification,
@@ -19472,6 +23530,37 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         "feature_proof": proof_classification.get("feature_proof", False),
         "verdict": verdict,
     }
+    if registry_launch_receipt:
+        receipt = json.loads(registry_launch_receipt)
+        if isinstance(receipt.get("wec_authority"), Mapping):
+            report["wec_authority"] = dict(receipt["wec_authority"])
+            report["run_id"] = str(receipt["wec_authority"].get("run_id", ""))
+            report["binding_id"] = str(receipt["wec_authority"].get("binding_id", ""))
+        if receipt.get("authority_kind") == "registry_repair_exact_contradiction":
+            report["supersedes_verification_id"] = str(receipt["red_verification_id"])
+    if certification_registry and certification_round_manifest:
+        connection = open_registry(certification_registry, writable=False)
+        try:
+            round_id = str(load_certification_manifest(certification_round_manifest)["round_id"])
+            report["certification_round"] = certification_round_facts(connection, round_id)
+            report["wec_authority"] = certification_round_authority_facts(connection, round_id)
+            report["run_id"] = round_id
+            report["binding_id"] = str(report["certification_round"]["binding_id"])
+        finally:
+            connection.close()
+    if isinstance(scenario.get("proof_gates"), list):
+        attach_first_divergence_diagnostic(
+            report,
+            proof_gates=scenario["proof_gates"],
+            gate_evidence=structured_gate_evidence,
+            events=structured_events,
+            saved_artifacts=saved_artifacts_for_gates,
+            repeated_noncommitted_summary=summarize_noncommitted_transition_events(structured_events),
+            registry_path=diagnostic_registry_path(registry_launch_receipt, certification_registry),
+            capsule_binding=(scenario.get("diagnostic_capsule_binding")
+                             if isinstance(scenario.get("diagnostic_capsule_binding"), Mapping)
+                             else report.get("capsule_binding")),
+        )
     if capture_world_after:
         report["world_snapshot"] = world_snapshot_report
     if handoff:
@@ -19533,7 +23622,12 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--config-profile", default="", help="Startup policy profile; defaults to the target user-data profile.")
     start_p.add_argument("--world", default="", help="Explicit target world name.")
     start_p.add_argument("--scenario-identity", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--scenario-contract-path", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--registry-launch-receipt", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--certification-registry", default="", help="Explicit SQLite registry for a bound certification start.")
+    start_p.add_argument("--certification-round-manifest", default="", help="Explicit sealed certification round manifest JSON.")
+    start_p.add_argument("--certification-lease-id", default="", help="Explicit lease ID within the sealed certification round.")
+    start_p.add_argument("--certification-recheck-inputs", default="", help="Explicit current installed inputs used to recheck the sealed certification manifest.")
     start_p.add_argument("--profile-snapshot", default="", help="Install this captured profile snapshot before startup.")
     start_p.add_argument("--profile-snapshot-profile", default="", help="Profile snapshot source profile; defaults to the target profile.")
     start_p.add_argument("--profile-option", action="append", default=[], metavar="NAME=VALUE", help="Override one option after profile snapshot install; may be repeated.")
@@ -19544,6 +23638,9 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--harness-new-world", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--harness-raw-seed", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--harness-bandit-feasibility", action="store_true", help=argparse.SUPPRESS)
+    start_p.add_argument("--harness-run-id", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--harness-artifact-run-dir", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--transition-event-path", default="", help=argparse.SUPPRESS)
 
     list_p = subparsers.add_parser("list-fixtures", help="List harness-owned save fixtures for a profile.")
     list_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
@@ -19574,6 +23671,10 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("--artifact-pattern", default="", help="Override the artifact substring to match in the debug delta.")
     probe_p.add_argument("--test-command", default="", help="Override the recommended deterministic test command recorded in the report.")
     probe_p.add_argument("--compact-stdout", action="store_true", help="Print only a compact report index to stdout; the full report still lands on disk.")
+    probe_p.add_argument("--certification-registry", default="", help=argparse.SUPPRESS)
+    probe_p.add_argument("--certification-round-manifest", default="", help=argparse.SUPPRESS)
+    probe_p.add_argument("--certification-lease-id", default="", help=argparse.SUPPRESS)
+    probe_p.add_argument("--certification-recheck-inputs", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--dry-run", action="store_true", help="Resolve the scenario contract and startup plan only.")
 
     handoff_p = subparsers.add_parser("handoff", help="Run a packaged live setup and leave the game running for manual playtest handoff.")

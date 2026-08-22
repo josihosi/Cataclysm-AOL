@@ -1,36 +1,121 @@
 {
+  "manifest_version": 2,
   "name": "cannibal.live_world_night_local_contact_pack_mcw",
-  "status": "blocked",
-  "blocked_reason": "Retired Phase-4 direct-player-range dispatch scenario; local contact needs a new observation-backed fixture.",
-  "description": "Scenario 2 for cannibal camp night-raid live matrix: night/darkness plus local contact should promote a cannibal_camp to a multi-member pack attack through the real live dispatch and local-gate path, with no bandit shakedown surface. The fixture reuses the reviewer-visible camp-shaped source footprint, relabels it as cannibal_camp, places it one OMT from the player, and sets the save to a night 30-minute dispatch cadence boundary so one proven pass-turn can exercise dispatch/local-contact instead of relying on fragile long waits.",
+  "description": "Scenario 2 for cannibal camp night-raid live matrix: an audited idle cannibal_camp at the fixture-installed nearby terrain anchor starts with one returned smoke lead backed by a physical nearby fire/smoke disturbance, then enters the real active-sortie dispatch and local-contact path on the night cadence boundary. The fixture supplies no active outing or product transition; the gate consumes only the distinct committed dispatch and contact events.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "cannibal_live_world_night_local_contact_pack_v0_2026-04-28",
   "fixture_profile": "live-debug",
+  "run_class": "combat",
+  "observer_character": false,
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP"
+  ],
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
   "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
   "profile_snapshot_profile": "live-debug",
   "replace_existing_worlds": true,
   "artifact_source": "debug.log",
   "artifact_patterns": [
     "local_gate site=overmap_special:cannibal_camp@",
-    "active_job=stalk",
     "profile=cannibal_camp",
-    "posture=attack_now",
     "pack_size=2",
-    "darkness_or_concealment=yes",
-    "local_contact=yes",
-    "shakedown=no",
-    "combat_forward=yes",
-    "live_candidate reason=direct_player_range"
+    "darkness_or_concealment=yes"
   ],
+  "capabilities": {
+    "capabilities.cannibal.local_contact_pack": "night_local_contact_attack_now"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:."],
+    "forbidden_input": ["debug:ecology_edit", "debug:inject_operation", "raw-save-rewrite", "fixture-save-transform-after-install"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "cannibal_live_world_night_local_contact_pack_v0_2026-04-28",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "cannibal_live_world_night_local_contact_pack_v0_2026-04-28",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": ["press:."],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_gates": [
+    {
+      "id": "cannibal_signal_dispatch",
+      "label": "Committed cannibal active-sortie dispatch",
+      "boundary_step": "pass_one_turn_on_night_dispatch_boundary",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "structured_event",
+          "predicate": {"domain": "bandit_live_world", "transition": "active_sortie_dispatch", "outcome": "committed", "handoff_epoch": 0, "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids"]}
+        }
+      ],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    },
+    {
+      "id": "cannibal_local_contact",
+      "label": "Committed cannibal active-sortie local contact",
+      "boundary_step": "advance_500_turns_for_cannibal_contact",
+      "predecessors": ["cannibal_signal_dispatch"],
+      "expectations": [
+        {
+          "kind": "structured_event",
+          "predicate": {"domain": "bandit_live_world", "transition": "active_sortie_local_contact", "outcome": "committed", "handoff_epoch": 1, "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids"]}
+        }
+      ],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    }
+  ],
+  "proof_route": {
+    "gates": ["cannibal_signal_dispatch", "cannibal_local_contact"],
+    "terminal": ["cannibal_local_contact"],
+    "capability_gates": {
+      "capabilities.cannibal.local_contact_pack": {
+        "terminal": ["cannibal_local_contact"]
+      }
+    }
+  },
   "steps": [
     {
       "kind": "wait",
       "label": "post_load_night_pack_fixture_settle",
       "seconds": 2.0,
       "capture_after": true,
+      "expected_screen_text_contains": ["Style: No style"],
       "expected_visible_fact": "post-load gameplay screen for McWilliams cannibal night local-contact fixture; this is startup/load evidence plus before-action screen proof, not feature closure by itself",
       "failure_rule": "If the gameplay screen is not visible after load, later dispatch/local-contact artifacts cannot be credited."
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_observed_idle_cannibal_dispatch_footing",
+      "required_profile": "cannibal_camp",
+      "required_site_id_contains": "overmap_special:cannibal_camp@140,51,0",
+      "required_member_count": 2,
+      "required_ready_at_home_count": 2,
+      "required_wounded_or_unready_count": 0,
+      "required_active_outside_count": 0,
+      "required_active_group_id_exact": "",
+      "required_active_target_id_exact": "",
+      "required_min_leads": 1,
+      "required_lead_kind": "smoke_signal",
+      "required_lead_origin": "returned_report",
+      "required_lead_target_id": "structural-smoke@(140,41,0)",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_cannibal_dispatch_footing",
+      "abort_reason": "the saved cannibal site was not the observed idle two-member, zero-outing causal boundary",
+      "expected_immediate_state": "the fixture-installed cannibal anchor has two ready members, no active outing or target, and one returned smoke lead backed by the physical nearby disturbance before the real cadence turn"
     },
     {
       "kind": "press",
@@ -41,14 +126,25 @@
       "delay_ms": 250,
       "settle_seconds": 2.0,
       "capture_after": true,
-      "expected_visible_fact": "one player pass-turn input has completed on the night local-contact fixture; feature credit depends on the same-run debug artifact showing cannibal_camp posture=attack_now, pack_size=2, darkness_or_concealment=yes, local_contact=yes, shakedown=no, and combat_forward=yes",
-      "failure_rule": "If the pass-turn input is unproven or the same-run artifact lacks the cannibal attack-now local-gate line, this scenario is not product proof."
+      "expected_screen_text_contains": ["Style: No style"],
+      "expected_visible_fact": "one player pass-turn input has completed on the night local-contact fixture; feature credit depends on the separate same-run committed active-sortie dispatch and local-contact event records, not on the before/after screen alone",
+      "failure_rule": "If the pass-turn input is unproven, or either committed active-sortie event is absent or fails its identity-continuity predicate, this scenario is not product proof."
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_500_turns_for_cannibal_contact",
+      "count": 500,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_screen_text_contains": ["Style: No style"],
+      "expected_visible_fact": "the derived 50-minute physical approach window has completed for a ten-OMT route at the authoritative five-minute overmap-NPC cadence; feature credit requires the committed local-contact event with the dispatch identity",
+      "failure_rule": "If the bounded approach input is unproven or no identity-continuous committed local-contact event appears, the route remains red."
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe cannibal.live_world_night_local_contact_pack_mcw",
   "evidence_contract": {
-    "claim": "night darkness plus local contact creates confirmed multi-member cannibal pack attack through real dispatch/local-contact",
+    "claim": "an idle two-member cannibal site at the observed night foothold can be credited only by real committed active-sortie dispatch followed by committed local contact",
     "load_only_verdict": "load proof only / inconclusive for cannibal behavior",
-    "failure_rule": "No feature-proof credit if startup/load, pass-turn ledger, cannibal site match, night/concealment gate, local contact, pack-size, attack-now posture, non-shakedown artifact, or combat-forward artifact is missing or non-green."
+    "failure_rule": "No feature-proof credit if startup/load, the preflighted idle cannibal site, pass-turn ledger, or either committed structured event and its continuity identity is missing or non-green."
   }
 }

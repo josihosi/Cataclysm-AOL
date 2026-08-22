@@ -2,7 +2,7 @@
   "name": "cannibal_live_world_night_local_contact_pack_v0_2026-04-28",
   "source_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
   "source_profile": "live-debug",
-  "description": "Cannibal live-world night local-contact footing for audited product-proof scenario 2: reuse the McWilliams/Basecamp playtest-kit save, set game time to a night 30-minute dispatch cadence boundary, and copy an existing camp-shaped hostile-site footprint as a nearby cannibal_camp. The site is deliberately direct/local-contact range so one proven player action can exercise real dispatch plus the local gate's darkness/pack/contact attack path without waiting through overmap travel.",
+  "description": "Cannibal live-world night local-contact footing for audited product-proof scenario 2: reuse the McWilliams/Basecamp playtest-kit save, set game time to a night 30-minute dispatch cadence boundary, seed a nearby fire/smoke disturbance and camp terrain, and clone an idle, under-supplied two-member cannibal_camp record at that same observed anchor. The fixture supplies only terrain, disturbance, roster, supply, and clock footing; signal recognition, dispatch, and local contact remain production transitions.",
   "save_transforms": [
     {
       "kind": "game_turn",
@@ -17,9 +17,34 @@
       "site_index": 1,
       "offset_omt": [
         0,
-        1,
+        10,
         0
       ]
+    },
+    {
+      "kind": "map_fields_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "fields": [
+        {"field_id": "fd_fire", "offset_ms": [10, 0, 0], "intensity": 3, "age_turns": 0},
+        {"field_id": "fd_smoke", "offset_ms": [11, 0, 0], "intensity": 3, "age_turns": 0}
+      ]
+    },
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:cannibal_camp@140,51,0",
+      "new_source_id": "cannibal_camp",
+      "new_site_kind": "cannibal_camp",
+      "new_hostile_profile": "cannibal_camp",
+      "new_anchor": [140, 51, 0],
+      "new_footprint": [[140, 51, 0], [141, 51, 0], [140, 52, 0], [141, 52, 0]],
+      "new_supply_units": 0,
+      "new_supply_last_update_minutes": 8580,
+      "new_supply_accounted_living_total": 2,
+      "clear_intelligence_map": true,
+      "clear_remembered_pressure": true,
+      "reset_shakedown_history": true
     },
     {
       "kind": "bandit_site_roster_shape",
@@ -27,6 +52,58 @@
       "site_id": "overmap_special:bandit_camp@140,51,0",
       "living_member_count": 0,
       "clear_spawn_tile_headcount": true
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:cannibal_camp@140,51,0",
+      "living_member_count": 2,
+      "member_start_index": 0,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 2,
+      "clear_spawn_tile_headcount": true
+    },
+    {
+      "kind": "bandit_clear_site_evidence",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:cannibal_camp@140,51,0"
+    },
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:cannibal_camp@140,51,0",
+      "lead_id": "overmap_special:cannibal_camp@140,51,0#lead:smoke_signal:structural-smoke@(140,41,0)@140,41,0",
+      "lead_kind": "smoke_signal",
+      "origin": "returned_report",
+      "status": "suspected",
+      "target_id": "structural-smoke@(140,41,0)",
+      "target_omt": [140, 41, 0],
+      "radius_omt": 2,
+      "source_key": "structural-signal:structural-smoke@(140,41,0)",
+      "source_summary": "fixture returned smoke report backed by the physical nearby fire/smoke source",
+      "first_seen_minutes": 8580,
+      "last_seen_minutes": 8580,
+      "last_checked_minutes": -1,
+      "last_scouted_minutes": 8580,
+      "bounty": 0,
+      "threat": 0,
+      "confidence": 3,
+      "threat_confirmed": false,
+      "generated_by_this_camp_routine": true,
+      "times_checked_empty": 0,
+      "times_harvested": 0,
+      "last_outcome": "returned_structural_smoke_report",
+      "clear_active_pressure": true,
+      "mark_cleared_active_members_unready": false
+    },
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP"
+      ]
     }
   ]
 }

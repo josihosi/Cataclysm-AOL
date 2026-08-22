@@ -31,6 +31,8 @@
 #include "auto_note.h"
 #include "auto_pickup.h"
 #include "avatar.h"
+#include "bandit_live_world.h"
+#include "bandit_live_world_probe.h"
 #include "cached_options.h"
 #include "calendar.h"
 #include "cata_path.h"
@@ -64,6 +66,7 @@
 #include "main_menu.h"
 #include "map.h"
 #include "mapbuffer.h"
+#include "npc.h"
 #include "memorial_logger.h"
 #include "messages.h"
 #include "mod_manager.h"
@@ -97,6 +100,31 @@
 #endif
 
 static const dimension_id dimension_world_default( "default" );
+
+namespace
+{
+
+bandit_live_world::local_projection_reconciliation_result
+reconcile_loaded_bandit_live_world_projections()
+{
+    std::vector<bandit_live_world::local_projection_claim> claims;
+    for( const shared_ptr_fast<npc> &member : overmap_buffer.get_overmap_npcs() ) {
+        if( !member ) {
+            continue;
+        }
+        const bandit_live_world_projection_lease &lease =
+            member->get_bandit_live_world_projection_lease();
+        if( lease.present ) {
+            claims.push_back( { member->getID(), lease.site_id, lease.activity_id, lease.owner,
+                                lease.generation, lease.handoff_epoch,
+                                lease.last_advanced_minutes } );
+        }
+    }
+    return bandit_live_world::reconcile_loaded_local_projections(
+               overmap_buffer.global_state.bandit_live_world, claims );
+}
+
+} // namespace
 
 static const mod_id MOD_INFORMATION_dda( "dda" );
 
@@ -424,6 +452,13 @@ bool game::load( const save_t &name )
                         uistate.deserialize( jsin.get_object() );
                     } );
                     reload_npcs();
+                    const bandit_live_world::local_projection_reconciliation_result
+                    projection_reconciliation = reconcile_loaded_bandit_live_world_projections();
+                    if( projection_reconciliation ==
+                        bandit_live_world::local_projection_reconciliation_result::rejected ) {
+                        DebugLog( D_ERROR, DC_ALL )
+                                << "bandit_live_world rejected loaded local projection claims";
+                    }
                     validate_npc_followers();
                     validate_mounted_npcs();
                     validate_camps();
@@ -771,6 +806,18 @@ bool game::save()
                 fout.imbue( std::locale::classic() );
                 fout << total_time_played.count();
             } );
+            bandit_live_world_probe::record_certification_save_receipt(
+                to_turns<int>( calendar::turn - calendar::turn_zero ),
+                PATH_INFO::world_base_save_path().get_unrelative_path().string() );
+            const std::vector<bandit_live_world::world_state::crossing_receipt_identity>
+            acknowledged_crossings =
+                overmap_buffer.global_state.bandit_live_world.acknowledge_persisted_crossings();
+            if( !acknowledged_crossings.empty() && !save_maps() ) {
+                overmap_buffer.global_state.bandit_live_world.rollback_persisted_crossings(
+                    acknowledged_crossings );
+                debugmsg( "game save could not persist crossing acknowledgement" );
+                return false;
+            }
 #if defined(EMSCRIPTEN)
             // This will allow the window to be closed without a prompt, until do_turn()
             // is called.

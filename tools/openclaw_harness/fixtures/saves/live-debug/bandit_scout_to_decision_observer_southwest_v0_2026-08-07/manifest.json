@@ -2,12 +2,94 @@
   "name": "bandit_scout_to_decision_observer_southwest_v0_2026-08-07",
   "source_fixture": "bandit_scout_to_decision_observer_v0_2026-08-06",
   "source_profile": "live-debug",
-  "description": "Southwest observer footing for the natural bandit scout-to-decision vertical proof. It preserves the source fixture's camp, route, clock, evidence boundary, and DEBUG_CLAIRVOYANCE mutation, and moves only the player from (162,35,0) to (162,36,0), two OMTs west and one OMT south of the same sector-0 inner route waypoint at (164,35,0). No lead, dispatch, observation, return, report, or decision is injected.",
+  "description": "Southwest observer footing for the natural bandit scout-to-decision vertical proof. It preserves the source fixture's camp, route, clock, and evidence boundary; DEBUG_CLAIRVOYANCE is inherited, DEBUG_NOTEMP is an explicit observer-only control preventing unrelated avatar temperature interruptions, and DEBUG_NODMG is an observer-only incidental-wildlife survival control. It moves the player from (162,35,0) to (162,36,0), registers a named player basecamp at that loaded OMT through the saved player and overmap camp registries, and changes (163,32,0) from forest_thick to road_ns plus (164,34,0) to road_ns so the existing concealed forest watch at (163,33,0) has its bounded clear sightline to the sector-0 target and the ordinary return route cannot enter shallow water. It removes only the pre-existing hostile NPC Darlena Gerber (ID 25), whose unrelated auto-move interruption otherwise prevents travel from loading that selected watch. No lead, dispatch, observation, return, report, or decision is injected.",
   "save_transforms": [
     {
       "kind": "player_location_offset_ms",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "offset_ms": [0, 24, 0]
+    },
+    {
+      "kind": "player_basecamp_at_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "camp_name": "OpenClaw Southwest Observer Camp",
+      "owner": "your_followers"
+    },
+    {
+      "kind": "overmap_terrain_id_at_abs_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [163, 32, 0],
+      "terrain_id": "road_ns"
+    },
+    {
+      "kind": "overmap_terrain_id_at_abs_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [164, 34, 0],
+      "terrain_id": "road_ns"
+    },
+    {
+      "kind": "player_view_seen_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [163, 33, 0],
+      "vision_level": "full"
+    },
+    {
+      "kind": "player_view_seen_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [162, 36, 0],
+      "vision_level": "full"
+    },
+    {
+      "kind": "player_view_seen_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [161, 37, 0],
+      "vision_level": "full"
+    },
+    {
+      "kind": "player_view_seen_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [160, 38, 0],
+      "vision_level": "full"
+    },
+    {
+      "kind": "player_view_seen_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [160, 39, 0],
+      "vision_level": "full"
+    },
+    {
+      "kind": "player_condition",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "hp_percent": 100,
+      "stamina": 8500,
+      "hunger": 0,
+      "thirst": 0,
+      "sleepiness": 0
+    },
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION",
+        "DEBUG_NODMG"
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": []
+    },
+    {
+      "kind": "remove_overmap_npcs",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": false,
+      "npc_ids": [25]
     }
   ]
 }

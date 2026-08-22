@@ -6,6 +6,7 @@ from __future__ import annotations
 import hashlib
 import json
 import sqlite3
+import subprocess
 import sys
 import tempfile
 import unittest
@@ -18,22 +19,205 @@ sys.path.insert(0, str(HARNESS_DIR))
 
 from scenario_registry_store import (  # noqa: E402
     BindingAdapters,
+    RegistryQueryCandidateResult,
+    RegistryLaunchToken,
+    RegistryQueryCandidateSnapshot,
+    RegistryQueryEvaluation,
+    RegistryQueryPredicateResult,
+    RegistryStoredQueryEvaluation,
+    _write_inert_draft,
     build_registry_query_candidate_snapshot,
+    claim_repair_token_for_launch,
+    append_certification_lifecycle_event,
+    certification_round_facts,
+    create_certification_round,
+    invalidate_certification_round,
     execute_registry_query,
     evaluate_registry_query_from_store,
     ingest_report_reference,
+    issue_wec_authority,
+    ingest_repair_token_linked_report_reference,
+    issue_registry_repair_token,
+    _issue_registry_certification_authority,
+    register_certification_round,
+    final_gate_eligibility,
     open_registry,
     parse_registry_query_request,
     rebuild_manifest_projection,
+    query_diagnostic_capsule_candidates,
+    reload_repair_token_for_launch,
+    reload_selection_token_for_launch,
     reconcile_report_bindings,
+    terminalize_repair_token_cleanup_without_report,
 )
 import startup_harness  # noqa: E402
+from startup_harness import seal_wec_authority  # noqa: E402
+from identity_binding import canonical_digest, component_identity  # noqa: E402
 
 
 OPAQUE_PROSE = "opaque report prose must never be copied into sqlite"
 
 
 class ScenarioRegistryIngestionTest(unittest.TestCase):
+    def test_diagnostic_replay_ingestion_is_non_authoritative_even_when_spoofed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _scenarios, manifest_path, report_path = self.setup_registry(root)
+            report = self.report(manifest_path)
+            report.update({
+                "mode": "diagnostic_replay",
+                "run_id": "replay-run",
+                "diagnostic_replay": True,
+                "evidence_class": "automated continuous-round certification",
+                "wec_authority": {
+                    "authority_id": "caller-forged", "evidence_class": "automated continuous-round certification",
+                    "authority": "certification", "run_id": "replay-run", "binding_id": "forged",
+                },
+                "diagnostic_capsule_candidate": {"source_kind": "diagnostic_replay"},
+            })
+            self.write_json(report_path, report)
+            result = ingest_report_reference(
+                connection, report_path,
+                adapters=self.adapters({"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}),
+            )
+            self.assertEqual(result["status"], "ingested")
+            self.assertTrue(result["non_authoritative"])
+            self.assertIsNone(result["verification_id"])
+            self.assertFalse(result["final_gates"]["automated_certification"])
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM verification_history").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM verification_resolution_history").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM diagnostic_capsule_candidate").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM certification_round").fetchone()[0], 0)
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM wec_authority_history").fetchone()[0], 0)
+            self.assertFalse(final_gate_eligibility(connection)["automated_certification"])
+            duplicate = ingest_report_reference(
+                connection, report_path,
+                adapters=self.adapters({"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}),
+            )
+            self.assertTrue(duplicate["idempotent"])
+            with self.assertRaisesRegex(Exception, "diagnostic replay"):
+                issue_wec_authority(
+                    connection, evidence_class="diagnostic replay", authority="replay",
+                    run_id="replay-run-2", binding_id="binding", source_sha256="a" * 64,
+                )
+            connection.close()
+
+    def test_ingestion_appends_bound_capsule_once_and_excludes_own_run(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _scenarios, manifest_path, report_path = self.setup_registry(root)
+            artifact_path = root / "saved.receipt.json"
+            artifact_path.write_text('{"site":"camp","player":"p1"}\n', encoding="utf-8")
+            artifact_sha = hashlib.sha256(artifact_path.read_bytes()).hexdigest()
+            report = self.report(manifest_path)
+            report.update({"run_id": "capsule-run", "cleanup": {"accepted": True}})
+            report["step_ledger"] = [{"primitive_step": "gate.scout", "verdict": "green_scout"}]
+            report["capsule_binding"] = {
+                "state": {"identity": "save-1"}, "player": {"identity": "p1"},
+                "actors": [{"identity": "a1"}], "owner": "overmap",
+            }
+            report["diagnostic_capsule_candidate"] = {
+                "saved_artifact": {"path": str(artifact_path), "sha256": artifact_sha},
+                "site_id": "camp", "operation": "scout", "generation": "7",
+                "actor_ids": ["a1"], "owner": "overmap", "gate_id": "gate.scout",
+                "gate_index": 2, "gate_verdict": "green", "durable_timestamp": "2026-08-22T10:00:00Z",
+                "cleanup": {"accepted": True},
+            }
+            self.write_json(report_path, report)
+            adapters = self.adapters({"runtime": "compatible", "fixture": "compatible", "profile": "compatible"})
+            first = ingest_report_reference(connection, report_path, adapters=adapters)
+            self.assertEqual(first["status"], "ingested")
+            self.assertFalse(first["diagnostic_capsule"]["idempotent"])
+            binding_id = connection.execute("SELECT binding_id FROM diagnostic_capsule_candidate").fetchone()[0]
+            self.assertEqual(len(query_diagnostic_capsule_candidates(connection, binding_id=binding_id, run_id="other")), 1)
+            self.assertEqual(query_diagnostic_capsule_candidates(connection, binding_id=binding_id, run_id="capsule-run"), ())
+            duplicate = ingest_report_reference(connection, report_path, adapters=adapters)
+            self.assertTrue(duplicate["idempotent"])
+            self.assertEqual(connection.execute("SELECT COUNT(*) FROM diagnostic_capsule_candidate").fetchone()[0], 1)
+            connection.close()
+
+    def test_inert_draft_uses_one_closest_candidate_and_reports_scenario_work(self) -> None:
+        matched = RegistryQueryPredicateResult(
+            "fixture.kind", "eq", "camp", "camp", "declared", True, "matched",
+        )
+        missing = RegistryQueryPredicateResult(
+            "route.observer", "eq", "natural", None, "unknown", False, "unknown_fact",
+        )
+        unknown_fixture = RegistryQueryPredicateResult(
+            "fixture.kind", "eq", "camp", None, "unknown", False, "unknown_fact",
+        )
+        useful_snapshot = RegistryQueryCandidateSnapshot(
+            "a-useful", {}, "quarantined", False,
+            {"manifest": {"known_footing": {"fixture": "camp-a"}}},
+        )
+        unrelated_snapshot = RegistryQueryCandidateSnapshot(
+            "z-unrelated", {}, "quarantined", False,
+            {"manifest": {"known_footing": {"fixture": "unrelated-z"}}},
+        )
+        stored = RegistryStoredQueryEvaluation(
+            (useful_snapshot, unrelated_snapshot),
+            RegistryQueryEvaluation((
+                RegistryQueryCandidateResult("a-useful", (matched, missing), ()),
+                RegistryQueryCandidateResult("z-unrelated", (unknown_fixture, missing), ()),
+            ), ()),
+        )
+        request_json = json.dumps({
+            "requirements": [
+                {"key": "fixture.kind", "op": "eq", "value": "camp", "minimum_evidence": "declared"},
+                {"key": "route.observer", "op": "eq", "value": "natural", "minimum_evidence": "run-verified"},
+            ],
+            "preferences": [],
+        })
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = _write_inert_draft(
+                request_json=request_json,
+                query_sha256="closest",
+                evaluation=stored,
+                drafts_root=Path(temp_dir),
+            )
+            artifact = json.loads(Path(path).read_text(encoding="utf-8"))
+
+        self.assertEqual(artifact["build_action"], "repair_closest_scenario")
+        self.assertEqual(artifact["closest_candidate"]["scenario_id"], "a-useful")
+        self.assertEqual(artifact["candidate_manifest"], {"fixture": "camp-a"})
+        self.assertEqual([item["key"] for item in artifact["satisfied_requirements"]], ["fixture.kind"])
+        self.assertEqual([item["key"] for item in artifact["missing_requirements"]], ["route.observer"])
+        self.assertEqual(len(artifact["unmet_capabilities"]), 1)
+
+    def test_inert_draft_requests_a_new_scenario_when_every_fact_is_unknown(self) -> None:
+        unknown = RegistryQueryPredicateResult(
+            "route.observer", "eq", "natural", None, "unknown", False, "unknown_fact",
+        )
+        snapshot = RegistryQueryCandidateSnapshot(
+            "unrelated", {}, "quarantined", False,
+            {"manifest": {"known_footing": {"fixture": "must-not-leak"}}},
+        )
+        stored = RegistryStoredQueryEvaluation(
+            (snapshot,),
+            RegistryQueryEvaluation((RegistryQueryCandidateResult("unrelated", (unknown,), ()),), ()),
+        )
+        request_json = json.dumps({
+            "requirements": [{
+                "key": "route.observer", "op": "eq", "value": "natural",
+                "minimum_evidence": "run-verified",
+            }],
+            "preferences": [],
+        })
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = _write_inert_draft(
+                request_json=request_json,
+                query_sha256="new",
+                evaluation=stored,
+                drafts_root=Path(temp_dir),
+            )
+            artifact = json.loads(Path(path).read_text(encoding="utf-8"))
+
+        self.assertEqual(artifact["build_action"], "create_scenario")
+        self.assertIsNone(artifact["closest_candidate"])
+        self.assertEqual(artifact["candidate_manifest"], {})
+        self.assertEqual(artifact["unmet_capabilities"], [])
+        self.assertEqual(artifact["missing_requirements"][0]["reason"], "unknown_fact")
+
     def strict_manifest(self) -> dict:
         return {
             "manifest_version": 1,
@@ -190,6 +374,47 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
         rebuild_manifest_projection(connection, scenarios)
         return connection, scenarios, manifest_path
 
+    def phase4_terminal_gate_manifest(self) -> dict:
+        manifest = self.strict_manifest()
+        manifest["capabilities"] = {
+            "capabilities.phase4.scenario": "structural_signal_matrix",
+            "capabilities.phase4.control": "real_signal_returns_approximate_lead_without_player_truth",
+            "capabilities.phase4.unmapped": "must_remain_declared",
+        }
+        manifest["proof_route"]["capability_gates"] = {
+            "capabilities.phase4.scenario": {"terminal": ["terminal"]},
+            "capabilities.phase4.control": {"terminal": ["terminal"]},
+        }
+        return manifest
+
+    def setup_phase4_terminal_gate_registry(self, root: Path) -> tuple:
+        scenarios = root / "scenarios"
+        scenarios.mkdir()
+        manifest_path = scenarios / "phase4.json"
+        self.write_json(manifest_path, self.phase4_terminal_gate_manifest())
+        connection = open_registry(str(root / "registry.sqlite3"))
+        rebuild_manifest_projection(connection, scenarios)
+        return connection, scenarios, manifest_path
+
+    def phase4_terminal_gate_request(self):
+        return parse_registry_query_request({
+            "requirements": [
+                {
+                    "key": "capabilities.phase4.scenario",
+                    "op": "eq",
+                    "value": "structural_signal_matrix",
+                    "minimum_evidence": "run-verified",
+                },
+                {
+                    "key": "capabilities.phase4.control",
+                    "op": "eq",
+                    "value": "real_signal_returns_approximate_lead_without_player_truth",
+                    "minimum_evidence": "run-verified",
+                },
+            ],
+            "preferences": [],
+        })
+
     def adapters(self, state: dict) -> BindingAdapters:
         def result(kind: str, expected: object) -> dict:
             self.assertIsInstance(expected, dict)
@@ -221,6 +446,32 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
         connection = open_registry(str(root / "registry.sqlite3"))
         rebuild_manifest_projection(connection, scenarios)
         return connection, scenarios, manifest_path, report_path
+
+    def register_valid_round(self, connection: sqlite3.Connection, *, source_sha256: str) -> tuple:
+        names = ("worktree", "executable", "data_config", "harness", "scenario", "fixture", "profile", "world_save", "player", "actors")
+        authoritative = {name: {"identity": name} for name in names}
+        authoritative["scenario"] = {"identity": "scenario", "content_sha256": source_sha256}
+        authoritative["executable"] = {"identity": "executable", "content_sha256": "b" * 64}
+        components = {name: component_identity(name, authoritative[name]) for name in names}
+        binding = {"schema": 1, "components": components, "authoritative_components": authoritative}
+        binding["sha256"] = canonical_digest(
+            {key: value["sha256"] for key, value in components.items()},
+            domain="caol-complete-binding:v1",
+        )
+        authority = _issue_registry_certification_authority(
+            connection, round_id="registry-owned", binding_id=binding["sha256"],
+            source_sha256=source_sha256, launch_token="ingestion-test-token",
+        )
+        manifest = {
+            "schema": 1, "version": 1, "round_id": authority["run_id"],
+            "scenario_lineage_id": "lineage", "authority_id": authority["authority_id"],
+            "authority_kind": "automated-certification", "event_stream_id": "stream",
+            "event_stream_schema": 1, "binding_id": binding["sha256"], "binding": binding,
+        }
+        manifest["manifest_sha256"] = canonical_digest(manifest, domain="caol-round-manifest:v1")
+        register_certification_round(connection, manifest)
+        append_certification_lifecycle_event(connection, round_id=manifest["round_id"], event_sequence=1, event_kind="complete")
+        return manifest, authority
 
     def test_ingestion_is_exact_reference_idempotent_and_never_copies_prose(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -282,6 +533,199 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
                 },
                 counts,
             )
+            connection.close()
+
+    def test_canonical_ingestion_preserves_commitment_only_proof_without_final_credit(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            connection, _scenarios, manifest_path, report_path = self.setup_registry(Path(temp_dir))
+            report = self.report(manifest_path)
+            report.update({"run_id": "commitment-only", "binding_id": "runtime-observed-hash"})
+            report["wec_authority"] = seal_wec_authority(
+                evidence_class="automated continuous-round certification",
+                authority="certification",
+                run_id=report["run_id"],
+                binding_id=report["binding_id"],
+                source_sha256=hashlib.sha256(manifest_path.read_bytes()).hexdigest(),
+            )
+            self.write_json(report_path, report)
+
+            result = ingest_report_reference(
+                connection, report_path,
+                adapters=self.adapters({"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}),
+            )
+
+            self.assertEqual(result["status"], "ingested")
+            self.assertEqual(result["resolution"], "compatible")
+            self.assertEqual(result["eligibility"], "hard_proven")
+            self.assertFalse(result["final_gates"]["automated_certification"])
+            self.assertFalse(final_gate_eligibility(connection)["automated_certification"])
+            connection.close()
+
+    def test_canonical_ingestion_grants_final_credit_to_matching_registry_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            connection, _scenarios, manifest_path, report_path = self.setup_registry(Path(temp_dir))
+            source_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+            report = self.report(manifest_path)
+            round_manifest, authority = self.register_valid_round(
+                connection, source_sha256=source_sha256,
+            )
+            report["startup"]["screen"]["runtime_binding_observed"]["executable_sha256"] = "b" * 64
+            report.update({
+                "run_id": authority["run_id"],
+                "binding_id": authority["binding_id"],
+                "wec_authority": authority,
+                "event_stream_id": round_manifest["event_stream_id"],
+                "certification_round": {
+                    "round_id": round_manifest["round_id"],
+                    "authority_id": round_manifest["authority_id"],
+                    "binding_id": round_manifest["binding_id"],
+                    "event_stream_id": round_manifest["event_stream_id"],
+                    "manifest_sha256": round_manifest["manifest_sha256"],
+                    "lifecycle_state": "complete",
+                    "registry_derived": "true",
+                },
+            })
+            self.write_json(report_path, report)
+            adapters = BindingAdapters(
+                runtime=lambda _expected: {
+                    "status": "compatible",
+                    "facts": {
+                        "executable_sha256": "b" * 64,
+                        "source_sha256": "1" * 64,
+                    },
+                },
+                fixture=lambda _expected: {
+                    "status": "compatible", "facts": {"source_sha256": "2" * 64},
+                },
+                profile=lambda _expected: {
+                    "status": "compatible", "facts": {"source_sha256": "3" * 64},
+                },
+            )
+
+            result = ingest_report_reference(connection, report_path, adapters=adapters)
+
+            self.assertEqual(result["status"], "ingested")
+            self.assertTrue(result["final_gates"]["automated_certification"])
+            self.assertFalse(result["final_gates"]["windows_feel"])
+            self.assertTrue(final_gate_eligibility(connection)["automated_certification"])
+            verification_id = result["verification_id"]
+            history_before = connection.execute(
+                "SELECT COUNT(*) FROM verification_history WHERE verification_id = ?", (verification_id,)
+            ).fetchone()[0]
+            binding_before = connection.execute(
+                "SELECT COUNT(*) FROM binding_history WHERE manifest_id = (SELECT manifest_id FROM verification_history WHERE verification_id = ?)", (verification_id,)
+            ).fetchone()[0]
+            invalidate_certification_round(
+                connection, round_id=round_manifest["round_id"], reason="component_drift", component_name="world_save",
+            )
+            self.assertFalse(final_gate_eligibility(connection)["automated_certification"])
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM verification_history WHERE verification_id = ?", (verification_id,)
+            ).fetchone()[0], history_before)
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM binding_history WHERE manifest_id = (SELECT manifest_id FROM verification_history WHERE verification_id = ?)", (verification_id,)
+            ).fetchone()[0], binding_before)
+            self.assertEqual(connection.execute(
+                "SELECT resolution_kind FROM verification_resolution_history WHERE verification_id = ? ORDER BY resolution_event_id DESC LIMIT 1",
+                (verification_id,),
+            ).fetchone()[0], "compatible")
+            connection.close()
+
+    def test_registry_owner_created_round_keeps_history_when_only_final_credit_is_invalidated(self) -> None:
+        """Final credit uses the owner-issued round, never caller-assigned digests."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _scenarios, manifest_path, report_path = self.setup_registry(root)
+            repo = root / "repo"
+            repo.mkdir()
+            (repo / "tracked").write_bytes(b"tracked")
+            subprocess.run(["git", "init", "-q", str(repo)], check=True)
+            subprocess.run(["git", "-C", str(repo), "add", "tracked"], check=True)
+            subprocess.run([
+                "git", "-C", str(repo), "-c", "user.name=test",
+                "-c", "user.email=test@example.invalid", "commit", "-qm", "base",
+            ], check=True)
+            executable = root / "game"
+            executable.write_bytes(b"owner-created-executable")
+            data = root / "data"
+            data.mkdir()
+            (data / "config").write_bytes(b"config")
+            harness_root = root / "harness"
+            harness_root.mkdir()
+            (harness_root / "runner").write_bytes(b"runner")
+            fixture = root / "fixture"
+            fixture.write_bytes(b"fixture")
+            profile = root / "profile"
+            profile.write_bytes(b"profile")
+            world = root / "world"
+            world.mkdir()
+            (world / "player.sav").write_bytes(b"save")
+            connection.execute(
+                "INSERT INTO token_history(token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json) "
+                "VALUES(?,?,?,?,?,?,?)",
+                (
+                    "canonical-token",
+                    connection.execute("SELECT manifest_id FROM manifest_current LIMIT 1").fetchone()[0],
+                    None, "canonical-route", "issued", "test", "{}",
+                ),
+            )
+            with mock.patch(
+                    "scenario_registry_store.reload_selection_token_for_launch",
+                    return_value=RegistryLaunchToken(
+                        "canonical-token", True, "current", "strict", str(manifest_path),
+                    ),
+            ):
+                created = create_certification_round(
+                    connection,
+                    scenario_lineage_id="lineage-owner",
+                    event_stream_id="owner-event-stream",
+                    launch_token="canonical-token",
+                    launch_source_path=manifest_path,
+                    launch_route_key="canonical-route",
+                    current_executable_sha256=hashlib.sha256(executable.read_bytes()).hexdigest(),
+                    producer_inputs={
+                        "repo_root": repo, "executable": executable, "runtime_paths": ["tracked"],
+                        "data_config_roots": [data], "harness_roots": [harness_root],
+                        "scenario_path": manifest_path, "fixture_path": fixture, "profile_path": profile,
+                        "world_dir": world, "player_save": "player.sav",
+                        "saved_player_payload": {"player": {"id": "player-1"}},
+                        "ecology_audit": {"actors": [{"actor_id": "actor-1"}]},
+                    },
+                )
+            manifest = created["manifest"]
+            append_certification_lifecycle_event(
+                connection, round_id=manifest["round_id"], event_sequence=2, event_kind="complete",
+            )
+            report = self.report(manifest_path)
+            executable_sha256 = hashlib.sha256(executable.read_bytes()).hexdigest()
+            report["startup"]["screen"]["runtime_binding_observed"]["executable_sha256"] = executable_sha256
+            report.update({
+                "run_id": manifest["round_id"],
+                "binding_id": manifest["binding_id"],
+                "wec_authority": created["authority"],
+                "certification_round": certification_round_facts(connection, manifest["round_id"]),
+            })
+            self.write_json(report_path, report)
+            adapters = BindingAdapters(
+                runtime=lambda _expected: {"status": "compatible", "facts": {
+                    "executable_sha256": executable_sha256, "source_sha256": "1" * 64,
+                }},
+                fixture=lambda _expected: {"status": "compatible", "facts": {"source_sha256": "2" * 64}},
+                profile=lambda _expected: {"status": "compatible", "facts": {"source_sha256": "3" * 64}},
+            )
+            result = ingest_report_reference(connection, report_path, adapters=adapters)
+            self.assertTrue(result["final_gates"]["automated_certification"])
+            verification_id = result["verification_id"]
+            history_before = connection.execute(
+                "SELECT COUNT(*) FROM verification_history WHERE verification_id = ?", (verification_id,)
+            ).fetchone()[0]
+            invalidate_certification_round(
+                connection, round_id=manifest["round_id"], reason="binding_drift", component_name="world_save",
+            )
+            self.assertFalse(final_gate_eligibility(connection)["automated_certification"])
+            self.assertEqual(connection.execute(
+                "SELECT COUNT(*) FROM verification_history WHERE verification_id = ?", (verification_id,)
+            ).fetchone()[0], history_before)
             connection.close()
 
     def test_reconciliation_records_stale_events_for_every_bound_component(self) -> None:
@@ -489,6 +933,381 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
                 2,
             )
             connection.close()
+
+    def test_phase4_terminal_capability_gates_require_a_current_green_terminal_audit(self) -> None:
+        def terminal_report(manifest_path: Path, verdict: str | None, *, status: str = "green") -> dict:
+            report = self.report_with_proof(
+                manifest_path,
+                status=status,
+                feature_proof=status == "green",
+            )
+            if verdict is not None:
+                report["step_ledger"] = [{"primitive_step": "terminal", "verdict": verdict}]
+            return report
+
+        for case in ("missing", "green", "red", "incompatible", "stale"):
+            with self.subTest(case=case), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                connection, scenarios, manifest_path = self.setup_phase4_terminal_gate_registry(root)
+                state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+                try:
+                    if case == "missing":
+                        report = terminal_report(manifest_path, None)
+                    elif case == "red":
+                        report = terminal_report(manifest_path, "red_terminal_audit_failed", status="red")
+                    else:
+                        report = terminal_report(manifest_path, "green_terminal_audit_present")
+                    if case == "incompatible":
+                        state["runtime"] = "stale"
+
+                    ingested = self.ingest_named_report(connection, root, f"{case}.probe.report.json", report, state)
+                    if case == "stale":
+                        changed = self.phase4_terminal_gate_manifest()
+                        changed["description"] = "current source changed after terminal audit"
+                        self.write_json(manifest_path, changed)
+                        rebuild_manifest_projection(connection, scenarios)
+                        self.assertEqual(
+                            reconcile_report_bindings(connection, adapters=self.adapters(state)),
+                            {"reconciled": 1, "stale": 1},
+                        )
+
+                    if case == "green":
+                        self.assertEqual(ingested["eligibility"], "hard_proven")
+                        facts = build_registry_query_candidate_snapshot(connection)[0].facts
+                        for key in ("capabilities.phase4.scenario", "capabilities.phase4.control"):
+                            self.assertEqual(facts[key]["evidence_state"], "run-verified")
+                            self.assertEqual(facts[key]["proof_depth"], "terminal")
+                        self.assertEqual(facts["capabilities.phase4.unmapped"], {
+                            "present": True,
+                            "value": "must_remain_declared",
+                            "evidence_state": "declared",
+                            "proof_depth": None,
+                        })
+                    elif case == "missing":
+                        facts = build_registry_query_candidate_snapshot(connection)[0].facts
+                        self.assertTrue(all(
+                            facts[key]["evidence_state"] == "declared"
+                            for key in ("capabilities.phase4.scenario", "capabilities.phase4.control")
+                        ))
+                    else:
+                        snapshots = build_registry_query_candidate_snapshot(
+                            connection,
+                            include_lifecycle_states=("quarantined",),
+                        )
+                        self.assertEqual(len(snapshots), 1)
+                        expected_state = "contradicted" if case == "red" else "stale"
+                        self.assertTrue(all(
+                            snapshots[0].facts[key]["evidence_state"] == expected_state
+                            for key in ("capabilities.phase4.scenario", "capabilities.phase4.control")
+                        ))
+
+                    selected = execute_registry_query(
+                        connection,
+                        self.phase4_terminal_gate_request(),
+                        drafts_root=root / "drafts",
+                    )
+                    if case == "green":
+                        self.assertIsNotNone(selected.token_id)
+                        self.assertIsNone(selected.draft_path)
+                    else:
+                        self.assertIsNone(selected.token_id)
+                        self.assertIsNotNone(selected.draft_path)
+                finally:
+                    connection.close()
+
+    def test_current_hard_proven_route_selects_without_erasing_stale_history(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, scenarios, manifest_path = self.setup_phase4_terminal_gate_registry(root)
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            try:
+                def report() -> dict:
+                    result = self.report_with_proof(manifest_path, status="green", feature_proof=True)
+                    result["step_ledger"] = [{
+                        "primitive_step": "terminal",
+                        "verdict": "green_terminal_audit_present",
+                    }]
+                    return result
+
+                first = self.ingest_named_report(connection, root, "old.probe.report.json", report(), state)
+                changed = self.phase4_terminal_gate_manifest()
+                changed["description"] = "current source after stale report"
+                self.write_json(manifest_path, changed)
+                rebuild_manifest_projection(connection, scenarios)
+                self.assertEqual(
+                    reconcile_report_bindings(connection, adapters=self.adapters(state)),
+                    {"reconciled": 1, "stale": 1},
+                )
+                current = self.ingest_named_report(connection, root, "current.probe.report.json", report(), state)
+                self.assertEqual(current["eligibility"], "hard_proven")
+
+                selected = execute_registry_query(
+                    connection,
+                    self.phase4_terminal_gate_request(),
+                    drafts_root=root / "drafts",
+                )
+                self.assertIsNotNone(selected.token_id)
+                issued = connection.execute(
+                    "SELECT verification_id, details_json FROM token_history WHERE token_id = ? AND event_kind = 'issued'",
+                    (selected.token_id,),
+                ).fetchone()
+                self.assertEqual(issued["verification_id"], current["verification_id"])
+                receipt = json.loads(issued["details_json"])
+                self.assertEqual(
+                    [binding["verification_id"] for binding in receipt["route_evidence"]["bindings"]],
+                    [current["verification_id"]],
+                )
+                self.assertTrue(reload_selection_token_for_launch(connection, str(selected.token_id)).accepted)
+
+                state["runtime"] = "stale"
+                self.assertEqual(
+                    reconcile_report_bindings(connection, adapters=self.adapters(state)),
+                    {"reconciled": 2, "stale": 2},
+                )
+                rejected = execute_registry_query(
+                    connection,
+                    self.phase4_terminal_gate_request(),
+                    drafts_root=root / "drafts",
+                )
+                self.assertIsNone(rejected.token_id)
+                self.assertFalse(reload_selection_token_for_launch(connection, str(selected.token_id)).accepted)
+                self.assertEqual(first["eligibility"], "hard_proven")
+            finally:
+                connection.close()
+
+    def test_repair_token_supersedes_only_its_bound_current_red_verification(self) -> None:
+        def repair_binding(root: Path) -> dict:
+            executable = root / "repair-runtime"
+            executable.write_bytes(b"repair runtime")
+            return {
+                "runtime": {
+                    "schema": 1,
+                    "executable_path": str(executable.resolve()),
+                    "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
+                    "runtime_source_sha256": hashlib.sha256(b"repair source").hexdigest(),
+                },
+                "fixture": {
+                    "status": "compatible", "name": "", "profile": "",
+                    "source_path": str(root.resolve()),
+                    "source_sha256": hashlib.sha256(b"repair fixture").hexdigest(),
+                },
+                "profile": {
+                    "status": "compatible", "name": "", "profile": "",
+                    "source_path": str(root.resolve()),
+                    "source_sha256": hashlib.sha256(b"repair profile").hexdigest(),
+                },
+            }
+
+        def establish(root: Path, *, claim: bool = True) -> tuple:
+            connection, _scenarios, manifest_path = self.setup_phase4_terminal_gate_registry(root)
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            red_report = self.report_with_proof(manifest_path, status="red", feature_proof=False)
+            red_report["step_ledger"] = [{"primitive_step": "terminal", "verdict": "red_terminal"}]
+            red = self.ingest_named_report(connection, root, "red.probe.report.json", red_report, state)
+            route_key = connection.execute(
+                "SELECT route_key FROM verification_history WHERE verification_id = ?", (red["verification_id"],)
+            ).fetchone()[0]
+            token = issue_registry_repair_token(
+                connection,
+                self.phase4_terminal_gate_request(),
+                manifest_id=connection.execute(
+                    "SELECT manifest_id FROM verification_history WHERE verification_id = ?", (red["verification_id"],)
+                ).fetchone()[0],
+                route_key=route_key,
+                red_verification_id=red["verification_id"],
+                binding=repair_binding(root),
+            )
+            self.assertTrue(token.accepted)
+            if claim:
+                claimed = claim_repair_token_for_launch(
+                    connection, token.token_id, binding=repair_binding(root),
+                )
+                self.assertTrue(claimed.accepted, claimed.reason)
+            return connection, manifest_path, state, red, token, repair_binding(root)
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _manifest_path, _state, red, token, binding = establish(root, claim=False)
+            try:
+                manifest_id = connection.execute(
+                    "SELECT manifest_id FROM verification_history WHERE verification_id = ?", (red["verification_id"],)
+                ).fetchone()[0]
+                route_key = connection.execute(
+                    "SELECT route_key FROM verification_history WHERE verification_id = ?", (red["verification_id"],)
+                ).fetchone()[0]
+                repeated = issue_registry_repair_token(
+                    connection, self.phase4_terminal_gate_request(), manifest_id=manifest_id,
+                    route_key=route_key, red_verification_id=red["verification_id"], binding=binding,
+                )
+                self.assertTrue(repeated.accepted, repeated.reason)
+                self.assertEqual(repeated.token_id, token.token_id)
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM token_history WHERE event_kind = 'repair_issued'"
+                ).fetchone()[0], 1)
+                claimed = claim_repair_token_for_launch(connection, token.token_id, binding=binding)
+                self.assertTrue(claimed.accepted, claimed.reason)
+                blocked = issue_registry_repair_token(
+                    connection, self.phase4_terminal_gate_request(), manifest_id=manifest_id,
+                    route_key=route_key, red_verification_id=red["verification_id"], binding=binding,
+                )
+                self.assertFalse(blocked.accepted)
+                self.assertEqual(blocked.reason, "token_already_claimed")
+                replayed = claim_repair_token_for_launch(connection, token.token_id, binding=binding)
+                self.assertFalse(replayed.accepted)
+                self.assertEqual(replayed.reason, "token_already_claimed")
+                successor = issue_registry_repair_token(
+                    connection, self.phase4_terminal_gate_request(), manifest_id=manifest_id,
+                    route_key=route_key, red_verification_id=red["verification_id"], binding=binding,
+                )
+                self.assertTrue(successor.accepted, successor.reason)
+                self.assertNotEqual(successor.token_id, token.token_id)
+                successor_details = json.loads(connection.execute(
+                    "SELECT details_json FROM token_history WHERE token_id = ? AND event_kind = 'repair_issued'",
+                    (successor.token_id,),
+                ).fetchone()[0])
+                self.assertEqual(successor_details["attempt_sequence"], 2)
+                self.assertEqual(successor_details["predecessor"]["token_id"], token.token_id)
+                self.assertEqual(
+                    successor_details["predecessor"]["terminal_event"]["reason"], "token_already_claimed",
+                )
+                self.assertEqual(issue_registry_repair_token(
+                    connection, self.phase4_terminal_gate_request(), manifest_id=manifest_id,
+                    route_key=route_key, red_verification_id=red["verification_id"], binding=binding,
+                ).token_id, successor.token_id)
+            finally:
+                connection.close()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _manifest_path, _state, red, token, binding = establish(root, claim=False)
+            try:
+                claimed = claim_repair_token_for_launch(connection, token.token_id, binding=binding)
+                self.assertTrue(claimed.accepted, claimed.reason)
+                run_dir = root / "claimed-no-report-run"
+                run_dir.mkdir()
+                cleanup = {"status": "terminated", "pid": 42}
+                terminal = terminalize_repair_token_cleanup_without_report(
+                    connection, token.token_id, run_dir=run_dir, cleanup=cleanup,
+                )
+                self.assertTrue(terminal.accepted, terminal.reason)
+                self.assertEqual(terminal.reason, "cleanup_no_report_terminal")
+                replayed = terminalize_repair_token_cleanup_without_report(
+                    connection, token.token_id, run_dir=run_dir, cleanup=cleanup,
+                )
+                self.assertTrue(replayed.accepted, replayed.reason)
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM token_history WHERE token_id = ? AND event_kind = 'repair_no_report_terminal'",
+                    (token.token_id,),
+                ).fetchone()[0], 1)
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM token_history WHERE token_id = ? AND event_kind = 'repair_verification_run'",
+                    (token.token_id,),
+                ).fetchone()[0], 0)
+                self.assertFalse(reload_repair_token_for_launch(
+                    connection, token.token_id, require_claimed=True, binding=binding,
+                ).accepted)
+                manifest_id = connection.execute(
+                    "SELECT manifest_id FROM verification_history WHERE verification_id = ?", (red["verification_id"],)
+                ).fetchone()[0]
+                route_key = connection.execute(
+                    "SELECT route_key FROM verification_history WHERE verification_id = ?", (red["verification_id"],)
+                ).fetchone()[0]
+                successor = issue_registry_repair_token(
+                    connection, self.phase4_terminal_gate_request(), manifest_id=manifest_id,
+                    route_key=route_key, red_verification_id=red["verification_id"], binding=binding,
+                )
+                self.assertTrue(successor.accepted, successor.reason)
+                self.assertNotEqual(successor.token_id, token.token_id)
+            finally:
+                connection.close()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, manifest_path, state, red, token, binding = establish(root)
+            try:
+                green_report = self.report_with_proof(
+                    manifest_path, status="green", feature_proof=True,
+                    supersedes_verification_id=red["verification_id"],
+                )
+                green_report["step_ledger"] = [{"primitive_step": "terminal", "verdict": "green_terminal"}]
+                path = root / "green.probe.report.json"
+                self.write_json(path, green_report)
+                accepted = ingest_repair_token_linked_report_reference(
+                    connection, token.token_id, path, adapters=self.adapters(state),
+                )
+                self.assertEqual(accepted["status"], "ingested")
+                route_history = connection.execute(
+                    "SELECT evidence_state FROM capability_evidence_history WHERE capability_key = '_registry.proof_route' "
+                    "ORDER BY capability_evidence_id"
+                ).fetchall()
+                self.assertEqual([row[0] for row in route_history], ["contradicted", "hard_proven"])
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM verification_history WHERE verification_id = ?", (red["verification_id"],)
+                ).fetchone()[0], 1)
+                self.assertEqual(connection.execute(
+                    "SELECT reason FROM token_history WHERE token_id = ? AND event_kind = 'repair_verification_run'",
+                    (token.token_id,),
+                ).fetchone()[0], "report_ingested_authoritative")
+            finally:
+                connection.close()
+
+        for label, status, feature_proof, supersession in (
+                ("missing", "green", True, ""),
+                ("wrong", "green", True, "not-the-bound-red-verification"),
+                ("red", "red", False, "")):
+            with self.subTest(label=label), tempfile.TemporaryDirectory() as temp_dir:
+                root = Path(temp_dir)
+                connection, manifest_path, state, red, token, _binding = establish(root)
+                try:
+                    report = self.report_with_proof(
+                        manifest_path, status=status, feature_proof=feature_proof,
+                        supersedes_verification_id=supersession,
+                    )
+                    report["step_ledger"] = [{"primitive_step": "terminal", "verdict": label}]
+                    path = root / f"{label}.probe.report.json"
+                    self.write_json(path, report)
+                    rejected = ingest_repair_token_linked_report_reference(
+                        connection, token.token_id, path, adapters=self.adapters(state),
+                    )
+                    self.assertEqual(rejected["status"], "rejected_report")
+                    route = build_registry_query_candidate_snapshot(
+                        connection, include_lifecycle_states=("quarantined",),
+                    )[0].explanation["route_evidence"][0]
+                    self.assertEqual(route["evidence_state"], "contradicted")
+                    self.assertIn(red["verification_id"], route["details"]["unresolved_contradiction_ids"])
+                    self.assertFalse(reload_repair_token_for_launch(
+                        connection, token.token_id, require_claimed=True,
+                    ).accepted)
+                    replayed = ingest_repair_token_linked_report_reference(
+                        connection, token.token_id, path, adapters=self.adapters(state),
+                    )
+                    self.assertEqual(replayed["status"], "rejected_token")
+                    self.assertGreaterEqual(connection.execute(
+                        "SELECT COUNT(*) FROM token_history WHERE token_id = ? AND event_kind = 'repair_invalidated'",
+                        (token.token_id,),
+                    ).fetchone()[0], 1)
+                finally:
+                    connection.close()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, _manifest_path, _state, red, token, binding = establish(root, claim=False)
+            try:
+                changed_binding = dict(binding)
+                changed_binding["fixture"] = {**binding["fixture"], "source_sha256": hashlib.sha256(
+                    b"changed fixture"
+                ).hexdigest()}
+                rejected = reload_repair_token_for_launch(
+                    connection, token.token_id, binding=changed_binding,
+                )
+                self.assertEqual(rejected.reason, "binding_changed")
+                route = build_registry_query_candidate_snapshot(
+                    connection, include_lifecycle_states=("quarantined",),
+                )[0].explanation["route_evidence"][0]
+                self.assertEqual(route["evidence_state"], "contradicted")
+                self.assertIn(red["verification_id"], route["details"]["unresolved_contradiction_ids"])
+            finally:
+                connection.close()
 
     def test_named_gate_contradiction_outranks_success_until_same_route_supersession(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

@@ -1,0 +1,58 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.extortion_committed_contact_movement_seed_route_confirm_mcw",
+  "description": "Superseding R-009 seed route: ordinary overmap pan plus the game's documented two-step efficient-route confirmation reaches the M061 basecamp-adjacent footing before native Save-and-Quit. No fixture data is transformed.",
+  "profile": "r009-m069",
+  "world": "McWilliams",
+  "fixture": "r009_m059_preopportunity_bootstrap",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {"macos": {"SCALING_FACTOR": "2", "LLM_INTENT_ENABLE": "false"}},
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "capabilities": {
+    "player.hud": ["Move:", "Wield:"],
+    "capabilities.persistence": "full_save_exit_same_world",
+    "capabilities.shakedown.seed": "ordinary_basecamp_travel"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:m", "press:right", "press:up", "press:w", "press:S", "press:Y"],
+    "forbidden_input": ["debug:teleport", "debug:spawn", "raw-save-rewrite", "fixture-save-transform"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m069",
+    "fixture": "r009_m059_preopportunity_bootstrap",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m069", "fixture": "r009_m059_preopportunity_bootstrap", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["press:m", "press:right", "press:up", "press:w", "press:S", "press:Y"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["post_load_preopportunity_hud"],
+    "production_behavior": ["confirm_ordinary_route_to_basecamp_adjacency"],
+    "terminal_persistence": ["confirm_seed_full_save"],
+    "artifact_verdict": ["audit_saved_basecamp_adjacency_footing"],
+    "disallowed_shortcuts": ["audit_saved_basecamp_adjacency_footing"]
+  },
+  "steps": [
+    {"kind": "wait", "label": "post_load_preopportunity_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_preopportunity_hud_not_visible", "abort_reason": "the production-created bootstrap save did not reach the gameplay HUD"},
+    {"kind": "press", "label": "open_overmap_for_ordinary_basecamp_travel", "keys": ["m"], "delay_ms": 200, "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the standard overmap is open before selecting the known basecamp-adjacent destination"},
+    {"kind": "press", "label": "pan_to_known_basecamp_adjacency_destination", "keys": ["right", "right", "up"], "delay_ms": 200, "settle_seconds": 0.5, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "ordinary overmap cursor movement selects M061's absolute OMT (164,35,0)"},
+    {"kind": "press", "label": "preview_ordinary_route_to_basecamp_adjacency", "keys": ["w"], "delay_ms": 200, "settle_seconds": 0.5, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the game's documented efficient-route preview is shown before ordinary travel begins"},
+    {"kind": "press", "label": "confirm_ordinary_route_to_basecamp_adjacency", "keys": ["w"], "delay_ms": 200, "settle_seconds": 2.0, "capture_after": false, "expected_visible_fact": "the game's second documented route command confirms ordinary travel to M061's basecamp-adjacent footing"},
+    {"kind": "audit_player_save_mtime", "label": "audit_player_save_before_seed_save", "abort_on_metadata_failure": true, "abort_verdict": "blocked_player_save_missing_before_seed_save", "abort_reason": "the copied production-created save was absent before its ordinary save"},
+    {"kind": "press", "label": "open_seed_full_save_prompt", "keys": ["S"], "delay_ms": 200, "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Case Sensitive"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_seed_save_prompt_missing", "abort_reason": "the normal Save-and-Quit confirmation was not visibly open"},
+    {"kind": "press", "label": "confirm_seed_full_save", "keys": ["Y"], "delay_ms": 250, "settle_seconds": 5.0, "capture_after": false, "proof_deferred_to_label": "audit_player_save_after_seed_save"},
+    {"kind": "audit_player_save_mtime", "label": "audit_player_save_after_seed_save", "changed_since_label": "audit_player_save_before_seed_save", "abort_on_metadata_failure": true, "abort_verdict": "blocked_native_seed_save_not_observed", "abort_reason": "the native Save-and-Quit action did not update the copied player save"},
+    {"kind": "audit_saved_game_turn", "label": "audit_saved_basecamp_adjacency_footing", "required_player_abs_omt": [164, 35, 0], "abort_on_metadata_failure": true, "abort_verdict": "blocked_ordinary_basecamp_adjacency_not_reached", "abort_reason": "the saved player location was not the ordinary M061 basecamp-adjacent footing", "expected_immediate_state": "the current-executable native save records player absolute OMT (164,35,0), the source-side basecamp-adjacent footing for opportunity observation"}
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.extortion_committed_contact_movement_seed_route_confirm_mcw",
+  "evidence_contract": {
+    "claim": "the current executable moves the avatar through the game-documented overmap route UI to the named basecamp-adjacent footing and saves it through native Save-and-Quit",
+    "preconditions_and_interventions": "the harness copies a production-created save with save_transforms=[] and sends only normal overmap movement/route/save keys",
+    "terminal": "this is seed evidence only; it creates no hostile state and claims no shakedown outcome"
+  }
+}

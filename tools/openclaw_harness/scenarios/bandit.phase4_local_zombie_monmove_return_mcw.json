@@ -1,0 +1,256 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.phase4_local_zombie_monmove_return_mcw",
+  "description": "Source-bound Phase-4 proof route for a local pair that learns only one ordinary visible on-route zombie through its own monmove observation. The inherited fixture starts with an idle five-member camp and no staged monster. Production first dispatches and commits its exact pair. Only after the two-member local-owner audit does the disposable run teleport the passive avatar to the recorded route OMT and stage one hostile mon_zombie one tile east. Bounded ordinary turns must emit the identity-bound local-zombie receipt, transition safely home, consume ordered physical receipts, and apply the returned dangerous lead. The avatar is not a threat source and no unseen-monster or avatar fact is admissible.",
+  "capabilities": {
+    "capabilities.phase4.scenario": "local_zombie_monmove_return",
+    "capabilities.phase4.control": "observable_scout_only_no_avatar_or_unseen_monster_truth"
+  },
+  "runtime_contract": {
+    "permitted_input": ["long_wait:6h", "long_wait:5m", "type:.", "debug:teleport", "debug:spawn_monster", "press:S", "press:Y"],
+    "forbidden_input": ["raw-save-rewrite", "fixture-save-transform", "debug:inject_report", "debug:inject_decision", "debug:inject_operation", "debug:spawn_npc", "debug:spawn_horde"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_phase4_local_zombie_monmove_v0_2026-08-17",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_phase4_local_zombie_monmove_v0_2026-08-17",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": ["long_wait:6h", "long_wait:5m", "type:.", "debug:teleport", "debug:spawn_monster", "press:S", "press:Y"],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_phase4_local_zombie_monmove_v0_2026-08-17",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {"macos": {"SCALING_FACTOR": "2"}},
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0",
+    "bandit_live_world local_handoff committed",
+    "members=2",
+    "bandit_live_world local_zombie_observation accepted",
+    "stable_threat_ids=local-zombie:mon_zombie:1",
+    "bandit_live_world local homeward motor",
+    "bandit_live_world local physical return receipt committed",
+    "status=dangerous",
+    "last_outcome=returned_shared_structural_threat_report"
+  ],
+  "proof_route": {
+    "precondition": ["preflight_idle_local_zombie_fixture", "audit_exact_two_member_local_handoff"],
+    "production_behavior": ["advance_one_observation_minute_through_monmove", "advance_declared_physical_return_turns"],
+    "terminal_persistence": ["audit_saved_returned_local_zombie_dangerous_lead"],
+    "artifact_verdict": ["audit_local_zombie_monmove_return_receipt_and_transition"],
+    "capability_gates": {
+      "capabilities.phase4.scenario": {"terminal": ["audit_saved_returned_local_zombie_dangerous_lead"]},
+      "capabilities.phase4.control": {"terminal": ["audit_local_zombie_monmove_return_receipt_and_transition"]}
+    },
+    "disallowed_shortcuts": ["audit_no_avatar_or_hidden_truth_in_local_zombie_receipt"]
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_local_zombie_fixture_settle",
+      "seconds": 2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_local_zombie_fixture_startup",
+      "abort_reason": "the source-bound fixture did not reach normal gameplay"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_idle_local_zombie_fixture",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 5,
+      "required_active_outside_count": 0,
+      "required_max_leads": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_local_zombie_fixture_not_idle",
+      "abort_reason": "the source fixture did not retain the idle five-member, zero-lead causal boundary"
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_first_6_hours_toward_local_zombie_dispatch",
+      "choice_key": "8",
+      "expected_duration": "6h",
+      "pre_menu_choice_key": "w",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "completion_wait_seconds": 60,
+      "artifact_state_patterns": ["scheduler_hour=131", "now_minutes=7860"]
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_second_6_hours_for_local_zombie_dispatch",
+      "choice_key": "8",
+      "expected_duration": "6h",
+      "pre_menu_choice_key": "w",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "completion_wait_seconds": 90,
+      "artifact_state_patterns": ["structural maintenance dispatched site=overmap_special:bandit_camp@140,51,0"]
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_5_minutes_for_exact_local_handoff",
+      "choice_key": "3",
+      "expected_duration": "5m",
+      "pre_menu_choice_key": "w",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "completion_wait_seconds": 60,
+      "artifact_state_patterns": ["bandit_live_world local_handoff committed", "members=2"]
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_exact_two_member_local_handoff",
+      "required_line_patterns": [["bandit_live_world local_handoff committed", "site=overmap_special:bandit_camp@140,51,0", "route_position=(137,51,0)", "members=2"]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_local_zombie_handoff_missing",
+      "abort_reason": "production did not commit the exact two-member local handoff before source staging"
+    },
+    {
+      "kind": "press",
+      "label": "open_debug_teleport_to_observer_route_omt",
+      "keys": ["}", "t", "l"],
+      "delay_ms": 250,
+      "settle_seconds": 2,
+      "expected_visible_fact": "the current debug input owner opens the long teleport destination picker after production handoff"
+    },
+    {
+      "kind": "press",
+      "label": "teleport_passive_avatar_to_exact_observer_route_omt",
+      "keys": ["right", "right", "enter"],
+      "delay_ms": 150,
+      "settle_seconds": 4,
+      "capture_after": true,
+      "expected_visible_fact": "the passive avatar is relocated to the handoff receipt's route OMT (137,51,0), without changing either scout identity or source state"
+    },
+    {
+      "kind": "debug_spawn_monster",
+      "label": "stage_one_ordinary_hostile_zombie_after_local_ownership",
+      "monster_query": "zombie",
+      "target_keys": ["right"],
+      "friendly": false,
+      "hallucination": false,
+      "delay_ms": 250,
+      "initial_settle_seconds": 2,
+      "capture_after": true,
+      "proof_deferred_to_label": "audit_local_zombie_monmove_return_receipt_and_transition",
+      "expected_visible_fact": "one ordinary hostile zombie is staged one tile east on the loaded route OMT only after the two-member handoff"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_one_observation_minute_through_monmove",
+      "count": 10,
+      "settle_seconds": 1,
+      "proof_deferred_to_label": "audit_local_zombie_monmove_return_receipt_and_transition",
+      "expected_visible_fact": "ten ordinary six-second turns cross the existing one-minute loaded monmove observation cadence"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_declared_physical_return_turns",
+      "count": 3250,
+      "settle_seconds": 1,
+      "proof_deferred_to_label": "audit_local_zombie_monmove_return_receipt_and_transition",
+      "expected_visible_fact": "the first measured-cadence physical-return window drives loaded NPC movement and ordered local receipts without abstract lead credit"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_authoritative_return_reducer_turns",
+      "count": 3600,
+      "settle_seconds": 1,
+      "proof_deferred_to_label": "audit_saved_returned_local_zombie_dangerous_lead",
+      "expected_visible_fact": "the second measured-cadence window reaches the authorized post-receipt reducer that applies the dangerous returned lead"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_local_zombie_monmove_return_receipt_and_transition",
+      "required_line_patterns": [
+        ["bandit_live_world local_zombie_observation accepted", "site=overmap_special:bandit_camp@140,51,0", "source_omt=(137,51,0)", "stable_threat_ids=local-zombie:mon_zombie:1", "danger_low=", "danger_high=", "accepted_count=1"],
+        ["bandit_live_world local homeward motor", "owner=local", "route_assigned=yes"],
+        ["bandit_live_world local physical return receipt committed", "receipts=1", "owner=local"],
+        ["bandit_live_world local physical return receipt committed", "receipts=2", "owner=abstract"]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_local_zombie_monmove_return_receipt_missing",
+      "abort_reason": "the same run did not prove accepted identity-bound local observation, safety transition, and ordered physical pair return"
+    },
+    {
+      "kind": "audit_log_not_contains",
+      "label": "audit_no_avatar_or_hidden_truth_in_local_zombie_receipt",
+      "forbidden_line_patterns": [["bandit_live_world local_zombie_observation accepted", "player@"], ["bandit_live_world local_zombie_observation accepted", "avatar"]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_local_zombie_hidden_or_avatar_truth",
+      "abort_reason": "the accepted local-zombie receipt exposed avatar or hidden-state provenance instead of scout-visible monster facts"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_local_zombie_save_before_finalizer"
+    },
+    {
+      "kind": "press",
+      "label": "open_local_zombie_return_save_prompt",
+      "keys": ["S"],
+      "delay_ms": 250,
+      "settle_seconds": 1,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Case Sensitive"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_local_zombie_finalizer_prompt",
+      "abort_reason": "the native save-and-quit finalizer prompt was not visible"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_local_zombie_return_finalizer",
+      "keys": ["Y"],
+      "delay_ms": 250,
+      "settle_seconds": 5,
+      "proof_deferred_to_label": "audit_saved_returned_local_zombie_dangerous_lead"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_local_zombie_save_after_finalizer",
+      "changed_since_label": "audit_local_zombie_save_before_finalizer",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_local_zombie_finalizer_writeback",
+      "abort_reason": "the native finalizer did not write the same-run save"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_returned_local_zombie_dangerous_lead",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_ready_at_home_count": 5,
+      "required_active_outside_count": 0,
+      "required_lead_status": "dangerous",
+      "required_lead_last_outcome": "returned_shared_structural_threat_report",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_local_zombie_dangerous_lead_missing",
+      "abort_reason": "the canonical saved return did not apply the dangerous local-zombie lead after physical pair return"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/scenario_registry_cli.py registry-query --query-json '{\"requirements\":[{\"key\":\"capabilities.phase4.scenario\",\"op\":\"eq\",\"value\":\"local_zombie_monmove_return\",\"minimum_evidence\":\"declared\"},{\"key\":\"capabilities.phase4.control\",\"op\":\"eq\",\"value\":\"observable_scout_only_no_avatar_or_unseen_monster_truth\",\"minimum_evidence\":\"declared\"}],\"preferences\":[]}'",
+  "evidence_contract": {
+    "claim": "only the accepted live scouting observer learns the one ordinary visible on-route zombie; the returned dangerous lead is produced after the two exact physical receipts and never from avatar or unseen-zombie state",
+    "runtime_provenance": "a future run must bind the current worktree source, current executable, resolved source fixture chain, profile snapshot, same-run debug artifact, native save/writeback, accepted cleanup, and registry-owned canonical probe report",
+    "canonical_ingestion_gate": "no declared capability becomes run-verified until a fresh typed registry query, selected registry-launch, and canonical report ingestion show every named terminal gate green under compatible runtime, fixture, and profile bindings",
+    "finalizer": "the native save/writeback gates precede the registry-launch finalizer; the registry alone ingests the finalized probe report after accepted cleanup",
+    "failure_rule": "a missing source-bound fixture chain, incomplete two-member handoff, absent accepted receipt, avatar/hidden truth token, unordered physical receipt, missing native writeback, or non-dangerous returned lead is red or blocked; startup alone is never feature proof"
+  }
+}

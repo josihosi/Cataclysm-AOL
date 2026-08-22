@@ -1,4 +1,8 @@
 {
+  "manifest_version": 1,
+  "capabilities": { "capabilities.phase4.scenario": "quiet_former_radar", "capabilities.phase4.control": "quiet_former_radius_no_discovery" },
+  "runtime_contract": { "permitted_input": [ "long_wait:3h", "press:S", "press:Y" ], "forbidden_input": [ "raw-save-rewrite", "fixture-save-transform", "debug:inject_report", "debug:inject_decision", "debug:inject_operation" ], "setup_only_debug": true, "disposable_copy": true, "helpers": [ "Peekaboo" ], "permissions": [ "accessibility", "screen-recording" ], "platform": [ "macos" ], "profile": "dev-harness", "fixture": "bandit_phase4_quiet_former_radar_v0_2026-08-04", "requirements": { "os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "bandit_phase4_quiet_former_radar_v0_2026-08-04", "helper": "Peekaboo", "peekaboo": true, "input": [ "long_wait:3h", "press:S", "press:Y" ], "ocr": true, "cleanup": true }, "grants_gameplay_proof": false },
+  "proof_route": { "precondition": [ "preflight_saved_quiet_zero_evidence" ], "production_behavior": [ "wait_3_hours_inside_former_radar_radius" ], "terminal_persistence": [ "audit_saved_quiet_only_structural_origins" ], "artifact_verdict": [ "audit_quiet_structural_only_artifact" ], "disallowed_shortcuts": [ "audit_no_radar_or_player_writer_artifact" ] },
   "name": "bandit.phase4_quiet_former_radar_live_mcw",
   "description": "Phase-4 live proof that a populated bandit camp six OMT from the real player does not create a radar/player lead or outing. Three hours of real cadence may add bounded structural terrain priors, but every saved lead must remain structural_routine and the camp must remain idle.",
   "profile": "dev-harness",

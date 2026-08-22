@@ -130,7 +130,7 @@ Implementation status:
 
 - [x] Scenario registry declarations state that they are not evidence, and the current report route
   distinguishes startup/load from feature-path proof.
-- [ ] 🔴 R-001 — Evidence is not classified and authorized strongly enough to preserve focused proof without allowing it to masquerade as either final gate.
+- [x] R-001 — Evidence is not classified and authorized strongly enough to preserve focused proof without allowing it to masquerade as either final gate.
   - Code gap: `startup_harness.py` proof classification and the scenario-registry report schema expose only coarse startup/load versus feature-path classes and no immutable diagnostic/certification/Windows authority.
   - Required mechanism: extend the existing report and registry owners with the WEC evidence classes and start-time authority; make final-gate eligibility a derived, fail-closed decision rather than a caller-supplied label.
   - Proof: ingest one artifact from every class plus attempted post-hoc promotions; compatible focused proof remains queryable, while only one genuine certification artifact and one Josef-authored Windows feel result are eligible for their respective gates.
@@ -162,7 +162,7 @@ Implementation status:
 
 - [x] Current code hashes an executable and selected runtime-source bytes and separately binds
   scenario/fixture/profile declarations.
-- [ ] 🔴 R-002 — A certification round has no complete immutable binding or exclusive process/world lease.
+- [x] R-002 — A certification round has no complete immutable binding or exclusive process/world lease.
   - Code gap: `runtime_source_binding` omits harness, full data/config, world/save, player, and actor identities; `kill_existing_game_processes` kills matching processes globally rather than enforcing a bound exclusive lease.
   - Required mechanism: extend the existing binding and registry owners to seal the complete WEC binding and acquire/release a round-specific process/world lease; fail closed on component drift or competing ownership.
   - Proof: a round survives an ordinary save/relaunch with the same binding and identities, while independent mutations of every binding component, a replacement world/player/actor, a sequence rollback, and a competing process each invalidate only certification credit and name the first mismatch.
@@ -194,7 +194,7 @@ Implementation status:
 
 - [x] The current report preserves ordered gate evidence, immutable report references, saved actor
   receipts, and a compact summary of repeated non-committed events.
-- [ ] 🔴 R-003 — Failed runs do not report the first causal divergence or deterministically recommend a compatible diagnostic capsule.
+- [x] R-003 — Failed runs do not report the first causal divergence or deterministically recommend a compatible diagnostic capsule.
   - Code gap: report assembly has raw/aggregated events and a step ledger but no capsule record, compatibility-ranked selector, last-green/first-red calculation, or smallest-next-probe field.
   - Required mechanism: use the existing ordered gates, saved receipts, binding history, and registry queries to persist capsule candidates and derive the required failure summary and deterministic recommendation.
   - Proof: seeded failures at successive lifecycle gates select the latest compatible capsule and report the exact earliest mismatch; an incompatible newer capsule is rejected, repeated identical events are summarized, and every resulting replay remains certification-ineligible.

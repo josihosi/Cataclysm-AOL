@@ -2208,6 +2208,18 @@ void npc::load( const JsonObject &data )
 
     data.read( "assigned_camp", assigned_camp );
     data.read( "job", job );
+    bandit_live_world_projection_lease.clear();
+    if( data.has_member( "bandit_live_world_projection_lease" ) ) {
+        const JsonObject lease = data.get_object( "bandit_live_world_projection_lease" );
+        lease.read( "site_id", bandit_live_world_projection_lease.site_id );
+        lease.read( "activity_id", bandit_live_world_projection_lease.activity_id );
+        lease.read( "owner", bandit_live_world_projection_lease.owner );
+        lease.read( "generation", bandit_live_world_projection_lease.generation );
+        lease.read( "handoff_epoch", bandit_live_world_projection_lease.handoff_epoch );
+        lease.read( "last_advanced_minutes",
+                    bandit_live_world_projection_lease.last_advanced_minutes );
+        bandit_live_world_projection_lease.present = true;
+    }
 
     // remove migration in 0.K
     if( data.read( "mission", misstmp ) ) {
@@ -2382,6 +2394,18 @@ void npc::store( JsonOut &json ) const
     json.member( "chair_pos", chair_pos );
     json.member( "wander_pos", wander_pos );
     json.member( "job", job );
+    if( bandit_live_world_projection_lease.present ) {
+        json.member( "bandit_live_world_projection_lease" );
+        json.start_object();
+        json.member( "site_id", bandit_live_world_projection_lease.site_id );
+        json.member( "activity_id", bandit_live_world_projection_lease.activity_id );
+        json.member( "owner", bandit_live_world_projection_lease.owner );
+        json.member( "generation", bandit_live_world_projection_lease.generation );
+        json.member( "handoff_epoch", bandit_live_world_projection_lease.handoff_epoch );
+        json.member( "last_advanced_minutes",
+                     bandit_live_world_projection_lease.last_advanced_minutes );
+        json.end_object();
+    }
     // TODO: stringid
     json.member( "mission", mission );
     json.member( "previous_mission", previous_mission );

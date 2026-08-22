@@ -16,6 +16,7 @@ from typing import Any, Dict, List, Mapping
 
 
 MANIFEST_VERSION = 1
+CHECKPOINT_CHAIN_MANIFEST_VERSION = 2
 CAPABILITY_NAMESPACE_PREFIXES = (
     "player.",
     "local_place.",
@@ -221,10 +222,143 @@ def _validate_proof_route(value: Any, manifest: Mapping[str, Any], *, path: Path
                 )
 
 
+def _validate_checkpoint_gate_expectations(value: Any, *, path: Path, field: str) -> None:
+    if not isinstance(value, list) or not value:
+        raise _error(path, f"{field} must be a non-empty list")
+    for index, expectation in enumerate(value, start=1):
+        if not isinstance(expectation, dict):
+            raise _error(path, f"{field}[{index}] must be an object")
+        if set(expectation) != {"kind", "predicate"}:
+            raise _error(path, f"{field}[{index}] must contain exactly kind and predicate")
+        if expectation.get("kind") not in {"structured_event", "saved_artifact"}:
+            raise _error(path, f"{field}[{index}].kind must name structured_event or saved_artifact")
+        predicate = expectation.get("predicate")
+        if not _is_bounded_object(predicate) or not predicate:
+            raise _error(path, f"{field}[{index}].predicate must be a non-empty bounded object")
+
+
+def _validate_checkpoint_safe_ui(value: Any, *, path: Path, field: str) -> None:
+    if not isinstance(value, dict) or set(value) != {"screen_text_contains"}:
+        raise _error(path, f"{field} must contain exactly screen_text_contains")
+    _require_string_list(value.get("screen_text_contains"), path=path,
+                         field=f"{field}.screen_text_contains")
+
+
+def _validate_checkpoint_proof_route(
+    value: Any,
+    manifest: Mapping[str, Any],
+    gate_ids: List[str],
+    *,
+    path: Path,
+) -> None:
+    if not isinstance(value, dict):
+        raise _error(path, "proof_route must be an object")
+    allowed = {"gates", "terminal", "capability_gates"}
+    unknown_fields = set(value) - allowed
+    if unknown_fields:
+        raise _error(path, f"proof_route has unknown field(s): {', '.join(sorted(unknown_fields))}")
+    gates = _require_string_list(value.get("gates"), path=path, field="proof_route.gates")
+    if gates != gate_ids:
+        raise _error(path, "proof_route.gates must contain every proof gate in declaration order")
+    terminal = _require_string_list(value.get("terminal"), path=path, field="proof_route.terminal")
+    if terminal != [gate_ids[-1]]:
+        raise _error(path, "proof_route.terminal must contain exactly the final proof gate")
+    capability_gates = value.get("capability_gates")
+    if capability_gates is None:
+        return
+    if not isinstance(capability_gates, dict):
+        raise _error(path, "proof_route.capability_gates must be an object when present")
+    declared_capabilities = manifest.get("capabilities")
+    if not isinstance(declared_capabilities, dict):
+        raise _error(path, "proof_route.capability_gates requires declared capabilities")
+    for capability_key, depth_gates in capability_gates.items():
+        if capability_key not in declared_capabilities:
+            raise _error(path, f"proof_route.capability_gates references undeclared capability {capability_key!r}")
+        if not isinstance(depth_gates, dict) or not depth_gates:
+            raise _error(path, f"proof_route.capability_gates[{capability_key!r}] must be a non-empty object")
+        for depth, gates_at_depth in depth_gates.items():
+            if depth not in PROOF_DEPTHS:
+                raise _error(path, f"proof_route.capability_gates[{capability_key!r}] has unknown proof depth {depth!r}")
+            references = _require_string_list(
+                gates_at_depth,
+                path=path,
+                field=f"proof_route.capability_gates[{capability_key!r}][{depth!r}]",
+            )
+            unknown = [gate_id for gate_id in references if gate_id not in gate_ids]
+            if unknown:
+                raise _error(
+                    path,
+                    f"proof_route.capability_gates[{capability_key!r}] references unknown proof gate(s): {', '.join(unknown)}",
+                )
+
+
+def _validate_checkpoint_chain_fields(manifest: Mapping[str, Any], *, path: Path) -> None:
+    required_fields = (
+        "capabilities", "runtime_contract", "run_class", "observer_character",
+        "installed_save_player", "proof_gates", "proof_route",
+    )
+    for field in required_fields:
+        if field not in manifest:
+            raise _error(path, f"{field} is required by manifest_version {CHECKPOINT_CHAIN_MANIFEST_VERSION}")
+    _validate_capabilities(manifest["capabilities"], path=path)
+    _validate_runtime_contract(manifest["runtime_contract"], path=path)
+    if manifest["run_class"] not in {"combat", "non_combat"}:
+        raise _error(path, "run_class must be combat or non_combat")
+    if type(manifest["observer_character"]) is not bool:
+        raise _error(path, "observer_character must be boolean")
+    player_save = manifest["installed_save_player"]
+    if not isinstance(player_save, str) or not player_save.strip():
+        raise _error(path, "installed_save_player must be a non-empty string")
+    step_labels = _step_labels(manifest, path=path)
+    proof_gates = manifest["proof_gates"]
+    if not isinstance(proof_gates, list) or not proof_gates:
+        raise _error(path, "proof_gates must be a non-empty ordered list")
+    gate_ids: List[str] = []
+    prior_gate_id = ""
+    prior_boundary_index = -1
+    for index, gate in enumerate(proof_gates, start=1):
+        if not isinstance(gate, dict):
+            raise _error(path, f"proof_gates[{index}] must be an object")
+        if set(gate) != {"id", "label", "boundary_step", "predecessors", "expectations", "checkpoint_safe_ui"}:
+            raise _error(path, f"proof_gates[{index}] has an unsupported schema")
+        gate_id = gate.get("id")
+        if not isinstance(gate_id, str) or not gate_id.strip() or gate_id in gate_ids:
+            raise _error(path, f"proof_gates[{index}].id must be a unique non-empty string")
+        label = gate.get("label")
+        if not isinstance(label, str) or not label.strip():
+            raise _error(path, f"proof_gates[{index}].label must be a non-empty string")
+        boundary_step = gate.get("boundary_step")
+        if not isinstance(boundary_step, str) or boundary_step not in step_labels:
+            raise _error(path, f"proof_gates[{index}].boundary_step must name a scenario step")
+        boundary_index = step_labels.index(boundary_step)
+        if boundary_index <= prior_boundary_index:
+            raise _error(path, "proof gate boundaries must be strictly ordered by scenario step")
+        predecessors = gate.get("predecessors")
+        if not isinstance(predecessors, list) or any(
+                not isinstance(item, str) or not item.strip() for item in predecessors):
+            raise _error(path, f"proof_gates[{index}].predecessors must be a list of non-empty strings")
+        expected_predecessors = [] if not prior_gate_id else [prior_gate_id]
+        if predecessors != expected_predecessors:
+            raise _error(path, "proof gates must declare the immediately preceding gate as their only predecessor")
+        _validate_checkpoint_gate_expectations(
+            gate.get("expectations"), path=path, field=f"proof_gates[{index}].expectations",
+        )
+        _validate_checkpoint_safe_ui(
+            gate.get("checkpoint_safe_ui"), path=path, field=f"proof_gates[{index}].checkpoint_safe_ui",
+        )
+        gate_ids.append(gate_id)
+        prior_gate_id = gate_id
+        prior_boundary_index = boundary_index
+    _validate_checkpoint_proof_route(manifest["proof_route"], manifest, gate_ids, path=path)
+
+
 def _validate_versioned_fields(manifest: Mapping[str, Any], *, path: Path) -> None:
     version = manifest.get("manifest_version")
-    if type(version) is not int or version != MANIFEST_VERSION:
-        raise _error(path, f"manifest_version must be integer {MANIFEST_VERSION}")
+    if type(version) is not int or version not in {MANIFEST_VERSION, CHECKPOINT_CHAIN_MANIFEST_VERSION}:
+        raise _error(path, f"manifest_version must be integer {MANIFEST_VERSION} or {CHECKPOINT_CHAIN_MANIFEST_VERSION}")
+    if version == CHECKPOINT_CHAIN_MANIFEST_VERSION:
+        _validate_checkpoint_chain_fields(manifest, path=path)
+        return
     for field in ("capabilities", "runtime_contract", "proof_route"):
         if field not in manifest:
             raise _error(path, f"{field} is required by manifest_version {MANIFEST_VERSION}")
@@ -279,7 +413,8 @@ def normalize_relation_contract(manifest: Mapping[str, Any]) -> Dict[str, Any] |
     deliberately absent.  Legacy declarations remain review-required and have
     no relation contract until they opt into the versioned schema.
     """
-    if manifest.get("manifest_version") != MANIFEST_VERSION:
+    version = manifest.get("manifest_version")
+    if version not in {MANIFEST_VERSION, CHECKPOINT_CHAIN_MANIFEST_VERSION}:
         return None
     capabilities = manifest.get("capabilities")
     runtime_contract = manifest.get("runtime_contract")
@@ -307,7 +442,7 @@ def normalize_relation_contract(manifest: Mapping[str, Any]) -> Dict[str, Any] |
         "setup_only_debug": runtime_contract.get("setup_only_debug"),
         "disposable_copy": runtime_contract.get("disposable_copy"),
     }
-    return {
+    contract = {
         "hard_requirements": _relation_json(requirements),
         "capabilities": _relation_json(capabilities),
         "footing": _relation_json(footing),
@@ -316,6 +451,19 @@ def normalize_relation_contract(manifest: Mapping[str, Any]) -> Dict[str, Any] |
         "steps": [_relation_step(step) for step in steps],
         "proof_route": _relation_json(proof_route),
     }
+    if version == CHECKPOINT_CHAIN_MANIFEST_VERSION:
+        contract["checkpoint_contract"] = {
+            "manifest_version": version,
+            "run_class": _relation_json(manifest.get("run_class")),
+            "observer_character": _relation_json(manifest.get("observer_character")),
+            "required_stabilizer_traits": _relation_json(manifest.get("required_stabilizer_traits")),
+            "installed_save_player": _relation_json(manifest.get("installed_save_player")),
+            "capabilities": _relation_json(capabilities),
+            "runtime_contract": _relation_json(runtime_contract),
+            "proof_gates": _relation_json(manifest.get("proof_gates")),
+            "proof_route": _relation_json(proof_route),
+        }
+    return contract
 
 
 def _relation_mapping_contains(container: Mapping[str, Any], required: Mapping[str, Any]) -> bool:
@@ -425,6 +573,11 @@ def validate_manifest(manifest: Any, *, path: Path) -> Dict[str, Any]:
         field: _normalized_field(manifest, field, legacy=not versioned)
         for field in ("manifest_version", "capabilities", "runtime_contract", "proof_route")
     }
+    if manifest.get("manifest_version") == CHECKPOINT_CHAIN_MANIFEST_VERSION:
+        normalized_fields.update({
+            field: _normalized_field(manifest, field, legacy=False)
+            for field in ("run_class", "observer_character", "required_stabilizer_traits", "installed_save_player", "proof_gates")
+        })
     review_required = any(field["review_required"] for field in normalized_fields.values())
     return {
         "declaration": copy.deepcopy(manifest),

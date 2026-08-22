@@ -1,0 +1,26 @@
+{
+  "name": "bandit_phase4_local_zombie_monmove_v0_2026-08-17",
+  "source_fixture": "bandit_structural_pair_handoff_v0_2026-08-03",
+  "source_profile": "live-debug",
+  "description": "Source-bound Phase-4 local-zombie monmove fixture. It inherits the ordinary idle five-member structural-pair footing without a staged monster, active outing, observation, report, or lead outcome. The local terrain geometry supplies one concealed forest watch OMT and its clear road sightline around the ordinary near-ring road opportunity; production must still discover that opportunity, select the bounded watch route, dispatch, and commit the two-member local handoff before the scenario stages one disposable hostile zombie.",
+  "save_transforms": [
+    {
+      "kind": "overmap_terrain_id_at_abs_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [138, 54, 0],
+      "terrain_id": "forest"
+    },
+    {
+      "kind": "overmap_terrain_id_at_abs_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [137, 53, 0],
+      "terrain_id": "road_nesw"
+    },
+    {
+      "kind": "overmap_terrain_id_at_abs_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [137, 52, 0],
+      "terrain_id": "road_nesw"
+    }
+  ]
+}

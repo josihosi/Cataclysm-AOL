@@ -118,13 +118,32 @@ constexpr std::size_t max_transition_event_field_length = 256;
 constexpr std::size_t max_transition_event_reason_length = 256;
 
 struct transition_event {
+    int schema_version = 1;
+    std::uint64_t sequence = 0;
+    std::string run_id;
+    int game_minutes = -1;
+    std::string domain;
+    std::string transition;
+    std::string outcome;
+    std::string site_id;
     std::string operation_id;
     int generation = 0;
+    int handoff_epoch = -1;
     std::string simulation_owner;
     std::string previous_phase;
     std::string new_phase;
     std::string reason;
     int at_minutes = -1;
+    std::vector<std::int64_t> actor_ids;
+    std::string certification_round_id;
+    std::string certification_lease_id;
+    std::string certification_proof;
+    std::string certification_previous_world_tree_sha256;
+    std::string certification_previous_world_save_sha256;
+    std::string certification_current_world_tree_sha256;
+    std::string certification_current_world_save_sha256;
+    std::uint64_t certification_save_sequence = 0;
+    std::uint64_t certification_process_pid = 0;
 };
 
 struct snapshot {
@@ -164,6 +183,7 @@ class session
                                              std::string_view previous_phase,
                                              std::string_view new_phase, std::string_view reason,
                                              int at_minutes );
+        friend void record_transition_event( transition_event event );
 
         struct active_frame {
             section target = section::world_serialize;
@@ -237,6 +257,9 @@ void record_transition_event( std::string_view operation_id, int generation,
                               std::string_view simulation_owner,
                               std::string_view previous_phase, std::string_view new_phase,
                               std::string_view reason, int at_minutes );
+void record_transition_event( transition_event event );
+void record_live_transition_event( transition_event event );
+void record_certification_save_receipt( int game_minutes, const std::string &world_path );
 
 std::string_view to_string( section target );
 std::string_view to_string( counter target );

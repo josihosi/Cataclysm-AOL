@@ -1,0 +1,46 @@
+{
+  "name": "bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22",
+  "profile": "live-debug",
+  "world": "McWilliams",
+  "description": "Snapshot of the 20260822_131451 post-abort save for the exact structural outing at overmap_special:bandit_camp@164,39,0. It retains generation 1, actors 4 and 5, abstract epoch 2, returning_home, the persisted resume OMT (164,36,0), and cohesion_abort_return=true after the failed local rendezvous. This fixture supplies no dispatch, observation, report, decision, materialization, or return credit; the continuation must obtain all of those transitions from production.",
+  "source_run": "20260822_131451",
+  "source_report_sha256": "39959eb76e7513093b477c8a7b4128538525ff3fedd5beee54f6caebd7024f94",
+  "source_dimension_sha256": "8728ef89c0ab2a98ff7edcb026e9fd13c3337193fc2ea8757ab5551f87455a4c",
+  "source_player_sha256": "20d90c5579175cb755d287f43c43a3f10346d504c3fc20384c136b615e27b2fe",
+  "fixture_grants_gameplay_proof": false,
+  "save_transforms": [
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [-72, 144, 0]
+    },
+    {
+      "kind": "player_condition",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "hp_percent": 100,
+      "stamina": 8500,
+      "hunger": 0,
+      "thirst": 0,
+      "sleepiness": 0
+    },
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION",
+        "DEBUG_NODMG"
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": []
+    }
+  ]
+}

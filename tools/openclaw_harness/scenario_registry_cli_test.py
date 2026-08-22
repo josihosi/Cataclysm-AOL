@@ -29,6 +29,7 @@ from scenario_registry_store import (  # noqa: E402
     claim_bootstrap_token_for_launch,
     execute_registry_query,
     issue_registry_bootstrap_token,
+    issue_registry_repair_token,
     ingest_report_reference,
     immediate_transaction,
     open_registry,
@@ -334,6 +335,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     connection, request, current_facts=lambda _manifest: current_facts,
                 )
                 self.assertTrue(released["accepted"])
+                reconcile_report_bindings(connection, adapters=adapters)
                 canonical = execute_registry_query(connection, request, drafts_root=root / "drafts")
                 self.assertIsNotNone(canonical.token_id)
                 selected = next(
@@ -465,6 +467,138 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 ("bootstrap_invalidated", "runtime_binding_changed"),
                 self.token_events(registry_path, bootstrap.token_id),
             )
+
+    def test_repair_cli_uses_its_own_claimed_canonical_launch_and_rejects_ordinary_launch(self) -> None:
+        def issue_repair(root: Path) -> tuple[Path, Path, str, dict]:
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            manifest_path = scenarios / "repair.json"
+            self.write_json(manifest_path, self.strict_manifest())
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"repair runtime")
+            report = self.report(manifest_path, executable)
+            report["proof_classification"].update({
+                "status": "red", "verdict": "repair contradiction",
+                "evidence_class": "startup/load", "feature_proof": False,
+            })
+            report["verdict"] = "red route"
+            report["evidence_class"] = "startup/load"
+            report["feature_proof"] = False
+            report_path = root / "red.probe.report.json"
+            self.write_json(report_path, report)
+            registry_path = root / "registry.sqlite3"
+            connection = open_registry(str(registry_path))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+                adapters = BindingAdapters(
+                    runtime=lambda _expected: {"status": "compatible", "facts": {}},
+                    fixture=lambda _expected: {"status": "compatible", "facts": {
+                        "source_sha256": hashlib.sha256(b"fixture").hexdigest(),
+                    }},
+                    profile=lambda _expected: {"status": "compatible", "facts": {
+                        "source_sha256": hashlib.sha256(b"profile").hexdigest(),
+                    }},
+                )
+                red = ingest_report_reference(connection, report_path, adapters=adapters)
+                route_key = connection.execute(
+                    "SELECT route_key FROM verification_history WHERE verification_id = ?", (red["verification_id"],)
+                ).fetchone()[0]
+                binding = {
+                    "runtime": self.bootstrap_runtime(executable),
+                    "fixture": {"status": "compatible", "name": "", "profile": "",
+                                "source_path": str(root), "source_sha256": hashlib.sha256(b"fixture").hexdigest()},
+                    "profile": {"status": "compatible", "name": "", "profile": "",
+                                "source_path": str(root), "source_sha256": hashlib.sha256(b"profile").hexdigest()},
+                }
+                repair = issue_registry_repair_token(
+                    connection, parse_registry_query_request(self.bootstrap_request()),
+                    manifest_id=connection.execute(
+                        "SELECT manifest_id FROM verification_history WHERE verification_id = ?", (red["verification_id"],)
+                    ).fetchone()[0],
+                    route_key=route_key,
+                    red_verification_id=red["verification_id"],
+                    binding=binding,
+                )
+                self.assertTrue(repair.accepted, repair.reason)
+                return registry_path, scenarios, repair.token_id, binding
+            finally:
+                connection.close()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id, binding = issue_repair(root)
+            ordinary = self.run_cli("--registry", str(registry_path), "registry-launch", token_id)
+            self.assertEqual(ordinary.returncode, 1)
+            self.assertEqual(json.loads(ordinary.stderr)["result"]["reason"], "repair_token_requires_repair_launch")
+            self.assertIn(("repair_invalidated", "ordinary_registry_launch"), self.token_events(registry_path, token_id))
+            connection = open_registry(str(registry_path))
+            try:
+                issued = connection.execute(
+                    "SELECT manifest_id, verification_id, route_key, details_json FROM token_history "
+                    "WHERE token_id = ? AND event_kind = 'repair_issued'", (token_id,),
+                ).fetchone()
+                receipt = json.loads(issued["details_json"])
+                successor = issue_registry_repair_token(
+                    connection, parse_registry_query_request(receipt["query_json"]),
+                    manifest_id=issued["manifest_id"], route_key=issued["route_key"],
+                    red_verification_id=issued["verification_id"], binding=binding,
+                )
+                self.assertTrue(successor.accepted, successor.reason)
+                self.assertNotEqual(successor.token_id, token_id)
+                successor_details = json.loads(connection.execute(
+                    "SELECT details_json FROM token_history WHERE token_id = ? AND event_kind = 'repair_issued'",
+                    (successor.token_id,),
+                ).fetchone()[0])
+                self.assertEqual(successor_details["predecessor"]["token_id"], token_id)
+                self.assertEqual(
+                    successor_details["predecessor"]["terminal_event"]["reason"], "ordinary_registry_launch",
+                )
+            finally:
+                connection.close()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id, binding = issue_repair(root)
+            with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                    mock.patch.object(scenario_registry_cli, "_current_repair_binding", return_value=binding), \
+                    mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}), \
+                    mock.patch.object(startup_harness, "run_probe_mode", return_value=31) as run_probe, \
+                    redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                result = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-repair-launch", token_id,
+                ])
+            self.assertEqual(result, 31)
+            run_probe.assert_called_once()
+            receipt = json.loads(run_probe.call_args.args[0].registry_launch_receipt)
+            self.assertEqual(receipt["authority_kind"], "registry_repair_exact_contradiction")
+            self.assertEqual(receipt["token_id"], token_id)
+            connection = open_registry(str(registry_path))
+            try:
+                expected_red = connection.execute(
+                    "SELECT verification_id FROM token_history "
+                    "WHERE token_id = ? AND event_kind = 'repair_issued'",
+                    (token_id,),
+                ).fetchone()[0]
+            finally:
+                connection.close()
+            self.assertEqual(receipt["red_verification_id"], expected_red)
+            self.assertIn(("repair_claimed", "canonical_repair_probe_launch"), self.token_events(registry_path, token_id))
+            with mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}):
+                validated = startup_harness.validate_registry_launch_receipt_before_launch(
+                    json.dumps(receipt), Path(binding["runtime"]["executable_path"]),
+                )
+            self.assertEqual(validated["status"], "compatible")
+            self.assertEqual(validated["token_id"], token_id)
+            self.assertEqual(validated["red_verification_id"], expected_red)
+
+            changed_receipt = dict(receipt)
+            changed_receipt["red_verification_id"] = "0" * 64
+            with mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}):
+                rejected = startup_harness.validate_registry_launch_receipt_before_launch(
+                    json.dumps(changed_receipt), Path(binding["runtime"]["executable_path"]),
+                )
+            self.assertEqual(rejected["status"], "rejected")
+            self.assertEqual(rejected["reason"], "receipt_contradiction_changed")
 
     def test_registry_launch_adapts_exact_probe_namespace_and_honors_registry_override(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

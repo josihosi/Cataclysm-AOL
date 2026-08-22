@@ -1,0 +1,300 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r009_m093_native_safe_watch_dispatch_mcw",
+  "description": "R-009 M093 proves the save/load lifecycle from ordinary overmap travel to a native player basecamp at field OMT (162,41,0), whose bounded concealed watcher (162,44,0) has a clear three-OMT line through (162,43,0) field and (162,42,0) road. A fixture-only follower enables only the native camp dialogue; all travel, cadence, save/reload, opportunity adoption, and scout dispatch use ordinary game paths.",
+  "profile": "r009-m093",
+  "world": "McWilliams",
+  "fixture": "r009_m059_preopportunity_bootstrap",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2",
+      "LLM_INTENT_ENABLE": "false"
+    }
+  },
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "capabilities": {
+    "player.hud": ["Move:", "Wield:"],
+    "capabilities.shakedown.native_safe_watch_dispatch": "ordinary_travel_native_basecamp_162_41_save_reload_authoritative_opportunity_to_structural_scout"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:escape", "type:m", "type:jjjjj", "type:T", "debug_spawn_follower_npc", "type:C", "type:t", "type:d", "type:n", "type:a", "type:M093 safe watch", "long_wait:30m", "long_wait:6h", "press:S", "press:left", "press:enter"],
+    "forbidden_input": ["debug:teleport", "raw-save-rewrite", "fixture-save-transform", "debug:inject_report", "debug:inject_decision", "debug:inject_operation", "debug:drive", "debug:eligibility"],
+    "disposable_copy": true,
+    "setup_only_debug": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m093",
+    "fixture": "r009_m059_preopportunity_bootstrap",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r009-m093",
+      "fixture": "r009_m059_preopportunity_bootstrap",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": ["ordinary overmap travel", "native camp dialogue", "ordinary waits", "native save/reload"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["post_travel_player_omt", "post_reload_authoritative_opportunity"],
+    "production_behavior": ["ordinary_post_camp_cadence", "wait_second_6_hours_through_force_due"],
+    "terminal_persistence": ["audit_first_structural_scout_consumer"],
+    "artifact_verdict": ["audit_same_run_structural_scout_dispatch"],
+    "disallowed_shortcuts": ["post_travel_player_omt"]
+  },
+  "steps": [
+    {
+      "kind": "press",
+      "label": "dismiss_inherited_actions_overlay",
+      "keys": ["escape"],
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "wait",
+      "label": "post_load_hud",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r009_m093_preopportunity_hud_missing",
+      "abort_reason": "the source save did not reach ordinary gameplay"
+    },
+    {
+      "kind": "type",
+      "label": "open_overmap_for_ordinary_travel",
+      "text": "m",
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "type",
+      "label": "move_overmap_cursor_to_162_41",
+      "text": "jjjjj",
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "type",
+      "label": "start_ordinary_travel_to_162_41",
+      "text": "T",
+      "settle_seconds": 20.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "wait",
+      "label": "post_travel_hud",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r009_m093_ordinary_travel_did_not_return_to_hud",
+      "abort_reason": "the ordinary travel route did not finish at a gameplay HUD"
+    },
+    {
+      "kind": "debug_spawn_follower_npc",
+      "label": "setup_spawn_disposable_follower",
+      "count": 1,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true
+    },
+    {
+      "kind": "type",
+      "label": "open_follower_dialogue",
+      "text": "C",
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "type",
+      "label": "select_talk_to_disposable_follower",
+      "text": "t",
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "type",
+      "label": "open_follower_work_or_camp_choices",
+      "text": "d",
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "type",
+      "label": "open_native_camp_creation_choices",
+      "text": "n",
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "type",
+      "label": "select_native_build_camp_here",
+      "text": "a",
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "press",
+      "label": "select_bare_bones_basecamp",
+      "keys": ["enter"],
+      "settle_seconds": 2.0
+    },
+    {
+      "kind": "type",
+      "label": "name_native_basecamp",
+      "text": "M093 safe watch"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_native_basecamp_name",
+      "keys": ["enter"],
+      "settle_seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r009_m093_native_camp_dialogue_failed",
+      "abort_reason": "the follower dialogue did not create a native player basecamp and return to gameplay"
+    },
+    {
+      "kind": "long_wait",
+      "label": "ordinary_post_camp_cadence",
+      "choice_key": "4",
+      "expected_duration": "30m",
+      "pre_menu_choice_key": "w",
+      "completion_wait_seconds": 12.0,
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "expected_visible_fact": "ordinary gameplay crosses the post-camp observation cadence"
+    },
+    {
+      "kind": "press",
+      "label": "open_native_full_save_after_observation",
+      "keys": ["S"],
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "press",
+      "label": "confirm_native_full_save_after_observation",
+      "keys": ["left", "enter"],
+      "settle_seconds": 4.0
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "confirm_native_full_save_after_observation",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "post_reload_hud",
+        "seconds": 2.0,
+        "capture_after": true,
+        "extract_text_after_capture": true,
+        "expected_screen_text_after_contains": ["Move:", "Wield:"],
+        "abort_on_screen_text_expectation_failure": true,
+        "abort_verdict": "blocked_r009_m093_full_save_did_not_reload",
+        "abort_reason": "the native current-schema save did not reload into gameplay"
+      },
+      {
+        "kind": "audit_saved_game_turn",
+        "label": "post_travel_player_omt",
+        "required_player_abs_omt": [162, 41, 0],
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_r009_m093_player_not_at_safe_watch_target_omt",
+        "abort_reason": "ordinary travel did not persist the player at the selected field OMT (162,41,0)"
+      },
+      {
+        "kind": "audit_saved_bandit_live_world_state",
+        "label": "post_reload_authoritative_opportunity",
+        "required_site_id_contains": "overmap_special:bandit_camp@164,39,0",
+        "required_member_count": 12,
+        "required_ready_at_home_count": 12,
+        "required_active_outside_count": 0,
+        "required_lead_kind": "terrain_opportunity",
+        "required_lead_target_id": "player@162,41,0",
+        "required_lead_source_contains": "authoritative_player_opportunity",
+        "required_lead_status": "suspected",
+        "required_scout_report_present": false,
+        "required_camp_decision_state": "idle",
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_r009_m093_authoritative_opportunity_missing_after_save_reload",
+        "abort_reason": "the native safe-watch basecamp did not persist as the exact authoritative player opportunity"
+      },
+      {
+        "kind": "long_wait",
+        "label": "wait_first_6_hours_toward_force_due",
+        "choice_key": "8",
+        "expected_duration": "6h",
+        "pre_menu_choice_key": "w",
+        "completion_wait_seconds": 90.0,
+        "completion_artifact_timeout_seconds": 420.0,
+        "allow_artifact_elapsed_without_menu_ocr": true,
+        "allow_exact_artifact_meridiem_ambiguity": true,
+        "artifact_state_patterns": ["bandit_live_world structural maintenance:"],
+        "expected_visible_fact": "ordinary gameplay advances toward the exact camp identity's force-due boundary"
+      },
+      {
+        "kind": "long_wait",
+        "label": "wait_second_6_hours_through_force_due",
+        "choice_key": "8",
+        "expected_duration": "6h",
+        "pre_menu_choice_key": "w",
+        "completion_wait_seconds": 90.0,
+        "completion_artifact_timeout_seconds": 420.0,
+        "allow_artifact_elapsed_without_menu_ocr": true,
+        "allow_exact_artifact_meridiem_ambiguity": true,
+        "artifact_state_patterns": ["bandit_live_world structural maintenance dispatched site=overmap_special:bandit_camp@164,39,0"],
+        "expected_visible_fact": "ordinary gameplay crosses force due and materializes a structural scout"
+      },
+      {
+        "kind": "press",
+        "label": "open_native_full_save_after_force_due",
+        "keys": ["S"],
+        "settle_seconds": 1.0
+      },
+      {
+        "kind": "press",
+        "label": "confirm_native_full_save_after_force_due",
+        "keys": ["Y"],
+        "settle_seconds": 4.0
+      },
+      {
+        "kind": "audit_saved_bandit_live_world_state",
+        "label": "audit_first_structural_scout_consumer",
+        "required_site_id_contains": "overmap_special:bandit_camp@164,39,0",
+        "required_member_count": 12,
+        "required_min_active_member_ids": 2,
+        "required_active_outing_kind": "structural_sortie",
+        "required_active_outing_activity_id_contains": "#structural",
+        "required_active_outing_generation": 1,
+        "required_active_job_type": "scout",
+        "required_active_target_id_contains": "player@162,41,0",
+        "required_active_outing_exact_pair": true,
+        "required_active_outing_pair_contract": true,
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_r009_m093_authoritative_opportunity_did_not_consume_into_structural_scout",
+        "abort_reason": "the force-due scheduler did not persist one exact structural scout consumer for the native safe-watch opportunity"
+      },
+      {
+        "kind": "audit_log_contains",
+        "label": "audit_same_run_structural_scout_dispatch",
+        "required_line_patterns": [["structural maintenance dispatched site=overmap_special:bandit_camp@164,39,0", "lead=overmap_special:bandit_camp@164,39,0#lead:terrain_opportunity:player@162,41,0@162,41,0"]],
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_r009_m093_structural_scout_dispatch_artifact_missing",
+        "abort_reason": "the same run lacks a producer-to-consumer dispatch artifact for the exact native opportunity"
+      }
+    ]
+  },
+  "evidence_contract": {
+    "claim": "a native player basecamp at (162,41,0) persists across save/reload and naturally produces one exact structural scout consumer through its bounded safe watcher",
+    "failure_rule": "terminalize at the first failed transition; do not inject or repair subsequent report, decision, operation, drive, or eligibility state"
+  }
+}

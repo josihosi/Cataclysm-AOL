@@ -1,0 +1,52 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r010_m069_setup_origin_route_bridge_mcw",
+  "description": "R010-M069 setup-only bridge: establish the avatar at retained (160,39,0), preflight that authoritative origin, then prove the ordinary CHOOSE_DESTINATION route back to (162,36,0) is nonempty before any ecology lifecycle.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r010_m069_setup_origin_route_bridge_v0_2026-08-18",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": { "macos": { "SCALING_FACTOR": "2", "LLM_INTENT_ENABLE": "false" } },
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "openclaw_harness_ui_trace: component=overmap_route event=constructed"
+  ],
+  "capabilities": {
+    "capabilities.bandit.r010_m069_setup_origin_route_bridge": "setup_origin_to_observer_route_nonempty"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:m", "press:left", "press:right", "press:up", "press:down", "type:W"],
+    "forbidden_input": ["debug:ecology_edit", "debug:inject_report", "debug:inject_decision", "debug:inject_operation", "raw-save-rewrite", "fixture-save-transform-after-install"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_r010_m069_setup_origin_route_bridge_v0_2026-08-18",
+    "requirements": { "os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "bandit_r010_m069_setup_origin_route_bridge_v0_2026-08-18", "helper": "Peekaboo", "peekaboo": true, "input": ["ordinary-overmap-route-preview"], "ocr": true, "cleanup": true },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["preflight_preserved_idle_boundary", "preflight_authoritative_setup_origin"],
+    "production_behavior": ["ordinary_route_preview_back_to_observer_omt"],
+    "terminal_persistence": ["ordinary_route_preview_back_to_observer_omt"],
+    "artifact_verdict": ["ordinary_route_preview_back_to_observer_omt"],
+    "capability_gates": { "capabilities.bandit.r010_m069_setup_origin_route_bridge": { "terminal": ["ordinary_route_preview_back_to_observer_omt"], "persistence": ["ordinary_route_preview_back_to_observer_omt"] } },
+    "disallowed_shortcuts": ["preflight_preserved_idle_boundary", "preflight_authoritative_setup_origin"]
+  },
+  "steps": [
+    { "kind": "wait", "label": "post_load_seen_corridor_settle", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Move:", "Wield:"], "expected_visible_fact": "preserved M063 save reaches normal gameplay" },
+    { "kind": "audit_saved_bandit_live_world_state", "label": "preflight_preserved_idle_boundary", "required_site_id_contains": "overmap_special:bandit_camp@164,39,0", "required_member_count": 5, "required_ready_at_home_count": 5, "required_wounded_or_unready_count": 0, "required_active_outside_count": 0, "required_home_side_signal_count": 10, "required_active_group_id_exact": "", "required_active_target_id_exact": "", "required_max_leads": 0, "abort_on_metadata_failure": true, "abort_verdict": "blocked_untrusted_preserved_m063_save", "abort_reason": "preserved save is not the idle five-member zero-lead boundary", "expected_immediate_state": "setup remains before any ecology lifecycle" },
+    { "kind": "audit_saved_game_turn", "label": "preflight_authoritative_setup_origin", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "required_player_abs_omt": [160,39,0], "abort_on_metadata_failure": true, "abort_verdict": "blocked_setup_origin_not_authoritative", "abort_reason": "setup did not establish the avatar at retained origin (160,39,0)", "expected_immediate_state": "the reverse route consumer starts from the authoritative retained OMT" },
+    { "kind": "press", "label": "open_overmap_to_retained_omt", "keys": ["m"], "delay_ms": 200, "settle_seconds": 1.0, "expected_visible_fact": "ordinary overmap opens" },
+    { "kind": "press", "label": "select_observer_omt_without_travel", "keys": ["right", "right", "up", "up", "up"], "delay_ms": 200, "settle_seconds": 0.5, "expected_visible_fact": "cursor returns to observer OMT without accepting travel" },
+    { "kind": "type", "label": "preview_route_back_to_observer_omt", "text": "W", "delay_ms": 200, "settle_seconds": 0.5, "expected_visible_fact": "ordinary route preview targets observer OMT" },
+    { "kind": "audit_log_contains", "label": "ordinary_route_preview_back_to_observer_omt", "since_label": "preview_route_back_to_observer_omt", "required_line_patterns": [["openclaw_harness_ui_trace: component=overmap_route_input event=resolved", "resolved_action=\"CHOOSE_DESTINATION\""], ["openclaw_harness_ui_trace: component=overmap_route event=constructed", "destination=162,36,0", "path_nonempty=true"]], "abort_on_metadata_failure": true, "abort_verdict": "blocked_observer_omt_route_preview", "abort_reason": "ordinary return route to observer OMT was not nonempty", "expected_immediate_state": "path_nonempty=true to (162,36,0)" }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.r010_m069_setup_origin_route_bridge_mcw",
+  "evidence_contract": { "claim": "setup establishes authoritative origin (160,39,0) and the ordinary route consumer constructs a nonempty canonical route back to (162,36,0)", "preconditions_and_interventions": "fixture installation only; typed player_view_seen_omt and origin transforms are setup-only and grant no gameplay credit", "causal_boundary": "stop after the reverse route preview; no travel, wait, ecology edit, report, response, shakedown, ingestion, query, or selected downstream launch", "real_code_path": "ordinary overmap input -> CHOOSE_DESTINATION -> native overmap route construction", "expected_transition": "setup origin -> nonempty route back to observer OMT", "pass_fail_rule": "green only when authoritative origin, canonical reverse route, grants_gameplay_proof=false, and cleanup are all present" }
+}

@@ -1,0 +1,270 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r002_m040_post_abort_recenter_return_mcw",
+  "description": "Focused non-combat continuation of current run 20260822_131451. The fixture preserves the exact failed-rendezvous return state for overmap_special:bandit_camp@164,39,0: structural generation 1, actors 4 and 5, abstract epoch 2, returning_home, and the persisted abort-return resume at (164,36,0). The observer is staged outside that materialization bubble, then ordinary travel loads the previously zero-slot OMT. Production must recenter and transactionally rebind the pair, then finish both physical receipts; fixture state supplies no product credit.",
+  "capabilities": {
+    "capabilities.bandit.r002_m040": "post_abort_homeward_recenter_then_physical_return",
+    "capabilities.bandit.r002_m040.control": "current_saved_abort_identity_with_observer_only_noncombat_setup"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:m", "press:right", "press:up", "type:W", "type:Y", "long_wait:6h", "press:S"],
+    "forbidden_input": ["debug:ecology_edit", "debug:inject_report", "debug:inject_decision", "debug:inject_operation", "debug:spawn_npc", "raw-save-rewrite", "fixture-save-transform-after-install"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": ["ordinary-overmap-route", "long_wait:6h", "press:S", "press:Y"],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22",
+  "fixture_profile": "live-debug",
+  "run_class": "non_combat",
+  "observer_character": true,
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2",
+      "LLM_INTENT_ENABLE": "false"
+    }
+  },
+  "replace_existing_worlds": true,
+  "capture_world_after": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "bandit_live_world local_handoff committed",
+    "site=overmap_special:bandit_camp@164,39,0",
+    "recenter_gate=yes",
+    "recentered=yes",
+    "bandit_live_world local physical return receipt committed"
+  ],
+  "proof_gates": [
+    {
+      "id": "post_abort_pair_preflight",
+      "label": "Exact saved abstract abort-return pair",
+      "boundary_step": "preflight_exact_post_abort_pair",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {"artifact_kind": "audit_saved_bandit_live_world_state", "status": "required_state_present", "artifact_hash_present": true, "same_run": true, "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids"], "required_field.required_active_outing_handoff_epoch": 2, "required_field.required_local_handoff_cohesion_abort_return": true}
+        }
+      ],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    },
+    {
+      "id": "post_abort_pair_recentered",
+      "label": "Production safe-interior local pair rebind",
+      "boundary_step": "audit_recenter_gate_and_local_rebind",
+      "predecessors": ["post_abort_pair_preflight"],
+      "expectations": [
+        {
+          "kind": "structured_event",
+          "predicate": {"domain": "bandit_live_world", "transition": "local_pair_handoff", "outcome": "committed", "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids"]}
+        }
+      ],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    },
+    {
+      "id": "post_abort_pair_returned",
+      "label": "Recentered pair physically returned and saved",
+      "boundary_step": "audit_saved_pair_home_after_recenter",
+      "predecessors": ["post_abort_pair_recentered"],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {"artifact_kind": "audit_saved_bandit_live_world_state", "status": "required_state_present", "artifact_hash_present": true, "same_run": true, "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids"], "required_field.required_active_outside_count": 0, "required_field.required_min_home_survivor_count": 19}
+        }
+      ],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    }
+  ],
+  "proof_route": {
+    "gates": ["post_abort_pair_preflight", "post_abort_pair_recentered", "post_abort_pair_returned"],
+    "terminal": ["post_abort_pair_returned"],
+    "capability_gates": {
+      "capabilities.bandit.r002_m040": {"persistence": ["post_abort_pair_returned"]},
+      "capabilities.bandit.r002_m040.control": {"terminal": ["post_abort_pair_recentered"]}
+    }
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_post_abort_fixture_settle",
+      "seconds": 2,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r002_m040_post_abort_fixture_startup",
+      "abort_reason": "the isolated post-abort fixture did not reach ordinary gameplay outside the target materialization bubble"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_exact_post_abort_pair",
+      "required_site_id_contains": "overmap_special:bandit_camp@164,39,0",
+      "required_member_count": 19,
+      "required_active_outside_count": 2,
+      "required_active_outing_kind": "structural_sortie",
+      "required_active_outing_activity_id_contains": "#structural",
+      "required_active_outing_generation": 1,
+      "required_active_outing_simulation_owner": "abstract",
+      "required_active_outing_handoff_epoch": 2,
+      "required_active_outing_phase": "returning_home",
+      "required_active_outing_waypoint_index": 2,
+      "required_active_outing_exact_pair": true,
+      "required_local_handoff_state": "abstract_resume",
+      "required_local_handoff_exact_pair": true,
+      "required_local_handoff_cohesion_assembled": false,
+      "required_local_handoff_cohesion_abort_return": true,
+      "required_local_handoff_route_position": [164, 36, 0],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r002_m040_post_abort_identity_missing",
+      "abort_reason": "the fixture did not retain the exact abstract abort-return pair, identity, and persisted zero-slot resume OMT from run 20260822_131451"
+    },
+    {
+      "kind": "ordinary_overmap_route_constructor",
+      "label": "load_zero_slot_abort_resume_omt",
+      "origin_omt": [161, 36, 0],
+      "destination_omt": [164, 36, 0],
+      "cursor_keys": ["right", "right", "right"],
+      "route_key": "W",
+      "delay_ms": 200,
+      "open_settle_seconds": 1,
+      "cursor_settle_seconds": 0.5,
+      "route_settle_seconds": 0.5,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r002_m040_zero_slot_resume_route_missing",
+      "abort_reason": "ordinary travel could not load the exact previously rejected resume OMT at (164,36,0)",
+      "expected_visible_fact": "the ordinary overmap cursor enters at (161,36,0), binds the retained zero-slot resume OMT at (164,36,0), and leaves the abstract pair unchanged"
+    },
+    {
+      "kind": "type",
+      "label": "confirm_zero_slot_abort_resume_route",
+      "text": "W",
+      "delay_ms": 200,
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "type",
+      "label": "accept_zero_slot_abort_resume_route",
+      "text": "Y",
+      "delay_ms": 200,
+      "settle_seconds": 30,
+      "native_travel_stabilization": {"mode": "continue_exact_hostile_auto_move_until_hud"},
+      "proof_deferred_to_label": "audit_recenter_gate_and_local_rebind"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_recenter_gate_and_local_rebind",
+      "required_line_patterns": [
+        ["bandit_live_world local_handoff committed", "site=overmap_special:bandit_camp@164,39,0", "generation=1", "epoch=3", "phase=returning_home", "recenter_gate=yes", "recentered=yes", "members=2"]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r002_m040_abort_return_not_recentered",
+      "abort_reason": "loading the exact zero-slot OMT did not produce the source-owned safe-interior local pair rebind"
+    },
+    {
+      "kind": "audit_log_not_contains",
+      "label": "audit_no_repeated_zero_slot_rejection_after_recenter",
+      "forbidden_line_patterns": [
+        ["bandit_live_world homeward materialization rejected", "persisted_resume_route=(164,36,0)", "recenter_gate=no"]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r002_m040_zero_slot_rejection_persists",
+      "abort_reason": "the repaired continuation still rejected the exact abort-return pair without opening the recenter gate"
+    },
+    {
+      "kind": "long_wait",
+      "label": "advance_6_hours_for_recentered_pair_physical_return",
+      "choice_key": "8",
+      "expected_duration": "6h",
+      "pre_menu_choice_key": "w",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "allow_hostile_auto_move_cancel": true,
+      "completion_wait_seconds": 90,
+      "completion_artifact_timeout_seconds": 420,
+      "expected_visible_fact": "the same measured six-hour window that previously stalled now lets the re-centered local pair reach the camp and commit both physical receipts"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_ordered_physical_return_receipts",
+      "required_line_patterns": [
+        ["bandit_live_world local physical return receipt committed", "site=overmap_special:bandit_camp@164,39,0", "generation=1", "receipts=1", "owner=local"],
+        ["bandit_live_world local physical return receipt committed", "site=overmap_special:bandit_camp@164,39,0", "generation=1", "receipts=2", "owner=abstract"]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r002_m040_recentered_pair_return_receipts_missing",
+      "abort_reason": "the re-centered pair did not complete both ordered physical return receipts in the measured continuation window"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_post_return_save_before_native_finalizer"
+    },
+    {
+      "kind": "press",
+      "label": "open_post_return_native_save_prompt",
+      "keys": ["S"],
+      "settle_seconds": 1,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Save and quit?"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r002_m040_post_return_save_prompt_missing",
+      "abort_reason": "the native save prompt was not visible after the physical return"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_post_return_native_save",
+      "keys": ["Y"],
+      "settle_seconds": 5,
+      "proof_deferred_to_label": "audit_saved_pair_home_after_recenter"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_post_return_save_after_native_finalizer",
+      "changed_since_label": "audit_post_return_save_before_native_finalizer",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r002_m040_post_return_save_missing",
+      "abort_reason": "the native finalizer did not write the re-centered physical-return state"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_saved_pair_home_after_recenter",
+      "required_site_id_contains": "overmap_special:bandit_camp@164,39,0",
+      "required_member_count": 19,
+      "required_ready_at_home_count": 19,
+      "required_min_home_survivor_count": 19,
+      "required_active_outside_count": 0,
+      "required_active_group_id_exact": "",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r002_m040_saved_pair_not_home",
+      "abort_reason": "the saved continuation did not retain both exact scouts at home with no active outing after the re-centered physical return"
+    }
+  ],
+  "recommended_test_command": "DE67_DEADLINE_STATE=/Users/josefhorvath/Schanigarten/Cataclysm-AOL-hostile-ecology-dev/.de67/state/harness-checkpoint-chains.sqlite3 DE67_LINEAGE=CAOL-harness-checkpoint-chains python3 tools/openclaw_harness/scenario_registry_cli.py registry-query --query-json '{\"requirements\":[{\"key\":\"capabilities.bandit.r002_m040\",\"op\":\"eq\",\"value\":\"post_abort_homeward_recenter_then_physical_return\",\"minimum_evidence\":\"declared\"},{\"key\":\"capabilities.bandit.r002_m040.control\",\"op\":\"eq\",\"value\":\"current_saved_abort_identity_with_observer_only_noncombat_setup\",\"minimum_evidence\":\"declared\"}],\"preferences\":[]}'",
+  "evidence_contract": {
+    "claim": "the exact saved failed-rendezvous pair can be loaded at its formerly zero-slot resume OMT, re-centered and rebound by production, and then physically return with ordered identity-bound receipts",
+    "fixture_limit": "the snapshot and observer controls establish only the precondition; they grant no materialization, local ownership, receipt, report, or decision credit",
+    "canonical_ingestion_gate": "this declaration becomes run-verified only after a fresh typed registry query, selected registry launch, canonical report ingestion, and compatible runtime, fixture, and profile bindings",
+    "failure_rule": "a changed identity, missing abort flag, zero-slot load without recenter_gate=yes and recentered=yes, absent local transaction, missing receipt, or missing native saved home state is blocked or red; startup alone is never feature proof"
+  }
+}

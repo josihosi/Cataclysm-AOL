@@ -2,12 +2,32 @@
   "name": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
   "source_fixture": "bandit_phase4_structural_signal_matrix_v0_2026-08-04",
   "source_profile": "live-debug",
-  "description": "Launch-only Phase-4 ecology-observer handoff derived from the structural signal-matrix footing. It preserves the inherited DEBUG_CLOAK passive-observer protection and idempotently adds only DEBUG_CLAIRVOYANCE as the predictable observer gate; fixture installation reports the requested mutation, before/after traits, and whether it was newly added.",
+  "description": "Launch-only Phase-4 ecology-observer handoff: ordinary fitted outdoor clothing, full health, and a fed/hydrated baseline. DEBUG_NOTEMP and DEBUG_LS are explicit observer-only controls for temperature/wetness and hunger/thirst/sleepiness, which are irrelevant to this structural proof; DEBUG_CLAIRVOYANCE is absent so the avatar retains ordinary hostile perception. The copied player starts on existing road terrain at (137,48,0), where the Shadow warning's field/forest location condition is false while target remains loaded and approach/watch/camp remain abstract. It does not change game time, scheduler, ecology, visibility, sound, or report state.",
   "save_transforms": [
+    {
+      "kind": "player_worn_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": ["hoodie", "balclava", "gloves_light"],
+      "fitted": true
+    },
+    {
+      "kind": "player_condition",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "hp_percent": 100,
+      "stamina": 8500,
+      "hunger": 0,
+      "thirst": 0,
+      "sleepiness": 0
+    },
     {
       "kind": "player_mutations",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
-      "mutations": ["DEBUG_CLAIRVOYANCE"]
+      "mutations": ["DEBUG_NOTEMP", "DEBUG_LS"]
+    },
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [-48, -24, 0]
     }
   ]
 }

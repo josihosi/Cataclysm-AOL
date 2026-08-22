@@ -1,0 +1,134 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r010_m060_basecamp_observer_bridge_mcw",
+  "description": "Narrow R010-M060 proof that the southwest observer fixture's registered player basecamp reaches the first loaded production observer consumer. It stops after the next structural cadence and does not dispatch, return, report, decide, or create a hostile operation.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_scout_to_decision_observer_southwest_v0_2026-08-07",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2",
+      "LLM_INTENT_ENABLE": "false"
+    }
+  },
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "openclaw_harness_ui_trace: component=bandit_owner event=registry player_omt=162,36,0 direct=162,36,0"
+  ],
+  "capabilities": {
+    "capabilities.bandit.r010_m060_basecamp_observer_bridge": "loaded_player_basecamp_registry_reaches_observer"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:w", "press:escape"],
+    "forbidden_input": ["debug:ecology_edit", "debug:inject_report", "debug:inject_decision", "debug:inject_operation", "raw-save-rewrite", "fixture-save-transform-after-install"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_scout_to_decision_observer_southwest_v0_2026-08-07",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_scout_to_decision_observer_southwest_v0_2026-08-07",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": ["ordinary-wait", "press:w"],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["preflight_idle_zero_lead_camp"],
+    "production_behavior": ["audit_loaded_observer_reads_player_camp_identity"],
+    "terminal_persistence": ["audit_loaded_observer_reads_player_camp_identity"],
+    "artifact_verdict": ["audit_loaded_observer_reads_player_camp_identity"],
+    "capability_gates": {
+      "capabilities.bandit.r010_m060_basecamp_observer_bridge": {
+        "terminal": ["audit_loaded_observer_reads_player_camp_identity"],
+        "persistence": ["audit_loaded_observer_reads_player_camp_identity"]
+      }
+    },
+    "disallowed_shortcuts": ["preflight_idle_zero_lead_camp"]
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_basecamp_observer_bridge_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "extract_text_tail_lines": 400,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "expected_visible_fact": "the registered-basecamp fixture reaches normal gameplay"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_idle_zero_lead_camp",
+      "required_site_id_contains": "overmap_special:bandit_camp@164,39,0",
+      "required_member_count": 5,
+      "required_ready_at_home_count": 5,
+      "required_wounded_or_unready_count": 0,
+      "required_active_outside_count": 0,
+      "required_home_side_signal_count": 10,
+      "required_active_group_id_exact": "",
+      "required_active_target_id_exact": "",
+      "required_max_leads": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_r010_m060_basecamp_bridge_fixture",
+      "abort_reason": "saved state was not the idle five-member, zero-lead causal boundary",
+      "expected_immediate_state": "five ready members, zero leads, and no active outing exist before the observer cadence"
+    },
+    {
+      "kind": "long_wait",
+      "label": "wait_1_hour_through_next_structural_observer_consumer",
+      "choice_key": "5",
+      "expected_duration": "1h",
+      "allow_artifact_elapsed_without_menu_ocr": true,
+      "pre_menu_choice_key": "w",
+      "pre_menu_expected_visible_fact": "the real wait menu is opened before choosing one hour",
+      "completion_wait_seconds": 60.0,
+      "completion_artifact_timeout_seconds": 240.0,
+      "artifact_state_patterns": ["openclaw_harness_ui_trace: component=bandit_owner event=observation_result"],
+      "expected_visible_fact": "the next structural cadence reaches the loaded player observer"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_loaded_observer_reads_player_camp_identity",
+      "required_line_patterns": [
+        ["openclaw_harness_ui_trace: component=bandit_owner event=registry", "player_omt=162,36,0", "direct=162,36,0"]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r010_m060_basecamp_observer_binding_missing",
+      "abort_reason": "the loaded observer did not read the registered player camp identity before observation",
+      "expected_immediate_state": "the production observer sees the direct player camp at exactly the loaded avatar OMT"
+    },
+    {
+      "kind": "audit_log_not_contains",
+      "label": "audit_loaded_observer_does_not_reject_player_camp_identity",
+      "forbidden_line_patterns": [["openclaw_harness_ui_trace: component=bandit_owner event=observation_rejected", "player_omt=162,36,0"]],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r010_m060_basecamp_observer_rejected",
+      "abort_reason": "the production observer rejected the loaded player camp identity",
+      "expected_immediate_state": "no observation_rejected trace exists for the loaded avatar OMT"
+    }
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.r010_m060_basecamp_observer_bridge_mcw",
+  "evidence_contract": {
+    "claim": "the loaded player observer reads a legitimate player basecamp at its own OMT",
+    "preconditions_and_interventions": "the derived fixture copies the hostile source camp and adds only a named your_followers basecamp record in the player and overmap registries at the loaded avatar OMT; no lead, dispatch, observation, report, decision, or operation is injected",
+    "causal_boundary": "fixture installation ends before the next structural observer cadence",
+    "real_code_path": "hourly structural cadence -> direct overmap basecamp lookup -> loaded player opportunity observation",
+    "expected_transition": "idle/no-lead -> registered basecamp accepted by the loaded observer",
+    "negative_control": "the run must not log an observation_rejected event for the loaded avatar OMT",
+    "pass_fail_rule": "green only when registry, near-basecamp, and observation-result traces all identify the loaded avatar OMT without an observation rejection"
+  }
+}

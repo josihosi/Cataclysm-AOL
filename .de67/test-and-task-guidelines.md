@@ -42,6 +42,17 @@ Do not demand that every possible input token, focus state, transition, or downs
 pre-proved before the first useful run. After a concrete mismatch, repair the visible family of
 related transitions instead of rediscovering them one key at a time.
 
+When a harness repair proves useful, promote it to its authoritative harness, scenario, fixture,
+registry, or product owner and prove it with a fresh bootstrap and run that do not depend on the
+prior run directory, token, generated save, or one-off command. Transient run state is evidence,
+not durable propagation to later playtests.
+
+Before launching a long or variable integrated run, require the remaining active claim time to
+cover its relevant measured runtime plus required finalization and evidence review. If it cannot,
+do not launch; use the remaining time for independently useful no-launch repair or audit, and leave
+the integrated route explicitly unproved. Derive this admission decision from current evidence,
+not an invented buffer.
+
 ## Implement and test
 
 Identify the authoritative state owner and the transition the task must change or observe. Inspect

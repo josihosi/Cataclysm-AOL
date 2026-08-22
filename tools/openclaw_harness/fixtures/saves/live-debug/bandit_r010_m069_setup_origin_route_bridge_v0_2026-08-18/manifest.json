@@ -1,0 +1,13 @@
+{
+  "name": "bandit_r010_m069_setup_origin_route_bridge_v0_2026-08-18",
+  "source_fixture": "bandit_scout_to_decision_observer_southwest_v0_2026-08-07",
+  "source_profile": "live-debug",
+  "description": "R010-M069 setup-only origin bridge: preserve the southwest observer corridor and move the avatar from its saved observer footing to the retained homeward OMT (160,39,0). No ecology or gameplay state is injected.",
+  "save_transforms": [
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [-48, 72, 0]
+    }
+  ]
+}
