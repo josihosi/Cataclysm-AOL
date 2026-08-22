@@ -4,89 +4,83 @@
 
 ## User outcome
 
-Agents can run trustworthy bandit and cannibal harness scenarios without waiting through long monolithic runs only to discover a missing proof obligation or invisible final state.
+Playtesting C-AOL should preserve proof that already exists, make failures easy to diagnose, and make the final integrated test easier to run. The parts may be tested separately while they are built, but final automated acceptance must prove one continuous round.
 
-The harness should detect invalid contracts early, explain the first causal failure, preserve completed work through checkpoints, and produce authoritative evidence across a verified checkpoint chain.
+This applies to C-AOL as a whole. Hostile ecology is the first demanding vertical slice because actors cross between the overmap and the reality bubble, survive save and relaunch boundaries, and must still complete a long causal lifecycle.
 
 ## Intended experience
 
-Before launch, the harness checks that the scenario’s proof route is coherent and observable.
+During development, agents can run small focused tests and diagnostic replays without repeating unrelated gates that are already proven on the same compatible binding. The system records what was proven, where the first divergence occurred, and which compatible diagnostic capsule is the best place to investigate from.
 
-During execution:
+The agent chooses the latest compatible diagnostic capsule and records why it chose it. A diagnostic capsule or replay has zero final-certification credit. Checkpoint segments may not be spliced together to manufacture a passing round.
 
-- Successful named proof gates create checkpoints.
-- Structured transition events explain product progress.
-- Transport actions and keypresses are supporting actions, not individual proof obligations.
-- Slow runs expose game-turn progress, wall time, resource use, and useful diagnostics.
-- A failure report leads with the first causal divergence, its expected and observed states, and the latest valid checkpoint.
+When the implementation reaches a proven certification boundary, the automated certification gate runs the entire required lifecycle as one bound, uninterrupted round. Ordinary save, quit, and relaunch are allowed when they are part of that same round. Checkpoint rollback, segment splicing, code or data changes, fixture or scenario changes, replacement worlds, and replacement player or actor identities are not allowed.
 
-After interruption or failure, the harness recommends the latest valid checkpoint and explains it. The agent decides whether to resume it, choose another checkpoint, or rerun.
+After automated certification passes, Josef performs a separate Windows feel pass in ordinary play. Exploratory free play may happen earlier, but it does not replace either final gate.
 
-A verified chain of resumed segments may collectively certify the scenario. Any relevant code, data, or scenario change invalidates the whole certification chain.
+## Two final gates
+
+- **Automated certification gate** — one continuous bound round proves the complete required lifecycle and all named proof gates.
+- **Windows feel gate** — a separate ordinary-play pass on Windows establishes whether the result feels understandable, coherent, and enjoyable.
+
+Neither gate substitutes for the other.
+
+## Continuity and binding
+
+One certification round has one scenario lineage and one compatible binding. The binding must cover the relevant code, data, executable, harness, fixture, scenario, world or save, player identity, and identity-bearing ecology actors.
+
+Across every reality-bubble crossing and every permitted save, quit, and relaunch, each identity-bearing actor keeps the same durable identity and has exactly one authoritative simulation owner.
+
+Offscreen aggregate simulation may represent populations, resources, pressure, or probability. It may not substitute for actor-level lifecycle evidence when the claim concerns a particular actor or group completing a transition.
+
+Any relevant binding change invalidates the certification round and requires a fresh continuous round. It does not erase useful focused proof or diagnostic history; it only removes final-certification credit from incompatible evidence.
+
+## Diagnostics
+
+A failed run reports the first causal divergence, the last proven gate, the expected and observed states, the relevant actor identities and ownership state, the selected compatible diagnostic capsule, and the smallest next probe. It does not flood the report with repeated transport actions or identical log lines.
+
+The system should distinguish setup support, build proof, synthetic proof, focused feature proof, automated continuous-round certification, and Windows feel evidence. A built binary, startup screenshot, helper result, or focused test earns only its own evidence class.
 
 ## Project language and terminology
 
 Use these terms consistently:
 
-- **Contract preflight** — validation performed before launching the game.
-- **Proof gate** — a named, causally meaningful contract boundary.
-- **Checkpoint** — captured state and evidence after a successful proof gate.
-- **Checkpoint chain** — ordered segments that collectively prove the scenario.
-- **Diagnostic run** — execution intended to locate and explain divergence.
-- **Certification chain** — verified execution segments that satisfy final proof.
+- **Diagnostic capsule** — a bound preserved state used to investigate from a known point.
+- **Diagnostic replay** — a run from a diagnostic capsule that earns no final-certification credit.
+- **Continuous certification round** — the single bound execution used by the automated certification gate.
+- **Automated certification gate** — the machine-verifiable final integrated gate.
+- **Windows feel gate** — Josef's separate ordinary-play judgment gate.
 - **First divergence** — the earliest failed causal expectation.
-- **Structured transition event** — machine-readable evidence emitted by product or harness state changes.
-- **Incidental-hostile suppression** — the non-combat harness facility informally called “autokill.”
-- **Actor receipt** — evidence identifying every entity affected by suppression.
+- **Binding** — the complete identity of the code, runtime, data, harness, scenario, world, and actors relevant to evidence compatibility.
+- **Authoritative simulation owner** — the one layer currently allowed to advance an identity-bearing actor.
 
-Avoid describing ordinary input delivery as failed proof merely because it produced no immediate artifact.
-
-## Boundaries
-
-Current behavior under test is limited to bandits and cannibals.
-
-Writhing-stalker behavior, zombie-rider behavior, and the later hardening of production perception logic are outside this round. The known writhing-stalker interaction with debug clairvoyance does not create a current harness exception.
-
-The harness must not refuse causally unchanged reruns. It may retain history, explain similarities, and recommend actions, but agents retain authority to rerun.
-
-Current stabilizer policy:
-
-- `DEBUG_LS` and `DEBUG_NOTEMP` are mandatory everywhere.
-- `DEBUG_STAMINA` and `DEBUG_CARDIO` are mandatory for non-combat scenarios.
-- `DEBUG_CLAIRVOYANCE` and `DEBUG_NIGHTVISION` are standard observer-character traits.
-- Vision-sensitive product hardening is later work.
-
-Incidental-hostile suppression is non-combat only. It must affect only eligible nearby incidental hostiles, exclude ecology actors under test, fail closed when identity is ambiguous, avoid ordinary combat/death side effects, and emit actor receipts.
+Avoid calling a diagnostic replay a resume of final certification. Avoid calling assembled segments a continuous round.
 
 ## Decisions
 
-- Checkpoint chains may count as final certification.
-- Any relevant code, data, or scenario change resets the entire certification chain.
-- The harness recommends a resume point; the agent chooses.
-- Every successful named proof gate creates a checkpoint.
-- Observer traits remain standard; production perception hardening is deferred.
-- The harness informs agents but does not restrict trusted reruns.
-- Structured events and gate-level evidence replace log-substring archaeology and per-keypress proof accounting.
+- Focused tests preserve useful development proof but never replace the final continuous round.
+- Diagnostic capsules are agent-selected recommendations, not automatic authority.
+- Checkpoint rollback and segment splicing receive zero final-certification credit.
+- Normal save, quit, and relaunch may occur inside one continuous round when the binding and identities remain unchanged.
+- Final acceptance has two separate gates: automated certification and Windows feel.
+- Hostile ecology is the first vertical slice, but the resulting playtesting system is for all C-AOL.
+- Identity-bearing actors must retain durable identity and exactly one authoritative owner across overmap, reality-bubble, and persistence transitions.
 
 ## Prototype or reaction questions
 
 Concrete prototypes should resolve:
 
-- How the report presents the first divergence, completed gates, and recommended checkpoint.
-- How checkpoint-chain lineage and invalidation are shown clearly.
-- How diagnostic and certification states are distinguished without adding operator friction.
-- How incidental-hostile receipts appear in the report.
+- How an agent sees already-proven focused gates without mistaking them for final certification.
+- How the report presents the first divergence and recommends a compatible diagnostic capsule.
+- How a continuous round proves identity and single-owner continuity across bubble crossings and save or relaunch boundaries.
+- How the final Windows feel handoff stays ordinary and understandable rather than becoming another scripted checklist.
 
 ## Handoff to DE-67-2
 
-The working repository is `/Users/josefhorvath/Schanigarten/Cataclysm-AOL-hostile-ecology-dev`, branch `dev`, observed at `7f4697ee6b17fb897461e3ceb290342b83787a30`. It is heavily dirty; preserve all existing work.
+Inspect the current harness, registry, transition-event stream, scenario tooling, save and relaunch paths, process ownership, evidence storage, worktree use, overmap actor state, local actor materialization and dematerialization, and current tests before specifying mechanisms.
 
-Primary artifacts:
+Compare unfamiliar implementation patterns against live open-source game code instead of relying on memory. In particular, research overmap or world simulation plus a loaded reality bubble or scene projection. Useful comparison candidates include Veloren persistent simulation entities and loaded actors, Luanti active and stored objects, OpenMW durable actor or cell state and scene projection, and aggregate sector or wave simulations as a negative comparison. Use primary source repositories or official technical documentation, record precise links or commit references, and treat comparisons as design evidence rather than authority over C-AOL code.
 
-- `.agents/skills/caol-harness/SKILL.md`
-- `.de67/work-ledger.md`
-- `tools/openclaw_harness/scenarios/bandit.scout_to_decision_observer_live_mcw.json`
+The mechanistic specification should test the likely invariant that a durable actor record is authoritative while a local actor is a temporary projection or lease; transitions are explicit and idempotent; the source is retained until destination acknowledgement and persistence; load reconciliation repairs or rejects duplicates; and compact crossing receipts expose identity, generation, prior owner, next owner, and outcome. Accept, reject, or refine this direction from the inspected C-AOL code.
 
-The latest inspected run lasted about 18 minutes and failed at homeward materialization because the loaded bubble lacked paired entry or staging positions. Its large report also treated many successful transport actions as yellow and repeated the same diagnostic thousands of times. DE-67-2 should preserve this as the motivating failure shape.
-
-No repository files were changed. This completes DE67 phase 1 only.
+No product or test implementation belongs in Phase 2.
