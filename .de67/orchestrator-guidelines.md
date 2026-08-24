@@ -48,6 +48,11 @@ test runs, repairs between runs, review, disposition, and the uncertainty of the
 does not take zero time. Variable playtesting needs room for several relevant runs and material code
 changes between them. Finish early when possible. Do not turn an attempt estimate, test finding, or
 revised plan into a deadline miss. A deadline miss occurs only when the item clock actually expires.
+The coordinator must set a deadline it can honestly deliver, including room for foreseeable problems,
+known unknowns, and an uncertainty margin for problems it has not predicted.
+Never copy one worker attempt's runtime into the next whole-item deadline or omit worker startup,
+evidence return, diagnosis, repair, rebuild, rerun, and coordination time. After repeated underestimates,
+correct the estimation method before arming another generation; `no change required` is not honest.
 
 Give each worker a self-contained brief. Require the worker to read the relevant sections of
 `.de67/test-and-task-guidelines.md`. Use parallel workers only when their work is genuinely disjoint.
@@ -94,6 +99,15 @@ when the evidence supports one; otherwise record `no change required`. A random 
 stored lane. If part of a suggestion is valid, apply that part. Move unapplied owner-visible ideas
 to `.de67/human-todo.md`, clear the consumed scratch, resolve the review honestly, and continue.
 Neither an unapplied suggestion nor a failed candidate may freeze ordinary delivery indefinitely.
+
+Give the mutation reviewer the evidence needed to reason rather than a requested verdict. For a
+deadline review, include the full available deadline history for the claim: every planned window,
+actual attempt duration and outcome, overrun, and recorded diagnosis, together with the relevant
+ledger item, DFS gap, active guideline or policy surface, and pending owner suggestions. For other
+reviews, provide the equivalent incident history and product context. The reviewer may inspect
+local implementation and history, and may research analogous systems in primary sources when the
+causal pattern is unfamiliar or external comparison would materially reduce guesswork. Research is
+evidence, not authority. The reviewer remains free to conclude that no change is required.
 
 Use a fresh `gpt-5.6-sol` reviewer at high for ordinary incident and random mutation review. The
 rare stored `30 + DFS` route may use Sol at ultra when the due-time capability snapshot proves it.
