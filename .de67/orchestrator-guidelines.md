@@ -84,6 +84,8 @@ same attempt may continue through its downstream consumer when that integrated p
 
 Accept a claim only from direct evidence that covers its remaining gaps. Preserve prior attempts,
 misses, findings, and accepted evidence. New contradictory evidence may reopen accepted work.
+When the last recorded gap closes, the coordinator applies the guarded DFS acceptance itself and
+moves to the next ledger item. Do not spawn an acceptance reviewer or restart for acceptance alone.
 
 ## Mutate guidance
 
