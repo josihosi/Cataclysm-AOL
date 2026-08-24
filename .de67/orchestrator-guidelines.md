@@ -51,8 +51,8 @@ revised plan into a deadline miss. A deadline miss occurs only when the item clo
 The coordinator must set a deadline it can honestly deliver, including room for foreseeable problems,
 known unknowns, and an uncertainty margin for problems it has not predicted.
 Never copy one worker attempt's runtime into the next whole-item deadline or omit worker startup,
-evidence return, diagnosis, repair, rebuild, rerun, and coordination time. After repeated underestimates,
-correct the estimation method before arming another generation; `no change required` is not honest.
+evidence return, diagnosis, repair, rebuild, rerun, and coordination time. Give a deadline reviewer
+the repeated estimates and outcomes so it can judge whether the estimation method needs to change.
 
 Give each worker a self-contained brief. Require the worker to read the relevant sections of
 `.de67/test-and-task-guidelines.md`. Use parallel workers only when their work is genuinely disjoint.
@@ -61,6 +61,9 @@ Before spawning a worker, start one unique deadline-harness task for that worker
 random-mutation work window. Never share one task between workers or reuse a terminal task. A child
 spawned only to verify its model or suitability still owns a window: if it is retired without doing
 the assigned repository work, terminalize that task as abandoned before dispatching its replacement.
+After projecting a terminal worker result into the ledger and any authorized DFS transition, record
+its durable result receipt with `deadline_harness.py receive-result`. An unreceived terminal result
+is an event to process once, not a permanent description of the workspace.
 After every worker exit, record exactly one completion, finding, or abandonment. Parallel workers
 therefore need distinct task ids. A coordinator start, exit, or restart does not itself create or
 terminalize a worker window.
@@ -108,6 +111,13 @@ reviews, provide the equivalent incident history and product context. The review
 local implementation and history, and may research analogous systems in primary sources when the
 causal pattern is unfamiliar or external comparison would materially reduce guesswork. Research is
 evidence, not authority. The reviewer remains free to conclude that no change is required.
+
+When the claim clock is already expired, record the claim deadline miss before receiving another
+result or dispatching more work. Preserve any worker evidence that returned before or after expiry;
+expiry changes the method-review route, not the truth of the result.
+Every resolved deadline miss retires the current coordinator even when review concludes that no
+guideline change is required. The fresh coordinator must set the successor generation's whole-item
+deadline from the remaining route and current evidence. Never inherit the expired duration.
 
 Use a fresh `gpt-5.6-sol` reviewer at high for ordinary incident and random mutation review. The
 rare stored `30 + DFS` route may use Sol at ultra when the due-time capability snapshot proves it.
