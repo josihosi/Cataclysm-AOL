@@ -1,9 +1,9 @@
-# C-AOL Proof-Preserving Playtesting DE-67 Functional Specification
+# C-AOL Harness Cockpit and Proof-Preserving Playtesting DE-67 Functional Specification
 
 Status: Frozen
 WEC: `.de67/WEC.md`
-Source baseline: `Cataclysm-AOL-hostile-ecology-dev | dev tracking origin/dev | 3f8d5e0a1b6b21ed7e23f43d27a9e40aafa1fe88 | intentionally broad dirty product and harness frontier | inspected 2026-08-22`
-Inspected-source fingerprint: `e26e145206657d5cb43a3482617be8a09400d37a8bb062f96b74b5cc59016217` (SHA-256 over the ordered per-file SHA-256 records named in the current code map)
+Source baseline: `Cataclysm-AOL-hostile-ecology-dev | dev tracking origin/dev | 54a60872e2b8dcabb00288e8fcfe6b976b82fd99 | intentionally broad dirty product and harness frontier | inspected 2026-08-25`
+Inspected-source fingerprint: `98e30ed1400ad496ce21a4b140fea69b8cbe76a08977176ff9eb641846043402` (SHA-256 over the ordered per-file SHA-256 records named in the current code map)
 
 ## Document authority
 
@@ -12,11 +12,9 @@ production code. It is not a task-dispatch plan. If this document conflicts with
 what code does, re-inspect the code; if it conflicts with the WEC about what the product should do,
 the WEC and the user win.
 
-The source baseline includes modified `src/bandit_live_world.*`,
-`src/bandit_live_world_probe.*`, `src/do_turn.*`, `src/overmap_ui.cpp`,
-`src/player_activity.cpp`, the named tests, and the named harness and registry files. It also
-includes the untracked `tools/openclaw_harness/transition_event_reader_unit_test.py`. The dirty
-frontier is evidence under inspection, not Phase-2 implementation credit, and was preserved.
+The source baseline includes the modified and untracked product, harness, registry, semantic-frame,
+proof, fixture, and hostile-ecology files named below. The dirty frontier is evidence under
+inspection, not Phase-2 implementation credit, and was preserved.
 
 Status markers:
 
@@ -25,12 +23,19 @@ Status markers:
 
 ## Functional contract
 
+C-AOL exposes one compact harness-only cockpit. A worker discovers the current proof frontier,
+searches or creates a compatible scenario, prepares deterministic setup, observes only the avatar's
+perceivable world, performs bounded player-intent transactions, and receives honest evidence or a
+durable reusable capability gap. The cockpit does not expose registry tokens, frame offsets,
+keystrokes, OCR guesses, or raw logs as gameplay state.
+
 C-AOL development runs preserve compatible focused proof and recommend a compatible known state for
 diagnosis without awarding either one final-certification credit. A final automated pass starts a
 new, completely bound round and proves every required lifecycle gate in that one round. Josef then
 performs a separate ordinary Windows play pass.
 
 ```text
+frontier -> scenario -> capability -> game -> run -> gap
 focused run -> immutable classed evidence -> compatible proof remains visible
 failed run -> first divergence -> compatible diagnostic capsule recommendation -> smallest next probe
 certification start -> complete binding sealed -> one uninterrupted lifecycle -> automated gate result
@@ -45,6 +50,12 @@ replay, checkpoint rollback, or segment splice cannot contribute final-certifica
 
 Use the WEC terms exactly:
 
+- **Cockpit** — the compact worker-facing interface for scenario discovery, deterministic setup,
+  live observation, action transactions, evidence, and reusable gaps.
+- **Intervention** — a recorded setup or recovery mutation that earns no proof for the state or
+  behavior it manufactured.
+- **Capability gap** — a durable reusable record of a missing observation, action, setup, recovery,
+  or structured failure surface.
 - **Diagnostic capsule** — a bound preserved state used to investigate from a known point.
 - **Diagnostic replay** — a run from a diagnostic capsule that earns no final-certification credit.
 - **Continuous certification round** — the single bound execution used by the automated
@@ -60,7 +71,13 @@ Use the WEC terms exactly:
 Do not call a diagnostic replay a resumed certification. Do not call assembled segments a
 continuous round. A build, startup image, helper result, synthetic proof, or focused test keeps only
 its own evidence class. “Checkpoint contract” in current scenario manifests is setup preflight
-language and is not a diagnostic capsule or certification boundary.
+language and is not a diagnostic capsule or certification boundary. Do not call setup validation
+gameplay proof. Do not call registry tokens, frame offsets, key bindings, raw logs, or OCR a
+worker-facing gameplay observation.
+
+The cockpit is a harness-only product surface. `src/llm_intent.cpp` and its declarations, prompts,
+NPC-centred snapshot text, request-scoped target mapping, action parser, runner timing, and NPC
+behavior are a protected regression boundary. Cockpit code must not intercept or replace that path.
 
 ## Current code map
 
@@ -75,16 +92,29 @@ language and is not a diagnostic capsule or certification boundary.
 | Evidence registry | `tools/openclaw_harness/scenario_registry.py`, `scenario_registry_store.py`, `scenario_registry_cli.py` | Scenario declarations are explicitly not evidence. Immutable report references, manifest history, binding history, lifecycle, compatibility/reconciliation, quarantine, and capability evidence are stored. | Module contract, SQLite schema, ingestion and unit tests. |
 | Process ownership | `tools/openclaw_harness/startup_harness.py` :: `kill_existing_game_processes`, `run_startup`, `process.json` | Startup kills all matching game processes before launch; later cleanup is PID/command checked. There is no exclusive certification-round lease, so concurrent unrelated runs can be destroyed or confused with the bound round. | Production startup path and process receipt. |
 | Diagnostic reporting | Probe report construction in `tools/openclaw_harness/startup_harness.py` | Reports preserve step ledgers, gate evidence, raw structured events, and summaries of repeated non-committed events. There is no first-divergence record or selected diagnostic capsule. | Final report assembly around `structured_transition_events` and `proof.gates.json`. |
+| Existing LLM perception pattern | `src/llm_intent.cpp` :: `filter_visible`, `build_ascii_map_snapshot`, `build_snapshot_json`; `npc::set_llm_intent_legend_map` | The NPC LLM path reads `npc::get_visible_creatures`, `Creature::sees`, `map`, `creature_tracker`, avatar state, items, time, and weather to build an NPC-centred prompt snapshot. It stores request-scoped letter targets in NPC LLM state. This path does not expose an avatar cockpit frame and is protected from harness changes. | `tests/llm_intent_test.cpp` checks snapshot text, visibility/attitude, letter targets, stale request rejection, move parsing, and NPC behavior. |
+| Native semantic frames | `src/handle_action.cpp` :: `openclaw_harness_semantic_step_frame`, `openclaw_harness_semantic_step_receipt`, `game::get_player_input`, `game::handle_action`; `tools/openclaw_harness/semantic_state.py`; `semantic_broker.py` :: `SemanticStepChannel` | The game emits run-bound frames and receipts only for world wait, wait menus, and wait activities. Python copies and parses selected `debug.log` lines, keeps key bindings private from `observe()`, and requires a matching receipt plus a fresh frame. It is a useful transaction prototype, not a general observation or action surface. | `semantic_step_test.py`, `semantic_state_test.py`, and `semantic_broker_test.py`. |
+| Modal and interruption readers | `src/popup.cpp`, `src/game.cpp`, `src/npctalk.cpp` semantic/debug trace writers; `startup_harness.py` :: `read_active_semantic_ui_trace`, `read_active_activity_query_trace`, `acknowledge_blocking_interruptions` | Quit, activity-distraction, and EOC popup owners emit different debug-log grammars. The harness combines native traces with extensive OCR and screen classifiers. Some safe paths use advertised semantic actions; many legacy paths still infer current UI or recovery from logs, OCR, fixed keys, and offsets. | Modal, semantic-broker, quit-confirmation, proof-classification, and scenario tests. |
+| Scenario discovery and selection | `scenario_registry.py` :: `validate_manifest`; `scenario_registry_store.py` :: `manifest_current`, `manifest_capability_current`, `evaluate_registry_query_from_store`, `execute_registry_query`, `reload_selection_token_for_launch`; `scenario_registry_cli.py` | SQLite projects typed manifest capabilities, lifecycle, binding, proof, report, and selection history. `registry-query` evaluates hard requirements and preferences without launching. An eligible result mints an internal token that the canonical launcher revalidates. Purpose, starting state, actors, setup limits, and capability contracts are not available as one progressive worker-facing scenario view. | Scenario registry CLI, ingestion, store, binding, and production-binding tests. |
+| Scenario creation and setup | `startup_harness.py` :: fixture capture/install and save transforms, `debug_spawn_monster`, `debug_spawn_follower_npc`, `debug_map_editor_place_furniture`, item/zone/fire helpers; `scenario_registry_cli.py` certification fixture install | Existing setup owners can install or transform saves and drive debug UI helpers. The helpers use raw menu paths and timing and do not share one structured intervention receipt, free-tile resolver, stable target owner, validation result, or zero-proof firewall. The registry has no worker-facing scenario create/validate/prepare transaction. | Fixture-contract, registry production-binding, startup, saved-state audit, and scenario tests. |
+| Proof classification | `startup_harness.py` :: `startup_proof_classification`, `probe_proof_classification`, `evaluate_structured_proof_gates`, report finalization; `scenario_registry_store.py` :: WEC authority and final-gate eligibility | Current proof owners preserve startup/load, focused, diagnostic, certification, and Windows authority boundaries. Large legacy classifiers still accept OCR and raw screen/log artifacts for limited evidence and diagnostics. No cockpit call reports its evidence effect through one structured result. | `proof_classification_unit_test.py`, registry ingestion tests, certification route tests. |
+| Planned competing perception/controller | `doc/OPENCLAW_HARNESS.md` proposed `src/openclaw_harness.*`, `src/openclaw_ui_adapter.*`, frame schema, classifier, and translator; `TechnicalTome.md` adaptive-playtesting note | The plan describes a parallel C++ harness perception/manager layer and optional debug spawning. Only the wait-specific semantic channel is shipped. The planned second perception owner would duplicate game-state interpretation if implemented as written. | Static design documents; no production-path implementation credit. |
+| Debug ecology projection | `src/ecology_debug_view.*`, `src/overmap_ui.cpp`, `TechnicalTome.md` debug observer sections | The debug view intentionally exposes authoritative offscreen ecology state under debug authority. It is useful for diagnosis and incident artifacts but is not avatar perception and cannot populate `game.observe` or `game.look`. | Ecology debug-view tests and durable design note. |
 
-The inspected-source fingerprint covers, in order: `src/bandit_live_world.h`,
-`src/bandit_live_world.cpp`, `src/bandit_live_world_probe.h`,
-`src/bandit_live_world_probe.cpp`, `src/do_turn.h`, `src/do_turn.cpp`,
-`src/overmap_ui.cpp`, `src/player_activity.cpp`, `tests/bandit_live_world_test.cpp`,
+The inspected-source fingerprint covers, in order: `src/llm_intent.h`,
+`src/llm_intent.cpp`, `src/handle_action.cpp`, `src/input_context.h`,
+`src/input_context.cpp`, `src/popup.cpp`, `src/game.cpp`, `src/do_turn.cpp`,
+`src/npctalk.cpp`, `src/ecology_debug_view.h`, `src/ecology_debug_view.cpp`,
+`src/bandit_live_world.h`, `src/bandit_live_world.cpp`,
+`src/bandit_live_world_probe.h`, `src/bandit_live_world_probe.cpp`,
+`tests/llm_intent_test.cpp`, `tests/bandit_live_world_test.cpp`,
 `tests/bandit_live_world_natural_test.cpp`, `tools/openclaw_harness/startup_harness.py`,
 `scenario_registry.py`, `scenario_registry_store.py`, `scenario_registry_cli.py`,
-`scenario_registry_unit_test.py`, `transition_event_reader_unit_test.py`,
-`test_probe_relaunch.py`, and `proof_classification_unit_test.py` under
-`tools/openclaw_harness/`.
+`semantic_state.py`, `semantic_broker.py`, `production_capture.py`,
+`scenario_registry_cli_test.py`, `scenario_registry_ingestion_test.py`,
+`semantic_state_test.py`, `semantic_broker_test.py`, `semantic_step_test.py`,
+`proof_classification_unit_test.py`, `doc/OPENCLAW_HARNESS.md`, and
+`TechnicalTome.md`.
 
 ## External research sweep
 
@@ -230,10 +260,10 @@ Implementation status:
 - [x] Materialization and dematerialization already use cursor/epoch checks, complete-pair candidate
   state, callback rollback, and commit-after-callback. Durable actor IDs and owner state serialize,
   and duplicate durable site claims are rejected on load.
-- [ ] 🔴 R-004 — Actor-level ownership continuity is not completely receipted or reconciled across both crossing directions and load.
-  - Code gap: `commit_local_pair_dematerialization` emits no symmetric transition result; `record_live_transition` does not populate `simulation_owner`; `append_live_transition_event` does not serialize it; load rejects duplicate durable site claims but does not reconcile durable owner state with loaded local NPC projections or prove persistence acknowledgement.
-  - Required mechanism: retain the existing candidate/rollback transfers, add symmetric persistence-confirmed crossing receipts through the existing event stream, and reconcile or reject local projection claims during load before either simulation layer advances.
-  - Proof: production-path tests cover successful, repeated, stale, partial, callback-failed, persistence-failed, duplicate, and crash-window crossings in both directions and across save/relaunch; each named actor retains one identity, one owner, a monotone generation/epoch/cursor, and one compact correlated receipt.
+- [x] R-004 — Each actor keeps one identity and one owner across crossings and relaunch.
+  - What changed: load repairs a uniquely matching stale pending crossing after a failed save and rejects partial, malformed, conflicting, or ambiguous ownership claims. `crossing_receipt::run_id` now connects each saved receipt to the harness run or durable world binding that produced it. Acknowledgement and rollback tokens validate the same identity.
+  - Why it matters: a failed second save can no longer make relaunch reject an actor that has one safe source owner. A stale or conflicting receipt cannot silently let both simulation layers advance the same actor.
+  - Proof: a fresh supported test build passes the projection lease control with 11 assertions, the crossing receipt and transition event controls with 1,065 assertions, and the transactional handoff control with 2,045 assertions. These production-path tests cover success, repeat, stale, partial, callback failure, persistence failure, duplicate, crash-window repair, both crossing directions, and save or relaunch boundaries.
 
 ### 5. One continuous automated certification round
 
@@ -292,6 +322,372 @@ Implementation status:
   - Required mechanism: adapt the existing handoff/report and registry surfaces to prepare ordinary Windows play and record Josef's explicit outcome without turning it into another scripted automated checklist.
   - Proof: a certified build produces an ordinary Windows handoff; pending, pass, and fail judgments are recorded only by Josef, remain separate from automation, and overall acceptance is green only when both independent gates pass.
 
+### 7. Semantic harness observation and intent-aware recovery
+
+This mechanism is setup support for focused qualification and diagnosis. It does not change hostile
+ecology, movement, visibility, or any other player-visible rule, and it earns zero continuous-round
+certification credit.
+
+Mechanism:
+
+- Files and symbols: the existing harness environment gate and bound transition-event writer in
+  `bandit_live_world_probe.*`; the gameplay, travel, activity, destination, and modal owners that
+  possess each fact; `startup_harness.py`; versioned scenario grammar; and a reviewed semantic
+  handler registry plus replay corpus under `tools/openclaw_harness/`.
+- Entry point: an explicitly authorized harness run path. Ordinary play without that path performs
+  no extra event emission, file creation, polling serialization, or background work.
+- Product observation: emit bounded, deduplicated semantic transitions beside the authoritative
+  production state change. Each event carries run identity, monotone sequence, transition kind,
+  relevant stable identity, before/after state, and outcome, and writes only within the exact bound
+  run directory. Required facts include gameplay/input context, native-travel progress and
+  completion, activity state, destination arrival, semantic prompt class, and blocking-modal
+  lifecycle.
+- Evidence boundary: structured product events and bound saved artifacts alone may affect machine
+  verdicts. Moon phase, clock or weather text, map glyphs, creature names, transient messages,
+  fixture-specific HUD fragments, localization, UI wording, screenshots, and OCR are diagnostic
+  context unless this DFS explicitly requires that exact fact. OCR cannot make a gate green or red,
+  authorize input, establish or contradict state, recover or reject a run, or compensate for absent
+  structured evidence. Unrelated incidental facts cannot be combined into synthetic semantic proof.
+- Agent step channel: the game emits a fresh frame identity, current semantic state, and valid action
+  IDs from the authoritative input or modal owner. The harness keeps physical bindings private,
+  accepts only a current-frame choice from the same run and worker session, and requires both the
+  native accepted/rejected receipt and a fresh next frame. Unknown, invalid, stale, contaminating,
+  wrong-destination, escaped-authority, and release-invalidating choices receive no input and remain
+  recorded. Fixed input may reset or stage a deterministic footing; live play proceeds as
+  `observe -> choose -> act -> receipt + next state`.
+- Experience: a new interruption preserves a minimal structured trace and becomes the next
+  observation in the same goal-bound playtest. First divergence remains useful for certification
+  credit boundaries and causal localization, but it does not terminate an otherwise authorized
+  play session. A reviewed handler enters the repository-owned state/action/postcondition registry
+  only with deterministic recovery and inverse stale/invalid replays; the proved route deletes its
+  key guess or screen-phrase rule instead of adding another parser.
+
+Implementation status:
+
+- [x] ✅ R-007 — The harness now decides the required travel, arrival, activity, interruption,
+  destination, progress, and popup-recovery routes from bounded run-owned semantic facts.
+  - Code gap: version-2 `checkpoint_safe_ui` requires `screen_text_contains`; the active R-005
+    scenario declares OCR and screen phrases; native travel and wait recovery classify OCR text and
+    may send prompt keys without a bound semantic UI identity or structured postcondition.
+  - Required mechanism: implement the semantic event and broker contract above through the existing
+    environment gate and transition stream; migrate scenario grammar and active routes; delete the
+    superseded incidental proof and key-guess paths.
+  - Proof: tests cover zero-artifact ordinary play; missing or escaped paths; bounded emission;
+    completion, interruption, recovery with and without progress, wrong destination, unknown modal,
+    and contamination; expected-versus-accidental UI; stale identity; and invariant verdicts while
+    irrelevant moon, weather, clock, message, map, fixture, localization, wording, screenshot, and
+    OCR inputs vary, disappear, succeed, fail, or contradict the structured facts.
+  - Accepted evidence: `R-007-closure-006` closed `R-007-live-broker-path~B1`. Focused tests passed
+    across the semantic parser, production caller, scenario, and popup broker routes. Relevant native
+    objects built successfully. The registry returned no executable token, so this acceptance claims
+    focused implementation proof only and claims no live feature or certification credit.
+  - Owner-authorized mutation proof: canonical run `37c1510a…f082` kept session
+    `c6559f71375f-m095` through two native
+    `world.wait -> wait.duration_menu -> wait.6h` cycles. Authoritative time advanced
+    `7560 -> 7920 -> 8280` minutes with a receipt and fresh frame after every choice. The run remained
+    zero-credit and honestly red when its saved-state audit found no structural-scout consumer.
+
+### 8. Improved-harness focused qualification tail
+
+These qualification runs use the semantic substrate after R-007. They preserve focused development
+proof but cannot satisfy R-005, cannot be spliced into a continuous round, and cannot satisfy R-006.
+Orthogonal stabilizers or observer instrumentation are setup support only and may not change ecology,
+movement, or visibility behavior.
+
+Implementation status:
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-008-S001 claim=R-008 -->
+- [ ] 🔴 R-008 — Natural bandit and cannibal lifecycles and their persistence boundaries lack the
+  restored focused qualification matrix.
+  - Required mechanism: exercise natural production bandit and cannibal lifecycles with stable actor
+    identity and single-owner receipts, then save, quit, and relaunch at each materially distinct
+    abstract/local ownership and crossing boundary. Preserve every run as independently classed
+    focused evidence; never resume, roll back, or join segments for certification credit.
+  - Proof: both ecology families reach their named lifecycle outcomes through production behavior;
+    each persistence matrix row proves the expected actor identity, generation, owner, crossing
+    receipt, and saved normalization before and after relaunch; malformed, stale, duplicate, partial,
+    and replacement-identity controls fail closed.
+<!-- DE67:DFS-SLICE:END id=R-008-S001 claim=R-008 -->
+- [ ] 🔴 R-009 — Integrated waits, performance and memory observation, and the supported-platform
+  technical witness set remain unqualified on the improved harness.
+  - Required mechanism: observe complete integrated waits at existing semantic boundaries, including
+    product game-time progress, latest transition, child-process CPU and resident memory when the host
+    exposes them, and explicit unavailable fields otherwise. Run proportionate technical witnesses
+    on macOS, Linux/WSL, and Windows against source-bound executables and the same semantic contracts.
+  - Proof: advancing and stalled waits are distinguishable without incidental UI text; repeated
+    events remain bounded and causally readable; missing resource fields are `unavailable`, never
+    invented zero; and each platform witness records the build/runtime binding, exercised route,
+    direct result, and platform-specific limitation. Every artifact remains setup or focused
+    qualification evidence with zero continuous-final-certification credit.
+
+### 9. One progressive cockpit interface
+
+Mechanism:
+
+- Files and symbols: add a thin harness façade at
+  `tools/openclaw_harness/cockpit.py` with `CockpitService.call(request) -> dict`. The façade
+  imports existing registry, startup, semantic, report, and binding owners. It must not duplicate
+  their durable state or parse their command-line text.
+- Entry point: one worker call names a cockpit operation and structured arguments. Approximate WEC
+  operation names may be mapped to stable implementation names without exposing transport details.
+- Parameters: operation, cockpit schema version, run/session identity when a game is active, and
+  operation-specific arguments.
+- Inputs: the compact frontier supplied by the caller; current SQLite scenario, capability,
+  binding, lifecycle, proof, and report facts; the selected run; and native game responses.
+- Preconditions: the caller sees only the behavior under test, required evidence class, unresolved
+  proof gap, relevant binding, forbidden shortcuts, and available capability summaries. Full
+  manuals, raw history, logs, tokens, offsets, and bindings are not preloaded.
+- Transition: validate one request, call one authoritative owner, and return one result envelope.
+  Summary calls reveal identifiers and fit-relevant facts. Describe calls reveal the selected
+  object's contract, examples, recovery, proof effect, and limitations.
+- Postconditions: every call returns one object containing operation status, structured result or
+  structured failure, evidence effect, and valid next calls. Subprocess stdout, registry selection
+  tokens, frame offsets, physical inputs, OCR, and raw logs remain internal.
+- Failure behavior: malformed, stale, unsupported, or owner-conflicting requests fail without game
+  input or durable promotion. The response names the first rejected precondition and useful next
+  calls.
+- Persistence/compatibility: the façade owns no product or proof truth. It supports Windows,
+  Linux/WSL, and macOS through the existing Python and game platform seams.
+- Protected boundary: the façade must not import, invoke, intercept, or replace the
+  `llm_intent` request/response path. It must not alter NPC prompt timing or behavior.
+
+Implementation status:
+
+- [x] The scenario registry, startup harness, semantic-step prototype, and report owners already
+  return structured Python values internally.
+- [ ] 🔴 R-010 — Workers do not have one progressive cockpit whose calls return one structured
+  result without exposing internal transport.
+  - Code gap: `scenario_registry_cli.py`, `startup_harness.py`, and semantic helpers expose
+    separate CLIs and artifacts. Workers must currently coordinate tokens, offsets, PIDs, raw
+    output, and detailed commands.
+  - Required mechanism: add the stateless façade above and compact frontier/capability discovery.
+    Existing registry and run owners remain authoritative.
+  - Proof: a worker receives only the compact frontier, searches one relevant capability and
+    scenario summary, asks for one detail, and continues through the same façade. Token, offset,
+    key, OCR, log, and subprocess-output fields are absent from every public result and cannot be
+    supplied to bypass owner validation.
+
+### 10. SQLite scenario lifecycle and deterministic setup
+
+Mechanism:
+
+- Files and symbols: `scenario_registry.py::validate_manifest`;
+  `scenario_registry_store.py` schema migrations, `evaluate_registry_query_from_store`,
+  `execute_registry_query`, and `reload_selection_token_for_launch`;
+  `scenario_registry_cli.py` canonical launch owner; `startup_harness.py` fixture and debug
+  setup helpers; cockpit `scenario.search/describe/create/validate/select/prepare`.
+- Entry point: scenario discovery starts from typed proof and capability requirements. Preparation
+  starts only after one current selection.
+- Inputs: scenario purpose, starting state, actors, fixture/save identity, compatible bindings,
+  capabilities, evidence authority, prior scoped results, setup limitations, requested deterministic
+  entities, and selected setup capability.
+- Preconditions: search facts come from the current SQLite projection. Create accepts a complete
+  deterministic declaration under the canonical scenario root. Validate reads the exact declaration,
+  fixture, save, and capability owners but does not launch or award gameplay credit.
+- Transition: search returns summaries; describe returns details on demand; select evaluates hard
+  requirements and preferences and records the worker's fit reason beside the internal selection
+  history; create writes and validates one source-bound declaration before projection; prepare
+  installs the selected fixture and performs requested setup through existing native debug or saved
+  fixture owners.
+- Deterministic entities: a required creature, NPC, item, terrain condition, or interruption must
+  exist in the selected loaded save or be created through an explicit setup intervention. Debug
+  placement resolves a currently free tile before dispatch and confirms the exact spawned or placed
+  target. Missing expected entities never cause incidental-world waiting.
+- Intervention receipt: every fixture install, save transform, spawn, targeted removal, item,
+  furniture, zone, shelter, basecamp, fire, brazier, `roof_on_fire`, or other setup/recovery action
+  records operation, arguments, selected target/tile, native receipt, before/after setup facts,
+  run/binding, and `evidence_effect: none_for_manufactured_state`.
+- Macros: a setup or recovery macro stores ordered constituent intervention/action receipts. A
+  macro has no independent proof effect.
+- Postconditions: one selected scenario brief names why it fits, what setup occurred, the current
+  binding, limitations, and the proof firewall. Scenario validation proves setup only.
+- Failure behavior: absent capability, occupied or stale target, conflicting binding, incomplete
+  fixture, failed native setup, or unconfirmed postcondition leaves the run unprepared and returns a
+  reusable capability gap candidate. The harness never substitutes an incidental entity.
+- Persistence/compatibility: extend the existing SQLite schema with append-only scenario-validation,
+  selection-reason, and intervention history. Existing source manifests and binding histories remain
+  authoritative; create is idempotent for identical bytes and rejects identity collisions.
+
+Implementation status:
+
+- [x] SQLite already projects typed scenario capabilities and immutable lifecycle, binding, report,
+  query, and token history. Existing fixture/debug helpers cover several requested setup actions.
+- [ ] 🔴 R-011 — Scenario creation, setup validation, selection rationale, and deterministic
+  preparation are not one SQLite-backed, proof-firewalled lifecycle.
+  - Code gap: registry search lacks progressive purpose/starting-state/actor/setup-limit summaries;
+    no worker-facing create/validate/prepare transaction exists; debug and fixture helpers use
+    separate key/timing and transform paths without one intervention receipt or deterministic-target
+    contract.
+  - Required mechanism: extend the existing manifest projection and schema histories, then wrap
+    current setup owners with the lifecycle and receipt rules above.
+  - Proof: the worker selects a compatible existing scenario and records why; a no-fit query creates
+    and validates a deterministic scenario; a required zombie dog is present or explicitly spawned
+    on a confirmed free tile; an absent incidental dog is reported only as absent; every manufactured
+    fact stays setup-only under report ingestion and final-gate queries.
+
+### 11. Avatar-centred observation and stable handles
+
+Mechanism:
+
+- Files and symbols: add a narrow, harness-gated adapter in
+  `src/openclaw_harness_observation.h/.cpp`; read `game`, `avatar`, `map`,
+  `creature_tracker`, `Creature::sees`, item/location, field, light, weather, time, activity,
+  input-context, and modal owners. Expose the adapter only through the run-bound cockpit channel.
+- Existing pattern: `src/llm_intent.cpp::filter_visible`, `build_ascii_map_snapshot`, and
+  `build_snapshot_json` demonstrate game-native visibility, spatial summary, and target concepts.
+  They are inspection evidence, not cockpit entry points.
+- Protected boundary: the adapter is harness-only and reads the same lower-level authoritative game
+  state independently. It must not call or alter `llm_intent` request creation, prompts, NPC
+  snapshots, request target maps, action parsing, runner timing, or NPC execution. If later work
+  extracts a shared primitive, neutral code must own it and direct regression proof must show
+  unchanged LLM-intent observable output and behavior.
+- Entry point: `game.observe` after run preparation and after every meaningful action or
+  interruption; `game.look(target_or_area?)` on demand.
+- Inputs: the current avatar, loaded map, avatar-perceivable entities and tiles, current activity,
+  native input/modal context, last accepted observation, and run handle table.
+- Transition: refresh native visibility; build a compact local map centred on the avatar; emit
+  avatar position/z, activity, visible creatures/NPCs/items/interactables/terrain/furniture/fields/
+  hazards, relevant light/weather/time, active modal/interruption, available semantic actions, and
+  material changes. `look` returns focused detail only for a currently perceivable target or area.
+- Perception boundary: offscreen world, debug-clairvoyance/ecology projections, logs, OCR, and
+  registry declarations cannot populate visible fields. A missing or non-visible entity has no
+  inferred location, cause, or movement story.
+- Handles: one run-owned table assigns opaque handles to observed creatures, NPCs, items, and
+  interactable locations. An NPC or ecology actor may rebind only through its exact durable identity
+  and binding. A process-local creature/item/location handle that cannot prove the same identity
+  after disappearance or relaunch becomes stale. Map markers may change without changing a proved
+  handle.
+- Postconditions: unchanged observations may return a compact unchanged result; meaningful actions
+  and interruptions always return a fresh observation identity. Long activities emit boundary
+  changes and interruptions, not every turn.
+- Failure behavior: a stale handle, non-visible target, unknown modal, unavailable observation
+  owner, or binding mismatch rejects the request and returns a fresh safe observation when the game
+  remains usable. A stale handle is never retargeted.
+- Persistence/compatibility: handles are run-scoped evidence metadata, not save state or gameplay
+  identity. The adapter performs no work when the harness gate is absent.
+
+Implementation status:
+
+- [x] The game already owns every required state fact, and the LLM-intent snapshot proves that
+  visibility and a compact local map can be derived from game-native reads. The wait prototype has
+  fresh frame identities.
+- [ ] 🔴 R-012 — The cockpit has no avatar-centred, game-native observation or stable handle owner.
+  - Code gap: `llm_intent.cpp` is NPC-centred and protected; current semantic frames contain only
+    state/action IDs; screen/OCR, saved audits, and debug ecology views are competing partial readers
+    and cannot supply live avatar perception.
+  - Required mechanism: implement the harness-only adapter and handle rules above while leaving
+    LLM-intent observable behavior unchanged.
+  - Proof: in one live run, observation reports visible local facts and omits an offscreen zombie
+    dog; look succeeds for a visible handle; movement preserves the same proved entity handle while
+    its marker changes; disappearance makes an unprovable handle stale; a stale action is rejected
+    with a fresh observation. OCR/log/debug/global contradictions cannot change the frame.
+    `tests/llm_intent_test.cpp` and direct NPC request/action regression checks produce unchanged
+    observable output and behavior.
+
+### 12. Player-intent transactions and native recovery
+
+Mechanism:
+
+- Files and symbols: `game::get_player_input`, `game::handle_action`,
+  `game::do_regular_action`, `input_context`, native popup/menu/activity owners, and the
+  harness-gated observation adapter; merge the useful identity/receipt rules from
+  `SemanticStepChannel` into cockpit `game.act`.
+- Entry point: `game.act(intent,target?,parameters?,recovery_policy?)` from a fresh observation.
+- Inputs: current observation identity, advertised semantic action, optional current stable handle,
+  parameters, recovery policy, current input/modal identity, and expected native postcondition.
+- Preconditions: the observation belongs to the current run/session; the action is advertised; any
+  handle is current and visible when the action requires visibility; the recovery policy authorizes
+  only named safe responses.
+- Transition: recheck the precondition; translate semantic intent privately; dispatch through the
+  existing native input and `game::handle_action` route; consume the exact native accepted/rejected
+  receipt; handle only expected safe interruptions; confirm the postcondition; return a fresh
+  observation.
+- Strategy boundary: the worker chooses look, move, wait, interact, talk, target, attack, use-item,
+  and activity strategy. The harness owns native UI mechanics, physical input, receipts, and safe
+  recovery. The adapter does not call gameplay mutators directly to manufacture a proof-bearing
+  outcome.
+- Success result: state changes, interruption/responses, proof-bearing events and their evidence
+  effect, constituent recovery receipts, and the fresh observation.
+- Failure result: first unrecovered divergence, expected and observed state, recovery attempted,
+  whether the game remains usable, and valid next calls. Feature failure remains visible.
+- Recovery: expected harmless interruptions may be resolved only from the current native modal
+  identity and advertised actions. Material gameplay choice, unauthorized response, unconfirmed
+  recovery, unknown modal, or feature failure returns control without additional input.
+- Persistence/compatibility: one append-only transaction receipt binds run, session, issuing
+  observation, action, target identity, native receipt, recovery, postcondition, evidence effect,
+  and next observation. Duplicate submission is rejected or returns the existing receipt without
+  redispatch.
+
+Implementation status:
+
+- [x] The wait-specific semantic channel rejects stale actions and requires a native receipt plus
+  fresh next frame. Several modal owners expose native identities and advertised actions.
+- [ ] 🔴 R-013 — The proof-bearing player surface is not a general native transaction and still
+  depends on special-case logs, OCR, fixed keys, and polling for most actions and recovery.
+  - Code gap: `handle_action.cpp` emits semantic frames only for wait; popup, activity, and EOC
+    traces use separate log grammars; `startup_harness.py` contains extensive screen/log
+    classifiers and scenario-specific key paths.
+  - Required mechanism: generalize the run-bound native action/modal contract behind `game.act`,
+    keep UI mechanics private, and make every accepted or failed transaction return the receipt and
+    fresh observation defined above.
+  - Proof: one live route performs a player action, handles an ordinary authorized interruption,
+    and returns a fresh changed observation. Stale observation, stale handle, unadvertised action,
+    unknown modal, unauthorized recovery, missing receipt, missing postcondition, and duplicate
+    submission each fail without silent input or retargeting. Raw log, OCR, offset, and key changes
+    cannot alter the result.
+
+### 13. Run truth, evidence effects, capability catalog, and reusable gaps
+
+Mechanism:
+
+- Files and symbols: existing report finalization and structured gate evaluation in
+  `startup_harness.py`; WEC authority, report ingestion, evidence class, binding, diagnostic
+  capsule, certification, and final-gate owners in `scenario_registry_store.py`; cockpit
+  `run.status`, `run.finish`, `capability.search/describe`, and `gap.report`.
+- Catalog: extend the existing SQLite schema with current capability contract records and
+  append-only revisions. Each capability names structured inputs/results, preconditions,
+  postconditions, recovery, examples, proof effects, supported scenarios/platforms, and current
+  validation evidence. Manifest capability values remain scenario compatibility facts and do not
+  become the catalog owner.
+- Run state: status returns selected scenario/binding, latest observation/transaction, material
+  changes, proof frontier, first divergence, game usability, and valid next calls. Finish finalizes
+  the existing bound report and lets registry ingestion derive evidence eligibility.
+- Evidence firewall: each cockpit result reports `none`, setup-only, diagnostic, focused, or the
+  existing bound certification effect. A caller cannot promote the effect. Interventions and
+  scenario validation always earn zero gameplay behavior credit.
+- Gap record: append one durable record containing blocked intent, missing observation/action/setup/
+  recovery/structured failure, direct evidence, reusable outcome, affected scenarios, observed
+  cost, run/binding, and disposition. Repeated equivalent reports link to the existing gap instead
+  of creating scenario-specific warning text.
+- Efficiency: status and observation return deltas after the first full result; unchanged polling
+  is suppressed; long actions report event boundaries; focused describe/look calls reveal detail on
+  demand. Record token cost, repeated calls, waiting, polling, and manual recovery only when
+  observable; otherwise record `unavailable`. Efficiency cannot remove required truth.
+- Persistence/compatibility: use append-only SQLite history for catalog revisions, cockpit run
+  receipts, interventions, and gaps. Final report artifacts remain immutable source evidence.
+  Capability gaps are ordinary product backlog facts and carry no mutation trigger or dispatch
+  policy.
+
+Implementation status:
+
+- [x] Existing proof and registry owners already keep evidence authority separate from mutable
+  reports and preserve binding/history. Current scenario capabilities are queryable compatibility
+  facts.
+- [ ] 🔴 R-014 — Cockpit run results, reusable capability knowledge, and gap evidence have no
+  unified durable owner or end-to-end prototype proof.
+  - Code gap: no capability contract catalog or reusable gap store exists; report/status paths expose
+    artifact-heavy detail; setup/action calls cannot state a registry-derived evidence effect; and
+    repeated recovery reasoning remains in scripts and scenario-specific instructions.
+  - Required mechanism: extend the existing SQLite owner and cockpit façade with the catalog,
+    status/finish, gap, evidence-effect, delta, and observed-cost rules above.
+  - Proof: the prototype searches SQLite, describes only relevant capabilities, selects and prepares
+    a scenario, observes the avatar, performs one action, recovers one ordinary interruption, and
+    returns a fresh observation. An absent incidental dog stays simply not visible; a required dog
+    uses deterministic setup; one intentionally unsupported action creates one reusable gap that a
+    later query retrieves for another affected scenario; a long activity emits boundaries rather
+    than per-turn frames; final registry queries preserve setup, focused, certification, and Windows
+    evidence separation.
+
 ## Competing systems and override direction
 
 | State or action | Readers | Writers / competing owners | Authoritative decision |
@@ -303,12 +699,41 @@ Implementation status:
 | Certification sequence | Structured reader, gate evaluator, final report | Gameplay process, relaunch process, checkpoint/diagnostic tooling | One round lease and append-only sequence win. Relaunch may continue the round; rollback, replacement, replay, and splicing cannot write certification gates. |
 | Diagnostic capsule choice | Failure report and agent | Registry candidates, user or agent starting probes | Compatibility and deterministic rank constrain recommendations; selection does not grant authority and replay credit is always zero. |
 | Process/world ownership | Startup/cleanup and game process | Other probes, manual play, certification | An exclusive round lease wins for its exact PID/executable/world; unrelated processes are not killed. Conflict fails closed. |
+| Cockpit call/result | Worker and cockpit clients | Separate registry CLI, startup CLI, semantic helpers, subprocess output | `CockpitService` is the single public façade and owns only request validation/result composition. Existing component functions retain state authority. Internal tokens, offsets, keys, OCR, logs, and subprocess output never become public success facts. |
+| Scenario source and searchable facts | Cockpit scenario calls, canonical launcher, reports | Scenario JSON files, registry rebuild/reconcile, caller prose | Canonical validated scenario bytes remain source declarations. SQLite is the searchable current projection and history owner. Selection revalidates both. Caller prose cannot add facts. |
+| Scenario selection | Worker strategy and selected brief | Pure query evaluator, token issuer, canonical launcher | The worker owns fit judgment and records its reason. SQLite hard requirements and evidence/binding facts constrain eligibility. Internal selection authority is single-use and revalidated; it never replaces worker strategy. |
+| Setup state and interventions | Scenario brief, observation adapter, report classifier | Fixture install/transforms, native debug setup, incidental world state, scenario macros | Loaded-save state or a confirmed explicit intervention wins. Required preconditions never come from incidental entities. Every intervention and macro constituent is recorded and receives no manufactured-state or behavior credit. |
+| Avatar-visible world | Cockpit observation/look and player UI | `map`, avatar/Creature visibility, creature tracker, fields/items/light/weather/time; LLM NPC snapshot; debug ecology view; OCR/screens/logs | Native game state and avatar perception alone supply cockpit visible facts. The cockpit adapter is a read-only projection. LLM-intent remains a separate protected consumer. Debug/offscreen projections and visual/log reconstruction cannot write cockpit perception. |
+| LLM-intent request and NPC behavior | NPC LLM manager, NPC state, tests | Cockpit adapter or shared-helper refactor | Keep `llm_intent` as sole owner. Cockpit code must yield completely. A neutral shared primitive is admissible only after direct unchanged-output and unchanged-behavior proof; otherwise use the harness-only adapter. |
+| Run-scoped entity/location handles | Cockpit observation and action validation | Request letter maps, screen markers, coordinates, names, object pointers after reload | The cockpit handle table alone owns opaque worker handles. Durable identity may rebind under the exact binding; unproved process-local identity becomes stale. Markers/names/coordinates never retarget a stale handle. |
+| Player action dispatch | Cockpit transaction and game result | Worker strategy, scenario key scripts, direct state transforms, `input_context`, `game::handle_action` | The worker selects intent. Existing native input/action code alone performs proof-bearing gameplay. Cockpit translation is private and must yield to current modal/input authority. Direct state transforms are setup interventions only. |
+| Modal and recovery state | Cockpit observation/action and player UI | Popup, uilist, activity-distraction, EOC, OCR/log classifiers, fixed-key handlers | The currently active native modal/input owner advertises identity/actions and decides acceptance. Recovery may use only the selected safe policy. Existing separate trace readers merge into this contract, then retire as decision owners. |
+| Capability contract | Capability search/describe, scenario compatibility, gap triage | Manifest capability values, manuals, scenario prose, repeated worker reasoning | SQLite catalog revisions own reusable contracts/examples/recovery/proof effects. Manifest values remain per-scenario compatibility facts. Manuals and prose cannot silently create capability truth. |
+| Capability gap | Gap queries and later improvement work | Ad hoc warnings, mutation suggestions, repeated scenario instructions | Append-only SQLite gap history owns reusable missing-interface evidence. Equivalent gaps link. Gap creation carries no code mutation, scheduling, or proof authority. |
+| Cockpit evidence effect | Worker, run status/finish, final-gate query | Setup helpers, screenshot/OCR classifiers, report labels, caller assertions | Existing report/registry evidence authority wins. Cockpit calls report the derived effect but cannot promote it. Setup and validation stay zero-credit; certification and Windows gates keep their existing owners. |
 
 The ownership transfer is a compare-and-swap on activity ID, generation, owner, handoff epoch, and
 last-advance cursor plus a complete actor set. The destination cannot advance before acknowledgement
 and durable persistence. The losing owner yields without editing the winner. Duplicate identical
 receipts are no-ops; stale or conflicting receipts are explicit failures. Aggregate population or
 resource state never substitutes for a named actor receipt.
+
+### Keep, merge, and retire decisions
+
+| Existing mechanism | Decision | Code-grounded reason and boundary |
+|---|---|---|
+| `scenario_registry.py`, `scenario_registry_store.py`, and canonical registry launch | **Keep** | They already own typed declarations, SQLite projection, binding/evidence/lifecycle history, fail-closed queries, single-use launch authority, and final-gate eligibility. Extend their schema and expose summaries through the cockpit; do not create another scenario database. |
+| Fixture capture/install, validated save binding, and native debug setup helpers | **Keep and wrap** | They are the smallest existing setup mechanisms. Wrap them in deterministic target resolution and intervention receipts. They remain setup-only and may not prove manufactured behavior. |
+| `SemanticStepChannel` frame/session/stale-action/native-receipt/fresh-frame rules | **Keep and merge** | The prototype has the correct transaction invariants. Move those invariants behind `game.act`; do not preserve debug-log parsing, PIDs, offsets, or physical bindings as worker concerns. |
+| Native `input_context`, `game::handle_action`, popup/menu/activity owners | **Keep** | They remain the only proof-bearing player dispatch and modal acceptance owners. The cockpit must dispatch through them and observe their receipts, not call gameplay mutators directly. |
+| `src/llm_intent.cpp` NPC snapshot, target map, request/response, parser, timing, and behavior | **Keep unchanged** | It is a protected regression boundary and a perception pattern only. The cockpit reads neutral lower-level game state through a harness-only adapter. It does not call, intercept, or replace LLM-intent. |
+| A neutral lower-level observation primitive extracted from existing game-state reads | **Conditional merge only** | Extraction is allowed only when neutral code owns the primitive and direct regression proof shows unchanged LLM-intent snapshot output, target behavior, action behavior, and timing. The smallest current design does not require extraction. |
+| `startup_harness.py` structured gate evaluation, report finalization, and registry WEC authority | **Keep** | These are the existing proof firewall. Cockpit results expose their derived evidence effect and cannot introduce a competing classifier. |
+| OCR, screen text, raw debug logs, registry tokens, frame offsets, PIDs, and key bindings as public gameplay state or success inputs | **Retire from the worker interface** | Current code uses them for legacy mechanics and diagnostics. They may remain internal diagnostics until replaced, but they cannot decide cockpit observation/action success or be parsed by the worker. |
+| Separate debug-log grammars and special-case recovery classifiers as modal decision owners | **Merge, then retire** | Popup, EOC, activity, and wait paths currently duplicate current-state inference. The native active modal/input owner must publish one identity/action/postcondition contract. Legacy classifiers may remain diagnostic-only. |
+| Planned `src/openclaw_harness.*` perception/manager and `src/openclaw_ui_adapter.*` universal controller in `doc/OPENCLAW_HARNESS.md` | **Retire as an ownership plan** | A second perception/scenario/action owner would compete with the registry, native game state, input owners, and proof classifier. Implement only the narrow harness-gated observation adapter and stateless Python façade named in this DFS. |
+| `ecology_debug_view` and observer/incident surfaces | **Keep separate** | They expose offscreen debug truth for diagnosis. They must never populate avatar perception or silently satisfy a cockpit gameplay claim. |
+| Scenario-specific macros and repeated manual instructions | **Retire as gameplay controllers** | Macros remain allowed only for setup/recovery with constituent receipts. Repeated missing capability becomes a durable gap and reusable catalog work. |
 
 ## Acceptance and proof
 
@@ -326,25 +751,49 @@ preconditions -> authoritative owner -> transition -> observable outcome -> arti
 | `R-004` | Cross abstract/local both ways, save/relaunch at each owner boundary, and exercise retry/crash/duplicate paths. | Persisted actor/owner state and correlated compact crossing receipts. | Aggregate populations, helper-only events, partial pairs, duplicate owners, stale epochs, callback-only success, and unpersisted acknowledgement must fail. |
 | `R-005` | Execute the complete hostile-ecology lifecycle once through the natural production route. | One sealed certification report with uninterrupted round/gate/event sequence and saved identity receipts. | Segment union, capsule replay, rollback, fixture/scenario edit, replacement world/player/actor, focused tests, or synthetic state setting must fail. |
 | `R-006` | Hand a certified Windows build to ordinary play and record Josef's judgment. | Separate certified reference and Josef-owned Windows feel record. | Automated pass cannot supply feel; exploratory play cannot supply final feel; feel pass cannot repair automation. |
+| `R-007` | Vary or remove every incidental visual/OCR input while replaying semantic completion and interruption traces. | Bound semantic events, broker decisions, postconditions, handler-registry entries, inverse replays, and zero-artifact ordinary-play evidence. | OCR, screen phrases, guessed keys, stale UI identity, unrelated transient facts, escaped paths, unbounded output, or progress-free recovery cannot affect a machine verdict. |
+| `R-008` | Qualify natural bandit and cannibal lifecycles and save/relaunch at each authoritative-owner boundary. | Independently classed focused reports with actor/owner continuity, crossing receipts, and saved-state normalization. | Synthetic ecology edits, behavior-changing stabilizers, aggregate populations, replacement identities, rollback, resume, or segment union receive no lifecycle or certification credit. |
+| `R-009` | Observe integrated waits and run source-bound semantic-harness witnesses on macOS, Linux/WSL, and Windows. | Game-time/transition/resource samples plus per-platform build/runtime bindings and direct route results. | Wall time alone, invented zero metrics, repeated-event floods, incidental HUD/OCR text, or one platform standing in for another cannot pass. |
+| `R-010` | Use one compact frontier to search and describe only the needed capability/scenario through one cockpit. | Public call/result transcripts and schema tests. | Public token, PID, offset, key, OCR, log, subprocess text, full manual, raw history, or unsupported caller field fails or is absent. |
+| `R-011` | Search/select an existing scenario, create/validate a no-fit scenario, and deterministically prepare its required dog. | SQLite scenario/selection/validation history, exact source/binding, and intervention receipts marked zero-credit. | Incidental dog waiting, occupied/stale placement, unrecorded macro, scenario validation as gameplay proof, or manufactured behavior credit fails. |
+| `R-012` | Observe and look from the avatar while moving one visible entity, hiding another, invalidating a stale handle, and relaunching. | Native observation frames, visibility facts, handle lifecycle, deltas, and LLM-intent regression artifacts. | Offscreen/debug truth, OCR/log/registry facts, name/marker/coordinate retargeting, or changed LLM prompt/snapshot/target/action/timing behavior fails. |
+| `R-013` | Execute one player intent through native dispatch, handle one authorized interruption, and receive a confirmed postcondition plus fresh observation. | Issuing observation, action/target, native receipt, recovery receipts, postcondition, evidence effect, and next observation. | Direct state mutation, guessed key, stale frame/handle, unknown modal, unauthorized recovery, missing receipt/postcondition, replay, or silent feature failure fails. |
+| `R-014` | Complete the prototype cockpit route, report an unsupported action once, retrieve its reusable gap for another scenario, and finish the run. | SQLite catalog/gap/run history, compact deltas, observed-cost facts, final immutable report, and registry eligibility result. | Duplicated scenario warning, gap-triggered mutation, invented cost, per-turn stream, setup promotion, focused-to-certification promotion, or lost hostile-ecology proof fails. |
 
 ## Freeze record
 
 - Status: `Frozen`
 - Frozen source baseline: remote `dev` at
-  `3f8d5e0a1b6b21ed7e23f43d27a9e40aafa1fe88`, tracking `origin/dev`, with the
+  `54a60872e2b8dcabb00288e8fcfe6b976b82fd99`, tracking `origin/dev`, with the
   intentionally broad dirty frontier and inspected-source fingerprint
-  `e26e145206657d5cb43a3482617be8a09400d37a8bb062f96b74b5cc59016217`.
+  `98e30ed1400ad496ce21a4b140fea69b8cbe76a08977176ff9eb641846043402`.
 - User-owned choices: preserve useful focused proof; diagnostic capsules are recommendations and
   replays earn zero certification credit; final automation is one continuous bound round; normal
   save/quit/relaunch is permitted within that round; binding changes, rollback, splicing, and
   replacement identities invalidate final credit; durable identity and exactly one owner cross
-  overmap/local/persistence boundaries; automated certification and Windows feel are independent.
+  overmap/local/persistence boundaries; automated certification and Windows feel are independent;
+  one compact cockpit owns the worker interface; required entities use deterministic recorded setup;
+  avatar observation exposes only perceivable state; worker strategy remains separate from harness
+  UI/input/recovery; reusable capability gaps are ordinary improvement facts; and existing
+  LLM-intent observable behavior is a protected regression boundary.
 - Evidence-implied refinements: the inspected code supports durable outing state as authority and
   local NPCs as temporary cursor/epoch-bound projections; retain its candidate/rollback transaction,
   require persistence-confirmed symmetric receipts, and reconcile or reject projection conflicts at
   load. Aggregate population evidence remains ineligible for named actor claims.
+- Owner-authorized same-outcome expansion: R-007 through R-009 restore only the unfinished
+  improved-harness qualification tail. They replace incidental/OCR proof with semantic observation,
+  qualify natural bandit and cannibal lifecycles plus persistence boundaries, add integrated
+  wait/resource observation and macOS/Linux-or-WSL/Windows technical witnesses, and award no
+  continuous-certification or Windows-feel credit. R-005 and R-006 remain the two final gates.
+- Owner-authorized cockpit reconciliation: R-010 through R-014 add the progressive cockpit,
+  SQLite-backed scenario lifecycle, deterministic intervention receipts, avatar-centred native
+  observation and stable handles, proof-bearing player transactions, capability catalog, compact
+  run results, and durable reusable gaps. These requirements reuse existing registry, native game,
+  input/modal, and proof owners. They retire competing public log/OCR/offset/key reconstruction and
+  the planned universal parallel harness perception/controller. They do not alter or couple to the
+  protected LLM-intent path. Existing hostile-ecology R-005, R-006, R-008, and R-009 remain binding.
 
-After freeze, automation may only close existing red items after named proof and remove their red
+After this refreeze, automation may only close existing red items after named proof and remove their red
 markers; make an evidence-implied nonmaterial clarification; or append a uniquely implied
 same-contract mechanism, ownership/proof detail, and necessary new stable red claim after a verified
 phase-3 worker finding. Existing claim identities, text, status, accepted work, and acceptance
