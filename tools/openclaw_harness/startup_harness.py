@@ -4920,11 +4920,6 @@ def stabilize_native_travel_after_route_confirmation(
     travel_activity_complete = False
     native_travel_boundary: Dict[str, Any] = {}
     while True:
-        if native_travel_boundary_reader is not None:
-            native_travel_boundary = native_travel_boundary_reader()
-            if native_travel_boundary.get("status") == "green":
-                travel_activity_complete = True
-                break
         status = str(classification.get("status", ""))
         classification_name = str(classification.get("classification", ""))
         modal_present = is_hostile_auto_move_cancel_modal(after_text)
@@ -4936,6 +4931,17 @@ def stabilize_native_travel_after_route_confirmation(
             is_nonblocking_wilderness_flavor_on_hud( classification, after_text )
         noninteractive_wilderness_flavor_on_idle_hud = \
             is_noninteractive_wilderness_flavor_on_idle_hud( classification, after_text )
+        # A partial or otherwise unknown prompt is the first divergence.  Do
+        # not poll a still-active semantic travel trace past it: that changes
+        # neither the prompt nor the absence of authority to answer it.
+        if status not in {"clear", "known_prompt"} and \
+                not nonblocking_wilderness_flavor_on_hud:
+            break
+        if native_travel_boundary_reader is not None:
+            native_travel_boundary = native_travel_boundary_reader()
+            if native_travel_boundary.get("status") == "green":
+                travel_activity_complete = True
+                break
         if status == "known_prompt" and \
                 classification_name == "authorized_hostile_auto_move_cancel":
             if time.monotonic() >= deadline:
@@ -5020,18 +5026,18 @@ def stabilize_native_travel_after_route_confirmation(
     }
     if native_travel_boundary_reader is not None:
         result["native_travel_boundary"] = native_travel_boundary
-    if native_travel_boundary_reader is not None and native_travel_boundary.get("status") != "green":
-        result.update({
-            "status": "blocked_native_travel_completion_boundary",
-            "verdict": "blocked_native_travel_completion_boundary",
-            "reason": str(native_travel_boundary.get("reason", "native travel completion was not proven")),
-        })
-    elif str(classification.get("status", "")) != "clear" and not modal_present and \
+    if str(classification.get("status", "")) != "clear" and not modal_present and \
             not nonblocking_wilderness_flavor_on_hud:
         result.update({
             "status": "blocked_native_travel_unknown_prompt",
             "verdict": "blocked_native_travel_unknown_prompt",
             "reason": "route travel reached a prompt outside the exact authorized hostile auto-move modal",
+        })
+    elif native_travel_boundary_reader is not None and native_travel_boundary.get("status") != "green":
+        result.update({
+            "status": "blocked_native_travel_completion_boundary",
+            "verdict": "blocked_native_travel_completion_boundary",
+            "reason": str(native_travel_boundary.get("reason", "native travel completion was not proven")),
         })
     elif modal_present:
         result.update({
@@ -5416,6 +5422,20 @@ def classify_blocking_interruption(
             "classification": "authorized_hostile_auto_move_cancel",
             "response_key": "Y",
             "matched_markers": ["cancel auto move", "case sensitive"],
+        }
+
+    # The retained R-005 route frame has enough text to identify a native
+    # hostile auto-move cancellation prompt, but not its case-sensitive choice
+    # or actor identity.  It is not safe to infer either from degraded OCR.
+    # Keep the route at the first prompt boundary instead of later reporting
+    # semantic travel progress without a terminal receipt.
+    if "spotted" in normalized_ocr_body and "cancel auto move" in normalized_ocr_body:
+        return {
+            **base,
+            "status": "unknown_prompt",
+            "classification": "partial_hostile_auto_move_cancel_prompt",
+            "release_blocking": True,
+            "matched_markers": ["spotted", "cancel auto move"],
         }
 
     semantic_safe_mode_markers = [
@@ -26524,8 +26544,7 @@ def execute_probe_steps(
                             trace_start_offset=semantic_step_trace_start_offset,
                             expected_destination=expected_destination,
                         )
-                        if require_completed_destination_cleared else None
-                    ),
+                    ) if require_completed_destination_cleared else None,
                 )
             except ValueError as exc:
                 raise SystemExit(f"Scenario step '{label}' {exc}") from exc

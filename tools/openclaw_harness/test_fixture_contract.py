@@ -770,23 +770,64 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertEqual(report["abort"]["verdict"], "blocked_native_travel_unknown_prompt")
         self.assertEqual([entry.args[1] for entry in type_text.call_args_list], ["Y", "N"])
 
+    def test_native_travel_stabilization_stops_at_degraded_hostile_cancel_prompt(self) -> None:
+        degraded_prompt = "spotted cancel auto move? IGase\nCYles"
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    return_value={"ok": True, "text": degraded_prompt},
+                ), \
+                mock.patch("startup_harness.peekaboo_type_text") as type_text, \
+                mock.patch("startup_harness.time.sleep"):
+            report = execute_probe_steps(
+                42,
+                Path(temp_dir),
+                [{
+                    "kind": "type",
+                    "label": "accept_degraded_hostile_cancel_route",
+                    "text": "Y",
+                    "delay_ms": 200,
+                    "settle_seconds": 1.0,
+                    "native_travel_stabilization": {
+                        "mode": "continue_exact_hostile_auto_move_until_hud",
+                    },
+                }],
+                profile="dev-harness",
+                world="McWilliams",
+            )[0]
+
+        stabilization = report["native_travel_stabilization"]
+        self.assertEqual(report["abort"]["verdict"], "blocked_native_travel_unknown_prompt")
+        self.assertEqual(
+            stabilization["after_classification"]["classification"],
+            "partial_hostile_auto_move_cancel_prompt",
+        )
+        self.assertEqual(stabilization["response_keys"], [])
+        self.assertEqual([entry.args[1] for entry in type_text.call_args_list], ["Y"])
+
     def test_r005_route_uses_repeated_hostile_auto_move_stabilization(self) -> None:
         scenario_path = HARNESS_DIR / "scenarios" / \
             "bandit.r005_continuous_hostile_ecology_certification.json"
         scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
-        accept = next(
-            step for step in scenario["steps"]
-            if step.get("label") == "accept_departure_route"
-        )
-        self.assertEqual(accept.get("text"), "Y")
-        self.assertEqual(
-            accept.get("native_travel_stabilization"),
-            {
-                "mode": "continue_exact_hostile_auto_move_until_hud",
-                "require_completed_destination_cleared": True,
-                "expected_destination_omt": [140, 31, 0],
-            },
-        )
+        for label, destination in (
+                ("accept_departure_route", [139, 40, 0]),
+                ("accept_west_flank_northbound_route", [139, 31, 0]),
+                ("accept_west_flank_destination_route", [140, 31, 0]),
+        ):
+            accept = next(
+                step for step in scenario["steps"]
+                if step.get("label") == label
+            )
+            self.assertEqual(accept.get("text"), "Y")
+            self.assertEqual(
+                accept.get("native_travel_stabilization"),
+                {
+                    "mode": "continue_exact_hostile_auto_move_until_hud",
+                    "require_completed_destination_cleared": True,
+                    "expected_destination_omt": destination,
+                },
+            )
         self.assertFalse(any(
             step.get("label") == "continue_harmless_auto_move"
             for step in scenario["steps"]

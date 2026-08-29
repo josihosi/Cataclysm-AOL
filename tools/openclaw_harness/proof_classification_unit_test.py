@@ -1356,6 +1356,16 @@ class BlockingInterruptionTest(unittest.TestCase):
         self.assertEqual(degraded_ocr["status"], "unknown_prompt")
         self.assertEqual(degraded_ocr["response_key"], "")
         self.assertTrue(degraded_ocr["release_blocking"])
+        degraded_auto_move_cancel = self.classify(
+            "spotted cancel auto move? IGase\nCYles"
+        )
+        self.assertEqual(degraded_auto_move_cancel["status"], "unknown_prompt")
+        self.assertEqual(
+            degraded_auto_move_cancel["classification"],
+            "partial_hostile_auto_move_cancel_prompt",
+        )
+        self.assertEqual(degraded_auto_move_cancel["response_key"], "")
+        self.assertTrue(degraded_auto_move_cancel["release_blocking"])
         garbled_ignore = self.classify(
             "Safe:\nTired\nYou hear a noise\n"
             "monster) x 20\nturn it orf, presde ito ignore"
