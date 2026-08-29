@@ -1767,10 +1767,14 @@ routine_dispatch_evaluation evaluate_hostile_camp_routine_dispatch(
     const site_record &site, int now_minutes, int best_cheap_target );
 std::string make_structural_bounty_lead_id( const std::string &site_id,
         const tripoint_abs_omt &omt, const std::string &terrain_class );
+std::string make_terrain_opportunity_lead_id( const std::string &site_id,
+        const tripoint_abs_omt &omt, const std::string &terrain_fit_class );
 bool structural_bounty_memory_suppresses_refresh( const camp_intelligence_map &intelligence_map,
         const tripoint_abs_omt &omt, const std::string &terrain_class );
 bool upsert_structural_bounty_lead( site_record &site, const tripoint_abs_omt &omt,
                                    const structural_bounty_read &read, int now_minutes );
+bool upsert_terrain_opportunity_lead( site_record &site, const tripoint_abs_omt &omt,
+                                      const structural_bounty_read &read, int now_minutes );
 bool record_camp_resource_estimate( site_record &site, const std::string &lead_id,
                                     int estimated_units, int confidence, int observed_minutes );
 structural_bounty_scan_result advance_structural_bounty_scan( world_state &state,
