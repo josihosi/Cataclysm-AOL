@@ -68,6 +68,49 @@ def _local_map(observation: Mapping[str, Any]) -> Dict[str, Any]:
     }
 
 
+def _overmap_cell(cell: Mapping[str, Any], radius: int | None) -> Dict[str, Any] | None:
+    dx, dy = _int(cell.get("dx")), _int(cell.get("dy"))
+    if dx is None or dy is None:
+        return None
+    if radius is not None and (abs(dx) > radius or abs(dy) > radius):
+        return None
+    state = str(cell.get("state", "unknown"))
+    if state not in {"clear", "unknown", "stale", "unavailable"}:
+        state = "unavailable"
+    terrain = str(cell.get("terrain", "unknown")) if state == "clear" else "unknown"
+    provenance = str(cell.get("provenance", "none"))
+    recency = cell.get("recency") if isinstance(cell.get("recency"), Mapping) else {"state": "unavailable"}
+    return {
+        "id": f"overmap.cell.{dx}.{dy}", "dx": dx, "dy": dy, "state": state,
+        "vision": str(cell.get("vision", "unknown")), "terrain": terrain,
+        "provenance": provenance, "recency": dict(recency),
+    }
+
+
+def _overmap(observation: Mapping[str, Any]) -> Dict[str, Any]:
+    source = observation.get("overmap")
+    if not isinstance(source, Mapping):
+        return {"id": "field.overmap", "state": "unavailable", "provenance": "none",
+                "recency": {"state": "unavailable"}, "cells": []}
+    radius = _int(source.get("radius"))
+    cells = []
+    for raw in source.get("cells", []):
+        if isinstance(raw, Mapping):
+            normalized = _overmap_cell(raw, radius)
+            if normalized is not None:
+                cells.append(normalized)
+    return {
+        "id": "field.overmap", "state": str(source.get("state", "available")),
+        "coordinate_system": str(source.get("coordinate_system", "avatar_relative_omt")),
+        "bound": {"radius": radius, "source": str(source.get("bound_source", "native_overmap.radius"))},
+        "center_absolute_omt": list(source.get("center_absolute_omt", [])),
+        "provenance": str(source.get("provenance", "native_avatar_overmap")),
+        "recency": dict(source.get("recency", {"state": "current_frame"})) if isinstance(
+            source.get("recency", {"state": "current_frame"}), Mapping) else {"state": "unavailable"},
+        "cells": sorted(cells, key=lambda cell: (cell["dy"], cell["dx"])),
+    }
+
+
 def _commands(observation: Mapping[str, Any]) -> list[Dict[str, Any]]:
     advertised = sorted({str(action) for action in observation.get("advertised_actions", [])
                          if isinstance(action, str) and action})
@@ -104,10 +147,7 @@ def render_state(observation: Mapping[str, Any], status: Mapping[str, Any], last
             {"id": "field.target", "value": observation.get("expected_postcondition", "")},
         ],
         "local_map": _local_map(observation),
-        # No overmap is currently supplied by the authoritative public frame.
-        # An explicit unavailable field is more honest than reconstructing one.
-        "overmap": {"id": "field.overmap", "state": "unavailable", "provenance": "none",
-                    "recency": "unavailable", "cells": []},
+        "overmap": _overmap(observation),
         "commands": _commands(observation),
         "last_result": dict(last_result or {}),
     }

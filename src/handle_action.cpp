@@ -81,6 +81,7 @@
 #include "npc.h"
 #include "options.h"
 #include "output.h"
+#include "overmapbuffer.h"
 #include "overmap_ui.h"
 #include "panels.h"
 #include "pathfinding.h"
@@ -404,6 +405,60 @@ static std::string openclaw_harness_visible_local_facts( const map &here,
     return facts.str();
 }
 
+static const char *openclaw_harness_overmap_vision_name( const om_vision_level vision )
+{
+    switch( vision ) {
+        case om_vision_level::unseen:
+            return "unknown";
+        case om_vision_level::vague:
+            return "vague";
+        case om_vision_level::outlines:
+            return "outlines";
+        case om_vision_level::details:
+            return "details";
+        case om_vision_level::full:
+            return "full";
+        case om_vision_level::last:
+            break;
+    }
+    return "unknown";
+}
+
+static std::string openclaw_harness_overmap_facts( const avatar &player, const int radius,
+        const int observed_turn )
+{
+    const tripoint_abs_omt center = player.pos_abs_omt();
+    std::ostringstream facts;
+    facts << '[';
+    bool first = true;
+    for( int y = -radius; y <= radius; ++y ) {
+        for( int x = -radius; x <= radius; ++x ) {
+            const tripoint_abs_omt position = center + point( x, y );
+            const om_vision_level vision = overmap_buffer.seen( position );
+            if( !first ) {
+                facts << ',';
+            }
+            first = false;
+            facts << "{\"dx\":" << x << ",\"dy\":" << y
+                  << ",\"state\":\"" << ( vision == om_vision_level::unseen ? "unknown" : "clear" )
+                  << "\",\"vision\":" << openclaw_harness_quote_action_value(
+                      openclaw_harness_overmap_vision_name( vision ) )
+                  << ",\"provenance\":\"avatar_discovered_overmap\""
+                  << ",\"recency\":{\"state\":\"current_frame\",\"observed_turn\":"
+                  << observed_turn << '}';
+            // The persisted overmap stores discovery level, not a last-seen
+            // timestamp.  Never manufacture terrain for an unseen cell.
+            if( vision != om_vision_level::unseen ) {
+                facts << ",\"terrain\":" << openclaw_harness_quote_action_value(
+                          overmap_buffer.ter_existing( position )->get_name( vision ) );
+            }
+            facts << '}';
+        }
+    }
+    facts << ']';
+    return facts.str();
+}
+
 static std::string openclaw_harness_attitude( const avatar &viewer, const Creature &creature )
 {
     switch( viewer.attitude_to( creature ) ) {
@@ -552,6 +607,17 @@ static std::string openclaw_harness_semantic_step_frame(
                 << ",\"cells\":" << openclaw_harness_visible_local_facts( here, avatar_pos, SEEX, true,
                         false ) << '}';
     }
+    // The native HUD's seven-cell minimap is the measured compact mission
+    // surface.  Its half-width is therefore the public overmap observation
+    // radius; the cockpit must not choose a larger, invented world window.
+    const int overmap_radius = MINIMAP_WIDTH / 2;
+    std::ostringstream overmap;
+    overmap << ",\"overmap\":{\"schema\":\"caol-avatar-overmap-v1\",\"coordinate_system\":"
+            << "\"avatar_relative_omt\",\"radius\":" << overmap_radius
+            << ",\"bound_source\":\"native_hud_minimap_width\",\"center_absolute_omt\":["
+            << player.pos_abs_omt().x() << ',' << player.pos_abs_omt().y() << ','
+            << player.pos_abs_omt().z() << "],\"cells\":"
+            << openclaw_harness_overmap_facts( player, overmap_radius, turn ) << '}';
 
     DebugLog( D_INFO, DC_ALL )
             << "openclaw_harness_semantic_step: {\"event\":\"frame\",\"run_id\":"
@@ -570,6 +636,7 @@ static std::string openclaw_harness_semantic_step_frame(
             << player.pos_abs().z() << "]},\"visible_local\":"
             << openclaw_harness_visible_local_facts( here, avatar_pos, 1, false, true )
             << minimap.str()
+            << overmap.str()
             << ",\"visible_entities\":" << openclaw_harness_visible_entities( player )
             << ",\"visible_zones\":" << openclaw_harness_visible_zones( here, avatar_pos ) << '}'
             << ",\"valid_actions\":" << action_ids.str()

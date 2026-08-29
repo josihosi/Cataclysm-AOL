@@ -22,6 +22,22 @@ def observation() -> dict:
             {"dx": 2, "dy": -2, "visibility": "unknown"},
             {"dx": 3, "dy": 0, "visibility": "clear", "terrain": "leak"},
         ]},
+        "overmap": {"coordinate_system": "avatar_relative_omt", "radius": 1,
+                    "bound_source": "native_hud_minimap_width", "center_absolute_omt": [18, -4, 0],
+                    "cells": [
+                        {"dx": 0, "dy": 0, "state": "clear", "vision": "full", "terrain": "shelter",
+                         "provenance": "avatar_discovered_overmap",
+                         "recency": {"state": "current_frame", "observed_turn": 40}},
+                        {"dx": -1, "dy": 1, "state": "unknown", "terrain": "leak",
+                         "provenance": "avatar_discovered_overmap",
+                         "recency": {"state": "current_frame", "observed_turn": 40}},
+                        {"dx": 1, "dy": -1, "state": "stale", "terrain": "leak",
+                         "provenance": "saved_observation",
+                         "recency": {"state": "stale", "observed_turn": 12}},
+                        {"dx": 2, "dy": 0, "state": "clear", "terrain": "out_of_bounds",
+                         "provenance": "avatar_discovered_overmap",
+                         "recency": {"state": "current_frame", "observed_turn": 40}},
+                    ]},
     }
 
 
@@ -49,11 +65,26 @@ class CockpitTuiTest(unittest.TestCase):
         self.assertEqual(rendered["local_map"]["bound"], {"radius": 2, "source": "native_minimap.radius"})
         self.assertEqual([(cell["dx"], cell["dy"], cell["terrain"]) for cell in rendered["local_map"]["cells"]],
                          [(2, -2, "unknown"), (0, 0, "floor")])
-        self.assertEqual(rendered["overmap"]["state"], "unavailable")
+        self.assertEqual(rendered["overmap"]["state"], "available")
         self.assertEqual([field["id"] for field in rendered["fields"]], [
             "field.binding_id", "field.frame_id", "field.run_id", "field.safety", "field.terminal",
             "field.stop_reason", "field.progress", "field.receipt", "field.mission", "field.target",
         ])
+
+    def test_overmap_preserves_authoritative_coordinates_provenance_and_stale_states(self) -> None:
+        rendered = cockpit_tui.render_state(observation(), {"binding_id": "binding-7", "state": "active"})
+        overmap = rendered["overmap"]
+        self.assertEqual(overmap["coordinate_system"], "avatar_relative_omt")
+        self.assertEqual(overmap["bound"], {"radius": 1, "source": "native_hud_minimap_width"})
+        self.assertEqual(overmap["center_absolute_omt"], [18, -4, 0])
+        self.assertEqual([(cell["dx"], cell["dy"], cell["state"], cell["terrain"])
+                          for cell in overmap["cells"]], [
+                              (1, -1, "stale", "unknown"), (0, 0, "clear", "shelter"),
+                              (-1, 1, "unknown", "unknown"),
+                          ])
+        stale = overmap["cells"][0]
+        self.assertEqual(stale["provenance"], "saved_observation")
+        self.assertEqual(stale["recency"], {"state": "stale", "observed_turn": 12})
 
     def test_keyboard_and_command_have_exact_public_action_parity(self) -> None:
         direct, keyed = FakeService(), FakeService()

@@ -374,6 +374,10 @@ class CockpitRunChannel:
             "minimap": observation.get("minimap", {
                 "schema": "caol-native-minimap-v1", "cells": facts,
             }),
+            "overmap": observation.get("overmap", {
+                "state": "unavailable", "provenance": "none",
+                "recency": {"state": "unavailable"}, "cells": [],
+            }),
             "visible_entities": entities,
             "visible_zones": observation.get("visible_zones", []),
             "advertised_actions": list(actions),

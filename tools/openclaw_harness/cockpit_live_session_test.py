@@ -39,6 +39,13 @@ def frame(sequence: int, minutes: int, *, entity_dx: int = 2) -> dict[str, objec
                     {"dx": 12, "dy": 12, "visibility": "unknown"},
                 ],
             },
+            "overmap": {
+                "schema": "caol-avatar-overmap-v1", "coordinate_system": "avatar_relative_omt",
+                "radius": 3, "bound_source": "native_hud_minimap_width",
+                "cells": [{"dx": 0, "dy": 0, "state": "clear", "vision": "full",
+                           "terrain": "shelter", "provenance": "avatar_discovered_overmap",
+                           "recency": {"state": "current_frame", "observed_turn": sequence}}],
+            },
             "visible_entities": [{
                 "identity": {"kind": "npc", "id": "character:4"},
                 "kind": "npc", "name": "Scout", "attitude": "neutral",
@@ -166,6 +173,7 @@ class LiveSessionTest(unittest.TestCase):
         service, finals = self.service([frame(1, 100), frame(2, 101), frame(3, 102, entity_dx=3)])
         first = service.call({"action": "game.observe"})["result"]
         self.assertEqual(first["minimap"]["schema"], "caol-native-minimap-v1")
+        self.assertEqual(first["overmap"]["schema"], "caol-avatar-overmap-v1")
         entity_handle = first["visible_entities"][0]["handle"]
         public = json.dumps(first).lower()
         self.assertNotIn("raw implementation detail", public)
