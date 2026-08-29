@@ -256,60 +256,41 @@ Responsibilities:
 
 The controller should not emit raw keys by default.
 
-#### Proposed semantic action grammar v0
+#### Shipped frame-bound semantic step channel
+
+Adaptive playtest steps use this loop:
+
+```text
+semantic-observe -> choose one advertised action_id -> semantic-act -> native receipt + next frame
+```
+
+The public frame contains `run_id`, a fresh `frame_id`, semantic `state`, `observed_turn`, and
+`valid_actions`. Physical bindings stay private in the run-bound broker. `semantic-act` binds the
+choice to the same run, process, worker session, and current frame; a stale frame or unadvertised
+action is rejected without input. Acceptance requires the game owner's native receipt and a fresh
+next frame, then the durable receipt is appended to `semantic.steps.jsonl`.
+
 ```json
 {
-  "action": "talk_to",
-  "target": "npc_12"
+  "event": "frame",
+  "run_id": "run-identity",
+  "frame_id": "run-identity:5205648:6",
+  "state": "wait_duration_choice",
+  "observed_turn": 5205648,
+  "valid_actions": ["wait.30m", "wait.6h"]
 }
 ```
 
-Supported action families for v0:
-- movement:
-  - `move <dir>`
-  - `wait`
-- interaction:
-  - `talk_to <entity_id>`
-  - `examine <dir|entity_id|tile_id>`
-  - `pickup <selector>`
-  - `open_inventory`
-  - `close_menu`
-- menu/dialogue:
-  - `select_option <index>`
-  - `scroll_up`
-  - `scroll_down`
-  - `confirm`
-  - `cancel`
-  - `dismiss_popup`
-- test/debug:
-  - `debug_open`
-  - `debug_spawn_item <itype_id>`
-  - `debug_spawn_monster <mtype_id>`
-  - `debug_teleport <x> <y>`
-  - `debug_set_time <spec>`
-- scenario actions:
-  - `issue_order <order_kind>`
-  - `set_objective_flag <name>`
-  - `abort_run <reason>`
+The initial native actions cover `world.wait`, `wait.duration_menu`, advertised wait durations such
+as `wait.6h`, and active distraction choices such as `activity.continue`, `activity.stop`,
+`activity.manage`, or `activity.ignore`. Fixed scenario input is limited to reproducible reset and
+staging. A divergence becomes the next observation in the same live loop; first-divergence remains
+diagnostic and a certification credit boundary, not a player-control boundary.
 
-Key property:
-- the action set should be **state-dependent**.
-- Do not expose `debug_spawn_monster` when the harness is not in a debug-capable state.
-
-### Layer E: UI/key translation layer
-Responsibilities:
-- convert semantic actions into key sequences,
-- navigate menus and confirmation prompts,
-- keep reusable macros for stable flows.
-
-Examples:
-- `load_save base_alpha`
-- `dismiss_debug_popup`
-- `open_debug_spawn_monster`
-- `spawn_item_by_id spear_wood`
-- `return_to_world_view`
-
-This layer is where UI brittleness belongs. Keep it out of the planner.
+Use `startup_harness.py semantic-observe` with the descriptor's run arguments, then
+`startup_harness.py semantic-act` with its `--session-id`, current `--frame-id`, and selected
+`--action-id`. The adaptive scenario step writes the exact commands and authority values to
+`<step>.semantic_session.json`; do not reconstruct or guess them.
 
 ### Layer F: Replay + evaluation layer
 Responsibilities:

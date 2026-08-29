@@ -67,19 +67,35 @@ Explain the returned candidate hard results, evidence states, lifecycle and
 route evidence before proceeding. A successful selection returns a
 `selection_token`.
 
-If no executable selection exists, open the inert draft. It identifies either
-one `closest_candidate` or a `create_scenario` action. Read
-`satisfied_requirements` and `missing_requirements`. Do not combine footing
-from several scenarios. Add or repair one scenario declaration so it contains
-the missing capabilities, exact setup, and preflight checks. Then run
-`rebuild`, `reconcile`, and the same query again. A missing capability key is a
-scenario-authoring gap, not permission to weaken the query.
+If no executable selection exists, follow the query result's `next_action`
+when present. A current contradiction routes to one query-bound command:
+`registry-repair-bootstrap --query-id <query_id>`. The registry re-derives the
+manifest, route, red verification, original typed request, and current binding;
+do not scrape or combine those identifiers manually. This authority is not an
+ordinary selection token and the contradiction remains fail-closed until a
+repair run supersedes it. Otherwise open the inert draft, read its one
+`closest_candidate` or `create_scenario` action plus satisfied and missing
+requirements, repair one scenario declaration, then rebuild, reconcile, and
+repeat the same query. Never combine footing or weaken the query.
 
 Keep this loop concrete enough for a Luna worker: requirement, observed value,
 missing value, file to change, rebuild, and repeated query. Do not launch a
 draft. Do not describe setup-only evidence as gameplay proof.
 
 ## Explicit selected launch and report
+
+For a ledger item marked `Playtest witness: required`, first read the coordinator-authored charter
+named in the live brief. Pass that JSON to the selected or detached launch with
+`--witness-charter`. The worker owns observation, native action choice, repair, rerun, and finish;
+the descriptor supplies authority plus the generic `WITNESS / FINISH` boundary only. Do not turn
+the charter into a gameplay script or load a scenario-specific proof matrix.
+
+At the honest stop condition, seal the cockpit journal with `run.witness`, then submit the smallest
+cited witness with `run.finish`. Preserve contradictions and unknowns. The finalized report binds
+the charter, scenario/source/executable/run authority, native observations/actions/receipts/deltas,
+interruptions, cleanup, ceiling, journal digest, and witness validation. Record it with
+`registry-record-witness`; coordinator judgment is a separate `registry-review-witness` event.
+Neither operation may invent absent facts or promote evidence.
 
 Do not launch from a query or from a draft. Only after an explicit request to
 run the selected scenario, invoke the returned token:

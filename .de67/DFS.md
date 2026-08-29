@@ -1,6 +1,6 @@
 # C-AOL Harness Cockpit and Proof-Preserving Playtesting DE-67 Functional Specification
 
-Status: Frozen
+Status: Refrozen
 WEC: `.de67/WEC.md`
 Source baseline: `Cataclysm-AOL-hostile-ecology-dev | dev tracking origin/dev | 54a60872e2b8dcabb00288e8fcfe6b976b82fd99 | intentionally broad dirty product and harness frontier | inspected 2026-08-25`
 Inspected-source fingerprint: `98e30ed1400ad496ce21a4b140fea69b8cbe76a08977176ff9eb641846043402` (SHA-256 over the ordered per-file SHA-256 records named in the current code map)
@@ -289,11 +289,24 @@ Mechanism:
 Implementation status:
 
 - [x] The harness can run production gameplay steps, consume run-scoped events, correlate saved
-  actor receipts, and relaunch the configured world under the same run ID.
-- [ ] 🔴 R-005 — No distinct fail-closed automated certification route proves the entire required lifecycle in one bound uninterrupted round.
-  - Code gap: the public routes are probe/handoff/repeatability; their focused gates and post-relaunch support do not seal complete certification authority, prevent segment assembly, or require the whole C-AOL lifecycle in one report.
-  - Required mechanism: compose the existing production step, structured-event, save-receipt, and relaunch owners behind a distinct certification entry point that requires R-001, R-002, and R-004 and emits one atomic round result.
+  actor receipts, relaunch the configured world under the same run ID, seal certification
+  authority, reject segment assembly, and finalize one atomic report.
+<!-- DE67:DFS-SLICE:BEGIN id=R-005-S001 claim=R-005 -->
+- [ ] 🔴 R-005 — No natural run has yet proved the entire required lifecycle through the
+  fail-closed certification route in one bound uninterrupted round.
+  - Current gap: zero-credit runs proved route construction and native travel progress, but did not
+    establish a repeatable precondition-compatible path to the certification destination. The best
+    run reached the penultimate overmap tile; the next fresh counterexample stopped earlier on an
+    undeclared zombie attack. The proposed final-handoff defect was therefore not reproduced and
+    remains unproved.
+  - Required mechanism: first qualify a materially different natural route or geography with zero
+    credit while preserving the same world, player, ecology actors, scheduler inputs, destination,
+    lifecycle gates, and fail-closed threat handling. Only after that route reaches the destination
+    may a worker diagnose and repair a reproduced final-handoff divergence. Then start one independent
+    certification round and let its first causal divergence, rather than a prior replay hypothesis,
+    determine any further repair.
   - Proof: one natural production execution covers the complete hostile-ecology vertical slice—including departure, overmap advance, both bubble crossings, actor-level outcomes, save/quit/relaunch, return/report, and downstream camp decision—while rollback, segment splicing, diagnostic replay, fixture/scenario mutation, and replacement identities each produce a failed or invalidated certification result.
+<!-- DE67:DFS-SLICE:END id=R-005-S001 claim=R-005 -->
 
 ### 6. Separate ordinary Windows feel gate
 
@@ -353,14 +366,19 @@ Mechanism:
   accepts only a current-frame choice from the same run and worker session, and requires both the
   native accepted/rejected receipt and a fresh next frame. Unknown, invalid, stale, contaminating,
   wrong-destination, escaped-authority, and release-invalidating choices receive no input and remain
-  recorded. Fixed input may reset or stage a deterministic footing; live play proceeds as
-  `observe -> choose -> act -> receipt + next state`.
-- Experience: a new interruption preserves a minimal structured trace and becomes the next
-  observation in the same goal-bound playtest. First divergence remains useful for certification
-  credit boundaries and causal localization, but it does not terminate an otherwise authorized
-  play session. A reviewed handler enters the repository-owned state/action/postcondition registry
-  only with deterministic recovery and inverse stale/invalid replays; the proved route deletes its
-  key guess or screen-phrase rule instead of adding another parser.
+  recorded. An advertised recovery action is conditional unless the scenario explicitly requires
+  its occurrence. Proven non-occurrence may continue only with a zero-credit materiality record;
+  an observed interruption, missing required receipt or postcondition, owner mismatch, persistence
+  gap, or causal harness defect remains fail-closed. Fixed input may reset or stage a deterministic
+  footing; live play proceeds as `observe -> bound -> choose -> act -> receipt + next state`.
+- Experience: the scenario fixes authority, invariants, proof targets, and native capabilities; the
+  worker owns continuation and explicit finish. A progressing observation remains live. Every
+  continuation names its expected causal signal and a maximum derived from the mechanic, scheduler,
+  path, or measured rate. Proof, no progress, unsafe divergence, authority or binding drift, missing
+  receipts, and bound exhaustion terminate; an arbitrary observation or transport timeout does not.
+  The final immutable report preserves the action/observation sequence, bound, stop reason, cleanup,
+  unused authority, first divergence, and contradictory evidence. A reviewed handler still requires
+  deterministic recovery and inverse stale/invalid replays, replacing rather than adding key guesses.
 
 Implementation status:
 
@@ -394,6 +412,13 @@ proof but cannot satisfy R-005, cannot be spliced into a continuous round, and c
 Orthogonal stabilizers or observer instrumentation are setup support only and may not change ecology,
 movement, or visibility behavior.
 
+A focused lifecycle row declares the exact transition predicate and owner state it intends to
+persist. The harness evaluates that predicate after every native transaction and before another
+progression action. On the first match, unused progression actions are ineligible and persistence is
+the next proof-bearing transaction. A row targeting a later owner state declares that boundary
+directly. A fixed action order that can cross the target before capture fails closed; an absent or
+unevaluable boundary stays red and later state cannot be reinterpreted as proof of the missed state.
+
 Implementation status:
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-008-S001 claim=R-008 -->
@@ -408,6 +433,7 @@ Implementation status:
     receipt, and saved normalization before and after relaunch; malformed, stale, duplicate, partial,
     and replacement-identity controls fail closed.
 <!-- DE67:DFS-SLICE:END id=R-008-S001 claim=R-008 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-009-S001 claim=R-009 -->
 - [ ] 🔴 R-009 — Integrated waits, performance and memory observation, and the supported-platform
   technical witness set remain unqualified on the improved harness.
   - Required mechanism: observe complete integrated waits at existing semantic boundaries, including
@@ -419,6 +445,20 @@ Implementation status:
     invented zero; and each platform witness records the build/runtime binding, exercised route,
     direct result, and platform-specific limitation. Every artifact remains setup or focused
     qualification evidence with zero continuous-final-certification credit.
+<!-- DE67:DFS-SLICE:END id=R-009-S001 claim=R-009 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-015-S001 claim=R-015 -->
+- [ ] 🔴 R-015 — Focused lifecycle scenarios can advance past the owner boundary they intend to
+  persist before evaluating it.
+  - Code gap: scenario progression and proof-gate evaluation are independently ordered, so a valid
+    transition can occur while later time-driving actions remain queued and invalidate the owner
+    state expected by the eventual persistence audit.
+  - Required mechanism: make the declared causal boundary an incremental execution precondition and
+    stop the row at its first matching transition as specified above.
+  - Proof: a counterexample row whose target matches before a remaining wait is rejected or stops
+    before that wait; the corresponding positive row persists immediately. Wrong-run, wrong-actor,
+    and wrong-owner events do not match, while a row explicitly targeting the later owner state may
+    continue to that separately declared boundary.
+<!-- DE67:DFS-SLICE:END id=R-015-S001 claim=R-015 -->
 
 ### 9. One progressive cockpit interface
 
@@ -430,6 +470,8 @@ Mechanism:
   their durable state or parse their command-line text.
 - Entry point: one worker call names a cockpit operation and structured arguments. Approximate WEC
   operation names may be mapped to stable implementation names without exposing transport details.
+  After scenario selection, `run.open` starts a tracked playtest without requiring prior proof
+  eligibility.
 - Parameters: operation, cockpit schema version, run/session identity when a game is active, and
   operation-specific arguments.
 - Inputs: the compact frontier supplied by the caller; current SQLite scenario, capability,
@@ -439,7 +481,9 @@ Mechanism:
   manuals, raw history, logs, tokens, offsets, and bindings are not preloaded.
 - Transition: validate one request, call one authoritative owner, and return one result envelope.
   Summary calls reveal identifiers and fit-relevant facts. Describe calls reveal the selected
-  object's contract, examples, recovery, proof effect, and limitations.
+  object's contract, examples, recovery, proof effect, and limitations. One live service instance
+  retains run-scoped handles and receipts across `game.observe`, `run.continue`, `game.act`,
+  `run.status`, and explicit `run.finish`; scenario execution does not pre-frame its last observation.
 - Postconditions: every call returns one object containing operation status, structured result or
   structured failure, evidence effect, and valid next calls. Subprocess stdout, registry selection
   tokens, frame offsets, physical inputs, OCR, and raw logs remain internal.
@@ -455,7 +499,7 @@ Implementation status:
 
 - [x] The scenario registry, startup harness, semantic-step prototype, and report owners already
   return structured Python values internally.
-- [ ] 🔴 R-010 — Workers do not have one progressive cockpit whose calls return one structured
+- [x] R-010 — Workers do not have one progressive cockpit whose calls return one structured
   result without exposing internal transport.
   - Code gap: `scenario_registry_cli.py`, `startup_harness.py`, and semantic helpers expose
     separate CLIs and artifacts. Workers must currently coordinate tokens, offsets, PIDs, raw
@@ -512,7 +556,7 @@ Implementation status:
 
 - [x] SQLite already projects typed scenario capabilities and immutable lifecycle, binding, report,
   query, and token history. Existing fixture/debug helpers cover several requested setup actions.
-- [ ] 🔴 R-011 — Scenario creation, setup validation, selection rationale, and deterministic
+- [x] R-011 — Scenario creation, setup validation, selection rationale, and deterministic
   preparation are not one SQLite-backed, proof-firewalled lifecycle.
   - Code gap: registry search lacks progressive purpose/starting-state/actor/setup-limit summaries;
     no worker-facing create/validate/prepare transaction exists; debug and fixture helpers use
@@ -622,7 +666,7 @@ Implementation status:
 
 - [x] The wait-specific semantic channel rejects stale actions and requires a native receipt plus
   fresh next frame. Several modal owners expose native identities and advertised actions.
-- [ ] 🔴 R-013 — The proof-bearing player surface is not a general native transaction and still
+- [x] R-013 — The proof-bearing player surface is now proved through one native transaction route.
   depends on special-case logs, OCR, fixed keys, and polling for most actions and recovery.
   - Code gap: `handle_action.cpp` emits semantic frames only for wait; popup, activity, and EOC
     traces use separate log grammars; `startup_harness.py` contains extensive screen/log
@@ -635,6 +679,14 @@ Implementation status:
     unknown modal, unauthorized recovery, missing receipt, missing postcondition, and duplicate
     submission each fail without silent input or retargeting. Raw log, OCR, offset, and key changes
     cannot alter the result.
+  - Accepted evidence: task `R-013-closure-046` closed the live-validation gap. Independent run
+    `20260826_135902` accepted `world.wait`, `wait.duration_menu`, and `wait.1m`, advanced game time
+    from minute `8904` to `8905`, and returned fresh world frame
+    `52d5d554c2464c3c9908266abc0c103f:5286318:5`. The report recorded
+    `structured_gates_matched`, `feature_proof=true`, and evidence class `feature-path`. Registry
+    report `aa8dd106e1d65b1d628334b6688d8ead272626efc38123166c7168716ea80c2c` ingested hard proof
+    `6df31ffe649b97c4650fe17e99b53484ae1e45a86340a8efbb6738c7b8cdc31c`. Canonical cleanup
+    terminated the owned game process. Focused negative controls keep their focused evidence class.
 
 ### 13. Run truth, evidence effects, capability catalog, and reusable gaps
 
@@ -650,8 +702,16 @@ Mechanism:
   validation evidence. Manifest capability values remain scenario compatibility facts and do not
   become the catalog owner.
 - Run state: status returns selected scenario/binding, latest observation/transaction, material
-  changes, proof frontier, first divergence, game usability, and valid next calls. Finish finalizes
-  the existing bound report and lets registry ingestion derive evidence eligibility.
+  changes, proof frontier, first divergence, game usability, active causal bound, and valid next
+  calls. Continue binds a fresh observation to an evidence-derived causal signal and maximum.
+  Finish explicitly finalizes one immutable action/observation report and lets registry ingestion
+  derive evidence eligibility; setup, continuation, and recovery never promote earlier evidence.
+- Run authority: `run.open` consumes one current valid selection and mints one opaque receipt binding
+  its exact scenario revision and bytes, executable bytes, run identity, ownership scope, and derived
+  evidence ceiling. It requires no prior proof token. Missing prior verification yields diagnostic or
+  zero-credit authority; concrete source/executable drift, conflicting ownership, corrupt identity,
+  or unsafe debug setup fails closed. The receipt grants observation authority only. Registry
+  ingestion remains the sole proof-promotion owner.
 - Evidence firewall: each cockpit result reports `none`, setup-only, diagnostic, focused, or the
   existing bound certification effect. A caller cannot promote the effect. Interventions and
   scenario validation always earn zero gameplay behavior credit.
@@ -673,7 +733,7 @@ Implementation status:
 - [x] Existing proof and registry owners already keep evidence authority separate from mutable
   reports and preserve binding/history. Current scenario capabilities are queryable compatibility
   facts.
-- [ ] 🔴 R-014 — Cockpit run results, reusable capability knowledge, and gap evidence have no
+- [x] R-014 — Cockpit run results, reusable capability knowledge, and gap evidence have no
   unified durable owner or end-to-end prototype proof.
   - Code gap: no capability contract catalog or reusable gap store exists; report/status paths expose
     artifact-heavy detail; setup/action calls cannot state a registry-derived evidence effect; and
@@ -687,6 +747,175 @@ Implementation status:
     later query retrieves for another affected scenario; a long activity emits boundaries rather
     than per-turn frames; final registry queries preserve setup, focused, certification, and Windows
     evidence separation.
+  - Owner-authorized run-authority correction: a current valid selection can open a tracked run
+    without proof-token eligibility. The single-use receipt binds scenario revision/source,
+    executable, run, and ownership while a derived zero-credit/diagnostic/focused ceiling remains
+    unable to promote evidence. Focused controls cover selection replay, conflicting ownership,
+    exact finish/reopen, byte drift, and unchanged final-gate eligibility.
+
+### 14. Toggleable cockpit gadgets and seven independent spokes
+
+Research and design basis:
+
+- `tools/openclaw_harness/cockpit.py`, `scenario_registry_store.py`, and the current scenario
+  contracts already provide run binding, one-use fresh frames, semantic action advertisement,
+  evidence-derived continuation bounds, native receipts, setup intervention history, and explicit
+  finish. `src/handle_action.cpp`, popup/EOC/wait input owners, and the focused wait trace confirm
+  that native actions and active modal owners—not macro claims—must decide transitions.
+- The public observation does not yet prove avatar position, scenario-defined safety-region
+  evaluation, danger/damage state, or the absence of an unresolved prompt/activity in one
+  authoritative preflight. Existing debug/setup helpers can manufacture fixtures but do not share
+  one exact mutation-receipt contract. Every gadget therefore remains blocked on those observable
+  facts or receipts rather than assuming a clean start.
+- Playwright's actionability and locator contracts re-resolve current state for each action and fail
+  ambiguous targets; BehaviorTree.CPP treats asynchronous actions, reactive conditions, and
+  transition logs as first-class. See <https://playwright.dev/docs/actionability>,
+  <https://playwright.dev/docs/locators>, and
+  <https://github.com/BehaviorTree/BehaviorTree.CPP>. The applicable design consequence is a bounded
+  local state machine with fresh checks, exact identities, and transaction receipts—not an opaque
+  click batch. External patterns are specification evidence only.
+
+Shared mechanism and dependencies:
+
+- Add one run-bound gadget controller behind `CockpitService`, not a second game, scenario, input,
+  perception, or proof owner. It exposes master and per-gadget enablement, visible
+  disabled/ready/running/stopped/failed state, and immediate semantic stop. With the master or a
+  gadget off, the primitive cockpit schema, advertised actions, transitions, and evidence effects
+  remain the reference path unchanged.
+- Every start consumes a fresh authoritative observation proving scenario/run binding, avatar and
+  position, the scenario-defined safety region and absence of visible/detected monsters there,
+  absence of danger/damage and unresolved prompt/activity, and the gadget's declared invariants.
+  These facts depend on R-010 through R-014's single façade, deterministic setup, avatar perception,
+  native transaction, and durable-result owners; missing or stale facts reject execution.
+- After every native transaction, re-observe the binding, safety facts, target predicate, and
+  progress. Stop on a monster, unknown prompt, operation-owned actor-state change, damage, movement
+  outside the declared operation, binding drift, stale frame, missing receipt, no progress,
+  evidence-derived bound exhaustion, or any unclassified interruption. Raw mode never interprets or
+  handles an interruption; guarded mode handles only explicitly declared-safe cases. Neither falls
+  back to the other.
+- Return one compact ordered receipt containing gadget/mode and toggle state, preflight frame,
+  declared target and bound basis, each native action/receipt/observation boundary, handled flavour
+  or prompt classification, game and available wall-time deltas, safety decisions, progress, exact
+  terminal reason, and cleanup owner. The receipt inherits only native evidence effects. Setup/debug
+  mutations remain zero-credit and cannot prove acquisition, combat, survival, ecology, or natural
+  gameplay.
+- Composition retains every constituent receipt and stops before the next constituent after the
+  first failed precondition or unsafe result. No fixed retry, step, time, output, or performance
+  threshold is admissible without a scenario contract, native mechanic, platform contract, or
+  measured primitive reference that derives it.
+- Each spoke is one outcome-sized task with coherent visible subtasks when its work genuinely
+  decomposes. Subtasks expose progress and uncertainty without becoming separate acceptance claims
+  or terminal worker windows. One spoke cannot color another.
+- A live playtest uses a coordinator charter, worker-controlled native play, compact immutable
+  evidence journal, cited witness, mechanical validation, and separate coordinator judgment.
+  Mechanical owners retain identity, action correlation, receipts, cleanup, append-only artifacts,
+  citations, contradictions, and evidence ceilings. The witness judges causal sufficiency and
+  semantic equivalence; it cannot invent facts, hide contradictions, change bindings, or promote
+  evidence. Scenario-specific proof matrices, prescribed menu sequences, duplicate colour ledgers,
+  exact run-local equality, and paperwork-only reruns receive no acceptance credit.
+
+Implementation status — exactly seven gadget spokes:
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-018-S001 claim=R-018 -->
+- [ ] 🔴 R-018 — Raw bounded time passage without interruption handling has no toggleable receipt-bearing route.
+  - Proof: from compatible clean starts, a cited witness shows raw time passage reaches its declared
+    target through semantically equivalent advertised native waits and the same terminal world state
+    as primitive calls while preserving receipts, identity, cleanup, contradictions, and evidence
+    ceiling. A prompt, activity requiring interpretation, monster, stale frame, no progress, or bound
+    exhaustion stops immediately with partial progress and no guarded handling; off is primitive-only.
+<!-- DE67:DFS-SLICE:END id=R-018-S001 claim=R-018 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-019-S001 claim=R-019 -->
+- [ ] 🔴 R-019 — Guarded time passage and the first `Keep watch` slice have no classified-safe local loop.
+  - Proof: cited witnesses from separately bound safe and unsafe starts show a toggleable `Keep
+    watch` recipe handles only declared-safe flavour/prompt interruptions and stops at its target or
+    first meaningful event, with semantically equivalent native transitions and terminal state to
+    the primitive reference and fewer measured model/tool round trips. Monsters, danger, damage,
+    unknown prompts, target crossing, stale/binding drift, no progress, exhausted derived bounds,
+    and either off switch fail closed. This slice does not wait for or prove the other spokes.
+<!-- DE67:DFS-SLICE:END id=R-019-S001 claim=R-019 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-020-S001 claim=R-020 -->
+- [ ] 🔴 R-020 — Controlled camp setup lacks exact mutation, invariant, provenance, and cleanup receipts.
+  - Proof: a disposable scenario creates the declared camp composition at exact coordinates through
+    the existing setup owner, records every before/after identity and mutation, verifies resulting
+    invariants, and cleans up under the named owner. Occupied/unsafe placement, identity drift,
+    partial setup, undeclared mutation, or attempted gameplay/economy proof fails without promotion.
+<!-- DE67:DFS-SLICE:END id=R-020-S001 claim=R-020 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-021-S001 claim=R-021 -->
+- [ ] 🔴 R-021 — Exact-identity debug creature HP-to-zero lacks a non-ambiguous zero-credit transaction.
+  - Proof: a disposable scenario selects one exact creature handle/identity and coordinate, records
+    before/after HP and cause, sets that identity to zero, and records caller authority and cleanup.
+    Nearby/name-only ambiguity, stale identity, avatar or operation-owned ecology target, incidental
+    death, partial mutation, and any combat/survival/ecology/natural credit fail.
+<!-- DE67:DFS-SLICE:END id=R-021-S001 claim=R-021 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-022-S001 claim=R-022 -->
+- [x] R-022 — Exact item spawning has deterministic identity, destination, provenance, and cleanup receipts.
+  - Accepted evidence: closure task `R-022-closure-004`, bound zero-credit report
+    `58a34dcb…14c5f6`, and verification `b338f94c…487d60` created exactly three separately tagged
+    apples with ordinals 0–2 at offset `[4,0,0]` for owner `your_followers`, preserved declared item
+    state and provenance, removed exactly those three items, retained none, and completed canonical
+    ingestion with green structured gates.
+  - Evidence ceiling: the accepted transaction is setup support only. It grants no acquisition,
+    economy, survival, ecology, natural-gameplay, continuous-certification, or Windows-feel credit.
+<!-- DE67:DFS-SLICE:END id=R-022-S001 claim=R-022 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-023-S001 claim=R-023 -->
+- [ ] 🔴 R-023 — Relative and destination movement lack distinct raw and guarded bounded routes.
+  - Proof: signed `+x`/`-x`/`+y`/`-y` offsets and a declared destination produce exact step,
+    position, terrain, and terminal receipts from fresh frames. Raw stops at the first unhandled
+    interruption; guarded rechecks creatures, terrain, prompts, damage, displacement, blockage, and
+    target progress. Wrong/stale binding, unexpected movement, blocked step, unknown event, no
+    progress, derived-bound exhaustion, and off switches return exact partial progress.
+<!-- DE67:DFS-SLICE:END id=R-023-S001 claim=R-023 -->
+<!-- DE67:DFS-SLICE:BEGIN id=R-024-S001 claim=R-024 -->
+- [ ] 🔴 R-024 — A compact LLM-first cockpit TUI with structured local/overmap awareness has no real route.
+  - Proof: deterministic state renders stable command/field IDs, current binding/frame, toggles,
+    legal raw/guarded operations, safety gates, mission/target/progress, exact stop reason, receipt
+    drill-down, a bounded avatar-centred semantic local map, and a bounded provenance/recency-labelled
+    overmap. `KEEP WATCH`, `MAKE CAMP`, `STOCK UP`, `ZAP`, `MOVE OUT`, `EYES UP`, and `BIG MAP` are
+    aliases only; every action has an exact non-interactive equivalent and contract view. Tests cover
+    keyboard/command parity, clipping/coordinates/unknown cells, stale/error state, large-observation
+    bounds derived from measured mission needs, and structured/visual parity. A controlled recipe
+    matches direct cockpit receipts and terminal state; real roster-worker comparisons preserve
+    model/effort and derive any efficiency gate from the primitive reference. Screenshots, ANSI,
+    glyphs, prose, hidden coaching, or knowledge outside authoritative observation cannot decide.
+<!-- DE67:DFS-SLICE:END id=R-024-S001 claim=R-024 -->
+
+### 15. Reviewable integration and checkpoint boundary
+
+Mechanism:
+
+- Preserve the current dirty frontier as user-owned work. Classify tracked source, tests, fixtures,
+  scenarios, guidance, and proof-owner changes by the accepted or active outcome they implement,
+  including shared files that support several claims.
+- Create reviewable behavior, probe, and ledger/document checkpoints at real state boundaries under
+  `COMMIT_POLICY.md`. A checkpoint must name its changed file class, narrow gate already run, retained
+  evidence references, and any remaining active or red work. It does not rerun settled gameplay or
+  broaden an evidence class merely to make a commit.
+- Classify generated logs, screenshots, run directories, registry databases, and saved fixtures by
+  durable evidence value and owner. Preserve authentic immutable evidence and the references needed
+  to retrieve it. Retire only copies proved redundant, derived, superseded, or safely reproducible;
+  repository tidiness is not an acceptance gate.
+- Remaining dirt is permitted when it belongs to named active work and is bounded enough that its
+  owner and proof status are legible. A globally clean tree, an arbitrary artifact count, or deleting
+  large files is neither required nor sufficient.
+
+Implementation status:
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-025-S001 claim=R-025 -->
+- [ ] 🔴 R-025 — The preserved Phase-3 frontier lacks a reviewable source-control checkpoint and
+  artifact-retention boundary.
+  - Current evidence: the dev worktree contains 56 tracked status entries spanning source, tests,
+    harness, scenarios, guidance, and ledgers, with approximately 17,984 added and 878 removed lines;
+    it also exposes 906 untracked status entries, 1,684 build-log files, and 688 runtime run
+    directories. Several durable claim acceptances exist only inside this combined frontier.
+  - Required mechanism: partition completed valid work into the smallest coherent checkpoints the
+    existing diff supports, retain active work without rewriting bystanders, and record where
+    authentic run evidence remains. Do not delete evidence, manufacture a clean tree, or replay a
+    settled claim solely to improve packaging.
+  - Proof: each checkpoint maps its files and existing validation to accepted or active claims;
+    accepted source/tests and immutable evidence references remain intact; generated artifacts have
+    an explicit retain, superseded, reproducible, or active-run disposition; and every remaining
+    dirty entry is attributable to named unfinished work rather than an unbounded mixed frontier.
+<!-- DE67:DFS-SLICE:END id=R-025-S001 claim=R-025 -->
 
 ## Competing systems and override direction
 
@@ -701,7 +930,7 @@ Implementation status:
 | Process/world ownership | Startup/cleanup and game process | Other probes, manual play, certification | An exclusive round lease wins for its exact PID/executable/world; unrelated processes are not killed. Conflict fails closed. |
 | Cockpit call/result | Worker and cockpit clients | Separate registry CLI, startup CLI, semantic helpers, subprocess output | `CockpitService` is the single public façade and owns only request validation/result composition. Existing component functions retain state authority. Internal tokens, offsets, keys, OCR, logs, and subprocess output never become public success facts. |
 | Scenario source and searchable facts | Cockpit scenario calls, canonical launcher, reports | Scenario JSON files, registry rebuild/reconcile, caller prose | Canonical validated scenario bytes remain source declarations. SQLite is the searchable current projection and history owner. Selection revalidates both. Caller prose cannot add facts. |
-| Scenario selection | Worker strategy and selected brief | Pure query evaluator, token issuer, canonical launcher | The worker owns fit judgment and records its reason. SQLite hard requirements and evidence/binding facts constrain eligibility. Internal selection authority is single-use and revalidated; it never replaces worker strategy. |
+| Scenario selection and run opening | Worker strategy and selected brief | Pure query evaluator, proof-token issuer, cockpit run authority, canonical launcher | The worker owns fit judgment and may open a tracked run from one current valid selection. The run receipt is single-use and source/executable/ownership-bound; its derived evidence ceiling is separate from proof-token eligibility and registry promotion. |
 | Setup state and interventions | Scenario brief, observation adapter, report classifier | Fixture install/transforms, native debug setup, incidental world state, scenario macros | Loaded-save state or a confirmed explicit intervention wins. Required preconditions never come from incidental entities. Every intervention and macro constituent is recorded and receives no manufactured-state or behavior credit. |
 | Avatar-visible world | Cockpit observation/look and player UI | `map`, avatar/Creature visibility, creature tracker, fields/items/light/weather/time; LLM NPC snapshot; debug ecology view; OCR/screens/logs | Native game state and avatar perception alone supply cockpit visible facts. The cockpit adapter is a read-only projection. LLM-intent remains a separate protected consumer. Debug/offscreen projections and visual/log reconstruction cannot write cockpit perception. |
 | LLM-intent request and NPC behavior | NPC LLM manager, NPC state, tests | Cockpit adapter or shared-helper refactor | Keep `llm_intent` as sole owner. Cockpit code must yield completely. A neutral shared primitive is admissible only after direct unchanged-output and unchanged-behavior proof; otherwise use the harness-only adapter. |
@@ -758,11 +987,20 @@ preconditions -> authoritative owner -> transition -> observable outcome -> arti
 | `R-011` | Search/select an existing scenario, create/validate a no-fit scenario, and deterministically prepare its required dog. | SQLite scenario/selection/validation history, exact source/binding, and intervention receipts marked zero-credit. | Incidental dog waiting, occupied/stale placement, unrecorded macro, scenario validation as gameplay proof, or manufactured behavior credit fails. |
 | `R-012` | Observe and look from the avatar while moving one visible entity, hiding another, invalidating a stale handle, and relaunching. | Native observation frames, visibility facts, handle lifecycle, deltas, and LLM-intent regression artifacts. | Offscreen/debug truth, OCR/log/registry facts, name/marker/coordinate retargeting, or changed LLM prompt/snapshot/target/action/timing behavior fails. |
 | `R-013` | Execute one player intent through native dispatch, handle one authorized interruption, and receive a confirmed postcondition plus fresh observation. | Issuing observation, action/target, native receipt, recovery receipts, postcondition, evidence effect, and next observation. | Direct state mutation, guessed key, stale frame/handle, unknown modal, unauthorized recovery, missing receipt/postcondition, replay, or silent feature failure fails. |
-| `R-014` | Complete the prototype cockpit route, report an unsupported action once, retrieve its reusable gap for another scenario, and finish the run. | SQLite catalog/gap/run history, compact deltas, observed-cost facts, final immutable report, and registry eligibility result. | Duplicated scenario warning, gap-triggered mutation, invented cost, per-turn stream, setup promotion, focused-to-certification promotion, or lost hostile-ecology proof fails. |
+| `R-014` | Select a valid scenario, open a tracked run regardless of prior-proof eligibility, complete the prototype cockpit route, report and retrieve one reusable gap, and finish. | Source/executable/ownership-bound open receipt, derived evidence ceiling, SQLite catalog/gap/run history, compact deltas, final immutable report, and registry eligibility result. | Selection replay, conflicting ownership, source/executable drift, false proof promotion, duplicated warning, invented cost, per-turn stream, or lost hostile-ecology proof fails. |
+| `R-015` | Persist a focused lifecycle row at its first declared causal boundary, then exercise a separately declared later-boundary row. | Per-transaction boundary decisions, the first matching event/state, immediate persistence receipt, and independently classed later-boundary evidence. | A queued progression action after the matched boundary, a mismatched event, or post-hoc reinterpretation of later state cannot satisfy the earlier row. |
+| `R-018` | Run raw bounded time passage from a proved clean start and compare it with primitive waits. | Cited immutable journal with ordered native wait/frame receipts, derived bound, partial progress, exact stop reason, cleanup, and primitive equivalence judgment. | Interruption interpretation, hidden batching, stale/missing receipt, unsafe continuation, invented bound, concealed contradiction, false promotion, or off-state mutation fails. |
+| `R-019` | Run toggleable guarded `Keep watch` through safe flavour interruptions to its target or first meaningful event. | Separately bound safe/unsafe journals with fresh safety frames, classifications, native receipts, terminal-state and measured-round-trip comparison, cited witnesses, and coordinator judgments. | Mixed start authority, unknown/unsafe handling, monster/danger/damage continuation, target crossing, binding drift, no progress, exhausted bound, concealed contradiction, or off-state mutation fails. |
+| `R-020` | Create and clean one exact controlled camp fixture. | Before/after identities, coordinates, mutation/invariant receipts, setup-only evidence effect, and cleanup. | Unsafe/occupied target, partial/undeclared setup, identity drift, lost cleanup, or gameplay/economy promotion fails. |
+| `R-021` | Set one exact disposable-scenario creature identity's HP to zero. | Exact identity/position, before/after HP, cause, authority, zero-credit effect, and cleanup. | Proximity/name ambiguity, stale identity, protected target, incidental death, or gameplay/ecology credit fails. |
+| `R-022` | Spawn and clean one exact declared item fixture. | Type/quantity/charges/condition/ownership/destination identities and mutation/cleanup receipts. | Substitution, duplicate/partial spawn, destination or ownership drift, unreceipted mutation, or acquisition/economy credit fails. |
+| `R-023` | Exercise raw and guarded signed-offset and destination movement from identical starts. | Per-step frames/receipts, safety and progress decisions, exact terminal position/state, partial-progress results, and primitive comparison. | Silent mode fallback, ambiguous target, unsafe/unclassified continuation, blocked/no-progress loop, invented bound, or off-state mutation fails. |
+| `R-024` | Operate one controlled recipe through the LLM-first TUI and direct semantic cockpit. | Deterministic structured render, command parity, local/overmap provenance, native receipt equivalence, terminal-state match, and blinded worker comparisons. | ANSI/screenshot/glyph/prose authority, stale/unknown knowledge, hidden coaching, fake controls, unproved threshold, or evidence promotion fails. |
+| `R-025` | Partition the preserved Phase-3 frontier at real implementation and evidence boundaries. | Reviewable checkpoint mapping, existing narrow validation references, retained immutable evidence pointers, and explicit ownership for remaining active dirt. | A clean-tree assertion, artifact-count target, deletion without retention proof, replay of settled gameplay, mixed unrelated commit, or evidence promotion fails. |
 
 ## Freeze record
 
-- Status: `Frozen`
+- Status: `Refrozen`
 - Frozen source baseline: remote `dev` at
   `54a60872e2b8dcabb00288e8fcfe6b976b82fd99`, tracking `origin/dev`, with the
   intentionally broad dirty frontier and inspected-source fingerprint
@@ -788,10 +1026,25 @@ preconditions -> authoritative owner -> transition -> observable outcome -> arti
 - Owner-authorized cockpit reconciliation: R-010 through R-014 add the progressive cockpit,
   SQLite-backed scenario lifecycle, deterministic intervention receipts, avatar-centred native
   observation and stable handles, proof-bearing player transactions, capability catalog, compact
-  run results, and durable reusable gaps. These requirements reuse existing registry, native game,
-  input/modal, and proof owners. They retire competing public log/OCR/offset/key reconstruction and
-  the planned universal parallel harness perception/controller. They do not alter or couple to the
-  protected LLM-intent path. Existing hostile-ecology R-005, R-006, R-008, and R-009 remain binding.
+  run results, worker-owned live continuation and finish, and durable reusable gaps. Scenarios set
+  authority and proof boundaries but fixed observation windows do not terminate progressing play.
+  A current valid selection may open a tracked source/executable/ownership-bound run without prior
+  proof eligibility; the derived evidence ceiling cannot promote its result.
+  These requirements reuse existing registry, native game, input/modal, and proof owners. They retire
+  competing public log/OCR/offset/key reconstruction and the planned universal parallel harness
+  perception/controller without coupling to the protected LLM-intent path. Existing hostile-ecology
+  R-005, R-006, R-008, and R-009 remain binding.
+- Owner-authorized additive expansion: R-018 through R-024 are exactly seven independently accepted gadget spokes over one
+  proof-preserving controller foundation. The first product slice is guarded `Keep watch`. Debug and
+  setup spokes remain zero-credit, convenience cannot satisfy hostile-ecology proof, and all prior
+  red claims, accepted work, final automation, and Windows-feel gates remain unchanged.
+- Owner-authorized trajectory reconciliation: R-005 now names the first still-unproved natural-route
+  precondition instead of a disproved final-handoff repair, R-022 reflects its durable zero-credit
+  acceptance, and R-025 makes the already-required source-control and artifact-retention boundary an
+  explicit delivery outcome without treating cleanliness, deletion, or replay as proof.
+- Remaining design uncertainty: the current cockpit observation/setup surfaces do not yet expose
+  every safe-start fact or exact setup receipt. Each affected gadget spoke stays red until those
+  authoritative surfaces exist and the named counterexamples pass.
 
 After this refreeze, automation may only close existing red items after named proof and remove their red
 markers; make an evidence-implied nonmaterial clarification; or append a uniquely implied

@@ -1,1 +1,454 @@
-{"format":"de67.phase3.policy","version":2,"fallback":{"action":"inspect_state","reads":["ledger","clock"],"obligations":["derive_missing_facts"]},"rules":[{"id":"I1","priority":100,"all":["integrity_incident"],"action":"review_integrity_incident","reads":["clock","incident_history","ledger","dfs_slice","pending_suggestions"],"obligations":["probe_pending_suggestions","disposition_relevant_suggestions","recover_practically","review_evidence_before_proposing_change","research_unfamiliar_causal_patterns_when_useful"]},{"id":"D0","priority":99,"all":["deadline_expired"],"none":["deadline_incident"],"action":"record_deadline_miss","reads":["clock"],"obligations":["record_expired_claim_once_before_other_work","preserve_returned_worker_evidence"]},{"id":"D1","priority":99,"all":["deadline_incident"],"action":"review_deadline_incident","reads":["clock","deadline_history","ledger","dfs_slice","pending_suggestions"],"obligations":["probe_pending_suggestions","disposition_relevant_suggestions","recover_practically","review_evidence_before_proposing_change","research_unfamiliar_causal_patterns_when_useful","cadence_is_observation_not_restart_authority"]},{"id":"X1","priority":98,"all":["restart_requested"],"action":"acknowledge_restart","reads":["clock"],"obligations":["acknowledge_exact_generation_before_dispatch","set_fresh_post_miss_clock_without_inheritance"]},{"id":"M1","priority":95,"any":["random_mutation_due","dfs_review_due","universal_review_due"],"action":"review_scheduled_mutation","reads":["clock","ledger","dfs_slice","pending_suggestions"],"obligations":["probe_pending_suggestions","disposition_relevant_suggestions","use_stored_lane","review_evidence_before_proposing_change","research_unfamiliar_causal_patterns_when_useful"]},{"id":"A1","priority":90,"all":["accepted_evidence"],"none":["deadline_incident","integrity_incident"],"action":"apply_guarded_dfs_acceptance","reads":["clock","dfs"],"obligations":["accept_only_direct_gap_covering_evidence","guard_and_apply_exact_dfs_completion"]},{"id":"R1","priority":85,"any":["worker_completed","worker_finding","worker_abandoned"],"none":["deadline_incident","integrity_incident"],"action":"receive_worker_result","reads":["clock","ledger","dfs_slice"],"obligations":["terminalize_attempt_exactly_once","persist_result_receipt_after_ledger_projection","preserve_evidence_class","continue_same_coordinator"]},{"id":"O1","priority":80,"all":["owner_reply","blocked_ledger"],"action":"consume_owner_reply","reads":["ledger","owner_reply"],"obligations":["preserve_exact_owner_authority"]},{"id":"B1","priority":75,"all":["blocked_ledger"],"none":["owner_reply"],"action":"audit_blocker","reads":["ledger","clock"],"obligations":["restore_recoverable_work_or_preserve_material_blocker"]},{"id":"W1","priority":70,"all":["live_task"],"none":["deadline_incident","integrity_incident"],"action":"wait_for_worker_event","reads":["clock"],"obligations":["wake_no_later_than_item_deadline","do_not_poll_faster_without_new_event"]},{"id":"C1","priority":60,"all":["closure_ready","open_gap","executable_route"],"none":["live_task"],"action":"dispatch_closure_worker","reads":["ledger","dfs_slice","clock"],"obligations":["admit_full_downstream_route_to_clock","start_unique_worker_window","use_ordinary_worker_profile","set_deliverable_deadline_with_problem_margin","include_known_unknown_and_unpredicted_problem_margin","never_copy_one_attempt_runtime_into_whole_item_deadline","forfeit_claim_window_when_next_attempt_cannot_fit"]},{"id":"E1","priority":59,"all":["executable_route"],"any":["open_claim","ledger_work"],"none":["closure_ready","live_task"],"action":"dispatch_exploration_worker","reads":["ledger","dfs_slice","clock"],"obligations":["start_unique_worker_window","use_ordinary_worker_profile","set_deliverable_deadline_with_problem_margin","include_known_unknown_and_unpredicted_problem_margin","never_copy_one_attempt_runtime_into_whole_item_deadline","forfeit_claim_window_when_next_attempt_cannot_fit"]},{"id":"L1","priority":50,"all":["red_dfs_work"],"none":["ledger_work","live_task"],"action":"refill_ledger","reads":["dfs","clock"],"obligations":["project_first_actionable_red_claim"]},{"id":"S1","priority":10,"all":["dfs_complete"],"none":["live_task","red_dfs_work"],"action":"stop","reads":["clock"],"obligations":["leave_no_live_attempt"]}],"trace":{"events":{"deadline_expired":{"set":["deadline_open"]},"deadline_incident_reviewed":{"requires":["deadline_open"],"clear":["deadline_open"]},"claim_accepted":{"forbids":["deadline_open"]},"suggestion_added":{"set":["suggestions_pending"]},"mutation_started":{"forbids":["mutation_open"],"set":["mutation_open"]},"suggestions_dispositioned":{"requires":["mutation_open"],"clear":["suggestions_pending"]},"mutation_resolved":{"requires":["mutation_open"],"forbids":["suggestions_pending"],"clear":["mutation_open"]},"task_started":{"keyed":{"field":"task_id","namespace":"task","operation":"start","state":"live"}},"task_completed":{"keyed":{"field":"task_id","namespace":"task","operation":"finish","from":"live","state":"completed"}},"task_finding":{"keyed":{"field":"task_id","namespace":"task","operation":"finish","from":"live","state":"finding"}},"task_abandoned":{"keyed":{"field":"task_id","namespace":"task","operation":"finish","from":"live","state":"abandoned"}}}}}
+{
+  "format": "de67.phase3.policy",
+  "version": 2,
+  "fallback": {
+    "action": "inspect_state",
+    "reads": [
+      "ledger",
+      "clock"
+    ],
+    "obligations": [
+      "derive_missing_facts"
+    ]
+  },
+  "rules": [
+    {
+      "id": "Q1",
+      "priority": 101,
+      "all": [
+        "live_task"
+      ],
+      "any": [
+        "integrity_incident",
+        "deadline_incident",
+        "random_mutation_due",
+        "dfs_review_due",
+        "universal_review_due",
+        "pending_suggestions"
+      ],
+      "action": "wait_for_mutation_quiescence",
+      "reads": [
+        "clock"
+      ],
+      "obligations": [
+        "dispatch_no_new_worker",
+        "perform_no_mutation",
+        "wait_for_all_live_workers_to_terminalize"
+      ]
+    },
+    {
+      "id": "I1",
+      "priority": 100,
+      "all": [
+        "integrity_incident"
+      ],
+      "none": [
+        "live_task"
+      ],
+      "action": "retire_for_mutation_review",
+      "reads": [
+        "clock"
+      ],
+      "obligations": [
+        "perform_no_mutation",
+        "dispatch_no_worker",
+        "exit_to_external_supervisor"
+      ]
+    },
+    {
+      "id": "D1",
+      "priority": 99,
+      "all": [
+        "deadline_incident"
+      ],
+      "none": [
+        "live_task"
+      ],
+      "action": "retire_for_mutation_review",
+      "reads": [
+        "clock"
+      ],
+      "obligations": [
+        "perform_no_mutation",
+        "dispatch_no_worker",
+        "exit_to_external_supervisor"
+      ]
+    },
+    {
+      "id": "X1",
+      "priority": 98,
+      "all": [
+        "restart_requested"
+      ],
+      "action": "acknowledge_restart",
+      "reads": [
+        "clock"
+      ],
+      "obligations": [
+        "acknowledge_exact_generation_before_dispatch",
+        "set_fresh_post_mutation_clock_without_inheritance",
+        "estimate_from_current_ledger_with_uncertainty_margin"
+      ]
+    },
+    {
+      "id": "M1",
+      "priority": 95,
+      "any": [
+        "random_mutation_due",
+        "dfs_review_due",
+        "universal_review_due",
+        "pending_suggestions"
+      ],
+      "none": [
+        "live_task"
+      ],
+      "action": "retire_for_mutation_review",
+      "reads": [
+        "clock"
+      ],
+      "obligations": [
+        "perform_no_mutation",
+        "dispatch_no_worker",
+        "exit_to_external_supervisor"
+      ]
+    },
+    {
+      "id": "A1",
+      "priority": 90,
+      "all": [
+        "accepted_evidence"
+      ],
+      "none": [
+        "deadline_incident",
+        "integrity_incident"
+      ],
+      "action": "review_dfs_acceptance",
+      "reads": [
+        "clock",
+        "dfs"
+      ],
+      "obligations": [
+        "accept_only_direct_gap_covering_evidence",
+        "guard_and_apply_exact_dfs_completion",
+        "direct_coordinator_acceptance_without_independent_reviewer"
+      ]
+    },
+    {
+      "id": "R1",
+      "priority": 85,
+      "any": [
+        "worker_completed",
+        "worker_finding",
+        "worker_abandoned"
+      ],
+      "none": [
+        "deadline_incident",
+        "integrity_incident"
+      ],
+      "action": "receive_worker_result",
+      "reads": [
+        "clock",
+        "ledger",
+        "dfs_slice"
+      ],
+      "obligations": [
+        "terminalize_attempt_exactly_once",
+        "coordinator_exclusively_commits_terminal_worker_result",
+        "preserve_evidence_class",
+        "continue_same_coordinator",
+        "keep_named_in_scope_repair_or_rerun_as_nonterminal_checkpoint",
+        "keep_same_task_and_worker_across_checkpoint",
+        "terminal_finding_requires_named_route_exit",
+        "evaluate_convergence_after_every_worker",
+        "transition_to_named_independently_provable_closure_gaps_when_finite",
+        "record_specific_uncertainty_before_more_exploration"
+      ]
+    },
+    {
+      "id": "O1",
+      "priority": 80,
+      "all": [
+        "owner_reply",
+        "blocked_ledger"
+      ],
+      "action": "consume_owner_reply",
+      "reads": [
+        "ledger",
+        "owner_reply"
+      ],
+      "obligations": [
+        "preserve_exact_owner_authority"
+      ]
+    },
+    {
+      "id": "B1",
+      "priority": 75,
+      "all": [
+        "blocked_ledger"
+      ],
+      "none": [
+        "owner_reply"
+      ],
+      "action": "audit_blocker",
+      "reads": [
+        "ledger",
+        "clock"
+      ],
+      "obligations": [
+        "restore_recoverable_work_or_preserve_material_blocker"
+      ]
+    },
+    {
+      "id": "U1",
+      "priority": 71,
+      "all": [
+        "unbound_task"
+      ],
+      "none": [
+        "deadline_incident",
+        "integrity_incident"
+      ],
+      "action": "spawn_worker",
+      "reads": [
+        "clock",
+        "ledger",
+        "dfs_slice"
+      ],
+      "obligations": [
+        "use_existing_deadline_task",
+        "call_spawn_agent_before_wait",
+        "do_not_merely_announce_assignment",
+        "spawn_worker_with_outcome_and_visible_subtasks",
+        "preserve_parallel_independent_dispatch"
+      ]
+    },
+    {
+      "id": "W1",
+      "priority": 70,
+      "all": [
+        "live_task"
+      ],
+      "none": [
+        "deadline_incident",
+        "integrity_incident"
+      ],
+      "action": "wait_for_worker_event",
+      "reads": [
+        "clock"
+      ],
+      "obligations": [
+        "wake_no_later_than_item_deadline",
+        "do_not_poll_faster_without_new_event",
+        "preserve_live_outcome_across_subtask_checkpoints"
+      ]
+    },
+    {
+      "id": "C1",
+      "priority": 60,
+      "all": [
+        "closure_ready",
+        "open_gap",
+        "executable_route"
+      ],
+      "none": [
+        "live_task"
+      ],
+      "action": "dispatch_closure_worker",
+      "reads": [
+        "ledger",
+        "dfs_slice",
+        "clock"
+      ],
+      "obligations": [
+        "admit_full_downstream_route_to_clock",
+        "start_unique_worker_window",
+        "use_ordinary_worker_profile",
+        "delegate_executable_work_to_roster_worker",
+        "dispatch_outcome_sized_task_with_visible_subtasks",
+        "route_marked_live_playtest_to_witness_contract",
+        "derive_claim_deadline_from_outcome_spokes_single_use_authority_and_repair",
+        "size_one_generous_claim_deadline_for_full_route",
+        "reject_attempt_estimate_shrunk_to_remaining_claim_clock",
+        "include_worker_lifecycle_and_uncertainty_margin",
+        "delegate_evidence_sized_worker_retrieval"
+      ]
+    },
+    {
+      "id": "E1",
+      "priority": 59,
+      "all": [
+        "executable_route"
+      ],
+      "any": [
+        "open_claim",
+        "ledger_work"
+      ],
+      "none": [
+        "closure_ready",
+        "live_task"
+      ],
+      "action": "dispatch_exploration_worker",
+      "reads": [
+        "ledger",
+        "dfs_slice",
+        "clock"
+      ],
+      "obligations": [
+        "start_unique_worker_window",
+        "use_ordinary_worker_profile",
+        "delegate_executable_work_to_roster_worker",
+        "dispatch_outcome_sized_task_with_visible_subtasks",
+        "route_marked_live_playtest_to_witness_contract",
+        "derive_claim_deadline_from_outcome_spokes_single_use_authority_and_repair",
+        "size_one_generous_claim_deadline_for_full_route",
+        "reject_attempt_estimate_shrunk_to_remaining_claim_clock",
+        "include_worker_lifecycle_and_uncertainty_margin",
+        "delegate_evidence_sized_worker_retrieval"
+      ]
+    },
+    {
+      "id": "L1",
+      "priority": 50,
+      "all": [
+        "red_dfs_work"
+      ],
+      "none": [
+        "ledger_work",
+        "live_task"
+      ],
+      "action": "refill_ledger",
+      "reads": [
+        "dfs",
+        "clock"
+      ],
+      "obligations": [
+        "project_first_actionable_red_claim"
+      ]
+    },
+    {
+      "id": "S1",
+      "priority": 10,
+      "all": [
+        "dfs_complete"
+      ],
+      "none": [
+        "live_task",
+        "red_dfs_work"
+      ],
+      "action": "stop",
+      "reads": [
+        "clock"
+      ],
+      "obligations": [
+        "leave_no_live_attempt"
+      ]
+    }
+  ],
+  "trace": {
+    "events": {
+      "deadline_expired": {
+        "set": [
+          "deadline_open"
+        ]
+      },
+      "deadline_incident_reviewed": {
+        "requires": [
+          "deadline_open"
+        ],
+        "clear": [
+          "deadline_open"
+        ]
+      },
+      "claim_accepted": {
+        "forbids": [
+          "deadline_open"
+        ]
+      },
+      "suggestion_added": {
+        "set": [
+          "suggestions_pending"
+        ]
+      },
+      "mutation_started": {
+        "forbids": [
+          "mutation_open"
+        ],
+        "set": [
+          "mutation_open"
+        ]
+      },
+      "proof_owner_replaced": {
+        "requires": [
+          "mutation_open"
+        ],
+        "set": [
+          "projection_rebase_pending"
+        ]
+      },
+      "affected_projection_rebased": {
+        "requires": [
+          "mutation_open",
+          "projection_rebase_pending"
+        ],
+        "clear": [
+          "projection_rebase_pending"
+        ]
+      },
+      "suggestions_dispositioned": {
+        "requires": [
+          "mutation_open"
+        ],
+        "clear": [
+          "suggestions_pending"
+        ]
+      },
+      "mutation_resolved": {
+        "requires": [
+          "mutation_open"
+        ],
+        "forbids": [
+          "suggestions_pending",
+          "projection_rebase_pending"
+        ],
+        "clear": [
+          "mutation_open"
+        ]
+      },
+      "task_started": {
+        "keyed": {
+          "field": "task_id",
+          "namespace": "task",
+          "operation": "start",
+          "state": "live"
+        }
+      },
+      "task_completed": {
+        "keyed": {
+          "field": "task_id",
+          "namespace": "task",
+          "operation": "finish",
+          "from": "live",
+          "state": "completed"
+        }
+      },
+      "task_finding": {
+        "keyed": {
+          "field": "task_id",
+          "namespace": "task",
+          "operation": "finish",
+          "from": "live",
+          "state": "finding"
+        }
+      },
+      "task_abandoned": {
+        "keyed": {
+          "field": "task_id",
+          "namespace": "task",
+          "operation": "finish",
+          "from": "live",
+          "state": "abandoned"
+        }
+      }
+    }
+  }
+}
