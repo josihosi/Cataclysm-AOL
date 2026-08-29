@@ -41,6 +41,7 @@ from scenario_registry_store import (
     migration_item_current,
     migration_run_snapshot,
     open_registry,
+    prepare_windows_feel_handoff,
     quarantine_scenario,
     registry_query_repair_action,
     registry_status,
@@ -65,9 +66,11 @@ from scenario_registry_store import (
     path_sha256,
     record_migration_run_success,
     record_playtest_witness,
+    record_windows_feel_judgment,
     review_playtest_witness,
     revalidate_current_bootstrap_authority,
     snapshot_migration_run,
+    windows_feel_handoff_status,
 )
 import startup_harness
 import production_capture
@@ -1050,6 +1053,28 @@ def build_parser() -> argparse.ArgumentParser:
     validate_observation.add_argument("--source-report", required=True)
     commands.add_parser("reconcile", help="recompute report bindings from their authoritative owners")
     commands.add_parser("final-gates", help="derive automated-certification and Windows-feel eligibility")
+    windows_handoff = commands.add_parser(
+        "prepare-windows-feel-handoff",
+        help="prepare ordinary Windows play from one current certification pass",
+    )
+    windows_handoff.add_argument("certification_verification_id")
+    windows_handoff.add_argument(
+        "--windows-build", required=True,
+        help="JSON file with the Windows executable and ordinary world reference",
+    )
+    windows_status = commands.add_parser(
+        "windows-feel-status",
+        help="display pending, pass, or fail Josef-owned Windows feel results",
+    )
+    windows_status.add_argument("handoff_id", nargs="?")
+    windows_judgment = commands.add_parser(
+        "record-windows-feel",
+        help="record Josef's explicit Windows ordinary-play pass or fail judgment",
+    )
+    windows_judgment.add_argument("handoff_id")
+    windows_judgment.add_argument("--outcome", required=True, choices=("pass", "fail"))
+    windows_judgment.add_argument("--author", required=True, choices=("Josef",))
+    windows_judgment.add_argument("--notes", default="")
     bootstrap = commands.add_parser(
         "registry-bootstrap",
         help="issue one manifest-SHA/query/runtime-bound first-evidence authority",
@@ -1764,6 +1789,25 @@ def main(argv: Sequence[str] | None = None) -> int:
                 result = reconcile_report_bindings(connection, adapters=production_binding_adapters())
             elif args.command == "final-gates":
                 result = final_gate_eligibility(connection)
+            elif args.command == "prepare-windows-feel-handoff":
+                try:
+                    windows_build = json.loads(Path(args.windows_build).read_text(encoding="utf-8"))
+                except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise ScenarioRegistryStoreError("Windows handoff build reference is unreadable") from exc
+                if not isinstance(windows_build, Mapping):
+                    raise ScenarioRegistryStoreError("Windows handoff build reference must be a JSON object")
+                result = prepare_windows_feel_handoff(
+                    connection,
+                    certification_verification_id=args.certification_verification_id,
+                    windows_build=windows_build,
+                )
+            elif args.command == "windows-feel-status":
+                result = windows_feel_handoff_status(connection, args.handoff_id)
+            elif args.command == "record-windows-feel":
+                result = record_windows_feel_judgment(
+                    connection, handoff_id=args.handoff_id, outcome=args.outcome,
+                    author=args.author, notes=args.notes,
+                )
             elif args.command == "registry-record-witness":
                 try:
                     charter = json.loads(Path(args.charter).read_text(encoding="utf-8"))

@@ -4687,6 +4687,35 @@ def _migration_020_playtest_witness(connection: sqlite3.Connection) -> None:
         _create_history_append_only_triggers(connection, table)
 
 
+def _migration_021_windows_feel_handoff(connection: sqlite3.Connection) -> None:
+    """Persist the human-owned Windows feel gate outside automated reports."""
+    connection.executescript(
+        """
+        CREATE TABLE windows_feel_handoff (
+            handoff_id TEXT PRIMARY KEY,
+            certification_verification_id TEXT NOT NULL UNIQUE REFERENCES verification_history( verification_id ) ON DELETE RESTRICT,
+            certification_binding_id TEXT NOT NULL,
+            certification_round_id TEXT NOT NULL,
+            windows_build_json TEXT NOT NULL,
+            ordinary_play_json TEXT NOT NULL,
+            state TEXT NOT NULL CHECK ( state = 'pending' ),
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE windows_feel_judgment (
+            handoff_id TEXT PRIMARY KEY REFERENCES windows_feel_handoff( handoff_id ) ON DELETE RESTRICT,
+            outcome TEXT NOT NULL CHECK ( outcome IN ( 'pass', 'fail' ) ),
+            author TEXT NOT NULL CHECK ( author = 'Josef' ),
+            notes TEXT NOT NULL DEFAULT '',
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_windows_feel_handoff_certification
+        ON windows_feel_handoff( certification_verification_id );
+        """
+    )
+    _create_history_append_only_triggers(connection, "windows_feel_handoff")
+    _create_history_append_only_triggers(connection, "windows_feel_judgment")
+
+
 SCHEMA_MIGRATIONS: Sequence[Migration] = (
     (1, "initial_registry_surface", _migration_001_initial),
     (2, "inventory_migration_history", _migration_002_inventory_migration_history),
@@ -4708,6 +4737,7 @@ SCHEMA_MIGRATIONS: Sequence[Migration] = (
     (18, "cockpit_run_authority", _migration_018_cockpit_run_authority),
     (19, "r018_acceptance_matrix", _migration_019_r018_acceptance_matrix),
     (20, "playtest_witness", _migration_020_playtest_witness),
+    (21, "windows_feel_handoff", _migration_021_windows_feel_handoff),
 )
 
 
@@ -9070,12 +9100,188 @@ def issue_wec_authority(
     return fact
 
 
+def _verification_final_gates(connection: sqlite3.Connection, row: sqlite3.Row) -> Dict[str, Any]:
+    """Derive final-gate facts for one immutable automated verification."""
+    details = _json_object(str(row["details_json"]), "verification details")
+    authority = details.get("wec_authority", {})
+    authority_fact = authority.get("fact") if isinstance(authority, Mapping) else None
+    current_round = {"eligible": False, "reason": "not_certification_authority"}
+    if isinstance(authority_fact, Mapping) and authority_fact.get("evidence_class") == \
+            "automated continuous-round certification":
+        current_round = _certification_round_check(
+            connection, authority=authority_fact,
+            round_facts=details.get("certification_round", {}), report_facts=details,
+        )
+    gates = derive_final_gate_eligibility(
+        authority_fact,
+        proof_status=str(row["proof_status"]),
+        resolution=str(row["resolution_kind"]),
+        registry_owned=bool(
+            isinstance(authority, Mapping)
+            and isinstance(authority.get("fact"), Mapping)
+            and authority["fact"].get("authority_id")
+        ),
+        certification_round_valid=bool(current_round.get("eligible")),
+    )
+    return {"details": details, "gates": gates, "round": current_round}
+
+
+def _eligible_certification_verification(
+    connection: sqlite3.Connection, certification_verification_id: str,
+) -> Tuple[sqlite3.Row, Mapping[str, Any]]:
+    """Return one currently-green automated certification, or fail closed."""
+    row = connection.execute(
+        "SELECT verification.verification_id, verification.proof_status, verification.details_json, "
+        "COALESCE((SELECT resolution_kind FROM verification_resolution_history AS resolution "
+        "WHERE resolution.verification_id = verification.verification_id "
+        "ORDER BY resolution.resolution_event_id DESC LIMIT 1), 'unknown') AS resolution_kind "
+        "FROM verification_history AS verification WHERE verification.verification_id = ?",
+        (str(certification_verification_id).strip(),),
+    ).fetchone()
+    if row is None:
+        raise ScenarioRegistryStoreError("certification verification is unavailable")
+    evaluated = _verification_final_gates(connection, row)
+    if not evaluated["gates"]["automated_certification"]:
+        raise ScenarioRegistryStoreError("certification verification is not currently eligible")
+    return row, evaluated
+
+
+def _windows_build_reference(value: Mapping[str, Any]) -> Dict[str, str]:
+    """Keep the handoff concrete while excluding debug and scripted proof controls."""
+    required = {"platform", "executable_path", "executable_sha256", "world"}
+    if set(value) != required:
+        raise ScenarioRegistryStoreError("Windows handoff build reference must contain exactly platform, executable_path, executable_sha256, and world")
+    platform = str(value["platform"]).strip().lower()
+    executable_path = str(value["executable_path"]).strip()
+    executable_sha256 = str(value["executable_sha256"]).strip().lower()
+    world = str(value["world"]).strip()
+    if platform != "windows" or not executable_path or not world or len(executable_sha256) != 64 or \
+            any(character not in "0123456789abcdef" for character in executable_sha256):
+        raise ScenarioRegistryStoreError("Windows handoff build reference is malformed")
+    return {
+        "platform": "windows",
+        "executable_path": executable_path,
+        "executable_sha256": executable_sha256,
+        "world": world,
+    }
+
+
+def prepare_windows_feel_handoff(
+    connection: sqlite3.Connection, *, certification_verification_id: str,
+    windows_build: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Prepare one ordinary Windows play handoff from a current certification pass."""
+    build = _windows_build_reference(windows_build)
+    verification, evaluated = _eligible_certification_verification(
+        connection, certification_verification_id,
+    )
+    details = evaluated["details"]
+    round_facts = details.get("certification_round", {})
+    if not isinstance(round_facts, Mapping):
+        raise ScenarioRegistryStoreError("certification verification has no sealed round facts")
+    binding_id = str(round_facts.get("binding_id", "")).strip()
+    round_id = str(round_facts.get("round_id", "")).strip()
+    if not binding_id or not round_id:
+        raise ScenarioRegistryStoreError("certification verification round identity is incomplete")
+    ordinary_play = {
+        "kind": "ordinary-windows-play",
+        "launch": "Launch the supplied Windows build and continue the supplied world.",
+        "world": build["world"],
+        "judgment": "Play normally, then record your own pass or fail judgment.",
+    }
+    with immediate_transaction(connection):
+        existing = connection.execute(
+            "SELECT handoff_id, certification_binding_id, certification_round_id, windows_build_json, ordinary_play_json "
+            "FROM windows_feel_handoff WHERE certification_verification_id = ?",
+            (str(verification["verification_id"]),),
+        ).fetchone()
+        if existing is not None:
+            if (str(existing["certification_binding_id"]) != binding_id or
+                    str(existing["certification_round_id"]) != round_id or
+                    _json_object(str(existing["windows_build_json"]), "Windows handoff build") != build):
+                raise ScenarioRegistryStoreError("certified Windows handoff is immutable and cannot be repaired")
+            return windows_feel_handoff_status(connection, str(existing["handoff_id"]))
+        handoff_id = _identity(
+            "caol-windows-feel-handoff-v1", str(verification["verification_id"]),
+            binding_id, _json_text(build),
+        )
+        connection.execute(
+            "INSERT INTO windows_feel_handoff( handoff_id, certification_verification_id, certification_binding_id, "
+            "certification_round_id, windows_build_json, ordinary_play_json, state ) VALUES( ?, ?, ?, ?, ?, ?, 'pending' )",
+            (handoff_id, str(verification["verification_id"]), binding_id, round_id,
+             _json_text(build), _json_text(ordinary_play)),
+        )
+    return windows_feel_handoff_status(connection, handoff_id)
+
+
+def windows_feel_handoff_status(
+    connection: sqlite3.Connection, handoff_id: Optional[str] = None,
+) -> Dict[str, Any]:
+    """Display pending/pass/fail human evidence without exposing probe instructions."""
+    where, arguments = ("", ()) if handoff_id is None else (" WHERE handoff.handoff_id = ?", (str(handoff_id),))
+    rows = connection.execute(
+        "SELECT handoff.*, judgment.outcome, judgment.author, judgment.notes, judgment.recorded_at AS judged_at "
+        "FROM windows_feel_handoff AS handoff LEFT JOIN windows_feel_judgment AS judgment "
+        "ON judgment.handoff_id = handoff.handoff_id" + where + " ORDER BY handoff.recorded_at, handoff.handoff_id",
+        arguments,
+    ).fetchall()
+    handoffs = []
+    for row in rows:
+        outcome = str(row["outcome"] or "pending")
+        handoffs.append({
+            "handoff_id": str(row["handoff_id"]),
+            "certification_verification_id": str(row["certification_verification_id"]),
+            "certification_binding_id": str(row["certification_binding_id"]),
+            "certification_round_id": str(row["certification_round_id"]),
+            "state": outcome,
+            "windows_build": _json_object(str(row["windows_build_json"]), "Windows handoff build"),
+            "ordinary_play": _json_object(str(row["ordinary_play_json"]), "ordinary Windows play handoff"),
+            "judgment": None if outcome == "pending" else {
+                "author": str(row["author"]), "outcome": outcome, "notes": str(row["notes"]),
+                "recorded_at": str(row["judged_at"]),
+            },
+        })
+    if handoff_id is not None and not handoffs:
+        raise ScenarioRegistryStoreError("Windows feel handoff is unavailable")
+    return {"handoffs": handoffs}
+
+
+def record_windows_feel_judgment(
+    connection: sqlite3.Connection, *, handoff_id: str, outcome: str, author: str, notes: str = "",
+) -> Dict[str, Any]:
+    """Append Josef's one-way feel judgment; no automation can alter or repair it."""
+    normalized_outcome = str(outcome).strip().lower()
+    if normalized_outcome not in {"pass", "fail"} or str(author).strip() != "Josef":
+        raise ScenarioRegistryStoreError("only Josef may record a Windows feel pass or fail judgment")
+    with immediate_transaction(connection):
+        handoff = connection.execute(
+            "SELECT certification_verification_id FROM windows_feel_handoff WHERE handoff_id = ?", (str(handoff_id),)
+        ).fetchone()
+        if handoff is None:
+            raise ScenarioRegistryStoreError("Windows feel handoff is unavailable")
+        _eligible_certification_verification(connection, str(handoff["certification_verification_id"]))
+        existing = connection.execute(
+            "SELECT outcome, author, notes FROM windows_feel_judgment WHERE handoff_id = ?", (str(handoff_id),)
+        ).fetchone()
+        if existing is not None:
+            if (str(existing["outcome"]), str(existing["author"]), str(existing["notes"])) == \
+                    (normalized_outcome, "Josef", str(notes)):
+                return windows_feel_handoff_status(connection, str(handoff_id))
+            raise ScenarioRegistryStoreError("Windows feel judgment is immutable and cannot be repaired")
+        connection.execute(
+            "INSERT INTO windows_feel_judgment( handoff_id, outcome, author, notes ) VALUES( ?, ?, 'Josef', ? )",
+            (str(handoff_id), normalized_outcome, str(notes)),
+        )
+    return windows_feel_handoff_status(connection, str(handoff_id))
+
+
 def final_gate_eligibility(connection: sqlite3.Connection) -> Dict[str, Any]:
     """Derive the two final gates from immutable verification details only."""
     result = {
         "automated_certification": False,
         "windows_feel": False,
         "authoritative_verification_ids": [],
+        "overall_acceptance": False,
     }
     rows = connection.execute(
         "SELECT verification.verification_id, verification.proof_status, verification.details_json, "
@@ -9085,30 +9291,20 @@ def final_gate_eligibility(connection: sqlite3.Connection) -> Dict[str, Any]:
         "FROM verification_history AS verification ORDER BY verification.recorded_at, verification.verification_id"
     ).fetchall()
     for row in rows:
-        details = _json_object(str(row["details_json"]), "verification details")
-        authority = details.get("wec_authority", {})
-        authority_fact = authority.get("fact") if isinstance(authority, Mapping) else None
-        current_round = {"eligible": False, "reason": "not_certification_authority"}
-        if isinstance(authority_fact, Mapping) and authority_fact.get("evidence_class") == "automated continuous-round certification":
-            current_round = _certification_round_check(
-                connection, authority=authority_fact,
-                round_facts=details.get("certification_round", {}), report_facts=details,
-            )
-        gates = derive_final_gate_eligibility(
-            authority_fact,
-            proof_status=str(row["proof_status"]),
-            resolution=str(row["resolution_kind"]),
-            registry_owned=bool(
-                isinstance(authority, Mapping)
-                and isinstance(authority.get("fact"), Mapping)
-                and authority["fact"].get("authority_id")
-            ),
-            certification_round_valid=bool(current_round.get("eligible")),
-        )
-        if gates["automated_certification"] or gates["windows_feel"]:
+        gates = _verification_final_gates(connection, row)["gates"]
+        if gates["automated_certification"]:
             result["authoritative_verification_ids"].append(str(row["verification_id"]))
         result["automated_certification"] = result["automated_certification"] or gates["automated_certification"]
-        result["windows_feel"] = result["windows_feel"] or gates["windows_feel"]
+    for row in connection.execute(
+            "SELECT handoff.handoff_id, handoff.certification_verification_id, judgment.outcome "
+            "FROM windows_feel_handoff AS handoff JOIN windows_feel_judgment AS judgment "
+            "ON judgment.handoff_id = handoff.handoff_id WHERE judgment.outcome = 'pass'"):
+        try:
+            _eligible_certification_verification(connection, str(row["certification_verification_id"]))
+        except ScenarioRegistryStoreError:
+            continue
+        result["windows_feel"] = True
+    result["overall_acceptance"] = result["automated_certification"] and result["windows_feel"]
     return result
 
 

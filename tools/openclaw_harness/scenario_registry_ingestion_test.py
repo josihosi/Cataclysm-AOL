@@ -44,13 +44,16 @@ from scenario_registry_store import (  # noqa: E402
     final_gate_eligibility,
     open_registry,
     parse_registry_query_request,
+    prepare_windows_feel_handoff,
     rebuild_manifest_projection,
     query_diagnostic_capsule_candidates,
     reload_repair_token_for_launch,
     reload_selection_token_for_launch,
     reconcile_report_bindings,
     terminalize_repair_token_cleanup_without_report,
+    record_windows_feel_judgment,
     registry_status,
+    windows_feel_handoff_status,
 )
 import scenario_registry_store  # noqa: E402
 import startup_harness  # noqa: E402
@@ -525,7 +528,9 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
         rebuild_manifest_projection(connection, scenarios)
         return connection, scenarios, manifest_path, report_path
 
-    def register_valid_round(self, connection: sqlite3.Connection, *, source_sha256: str) -> tuple:
+    def register_valid_round(
+        self, connection: sqlite3.Connection, *, source_sha256: str, round_id: str = "registry-owned",
+    ) -> tuple:
         names = ("worktree", "executable", "data_config", "harness", "scenario", "fixture", "profile", "world_save", "player", "actors")
         authoritative = {name: {"identity": name} for name in names}
         authoritative["scenario"] = {"identity": "scenario", "content_sha256": source_sha256}
@@ -537,8 +542,8 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             domain="caol-complete-binding:v1",
         )
         authority = _issue_registry_certification_authority(
-            connection, round_id="registry-owned", binding_id=binding["sha256"],
-            source_sha256=source_sha256, launch_token="ingestion-test-token",
+            connection, round_id=round_id, binding_id=binding["sha256"],
+            source_sha256=source_sha256, launch_token="ingestion-test-token-" + round_id,
         )
         manifest = {
             "schema": 1, "version": 1, "round_id": authority["run_id"],
@@ -2094,6 +2099,91 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             )[0]
             self.assertEqual(retired.lifecycle_state, "retired")
             self.assertFalse(retired.token_eligible)
+            connection.close()
+
+    def test_windows_feel_handoff_is_pending_until_josef_records_an_immutable_result(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            connection, _scenarios, manifest_path, report_path = self.setup_registry(Path(temp_dir))
+            source_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+            report = self.report(manifest_path)
+            round_manifest, authority = self.register_valid_round(connection, source_sha256=source_sha256)
+            report["startup"]["screen"]["runtime_binding_observed"]["executable_sha256"] = "b" * 64
+            report.update({
+                "run_id": authority["run_id"], "binding_id": authority["binding_id"],
+                "wec_authority": authority, "event_stream_id": round_manifest["event_stream_id"],
+                "certification_round": {
+                    "round_id": round_manifest["round_id"], "authority_id": round_manifest["authority_id"],
+                    "binding_id": round_manifest["binding_id"], "event_stream_id": round_manifest["event_stream_id"],
+                    "manifest_sha256": round_manifest["manifest_sha256"], "lifecycle_state": "complete",
+                    "registry_derived": "true",
+                },
+            })
+            report["certification_lifecycle"]["events"] = [
+                dict(event, round_id=round_manifest["round_id"], binding_id=round_manifest["binding_id"])
+                for event in report["certification_lifecycle"]["events"]
+            ]
+            self.write_json(report_path, report)
+            adapters = BindingAdapters(
+                runtime=lambda _expected: {"status": "compatible", "facts": {
+                    "executable_sha256": "b" * 64, "source_sha256": "1" * 64}},
+                fixture=lambda _expected: {"status": "compatible", "facts": {"source_sha256": "2" * 64}},
+                profile=lambda _expected: {"status": "compatible", "facts": {"source_sha256": "3" * 64}},
+            )
+            certified = ingest_report_reference(connection, report_path, adapters=adapters)
+            handoff = prepare_windows_feel_handoff(
+                connection, certification_verification_id=certified["verification_id"], windows_build={
+                    "platform": "windows", "executable_path": "C:/AOL/cataclysm-tiles.exe",
+                    "executable_sha256": "c" * 64, "world": "ordinary-play-world",
+                },
+            )["handoffs"][0]
+            self.assertEqual(handoff["state"], "pending")
+            self.assertNotIn("debug", json.dumps(handoff["ordinary_play"]).lower())
+            self.assertFalse(final_gate_eligibility(connection)["overall_acceptance"])
+            with self.assertRaisesRegex(Exception, "only Josef"):
+                record_windows_feel_judgment(
+                    connection, handoff_id=handoff["handoff_id"], outcome="pass", author="automation",
+                )
+            recorded = record_windows_feel_judgment(
+                connection, handoff_id=handoff["handoff_id"], outcome="fail", author="Josef", notes="not coherent",
+            )["handoffs"][0]
+            self.assertEqual(recorded["state"], "fail")
+            self.assertFalse(final_gate_eligibility(connection)["windows_feel"])
+            with self.assertRaisesRegex(Exception, "immutable"):
+                record_windows_feel_judgment(
+                    connection, handoff_id=handoff["handoff_id"], outcome="pass", author="Josef",
+                )
+            second_round, second_authority = self.register_valid_round(
+                connection, source_sha256=source_sha256, round_id="registry-owned-second",
+            )
+            second_report = json.loads(json.dumps(report))
+            second_report.update({
+                "run_id": second_authority["run_id"], "binding_id": second_authority["binding_id"],
+                "wec_authority": second_authority, "event_stream_id": second_round["event_stream_id"],
+                "certification_round": {
+                    "round_id": second_round["round_id"], "authority_id": second_round["authority_id"],
+                    "binding_id": second_round["binding_id"], "event_stream_id": second_round["event_stream_id"],
+                    "manifest_sha256": second_round["manifest_sha256"], "lifecycle_state": "complete",
+                    "registry_derived": "true",
+                },
+            })
+            second_report["certification_lifecycle"]["events"] = [
+                dict(event, round_id=second_round["round_id"], binding_id=second_round["binding_id"])
+                for event in second_report["certification_lifecycle"]["events"]
+            ]
+            second_path = report_path.with_name("second.certification.report.json")
+            self.write_json(second_path, second_report)
+            second = ingest_report_reference(connection, second_path, adapters=adapters)
+            passed_handoff = prepare_windows_feel_handoff(
+                connection, certification_verification_id=second["verification_id"], windows_build={
+                    "platform": "windows", "executable_path": "C:/AOL/cataclysm-tiles.exe",
+                    "executable_sha256": "c" * 64, "world": "ordinary-play-world",
+                },
+            )["handoffs"][0]
+            record_windows_feel_judgment(
+                connection, handoff_id=passed_handoff["handoff_id"], outcome="pass", author="Josef",
+            )
+            self.assertTrue(final_gate_eligibility(connection)["overall_acceptance"])
+            self.assertEqual(windows_feel_handoff_status(connection)["handoffs"][0]["judgment"]["author"], "Josef")
             connection.close()
 
 

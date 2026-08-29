@@ -144,6 +144,7 @@ class ScenarioLifecycleTest(unittest.TestCase):
                     "automated_certification": False,
                     "windows_feel": False,
                     "authoritative_verification_ids": [],
+                    "overall_acceptance": False,
                 })
             finally:
                 connection.close()
