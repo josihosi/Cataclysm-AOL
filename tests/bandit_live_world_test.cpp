@@ -2305,6 +2305,15 @@ TEST_CASE( "bandit_live_world_camp_supply_has_bounded_capacity_and_safe_migratio
     CHECK( legacy.supply_member_minute_remainder == 0 );
     CHECK( legacy.supply_last_update_minutes == -1 );
 
+    JsonValue explicit_legacy_supply_json = json_loader::from_string(
+            R"({"schema_version":5,"site_id":"explicit-legacy-supply","headcount":6,"supply_units":4,"supply_last_update_minutes":120,"supply_accounted_living_total":6,"supply_member_minute_remainder":0})" );
+    bandit_live_world::site_record explicit_legacy_supply;
+    explicit_legacy_supply.deserialize( explicit_legacy_supply_json.get_object() );
+    CHECK( explicit_legacy_supply.supply_units == 4 );
+    CHECK( explicit_legacy_supply.supply_accounted_living_total == 6 );
+    CHECK( explicit_legacy_supply.supply_member_minute_remainder == 0 );
+    CHECK( explicit_legacy_supply.supply_last_update_minutes == 120 );
+
     bandit_live_world::world_state migrated_world;
     migrated_world.sites.push_back( legacy );
     const bandit_live_world::world_state migrated_round_trip = round_trip_world( migrated_world );

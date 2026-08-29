@@ -9600,7 +9600,7 @@ void site_record::deserialize( const JsonObject &jo )
         camp_decision.next_eligible_minutes = -1;
         camp_decision.transition_reason = "repaired inconsistent persisted camp decision";
     }
-    if( loaded_schema_version < 6 ) {
+    if( loaded_schema_version < 6 && !complete_supply_payload ) {
         seed_camp_supply( *this );
     } else if( !complete_supply_payload ) {
         supply_units = 0;
