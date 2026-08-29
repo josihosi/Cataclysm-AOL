@@ -9146,7 +9146,9 @@ def _eligible_certification_verification(
     return row, evaluated
 
 
-def _windows_build_reference(value: Mapping[str, Any]) -> Dict[str, str]:
+def _windows_build_reference(
+    value: Mapping[str, Any], *, certification_executable_sha256: str,
+) -> Dict[str, str]:
     """Keep the handoff concrete while excluding debug and scripted proof controls."""
     required = {"platform", "executable_path", "executable_sha256", "world"}
     if set(value) != required:
@@ -9158,6 +9160,8 @@ def _windows_build_reference(value: Mapping[str, Any]) -> Dict[str, str]:
     if platform != "windows" or not executable_path or not world or len(executable_sha256) != 64 or \
             any(character not in "0123456789abcdef" for character in executable_sha256):
         raise ScenarioRegistryStoreError("Windows handoff build reference is malformed")
+    if executable_sha256 != certification_executable_sha256:
+        raise ScenarioRegistryStoreError("Windows handoff executable does not match the certified binding")
     return {
         "platform": "windows",
         "executable_path": executable_path,
@@ -9171,7 +9175,6 @@ def prepare_windows_feel_handoff(
     windows_build: Mapping[str, Any],
 ) -> Dict[str, Any]:
     """Prepare one ordinary Windows play handoff from a current certification pass."""
-    build = _windows_build_reference(windows_build)
     verification, evaluated = _eligible_certification_verification(
         connection, certification_verification_id,
     )
@@ -9183,6 +9186,24 @@ def prepare_windows_feel_handoff(
     round_id = str(round_facts.get("round_id", "")).strip()
     if not binding_id or not round_id:
         raise ScenarioRegistryStoreError("certification verification round identity is incomplete")
+    certification_round = connection.execute(
+        "SELECT manifest_json FROM certification_round WHERE round_id = ?", (round_id,)
+    ).fetchone()
+    if certification_round is None:
+        raise ScenarioRegistryStoreError("certification verification round is unavailable")
+    manifest = _json_object(str(certification_round["manifest_json"]), "certification round manifest")
+    binding = manifest.get("binding")
+    authoritative = binding.get("authoritative_components") if isinstance(binding, Mapping) else None
+    executable = authoritative.get("executable") if isinstance(authoritative, Mapping) else None
+    certified_executable_sha256 = str(
+        executable.get("content_sha256", "") if isinstance(executable, Mapping) else ""
+    ).strip().lower()
+    if len(certified_executable_sha256) != 64 or any(
+            character not in "0123456789abcdef" for character in certified_executable_sha256):
+        raise ScenarioRegistryStoreError("certification verification executable binding is incomplete")
+    build = _windows_build_reference(
+        windows_build, certification_executable_sha256=certified_executable_sha256,
+    )
     ordinary_play = {
         "kind": "ordinary-windows-play",
         "launch": "Launch the supplied Windows build and continue the supplied world.",

@@ -2130,10 +2130,17 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
                 profile=lambda _expected: {"status": "compatible", "facts": {"source_sha256": "3" * 64}},
             )
             certified = ingest_report_reference(connection, report_path, adapters=adapters)
+            with self.assertRaisesRegex(Exception, "does not match the certified binding"):
+                prepare_windows_feel_handoff(
+                    connection, certification_verification_id=certified["verification_id"], windows_build={
+                        "platform": "windows", "executable_path": "C:/AOL/cataclysm-tiles.exe",
+                        "executable_sha256": "c" * 64, "world": "ordinary-play-world",
+                    },
+                )
             handoff = prepare_windows_feel_handoff(
                 connection, certification_verification_id=certified["verification_id"], windows_build={
                     "platform": "windows", "executable_path": "C:/AOL/cataclysm-tiles.exe",
-                    "executable_sha256": "c" * 64, "world": "ordinary-play-world",
+                    "executable_sha256": "b" * 64, "world": "ordinary-play-world",
                 },
             )["handoffs"][0]
             self.assertEqual(handoff["state"], "pending")
@@ -2176,7 +2183,7 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             passed_handoff = prepare_windows_feel_handoff(
                 connection, certification_verification_id=second["verification_id"], windows_build={
                     "platform": "windows", "executable_path": "C:/AOL/cataclysm-tiles.exe",
-                    "executable_sha256": "c" * 64, "world": "ordinary-play-world",
+                    "executable_sha256": "b" * 64, "world": "ordinary-play-world",
                 },
             )["handoffs"][0]
             record_windows_feel_judgment(
