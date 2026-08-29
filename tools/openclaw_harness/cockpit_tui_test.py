@@ -91,10 +91,45 @@ class CockpitTuiTest(unittest.TestCase):
         direct_tui, keyed_tui = cockpit_tui.CockpitTui(direct), cockpit_tui.CockpitTui(keyed)
         direct_state, keyed_state = direct_tui.refresh(), keyed_tui.refresh()
         command = next(item for item in direct_state["commands"] if item.get("action_id") == "world.wait")
+        self.assertEqual(command["request_view"], {
+            "id": "request.command.world.wait", "state": "ready",
+            "request": {"action": "game.act", "observation_id": "run-1:frame-2", "action_id": "world.wait"},
+            "contract": {
+                "id": "contract.game.act.v1", "required": ["action", "observation_id", "action_id"],
+                "properties": {
+                    "action": {"const": "game.act"},
+                    "observation_id": {"type": "string", "source": "field.frame_id"},
+                    "action_id": {"type": "string", "source": "advertised_actions"},
+                },
+            },
+        })
         self.assertEqual(direct_tui.dispatch(command["id"]), keyed_tui.dispatch_key(command["key"]))
         self.assertEqual([call for call in direct.calls if call["action"] == "game.act"],
                          [call for call in keyed.calls if call["action"] == "game.act"])
         self.assertEqual(direct_tui.state, keyed_tui.state)
+
+    def test_every_alias_has_a_noninteractive_contract_without_becoming_a_control(self) -> None:
+        state = cockpit_tui.render_state(observation(), {"binding_id": "binding-7", "state": "active"})
+        aliases = {command["label"]: command for command in state["commands"] if command["kind"] == "alias"}
+        self.assertEqual(set(aliases), {
+            "KEEP WATCH", "MAKE CAMP", "STOCK UP", "ZAP", "MOVE OUT", "EYES UP", "BIG MAP",
+        })
+        self.assertTrue(all(command["legal"] is False for command in aliases.values()))
+        self.assertEqual(aliases["KEEP WATCH"]["request_view"]["contract"]["id"],
+                         "contract.game.keep_watch.v1")
+        self.assertTrue(aliases["KEEP WATCH"]["request_view"]["contract"]["guarded"])
+        self.assertEqual(aliases["MOVE OUT"]["request_view"]["contract"]["id"],
+                         "contract.game.guarded_move_relative.v1")
+        self.assertTrue(aliases["MOVE OUT"]["request_view"]["contract"]["guarded"])
+        for label in ("MAKE CAMP", "STOCK UP", "ZAP"):
+            view = aliases[label]["request_view"]
+            self.assertEqual(view["state"], "arguments_required")
+            self.assertEqual(view["request"], {"action": "scenario.prepare"})
+            self.assertEqual(view["missing"], ["id", "required_typeid", "candidate_offsets"])
+        for label in ("EYES UP", "BIG MAP"):
+            view = aliases[label]["request_view"]
+            self.assertEqual(view["state"], "ready")
+            self.assertEqual(view["request"], {"action": "game.observe"})
 
     def test_alias_is_never_a_fake_control_and_stale_observation_is_visible(self) -> None:
         service = FakeService()

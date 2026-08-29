@@ -28,6 +28,91 @@ _ALIASES = {
 }
 
 
+_CONTRACTS = {
+    "game.act": {
+        "id": "contract.game.act.v1",
+        "required": ["action", "observation_id", "action_id"],
+        "properties": {
+            "action": {"const": "game.act"},
+            "observation_id": {"type": "string", "source": "field.frame_id"},
+            "action_id": {"type": "string", "source": "advertised_actions"},
+        },
+    },
+    "game.keep_watch": {
+        "id": "contract.game.keep_watch.v1",
+        "guarded": True,
+        "required": ["action", "keep_watch"],
+        "properties": {
+            "action": {"const": "game.keep_watch"},
+            "keep_watch": {"type": "object", "required": ["enabled", "target_game_minutes", "bound", "recipe"],
+                           "properties": {
+                               "master_enabled": {"type": "boolean", "default": True},
+                               "enabled": {"const": True},
+                               "target_game_minutes": {"type": "number"},
+                               "bound": {"type": "object", "required": ["maximum"]},
+                               "recipe": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+                           }},
+        },
+    },
+    "game.guarded_move_relative": {
+        "id": "contract.game.guarded_move_relative.v1",
+        "guarded": True,
+        "required": ["action", "guarded_move_relative"],
+        "properties": {
+            "action": {"const": "game.guarded_move_relative"},
+            "guarded_move_relative": {"type": "object", "required": ["enabled", "offset_ms", "bound"],
+                                        "properties": {
+                                            "master_enabled": {"type": "boolean", "default": True},
+                                            "enabled": {"const": True},
+                                            "offset_ms": {"type": "array", "items": {"type": "integer"},
+                                                          "length": 2, "nonzero": True},
+                                            "bound": {"type": "object", "required": ["maximum", "basis", "source", "unit"],
+                                                      "properties": {"unit": {"const": "steps"}}},
+                                        }},
+        },
+    },
+    "scenario.prepare": {
+        "id": "contract.scenario.prepare.v1",
+        "required": ["action", "id", "required_typeid", "candidate_offsets"],
+        "properties": {
+            "action": {"const": "scenario.prepare"},
+            "id": {"type": "string", "nonempty": True},
+            "required_typeid": {"type": "string", "nonempty": True},
+            "candidate_offsets": {"type": "array"},
+            "world": {"type": "string", "optional": True},
+            "player_save": {"type": "string", "optional": True},
+        },
+    },
+    "game.observe": {
+        "id": "contract.game.observe.v1",
+        "required": ["action"],
+        "properties": {"action": {"const": "game.observe"}},
+    },
+}
+
+
+def _contract(action: str) -> Dict[str, Any]:
+    """Return a detached public contract, never a guessed executable request."""
+    contract = _CONTRACTS.get(action)
+    return dict(contract) if contract is not None else {
+        "id": "contract.unavailable.v1", "state": "unavailable", "action": action,
+    }
+
+
+def _request_view(identifier: str, action: str, request: Mapping[str, Any] | None = None) -> Dict[str, Any]:
+    """Expose an exact request when known, otherwise name the missing arguments."""
+    contract = _contract(action)
+    if request is not None:
+        return {"id": identifier, "state": "ready", "request": dict(request), "contract": contract}
+    return {
+        "id": identifier,
+        "state": "arguments_required",
+        "request": {"action": action},
+        "missing": [key for key in contract.get("required", []) if key != "action"],
+        "contract": contract,
+    }
+
+
 def _int(value: Any) -> int | None:
     return value if isinstance(value, int) and not isinstance(value, bool) else None
 
@@ -114,13 +199,22 @@ def _overmap(observation: Mapping[str, Any]) -> Dict[str, Any]:
 def _commands(observation: Mapping[str, Any]) -> list[Dict[str, Any]]:
     advertised = sorted({str(action) for action in observation.get("advertised_actions", [])
                          if isinstance(action, str) and action})
+    observation_id = str(observation.get("observation_id", ""))
     commands = [{"id": f"command.{action}", "kind": "primitive", "action": "game.act",
-                 "action_id": action, "legal": True, "key": str(index + 1)}
+                 "action_id": action, "legal": True, "key": str(index + 1),
+                 "request_view": _request_view(
+                     f"request.command.{action}", "game.act",
+                     {"action": "game.act", "observation_id": observation_id, "action_id": action},
+                 )}
                 for index, action in enumerate(advertised)]
     for label, action in sorted(_ALIASES.items()):
         commands.append({"id": f"alias.{label.lower().replace(' ', '_')}", "kind": "alias",
                          "label": label, "equivalent": action, "legal": False,
-                         "reason": "requires_structured_arguments_or_advertised_recipe"})
+                         "reason": "requires_structured_arguments_or_advertised_recipe",
+                         "request_view": _request_view(
+                             f"request.alias.{label.lower().replace(' ', '_')}", action,
+                             {"action": action} if action == "game.observe" else None,
+                         )})
     return commands
 
 
@@ -187,9 +281,12 @@ class CockpitTui:
                 self.last_result = {"ok": False, "error": "command_is_alias_only", "command_id": command_id,
                                     "equivalent": command.get("equivalent")}
                 return self.last_result
-            self.last_result = self.service.call({"action": "game.act",
-                                                  "observation_id": self.observation["observation_id"],
-                                                  "action_id": command["action_id"]})
+            request_view = command.get("request_view")
+            request = request_view.get("request") if isinstance(request_view, Mapping) else None
+            if not isinstance(request, Mapping):
+                self.last_result = {"ok": False, "error": "command_request_unavailable", "command_id": command_id}
+                return self.last_result
+            self.last_result = self.service.call(dict(request))
             next_observation = self.last_result.get("observation")
             if isinstance(next_observation, Mapping):
                 self.observation = dict(next_observation)
