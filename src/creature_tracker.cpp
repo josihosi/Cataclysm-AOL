@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "avatar.h"
+#include "bandit_live_world_probe.h"
 #include "cata_assert.h"
 #include "debug.h"
 #include "flood_fill.h"
@@ -275,6 +276,7 @@ bool creature_tracker::kill_marked_for_death()
         if( !critter.is_dead() ) {
             continue;
         }
+        bandit_live_world_probe::record_fixture_monster_lifecycle( critter, "cleanup_dead", "local" );
         dbg( D_INFO ) << string_format( "cleanup_dead: critter at %s hp:%d %s",
                                         critter.pos_abs().to_string_writable(),
                                         critter.get_hp(), critter.name() );

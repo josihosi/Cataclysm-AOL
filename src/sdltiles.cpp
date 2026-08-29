@@ -163,6 +163,53 @@ static int DrawableHeight;
 // This value is finally returned by input_manager::get_input_event.
 input_event last_input;
 
+namespace
+{
+bool openclaw_harness_wait_input_trace_enabled()
+{
+    const char *const selected_run_id = std::getenv( "OPENCLAW_HARNESS_WAIT_INPUT_TRACE_RUN_ID" );
+    const char *const active_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    return selected_run_id != nullptr && active_run_id != nullptr && selected_run_id[0] != '\0' &&
+           std::strcmp( selected_run_id, active_run_id ) == 0;
+}
+
+void openclaw_harness_trace_wait_sdl_event( const char *const event,
+        const CataKeysym &keysym, const char *const text = "" )
+{
+    if( !openclaw_harness_wait_input_trace_enabled() ) {
+        return;
+    }
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_wait_input_trace: component=sdl_input"
+            << " event=" << event
+            << " run_id=\"" << std::getenv( "OPENCLAW_HARNESS_RUN_ID" ) << "\""
+            << " sdl_keycode=" << keysym.sym
+            << " modifier_shift=" << ( keysym.mod & KMOD_SHIFT ? "yes" : "no" )
+            << " modifier_ctrl=" << ( keysym.mod & KMOD_CTRL ? "yes" : "no" )
+            << " modifier_alt=" << ( keysym.mod & KMOD_ALT ? "yes" : "no" )
+            << " text=\"" << text << "\"";
+}
+
+void openclaw_harness_trace_wait_normalized_input( const char *const source,
+        const input_event &input )
+{
+    if( !openclaw_harness_wait_input_trace_enabled() ) {
+        return;
+    }
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_wait_input_trace: component=sdl_input"
+            << " event=normalized"
+            << " source=" << source
+            << " run_id=\"" << std::getenv( "OPENCLAW_HARNESS_RUN_ID" ) << "\""
+            << " normalized_type=" << static_cast<int>( input.type )
+            << " normalized_code=" << input.get_first_input()
+            << " modifier_shift=" << ( input.modifiers.count( keymod_t::shift ) ? "yes" : "no" )
+            << " modifier_ctrl=" << ( input.modifiers.count( keymod_t::ctrl ) ? "yes" : "no" )
+            << " modifier_alt=" << ( input.modifiers.count( keymod_t::alt ) ? "yes" : "no" )
+            << " text=\"" << input.text << "\"";
+}
+} // namespace
+
 static int inputdelay;         //How long getch will wait for a character to be typed
 int fontwidth;          //the width of the font, background is always this size
 int fontheight;         //the height of the font, background is always this size
@@ -5601,9 +5648,14 @@ static void CheckMessages()
         } else {
             switch( ev.type ) {
                 case CATA_KEYDOWN: {
+                    const CataKeysym keysym = GetKeysym( ev );
+                    const bool trace_wait_input = openclaw_harness_wait_input_trace_enabled();
+                    if( trace_wait_input ) {
+                        openclaw_harness_trace_wait_sdl_event( "keydown", keysym );
+                    }
 #if defined(__ANDROID__)
                     // Toggle virtual keyboard with Android back button. For some reason I get double inputs, so ignore everything once it's already down.
-                    if( GetKeysym( ev ).sym == SDLK_AC_BACK && ac_back_down_time == 0 ) {
+                    if( keysym.sym == SDLK_AC_BACK && ac_back_down_time == 0 ) {
                         ac_back_down_time = ticks;
                         quick_shortcuts_toggle_handled = false;
                     }
@@ -5620,7 +5672,7 @@ static void CheckMessages()
                     }
 #endif
                     if( mode == keyboard_mode::keychar ) {
-                        const int lc = sdl_keysym_to_curses( GetKeysym( ev ) );
+                        const int lc = sdl_keysym_to_curses( keysym );
                         if( lc <= 0 ) {
                             // a key we don't know in curses and won't handle.
                             break;
@@ -5652,7 +5704,10 @@ static void CheckMessages()
 #endif
                         }
                     } else {
-                        last_input = sdl_keysym_to_keycode_evt( GetKeysym( ev ) );
+                        last_input = sdl_keysym_to_keycode_evt( keysym );
+                    }
+                    if( trace_wait_input ) {
+                        openclaw_harness_trace_wait_normalized_input( "keydown", last_input );
                     }
                 }
                 break;
@@ -5698,6 +5753,10 @@ static void CheckMessages()
                 }
                 break;
                 case CATA_TEXTINPUT:
+                    if( openclaw_harness_wait_input_trace_enabled() ) {
+                        openclaw_harness_trace_wait_sdl_event( "textinput",
+                                CataKeysym{ 0, 0, SDL_SCANCODE_UNKNOWN }, ev.text.text );
+                    }
                     if( !add_alt_code( *ev.text.text ) ) {
                         if( strlen( ev.text.text ) > 0 ) {
                             const unsigned lc = UTF8_getch( ev.text.text );
@@ -5729,6 +5788,9 @@ static void CheckMessages()
                         }
                         last_input.text = ev.text.text;
                         text_refresh = true;
+                    }
+                    if( openclaw_harness_wait_input_trace_enabled() ) {
+                        openclaw_harness_trace_wait_normalized_input( "textinput", last_input );
                     }
                     break;
                 case CATA_TEXTEDITING: {

@@ -69,6 +69,11 @@ class input_context
         // Whatever's on top is our current input context.
         static input_context_stack_impl input_context_stack;
 #endif
+        // The active context is the native owner of input on tile and Android
+        // builds.  Callers that need to know whether ordinary world input is
+        // available must inspect this owner instead of inferring it from UI
+        // stack state.
+        static input_context *get_active_context();
         input_context() : category( "default" ), registered_any_input( false ),
             coordinate_input_received( false ), handling_coordinate_input( false ) {
 #if defined(__ANDROID__) || defined(TILES)
@@ -498,6 +503,11 @@ class input_context
         const std::string &input_to_action( const input_event &inp ) const;
         bool is_event_type_enabled( input_event_t type ) const;
         bool is_registered_action( const std::string &action_name ) const;
+        const std::string &get_category() const {
+            return category;
+        }
+        std::optional<std::string> first_keyboard_character_for_action(
+            const std::string &action_id ) const;
     private:
         std::string category; // The input category this context uses.
         point coordinate;

@@ -1,0 +1,79 @@
+{
+  "manifest_version": 2,
+  "name": "r020.controlled_camp_setup_bootstrap",
+  "description": "R-020 zero-credit bootstrap. It binds one disposable fixture to the controlled setup transaction at OMT (162,36,0); the transaction snapshots both camp owners and restores its own bytes. It does not authorize camp gameplay, economy, or ecology proof.",
+  "profile": "r009-m091",
+  "world": "McWilliams",
+  "fixture": "r020_controlled_camp_bootstrap_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": false,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO"],
+  "capabilities": {
+    "world.controlled_camp_omt": [162, 36, 0],
+    "capabilities.setup.controlled_camp_transaction": "fixture_save_transform.player_basecamp_at_omt",
+    "capabilities.setup.controlled_camp_expected_composition": "one player registry identity and one your_followers overmap identity",
+    "capabilities.setup.controlled_camp_cleanup_owner": "controlled_camp_setup",
+    "runtime.evidence_ceiling": "none_for_manufactured_state"
+  },
+  "runtime_contract": {
+    "permitted_input": ["controlled_camp_setup"],
+    "forbidden_input": ["debug:camp_gameplay", "fixture-save-transform-after-install", "raw-save-rewrite"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["controlled_camp_setup"],
+    "permissions": [],
+    "platform": ["macos", "linux", "windows"],
+    "profile": "r009-m091",
+    "fixture": "r020_controlled_camp_bootstrap_v1",
+    "requirements": {
+      "os": "any-supported",
+      "source": "current-worktree",
+      "executable": "not-required-for-setup-transaction",
+      "profile": "r009-m091",
+      "fixture": "r020_controlled_camp_bootstrap_v1",
+      "helper": "controlled_camp_setup",
+      "peekaboo": false,
+      "input": ["controlled_camp_setup"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "controlled_camp_setup": {
+    "fixture_owner": "r020_controlled_camp_bootstrap_v1",
+    "transaction_owner": "fixture_save_transform.player_basecamp_at_omt",
+    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "camp_name": "R020 Disposable Camp",
+    "owner": "your_followers",
+    "camp_omt": [162, 36, 0],
+    "expected_composition": "one player registry identity and one your_followers overmap identity",
+    "cleanup_owner": "controlled_camp_setup",
+    "evidence_ceiling": "none_for_manufactured_state"
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "bootstrap_setup_only_boundary",
+      "seconds": 0,
+      "expected_visible_fact": "the controlled transaction is setup-only and has no gameplay proof route"
+    }
+  ],
+  "proof_gates": [{
+    "id": "r020_controlled_camp_cleaned",
+    "label": "R-020 controlled camp transaction records both owners and restores its bytes",
+    "boundary_step": "bootstrap_setup_only_boundary",
+    "predecessors": [],
+    "expectations": [{
+      "kind": "saved_artifact",
+      "predicate": {"artifact_kind": "controlled_camp_setup", "cleanup_accepted": true, "gameplay_credit": false}
+    }],
+    "checkpoint_safe_ui": {"screen_text_contains": ["setup transaction only"]}
+  }],
+  "proof_route": {
+    "gates": ["r020_controlled_camp_cleaned"],
+    "terminal": ["r020_controlled_camp_cleaned"]
+  }
+}

@@ -1,0 +1,41 @@
+{
+  "manifest_version": 2,
+  "name": "r022.item_spawn_live_validation",
+  "description": "Disposable R-022 live validation, separate from its closed bootstrap. A run-bound executable bridge invokes the proved native wish.cpp item transaction once, captures its exact receipts, and binds its tag-scoped cleanup without gameplay or economy credit.",
+  "profile": "r009-m091",
+  "world": "McWilliams",
+  "fixture": "r022_item_spawn_live_validation_v2",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": false,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO"],
+  "capabilities": {
+    "capabilities.r022.live_validation": "run_bound_native_debug_item_spawn_transaction_with_tag_scoped_cleanup",
+    "capabilities.setup.item_spawn_transaction": "debug_menu::debug_item_spawn_transaction",
+    "capabilities.setup.item_spawn_cleanup": "debug_menu::debug_item_spawn_transaction_cleanup",
+    "runtime.evidence_ceiling": "none_for_debug_fixture_transaction"
+  },
+  "runtime_contract": {
+    "permitted_input": ["openclaw_harness_r022_item_spawn_bridge"],
+    "forbidden_input": ["inventory_acquisition", "economy_credit", "gameplay_credit_api", "untagged_cleanup"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["r022_item_spawn_adapter"],
+    "permissions": [],
+    "platform": ["macos", "linux", "windows"],
+    "profile": "r009-m091",
+    "fixture": "r022_item_spawn_live_validation_v2",
+    "requirements": {"os": "any-supported", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m091", "fixture": "r022_item_spawn_live_validation_v2", "helper": "r022_item_spawn_adapter", "peekaboo": false, "input": ["openclaw_harness_r022_item_spawn_bridge"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "r022_item_spawn": {
+    "transaction_id": "r022-live-validation-v2", "type": "apple", "quantity": 3, "charges": 0, "damage": 0,
+    "owner": "your_followers", "destination_offset_ms": [4, 0, 0], "native_source": "src/wish.cpp", "native_executable": "cataclysm-tiles",
+    "transaction_owner": "debug_menu::debug_item_spawn_transaction", "cleanup_owner": "debug_menu::debug_item_spawn_transaction_cleanup", "evidence_ceiling": "none_for_debug_fixture_transaction"
+  },
+  "steps": [{"kind": "r022_item_spawn_bridge", "label": "r022_exact_native_spawn_and_cleanup", "expected_visible_fact": "one launched native transaction has exact tagged identities and tag-scoped cleanup", "declaration": {"transaction_id": "r022-live-validation-v2", "type": "apple", "quantity": 3, "charges": 0, "damage": 0, "owner": "your_followers", "destination_offset_ms": [4, 0, 0], "native_source": "src/wish.cpp", "native_executable": "cataclysm-tiles", "transaction_owner": "debug_menu::debug_item_spawn_transaction", "cleanup_owner": "debug_menu::debug_item_spawn_transaction_cleanup", "evidence_ceiling": "none_for_debug_fixture_transaction"}}],
+  "proof_gates": [{"id": "r022_live_transaction_bound", "label": "launched R-022 native receipt and cleanup are bound", "boundary_step": "r022_exact_native_spawn_and_cleanup", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "r022_item_spawn_transaction", "gameplay_credit": false}}], "checkpoint_safe_ui": {"screen_text_contains": ["setup transaction only"]}}],
+  "proof_route": {"gates": ["r022_live_transaction_bound"], "terminal": ["r022_live_transaction_bound"]}
+}

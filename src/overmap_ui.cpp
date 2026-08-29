@@ -3106,6 +3106,7 @@ static bool try_travel_to_destination( avatar &player_character, const tripoint_
         } else {
             player_character.reset_move_mode();
             player_character.assign_activity( ACT_TRAVELLING );
+            openclaw_harness_semantic_native_travel_started( player_character, dest );
         }
         openclaw_harness_trace_overmap_route( "confirmed", dest, path.size(), true );
         return true;

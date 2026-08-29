@@ -1,5 +1,7 @@
 #include "activity_actor.h"
 
+void openclaw_harness_semantic_wait_activity_complete();
+
 #include <algorithm>
 #include <array>
 #include <climits>
@@ -13469,6 +13471,7 @@ void wait_activity_actor::finish( player_activity &act, Character &who )
 {
     who.add_msg_if_player( _( "You finish waiting." ) );
     act.set_to_null();
+    openclaw_harness_semantic_wait_activity_complete();
 }
 
 void wait_activity_actor::serialize( JsonOut &jsout ) const

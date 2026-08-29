@@ -49,6 +49,23 @@ class input_context;
 
 input_context get_default_mode_input_context();
 
+// Emit the harness's initial semantic world frame only at the production HUD
+// render boundary.  The active native input context must be the main world
+// owner before the ordinary world-input surface may be published.
+void openclaw_harness_semantic_initial_world_frame_if_ready( const input_context *active_input_context,
+        bool no_activity_owns_turn,
+        bool no_auto_move_owns_turn, bool no_dead_watch_owns_turn );
+void openclaw_harness_semantic_activity_distraction();
+// Native distant-travel facts are emitted only for a harness-bound run.  The
+// travel owner reports the accepted destination, every native handoff, and
+// the terminal outcome so harness code never treats a rendered HUD as proof
+// that travel cleared.
+void openclaw_harness_semantic_native_travel_started( const avatar &player,
+        const tripoint_abs_omt &destination );
+void openclaw_harness_semantic_native_travel_progress( const Character &player );
+void openclaw_harness_semantic_native_travel_terminal( const Character &player,
+        const char *terminal_state );
+
 enum quit_status {
     QUIT_NO = 0,    // Still playing
     QUIT_SUICIDE,   // Quit with 'Q'

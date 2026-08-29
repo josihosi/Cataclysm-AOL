@@ -831,6 +831,10 @@ action_id handle_interact( map &here, const tripoint_bub_ms &pos )
 
 action_id handle_action_menu( map &here )
 {
+    if( openclaw_harness_ui_trace_enabled() ) {
+        DebugLog( D_INFO, DC_ALL )
+                << "openclaw_harness_ui_trace: component=action_menu event=open";
+    }
     const input_context ctxt = get_default_mode_input_context();
     std::string catgname;
 
@@ -1114,16 +1118,32 @@ action_id handle_action_menu( map &here )
         const int selection = smenu.ret;
 
         if( selection < 0 || selection == NUM_ACTIONS ) {
+            if( openclaw_harness_ui_trace_enabled() ) {
+                if( selection < 0 ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "openclaw_harness_ui_trace: component=action_menu event=cancelled";
+                }
+                DebugLog( D_INFO, DC_ALL )
+                        << "openclaw_harness_ui_trace: component=action_menu event=return";
+            }
             return ACTION_NULL;
         } else if( selection == 2 * NUM_ACTIONS ) {
             if( category != "back" ) {
                 category = "back";
             } else {
+                if( openclaw_harness_ui_trace_enabled() ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "openclaw_harness_ui_trace: component=action_menu event=return";
+                }
                 return ACTION_NULL;
             }
         } else if( selection > NUM_ACTIONS ) {
             category = categories_by_int[selection];
         } else {
+            if( openclaw_harness_ui_trace_enabled() ) {
+                DebugLog( D_INFO, DC_ALL )
+                        << "openclaw_harness_ui_trace: component=action_menu event=return";
+            }
             return static_cast<action_id>( selection );
         }
     }
@@ -1174,7 +1194,15 @@ action_id handle_main_menu()
     uilist smenu;
     smenu.settext( _( "MAIN MENU" ) );
     smenu.entries = entries;
+    if( openclaw_harness_ui_trace_enabled() ) {
+        DebugLog( D_INFO, DC_ALL )
+                << "openclaw_harness_ui_trace: component=in_game_main_menu event=open";
+    }
     smenu.query();
+    if( openclaw_harness_ui_trace_enabled() ) {
+        DebugLog( D_INFO, DC_ALL )
+                << "openclaw_harness_ui_trace: component=in_game_main_menu event=return";
+    }
     int selection = smenu.ret;
 
     if( selection < 0 || selection >= NUM_ACTIONS ) {

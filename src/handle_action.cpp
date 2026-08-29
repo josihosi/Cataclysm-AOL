@@ -3,13 +3,16 @@
 #include <algorithm>
 #include <chrono>
 #include <cmath>
+#include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <initializer_list>
 #include <list>
 #include <map>
 #include <sstream>
 #include <string>
 #include <utility>
+#include <vector>
 
 #include "action.h"
 #include "activity_actor_definitions.h"
@@ -75,6 +78,7 @@
 #include "move_mode.h"
 #include "mtype.h"
 #include "mutation.h"
+#include "npc.h"
 #include "options.h"
 #include "output.h"
 #include "overmap_ui.h"
@@ -185,6 +189,538 @@ static void openclaw_harness_trace_default_action_dispatch( const std::string &e
             << " action_id=" << openclaw_harness_quote_action_value( action_ident( act ) );
 }
 
+static void openclaw_harness_trace_wait_action_dispatch()
+{
+    const char *const selected_run_id = std::getenv( "OPENCLAW_HARNESS_WAIT_INPUT_TRACE_RUN_ID" );
+    const char *const active_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    if( selected_run_id == nullptr || active_run_id == nullptr || selected_run_id[0] == '\0' ||
+        std::strcmp( selected_run_id, active_run_id ) != 0 ) {
+        return;
+    }
+
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_wait_input_trace: component=action_dispatch"
+            << " event=invoke_wait"
+            << " run_id=\"" << active_run_id << "\""
+            << " action_id=\"wait\"";
+}
+
+static void openclaw_harness_trace_wait_menu_selection( const std::string &action_id,
+        bool accepted )
+{
+    const char *const selected_run_id = std::getenv( "OPENCLAW_HARNESS_WAIT_INPUT_TRACE_RUN_ID" );
+    const char *const active_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    if( selected_run_id == nullptr || active_run_id == nullptr || selected_run_id[0] == '\0' ||
+        std::strcmp( selected_run_id, active_run_id ) != 0 ) {
+        return;
+    }
+
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_wait_input_trace: component=wait_menu"
+            << " event=selection"
+            << " run_id=\"" << active_run_id << "\""
+            << " action_id=" << openclaw_harness_quote_action_value( action_id )
+            << " accepted=" << ( accepted ? "yes" : "no" );
+}
+
+static std::string openclaw_harness_bound_semantic_run_id()
+{
+    const char *const active_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const char *const bound_run_id = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID" );
+    if( active_run_id == nullptr || bound_run_id == nullptr || active_run_id[0] == '\0' ||
+        bound_run_id[0] == '\0' || std::strcmp( active_run_id, bound_run_id ) != 0 ) {
+        return {};
+    }
+    return active_run_id;
+}
+
+static bool openclaw_harness_semantic_step_trace_enabled()
+{
+    return !openclaw_harness_bound_semantic_run_id().empty();
+}
+
+static std::string openclaw_harness_pending_world_frame;
+
+namespace
+{
+struct openclaw_harness_native_travel_record {
+    std::string run_id;
+    std::string travel_id;
+    tripoint_abs_omt destination = tripoint_abs_omt::invalid;
+    size_t sequence = 0;
+};
+
+openclaw_harness_native_travel_record openclaw_harness_native_travel;
+
+void openclaw_harness_semantic_native_travel_event( const Character &player,
+        const char *state )
+{
+    if( !player.is_avatar() || !openclaw_harness_semantic_step_trace_enabled() ||
+        openclaw_harness_native_travel.travel_id.empty() ) {
+        return;
+    }
+    const std::string run_id = openclaw_harness_bound_semantic_run_id();
+    if( run_id != openclaw_harness_native_travel.run_id ) {
+        return;
+    }
+    const bool destination_present = player.has_destination() || player.has_destination_activity() ||
+                                     !player.omt_path.empty();
+    const bool destination_cleared = !destination_present;
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_semantic_step: {\"event\":\"travel\",\"run_id\":"
+            << openclaw_harness_quote_action_value( run_id )
+            << ",\"travel_id\":" << openclaw_harness_quote_action_value(
+                openclaw_harness_native_travel.travel_id )
+            << ",\"receipt_id\":" << openclaw_harness_quote_action_value(
+                openclaw_harness_native_travel.travel_id + ":" + state )
+            << ",\"state\":" << openclaw_harness_quote_action_value( state )
+            << ",\"destination\":[" << openclaw_harness_native_travel.destination.x() << ','
+            << openclaw_harness_native_travel.destination.y() << ','
+            << openclaw_harness_native_travel.destination.z() << ']'
+            << ",\"avatar_omt\":[" << player.pos_abs_omt().x() << ','
+            << player.pos_abs_omt().y() << ',' << player.pos_abs_omt().z() << ']'
+            << ",\"remaining_omt_path\":" << player.omt_path.size()
+            << ",\"destination_present\":" << ( destination_present ? "true" : "false" )
+            << ",\"destination_cleared\":" << ( destination_cleared ? "true" : "false" )
+            << ",\"observed_turn\":" << turn << '}';
+}
+} // namespace
+
+void openclaw_harness_semantic_native_travel_started( const avatar &player,
+        const tripoint_abs_omt &destination )
+{
+    if( !openclaw_harness_semantic_step_trace_enabled() ) {
+        return;
+    }
+    const std::string run_id = openclaw_harness_bound_semantic_run_id();
+    if( openclaw_harness_native_travel.run_id != run_id ) {
+        openclaw_harness_native_travel = {};
+        openclaw_harness_native_travel.run_id = run_id;
+    }
+    openclaw_harness_native_travel.destination = destination;
+    openclaw_harness_native_travel.travel_id = string_format( "%s:travel:%zu", run_id,
+            ++openclaw_harness_native_travel.sequence );
+    openclaw_harness_semantic_native_travel_event( player, "active" );
+}
+
+void openclaw_harness_semantic_native_travel_progress( const Character &player )
+{
+    openclaw_harness_semantic_native_travel_event( player, "progress" );
+}
+
+void openclaw_harness_semantic_native_travel_terminal( const Character &player,
+        const char *terminal_state )
+{
+    if( terminal_state == nullptr || ( std::strcmp( terminal_state, "completed_cleared" ) == 0 &&
+                                       ( player.has_destination() || player.has_destination_activity() ||
+                                         !player.omt_path.empty() ) ) ) {
+        return;
+    }
+    openclaw_harness_semantic_native_travel_event( player, terminal_state );
+}
+
+static std::string openclaw_harness_keep_watch_safety( const std::string &run_id,
+        const avatar &player )
+{
+    // Keep this classification beside the native visibility and body owners.
+    // The cockpit consumes the result as a fail-closed capability: an absent
+    // or unfamiliar classification never authorizes another wait.
+    static std::string last_run_id;
+    static int last_hp = 0;
+    static bool has_last_hp = false;
+    if( last_run_id != run_id ) {
+        last_run_id = run_id;
+        has_last_hp = false;
+    }
+
+    const int current_hp = player.get_hp();
+    const bool damage = has_last_hp && current_hp < last_hp;
+    last_hp = current_hp;
+    has_last_hp = true;
+
+    bool monster = false;
+    bool danger = false;
+    for( Creature *creature : player.get_visible_creatures( SEEX ) ) {
+        if( creature == nullptr || creature == &player ) {
+            continue;
+        }
+        monster = monster || creature->as_monster() != nullptr;
+        danger = danger || player.attitude_to( *creature ) == Creature::Attitude::HOSTILE;
+    }
+
+    const char *classification = "clear";
+    if( damage ) {
+        classification = "damage_detected";
+    } else if( monster ) {
+        classification = "monster_spotted";
+    } else if( danger ) {
+        classification = "danger_spotted";
+    }
+    return string_format( "{\"classification\":\"%s\",\"monster\":%s,\"danger\":%s,\"damage\":%s}",
+                          classification, monster ? "true" : "false", danger ? "true" : "false",
+                          damage ? "true" : "false" );
+}
+
+static std::string openclaw_harness_visible_local_facts( const map &here,
+        const tripoint_bub_ms &avatar_pos, int radius, bool include_unknown, bool include_identity )
+{
+    const visibility_variables &cache = here.get_visibility_variables_cache();
+    const level_cache &map_cache = here.get_cache_ref( avatar_pos.z() );
+    const auto &visibility_cache = map_cache.visibility_cache;
+    std::ostringstream facts;
+    facts << '[';
+    bool first = true;
+    for( int y = -radius; y <= radius; ++y ) {
+        for( int x = -radius; x <= radius; ++x ) {
+            const tripoint_bub_ms fact_pos( avatar_pos.x() + x, avatar_pos.y() + y, avatar_pos.z() );
+            const bool clear = here.inbounds( fact_pos ) && here.get_visibility(
+                                   visibility_cache[fact_pos.x()][fact_pos.y()], cache ) == visibility_type::CLEAR;
+            if( !clear && !include_unknown ) {
+                continue;
+            }
+            if( !first ) {
+                facts << ',';
+            }
+            first = false;
+            facts << "{\"dx\":" << x << ",\"dy\":" << y;
+            if( clear ) {
+                facts << ",\"visibility\":\"clear\"";
+                if( include_identity ) {
+                    facts << ",\"identity\":{\"dx\":" << x
+                          << ",\"dy\":" << y << ",\"terrain\":"
+                          << openclaw_harness_quote_action_value( here.ter( fact_pos ).obj().id.str() )
+                          << '}';
+                }
+                facts << ",\"terrain\":" << openclaw_harness_quote_action_value(
+                          here.tername( fact_pos ) );
+            } else {
+                facts << ",\"visibility\":\"unknown\"";
+            }
+            facts << '}';
+        }
+    }
+    facts << ']';
+    return facts.str();
+}
+
+static std::string openclaw_harness_attitude( const avatar &viewer, const Creature &creature )
+{
+    switch( viewer.attitude_to( creature ) ) {
+        case Creature::Attitude::HOSTILE:
+            return "hostile";
+        case Creature::Attitude::FRIENDLY:
+            return "friendly";
+        case Creature::Attitude::NEUTRAL:
+            return "neutral";
+        case Creature::Attitude::ANY:
+            return "unknown";
+    }
+    return "unknown";
+}
+
+static std::string openclaw_harness_visible_entities( avatar &viewer )
+{
+    std::ostringstream entities;
+    entities << '[';
+    bool first = true;
+    for( Creature *creature : viewer.get_visible_creatures( SEEX ) ) {
+        if( creature == nullptr || creature == &viewer ) {
+            continue;
+        }
+        std::string kind = "creature";
+        std::string identity;
+        if( const Character *character = creature->as_character() ) {
+            kind = creature->as_npc() != nullptr ? "npc" : "character";
+            identity = string_format( "character:%d", character->getID().get_value() );
+        } else if( creature->as_monster() != nullptr ) {
+            kind = "monster";
+            std::ostringstream process_identity;
+            process_identity << "process:" << static_cast<const void *>( creature );
+            identity = process_identity.str();
+        }
+        if( identity.empty() ) {
+            continue;
+        }
+        if( !first ) {
+            entities << ',';
+        }
+        first = false;
+        const tripoint_rel_ms relative = creature->pos_bub() - viewer.pos_bub();
+        const tripoint_abs_ms absolute = creature->pos_abs();
+        entities << "{\"identity\":{\"kind\":"
+                 << openclaw_harness_quote_action_value( kind ) << ",\"id\":"
+                 << openclaw_harness_quote_action_value( identity ) << "},\"kind\":"
+                 << openclaw_harness_quote_action_value( kind ) << ",\"name\":"
+                 << openclaw_harness_quote_action_value( creature->disp_name() ) << ",\"attitude\":"
+                 << openclaw_harness_quote_action_value( openclaw_harness_attitude( viewer, *creature ) )
+                 << ",\"dx\":" << relative.x() << ",\"dy\":" << relative.y();
+        entities << ",\"absolute_ms\":[" << absolute.x() << ',' << absolute.y() << ',' << absolute.z() << ']';
+        if( const monster *monster = creature->as_monster() ) {
+            // The process address is only a run-local handle.  A fixture tag
+            // binds this visible monster back to its applied save receipt.
+            entities << ",\"fixture_actor_id\":"
+                     << openclaw_harness_quote_action_value(
+                            monster->get_value( "caol_fixture_actor_id" ).str() )
+                     << ",\"typeid\":"
+                     << openclaw_harness_quote_action_value( monster->type->id.str() )
+                     << ",\"faction\":"
+                     << openclaw_harness_quote_action_value( monster->get_monster_faction().id().str() )
+                     << ",\"friendly\":" << monster->friendly
+                     << ",\"anger\":" << monster->anger
+                     << ",\"morale\":" << monster->morale
+                     << ",\"aggro_character\":" << ( monster->aggro_character ? "true" : "false" );
+        }
+        entities << '}';
+    }
+    entities << ']';
+    return entities.str();
+}
+
+static std::string openclaw_harness_visible_zones( const map &here,
+        const tripoint_bub_ms &avatar_pos )
+{
+    const visibility_variables &cache = here.get_visibility_variables_cache();
+    const level_cache &map_cache = here.get_cache_ref( avatar_pos.z() );
+    const auto &visibility_cache = map_cache.visibility_cache;
+    const zone_manager &manager = zone_manager::get_manager();
+    std::ostringstream zones;
+    zones << '[';
+    bool first = true;
+    for( const zone_manager::ref_const_zone_data &zone_ref : manager.get_zones() ) {
+        const zone_data &zone = zone_ref.get();
+        if( !zone.get_enabled() ) {
+            continue;
+        }
+        const tripoint_bub_ms center = here.get_bub( zone.get_center_point() );
+        const tripoint_rel_ms relative = center - avatar_pos;
+        if( std::abs( relative.x() ) > SEEX || std::abs( relative.y() ) > SEEX ||
+            !here.inbounds( center ) || here.get_visibility(
+                visibility_cache[center.x()][center.y()], cache ) != visibility_type::CLEAR ) {
+            continue;
+        }
+        if( !first ) {
+            zones << ',';
+        }
+        first = false;
+        zones << "{\"name\":" << openclaw_harness_quote_action_value( zone.get_name() )
+              << ",\"type\":" << openclaw_harness_quote_action_value( zone.get_type().str() )
+              << ",\"dx\":" << relative.x() << ",\"dy\":" << relative.y() << '}';
+    }
+    zones << ']';
+    return zones.str();
+}
+
+static std::string openclaw_harness_semantic_step_frame(
+    const std::string &state, const std::vector<std::pair<std::string, std::string>> &actions,
+    const std::string &producer = "" )
+{
+    if( !openclaw_harness_semantic_step_trace_enabled() ) {
+        return {};
+    }
+
+    static size_t sequence = 0;
+    const std::string run_id = openclaw_harness_bound_semantic_run_id();
+    if( run_id.empty() ) {
+        return {};
+    }
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    const int game_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    const std::string frame_id = string_format( "%s:%d:%zu", run_id, turn, ++sequence );
+    const bool include_minimap = state == "world";
+    const map &here = get_map();
+    avatar &player = get_avatar();
+    const tripoint_bub_ms avatar_pos = player.pos_bub( here );
+    std::ostringstream action_ids;
+    std::ostringstream action_inputs;
+    action_ids << '[';
+    action_inputs << '{';
+    for( size_t index = 0; index < actions.size(); ++index ) {
+        if( index > 0 ) {
+            action_ids << ',';
+            action_inputs << ',';
+        }
+        action_ids << openclaw_harness_quote_action_value( actions[index].first );
+        action_inputs << openclaw_harness_quote_action_value( actions[index].first ) << ':'
+                      << openclaw_harness_quote_action_value( actions[index].second );
+    }
+    action_ids << ']';
+    action_inputs << '}';
+    std::ostringstream minimap;
+    if( include_minimap ) {
+        minimap << ",\"minimap\":{\"schema\":\"caol-native-minimap-v1\",\"radius\":" << SEEX
+                << ",\"cells\":" << openclaw_harness_visible_local_facts( here, avatar_pos, SEEX, true,
+                        false ) << '}';
+    }
+
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_semantic_step: {\"event\":\"frame\",\"run_id\":"
+            << openclaw_harness_quote_action_value( run_id )
+            << ",\"frame_id\":" << openclaw_harness_quote_action_value( frame_id )
+            << ",\"state\":" << openclaw_harness_quote_action_value( state )
+            << ",\"observed_turn\":" << turn
+            << ",\"game_minutes\":" << game_minutes
+            << ",\"producer\":" << openclaw_harness_quote_action_value( producer )
+            << ",\"initial_world_ready\":" << ( producer == "hud_world_ready" ? "true" : "false" )
+            << ",\"keep_watch_safety\":"
+            << openclaw_harness_keep_watch_safety( run_id, player )
+            << ",\"observation\":{\"schema\":\"caol-avatar-visible-v1\",\"avatar\":{\"name\":"
+            << openclaw_harness_quote_action_value( player.name )
+            << ",\"absolute_ms\":[" << player.pos_abs().x() << ',' << player.pos_abs().y() << ','
+            << player.pos_abs().z() << "]},\"visible_local\":"
+            << openclaw_harness_visible_local_facts( here, avatar_pos, 1, false, true )
+            << minimap.str()
+            << ",\"visible_entities\":" << openclaw_harness_visible_entities( player )
+            << ",\"visible_zones\":" << openclaw_harness_visible_zones( here, avatar_pos ) << '}'
+            << ",\"valid_actions\":" << action_ids.str()
+            << ",\"action_inputs\":" << action_inputs.str() << '}';
+    return frame_id;
+}
+
+static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_actions(
+    const input_context &context )
+{
+    static const std::vector<std::pair<std::string, std::string>> action_ids = {
+        { "world.wait", "wait" },
+        { "world.move.north", "UP" },
+        { "world.move.south", "DOWN" },
+        { "world.move.west", "LEFT" },
+        { "world.move.east", "RIGHT" },
+    };
+    std::vector<std::pair<std::string, std::string>> result;
+    for( const std::pair<std::string, std::string> &action : action_ids ) {
+        if( const std::optional<std::string> input =
+                context.first_keyboard_character_for_action( action.second ) ) {
+            result.emplace_back( action.first, *input );
+        }
+    }
+    return result;
+}
+
+void openclaw_harness_semantic_initial_world_frame_if_ready( const input_context *active_input_context,
+        const bool no_activity_owns_turn,
+        const bool no_auto_move_owns_turn, const bool no_dead_watch_owns_turn )
+{
+    // The render path is the first production boundary that can publish the
+    // startup descriptor.  Its active native context, rather than UI-stack
+    // guesses, decides whether a modal owns input.
+    if( active_input_context == nullptr || active_input_context->get_category() != "DEFAULTMODE" ||
+        !no_activity_owns_turn || !no_auto_move_owns_turn || !no_dead_watch_owns_turn ||
+        !openclaw_harness_semantic_step_trace_enabled() ) {
+        return;
+    }
+
+    const std::string active_run_id = openclaw_harness_bound_semantic_run_id();
+    static std::string bound_run_id;
+    static bool emitted = false;
+    if( bound_run_id != active_run_id ) {
+        bound_run_id = active_run_id;
+        emitted = false;
+    }
+    if( active_run_id.empty() || emitted ) {
+        return;
+    }
+
+    avatar &player = get_avatar();
+    if( player.is_dead_state() ) {
+        return;
+    }
+
+    const std::vector<std::pair<std::string, std::string>> actions =
+        openclaw_harness_world_actions( *active_input_context );
+    if( actions.empty() ) {
+        return;
+    }
+
+    const std::string frame = openclaw_harness_semantic_step_frame( "world", actions,
+                              "hud_world_ready" );
+    if( !frame.empty() ) {
+        emitted = true;
+    }
+}
+
+void openclaw_harness_semantic_wait_activity_complete()
+{
+    openclaw_harness_semantic_step_frame( "wait_activity_complete", {} );
+}
+
+void openclaw_harness_semantic_activity_distraction()
+{
+    openclaw_harness_semantic_step_frame( "activity_distraction", {
+        { "activity.stop", "Y" },
+        { "activity.continue", "N" },
+        { "activity.manage", "M" },
+        { "activity.ignore", "I" },
+    }, "activity_distraction_query" );
+}
+
+static void openclaw_harness_semantic_step_receipt( const std::string &frame_id,
+        const std::string &action_id, bool accepted )
+{
+    if( frame_id.empty() || !openclaw_harness_semantic_step_trace_enabled() ) {
+        return;
+    }
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_semantic_step: {\"event\":\"receipt\",\"run_id\":"
+            << openclaw_harness_quote_action_value( run_id )
+            << ",\"frame_id\":" << openclaw_harness_quote_action_value( frame_id )
+            << ",\"action_id\":" << openclaw_harness_quote_action_value( action_id )
+            << ",\"accepted\":" << ( accepted ? "true" : "false" )
+            << ",\"observed_turn\":" << turn << '}';
+}
+
+static void openclaw_harness_semantic_movement_receipt( const std::string &frame_id,
+        const std::string &action_id, const tripoint_bub_ms &before,
+        const tripoint_bub_ms &expected, const tripoint_bub_ms &after, const map &here,
+        bool move_handled )
+{
+    if( frame_id.empty() || !openclaw_harness_semantic_step_trace_enabled() ) {
+        return;
+    }
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const char *const outcome = !move_handled ? "blocked" : after == expected ? "moved" :
+                                after == before ? "no_progress" : "unexpected_displacement";
+    // Native movement starts in the bubble coordinate space, while semantic
+    // frames describe the avatar in absolute map squares.  Receipts must use
+    // that same space so their postcondition can be compared directly.
+    const tripoint_abs_ms before_abs = here.get_abs( before );
+    const tripoint_abs_ms expected_abs = here.get_abs( expected );
+    const tripoint_abs_ms after_abs = here.get_abs( after );
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_semantic_step: {\"event\":\"receipt\",\"run_id\":"
+            << openclaw_harness_quote_action_value( run_id )
+            << ",\"frame_id\":" << openclaw_harness_quote_action_value( frame_id )
+            << ",\"action_id\":" << openclaw_harness_quote_action_value( action_id )
+            << ",\"accepted\":" << ( std::strcmp( outcome, "moved" ) == 0 ? "true" : "false" )
+            << ",\"outcome\":" << openclaw_harness_quote_action_value( outcome )
+            << ",\"coordinate_space\":\"absolute_ms\""
+            << ",\"before_absolute_ms\":[" << before_abs.x() << ',' << before_abs.y() << ',' << before_abs.z()
+            << "],\"expected_absolute_ms\":[" << expected_abs.x() << ',' << expected_abs.y() << ',' << expected_abs.z()
+            << "],\"after_absolute_ms\":[" << after_abs.x() << ',' << after_abs.y() << ',' << after_abs.z()
+            << "],\"after_terrain\":" << openclaw_harness_quote_action_value(
+                here.ter( after ).obj().id.str() )
+            << ",\"observed_turn\":" << turn << '}';
+}
+
+static std::string openclaw_harness_semantic_movement_action_id( action_id action )
+{
+    switch( action ) {
+        case ACTION_MOVE_FORTH:
+            return "world.move.north";
+        case ACTION_MOVE_BACK:
+            return "world.move.south";
+        case ACTION_MOVE_LEFT:
+            return "world.move.west";
+        case ACTION_MOVE_RIGHT:
+            return "world.move.east";
+        default:
+            return {};
+    }
+}
+
 static const trait_id trait_BRAWLER( "BRAWLER" );
 static const trait_id trait_GUNSHY( "GUNSHY" );
 static const trait_id trait_HIBERNATE( "HIBERNATE" );
@@ -280,7 +816,11 @@ input_context game::get_player_input( std::string &action )
     const tripoint_bub_ms pos = u.pos_bub( here );
 
     input_context ctxt;
-    if( uquit == QUIT_WATCH ) {
+    // A save can carry the watch quit-status while its transformed avatar is
+    // alive again.  Gate the death-cam input surface on the avatar's actual
+    // death state so the ordinary HUD retains its native semantic producer.
+    const bool watching_dead_avatar = uquit == QUIT_WATCH && u.is_dead_state();
+    if( watching_dead_avatar ) {
         ctxt = input_context( "DEFAULTMODE", keyboard_mode::keycode );
         ctxt.set_iso( true );
         // The list of allowed actions in death-cam mode in game::handle_action
@@ -306,7 +846,40 @@ input_context game::get_player_input( std::string &action )
         ctxt = get_default_mode_input_context();
     }
 
+    const char *const startup_boundary_trace = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    const char *const active_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const bool startup_boundary_trace_enabled = startup_boundary_trace != nullptr &&
+            startup_boundary_trace[0] != '\0' && startup_boundary_trace[0] != '0' &&
+            active_run_id != nullptr && active_run_id[0] != '\0';
+    if( startup_boundary_trace_enabled ) {
+        DebugLog( D_INFO, DC_ALL )
+                << "openclaw_harness_startup_boundary: event=native_input_entered"
+                << " run_id=\"" << active_run_id << '\"'
+                << " avatar_live=" << ( u.is_dead_state() ? "no" : "yes" )
+                << " modal_owner=none"
+                << " world_wait_available=" <<
+                ( ctxt.first_keyboard_character_for_action( "wait" ) ? "yes" : "no" );
+    }
+
     here.update_visibility_cache( pos.z() );
+    if( !watching_dead_avatar ) {
+        // This later input owner may publish ordinary per-action frames, but
+        // never the initial world frame: do_turn publishes that once before
+        // any native input can be read.
+        if( startup_boundary_trace_enabled ) {
+            DebugLog( D_INFO, DC_ALL )
+                    << "openclaw_harness_startup_boundary: event=descriptor_publication"
+                    << " run_id=\"" << active_run_id << '\"'
+                    << " avatar_live=yes modal_owner=none"
+                    << " world_wait_available=" <<
+                    ( ctxt.first_keyboard_character_for_action( "wait" ) ? "yes" : "no" );
+        }
+        const std::vector<std::pair<std::string, std::string>> semantic_actions =
+            openclaw_harness_world_actions( ctxt );
+        openclaw_harness_pending_world_frame = openclaw_harness_semantic_step_frame(
+                    "world", semantic_actions );
+    }
+
     const visibility_variables &cache = here.get_visibility_variables_cache();
     const level_cache &map_cache = here.get_cache_ref( pos.z() );
     const auto &visibility_cache = map_cache.visibility_cache;
@@ -1235,14 +1808,52 @@ static int try_set_alarm()
     as_m.entries.emplace_back( 1, true, 'a', already_set ?
                                _( "Change your alarm" ) :
                                _( "Set an alarm for later" ) );
+    const std::string semantic_frame = openclaw_harness_semantic_step_frame(
+                                           "wait_mode_choice",
+    {
+        { "wait.duration_menu", "w" },
+        { "alarm.duration_menu", "a" }
+    } );
     as_m.query();
 
+    const std::string semantic_action = as_m.ret == 0 ? "wait.duration_menu" :
+                                        as_m.ret == 1 ? "alarm.duration_menu" : "";
+    openclaw_harness_semantic_step_receipt( semantic_frame, semantic_action,
+                                            !semantic_action.empty() );
+
     return as_m.ret;
+}
+
+static std::string openclaw_harness_wait_duration_action( bool setting_alarm, int retval )
+{
+    if( setting_alarm && retval >= 0 && retval <= 9 ) {
+        return retval == 0 ? "alarm.30m" : string_format( "alarm.%dh", retval );
+    }
+    if( retval == 13 ) {
+        return setting_alarm ? "alarm.cancel" : "wait.weather_change";
+    }
+    if( retval == 14 ) {
+        return "wait.catch_breath";
+    }
+    if( retval == 15 ) {
+        return "wait.followers";
+    }
+    const std::map<int, std::string> duration_names = {
+        { 1, "20s" }, { 2, "1m" }, { 3, "5m" }, { 4, "30m" }, { 5, "1h" }, { 6, "2h" },
+        { 7, "3h" }, { 8, "6h" }, { 9, "daylight" }, { 10, "noon" },
+        { 11, "night" }, { 12, "midnight" }
+    };
+    const auto found = duration_names.find( retval );
+    if( found == duration_names.end() ) {
+        return {};
+    }
+    return std::string( setting_alarm ? "alarm." : "wait." ) + found->second;
 }
 
 static void wait()
 {
     std::map<int, time_duration> durations;
+    std::map<int, char> semantic_hotkeys;
     uilist as_m;
     Character &player_character = get_player_character();
     bool setting_alarm = false;
@@ -1275,7 +1886,7 @@ static void wait()
 
     const bool has_watch = player_character.has_watch() || setting_alarm;
 
-    const auto add_menu_item = [ &as_m, &durations, has_watch ]
+    const auto add_menu_item = [ &as_m, &durations, &semantic_hotkeys, has_watch ]
                                ( int retval, int hotkey, const std::string &caption = "",
     const time_duration &duration = time_duration::from_turns( calendar::INDEFINITELY_LONG ) ) {
 
@@ -1287,6 +1898,7 @@ static void wait()
         }
         as_m.addentry( retval, true, hotkey, text );
         durations.emplace( retval, duration );
+        semantic_hotkeys.emplace( retval, static_cast<char>( hotkey ) );
     };
 
     if( setting_alarm ) {
@@ -1301,10 +1913,12 @@ static void wait()
         if( player_character.get_stamina() < player_character.get_stamina_max() ) {
             as_m.addentry( 14, true, 'w', _( "Wait until you catch your breath" ) );
             durations.emplace( 14, 15_minutes ); // to hide it from showing
+            semantic_hotkeys.emplace( 14, 'w' );
         }
         if( !wait_followers_activity_actor::get_absent_followers( player_character ).empty() ) {
             as_m.addentry( 15, true, 'f', _( "Wait for followers to catch up" ) );
             durations.emplace( 15, 15_minutes ); // to hide it from showing(?)
+            semantic_hotkeys.emplace( 15, 'f' );
         }
         add_menu_item( 1, '1', !has_watch ? _( "Wait 20 heartbeats" ) : "", 20_seconds );
         add_menu_item( 2, '2', !has_watch ? _( "Wait 60 heartbeats" ) : "", 1_minutes );
@@ -1355,9 +1969,24 @@ static void wait()
     as_m.text = has_watch ? string_format( _( "It's %s now.  " ),
                                            to_string_time_of_day( calendar::turn ) ) : "";
     as_m.text += setting_alarm ? _( "Set alarm for when?" ) : _( "Wait for how long?" );
+    std::vector<std::pair<std::string, std::string>> semantic_actions;
+    for( const auto &entry : semantic_hotkeys ) {
+        const std::string action_id = openclaw_harness_wait_duration_action( setting_alarm, entry.first );
+        if( !action_id.empty() ) {
+            semantic_actions.emplace_back( action_id, std::string( 1, entry.second ) );
+        }
+    }
+    const std::string semantic_frame = openclaw_harness_semantic_step_frame(
+                                           setting_alarm ? "alarm_duration_choice" : "wait_duration_choice",
+                                           semantic_actions );
     as_m.query(); /* calculate key and window variables, generate window, and loop until we get a valid answer */
 
     const auto dur_iter = durations.find( as_m.ret );
+    const std::string semantic_action = openclaw_harness_wait_duration_action( setting_alarm, as_m.ret );
+    openclaw_harness_trace_wait_menu_selection( semantic_action,
+                                                dur_iter != durations.end() && !semantic_action.empty() );
+    openclaw_harness_semantic_step_receipt( semantic_frame, semantic_action,
+                                            dur_iter != durations.end() && !semantic_action.empty() );
     if( dur_iter == durations.end() ) {
         return;
     }
@@ -1385,6 +2014,7 @@ static void wait()
         } else {
             player_character.assign_activity( wait_activity_actor( time_to_wait ) );
         }
+        openclaw_harness_semantic_step_frame( "wait_activity", {} );
     }
 }
 
@@ -2469,6 +3099,8 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
         case ACTION_MOVE_BACK_LEFT:
         case ACTION_MOVE_LEFT:
         case ACTION_MOVE_FORTH_LEFT:
+        {
+            const std::string semantic_action = openclaw_harness_semantic_movement_action_id( act );
             if( player_character.maybe_get_value( "remote_controlling" ) &&
                 ( player_character.has_active_item( itype_radiocontrol ) ||
                   player_character.has_active_bionic( bio_remote ) ) ) {
@@ -2521,7 +3153,17 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
                     veh_door_part_before = ovp->vehicle().next_part_to_open(
                                                ovp->part_index(), true );
                 }
-                if( !avatar_action::move( player_character, here, tripoint_rel_ms( dest_delta, 0 ) ) ) {
+                const bool move_handled = avatar_action::move(
+                                              player_character, here, tripoint_rel_ms( dest_delta, 0 ) );
+                const tripoint_bub_ms pos_after = player_character.pos_bub();
+                if( !semantic_action.empty() ) {
+                    openclaw_harness_semantic_movement_receipt(
+                        openclaw_harness_pending_world_frame, semantic_action, pos_before, dest_tile,
+                        pos_after, here, move_handled );
+                    openclaw_harness_pending_world_frame = openclaw_harness_semantic_step_frame(
+                                "world", {}, "post_step" );
+                }
+                if( !move_handled ) {
                     // auto-move should be canceled due to a failed move or obstacle
                     add_msg_debug( debugmode::DF_ACTIVITY,
                                    "auto_move: move(%d,%d) FAILED at pos=(%d,%d), aborting",
@@ -2597,6 +3239,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
                 }
             }
             break;
+        }
         case ACTION_MOVE_DOWN: {
             if( player_character.is_mounted() ) {
                 auto *mon = player_character.mounted_creature.get();
@@ -2945,6 +3588,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
             break;
 
         case ACTION_WAIT:
+            openclaw_harness_trace_wait_action_dispatch();
             wait();
             break;
 
@@ -3299,6 +3943,9 @@ bool game::handle_action()
         act = player_character.get_next_auto_move_direction();
         if( act == ACTION_NULL ) {
             add_msg( m_info, _( "Auto-move canceled" ) );
+            if( player_character.has_distant_destination() ) {
+                openclaw_harness_semantic_native_travel_terminal( player_character, "interrupted" );
+            }
             player_character.abort_automove();
             return false;
         }
@@ -3343,6 +3990,11 @@ bool game::handle_action()
     if( act == ACTION_NULL ) {
         act = look_up_action( action );
         openclaw_harness_trace_default_action_dispatch( "lookup", action, act );
+        if( act == ACTION_WAIT ) {
+            openclaw_harness_semantic_step_receipt(
+                openclaw_harness_pending_world_frame, "world.wait", true );
+            openclaw_harness_pending_world_frame.clear();
+        }
 
         if( act == ACTION_KEYBINDINGS ) {
             // already handled by input context

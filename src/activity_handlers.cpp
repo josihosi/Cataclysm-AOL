@@ -21,6 +21,7 @@
 #include "debug.h"
 #include "enums.h"
 #include "flag.h"
+#include "game.h"
 #include "game_constants.h"
 #include "game_inventory.h"
 #include "iexamine.h"
@@ -683,9 +684,11 @@ void activity_handlers::travel_do_turn( player_activity *act, Character *you )
 {
     if( !you->omt_path.empty() ) {
         you->omt_path.pop_back();
+        openclaw_harness_semantic_native_travel_progress( *you );
         if( you->omt_path.empty() ) {
             you->add_msg_if_player( m_info, _( "You have reached your destination." ) );
             act->set_to_null();
+            openclaw_harness_semantic_native_travel_terminal( *you, "completed_cleared" );
             ui::omap::force_quit();
             return;
         }
@@ -709,11 +712,15 @@ void activity_handlers::travel_do_turn( player_activity *act, Character *you )
             you->set_destination( route_to, player_activity( act_travel ) );
         } else {
             you->add_msg_if_player( m_warning, _( "You cannot reach that destination." ) );
+            openclaw_harness_semantic_native_travel_terminal( *you, "blocked" );
             ui::omap::force_quit();
         }
     } else {
         you->add_msg_if_player( m_info, _( "You have reached your destination." ) );
+        act->set_to_null();
+        openclaw_harness_semantic_native_travel_terminal( *you, "completed_cleared" );
         ui::omap::force_quit();
+        return;
     }
     act->set_to_null();
 }

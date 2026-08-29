@@ -3,6 +3,7 @@
 #include <algorithm>
 #include <chrono>
 #include <cstddef>
+#include <cstdlib>
 #include <iterator>
 #include <list>
 #include <memory>
@@ -60,6 +61,30 @@ namespace
 {
 generic_factory<effect_on_condition>
 effect_on_condition_factory( "effect_on_condition" );
+
+const char *openclaw_harness_scheduler_trace_eoc()
+{
+    const char *eoc = std::getenv( "OPENCLAW_HARNESS_SCHEDULER_TRACE_EOC" );
+    return eoc != nullptr && eoc[0] != '\0' ? eoc : nullptr;
+}
+
+void openclaw_harness_trace_global_eoc_decision( const queued_eoc &queued,
+        const char *decision, const char *outcome )
+{
+    const char *target = openclaw_harness_scheduler_trace_eoc();
+    if( target == nullptr || queued.eoc.str() != target ) {
+        return;
+    }
+    const char *run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_scheduler_trace: component=global_eoc"
+            << " run_id=" << ( run_id != nullptr ? run_id : "" )
+            << " eoc=" << queued.eoc.str()
+            << " due_turn=" << to_turn<int>( queued.time )
+            << " current_turn=" << to_turn<int>( calendar::turn )
+            << " decision=" << decision
+            << " outcome=" << outcome;
+}
 } // namespace
 
 template<>
@@ -285,6 +310,7 @@ static void process_eocs( queued_eocs &eoc_queue, std::vector<effect_on_conditio
         for( const auto &val : top.context ) {
             nested_d.set_value( val.first, val.second );
         }
+        openclaw_harness_trace_global_eoc_decision( top, "due", "before_activation" );
         bool activated = top.eoc->activate( nested_d );
         if( top.eoc->type == eoc_type::RECURRING ) {
             if( activated ) { // It worked so add it back
@@ -301,6 +327,7 @@ static void process_eocs( queued_eocs &eoc_queue, std::vector<effect_on_conditio
                 }
             }
         } else {
+            openclaw_harness_trace_global_eoc_decision( top, "due", "consumed" );
             eoc_queue.list.erase( it );
         }
     }

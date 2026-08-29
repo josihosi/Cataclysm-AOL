@@ -2,17 +2,75 @@
 
 #include <algorithm>
 #include <array>
+#include <cstdint>
+#include <cstdlib>
 #include <memory>
 
 #include "cached_options.h"
 #include "cata_imgui.h"
 #include "catacharset.h"
 #include "color.h"
+#include "debug.h"
 #include "imgui/imgui.h"
 #include "input_context.h"
 #include "output.h"
 #include "string_formatter.h"
 #include "ui_manager.h"
+
+namespace
+{
+bool openclaw_harness_quit_confirmation_trace_enabled()
+{
+    const char *enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
+}
+
+bool is_openclaw_harness_main_menu_quit_confirmation( const std::string &category,
+        const std::string &text )
+{
+    return category == "YESNO" && ( text == "Really quit?" ||
+                                     text == "Really quit? (Case Sensitive)" );
+}
+
+bool is_openclaw_harness_save_quit_confirmation( const std::string &category,
+        const std::string &text )
+{
+    return category == "YESNO" && ( text == "Save and quit?" ||
+                                     text == "Save and quit? (Case Sensitive)" );
+}
+
+void openclaw_harness_trace_quit_confirmation( const char *event, uint64_t instance )
+{
+    if( !openclaw_harness_quit_confirmation_trace_enabled() ) {
+        return;
+    }
+    const char *run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=semantic_ui"
+            << " event=" << event
+            << " instance_id=\"main-menu-quit-" << instance << "\""
+            << " run_id=\"" << ( run_id ? run_id : "" ) << "\""
+            << " intent=\"main_menu_quit_confirmation\""
+            << " valid_actions=[\"left\",\"enter\"]"
+            << " postcondition=\"quit_confirmation_resolved\"";
+}
+
+void openclaw_harness_trace_save_quit_confirmation( const char *event, uint64_t instance )
+{
+    if( !openclaw_harness_quit_confirmation_trace_enabled() ) {
+        return;
+    }
+    const char *run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=semantic_ui"
+            << " event=" << event
+            << " instance_id=\"save-quit-" << instance << "\""
+            << " run_id=\"" << ( run_id ? run_id : "" ) << "\""
+            << " intent=\"save_quit_confirmation\""
+            << " valid_actions=[\"Y\"]"
+            << " postcondition=\"save_quit_confirmation_resolved\"";
+}
+} // namespace
 
 class query_popup_impl : public cataimgui::window
 {
@@ -400,10 +458,31 @@ query_popup::result query_popup::query()
 {
     std::shared_ptr<query_popup_impl> ui = create_or_get_impl();
 
+    static uint64_t quit_confirmation_instance = 0;
+    static uint64_t save_quit_confirmation_instance = 0;
+    const bool trace_quit_confirmation =
+        is_openclaw_harness_main_menu_quit_confirmation( category, text ) &&
+        options.size() == 2 && options[0].action == "YES" && options[1].action == "NO";
+    const bool trace_save_quit_confirmation =
+        is_openclaw_harness_save_quit_confirmation( category, text ) &&
+        options.size() == 2 && options[0].action == "YES" && options[1].action == "NO";
+    const uint64_t instance = trace_quit_confirmation ? ++quit_confirmation_instance :
+                              trace_save_quit_confirmation ? ++save_quit_confirmation_instance : 0;
+    if( trace_quit_confirmation ) {
+        openclaw_harness_trace_quit_confirmation( "open", instance );
+    } else if( trace_save_quit_confirmation ) {
+        openclaw_harness_trace_save_quit_confirmation( "open", instance );
+    }
+
     result res;
     do {
         res = query_once();
     } while( res.wait_input );
+    if( trace_quit_confirmation ) {
+        openclaw_harness_trace_quit_confirmation( "return", instance );
+    } else if( trace_save_quit_confirmation ) {
+        openclaw_harness_trace_save_quit_confirmation( "return", instance );
+    }
     return res;
 }
 

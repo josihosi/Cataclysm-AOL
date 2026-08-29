@@ -51,6 +51,7 @@
 #include "avatar.h"
 #include "avatar_action.h"
 #include "bandit_live_world.h"
+#include "bandit_live_world_probe.h"
 #include "basecamp.h"
 #include "bionics.h"
 #include "body_part_set.h"
@@ -227,6 +228,7 @@
 #include "weakpoint.h"
 #include "weather.h"
 #include "weather_type.h"
+#include "widget.h"
 #include "worldfactory.h"
 #include "zzip.h"
 
@@ -1508,6 +1510,9 @@ static bool cancel_auto_move( Character &you, const std::string &text )
     g->invalidate_main_ui_adaptor();
     if( query_yn( _( "%s Cancel auto move?" ), text ) )  {
         add_msg( m_warning, _( "%s Auto move canceled." ), text );
+        if( you.has_distant_destination() ) {
+            openclaw_harness_semantic_native_travel_terminal( you, "interrupted" );
+        }
         you.abort_automove();
         return true;
     }
@@ -1566,11 +1571,13 @@ void openclaw_harness_trace_activity_query( const std::string &event,
         return;
     }
     bool truncated = false;
+    const int game_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
     const std::string quoted_text = openclaw_harness_quote_activity_query_text( text, truncated );
     DebugLog( D_INFO, DC_ALL )
             << "openclaw_harness_ui_trace: component=activity_distraction_query"
             << " event=" << event
             << " type=" << io::enum_to_string( type )
+            << " game_minutes=" << game_minutes
             << " text=" << quoted_text
             << " truncated=" << ( truncated ? "yes" : "no" )
             << " action=" << ( action.empty() ? "none" : action );
@@ -1595,6 +1602,10 @@ bool game::cancel_activity_or_ignore_query( const distraction_type type, const s
                             : input_context::allow_all_keys;
 
     openclaw_harness_trace_activity_query( "open", type, text );
+    // The activity query owns input, but not the avatar's current visible
+    // world.  Preserve that same native state before the modal suppresses the
+    // normal world-frame producer.
+    openclaw_harness_semantic_activity_distraction();
     const std::string &action = query_popup()
                                 .preferred_keyboard_mode( keyboard_mode::keycode )
                                 .context( "CANCEL_ACTIVITY_OR_IGNORE_QUERY" )
@@ -3478,6 +3489,17 @@ void game::draw( ui_adaptor &ui )
 
     draw_panels( true );
 
+    // Publishing at the completed world-HUD render is required during
+    // startup, before game::do_turn may receive any input.  The context stack
+    // is the native authority for a modal input owner; a missing or non-world
+    // owner fails closed.
+    input_context world_context = get_default_mode_input_context();
+    input_context::scoped_activation world_input_owner( world_context );
+    openclaw_harness_semantic_initial_world_frame_if_ready(
+        input_context::get_active_context(), !u.activity,
+        !u.has_destination() && !u.has_destination_activity(),
+        !( uquit == QUIT_WATCH && u.is_dead_state() ) );
+
     // Ensure that the cursor lands on the character when everything is drawn.
     // This allows screen readers to describe the area around the player, making it
     // much easier to play with them
@@ -3496,6 +3518,8 @@ void game::draw_panels( bool force_draw )
     int y = 0;
     const bool sidebar_right = get_option<std::string>( "SIDEBAR_POSITION" ) == "right";
     int spacer = get_option<bool>( "SIDEBAR_SPACERS" ) ? 1 : 0;
+    std::string rendered_move_widget;
+    std::string rendered_wield_widget;
     // Total up height used by all panels, and see what is left over for log
     int log_height = 0;
     for( const window_panel &panel : mgr.get_current_layout().panels() ) {
@@ -3532,6 +3556,33 @@ void game::draw_panels( bool force_draw )
                         log_height -= tmp_h;
                         continue;
                     }
+                    const ::widget_id &panel_widget = panel.get_widget();
+                    const auto contains_widget = []( const ::widget_id & widget_id,
+                    const std::initializer_list<std::string_view> & expected_ids,
+                    const auto & self ) -> std::string {
+                        if( widget_id.is_null() || !widget_id.is_valid() ) {
+                            return {};
+                        }
+                        const std::string id = widget_id.str();
+                        if( std::find( expected_ids.begin(), expected_ids.end(), id ) != expected_ids.end() ) {
+                            return id;
+                        }
+                        for( const ::widget_id &child : widget_id.obj()._widgets ) {
+                            const std::string found = self( child, expected_ids, self );
+                            if( !found.empty() ) {
+                                return found;
+                            }
+                        }
+                        return {};
+                    };
+                    if( rendered_move_widget.empty() ) {
+                        rendered_move_widget = contains_widget( panel_widget,
+                                               { "move_num", "move_count_mode_desc" }, contains_widget );
+                    }
+                    if( rendered_wield_widget.empty() ) {
+                        rendered_wield_widget = contains_widget( panel_widget,
+                                                { "wielding_desc", "wielding_simple_desc" }, contains_widget );
+                    }
                 }
                 if( show_panel_adm ) {
                     const std::string panel_name = panel.get_name();
@@ -3559,6 +3610,22 @@ void game::draw_panels( bool force_draw )
                 y += h;
             }
         }
+    }
+    const char *trace_enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    const char *run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    if( trace_enabled != nullptr && trace_enabled[0] != '\0' && trace_enabled[0] != '0' &&
+        run_id != nullptr && run_id[0] != '\0' && !rendered_move_widget.empty() &&
+        !rendered_wield_widget.empty() ) {
+        input_context ctxt = get_default_mode_input_context();
+        DebugLog( D_INFO, DC_ALL )
+                << "openclaw_harness_ui_trace: component=gameplay_hud event=rendered"
+                << " run_id=\"" << run_id << "\""
+                << " move_widget=" << rendered_move_widget
+                << " wield_widget=" << rendered_wield_widget
+                << " avatar_live=" << ( u.is_dead_state() ? "no" : "yes" )
+                << " modal_owner=" << ( uistate.open_menu ? "queued_menu" : "none" )
+                << " world_wait_available=" <<
+                ( ctxt.first_keyboard_character_for_action( "wait" ) ? "yes" : "no" );
     }
     previous_turn = current_turn;
 }
@@ -10486,6 +10553,7 @@ void game::update_overmap_seen()
 
 void game::despawn_monster( monster &critter )
 {
+    bandit_live_world_probe::record_fixture_monster_lifecycle( critter, "despawn_monster", "local" );
     critter.on_unload();
     // hallucinations aren't stored, they come and go as they like
     if( !critter.is_hallucination() ) {
@@ -10509,6 +10577,8 @@ void game::despawn_nonlocal_monsters()
             pos.y() < 0 - MAPSIZE_Y / 6 ||
             pos.x() > ( MAPSIZE_X * 7 ) / 6 ||
             pos.y() > ( MAPSIZE_Y * 7 ) / 6 ) {
+            bandit_live_world_probe::record_fixture_monster_lifecycle( critter,
+                    "despawn_nonlocal_monsters", "local" );
             g->despawn_monster( critter );
         }
     }

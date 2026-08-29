@@ -5,6 +5,8 @@
 #include <cctype>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <exception>
 #include <iterator>
 #include <list>
@@ -102,6 +104,20 @@ bool input_context::action_uses_input( const std::string &action_id,
     return std::find( events.begin(), events.end(), event ) != events.end();
 }
 
+std::optional<std::string> input_context::first_keyboard_character_for_action(
+    const std::string &action_id ) const
+{
+    const input_manager::t_input_event_list events = inp_mngr.get_input_for_action(
+                action_id, category );
+    for( const input_event &event : events ) {
+        if( event.type == input_event_t::keyboard_char && event.get_first_input() > 0 &&
+            event.get_first_input() <= 0x7f ) {
+            return std::string( 1, static_cast<char>( event.get_first_input() ) );
+        }
+    }
+    return std::nullopt;
+}
+
 std::string input_context::get_conflicts(
     const input_event &event, const std::string &ignore_action ) const
 {
@@ -143,6 +159,76 @@ static const std::string ANY_INPUT = "ANY_INPUT";
 static const std::string HELP_KEYBINDINGS = "HELP_KEYBINDINGS";
 static const std::string COORDINATE = "COORDINATE";
 static const std::string TIMEOUT = "TIMEOUT";
+
+namespace
+{
+bool openclaw_harness_wait_input_trace_enabled()
+{
+    const char *const selected_run_id = std::getenv( "OPENCLAW_HARNESS_WAIT_INPUT_TRACE_RUN_ID" );
+    const char *const active_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    return selected_run_id != nullptr && active_run_id != nullptr && selected_run_id[0] != '\0' &&
+           std::strcmp( selected_run_id, active_run_id ) == 0;
+}
+
+bool openclaw_harness_is_wait_probe_input( const input_event &input )
+{
+    return input.type == input_event_t::keyboard_char || input.type == input_event_t::keyboard_code;
+}
+
+void openclaw_harness_trace_wait_input_resolution( const input_context &ctxt,
+        const input_event &input, const std::string &resolved_action )
+{
+    if( !openclaw_harness_wait_input_trace_enabled() || !openclaw_harness_is_wait_probe_input( input ) ) {
+        return;
+    }
+
+    const bool default_mode = ctxt.get_category() == "DEFAULTMODE";
+    const std::vector<input_event> &wait_bindings = inp_mngr.get_input_for_action( "wait",
+            ctxt.get_category() );
+    const input_event *candidate = nullptr;
+    bool same_type_and_code = false;
+    for( const input_event &binding : wait_bindings ) {
+        if( ( binding.type == input_event_t::keyboard_char && binding.get_first_input() == '|' ) ||
+            ( binding.type == input_event_t::keyboard_code && binding.get_first_input() == '\\' ) ) {
+            candidate = &binding;
+            if( binding.type == input.type && binding.get_first_input() == input.get_first_input() ) {
+                same_type_and_code = true;
+                if( binding == input ) {
+                    candidate = &binding;
+                    break;
+                }
+            }
+        }
+    }
+
+    const char *rejection = "none";
+    if( !default_mode ) {
+        rejection = "wrong_context";
+    } else if( !ctxt.is_registered_action( "wait" ) ) {
+        rejection = "wait_not_registered";
+    } else if( resolved_action == CATA_ERROR ) {
+        rejection = same_type_and_code ? "modifier_mismatch" : "unmapped_input";
+    }
+
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_wait_input_trace: component=input_resolution"
+            << " event=resolved"
+            << " run_id=\"" << std::getenv( "OPENCLAW_HARNESS_RUN_ID" ) << "\""
+            << " active_context=\"" << ctxt.get_category() << "\""
+            << " default_mode=" << ( default_mode ? "yes" : "no" )
+            << " raw_type=" << static_cast<int>( input.type )
+            << " raw_code=" << input.get_first_input()
+            << " modifier_shift=" << ( input.modifiers.count( keymod_t::shift ) ? "yes" : "no" )
+            << " modifier_ctrl=" << ( input.modifiers.count( keymod_t::ctrl ) ? "yes" : "no" )
+            << " modifier_alt=" << ( input.modifiers.count( keymod_t::alt ) ? "yes" : "no" )
+            << " raw_text=\"" << input.text << "\""
+            << " candidate_type=" << ( candidate == nullptr ? -1 : static_cast<int>( candidate->type ) )
+            << " candidate_code=" << ( candidate == nullptr ? 0 : candidate->get_first_input() )
+            << " candidate_shift=" << ( candidate != nullptr && candidate->modifiers.count( keymod_t::shift ) ? "yes" : "no" )
+            << " resolved_action=\"" << resolved_action << "\""
+            << " rejection_reason=" << rejection;
+}
+} // namespace
 
 const std::string &input_context::input_to_action( const input_event &inp ) const
 {
@@ -195,6 +281,15 @@ void input_context_stack_impl::push( std::shared_ptr<input_context_handle> const
 #if defined(__ANDROID__) || defined(TILES)
 input_context_stack_impl input_context::input_context_stack;
 #endif
+
+input_context *input_context::get_active_context()
+{
+#if defined(__ANDROID__) || defined(TILES)
+    return input_context_stack.back();
+#else
+    return nullptr;
+#endif
+}
 
 #if defined(__ANDROID__)
 void input_context::register_manual_key( manual_key mk )
@@ -490,6 +585,7 @@ const std::string &input_context::handle_input( const int timeout )
         }
 
         const std::string &action = input_to_action( next_action );
+        openclaw_harness_trace_wait_input_resolution( *this, next_action, action );
 
         //Special global key to toggle language to english and back
         if( action == "toggle_language_to_en" ) {

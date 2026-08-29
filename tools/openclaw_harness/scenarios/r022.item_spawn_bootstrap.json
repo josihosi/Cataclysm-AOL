@@ -1,0 +1,59 @@
+{
+  "manifest_version": 2,
+  "name": "r022.item_spawn_bootstrap",
+  "description": "R-022 setup-only bootstrap. It binds one disposable exact item transaction to its native wish.cpp owner and tag-scoped cleanup. Registry selection proves only source/executable-bound setup support; no bootstrap output is item-spawn, acquisition, economy, or gameplay proof.",
+  "profile": "r009-m091",
+  "world": "McWilliams",
+  "fixture": "r022_item_spawn_bootstrap_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": false,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO"],
+  "capabilities": {
+    "local_place.r022.destination_offset_ms": [4, 0, 0],
+    "capabilities.setup.item_spawn_transaction": "debug_menu::debug_item_spawn_transaction",
+    "capabilities.setup.item_spawn_cleanup": "debug_menu::debug_item_spawn_transaction_cleanup",
+    "capabilities.setup.item_spawn_source": "src/wish.cpp",
+    "runtime.evidence_ceiling": "none_for_debug_fixture_transaction"
+  },
+  "runtime_contract": {
+    "permitted_input": ["debug_menu::debug_item_spawn_transaction"],
+    "forbidden_input": ["inventory_acquisition", "economy_credit", "gameplay_credit_api", "untagged_cleanup"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["r022_item_spawn_adapter"],
+    "permissions": [],
+    "platform": ["macos", "linux", "windows"],
+    "profile": "r009-m091",
+    "fixture": "r022_item_spawn_bootstrap_v1",
+    "requirements": {
+      "os": "any-supported", "source": "current-worktree", "executable": "cataclysm-tiles",
+      "profile": "r009-m091", "fixture": "r022_item_spawn_bootstrap_v1",
+      "helper": "r022_item_spawn_adapter", "peekaboo": false,
+      "input": ["debug_menu::debug_item_spawn_transaction"], "ocr": false, "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "r022_item_spawn": {
+    "transaction_id": "r022-disposable-item-spawn-v1",
+    "type": "apple", "quantity": 3, "charges": 0, "damage": 0,
+    "owner": "your_followers", "destination_offset_ms": [4, 0, 0],
+    "native_source": "src/wish.cpp", "native_executable": "cataclysm-tiles",
+    "transaction_owner": "debug_menu::debug_item_spawn_transaction",
+    "cleanup_owner": "debug_menu::debug_item_spawn_transaction_cleanup",
+    "evidence_ceiling": "none_for_debug_fixture_transaction"
+  },
+  "steps": [{
+    "kind": "wait", "label": "r022_bootstrap_setup_boundary", "seconds": 0,
+    "expected_visible_fact": "the exact item transaction is declared as setup support only; no item is spawned by this bootstrap"
+  }],
+  "proof_gates": [{
+    "id": "r022_item_spawn_bootstrap_bound", "label": "R-022 item transaction is source/executable-bound setup support",
+    "boundary_step": "r022_bootstrap_setup_boundary", "predecessors": [],
+    "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "r022_item_spawn_transaction", "gameplay_credit": false}}],
+    "checkpoint_safe_ui": {"screen_text_contains": ["setup transaction only"]}
+  }],
+  "proof_route": {"gates": ["r022_item_spawn_bootstrap_bound"], "terminal": ["r022_item_spawn_bootstrap_bound"]}
+}

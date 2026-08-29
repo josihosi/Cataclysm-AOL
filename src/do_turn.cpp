@@ -44,6 +44,7 @@
 #include "coordinates.h"
 #include "creature_tracker.h"
 #include "debug.h"
+#include "debug_menu.h"
 #include "dialogue_win.h"
 #include "debug_capture.h"
 #include "enums.h"
@@ -105,6 +106,7 @@
 #include "type_id.h"
 #include "uilist.h"
 #include "ui_manager.h"
+#include "uistate.h"
 #include "units.h"
 #include "vehicle.h"
 #include "veh_type.h"
@@ -150,6 +152,89 @@ static const ter_str_id ter_t_tile_flat_roof( "t_tile_flat_roof" );
 static const trait_id trait_DEBUG_CLAIRVOYANCE( "DEBUG_CLAIRVOYANCE" );
 static const trait_id trait_HAS_NEMESIS( "HAS_NEMESIS" );
 static const trait_id trait_NPC_STATIC_NPC( "NPC_STATIC_NPC" );
+
+static bool openclaw_harness_startup_boundary_trace_enabled()
+{
+    const char *const trace_enabled = std::getenv( "OPENCLAW_HARNESS_UI_TRACE" );
+    const char *const active_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    return trace_enabled != nullptr && trace_enabled[0] != '\0' && trace_enabled[0] != '0' &&
+           active_run_id != nullptr && active_run_id[0] != '\0';
+}
+
+static void openclaw_harness_r022_item_spawn_bridge( avatar &player )
+{
+    static bool dispatched = false;
+    if( dispatched ) {
+        return;
+    }
+    const char *const transaction_id = std::getenv( "OPENCLAW_HARNESS_R022_TRANSACTION_ID" );
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    if( transaction_id == nullptr || transaction_id[0] == '\0' ) {
+        return;
+    }
+    dispatched = true;
+    const debug_menu::debug_item_spawn_request request {
+        itype_id( "apple" ), 3, 0, 0, faction_id( "your_followers" ),
+        player.pos_bub() + tripoint( 4, 0, 0 ), transaction_id
+    };
+    const debug_menu::debug_item_spawn_receipt transaction =
+        debug_menu::debug_item_spawn_transaction( request );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_r022_item_spawn: event=transaction"
+            << " run_id=" << ( run_id == nullptr ? "" : run_id )
+            << " transaction_id=" << transaction.transaction_id
+            << " accepted=" << transaction.accepted
+            << " audit_passed=" << transaction.audit_passed
+            << " zero_credit=" << transaction.zero_credit
+            << " provenance=debug_item_spawn_transaction:_zero-credit_setup_mutation"
+            << " type=apple quantity=3 charges=0 damage=0 owner=your_followers"
+            << " destination_offset_ms=4,0,0"
+            << " identities=" << transaction.identities.size();
+    for( const debug_menu::debug_item_spawn_identity &identity : transaction.identities ) {
+        DebugLog( D_INFO, DC_ALL )
+                << "openclaw_harness_r022_item_spawn: event=identity"
+                << " run_id=" << ( run_id == nullptr ? "" : run_id )
+                << " transaction_id=" << transaction.transaction_id
+                << " ordinal=" << identity.ordinal
+                << " type=" << identity.type.str()
+                << " charges=" << identity.charges
+                << " damage=" << identity.damage
+                << " owner=" << identity.owner.str();
+    }
+    const debug_menu::debug_item_spawn_cleanup_receipt cleanup =
+        debug_menu::debug_item_spawn_transaction_cleanup( request );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_r022_item_spawn: event=cleanup"
+            << " run_id=" << ( run_id == nullptr ? "" : run_id )
+            << " transaction_id=" << cleanup.transaction_id
+            << " accepted=" << cleanup.accepted
+            << " audit_passed=" << cleanup.audit_passed
+            << " zero_credit=" << cleanup.zero_credit
+            << " provenance=debug_item_spawn_transaction_cleanup:_zero-credit_setup_mutation"
+            << " removed=" << cleanup.removed
+            << " retained_untagged=" << cleanup.retained_untagged;
+}
+
+static void openclaw_harness_trace_post_hud_pre_input_boundary( const avatar &player,
+        bool watching_dead_avatar )
+{
+    if( !openclaw_harness_startup_boundary_trace_enabled() ) {
+        return;
+    }
+
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    input_context ctxt = get_default_mode_input_context();
+    const bool ordinary_input_candidate = !player.is_dead_state() && !watching_dead_avatar &&
+                                          !player.activity && !player.has_destination() &&
+                                          !player.has_destination_activity() && !uistate.open_menu;
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_startup_boundary: event=post_hud_pre_input"
+            << " run_id=\"" << run_id << '\"'
+            << " avatar_live=" << ( player.is_dead_state() ? "no" : "yes" )
+            << " modal_owner=" << ( uistate.open_menu ? "queued_menu" : "none" )
+            << " world_wait_available=" << ( ctxt.first_keyboard_character_for_action( "wait" ) ? "yes" : "no" )
+            << " ordinary_input_candidate=" << ( ordinary_input_candidate ? "yes" : "no" );
+}
 
 #if defined(__ANDROID__)
 extern std::map<std::string, std::list<input_event>> quick_shortcuts_map;
@@ -634,8 +719,8 @@ void observe_live_bandit_player_target_opportunity()
     // Camp-local scout reports read this world receipt; only this loaded player-scene owner writes it.
     const bool observed = bandit_live_world::observe_authoritative_hostile_target_opportunity( state,
                            target_id, target_omt, evidence );
-    openclaw_harness_trace_bandit_owner( "observation_result", target_omt, nullptr, 0, true,
-                                         observed ? 1 : 0 );
+    openclaw_harness_trace_bandit_owner( "observation_result", target_omt, &*basecamp_omt, 0,
+                                         true, observed ? 1 : 0 );
     if( observed ) {
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world hostile_target_observation"
                                    << " target=" << target_id
@@ -9010,12 +9095,12 @@ void complete_live_bandit_ingress_boundary_steps(
 }
 
 std::set<character_id> complete_live_bandit_homeward_boundary_steps(
-    const std::map<character_id, live_bandit_pair_boundary_step> &steps )
+        const std::map<character_id, live_bandit_pair_boundary_step> &steps )
 {
     std::set<character_id> committed_member_ids;
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
     map &here = get_map();
-    for( bandit_live_world::site_record &site :
-         overmap_buffer.global_state.bandit_live_world.sites ) {
+    for( bandit_live_world::site_record &site : state.sites ) {
         bandit_live_world::active_outing_state &outing = site.active_outing;
         if( outing.member_ids.size() != 2 ||
             !bandit_live_world::scout_phase_requires_homeward_only( outing.phase ) ) {
@@ -9133,6 +9218,9 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                         backups.back().member->get_bandit_live_world_projection_lease();
                 }
             }
+            // The boundary helper models a completed save before applying the
+            // physical return.  Keep the production persistence gate intact.
+            state.acknowledge_persisted_crossings();
             const bandit_live_world::local_dematerialization_plan plan =
                 bandit_live_world::plan_local_pair_dematerialization(
                     site, *cursor, current_minutes, reads, outing.cargo );
@@ -9326,6 +9414,7 @@ void monmove()
         }
 
         if( !critter.is_dead() ) {
+            bandit_live_world_probe::record_fixture_monster_lifecycle( critter, "monmove_before", "local" );
             critter.process_turn();
         }
 
@@ -9348,6 +9437,7 @@ void monmove()
                 break;
             }
             critter.move(); // Move one square, possibly hit u
+            bandit_live_world_probe::record_fixture_monster_lifecycle( critter, "move_after", "local" );
             critter.process_triggers();
             m.creature_in_field( critter );
         }
@@ -9369,6 +9459,8 @@ void monmove()
                 u.wake_up();
             }
         }
+        bandit_live_world_probe::record_fixture_monster_lifecycle( critter,
+                "post_monmove_visibility", "local" );
     }
 
     g->cleanup_dead();
@@ -10050,11 +10142,10 @@ void overmap_npc_move()
     if( dispatch_cadence_due || structural_cadence_due ) {
         refresh_live_bandit_member_readiness( bandit_state );
     }
-    // A camp created on this structural cadence has not yet had an ordinary
-    // loaded player scene in which to observe a target opportunity.  Defer
-    // its first structural maintenance pass until the next cadence, so the
-    // structural scheduler does not consume that initial lead first.
-    if( structural_cadence_due && bootstrapped_sites == 0 ) {
+    // The loaded player scene owns observation.  The camp may adopt that durable
+    // opportunity on the signal cadence, but structural maintenance remains on
+    // its own cadence so adoption alone cannot dispatch an outing.
+    if( signal_cadence_due && bootstrapped_sites == 0 ) {
         observe_live_bandit_player_target_opportunity();
         const int adopted_opportunities =
             bandit_live_world::adopt_observed_hostile_player_opportunities(
@@ -10063,12 +10154,23 @@ void overmap_npc_move()
         const bandit_live_world::hostile_target_opportunity_record & opportunity ) {
             return live_bandit_player_opportunity_route_available( site, opportunity );
         } );
-        openclaw_harness_trace_bandit_owner( "adoption_result", u.pos_abs_omt(), nullptr, 0, true,
-                adopted_opportunities );
+        const std::optional<basecamp *> direct_camp = overmap_buffer.find_camp( u.pos_abs_omt().xy() );
+        const std::optional<tripoint_abs_omt> camp_omt = direct_camp && *direct_camp != nullptr ?
+                std::optional<tripoint_abs_omt>( ( *direct_camp )->camp_omt_pos() ) : std::nullopt;
+        const tripoint_abs_omt *camp_omt_ptr = camp_omt ? &*camp_omt : nullptr;
+        const int camp_distance = camp_omt ? rl_dist( u.pos_abs_omt(), *camp_omt ) : -1;
+        openclaw_harness_trace_bandit_owner( "adoption_result", u.pos_abs_omt(), camp_omt_ptr,
+                camp_distance, camp_omt.has_value(), adopted_opportunities );
         if( adopted_opportunities > 0 ) {
             DebugLog( D_INFO, DC_ALL ) << "bandit_live_world player_opportunity_adoption adopted="
                                        << adopted_opportunities << '\n';
         }
+    }
+    // A camp created on this structural cadence has not yet had an ordinary
+    // loaded player scene in which to observe a target opportunity.  Defer
+    // its first structural maintenance pass until the next cadence, so the
+    // structural scheduler does not consume that initial lead first.
+    if( structural_cadence_due && bootstrapped_sites == 0 ) {
         maintain_live_bandit_structural_bounty( live_signals, live_sounds );
     } else if( !live_sounds.empty() ) {
         const bandit_live_world::structural_signal_record_result recorded =
@@ -10707,7 +10809,7 @@ bool live_bandit_retained_homeward_resume_blocks_generic_travel(
 
 std::string live_bandit_homeward_boundary_discriminator_for_test()
 {
-    const bandit_live_world::world_state &state =
+    bandit_live_world::world_state &state =
         overmap_buffer.global_state.bandit_live_world;
     const std::set<character_id> homeward_member_ids =
         bandit_live_world::local_pair_homeward_travel_ids( state );
@@ -10902,7 +11004,7 @@ void process_overmap_npc_move_for_test()
 
 bool complete_live_bandit_homeward_boundary_for_test()
 {
-    const bandit_live_world::world_state &state =
+    bandit_live_world::world_state &state =
         overmap_buffer.global_state.bandit_live_world;
     const std::set<character_id> homeward_member_ids =
         bandit_live_world::local_pair_homeward_travel_ids( state );
@@ -11031,6 +11133,7 @@ bool game::do_turn()
     llm_intent::enqueue_random_requests();
     mission::process_all();
     avatar &u = get_avatar();
+    openclaw_harness_r022_item_spawn_bridge( u );
     map &m = get_map();
     // If controlling a vehicle that is owned by someone else
     if( u.in_vehicle && u.controlling_vehicle ) {
@@ -11125,6 +11228,11 @@ bool game::do_turn()
                     && ( !u.has_distant_destination() || calendar::once_every( 10_seconds ) ) ) {
                     wait_popup_reset();
                     ui_manager::redraw();
+                    // This trace observes the turn-loop boundary only.  The
+                    // initial semantic producer lives at the render boundary,
+                    // which can execute before this loop is entered.
+                    openclaw_harness_trace_post_hud_pre_input_boundary( u,
+                            uquit == QUIT_WATCH );
                 }
 
                 if( queue_screenshot ) {

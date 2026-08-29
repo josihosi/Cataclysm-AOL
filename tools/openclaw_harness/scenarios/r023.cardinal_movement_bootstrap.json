@@ -1,0 +1,89 @@
+{
+  "manifest_version": 2,
+  "name": "r023.cardinal_movement_bootstrap",
+  "description": "R-023 zero-credit bootstrap.  It registry-binds a disposable stable-avatar scene with declared free east, south, and west tiles and a blocked north tile.  Native cardinal receipts are separately implemented; this route proves only setup selection, source/executable binding, and cleanup ownership, never movement behavior.",
+  "profile": "r009-m091",
+  "world": "McWilliams",
+  "fixture": "r023_cardinal_movement_bootstrap_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": false,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO"],
+  "capabilities": {
+    "player.r023.avatar_identity": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "local_place.r023.free_east_offset_ms": [1, 0, 0],
+    "local_place.r023.free_south_offset_ms": [0, 1, 0],
+    "local_place.r023.free_west_offset_ms": [-1, 0, 0],
+    "local_place.r023.blocked_cardinal_offset_ms": [0, -1, 0],
+    "local_place.r023.blocked_furniture_id": "f_locker",
+    "capabilities.setup.r023.cardinal_movement_scene": "fixture_save_transform.map_furniture_near_player",
+    "capabilities.setup.r023.cleanup_owner": "r023_cardinal_movement_bootstrap_v1",
+    "capabilities.r023.native_cardinal_receipts": "src/handle_action.cpp:world.move.north,south,west,east",
+    "runtime.r023.source_binding": "r023_cardinal_movement_bootstrap_v1:r009-m091",
+    "runtime.evidence_ceiling": "none_for_disposable_movement_setup"
+  },
+  "runtime_contract": {
+    "permitted_input": ["registry:typed_selection"],
+    "forbidden_input": ["semantic:world.move.north", "semantic:world.move.south", "semantic:world.move.west", "semantic:world.move.east", "raw-save-rewrite", "fixture-save-transform-after-install", "direct-state-mutation", "gameplay_credit_api"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["scenario_registry"],
+    "permissions": [],
+    "platform": ["macos", "linux", "windows"],
+    "profile": "r009-m091",
+    "fixture": "r023_cardinal_movement_bootstrap_v1",
+    "requirements": {
+      "os": "any-supported",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r009-m091",
+      "fixture": "r023_cardinal_movement_bootstrap_v1",
+      "helper": "scenario_registry",
+      "peekaboo": false,
+      "input": ["registry:typed_selection"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r023_cardinal_movement_bootstrap_v1/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/r009-m091.json",
+    "native_source": "src/handle_action.cpp",
+    "native_executable": "cataclysm-tiles"
+  },
+  "r023_movement_scene": {
+    "avatar_identity": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "free_cardinal_offsets_ms": [[1, 0, 0], [0, 1, 0], [-1, 0, 0]],
+    "blocked_cardinal_offset_ms": [0, -1, 0],
+    "blocked_furniture_id": "f_locker",
+    "cleanup_owner": "r023_cardinal_movement_bootstrap_v1",
+    "evidence_ceiling": "none_for_disposable_movement_setup"
+  },
+  "steps": [{
+    "kind": "wait",
+    "label": "r023_setup_selection_boundary",
+    "seconds": 0,
+    "expected_visible_fact": "the disposable cardinal movement scene is selected as setup support only; no cardinal action is dispatched"
+  }],
+  "proof_gates": [{
+    "id": "r023_cardinal_scene_setup_bound",
+    "label": "R-023 cardinal scene is source/executable-bound zero-credit setup support",
+    "boundary_step": "r023_setup_selection_boundary",
+    "predecessors": [],
+    "expectations": [{
+      "kind": "saved_artifact",
+      "predicate": {"artifact_kind": "r023_cardinal_movement_setup", "gameplay_credit": false}
+    }],
+    "checkpoint_safe_ui": {"screen_text_contains": ["setup transaction only"]}
+  }],
+  "proof_route": {
+    "gates": ["r023_cardinal_scene_setup_bound"],
+    "terminal": ["r023_cardinal_scene_setup_bound"],
+    "capability_gates": {
+      "capabilities.setup.r023.cardinal_movement_scene": {"startup": ["r023_cardinal_scene_setup_bound"]}
+    }
+  }
+}

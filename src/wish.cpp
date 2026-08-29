@@ -944,6 +944,120 @@ static item wishitem_produce( const itype &type, std::string &flags, bool incont
 
 namespace
 {
+constexpr std::string_view debug_item_spawn_transaction_var = "debug_item_spawn_transaction";
+constexpr std::string_view debug_item_spawn_ordinal_var = "debug_item_spawn_ordinal";
+constexpr std::string_view debug_item_spawn_provenance_var = "debug_item_spawn_provenance";
+
+bool debug_item_spawn_matches( const item &candidate, const debug_menu::debug_item_spawn_request &request,
+                               int ordinal )
+{
+    return candidate.get_var( debug_item_spawn_transaction_var ) == request.transaction_id &&
+           candidate.get_var( debug_item_spawn_ordinal_var, -1 ) == ordinal &&
+           candidate.typeId() == request.type && candidate.charges == request.charges &&
+           candidate.damage() == request.damage && candidate.get_owner() == request.owner;
+}
+} // namespace
+
+debug_menu::debug_item_spawn_receipt debug_menu::debug_item_spawn_transaction(
+    const debug_item_spawn_request &request )
+{
+    debug_item_spawn_receipt receipt;
+    receipt.transaction_id = request.transaction_id;
+    if( request.transaction_id.empty() || !request.type.is_valid() || request.quantity <= 0 ||
+        request.charges < 0 || request.damage < 0 || request.owner.is_null() ||
+        !request.owner.is_valid() ) {
+        receipt.failure = "invalid declared item transaction state";
+        return receipt;
+    }
+
+    map &here = get_map();
+    if( !here.inbounds( request.destination ) ) {
+        receipt.failure = "declared destination is outside the loaded map";
+        return receipt;
+    }
+    if( !here.i_at( request.destination ).empty() ) {
+        receipt.failure = "declared destination is occupied";
+        return receipt;
+    }
+
+    item exemplar( request.type, calendar::turn, request.charges );
+    if( exemplar.is_null() || request.damage > exemplar.max_damage() ) {
+        receipt.failure = "declared item condition cannot be represented";
+        return receipt;
+    }
+    exemplar.set_damage( request.damage );
+    exemplar.set_owner( request.owner );
+    if( exemplar.charges != request.charges || exemplar.damage() != request.damage ||
+        exemplar.get_owner() != request.owner ) {
+        receipt.failure = "declared item state drifted before placement";
+        return receipt;
+    }
+
+    for( int ordinal = 0; ordinal < request.quantity; ++ordinal ) {
+        item granted = exemplar;
+        granted.set_var( std::string( debug_item_spawn_transaction_var ), request.transaction_id );
+        granted.set_var( std::string( debug_item_spawn_ordinal_var ), ordinal );
+        granted.set_var( std::string( debug_item_spawn_provenance_var ), receipt.provenance );
+        item &placed = here.add_item( request.destination, std::move( granted ) );
+        if( placed.is_null() || !debug_item_spawn_matches( placed, request, ordinal ) ) {
+            receipt.failure = "declared item could not be placed with its exact identity";
+            debug_item_spawn_transaction_cleanup( request );
+            return receipt;
+        }
+    }
+
+    for( int ordinal = 0; ordinal < request.quantity; ++ordinal ) {
+        const map_stack items = here.i_at( request.destination );
+        const auto found = std::find_if( items.begin(), items.end(), [&]( const item & candidate ) {
+            return debug_item_spawn_matches( candidate, request, ordinal );
+        } );
+        if( found == items.end() ) {
+            receipt.failure = "post-placement audit could not find every declared identity";
+            debug_item_spawn_transaction_cleanup( request );
+            return receipt;
+        }
+        receipt.identities.push_back( { ordinal, found->typeId(), found->charges, found->damage(),
+                                        found->get_owner() } );
+    }
+
+    receipt.accepted = true;
+    receipt.audit_passed = true;
+    return receipt;
+}
+
+debug_menu::debug_item_spawn_cleanup_receipt debug_menu::debug_item_spawn_transaction_cleanup(
+    const debug_item_spawn_request &request )
+{
+    debug_item_spawn_cleanup_receipt receipt;
+    receipt.transaction_id = request.transaction_id;
+    if( request.transaction_id.empty() ) {
+        receipt.failure = "missing transaction identity";
+        return receipt;
+    }
+
+    map &here = get_map();
+    if( !here.inbounds( request.destination ) ) {
+        receipt.failure = "declared destination is outside the loaded map";
+        return receipt;
+    }
+
+    map_stack items = here.i_at( request.destination );
+    for( map_stack::iterator iter = items.begin(); iter != items.end(); ) {
+        if( iter->get_var( debug_item_spawn_transaction_var ) == request.transaction_id ) {
+            iter = items.erase( iter );
+            ++receipt.removed;
+        } else {
+            ++receipt.retained_untagged;
+            ++iter;
+        }
+    }
+    receipt.accepted = true;
+    receipt.audit_passed = true;
+    return receipt;
+}
+
+namespace
+{
 class wish_item_callback: public uilist_callback
 {
     public:

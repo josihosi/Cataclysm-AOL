@@ -14,6 +14,7 @@
 
 #include "ascii_art.h"
 #include "avatar.h"
+#include "bandit_live_world_probe.h"
 #include "bodypart.h"
 #include "cached_options.h"
 #include "cata_imgui.h"
@@ -2507,6 +2508,7 @@ void monster::apply_damage( Creature *source, bodypart_id /*bp*/, int dam,
     if( is_dead_state() || has_flag( json_flag_CANNOT_TAKE_DAMAGE ) ) {
         return;
     }
+    bandit_live_world_probe::record_fixture_monster_lifecycle( *this, "damage_before", "local" );
     // Ensure we can try to get at what hit us.
     reset_pathfinding_cd();
     hp -= dam;
@@ -2527,6 +2529,7 @@ void monster::apply_damage( Creature *source, bodypart_id /*bp*/, int dam,
             aggro_character = true;
         }
     }
+    bandit_live_world_probe::record_fixture_monster_lifecycle( *this, "damage_after", "local" );
 }
 
 void monster::die_in_explosion( Creature *source )
@@ -2986,6 +2989,7 @@ void monster::explode()
 
 void monster::process_turn()
 {
+    bandit_live_world_probe::record_fixture_monster_lifecycle( *this, "process_turn_before", "local" );
     map &here = get_map();
     if( !is_hallucination() ) {
         for( const std::pair<const emit_id, time_duration> &e : type->emit_fields ) {
@@ -3099,6 +3103,7 @@ void monster::process_turn()
     }
 
     Creature::process_turn();
+    bandit_live_world_probe::record_fixture_monster_lifecycle( *this, "process_turn_after", "local" );
 }
 
 void monster::die( map *here, Creature *nkiller )
@@ -3114,6 +3119,7 @@ void monster::die( map *here, Creature *nkiller )
     }
     g->set_critter_died();
     dead = true;
+    bandit_live_world_probe::record_fixture_monster_lifecycle( *this, "death", "local" );
     set_killer( nkiller );
     if( get_killer() != nullptr ) {
         Character *ch = get_killer()->as_character();

@@ -1,0 +1,84 @@
+{
+  "manifest_version": 2,
+  "name": "r021.direct_hp_setter_bootstrap",
+  "description": "R-021 setup-only bootstrap. It declares one disposable, exact tagged monster for the native direct HP setter. The adapter rejects wrong, stale, and duplicate fixture identities. This route proves setup availability only and never gameplay, combat, ecology, survival, or natural-credit behavior.",
+  "profile": "r009-m091",
+  "world": "McWilliams",
+  "fixture": "r021_direct_hp_setter_bootstrap_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": false,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO"],
+  "capabilities": {
+    "actors.r021.fixture_actor_id": "r021-disposable-hp-target-v1",
+    "actors.r021.fixture_typeid": "mon_zombie",
+    "capabilities.setup.direct_hp_setter": "debug_menu.monster_set_hp->monster::set_hp",
+    "capabilities.setup.direct_hp_setter_identity": "values.caol_fixture_actor_id",
+    "capabilities.setup.direct_hp_setter_cleanup_owner": "r021_direct_hp_setter_bootstrap_v1",
+    "runtime.evidence_ceiling": "none_for_debug_fixture_transaction"
+  },
+  "runtime_contract": {
+    "permitted_input": ["debug_menu.monster_set_hp"],
+    "forbidden_input": ["damage", "killer_attribution", "ecology_ownership", "gameplay_credit_api"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["r021_direct_hp_setter_adapter"],
+    "permissions": [],
+    "platform": ["macos", "linux", "windows"],
+    "profile": "r009-m091",
+    "fixture": "r021_direct_hp_setter_bootstrap_v1",
+    "requirements": {
+      "os": "any-supported",
+      "source": "current-worktree",
+      "executable": "debug-menu-native-direct-hp-setter",
+      "profile": "r009-m091",
+      "fixture": "r021_direct_hp_setter_bootstrap_v1",
+      "helper": "r021_direct_hp_setter_adapter",
+      "peekaboo": false,
+      "input": ["debug_menu.monster_set_hp"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "r021_direct_hp_setter": {
+    "fixture_actor_id": "r021-disposable-hp-target-v1",
+    "expected_typeid": "mon_zombie",
+    "expected_offset_ms": [4, 0, 0],
+    "target_hp": 0,
+    "action_owner": "debug_menu.monster_set_hp",
+    "cleanup_owner": "r021_direct_hp_setter_bootstrap_v1",
+    "evidence_ceiling": "none_for_debug_fixture_transaction"
+  },
+  "steps": [{
+    "kind": "r021_direct_hp_setter",
+    "label": "r021_exact_native_hp_to_zero",
+    "expected_visible_fact": "one declared disposable fixture receives one native direct HP-to-zero receipt with before and after snapshots",
+    "declaration": {
+      "fixture_actor_id": "r021-disposable-hp-target-v1",
+      "expected_typeid": "mon_zombie",
+      "selection_query": "zombie",
+      "monster_submenu_ready_text": "Set hit points",
+      "target_hp": 0,
+      "action_owner": "debug_menu.monster_set_hp",
+      "cleanup_owner": "r021_direct_hp_setter_bootstrap_v1"
+    }
+  }],
+  "proof_gates": [{
+    "id": "r021_direct_hp_setter_available",
+    "label": "R-021 direct setter is declared as an exact disposable fixture adapter",
+    "boundary_step": "r021_exact_native_hp_to_zero",
+    "predecessors": [],
+    "expectations": [{
+      "kind": "saved_artifact",
+      "predicate": {"artifact_kind": "r021_direct_hp_setter", "gameplay_credit": false}
+    }],
+    "checkpoint_safe_ui": {"screen_text_contains": ["setup only"]}
+  }],
+  "proof_route": {
+    "gates": ["r021_direct_hp_setter_available"],
+    "terminal": ["r021_direct_hp_setter_available"]
+  }
+}

@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "name": "r023.guarded_relative_validation_mcw",
+  "description": "Zero-credit, source-bound R-023 validation route for guarded signed relative movement. It owns exactly guarded_move_relative from the same disposable cardinal scene; raw movement is separately selected and cannot be substituted.",
+  "profile": "r009-m091",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r023_cardinal_movement_bootstrap_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": false,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO"],
+  "capabilities": {
+    "capabilities.r023.guarded_relative_validation": "independent_zero_credit_guarded_signed_relative_movement",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r023.source_binding": "r023_cardinal_movement_bootstrap_v1:r009-m091"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.observe", "cockpit:game.look", "cockpit:game.guarded_move_relative", "cockpit:run.finish"],
+    "forbidden_input": ["cockpit:game.raw_move_relative", "semantic:world.move.north", "semantic:world.move.south", "semantic:world.move.west", "semantic:world.move.east", "raw-save-rewrite", "fixture-save-transform-after-install", "direct-state-mutation", "gameplay_credit_api"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m091",
+    "config_profile": "dev-harness",
+    "fixture": "r023_cardinal_movement_bootstrap_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m091", "fixture": "r023_cardinal_movement_bootstrap_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": false, "input": ["bound guarded signed relative movement"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r023_cardinal_movement_bootstrap_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/r009-m091.json", "native_source": "src/handle_action.cpp", "native_executable": "cataclysm-tiles"},
+  "proof_gates": [{"id": "r023_guarded_relative_validation_bound", "label": "R-023 guarded relative movement live receipt is bound and zero-credit", "boundary_step": "r023_guarded_relative_live_session", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r023_guarded_relative_validation_bound"], "terminal": ["r023_guarded_relative_validation_bound"], "capability_gates": {"capabilities.r023.guarded_relative_validation": {"terminal": ["r023_guarded_relative_validation_bound"]}}},
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "emit_r023_guarded_native_semantic_bootstrap", "expected_visible_fact": "a fresh native world frame binds the guarded relative route", "native_semantic_checkpoint": {"required_actions": ["world.move.east", "world.move.west", "world.move.north", "world.move.south"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "r023_guarded_relative_live_session", "relative_movement_operation": "guarded_move_relative", "live_operations": ["game.guarded_move_relative"], "objective": "Run only guarded signed relative movement from this disposable start and finish with exact ordered native receipts or its first exact fail-closed stop.", "proof_targets": ["fresh frames, safety classifications, ordered receipts, exact terminal or partial position, bound, stop reason, and cleanup"], "authority": ["game.guarded_move_relative", "run.finish"], "invariants": ["raw movement is not authorized by this route", "no primitive movement fallback", "each continuation uses a current safety frame", "the declared derived bound is required", "this route is zero-credit"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+  ],
+  "evidence_contract": {"claim": "one independently selected guarded route supplies only bound R-023 operational evidence", "failure_rule": "wrong operation, fallback, stale/unsafe/unknown frame, unordered or missing receipt, partial-position mismatch, absent exact stop, failed ingestion, nonzero credit, or failed cleanup leaves the route unproved"}
+}

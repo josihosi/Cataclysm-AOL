@@ -5,6 +5,7 @@
 #include <array>
 #include <chrono>
 #include <cmath>
+#include <cstdlib>
 #include <csignal>
 #include <cstdint>
 #include <exception>
@@ -845,7 +846,8 @@ static void monster_edit_menu()
     uilist monster_menu;
     int charnum = 0;
     for( const monster &mon : g->all_monsters() ) {
-        monster_menu.addentry( charnum++, true, MENU_AUTOASSIGN, mon.disp_name() );
+        monster_menu.addentry( charnum++, true, MENU_AUTOASSIGN, "%s @ %s", mon.disp_name(),
+                               mon.pos_abs().to_string_writable() );
         locations.emplace_back( mon.pos_bub() );
     }
 
@@ -945,7 +947,85 @@ static void monster_edit_menu()
         case D_HP: {
             int value = critter->get_hp();
             if( query_int( value, true, _( "Set the hitpoints to?" ) ) ) {
+                const char *const fixture_actor = std::getenv( "OPENCLAW_HARNESS_R021_FIXTURE_ACTOR_ID" );
+                if( fixture_actor != nullptr && fixture_actor[0] != '\0' &&
+                    critter->get_value( "caol_fixture_actor_id" ).str() != fixture_actor ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "openclaw_harness_debug_transaction: operation=monster_set_hp"
+                            << " target_fixture_actor_id=" << fixture_actor
+                            << " accepted=false reason=stale_or_wrong_fixture_actor"
+                            << " gameplay_credit=none";
+                    break;
+                }
+                if( fixture_actor != nullptr && fixture_actor[0] != '\0' ) {
+                    int matching_fixture_actors = 0;
+                    for( const monster &candidate : g->all_monsters() ) {
+                        if( candidate.get_value( "caol_fixture_actor_id" ).str() == fixture_actor ) {
+                            ++matching_fixture_actors;
+                        }
+                    }
+                    if( matching_fixture_actors != 1 || critter->is_dead() ) {
+                        DebugLog( D_INFO, DC_ALL )
+                                << "openclaw_harness_debug_transaction: operation=monster_set_hp"
+                                << " target_fixture_actor_id=" << fixture_actor
+                                << " accepted=false reason="
+                                << ( matching_fixture_actors == 1 ? "stale_fixture_actor" :
+                                     "ambiguous_fixture_actor" )
+                                << " gameplay_credit=none";
+                        break;
+                    }
+                    const auto log_r021_snapshot = [fixture_actor]( const char *phase ) {
+                        for( const monster &candidate : g->all_monsters() ) {
+                            DebugLog( D_INFO, DC_ALL )
+                                    << "openclaw_harness_debug_transaction: operation=monster_set_hp"
+                                    << " snapshot=" << phase
+                                    << " target_fixture_actor_id=" << fixture_actor
+                                    << " creature_handle="
+                                    << get_creature_tracker().temporary_id( candidate )
+                                    << " creature_fixture_actor_id="
+                                    << candidate.get_value( "caol_fixture_actor_id" ).str()
+                                    << " creature_type=" << candidate.type->id.str()
+                                    << " creature_position="
+                                    << candidate.pos_abs().to_string_writable()
+                                    << " creature_hp=" << candidate.get_hp()
+                                    << " creature_dead=" << candidate.is_dead()
+                                    << " gameplay_credit=none";
+                        }
+                    };
+                    log_r021_snapshot( "before" );
+                    const int old_hp = critter->get_hp();
+                    const int temporary_id = get_creature_tracker().temporary_id( *critter );
+                    critter->set_hp( value );
+                    log_r021_snapshot( "after" );
+                    DebugLog( D_INFO, DC_ALL )
+                            << "openclaw_harness_debug_transaction: operation=monster_set_hp"
+                            << " target_handle=" << temporary_id
+                            << " target_fixture_actor_id="
+                            << critter->get_value( "caol_fixture_actor_id" ).str()
+                            << " target_type=" << critter->type->id.str()
+                            << " target_position=" << critter->pos_abs().to_string_writable()
+                            << " hp_before=" << old_hp
+                            << " hp_after=" << critter->get_hp()
+                            << " cause=debug_menu_direct_set_hp"
+                            << " native_setter=monster::set_hp"
+                            << " gameplay_credit=none";
+                    break;
+                }
+                const int old_hp = critter->get_hp();
+                const int temporary_id = get_creature_tracker().temporary_id( *critter );
                 critter->set_hp( value );
+                DebugLog( D_INFO, DC_ALL )
+                        << "openclaw_harness_debug_transaction: operation=monster_set_hp"
+                        << " target_handle=" << temporary_id
+                        << " target_fixture_actor_id="
+                        << critter->get_value( "caol_fixture_actor_id" ).str()
+                        << " target_type=" << critter->type->id.str()
+                        << " target_position=" << critter->pos_abs().to_string_writable()
+                        << " hp_before=" << old_hp
+                        << " hp_after=" << critter->get_hp()
+                        << " cause=debug_menu_direct_set_hp"
+                        << " native_setter=monster::set_hp"
+                        << " gameplay_credit=none";
             }
         }
         break;

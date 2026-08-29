@@ -1,0 +1,14 @@
+[
+  {
+    "type": "effect_on_condition",
+    "id": "EOC_OPENCLAW_R019_SAFE_POPUP",
+    "eoc_type": "ACTIVATION",
+    "global": true,
+    "effect": [
+      {
+        "u_message": "A quiet moment passes.",
+        "popup": true
+      }
+    ]
+  }
+]

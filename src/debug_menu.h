@@ -28,6 +28,45 @@ struct overmap_spawn_option {
     int hotkey = 0;
 };
 
+struct debug_item_spawn_request {
+    itype_id type;
+    int quantity = 0;
+    int charges = 0;
+    int damage = 0;
+    faction_id owner;
+    tripoint_bub_ms destination;
+    std::string transaction_id;
+};
+
+struct debug_item_spawn_identity {
+    int ordinal = 0;
+    itype_id type;
+    int charges = 0;
+    int damage = 0;
+    faction_id owner;
+};
+
+struct debug_item_spawn_receipt {
+    bool accepted = false;
+    bool audit_passed = false;
+    bool zero_credit = true;
+    std::string transaction_id;
+    std::string provenance = "debug_item_spawn_transaction: zero-credit setup mutation";
+    std::string failure;
+    std::vector<debug_item_spawn_identity> identities;
+};
+
+struct debug_item_spawn_cleanup_receipt {
+    bool accepted = false;
+    bool audit_passed = false;
+    bool zero_credit = true;
+    std::string transaction_id;
+    std::string provenance = "debug_item_spawn_transaction cleanup: zero-credit setup mutation";
+    std::string failure;
+    int removed = 0;
+    int retained_untagged = 0;
+};
+
 std::vector<overmap_spawn_option> overmap_spawn_options();
 tripoint_abs_sm overmap_spawn_destination( const tripoint_abs_ms &player_abs_ms, int distance_omt );
 void spawn_overmap_threat( const overmap_spawn_option &option );
@@ -35,6 +74,9 @@ void spawn_overmap_threat( const overmap_spawn_option &option );
 void wisheffect( Creature &p );
 void wishitem( Character *you = nullptr );
 void wishitem( Character *you, const tripoint_bub_ms & );
+debug_item_spawn_receipt debug_item_spawn_transaction( const debug_item_spawn_request &request );
+debug_item_spawn_cleanup_receipt debug_item_spawn_transaction_cleanup(
+    const debug_item_spawn_request &request );
 // Shows a menu to debug item groups. Spawns items if test is false, otherwise displays would be spawned items.
 void wishitemgroup( bool test );
 void wishmonster( const std::optional<tripoint_bub_ms> &p );

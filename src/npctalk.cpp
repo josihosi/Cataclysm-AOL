@@ -168,6 +168,8 @@ bool openclaw_harness_eoc_popup_trace_enabled()
     return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
 }
 
+uint64_t openclaw_harness_semantic_ui_instance_sequence = 0;
+
 std::string openclaw_harness_quote_eoc_popup_message( const std::string &value,
         bool &truncated )
 {
@@ -221,6 +223,17 @@ void openclaw_harness_trace_eoc_popup( const std::string &event,
             << " message=" << quoted_message
             << " truncated=" << ( truncated ? "yes" : "no" )
             << " popup_flag=" << static_cast<int>( popup_flag );
+    const std::string semantic_event = event == "open" ? "open" : "progress";
+    const uint64_t instance = event == "open" ? ++openclaw_harness_semantic_ui_instance_sequence :
+                              openclaw_harness_semantic_ui_instance_sequence;
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_ui_trace: component=semantic_ui"
+            << " event=" << semantic_event
+            << " instance_id=\"eoc-" << instance << "\""
+            << " run_id=\"" << ( run_id ? run_id : "" ) << "\""
+            << " intent=\"eoc_popup\" valid_actions=[\"space\"]"
+            << " postcondition=\"eoc_popup_returned\"";
 }
 } // namespace
 
