@@ -218,32 +218,89 @@ def _commands(observation: Mapping[str, Any]) -> list[Dict[str, Any]]:
     return commands
 
 
+def _value_or_unavailable(value: Any) -> Dict[str, Any]:
+    return dict(value) if isinstance(value, Mapping) else {"state": "unavailable"}
+
+
+def _receipt_drilldown(compact_log: Mapping[str, Any]) -> Dict[str, Any]:
+    """Keep every displayed receipt fact tied to the public compact log."""
+    latest = _value_or_unavailable(compact_log.get("latest_receipt"))
+    return {
+        "state": "available" if latest.get("state") != "unavailable" else "unavailable",
+        "count": compact_log.get("receipt_count", 0),
+        "latest": latest,
+        "first_divergence": compact_log.get("first_divergence"),
+        "contradictory_evidence": list(compact_log.get("contradictory_evidence", [])),
+        "transition": _value_or_unavailable(compact_log.get("latest_transition")),
+        "persistence": str(compact_log.get("persistence", "unavailable")),
+        "evidence_refs": list(compact_log.get("evidence_refs", [])),
+    }
+
+
+def _render_error(error: Mapping[str, Any]) -> Dict[str, Any]:
+    """Use the same stable shape when no current observation is available."""
+    unavailable = {"state": "unavailable"}
+    fields = [
+        {"id": "field.binding_id", "value": unavailable},
+        {"id": "field.frame_id", "value": unavailable},
+        {"id": "field.run_id", "value": unavailable},
+        {"id": "field.toggles", "value": unavailable},
+        {"id": "field.safety", "value": unavailable},
+        {"id": "field.terminal", "value": unavailable},
+        {"id": "field.stop_reason", "value": unavailable},
+        {"id": "field.progress", "value": unavailable},
+        {"id": "field.receipt", "value": unavailable},
+        {"id": "field.mission", "value": unavailable},
+        {"id": "field.target", "value": unavailable},
+        {"id": "field.error", "value": dict(error)},
+    ]
+    return {
+        "schema": "caol-cockpit-tui-v1", "fields": fields,
+        "local_map": {"id": "field.local_map", "state": "unavailable", "cells": []},
+        "overmap": {"id": "field.overmap", "state": "unavailable", "cells": []},
+        "commands": [], "last_result": dict(error),
+    }
+
+
 def render_state(observation: Mapping[str, Any], status: Mapping[str, Any], last_result: Mapping[str, Any] | None = None) -> Dict[str, Any]:
     """Project only public cockpit facts into stable field and command IDs."""
     compact_log = observation.get("compact_log") if isinstance(observation.get("compact_log"), Mapping) else {}
-    safety = "unsafe" if compact_log.get("unsafe") is True else "clear"
+    safety = {
+        "state": "unsafe" if compact_log.get("unsafe") is True else "clear",
+        "first_divergence": compact_log.get("first_divergence"),
+        "contradictory_evidence": list(compact_log.get("contradictory_evidence", [])),
+    }
     final = status.get("final") if isinstance(status.get("final"), Mapping) else {}
     stop_reason = str(final.get("stop_reason", ""))
     terminal = str(status.get("state", "active")) != "active" or bool(stop_reason)
-    receipt = compact_log.get("latest_receipt")
+    mission = status.get("continuation") if isinstance(status.get("continuation"), Mapping) else \
+              observation.get("continuation")
+    target = {
+        "expected_postcondition": str(observation.get("expected_postcondition", "")),
+        "terminal_receipt": _value_or_unavailable(final.get("target_receipt")),
+    }
+    result = dict(last_result or {})
+    fields = [
+        {"id": "field.binding_id", "value": str(status.get("binding_id", ""))},
+        {"id": "field.frame_id", "value": str(observation.get("observation_id", ""))},
+        {"id": "field.run_id", "value": str(observation.get("run_id", status.get("run_id", "")))},
+        {"id": "field.toggles", "value": _value_or_unavailable(observation.get("toggles"))},
+        {"id": "field.safety", "value": safety},
+        {"id": "field.terminal", "value": {"terminal": terminal, "state": str(status.get("state", "active"))}},
+        {"id": "field.stop_reason", "value": {"state": "available" if stop_reason else "unavailable", "reason": stop_reason}},
+        {"id": "field.progress", "value": _value_or_unavailable(observation.get("delta"))},
+        {"id": "field.receipt", "value": _receipt_drilldown(compact_log)},
+        {"id": "field.mission", "value": _value_or_unavailable(mission)},
+        {"id": "field.target", "value": target},
+        {"id": "field.error", "value": dict(result) if result.get("ok") is False else {"state": "clear"}},
+    ]
     return {
         "schema": "caol-cockpit-tui-v1",
-        "fields": [
-            {"id": "field.binding_id", "value": str(status.get("binding_id", ""))},
-            {"id": "field.frame_id", "value": str(observation.get("observation_id", ""))},
-            {"id": "field.run_id", "value": str(observation.get("run_id", status.get("run_id", "")) )},
-            {"id": "field.safety", "value": safety},
-            {"id": "field.terminal", "value": terminal},
-            {"id": "field.stop_reason", "value": stop_reason},
-            {"id": "field.progress", "value": observation.get("delta", {"kind": "full"})},
-            {"id": "field.receipt", "value": receipt},
-            {"id": "field.mission", "value": observation.get("continuation", {})},
-            {"id": "field.target", "value": observation.get("expected_postcondition", "")},
-        ],
+        "fields": fields,
         "local_map": _local_map(observation),
         "overmap": _overmap(observation),
         "commands": _commands(observation),
-        "last_result": dict(last_result or {}),
+        "last_result": result,
     }
 
 
@@ -261,10 +318,7 @@ class CockpitTui:
         status = self.service.call({"action": "run.status"})
         if observed.get("ok") is not True:
             self.last_result = dict(observed)
-            self.state = {"schema": "caol-cockpit-tui-v1", "error": str(observed.get("error", "unknown")),
-                          "fields": [], "local_map": {"id": "field.local_map", "cells": []},
-                          "overmap": {"id": "field.overmap", "state": "unavailable", "cells": []},
-                          "commands": []}
+            self.state = _render_error(self.last_result)
             return self.state
         self.observation = dict(observed["result"])
         status_result = status.get("result", {}) if status.get("ok") is True else {}
@@ -280,11 +334,13 @@ class CockpitTui:
             if command.get("legal") is not True:
                 self.last_result = {"ok": False, "error": "command_is_alias_only", "command_id": command_id,
                                     "equivalent": command.get("equivalent")}
+                self.state = render_state(self.observation, {}, self.last_result)
                 return self.last_result
             request_view = command.get("request_view")
             request = request_view.get("request") if isinstance(request_view, Mapping) else None
             if not isinstance(request, Mapping):
                 self.last_result = {"ok": False, "error": "command_request_unavailable", "command_id": command_id}
+                self.state = render_state(self.observation, {}, self.last_result)
                 return self.last_result
             self.last_result = self.service.call(dict(request))
             next_observation = self.last_result.get("observation")
@@ -292,12 +348,20 @@ class CockpitTui:
                 self.observation = dict(next_observation)
                 status = self.service.call({"action": "run.status"})
                 self.state = render_state(self.observation, status.get("result", {}), self.last_result)
+            else:
+                status = self.service.call({"action": "run.status"})
+                self.state = render_state(self.observation, status.get("result", {}), self.last_result)
             return self.last_result
         self.last_result = {"ok": False, "error": "unknown_command", "command_id": command_id}
+        if self.observation is not None:
+            self.state = render_state(self.observation, {}, self.last_result)
         return self.last_result
 
     def dispatch_key(self, key: str) -> Dict[str, Any]:
         for command in self.state.get("commands", []) if self.state else []:
             if command.get("key") == key:
                 return self.dispatch(str(command["id"]))
-        return {"ok": False, "error": "unknown_key", "key": key}
+        self.last_result = {"ok": False, "error": "unknown_key", "key": key}
+        if self.observation is not None:
+            self.state = render_state(self.observation, {}, self.last_result)
+        return self.last_result

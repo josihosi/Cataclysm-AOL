@@ -16,7 +16,13 @@ def observation() -> dict:
     return {
         "observation_id": "run-1:frame-2", "run_id": "run-1", "advertised_actions": ["world.wait", "world.move.east"],
         "expected_postcondition": "matching_native_receipt_and_fresh_observation",
-        "delta": {"kind": "full"}, "compact_log": {"unsafe": False, "latest_receipt": {"id": "receipt-1"}},
+        "delta": {"kind": "full"}, "toggles": {"master_enabled": True, "keep_watch": False},
+        "compact_log": {
+            "unsafe": False, "receipt_count": 3, "latest_receipt": {"id": "receipt-1", "accepted": True},
+            "first_divergence": None, "contradictory_evidence": [],
+            "latest_transition": {"sequence": 8, "kind": "native", "outcome": "accepted"},
+            "persistence": "confirmed", "evidence_refs": ["semantic.steps.jsonl#receipt=3"],
+        },
         "minimap": {"radius": 2, "cells": [
             {"dx": 0, "dy": 0, "visibility": "clear", "terrain": "floor"},
             {"dx": 2, "dy": -2, "visibility": "unknown"},
@@ -67,9 +73,47 @@ class CockpitTuiTest(unittest.TestCase):
                          [(2, -2, "unknown"), (0, 0, "floor")])
         self.assertEqual(rendered["overmap"]["state"], "available")
         self.assertEqual([field["id"] for field in rendered["fields"]], [
-            "field.binding_id", "field.frame_id", "field.run_id", "field.safety", "field.terminal",
-            "field.stop_reason", "field.progress", "field.receipt", "field.mission", "field.target",
+            "field.binding_id", "field.frame_id", "field.run_id", "field.toggles", "field.safety",
+            "field.terminal", "field.stop_reason", "field.progress", "field.receipt", "field.mission",
+            "field.target", "field.error",
         ])
+
+    def test_full_semantic_view_is_explicit_about_receipts_mission_safety_and_terminal_state(self) -> None:
+        status = {
+            "run_id": "run-1", "binding_id": "binding-7", "state": "finished",
+            "continuation": {"expected_signal": "game_minutes", "maximum": 3},
+            "final": {"stop_reason": "target_reached", "target_receipt": {"id": "target-1"}},
+        }
+        fields = {item["id"]: item["value"] for item in cockpit_tui.render_state(observation(), status)["fields"]}
+        self.assertEqual(fields["field.toggles"], {"master_enabled": True, "keep_watch": False})
+        self.assertEqual(fields["field.safety"], {
+            "state": "clear", "first_divergence": None, "contradictory_evidence": [],
+        })
+        self.assertEqual(fields["field.receipt"], {
+            "state": "available", "count": 3, "latest": {"id": "receipt-1", "accepted": True},
+            "first_divergence": None, "contradictory_evidence": [],
+            "transition": {"sequence": 8, "kind": "native", "outcome": "accepted"},
+            "persistence": "confirmed", "evidence_refs": ["semantic.steps.jsonl#receipt=3"],
+        })
+        self.assertEqual(fields["field.mission"], {"expected_signal": "game_minutes", "maximum": 3})
+        self.assertEqual(fields["field.target"], {
+            "expected_postcondition": "matching_native_receipt_and_fresh_observation",
+            "terminal_receipt": {"id": "target-1"},
+        })
+        self.assertEqual(fields["field.terminal"], {"terminal": True, "state": "finished"})
+        self.assertEqual(fields["field.stop_reason"], {"state": "available", "reason": "target_reached"})
+
+    def test_missing_and_error_facts_remain_visible_with_stable_field_ids(self) -> None:
+        state = cockpit_tui.render_state({"observation_id": "run-1:empty"}, {}, {"ok": False, "error": "stale_frame"})
+        fields = {item["id"]: item["value"] for item in state["fields"]}
+        self.assertEqual(fields["field.toggles"], {"state": "unavailable"})
+        self.assertEqual(fields["field.receipt"]["state"], "unavailable")
+        self.assertEqual(fields["field.mission"], {"state": "unavailable"})
+        self.assertEqual(fields["field.error"], {"ok": False, "error": "stale_frame"})
+        failed = cockpit_tui.CockpitTui(type("Bad", (), {
+            "call": lambda _self, _request: {"ok": False, "error": "stale_frame"},
+        })()).refresh()
+        self.assertEqual([item["id"] for item in failed["fields"]], [item["id"] for item in state["fields"]])
 
     def test_overmap_preserves_authoritative_coordinates_provenance_and_stale_states(self) -> None:
         rendered = cockpit_tui.render_state(observation(), {"binding_id": "binding-7", "state": "active"})
@@ -136,7 +180,8 @@ class CockpitTuiTest(unittest.TestCase):
         tui = cockpit_tui.CockpitTui(service)
         tui.refresh()
         self.assertEqual(tui.dispatch("alias.keep_watch")["error"], "command_is_alias_only")
-        self.assertEqual(cockpit_tui.CockpitTui(type("Bad", (), {"call": lambda _self, _request: {"ok": False, "error": "stale_frame"}})()).refresh()["error"], "stale_frame")
+        fields = {item["id"]: item["value"] for item in tui.state["fields"]}
+        self.assertEqual(fields["field.error"]["error"], "command_is_alias_only")
 
 
 if __name__ == "__main__":
