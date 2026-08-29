@@ -11,6 +11,7 @@
 #include <optional>
 #include <ratio>
 #include <set>
+#include <sstream>
 #include <string>
 #include <tuple>
 #include <unordered_map>
@@ -157,18 +158,28 @@ static void openclaw_harness_trace_overmap_input_resolution( const input_event &
 }
 
 static void openclaw_harness_trace_overmap_route( const char *event,
-        const tripoint_abs_omt &dest, const std::size_t path_size, const bool travel_result = false )
+        const tripoint_abs_omt &dest, const std::size_t path_size, const bool travel_result = false,
+        const std::vector<tripoint_abs_omt> *path = nullptr )
 {
     if( !openclaw_harness_overmap_input_trace_enabled() ) {
         return;
     }
-    DebugLog( D_INFO, DC_ALL )
-            << "openclaw_harness_ui_trace: component=overmap_route"
-            << " event=" << event
-            << " destination=" << dest.x() << "," << dest.y() << "," << dest.z()
-            << " path_size=" << path_size
-            << " path_nonempty=" << ( path_size > 0 ? "true" : "false" )
-            << " travel_result=" << ( travel_result ? "true" : "false" );
+    std::ostringstream trace;
+    trace << "openclaw_harness_ui_trace: component=overmap_route"
+          << " event=" << event
+          << " destination=" << dest.x() << "," << dest.y() << "," << dest.z()
+          << " path_size=" << path_size
+          << " path_nonempty=" << ( path_size > 0 ? "true" : "false" )
+          << " travel_result=" << ( travel_result ? "true" : "false" );
+    if( path != nullptr ) {
+        trace << " path_omts=\"";
+        for( size_t index = 0; index < path->size(); ++index ) {
+            const tripoint_abs_omt &omt = ( *path )[index];
+            trace << ( index == 0 ? "" : ";" ) << omt.x() << "," << omt.y() << "," << omt.z();
+        }
+        trace << "\"";
+    }
+    DebugLog( D_INFO, DC_ALL ) << trace.str();
 }
 
 static void openclaw_harness_trace_overmap_cursor( const char *event,
@@ -3037,7 +3048,7 @@ static std::vector<tripoint_abs_omt> get_overmap_path_to( const tripoint_abs_omt
     } else {
         std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path( start_omt_pos,
                 dest, params ).points;
-        openclaw_harness_trace_overmap_route( "constructed", dest, path.size() );
+        openclaw_harness_trace_overmap_route( "constructed", dest, path.size(), false, &path );
         return path;
     }
 }

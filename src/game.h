@@ -64,6 +64,7 @@ void openclaw_harness_semantic_activity_distraction();
 void openclaw_harness_semantic_native_travel_started( const avatar &player,
         const tripoint_abs_omt &destination );
 void openclaw_harness_semantic_native_travel_progress( const Character &player );
+void openclaw_harness_semantic_native_travel_hostile_boundary( const Character &player );
 void openclaw_harness_semantic_native_travel_terminal( const Character &player,
         const char *terminal_state );
 

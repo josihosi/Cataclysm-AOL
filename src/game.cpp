@@ -1508,6 +1508,13 @@ static bool cancel_auto_move( Character &you, const std::string &text )
         return false;
     }
     g->invalidate_main_ui_adaptor();
+    if( you.has_destination() ) {
+        // This is emitted before the native modal receives any answer.  The
+        // bound travel stream can therefore retain the first hostile boundary
+        // and its active corridor position without treating a prompt response
+        // as observation evidence.
+        openclaw_harness_semantic_native_travel_hostile_boundary( you );
+    }
     if( query_yn( _( "%s Cancel auto move?" ), text ) )  {
         add_msg( m_warning, _( "%s Auto move canceled." ), text );
         if( you.has_distant_destination() ) {

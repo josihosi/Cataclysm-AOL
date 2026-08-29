@@ -248,7 +248,9 @@ struct openclaw_harness_native_travel_record {
     std::string run_id;
     std::string travel_id;
     tripoint_abs_omt destination = tripoint_abs_omt::invalid;
+    std::vector<tripoint_abs_omt> planned_omt_path;
     size_t sequence = 0;
+    bool hostile_boundary_recorded = false;
 };
 
 openclaw_harness_native_travel_record openclaw_harness_native_travel;
@@ -268,23 +270,33 @@ void openclaw_harness_semantic_native_travel_event( const Character &player,
                                      !player.omt_path.empty();
     const bool destination_cleared = !destination_present;
     const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
-    DebugLog( D_INFO, DC_ALL )
-            << "openclaw_harness_semantic_step: {\"event\":\"travel\",\"run_id\":"
-            << openclaw_harness_quote_action_value( run_id )
-            << ",\"travel_id\":" << openclaw_harness_quote_action_value(
-                openclaw_harness_native_travel.travel_id )
-            << ",\"receipt_id\":" << openclaw_harness_quote_action_value(
-                openclaw_harness_native_travel.travel_id + ":" + state )
-            << ",\"state\":" << openclaw_harness_quote_action_value( state )
-            << ",\"destination\":[" << openclaw_harness_native_travel.destination.x() << ','
-            << openclaw_harness_native_travel.destination.y() << ','
-            << openclaw_harness_native_travel.destination.z() << ']'
-            << ",\"avatar_omt\":[" << player.pos_abs_omt().x() << ','
-            << player.pos_abs_omt().y() << ',' << player.pos_abs_omt().z() << ']'
-            << ",\"remaining_omt_path\":" << player.omt_path.size()
-            << ",\"destination_present\":" << ( destination_present ? "true" : "false" )
-            << ",\"destination_cleared\":" << ( destination_cleared ? "true" : "false" )
-            << ",\"observed_turn\":" << turn << '}';
+    std::ostringstream event;
+    event << "openclaw_harness_semantic_step: {\"event\":\"travel\",\"run_id\":"
+          << openclaw_harness_quote_action_value( run_id )
+          << ",\"travel_id\":" << openclaw_harness_quote_action_value(
+              openclaw_harness_native_travel.travel_id )
+          << ",\"receipt_id\":" << openclaw_harness_quote_action_value(
+              openclaw_harness_native_travel.travel_id + ":" + state )
+          << ",\"state\":" << openclaw_harness_quote_action_value( state )
+          << ",\"destination\":[" << openclaw_harness_native_travel.destination.x() << ','
+          << openclaw_harness_native_travel.destination.y() << ','
+          << openclaw_harness_native_travel.destination.z() << ']'
+          << ",\"avatar_omt\":[" << player.pos_abs_omt().x() << ','
+          << player.pos_abs_omt().y() << ',' << player.pos_abs_omt().z() << ']'
+          << ",\"remaining_omt_path\":" << player.omt_path.size()
+          << ",\"destination_present\":" << ( destination_present ? "true" : "false" )
+          << ",\"destination_cleared\":" << ( destination_cleared ? "true" : "false" )
+          << ",\"observed_turn\":" << turn;
+    if( std::strcmp( state, "active" ) == 0 ) {
+        event << ",\"planned_omt_path\":[";
+        for( size_t index = 0; index < openclaw_harness_native_travel.planned_omt_path.size(); ++index ) {
+            const tripoint_abs_omt &omt = openclaw_harness_native_travel.planned_omt_path[index];
+            event << ( index == 0 ? "" : "," ) << '[' << omt.x() << ',' << omt.y() << ',' << omt.z() << ']';
+        }
+        event << ']';
+    }
+    event << '}';
+    DebugLog( D_INFO, DC_ALL ) << event.str();
 }
 } // namespace
 
@@ -300,6 +312,11 @@ void openclaw_harness_semantic_native_travel_started( const avatar &player,
         openclaw_harness_native_travel.run_id = run_id;
     }
     openclaw_harness_native_travel.destination = destination;
+    openclaw_harness_native_travel.planned_omt_path = player.omt_path;
+    // A hostile boundary belongs to one native travel operation.  A prior
+    // corridor in the same bound run must not suppress this operation's first
+    // hostile receipt.
+    openclaw_harness_native_travel.hostile_boundary_recorded = false;
     openclaw_harness_native_travel.travel_id = string_format( "%s:travel:%zu", run_id,
             ++openclaw_harness_native_travel.sequence );
     openclaw_harness_semantic_native_travel_event( player, "active" );
@@ -308,6 +325,15 @@ void openclaw_harness_semantic_native_travel_started( const avatar &player,
 void openclaw_harness_semantic_native_travel_progress( const Character &player )
 {
     openclaw_harness_semantic_native_travel_event( player, "progress" );
+}
+
+void openclaw_harness_semantic_native_travel_hostile_boundary( const Character &player )
+{
+    if( openclaw_harness_native_travel.hostile_boundary_recorded ) {
+        return;
+    }
+    openclaw_harness_native_travel.hostile_boundary_recorded = true;
+    openclaw_harness_semantic_native_travel_event( player, "hostile_boundary" );
 }
 
 void openclaw_harness_semantic_native_travel_terminal( const Character &player,
