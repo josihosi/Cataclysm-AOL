@@ -13,6 +13,8 @@
 #include <unordered_map>
 #include <vector>
 
+class monster;
+
 namespace bandit_live_world_probe
 {
 enum class section : std::size_t {
@@ -144,6 +146,15 @@ struct transition_event {
     std::string certification_current_world_save_sha256;
     std::uint64_t certification_save_sequence = 0;
     std::uint64_t certification_process_pid = 0;
+    int turn = -1;
+    std::string fixture_actor_id;
+    std::string lifecycle_event;
+    std::string monster_type;
+    std::string absolute_position;
+    std::string relative_position;
+    int hitpoints = 0;
+    bool dead = false;
+    bool visible = false;
 };
 
 struct snapshot {
@@ -258,6 +269,11 @@ void record_transition_event( std::string_view operation_id, int generation,
                               std::string_view previous_phase, std::string_view new_phase,
                               std::string_view reason, int at_minutes );
 void record_transition_event( transition_event event );
+// Diagnostic-only fixture lifecycle events share the launch-bound transition
+// stream.  They are inert unless the exact fixture tag is selected by the
+// child environment, so ordinary monster processing never becomes telemetry.
+void record_fixture_monster_lifecycle( const monster &critter, std::string_view event,
+                                       std::string_view owner );
 void record_live_transition_event( transition_event event );
 void record_certification_save_receipt( int game_minutes, const std::string &world_path );
 

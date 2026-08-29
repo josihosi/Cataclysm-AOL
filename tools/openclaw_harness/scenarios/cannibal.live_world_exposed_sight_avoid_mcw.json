@@ -1,4 +1,5 @@
 {
+  "manifest_version": 1,
   "name": "cannibal.live_world_exposed_sight_avoid_mcw",
   "description": "Scenario 3 for cannibal camp night-raid live matrix: start from exposed-scout footing, seed a camp-shaped cannibal_camp, advance a bounded 20-turn live window, and prove the cannibal-specific local gate treats recent sight/exposure as hold_off/non-combat/non-shakedown rather than attack_now or visible-beeline credit. The inherited bandit_camp reposition artifact, if present, is a control/source-fixture artifact and must not satisfy cannibal proof.",
   "profile": "dev-harness",
@@ -21,6 +22,49 @@
     "shakedown=no",
     "combat_forward=no"
   ],
+  "capabilities": {
+    "capabilities.cannibal.exposed_sight_avoid": "local_gate_hold_off_after_recent_exposure",
+    "capabilities.cannibal.exposed_sight_save_quit": "saved_world_capture_after_exposed_window"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:!", "press:.", "press:S", "press:Y"],
+    "forbidden_input": ["debug:ecology_edit", "debug:inject_operation", "raw-save-rewrite", "fixture-save-transform-after-install"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "cannibal_live_world_exposed_sight_avoid_v0_2026-04-28",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "cannibal_live_world_exposed_sight_avoid_v0_2026-04-28",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": ["press:!", "press:.", "press:S", "press:Y"],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["post_load_exposed_sightline_fixture_settle"],
+    "production_behavior": ["advance_20_turns_for_exposed_sight_avoid"],
+    "terminal_persistence": ["confirm_save_quit_after_exposed_probe"],
+    "artifact_verdict": ["advance_20_turns_for_exposed_sight_avoid", "confirm_save_quit_after_exposed_probe"],
+    "disallowed_shortcuts": ["advance_20_turns_for_exposed_sight_avoid", "confirm_save_quit_after_exposed_probe"],
+    "capability_gates": {
+      "capabilities.cannibal.exposed_sight_avoid": {
+        "terminal": ["advance_20_turns_for_exposed_sight_avoid"]
+      },
+      "capabilities.cannibal.exposed_sight_save_quit": {
+        "persistence": ["confirm_save_quit_after_exposed_probe"]
+      }
+    }
+  },
   "capture_world_after": true,
   "steps": [
     {

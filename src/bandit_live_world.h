@@ -711,8 +711,31 @@ struct camp_decision_record {
 };
 
 struct active_outing_state {
+    struct local_return_eligibility_receipt {
+        int schema_version = 1;
+        std::string activity_id;
+        std::vector<character_id> actor_ids;
+        int generation = 0;
+        simulation_owner owner = simulation_owner::local;
+        int handoff_epoch = -1;
+        character_id cohesion_leader_id;
+        bool cohesion_assembled = false;
+        int contact_minutes = -1;
+        int eligible_minutes = -1;
+
+        bool is_present() const {
+            return !activity_id.empty();
+        }
+        void clear() {
+            *this = local_return_eligibility_receipt();
+        }
+        void serialize( JsonOut &json ) const;
+        void deserialize( const JsonObject &jo );
+    };
+
     struct crossing_receipt {
         std::vector<character_id> actor_ids;
+        std::string run_id;
         std::string activity_id;
         int generation = 0;
         simulation_owner prior_owner = simulation_owner::abstract;
@@ -765,6 +788,7 @@ struct active_outing_state {
     std::string report_application_key;
     std::string cargo_application_key;
     std::vector<structural_member_return_receipt> member_return_receipts;
+    local_return_eligibility_receipt local_return_eligibility;
     crossing_receipt crossing;
     local_handoff_snapshot local_handoff;
     abstract_encounter_state abstract_encounter;
@@ -1103,6 +1127,7 @@ struct site_record {
 struct world_state {
     struct crossing_receipt_identity {
         std::string site_id;
+        std::string run_id;
         std::string activity_id;
         int generation = 0;
         int handoff_epoch = -1;
@@ -1504,6 +1529,8 @@ struct structural_bounty_maintenance_result {
     int full_route_solve_cap = 8;
     int full_route_solves = 0;
     bool scheduler_replay_suppressed = false;
+    // Diagnostic-only scheduler exits.  These are never lifecycle evidence.
+    std::vector<std::string> scheduler_exit_reasons;
     int sites_considered_for_dispatch = 0;
     int dispatches_planned = 0;
     int dispatches_applied = 0;

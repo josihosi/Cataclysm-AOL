@@ -20,6 +20,12 @@
 #endif
 
 #include "json.h"
+#include "avatar.h"
+#include "calendar.h"
+#include "game.h"
+#include "map.h"
+#include "monster.h"
+#include "mtype.h"
 
 namespace
 {
@@ -463,6 +469,19 @@ bool append_live_transition_event( const bandit_live_world_probe::transition_eve
         }
         json.end_array();
     }
+    if( event.turn >= 0 ) {
+        json.member( "turn", event.turn );
+    }
+    if( !event.fixture_actor_id.empty() ) {
+        json.member( "fixture_actor_id", event.fixture_actor_id );
+        json.member( "lifecycle_event", event.lifecycle_event );
+        json.member( "monster_type", event.monster_type );
+        json.member( "absolute_position", event.absolute_position );
+        json.member( "relative_position", event.relative_position );
+        json.member( "hitpoints", event.hitpoints );
+        json.member( "dead", event.dead );
+        json.member( "visible", event.visible );
+    }
     if( !event.certification_round_id.empty() ) {
         json.member( "certification_save_receipt" );
         json.start_object();
@@ -812,6 +831,38 @@ void record_live_transition_event( transition_event event )
     } catch( ... ) {
         transition_stream = {};
     }
+}
+
+void record_fixture_monster_lifecycle( const monster &critter, const std::string_view event,
+                                       const std::string_view owner )
+{
+    const char *const selected_actor = std::getenv(
+                "OPENCLAW_HARNESS_R019_LIFECYCLE_ACTOR_ID" );
+    const char *const selected_run = std::getenv( "OPENCLAW_HARNESS_R019_LIFECYCLE_RUN_ID" );
+    const char *const active_run = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    if( selected_actor == nullptr || selected_actor[0] == '\0' || selected_run == nullptr ||
+        active_run == nullptr || std::string_view( selected_run ) != active_run ||
+        critter.get_value( "caol_fixture_actor_id" ).str() != selected_actor ) {
+        return;
+    }
+    map &here = get_map();
+    transition_event record;
+    record.domain = "r019_fixture_lifecycle";
+    record.transition = std::string( event );
+    record.outcome = "diagnostic";
+    record.reason = "exact_fixture_actor";
+    record.simulation_owner = std::string( owner );
+    record.turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    record.game_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    record.fixture_actor_id = selected_actor;
+    record.lifecycle_event = std::string( event );
+    record.monster_type = critter.type->id.str();
+    record.absolute_position = critter.pos_abs().to_string_writable();
+    record.relative_position = critter.pos_bub( here ).to_string_writable();
+    record.hitpoints = critter.get_hp();
+    record.dead = critter.is_dead();
+    record.visible = get_avatar().sees( here, critter );
+    record_live_transition_event( std::move( record ) );
 }
 
 void record_certification_save_receipt( const int game_minutes, const std::string &world_path )
