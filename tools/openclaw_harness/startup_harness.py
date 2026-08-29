@@ -71,6 +71,7 @@ from identity_binding import (
     order_certification_mismatches,
 )
 from wec_evidence import WEC_CLASS_SET, authority_commitment
+from r005_corridor_observation import parse_native_planned_corridor
 from semantic_broker import SemanticInterruptionBroker, SemanticStepChannel
 from semantic_state import (
     MAX_EVENT_BYTES as SEMANTIC_STEP_MAX_BYTES,
@@ -6699,6 +6700,9 @@ def audit_ordinary_overmap_route_constructor(
     origin_omt: Sequence[int],
     destination_omt: Sequence[int],
     filter_debug_noise: bool = False,
+    require_native_corridor: bool = False,
+    native_preview_segment_start_omt: Optional[Sequence[int]] = None,
+    native_preview_receipt_context: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Verify the real overmap route constructor from entry through preview."""
     def format_omt(value: Sequence[int], field: str) -> str:
@@ -6711,6 +6715,10 @@ def audit_ordinary_overmap_route_constructor(
 
     origin = format_omt(origin_omt, "origin_omt")
     destination = format_omt(destination_omt, "destination_omt")
+    requested_start = (
+        format_omt(native_preview_segment_start_omt, "native_preview_segment_start_omt")
+        if native_preview_segment_start_omt is not None else ""
+    )
     required_line_patterns = [
         [
             "openclaw_harness_ui_trace: component=overmap_route_cursor event=entered",
@@ -6749,6 +6757,42 @@ def audit_ordinary_overmap_route_constructor(
             "nonempty_route_constructed",
         ],
     })
+    native_corridor = parse_native_planned_corridor(
+        metadata.get("matched_lines", []), list(destination_omt),
+        requested_start=(list(native_preview_segment_start_omt)
+                         if native_preview_segment_start_omt is not None else None),
+    )
+    metadata["native_planned_corridor"] = native_corridor
+    if native_preview_segment_start_omt is not None:
+        receipt_context = native_preview_receipt_context or {}
+        metadata["native_preview_receipt"] = {
+            "requested_start": list(native_preview_segment_start_omt),
+            "actual_first": native_corridor.get("actual_first"),
+            "requested_end": list(destination_omt),
+            "actual_terminal": native_corridor.get("actual_terminal"),
+            "exact_native_corridor": native_corridor.get("planned_corridor"),
+            "run": str(receipt_context.get("run", "")),
+            "scenario": str(receipt_context.get("scenario", "")),
+            "source": str(receipt_context.get("source", "")),
+            "executable": str(receipt_context.get("executable", "")),
+            "world_mutation": native_corridor.get("world_mutation"),
+            "status": native_corridor.get("status"),
+        }
+        metadata["native_preview_segment_start_omt"] = requested_start
+        missing_receipt_bindings = [
+            key for key in ("run", "scenario", "source", "executable")
+            if not metadata["native_preview_receipt"][key]
+        ]
+        if missing_receipt_bindings:
+            metadata["status"] = "required_state_missing"
+            metadata["missing_required_items"].extend(
+                f"native preview receipt {key}" for key in missing_receipt_bindings
+            )
+    if require_native_corridor and native_corridor.get("status") != "green":
+        metadata["status"] = "required_state_missing"
+        metadata["missing_required_items"].append(
+            "native overmap route constructor planned corridor"
+        )
     return metadata
 
 
@@ -16658,6 +16702,41 @@ def semantic_run_binding_child_environment(run_id: str) -> Dict[str, str]:
     return {"OPENCLAW_HARNESS_SEMANTIC_RUN_ID": bound_run_id}
 
 
+def native_preview_segment_requests(steps: Sequence[Mapping[str, Any]]) -> str:
+    """Serialize declared zero-credit native-preview segment starts for one child.
+
+    The production UI consumes the resulting destination-to-start map only while
+    UI tracing is enabled.  A duplicate destination would make the request
+    ambiguous, so selection fails before a game process is started.
+    """
+    requests: list[str] = []
+    destinations: set[tuple[int, int, int]] = set()
+    for step in steps:
+        if str(step.get("kind", "")).strip().lower() != "ordinary_overmap_route_constructor":
+            continue
+        start = step.get("native_preview_segment_start_omt")
+        if start is None:
+            continue
+        destination = step.get("destination_omt")
+        if not isinstance(start, list) or not isinstance(destination, list) or \
+                len(start) != 3 or len(destination) != 3 or any(
+                    isinstance(value, bool) or not isinstance(value, int)
+                    for value in [*start, *destination]
+                ):
+            raise ValueError(
+                "native preview segment requests need integer start and destination OMTs"
+            )
+        destination_key = tuple(destination)
+        if destination_key in destinations:
+            raise ValueError("native preview segment destinations must be unique")
+        destinations.add(destination_key)
+        requests.append(
+            ",".join(str(value) for value in start) + ">" +
+            ",".join(str(value) for value in destination)
+        )
+    return ";".join(requests)
+
+
 WAIT_DIAGNOSTIC_ACTIVATION_FILENAME = "wait-diagnostic.activation.json"
 WAIT_DIAGNOSTIC_RECORDS_FILENAME = "wait-diagnostic.records.jsonl"
 WAIT_DIAGNOSTIC_SEAL_FILENAME = "wait-diagnostic.seal.json"
@@ -23911,6 +23990,20 @@ def execute_probe_steps(
                     origin_omt=raw_origin,
                     destination_omt=raw_destination,
                     filter_debug_noise=filter_debug_noise,
+                    require_native_corridor=bool(step.get("require_native_corridor", False)),
+                    native_preview_segment_start_omt=step.get(
+                        "native_preview_segment_start_omt"
+                    ),
+                    native_preview_receipt_context={
+                        "run": semantic_run_id,
+                        "scenario": scenario_identity,
+                        "source": str(
+                            runtime_binding.get("runtime_source_sha256", "")
+                        ) if isinstance(runtime_binding, Mapping) else "",
+                        "executable": str(
+                            runtime_binding.get("executable_sha256", "")
+                        ) if isinstance(runtime_binding, Mapping) else "",
+                    },
                 )
             except ValueError as exc:
                 raise SystemExit(f"Scenario step '{label}' {exc}") from exc
@@ -27962,6 +28055,13 @@ def run_startup(args: argparse.Namespace) -> int:
     child_environment.pop("OPENCLAW_HARNESS_SCHEDULER_TRACE_EOC", None)
     child_environment.pop("OPENCLAW_HARNESS_R021_FIXTURE_ACTOR_ID", None)
     child_environment.pop("OPENCLAW_HARNESS_R022_TRANSACTION_ID", None)
+    child_environment.pop("OPENCLAW_HARNESS_NATIVE_PREVIEW_SEGMENT_REQUESTS", None)
+    native_preview_requests = str(
+        getattr(args, "native_preview_segment_requests", "") or ""
+    ).strip()
+    if native_preview_requests:
+        child_environment["OPENCLAW_HARNESS_NATIVE_PREVIEW_SEGMENT_REQUESTS"] = \
+            native_preview_requests
     r021_direct_hp_setter = r021_direct_hp_setter_declaration_for_startup(args)
     if isinstance(r021_direct_hp_setter, Mapping):
         from r021_direct_hp_setter_adapter import (
@@ -29821,6 +29921,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     recommended_test_command = args.test_command or str(scenario.get("recommended_test_command", "")).strip()
     artifact_source = str(scenario.get("artifact_source", "debug.log")).strip() or "debug.log"
     steps = normalize_scenario_steps(scenario.get("steps", []), advance_count, settle_seconds)
+    try:
+        native_preview_requests = native_preview_segment_requests(steps)
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
     post_relaunch = normalize_post_relaunch_contract(scenario.get("post_relaunch"), steps)
     raw_derived_screens = scenario.get("derived_screens", [])
     derived_screens = [entry for entry in raw_derived_screens if isinstance(entry, dict)] if isinstance(raw_derived_screens, list) else []
@@ -30016,6 +30120,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         start_cmd.append("--suppress-profile-startup-input")
     if bool(scenario.get("wait_input_trace", False)):
         start_cmd.append("--wait-input-trace")
+    if native_preview_requests:
+        start_cmd.extend(["--native-preview-segment-requests", native_preview_requests])
     lifecycle_actor_id = str(scenario.get("r019_lifecycle_actor_id", "") or "").strip()
     if lifecycle_actor_id:
         start_cmd.extend(["--r019-lifecycle-actor-id", lifecycle_actor_id])
@@ -31155,6 +31261,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--startup-dismiss-blocking-overlay", action="store_true", help=argparse.SUPPRESS)
     start_p.add_argument("--suppress-profile-startup-input", action="store_true", help=argparse.SUPPRESS)
     start_p.add_argument("--wait-input-trace", action="store_true", help=argparse.SUPPRESS)
+    start_p.add_argument("--native-preview-segment-requests", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--r019-lifecycle-actor-id", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--scheduler-trace-eoc", default="", help=argparse.SUPPRESS)
 
