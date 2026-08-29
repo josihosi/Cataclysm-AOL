@@ -1,0 +1,28 @@
+{
+  "claim": "On macOS, the current source-bound r009-m095 executable route can distinguish an advancing semantic wait from a stalled semantic wait through the native transition stream while sampling its child CPU and resident memory when macOS exposes them.",
+  "material_proof": "One explicitly selected, source-and-executable-bound macOS r009-m095 run records the advertised native semantic request chain world.wait, wait.duration_menu, wait.6h for both an advancing and a stalled wait; each record includes product game-time endpoints, the latest transition or its explicit absence, and direct child CPU and resident-memory samples or the required unavailable representation. The selected route writes runtime.binding.json, process.json, transition.events.jsonl, and probe.report.json beneath .userdata/r009-m095/harness_runs/<authorized-run-id>, then accepts cleanup before the finalizer ingests the report.",
+  "material_contradiction": [
+    "a required wait cannot be dispatched through the advertised native semantic request chain",
+    "the transition stream cannot distinguish advancing from stalled game time",
+    "a resource field is fabricated as zero or omitted instead of being available from ps or explicitly unavailable",
+    "the current source and executable binding, selected scenario, or cleanup receipt changes before finalization"
+  ],
+  "already_accepted_evidence": [
+    "R-009-closure-001: on HEAD 88b63a9899, r009-platform-preflight for r009-m095 reported macOS, a matched source-and-executable binding, a ready future artifact route, zero continuous-final-certification credit, and no process started",
+    "The portable r009-integrated-wait-v1 preflight declares world.wait, wait.duration_menu, wait.6h; macOS ps CPU and RSS sampling; focused-qualification evidence; and zero continuous-final-certification credit"
+  ],
+  "current_uncertainty": "No current-binding macOS runtime witness has yet independently exercised both semantic wait outcomes. The prior macOS report used another executable, and preflight/bootstrap evidence is not runtime evidence.",
+  "forbidden_shortcuts": [
+    "treating this charter, preflight, fixture setup, wall time, HUD or OCR text, raw logs, or an older executable as runtime witness evidence",
+    "inventing a zero CPU or resident-memory value when macOS ps cannot expose it",
+    "using another platform, a replay, a replacement run, or assembled segments as the macOS witness",
+    "claiming continuous-final-certification or Windows-feel credit"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch when explicit selected-run authority has not been supplied",
+    "after authority, stop and report the first causal contradiction, binding drift, unavailable required native receipt, or cleanup failure",
+    "after authority, seal and finish when one current-bound run has directly settled the advancing and stalled wait question with the required artifact and cleanup route",
+    "if macOS cannot expose a resource field, record the prescribed unavailable field and its reason rather than extending the run to manufacture a value"
+  ],
+  "requested_evidence_ceiling": "focused"
+}
