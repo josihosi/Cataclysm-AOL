@@ -1,0 +1,58 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r005_natural_route_qualification",
+  "description": "One disposable, zero-credit qualification of the R-005 observed x=144 and y=29 route. It stops on native destination arrival or the first causal divergence; it cannot start lifecycle certification.",
+  "capabilities": {
+    "capabilities.bandit.r005.route_qualification": "observed_x144_y29_source_bound_zero_credit_destination_arrival",
+    "world.id": "McWilliams"
+  },
+  "runtime_contract": {
+    "permitted_input": ["ordinary-overmap-route"],
+    "forbidden_input": ["diagnostic_replay", "checkpoint_rollback", "segment_splice", "replacement_world", "replacement_identity", "fixture-mutation", "scenario-mutation", "debug:ecology_edit", "raw-save-rewrite", "combat", "hostile-dialog-authorization"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_r005_natural_hostile_ecology_v0",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "bandit_r005_natural_hostile_ecology_v0", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "cleanup": true, "input": ["ordinary-overmap-route"]},
+    "grants_gameplay_proof": false
+  },
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r005_natural_hostile_ecology_v0",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "steps": [
+    {"kind": "audit_saved_game_turn", "label": "declared_world", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "record_baseline": true, "abort_on_metadata_failure": true},
+    {"kind": "ordinary_overmap_route_constructor", "label": "observed_x144_departure", "origin_omt": [140, 41, 0], "destination_omt": [144, 42, 0], "cursor_keys": ["right", "right", "right", "right", "down"], "route_key": "W", "abort_on_metadata_failure": true},
+    {"kind": "type", "label": "confirm_observed_x144_departure", "text": "W", "settle_seconds": 0.5},
+    {"kind": "type", "label": "accept_observed_x144_departure", "text": "Y", "settle_seconds": 0, "native_travel_stabilization": {"mode": "continue_exact_hostile_auto_move_until_hud", "allow_hostile_auto_move_cancel": false, "require_completed_destination_cleared": true, "expected_destination_omt": [144, 42, 0]}},
+    {"kind": "ordinary_overmap_route_constructor", "label": "observed_x144_northbound", "origin_omt": [144, 42, 0], "destination_omt": [144, 29, 0], "cursor_keys": ["up", "up", "up", "up", "up", "up", "up", "up", "up", "up", "up", "up", "up"], "route_key": "W", "abort_on_metadata_failure": true},
+    {"kind": "type", "label": "confirm_observed_x144_northbound", "text": "W", "settle_seconds": 0.5},
+    {"kind": "type", "label": "accept_observed_x144_northbound", "text": "Y", "settle_seconds": 0, "native_travel_stabilization": {"mode": "continue_exact_hostile_auto_move_until_hud", "allow_hostile_auto_move_cancel": false, "require_completed_destination_cleared": true, "expected_destination_omt": [144, 29, 0]}},
+    {"kind": "ordinary_overmap_route_constructor", "label": "observed_y29_return", "origin_omt": [144, 29, 0], "destination_omt": [140, 29, 0], "cursor_keys": ["left", "left", "left", "left"], "route_key": "W", "abort_on_metadata_failure": true},
+    {"kind": "type", "label": "confirm_observed_y29_return", "text": "W", "settle_seconds": 0.5},
+    {"kind": "type", "label": "accept_observed_y29_return", "text": "Y", "settle_seconds": 0, "native_travel_stabilization": {"mode": "continue_exact_hostile_auto_move_until_hud", "allow_hostile_auto_move_cancel": false, "require_completed_destination_cleared": true, "expected_destination_omt": [140, 29, 0]}},
+    {"kind": "ordinary_overmap_route_constructor", "label": "observed_y29_destination", "origin_omt": [140, 29, 0], "destination_omt": [140, 31, 0], "cursor_keys": ["down", "down"], "route_key": "W", "abort_on_metadata_failure": true},
+    {"kind": "type", "label": "confirm_observed_y29_destination", "text": "W", "settle_seconds": 0.5},
+    {"kind": "type", "label": "accept_observed_y29_destination", "text": "Y", "settle_seconds": 0, "native_travel_stabilization": {"mode": "continue_exact_hostile_auto_move_until_hud", "allow_hostile_auto_move_cancel": false, "require_completed_destination_cleared": true, "expected_destination_omt": [140, 31, 0]}},
+    {"kind": "press", "label": "save_arrived_world", "keys": ["S"], "settle_seconds": 1},
+    {"kind": "audit_saved_game_turn", "label": "arrival_world_artifact", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "required_player_abs_omt": [140, 31, 0], "abort_on_metadata_failure": true}
+  ],
+  "proof_gates": [
+    {"id": "declared_world", "label": "One declared natural world", "boundary_step": "declared_world", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true}}], "checkpoint_safe_ui": {"semantic_state": {"required": true}}},
+    {"id": "x144_departure_terminal", "label": "x=144 departure terminal receipt", "boundary_step": "accept_observed_x144_departure", "predecessors": ["declared_world"], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "destination": [144, 42, 0], "artifact_hash_present": true}}], "checkpoint_safe_ui": {"semantic_state": {"required": true}}},
+    {"id": "x144_northbound_terminal", "label": "x=144 northbound terminal receipt", "boundary_step": "accept_observed_x144_northbound", "predecessors": ["x144_departure_terminal"], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "destination": [144, 29, 0], "artifact_hash_present": true}}], "checkpoint_safe_ui": {"semantic_state": {"required": true}}},
+    {"id": "y29_return_terminal", "label": "y=29 westbound terminal receipt", "boundary_step": "accept_observed_y29_return", "predecessors": ["x144_northbound_terminal"], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "destination": [140, 29, 0], "artifact_hash_present": true}}], "checkpoint_safe_ui": {"semantic_state": {"required": true}}},
+    {"id": "destination_arrival", "label": "x=140 destination arrival", "boundary_step": "arrival_world_artifact", "predecessors": ["y29_return_terminal"], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "destination": [140, 31, 0], "artifact_hash_present": true}}, {"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "audit_saved_game_turn", "artifact_hash_present": true, "required_field.player_abs_omt": [140, 31, 0]}}], "checkpoint_safe_ui": {"semantic_state": {"required": true}}}
+  ],
+  "proof_route": {"gates": ["declared_world", "x144_departure_terminal", "x144_northbound_terminal", "y29_return_terminal", "destination_arrival"], "terminal": ["destination_arrival"], "capability_gates": {"capabilities.bandit.r005.route_qualification": {"terminal": ["destination_arrival"]}}}
+}
