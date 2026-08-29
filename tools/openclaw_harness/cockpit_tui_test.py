@@ -10,6 +10,7 @@ HARNESS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(HARNESS_DIR))
 
 import cockpit_tui  # noqa: E402
+import cockpit  # noqa: E402
 
 
 def observation() -> dict:
@@ -62,6 +63,54 @@ class FakeService:
             self.current = {**self.current, "observation_id": "run-1:frame-3", "delta": {"kind": "change"}}
             return {"ok": True, "receipt": {"native_receipt": {"accepted": True}}, "observation": self.current}
         raise AssertionError(request)
+
+
+class RecordingService:
+    def __init__(self, service: cockpit.CockpitService) -> None:
+        self.service = service
+        self.calls: list[dict] = []
+        self.run_channel = service.run_channel
+
+    def call(self, request: dict) -> dict:
+        self.calls.append(dict(request))
+        return self.service.call(request)
+
+
+def recipe_frame(sequence: int, minutes: int) -> dict:
+    return {
+        "run_id": "recipe-parity", "frame_id": f"recipe-parity:{sequence}",
+        "observed_turn": sequence, "game_minutes": minutes,
+        "provenance": "native_semantic_step_trace",
+        "observation": {
+            "schema": "caol-avatar-visible-v1", "avatar": {"name": "Ada"}, "visible_local": [],
+        },
+        "valid_actions": ["world.wait"], "action_inputs": {"world.wait": "."},
+        "keep_watch_safety": {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        },
+    }
+
+
+def recipe_service() -> tuple[RecordingService, list[dict]]:
+    frames = [recipe_frame(1, 100), recipe_frame(2, 101)]
+    index = [0]
+    dispatched: list[dict] = []
+
+    def dispatch(issuing: dict, action_id: str) -> dict:
+        dispatched.append({"frame_id": issuing["frame_id"], "action_id": action_id})
+        index[0] += 1
+        return {
+            "native_receipt": {
+                "frame_id": issuing["frame_id"], "action_id": action_id, "accepted": True,
+            },
+            "next_frame": frames[index[0]], "_next_frame": frames[index[0]],
+        }
+
+    service = cockpit.CockpitService(run_channel=cockpit.CockpitRunChannel(
+        lambda: frames[index[0]], dispatch, binding_id="recipe-binding",
+        read_binding_id=lambda: "recipe-binding",
+    ))
+    return RecordingService(service), dispatched
 
 
 class CockpitTuiTest(unittest.TestCase):
@@ -151,6 +200,51 @@ class CockpitTuiTest(unittest.TestCase):
         self.assertEqual([call for call in direct.calls if call["action"] == "game.act"],
                          [call for call in keyed.calls if call["action"] == "game.act"])
         self.assertEqual(direct_tui.state, keyed_tui.state)
+
+    def test_controlled_recipe_matches_direct_cockpit_requests_receipts_safety_and_terminal_state(self) -> None:
+        direct, direct_dispatches = recipe_service()
+        tui_service, tui_dispatches = recipe_service()
+
+        direct_observation = direct.call({"action": "game.observe"})["result"]
+        direct_action_request = {
+            "action": "game.act", "observation_id": direct_observation["observation_id"],
+            "action_id": "world.wait",
+        }
+        direct_action = direct.call(direct_action_request)
+        direct_finish_request = {
+            "action": "run.finish", "observation_id": direct_action["observation"]["observation_id"],
+            "stop_reason": "target_predicate_proved", "unused_authority": "none",
+        }
+        direct_finish = direct.call(direct_finish_request)
+
+        tui = cockpit_tui.CockpitTui(tui_service)
+        state = tui.refresh()
+        wait = next(command for command in state["commands"] if command.get("action_id") == "world.wait")
+        tui_action = tui.dispatch_key(wait["key"])
+        tui_finish = tui.finish(stop_reason="target_predicate_proved", unused_authority="none")
+
+        self.assertEqual(tui_action["receipt"], direct_action["receipt"])
+        self.assertEqual(tui_action["observation"], direct_action["observation"])
+        self.assertEqual(tui_finish, direct_finish)
+        self.assertEqual(tui_dispatches, direct_dispatches)
+        self.assertEqual([request for request in tui_service.calls if request["action"] in {
+            "game.act", "run.finish",
+        }], [direct_action_request, direct_finish_request])
+        self.assertEqual(
+            tui_service.run_channel.status(), direct.run_channel.status(),  # type: ignore[union-attr]
+        )
+        direct_terminal_state = cockpit_tui.render_state(
+            direct_action["observation"], direct.call({"action": "run.status"})["result"], direct_finish,
+        )
+        self.assertEqual(tui.state, direct_terminal_state)
+        fields = {item["id"]: item["value"] for item in tui.state["fields"]}
+        self.assertEqual(fields["field.safety"], {
+            "state": "clear", "first_divergence": None, "contradictory_evidence": [],
+        })
+        self.assertEqual(fields["field.terminal"], {"terminal": True, "state": "finished"})
+        self.assertEqual(fields["field.stop_reason"], {
+            "state": "available", "reason": "target_predicate_proved",
+        })
 
     def test_every_alias_has_a_noninteractive_contract_without_becoming_a_control(self) -> None:
         state = cockpit_tui.render_state(observation(), {"binding_id": "binding-7", "state": "active"})

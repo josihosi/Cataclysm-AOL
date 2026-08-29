@@ -365,3 +365,21 @@ class CockpitTui:
         if self.observation is not None:
             self.state = render_state(self.observation, {}, self.last_result)
         return self.last_result
+
+    def finish(self, *, stop_reason: str, unused_authority: str) -> Dict[str, Any]:
+        """Finish the current public run from the exact displayed frame."""
+        if self.observation is None:
+            self.refresh()
+        if self.observation is None:
+            self.last_result = {"ok": False, "error": "observation_unavailable"}
+            return self.last_result
+        request = {
+            "action": "run.finish",
+            "observation_id": str(self.observation.get("observation_id", "")),
+            "stop_reason": str(stop_reason),
+            "unused_authority": str(unused_authority),
+        }
+        self.last_result = self.service.call(request)
+        status = self.service.call({"action": "run.status"})
+        self.state = render_state(self.observation, status.get("result", {}), self.last_result)
+        return self.last_result
