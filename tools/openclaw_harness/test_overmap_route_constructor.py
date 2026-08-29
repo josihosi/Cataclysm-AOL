@@ -74,6 +74,73 @@ class OrdinaryOvermapRouteConstructorTest(unittest.TestCase):
             metadata["missing_required_items"],
         )
 
+    def test_binds_explicit_segment_start_without_avatar_route_mutation(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            run_dir = Path(temporary)
+            log = run_dir / "debug.log"
+            log.write_text("\n".join([
+                "openclaw_harness_ui_trace: component=overmap_route_cursor event=entered position=160,39,0 action=\"\"",
+                "openclaw_harness_ui_trace: component=overmap_route_cursor event=position position=162,36,0 action=\"UP\"",
+                "openclaw_harness_ui_trace: component=overmap_route_input event=resolved resolved_action=\"CHOOSE_DESTINATION\"",
+                "openclaw_harness_ui_trace: component=overmap_route event=constructed destination=162,36,0 path_size=4 path_nonempty=true travel_result=false path_omts=\"162,36,0;161,37,0;161,38,0;161,39,0\" native_preview_request=true requested_start=161,39,0 requested_end=162,36,0 actual_first=162,36,0 actual_terminal=161,39,0 world_mutation=false",
+            ]) + "\n", encoding="utf-8")
+            metadata = audit_ordinary_overmap_route_constructor(
+                run_dir,
+                "native_segment",
+                artifact_log=log,
+                artifact_baseline=0,
+                origin_omt=[160, 39, 0],
+                destination_omt=[162, 36, 0],
+                native_preview_segment_start_omt=[161, 39, 0],
+                require_native_corridor=True,
+                native_preview_receipt_context={
+                    "run": "bound-run",
+                    "scenario": "bound-scenario",
+                    "source": "bound-source",
+                    "executable": "bound-executable",
+                },
+            )
+
+        self.assertEqual(metadata["status"], "required_state_present")
+        self.assertEqual(metadata["native_preview_receipt"], {
+            "requested_start": [161, 39, 0],
+            "actual_first": [162, 36, 0],
+            "requested_end": [162, 36, 0],
+            "actual_terminal": [161, 39, 0],
+            "exact_native_corridor": [[162, 36, 0], [161, 37, 0], [161, 38, 0], [161, 39, 0]],
+            "run": "bound-run",
+            "scenario": "bound-scenario",
+            "source": "bound-source",
+            "executable": "bound-executable",
+            "world_mutation": False,
+            "status": "green",
+        })
+
+    def test_rejects_native_segment_receipt_with_mutation_or_wrong_start(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary:
+            result = audit_ordinary_overmap_route_constructor(
+                Path(temporary),
+                "bad_native_segment",
+                artifact_log=None,
+                artifact_baseline=0,
+                origin_omt=[160, 39, 0],
+                destination_omt=[162, 36, 0],
+                native_preview_segment_start_omt=[161, 39, 0],
+                require_native_corridor=True,
+                native_preview_receipt_context={
+                    "run": "bound-run",
+                    "scenario": "bound-scenario",
+                    "source": "bound-source",
+                    "executable": "bound-executable",
+                },
+            )
+
+        self.assertEqual(result["status"], "required_state_missing")
+        self.assertEqual(
+            result["native_planned_corridor"]["reason"],
+            "missing_native_segment_preview_request",
+        )
+
     def test_bandit_route_family_uses_dry_reverse_constructor_contract(self) -> None:
         scenario_path = HARNESS_DIR / "scenarios" / "bandit.scout_to_decision_observer_live_mcw.json"
         scenario = json.loads(scenario_path.read_text(encoding="utf-8"))

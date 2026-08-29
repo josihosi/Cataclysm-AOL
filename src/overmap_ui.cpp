@@ -127,6 +127,65 @@ static bool openclaw_harness_overmap_input_trace_enabled()
     return enabled != nullptr && enabled[0] != '\0' && enabled[0] != '0';
 }
 
+static std::optional<tripoint_abs_omt> openclaw_harness_parse_omt( const std::string &value )
+{
+    std::istringstream input( value );
+    int x = 0;
+    int y = 0;
+    int z = 0;
+    char first_separator = '\0';
+    char second_separator = '\0';
+    if( !( input >> x >> first_separator >> y >> second_separator >> z ) ||
+        first_separator != ',' || second_separator != ',' ) {
+        return std::nullopt;
+    }
+    input >> std::ws;
+    if( !input.eof() ) {
+        return std::nullopt;
+    }
+    return tripoint_abs_omt( x, y, z );
+}
+
+static std::optional<tripoint_abs_omt> openclaw_harness_native_preview_start(
+    const tripoint_abs_omt &destination )
+{
+    if( !openclaw_harness_overmap_input_trace_enabled() ) {
+        return std::nullopt;
+    }
+    const char *serialized_requests = std::getenv(
+            "OPENCLAW_HARNESS_NATIVE_PREVIEW_SEGMENT_REQUESTS" );
+    if( serialized_requests == nullptr || serialized_requests[0] == '\0' ) {
+        return std::nullopt;
+    }
+
+    std::optional<tripoint_abs_omt> result;
+    std::istringstream requests( serialized_requests );
+    std::string request;
+    while( std::getline( requests, request, ';' ) ) {
+        const size_t separator = request.find( '>' );
+        if( separator == std::string::npos || request.find( '>', separator + 1 ) != std::string::npos ) {
+            return std::nullopt;
+        }
+        const std::optional<tripoint_abs_omt> start = openclaw_harness_parse_omt(
+                    request.substr( 0, separator ) );
+        const std::optional<tripoint_abs_omt> end = openclaw_harness_parse_omt(
+                    request.substr( separator + 1 ) );
+        if( !start || !end ) {
+            return std::nullopt;
+        }
+        if( *end == destination ) {
+            if( result ) {
+                // Destination-only routing would make the requested segment start
+                // ambiguous.  Fall back to ordinary UI behavior so the harness
+                // receipt cannot accidentally claim a requested preview.
+                return std::nullopt;
+            }
+            result = start;
+        }
+    }
+    return result;
+}
+
 static std::string openclaw_harness_quote_overmap_input( const std::string &value )
 {
     std::string out = "\"";
@@ -159,7 +218,8 @@ static void openclaw_harness_trace_overmap_input_resolution( const input_event &
 
 static void openclaw_harness_trace_overmap_route( const char *event,
         const tripoint_abs_omt &dest, const std::size_t path_size, const bool travel_result = false,
-        const std::vector<tripoint_abs_omt> *path = nullptr )
+        const std::vector<tripoint_abs_omt> *path = nullptr,
+        const std::optional<tripoint_abs_omt> &native_preview_start = std::nullopt )
 {
     if( !openclaw_harness_overmap_input_trace_enabled() ) {
         return;
@@ -178,6 +238,25 @@ static void openclaw_harness_trace_overmap_route( const char *event,
             trace << ( index == 0 ? "" : ";" ) << omt.x() << "," << omt.y() << "," << omt.z();
         }
         trace << "\"";
+    }
+    if( native_preview_start ) {
+        trace << " native_preview_request=true"
+              << " requested_start=" << native_preview_start->x() << ","
+              << native_preview_start->y() << "," << native_preview_start->z()
+              << " requested_end=" << dest.x() << "," << dest.y() << "," << dest.z()
+              << " actual_first=";
+        if( path != nullptr && !path->empty() ) {
+            trace << path->front().x() << "," << path->front().y() << "," << path->front().z();
+        } else {
+            trace << "none";
+        }
+        trace << " actual_terminal=";
+        if( path != nullptr && !path->empty() ) {
+            trace << path->back().x() << "," << path->back().y() << "," << path->back().z();
+        } else {
+            trace << "none";
+        }
+        trace << " world_mutation=false";
     }
     DebugLog( D_INFO, DC_ALL ) << trace.str();
 }
@@ -2987,10 +3066,12 @@ void edit_selected_ecology_dispatch()
 }
 
 static std::vector<tripoint_abs_omt> get_overmap_path_to( const tripoint_abs_omt &dest,
-        bool driving, bool direct_travel = false )
+        bool driving, bool direct_travel = false,
+        const std::optional<tripoint_abs_omt> &native_preview_start = std::nullopt )
 {
     if( overmap_buffer.seen( dest ) == om_vision_level::unseen ) {
-        openclaw_harness_trace_overmap_route( "constructed", dest, 0 );
+        openclaw_harness_trace_overmap_route( "constructed", dest, 0, false, nullptr,
+                                              native_preview_start );
         return {};
     }
     const Character &player_character = get_player_character();
@@ -2999,6 +3080,14 @@ static std::vector<tripoint_abs_omt> get_overmap_path_to( const tripoint_abs_omt
     overmap_path_params params;
     vehicle *player_veh = nullptr;
     if( driving ) {
+        if( native_preview_start ) {
+            // A synthetic source must not inherit vehicle state from the avatar.
+            // The zero-credit request is deliberately limited to player travel
+            // parameters and never creates an avatar route.
+            openclaw_harness_trace_overmap_route( "constructed", dest, 0, false, nullptr,
+                                                  native_preview_start );
+            return {};
+        }
         const optional_vpart_position vp = here.veh_at( player_character.pos_bub() );
         if( !vp.has_value() ) {
             debugmsg( "Failed to find driven vehicle" );
@@ -3041,14 +3130,17 @@ static std::vector<tripoint_abs_omt> get_overmap_path_to( const tripoint_abs_omt
         params = overmap_path_params::flatten_pathfinding_costs( params );
     }
     // literal "edge" case: the vehicle may be in a different OMT than the player
-    const tripoint_abs_omt start_omt_pos = driving ? player_veh->pos_abs_omt() : player_omt_pos;
+    const tripoint_abs_omt start_omt_pos = native_preview_start ? *native_preview_start :
+                                             ( driving ? player_veh->pos_abs_omt() : player_omt_pos );
     if( dest == player_omt_pos || dest == start_omt_pos ) {
-        openclaw_harness_trace_overmap_route( "constructed", dest, 0 );
+        openclaw_harness_trace_overmap_route( "constructed", dest, 0, false, nullptr,
+                                              native_preview_start );
         return {};
     } else {
         std::vector<tripoint_abs_omt> path = overmap_buffer.get_travel_path( start_omt_pos,
                 dest, params ).points;
-        openclaw_harness_trace_overmap_route( "constructed", dest, path.size(), false, &path );
+        openclaw_harness_trace_overmap_route( "constructed", dest, path.size(), false, &path,
+                                              native_preview_start );
         return path;
     }
 }
@@ -3386,7 +3478,16 @@ static tripoint_abs_omt display()
             avatar &player_character = get_avatar();
             const bool driving = player_character.in_vehicle && player_character.controlling_vehicle;
             bool direct = action == "CHOOSE_DESTINATION_DIRECT";
-            std::vector<tripoint_abs_omt> path = get_overmap_path_to( curs, driving, direct );
+            const std::optional<tripoint_abs_omt> native_preview_start =
+                openclaw_harness_native_preview_start( curs );
+            std::vector<tripoint_abs_omt> path = get_overmap_path_to( curs, driving, direct,
+                                                   native_preview_start );
+            if( native_preview_start ) {
+                // This harness-only request calls the production pathfinder from
+                // the declared segment start but never swaps player omt_path,
+                // confirms travel, or advances world state.
+                continue;
+            }
             bool same_path_selected = false;
             if( path == player_character.omt_path ) {
                 same_path_selected = true;

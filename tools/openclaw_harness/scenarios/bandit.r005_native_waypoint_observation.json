@@ -1,0 +1,45 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r005_native_waypoint_observation",
+  "description": "Zero-credit, no-movement R-005 observation. It requests production native previews for each planner-derived waypoint segment [140,41,0]->[139,41,0]->[139,31,0]->[140,31,0]. Every request binds its explicit segment start, terminal, exact native corridor, and no-mutation receipt; it cannot qualify travel or certification.",
+  "capabilities": {
+    "capabilities.bandit.r005.native_waypoint_observation": "zero_credit_native_waypoint_preview_only"
+  },
+  "runtime_contract": {
+    "permitted_input": ["ordinary-overmap-route-preview"],
+    "forbidden_input": ["ordinary-overmap-route-confirm", "diagnostic_replay", "checkpoint_rollback", "segment_splice", "replacement_world", "replacement_identity", "fixture-mutation", "scenario-mutation", "debug:ecology_edit", "raw-save-rewrite", "combat", "hostile-dialog-authorization"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_r005_natural_hostile_ecology_v0",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "bandit_r005_natural_hostile_ecology_v0", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "cleanup": true, "input": ["ordinary-overmap-route-preview"]},
+    "grants_gameplay_proof": false
+  },
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r005_natural_hostile_ecology_v0",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "steps": [
+    {"kind": "wait", "label": "declared_preserved_source", "seconds": 1, "capture_after": true, "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"}, "checkpoint_evidence": {"classification": "required_feature_evidence", "authoritative_owner": "bound_startup_semantic_hud"}, "abort_verdict": "blocked_r005_waypoint_observation_hud_missing", "abort_reason": "the preserved McWilliams source did not reach ordinary gameplay HUD before route observation"},
+    {"kind": "ordinary_overmap_route_constructor", "label": "preview_waypoint_139_41", "origin_omt": [140, 41, 0], "native_preview_segment_start_omt": [140, 41, 0], "destination_omt": [139, 41, 0], "cursor_keys": ["left"], "route_key": "W", "require_native_corridor": true, "abort_on_metadata_failure": true},
+    {"kind": "press", "label": "close_waypoint_139_41_preview", "keys": ["escape"], "settle_seconds": 0.5, "capture_after": true, "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"}, "checkpoint_evidence": {"classification": "incidental_bootstrap_observation", "authoritative_owner": "bound_startup_semantic_hud"}, "abort_verdict": "blocked_r005_waypoint_preview_not_closed", "abort_reason": "the first native waypoint preview did not close back to ordinary gameplay HUD"},
+    {"kind": "ordinary_overmap_route_constructor", "label": "preview_waypoint_139_31", "origin_omt": [140, 41, 0], "native_preview_segment_start_omt": [139, 41, 0], "destination_omt": [139, 31, 0], "cursor_keys": ["left", "up", "up", "up", "up", "up", "up", "up", "up", "up", "up"], "route_key": "W", "require_native_corridor": true, "abort_on_metadata_failure": true},
+    {"kind": "press", "label": "close_waypoint_139_31_preview", "keys": ["escape"], "settle_seconds": 0.5, "capture_after": true, "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"}, "checkpoint_evidence": {"classification": "incidental_bootstrap_observation", "authoritative_owner": "bound_startup_semantic_hud"}, "abort_verdict": "blocked_r005_waypoint_preview_not_closed", "abort_reason": "the second native waypoint preview did not close back to ordinary gameplay HUD"},
+    {"kind": "ordinary_overmap_route_constructor", "label": "preview_destination_140_31", "origin_omt": [140, 41, 0], "native_preview_segment_start_omt": [139, 31, 0], "destination_omt": [140, 31, 0], "cursor_keys": ["up", "up", "up", "up", "up", "up", "up", "up", "up", "up"], "route_key": "W", "require_native_corridor": true, "abort_on_metadata_failure": true},
+    {"kind": "press", "label": "close_destination_140_31_preview", "keys": ["escape"], "settle_seconds": 0.5, "capture_after": true, "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"}, "checkpoint_evidence": {"classification": "incidental_bootstrap_observation", "authoritative_owner": "bound_startup_semantic_hud"}, "abort_verdict": "blocked_r005_waypoint_preview_not_closed", "abort_reason": "the destination native preview did not close back to ordinary gameplay HUD"}
+  ],
+  "proof_gates": [
+    {"id": "zero_credit_native_waypoint_observation", "label": "Native waypoint route observation", "boundary_step": "close_destination_140_31_preview", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "status": "required_state_present"}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}
+  ],
+  "proof_route": {"gates": ["zero_credit_native_waypoint_observation"], "terminal": ["zero_credit_native_waypoint_observation"], "capability_gates": {"capabilities.bandit.r005.native_waypoint_observation": {"terminal": ["zero_credit_native_waypoint_observation"]}}}
+}
