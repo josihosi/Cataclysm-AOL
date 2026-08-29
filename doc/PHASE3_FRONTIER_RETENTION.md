@@ -31,3 +31,14 @@ contract; they do not change an R-025 deadline or promote any evidence.
 
 No artifact-count target or clean-tree assertion is part of this boundary.  New dirty entries must
 be attributed to a named active claim before they join this frontier.
+
+## Partition-time validation finding
+
+`tools/openclaw_harness/checkpoint_contract_preflight_test.py` passed (4 tests), and the staged
+split passed `git diff --check`.  The broader non-gameplay discovery command
+`python3 -m unittest discover -s tools/openclaw_harness -p '*_test.py'` ran 706 tests and reported
+11 failures and 2 errors.  This is retained as a harness-owner finding, not concealed by the
+checkpoint: the reported mismatches include setup-report `classification`, stale R-019 repair
+fixture identity, and startup-overlay/native-action expectations.  It neither invalidates the
+source-control partition nor supplies gameplay proof; the shared harness owner must resolve or
+classify it before using that suite as a green integration gate.
