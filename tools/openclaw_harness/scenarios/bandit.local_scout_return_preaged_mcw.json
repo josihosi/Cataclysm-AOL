@@ -1,4 +1,5 @@
 {
+  "manifest_version": 1,
   "name": "bandit.local_scout_return_preaged_mcw",
   "description": "Short live-proof probe for the finite scout-return packet: start from the real nearby-owned-site local-contact footing with only the active scout sortie clock pre-aged, advance a tiny window, and capture the current runtime return-home reviewer log.",
   "profile": "dev-harness",
@@ -13,6 +14,45 @@
     "bandit_live_world scout_sortie: linger limit reached -> return_home",
     "bandit_live_world scout_sortie: returning_home -> local_gate skipped"
   ],
+  "capabilities": {
+    "capabilities.bandit.scout_return_decision": "preaged_local_return_home_decision"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:!", "press:."],
+    "forbidden_input": ["debug:ecology_edit", "debug:inject_operation", "raw-save-rewrite", "fixture-save-transform-after-install"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_local_scout_return_preaged_v0_2026-04-27",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_local_scout_return_preaged_v0_2026-04-27",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": ["press:!", "press:."],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["post_load_settle"],
+    "production_behavior": ["advance_10_turns_for_return_home_decision"],
+    "terminal_persistence": ["advance_10_turns_for_return_home_decision"],
+    "artifact_verdict": ["advance_10_turns_for_return_home_decision"],
+    "disallowed_shortcuts": ["advance_10_turns_for_return_home_decision"],
+    "capability_gates": {
+      "capabilities.bandit.scout_return_decision": {
+        "terminal": ["advance_10_turns_for_return_home_decision"]
+      }
+    }
+  },
   "steps": [
     {
       "kind": "wait",
