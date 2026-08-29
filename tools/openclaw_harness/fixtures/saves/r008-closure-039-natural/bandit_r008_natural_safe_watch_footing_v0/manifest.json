@@ -1,0 +1,45 @@
+{
+  "name": "bandit_r008_natural_safe_watch_footing_v0",
+  "profile": "r008-closure-039-natural",
+  "world": "r008-natural-bandit-039",
+  "captured_at": "2026-08-25T03:17:25+0200",
+  "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r008-closure-039-natural/save/r008-natural-bandit-039",
+  "source_generation": {
+    "mode": "production_harness_new_world",
+    "raw_seed": "830205385",
+    "feasibility_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json",
+    "persistent_ecology_unchanged": true
+  },
+  "save_transforms": [
+    {
+      "kind": "player_near_overmap_special",
+      "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+      "special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [-3, 0, 0]
+    },
+    {
+      "kind": "player_mutations",
+      "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION",
+        "DEBUG_CLOAK"
+      ]
+    }
+  ],
+  "source_binding": {
+    "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json",
+    "raw_seed": "830205385",
+    "world_name": "r008-natural-bandit-039",
+    "world_master_gsav_sha256": "cdec3aed809cd5ded71618fc75a0ae05c007ce70e0d688aea8ff31a5a36000e0",
+    "native_camp": "overmap_special:bandit_camp@177,13,0",
+    "hostile_origin_omt": [177, 9, 0],
+    "watch_omt": [174, 13, 0],
+    "watch_route_cost": 10
+  }
+}

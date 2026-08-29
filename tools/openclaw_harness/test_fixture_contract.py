@@ -61,6 +61,7 @@ from startup_harness import (  # noqa: E402
     apply_overmap_terrain_id_at_abs_omt_transform,
     apply_option_overrides_to_file,
     apply_player_basecamp_at_omt_transform,
+    apply_clear_avatar_auto_move_transform,
     apply_player_mutations_transform,
     apply_player_view_seen_omt_transform,
     apply_player_worn_items_transform,
@@ -69,8 +70,10 @@ from startup_harness import (  # noqa: E402
     apply_remove_overmap_npcs_transform,
     artifact_delta_matches_all_patterns,
     classify_blocking_interruption,
+    classify_ordinary_wait_interruption,
     classify_wait_screen_text,
     is_hostile_auto_move_cancel_modal,
+    native_travel_stable_hud_markers,
     is_retained_hostile_auto_move_cancelled_hud_message,
     classify_wait_step_ledger,
     committed_revision_matches,
@@ -96,6 +99,7 @@ from startup_harness import (  # noqa: E402
     normalize_screen_text_patterns,
     normalize_fixture_save_transforms,
     remove_inherited_shadow_flavor_producer_global_eocs_from_payload,
+    schedule_global_eoc_in_payload,
     overmap_file_coords_from_abs_omt,
     overmap_flat_index,
     overmap_layer_index,
@@ -530,6 +534,70 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertEqual(modal["classification"], "authorized_hostile_auto_move_cancel")
         self.assertEqual(modal["response_key"], "Y")
 
+    def test_r005_feral_auto_move_continuation_uses_declared_native_response_and_receipt(self) -> None:
+        declaration = {
+            "actor": "feral human",
+            "native_prompt": "feral human spotted! Cancel auto move? (Case Sensitive)",
+            "observed_prompt": "eral human spotted! Cancel auto move? (Case Sensitive",
+            "response_key": "N",
+        }
+        modal = {"ok": True, "text": declaration["observed_prompt"]}
+        hud = {"ok": True, "text": "Move:\nActivity: None\nWield:"}
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                mock.patch("startup_harness.capture_screenshot", return_value={"screen_summary": {}}), \
+                mock.patch(
+                    "startup_harness.capture_screen_text_artifact",
+                    side_effect=[modal, hud],
+                ), \
+                mock.patch("startup_harness.peekaboo_press_sequence") as press_sequence, \
+                mock.patch("startup_harness.time.sleep"):
+            result = acknowledge_blocking_interruptions(
+                42, Path(temp_dir), "r005_feral", max_acknowledgements=1,
+                ordinary_wait_save_and_quit_guard=True,
+                semantic_ui_trace_log=None, semantic_ui_trace_start_offset=0,
+                declared_hostile_auto_move_continuation=declaration,
+                stop_on_unknown=True,
+            )
+
+        self.assertEqual(result["status"], "clear")
+        press_sequence.assert_called_once_with(42, ["N"], delay_ms=200)
+        acknowledgement = result["acknowledgements"][0]
+        self.assertEqual(
+            acknowledgement["classification"]["classification"],
+            "declared_hostile_auto_move_continuation",
+        )
+        self.assertEqual(acknowledgement["native_response_receipt"], {
+            "actor": "feral human",
+            "native_prompt": "feral human spotted! Cancel auto move? (Case Sensitive)",
+            "observed_prompt": "eral human spotted! Cancel auto move? (Case Sensitive",
+            "response_key": "N",
+            "observed_text_sha256": acknowledgement["classification"]
+            ["continuation_receipt"]["observed_text_sha256"],
+        })
+
+    def test_r005_feral_auto_move_continuation_rejects_changed_actor_text_and_missing_advertisement(self) -> None:
+        declaration = {
+            "actor": "feral human",
+            "native_prompt": "feral human spotted! Cancel auto move? (Case Sensitive)",
+            "observed_prompt": "eral human spotted! Cancel auto move? (Case Sensitive",
+            "response_key": "N",
+        }
+        for observed, advertised in (
+                ("zombie spotted! Cancel auto move? (Case Sensitive", declaration),
+                (declaration["observed_prompt"], None),
+        ):
+            with self.subTest(observed=observed, advertised=advertised is not None):
+                classified = classify_ordinary_wait_interruption(
+                    {"ok": True, "text": observed}, semantic_ui_trace_log=None,
+                    semantic_ui_trace_start_offset=0,
+                    declared_hostile_auto_move_continuation=advertised,
+                )
+                self.assertNotEqual(
+                    classified["classification"],
+                    "declared_hostile_auto_move_continuation",
+                )
+                self.assertEqual(classified["response_key"], "")
+
     def test_hostile_auto_move_modal_accepts_split_observed_markers(self) -> None:
         observed_ocr = (
             "Monsters\nspotted! Cancel\nauto move? (Case\n[Y]es\nSensitive)"
@@ -701,6 +769,76 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
 
         self.assertEqual(report["abort"]["verdict"], "blocked_native_travel_unknown_prompt")
         self.assertEqual([entry.args[1] for entry in type_text.call_args_list], ["Y", "N"])
+
+    def test_r005_route_uses_repeated_hostile_auto_move_stabilization(self) -> None:
+        scenario_path = HARNESS_DIR / "scenarios" / \
+            "bandit.r005_continuous_hostile_ecology_certification.json"
+        scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
+        accept = next(
+            step for step in scenario["steps"]
+            if step.get("label") == "accept_departure_route"
+        )
+        self.assertEqual(accept.get("text"), "Y")
+        self.assertEqual(
+            accept.get("native_travel_stabilization"),
+            {
+                "mode": "continue_exact_hostile_auto_move_until_hud",
+                "require_completed_destination_cleared": True,
+                "expected_destination_omt": [140, 31, 0],
+            },
+        )
+        self.assertFalse(any(
+            step.get("label") == "continue_harmless_auto_move"
+            for step in scenario["steps"]
+        ))
+        wait = next(
+            step for step in scenario["steps"]
+            if step.get("label") == "advance_natural_ecology_window"
+        )
+        self.assertTrue(wait.get("allow_hostile_auto_move_cancel"))
+        self.assertTrue(wait.get("continue_hostile_auto_move"))
+        self.assertEqual(wait.get("hostile_auto_move_continuation"), {
+            "actor": "feral human",
+            "native_prompt": "feral human spotted! Cancel auto move? (Case Sensitive)",
+            "observed_prompt": "eral human spotted! Cancel auto move? (Case Sensitive",
+            "response_key": "N",
+        })
+
+    def test_r005_stable_hud_markers_accept_fixture_and_reject_hostile_modal(self) -> None:
+        fixture_hud = {
+            "ok": True,
+            "text": "HORS\n449(W)\n100\nwaxing crescent\n4:00:22 PM\n"
+            "cremper dlurerz\nGkatharinal parh",
+        }
+        hostile_modal = {
+            "ok": True,
+            "text": fixture_hud["text"] +
+            "zombie runner spotted! Cancel auto move? (Case Sensitive)",
+        }
+        self.assertEqual(
+            len(native_travel_stable_hud_markers(fixture_hud)),
+            3,
+        )
+        self.assertEqual(native_travel_stable_hud_markers(hostile_modal), [])
+        degraded_modal = {
+            "ok": True,
+            "text": fixture_hud["text"] + "scorched zombie spotted! more is capital",
+        }
+        self.assertTrue(is_hostile_auto_move_cancel_modal(degraded_modal))
+        current_ocr_modal = {
+            "ok": True,
+            "text": fixture_hud["text"] +
+            "izmat zombie spotteo. Gancel auto move: Ibase sensitıve",
+        }
+        self.assertTrue(is_hostile_auto_move_cancel_modal(current_ocr_modal))
+
+    def test_r005_stable_hud_markers_accept_observed_spaced_clock_suffix(self) -> None:
+        observed_hud = {
+            "ok": True,
+            "text": "HORS\n283(W)\n100\nwaxing crescent\n4 00 1 H\n",
+        }
+
+        self.assertEqual(len(native_travel_stable_hud_markers(observed_hud)), 3)
 
     def test_native_travel_stabilization_accepts_partial_lifeless_flavor_on_idle_hud(self) -> None:
         completed_hud_with_flavor = (
@@ -4414,6 +4552,72 @@ class BanditLiveWorldAuditContractTest(unittest.TestCase):
         self.assertTrue(handoff["pair_contract_valid"])
         self.assertTrue(outing["pair_contract_valid"])
 
+    def test_local_return_eligibility_receipt_projection_is_typed_and_fail_closed(self) -> None:
+        site = self.current_pair_site()
+        outing = site["active_outing"]
+        outing["schema_version"] = 11
+        outing["local_handoff"]["cohesion_assembled"] = True
+        outing["local_return_eligibility"] = {
+            "schema_version": 1,
+            "activity_id": "camp-current#structural",
+            "actor_ids": [101, 102],
+            "generation": 3,
+            "owner": "local",
+            "handoff_epoch": 1,
+            "cohesion_leader_id": 101,
+            "cohesion_assembled": False,
+            "contact_minutes": 120,
+            "eligible_minutes": 840,
+        }
+
+        receipt = summarize_bandit_live_world_site(site)["active_outing"]["local_return_eligibility"]
+
+        self.assertTrue(receipt["present"])
+        self.assertTrue(receipt["valid"])
+        self.assertEqual(receipt["actor_ids"], [101, 102])
+        self.assertEqual(receipt["eligible_minutes"], 840)
+
+        outing["local_return_eligibility"]["cohesion_assembled"] = True
+        post_cohesion = summarize_bandit_live_world_site(site)["active_outing"]["local_return_eligibility"]
+        self.assertFalse(post_cohesion["valid"])
+        self.assertIn("eligibility_receipt_not_pre_cohesion", post_cohesion["validation_errors"])
+        outing["local_return_eligibility"]["cohesion_assembled"] = False
+
+        outing["schema_version"] = 10
+        legacy = summarize_bandit_live_world_site(site)["active_outing"]["local_return_eligibility"]
+        self.assertFalse(legacy["valid"])
+        self.assertIn("outing_schema_not_v11", legacy["validation_errors"])
+        outing["schema_version"] = 11
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            self.write_world(world_dir, site)
+            audited = audit_saved_bandit_live_world_state(world_dir)
+        self.assertTrue(
+            audited["observed_sites"][0]["active_outing"]
+            ["local_return_eligibility"]["valid"]
+        )
+
+        outing["local_return_eligibility"]["actor_ids"] = [102, 101]
+        outing["local_return_eligibility"]["eligible_minutes"] = 839
+        rejected = summarize_bandit_live_world_site(site)["active_outing"]["local_return_eligibility"]
+
+        self.assertFalse(rejected["valid"])
+        self.assertIn("ordered_actor_ids_mismatch", rejected["validation_errors"])
+        self.assertIn("invalid_eligibility_minutes", rejected["validation_errors"])
+
+        outing["local_return_eligibility"]["actor_ids"] = [101, True]
+        malformed = summarize_bandit_live_world_site(site)["active_outing"]["local_return_eligibility"]
+        self.assertFalse(malformed["valid"])
+        self.assertEqual(malformed["actor_ids"], [])
+        self.assertIn("missing_or_invalid_ordered_actor_ids", malformed["validation_errors"])
+
+        outing.pop("local_return_eligibility")
+        missing = summarize_bandit_live_world_site(site)["active_outing"]["local_return_eligibility"]
+        self.assertFalse(missing["present"])
+        self.assertFalse(missing["valid"])
+        self.assertEqual(missing["validation_errors"], ["missing_or_non_object_receipt", "unsupported_schema_version", "missing_or_invalid_activity_id", "missing_or_invalid_ordered_actor_ids", "missing_or_invalid_generation", "owner_not_local", "missing_or_invalid_odd_handoff_epoch", "missing_or_invalid_cohesion_leader", "missing_or_invalid_cohesion_assembled", "missing_or_invalid_contact_minutes", "invalid_eligibility_minutes"])
+
     def test_lead_summary_and_audit_expose_persisted_origin(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             world_dir = Path(temp_dir)
@@ -4846,6 +5050,52 @@ class PlayerMutationsTransformContractTest(unittest.TestCase):
         self.assertEqual(
             second_payload["player"]["cached_mutations"]["DEBUG_CLOAK"],
             inherited_mutation,
+        )
+
+
+class ClearAvatarAutoMoveTransformContractTest(unittest.TestCase):
+    @staticmethod
+    def fake_zzip(path: Path) -> None:
+        if path.suffix == ".zzip":
+            path.with_suffix("").write_bytes(path.read_bytes())
+        else:
+            path.with_suffix(f"{path.suffix}.zzip").write_bytes(path.read_bytes())
+
+    def test_clears_every_persisted_auto_move_owner_with_receipts(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "McWilliams"
+            world_dir.mkdir()
+            player_save = world_dir / "player.sav.zzip"
+            player_save.write_text(json.dumps({"player": {
+                "destination_point": [3913, 815, 0],
+                "destination_activity": {"type": "ACT_TRAVELLING", "moves_left": 0},
+                "automoveroute": [[61, 71, 0], [60, 72, 0]],
+                "activity": {"type": "ACT_NULL"},
+            }}), encoding="utf-8")
+            with mock.patch("startup_harness.run_zzip", side_effect=self.fake_zzip):
+                receipt = apply_clear_avatar_auto_move_transform(world_dir, {
+                    "kind": "clear_avatar_auto_move", "player_save": player_save.name,
+                })
+            installed = json.loads(player_save.read_text(encoding="utf-8"))["player"]
+
+        self.assertEqual(receipt["before"]["destination_point"], [3913, 815, 0])
+        self.assertEqual(receipt["before"]["destination_activity"]["type"], "ACT_TRAVELLING")
+        self.assertEqual(receipt["before"]["automoveroute"], [[61, 71, 0], [60, 72, 0]])
+        self.assertIsNone(installed["destination_point"])
+        self.assertEqual(installed["destination_activity"], {"type": "ACT_NULL"})
+        self.assertEqual(installed["automoveroute"], [])
+        self.assertTrue(receipt["no_auto_move_fixture_invariant"])
+
+    def test_retained_destination_fails_the_fixture_invariant(self) -> None:
+        retained = {
+            "destination_point": [3913, 815, 0],
+            "destination_activity": {"type": "ACT_TRAVELLING"},
+            "automoveroute": [],
+        }
+        self.assertFalse(
+            retained["destination_point"] is None
+            and retained["destination_activity"].get("type") == "ACT_NULL"
+            and retained["automoveroute"] == []
         )
 
 
@@ -6146,6 +6396,17 @@ def player_save_error(path: Path) -> str:
 
 
 class ScenarioFixtureContractTest(unittest.TestCase):
+    def test_r005_fixture_clears_stale_local_contact_before_scheduler(self) -> None:
+        manifest_path = HARNESS_DIR / "fixtures" / "saves" / "live-debug" / \
+            "bandit_r005_natural_hostile_ecology_v0" / "manifest.json"
+        manifest = json.loads(manifest_path.read_text(encoding="utf-8"))
+        transforms = manifest["save_transforms"]
+        ecology = next(item for item in transforms if item["kind"] == "bandit_camp_map_lead")
+        self.assertTrue(ecology["clear_active_pressure"])
+        self.assertFalse(ecology["mark_cleared_active_members_unready"])
+        self.assertEqual(ecology["lead_kind"], "structural_bounty")
+        self.assertEqual(ecology["target_omt"], [138, 52, 0])
+
     @staticmethod
     def sample_zzip_save() -> Path:
         candidates = sorted(
@@ -9963,6 +10224,58 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(payload["player"]["queued_effect_on_conditions"][0]["time"], 175)
         self.assertEqual(report["queue_reports"], {})
 
+    def test_scheduled_global_eoc_appends_one_future_record_without_rewriting_inherited_queue(self) -> None:
+        payload = {
+            "turn": 5286050,
+            "queued_global_effect_on_conditions": [
+                {"time": 5286100, "eoc": "EOC_INHERITED", "context": {"source": "fixture"}},
+            ],
+        }
+
+        report = schedule_global_eoc_in_payload(
+            payload, eoc="EOC_OPENCLAW_R019_SAFE_POPUP", offset_seconds=60,
+        )
+
+        self.assertEqual(report["scheduled"], {
+            "time": 5286110,
+            "eoc": "EOC_OPENCLAW_R019_SAFE_POPUP",
+            "context": {},
+        })
+        self.assertTrue(report["inherited_identities_byte_equivalent"])
+        self.assertEqual(payload["queued_global_effect_on_conditions"][0], {
+            "time": 5286100, "eoc": "EOC_INHERITED", "context": {"source": "fixture"},
+        })
+
+    def test_scheduled_global_eoc_rejects_duplicate_identity_and_invalid_offset(self) -> None:
+        payload = {
+            "turn": 1,
+            "queued_global_effect_on_conditions": [
+                {"time": 2, "eoc": "EOC_OPENCLAW_R019_SAFE_POPUP", "context": {}},
+            ],
+        }
+        with self.assertRaisesRegex(SystemExit, "found inherited"):
+            schedule_global_eoc_in_payload(
+                payload, eoc="EOC_OPENCLAW_R019_SAFE_POPUP", offset_seconds=60,
+            )
+        with self.assertRaisesRegex(SystemExit, "positive integer"):
+            schedule_global_eoc_in_payload(payload, eoc="EOC_OTHER", offset_seconds=0)
+
+    def test_r019_pre_endpoint_fixture_declares_one_same_eoc_strictly_inside_native_minute(self) -> None:
+        fixture_path = HARNESS_DIR / "fixtures" / "saves" / "live-debug" / "r019_keep_watch_pre_endpoint_popup_v1" / "manifest.json"
+        fixture = json.loads(fixture_path.read_text(encoding="utf-8"))
+        transforms = fixture["save_transforms"]
+        scheduled = [item for item in transforms if item["kind"] == "scheduled_global_eoc"]
+        mutations = [item for item in transforms if item["kind"] == "player_mutations"]
+
+        self.assertEqual(len(scheduled), 1)
+        self.assertEqual(scheduled[0]["eoc"], "EOC_OPENCLAW_R019_SAFE_POPUP")
+        self.assertEqual(scheduled[0]["offset_seconds"], 208 + 30)
+        self.assertEqual(len(mutations), 1)
+        self.assertEqual(mutations[0]["mutations"], [
+            "DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO",
+            "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION",
+        ])
+
     def test_game_turn_queue_shift_fails_closed_for_malformed_queues(self) -> None:
         invalid_payloads = [
             ({
@@ -10240,6 +10553,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 screen_guarded = bool(
                     step.get("expected_screen_text_contains")
                     or step.get("expected_screen_text_after_contains")
+                    or step.get("semantic_ui_expectation")
                 )
                 if deferred:
                     target_index = label_indices.get(deferred)

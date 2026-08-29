@@ -9,6 +9,7 @@ import sqlite3
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 
@@ -17,6 +18,7 @@ sys.path.insert(0, str(HARNESS_DIR))
 
 from scenario_registry_store import (  # noqa: E402
     SCHEMA_VERSION,
+    RegistryQueryCandidateSnapshot,
     ScenarioRegistryStoreError,
     apply_migrations,
     claim_migration_item_launch,
@@ -26,15 +28,20 @@ from scenario_registry_store import (  # noqa: E402
     immediate_transaction,
     migration_item_current,
     open_registry,
+    execute_registry_query,
+    parse_registry_query_request,
     quarantine_scenario,
     record_migration_attempt,
     record_migration_terminal,
+    reload_selection_token_for_launch,
     rebuild_manifest_projection,
     registry_status,
     retirement_candidates,
     resolve_registry_path,
     snapshot_migration_run,
+    _first_run_certification_route,
 )
+import scenario_registry_store as registry_store  # noqa: E402
 
 
 class ScenarioRegistryStoreTest(unittest.TestCase):
@@ -45,6 +52,7 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
         "manifest_relation_current",
         "lifecycle_history",
         "manifest_relation_history",
+        "r019_aggregation_terminal_history",
         "binding_history",
         "report_ingestion_history",
         "verification_history",
@@ -66,6 +74,303 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
         "certification_round_lease_history",
         "certification_save_capability",
     }
+
+    def test_r013_declared_bootstrap_route_is_exact_and_fail_closed(self) -> None:
+        manifest = {
+            "name": "r013.cockpit_transaction_bootstrap_mcw",
+            "source_path": "tools/openclaw_harness/scenarios/r013.cockpit_transaction_bootstrap_mcw.json",
+            "sha256": "a" * 64,
+            "validation": {"status": "valid", "review_required": False},
+        }
+        snapshot = RegistryQueryCandidateSnapshot(
+            scenario_id="r013", lifecycle_state="active", token_eligible=True,
+            facts={"capabilities.r013.cockpit_transaction_bootstrap": {
+                "value": "public_native_wait_and_advertised_activity_ignore_recovery",
+            }},
+            explanation={"manifest": manifest},
+        )
+        self.assertIsNotNone(_first_run_certification_route(snapshot))
+        rejected = RegistryQueryCandidateSnapshot(
+            scenario_id="other", lifecycle_state="active", token_eligible=True,
+            facts=snapshot.facts,
+            explanation={"manifest": {**manifest, "name": "other"}},
+        )
+        self.assertIsNone(_first_run_certification_route(rejected))
+
+    def test_r022_bootstrap_route_is_exact_and_zero_credit(self) -> None:
+        manifest = {
+            "name": "r022.item_spawn_bootstrap",
+            "source_path": "tools/openclaw_harness/scenarios/r022.item_spawn_bootstrap.json",
+            "sha256": "a" * 64,
+            "validation": {"status": "valid", "review_required": False},
+        }
+        snapshot = RegistryQueryCandidateSnapshot(
+            scenario_id="r022", lifecycle_state="active", token_eligible=True,
+            facts={
+                "capabilities.setup.item_spawn_transaction": {
+                    "value": "debug_menu::debug_item_spawn_transaction",
+                },
+                "capabilities.setup.item_spawn_cleanup": {
+                    "value": "debug_menu::debug_item_spawn_transaction_cleanup",
+                },
+                "capabilities.setup.item_spawn_source": {"value": "src/wish.cpp"},
+                "runtime.evidence_ceiling": {"value": "none_for_debug_fixture_transaction"},
+            }, explanation={"manifest": manifest},
+        )
+        self.assertIsNotNone(_first_run_certification_route(snapshot))
+        rejected = RegistryQueryCandidateSnapshot(
+            scenario_id="r022", lifecycle_state="active", token_eligible=True,
+            facts={key: value for key, value in snapshot.facts.items()
+                   if key != "capabilities.setup.item_spawn_cleanup"},
+            explanation={"manifest": manifest},
+        )
+        self.assertIsNone(_first_run_certification_route(rejected))
+
+    def test_r019_acceptance_route_is_exact_and_fail_closed(self) -> None:
+        manifest = {
+            "name": "r019.keep_watch_acceptance_mcw",
+            "source_path": "tools/openclaw_harness/scenarios/r019.keep_watch_acceptance_mcw.json",
+            "sha256": "a" * 64,
+            "validation": {"status": "valid", "review_required": False},
+        }
+        snapshot = RegistryQueryCandidateSnapshot(
+            scenario_id="r019", lifecycle_state="active", token_eligible=True,
+            facts={
+                "capabilities.r019.keep_watch_acceptance": {
+                    "value": "source_bound_guarded_keep_watch_and_primitive_wait_comparison",
+                },
+                "runtime.r019.source_binding": {
+                    "value": "r019_keep_watch_safe_popup_v1:r009-m095"
+                },
+            },
+            explanation={"manifest": manifest},
+        )
+        self.assertIsNotNone(_first_run_certification_route(snapshot))
+        rejected = RegistryQueryCandidateSnapshot(
+            scenario_id="r019", lifecycle_state="active", token_eligible=True,
+            facts={"capabilities.r019.keep_watch_acceptance": snapshot.facts[
+                "capabilities.r019.keep_watch_acceptance"
+            ]},
+            explanation={"manifest": manifest},
+        )
+        self.assertIsNone(_first_run_certification_route(rejected))
+
+    def test_r018_acceptance_route_is_exact_and_fail_closed(self) -> None:
+        manifest = {
+            "name": "r018.raw_wait_acceptance_mcw",
+            "source_path": "tools/openclaw_harness/scenarios/r018.raw_wait_acceptance_mcw.json",
+            "sha256": "a" * 64,
+            "validation": {"status": "valid", "review_required": False},
+        }
+        snapshot = RegistryQueryCandidateSnapshot(
+            scenario_id="r018", lifecycle_state="active", token_eligible=True,
+            facts={
+                "capabilities.r018.raw_wait_acceptance": {
+                    "value": "source_bound_raw_bounded_wait_and_primitive_comparison",
+                },
+                "runtime.r018.source_binding": {
+                    "value": "r013_clean_wait_duration_v1:r009-m095"
+                },
+            },
+            explanation={"manifest": manifest},
+        )
+        self.assertIsNotNone(_first_run_certification_route(snapshot))
+        rejected = RegistryQueryCandidateSnapshot(
+            scenario_id="r018", lifecycle_state="active", token_eligible=True,
+            facts={"capabilities.r018.raw_wait_acceptance": snapshot.facts[
+                "capabilities.r018.raw_wait_acceptance"
+            ]},
+            explanation={"manifest": manifest},
+        )
+        self.assertIsNone(_first_run_certification_route(rejected))
+
+    def test_repair_action_prefers_matching_contradiction_over_active_partial_match(self) -> None:
+        request = parse_registry_query_request({
+            "requirements": [{
+                "key": "capabilities.r019.keep_watch_acceptance",
+                "op": "eq",
+                "value": "source_bound_guarded_keep_watch_and_primitive_wait_comparison",
+                "minimum_evidence": "declared",
+            }],
+            "preferences": [],
+        })
+        partial = RegistryQueryCandidateSnapshot(
+            scenario_id="active-partial", lifecycle_state="active", token_eligible=True,
+            facts={}, explanation={"manifest": {"manifest_id": "active-partial"}, "route_evidence": []},
+        )
+        contradicted = RegistryQueryCandidateSnapshot(
+            scenario_id="r019", lifecycle_state="quarantined", token_eligible=False,
+            facts={}, explanation={
+                "manifest": {"manifest_id": "r019"},
+                "route_evidence": [{
+                    "route_key": "r019-route",
+                    "evidence_state": "contradicted",
+                    "details": {"unresolved_contradiction_ids": ["red-r019"]},
+                }],
+            },
+        )
+        evaluation = registry_store.RegistryStoredQueryEvaluation(
+            candidates=(partial, contradicted),
+            evaluation=registry_store.RegistryQueryEvaluation(candidates=(), ranked_scenario_ids=()),
+        )
+        with mock.patch.object(
+                registry_store, "_repair_query_matches_manifest",
+                side_effect=lambda _connection, *, manifest_id, request: manifest_id == "r019"):
+            action = registry_store._registry_query_repair_action(
+                object(), query_id="query-r019", request=request, evaluation=evaluation,
+            )
+        self.assertIsNotNone(action)
+        self.assertEqual(action["required_identifiers"], {
+            "query_id": "query-r019",
+            "manifest_id": "r019",
+            "route_key": "r019-route",
+            "red_verification_id": "red-r019",
+        })
+
+    def test_r013_first_run_route_persists_before_issue_and_reload_rejects_changed_evidence(self) -> None:
+        source_manifest = HARNESS_DIR / "scenarios" / "r013.cockpit_transaction_bootstrap_mcw.json"
+        request = parse_registry_query_request({
+            "requirements": [{
+                "key": "capabilities.r013.cockpit_transaction_bootstrap",
+                "op": "eq",
+                "value": "public_native_wait_and_advertised_activity_ignore_recovery",
+                "minimum_evidence": "declared",
+            }],
+            "preferences": [],
+        })
+
+        def issue(root: Path):
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            manifest_path = scenarios / source_manifest.name
+            manifest_path.write_bytes(source_manifest.read_bytes())
+            connection = open_registry(str(root / "registry.sqlite3"))
+            rebuild_manifest_projection(connection, scenarios)
+            selection = execute_registry_query(connection, request, drafts_root=root / "drafts")
+            self.assertIsNotNone(selection.token_id)
+            issued = connection.execute(
+                "SELECT manifest_id, details_json FROM token_history WHERE token_id = ? AND event_kind = 'issued'",
+                (selection.token_id,),
+            ).fetchone()
+            self.assertIsNotNone(issued)
+            receipt = json.loads(str(issued["details_json"]))
+            route = receipt["route_evidence"]
+            current = registry_store._current_route_evidence(connection, str(issued["manifest_id"]))
+            self.assertEqual(json.dumps(route, sort_keys=True), json.dumps(current[0], sort_keys=True))
+            self.assertEqual(route["internal_resolution_state"], "first_run")
+            self.assertEqual(route["bindings"], [])
+            self.assertEqual(route["details"]["source_path"], str(manifest_path.resolve()))
+            return connection, str(selection.token_id), str(issued["manifest_id"])
+
+        def add_historical_binding(connection, manifest_id: str, route_key: str) -> None:
+            """Model later route history without changing first-run authority."""
+            report_id = "historical-report"
+            verification_id = "historical-verification"
+            fingerprint = "historical-binding"
+            connection.execute(
+                "INSERT INTO report_ingestion_history( report_id, manifest_id, report_path, report_sha256, report_kind, ingestion_status ) "
+                "VALUES( ?, ?, 'historical-report.json', 'a', 'probe', 'ingested' )",
+                (report_id, manifest_id),
+            )
+            connection.execute(
+                "INSERT INTO verification_history( verification_id, manifest_id, report_id, route_key, binding_fingerprint, outcome_kind, proof_status, details_json ) "
+                "VALUES( ?, ?, ?, ?, ?, 'unknown', 'unknown', '{}' )",
+                (verification_id, manifest_id, report_id, route_key, fingerprint),
+            )
+            connection.execute(
+                "INSERT INTO verification_resolution_history( verification_id, manifest_id, route_key, resolution_kind, binding_fingerprint, details_json ) "
+                "VALUES( ?, ?, ?, 'compatible', ?, '{}' )",
+                (verification_id, manifest_id, route_key, fingerprint),
+            )
+            connection.execute(
+                "INSERT INTO binding_history( manifest_id, binding_kind, binding_fingerprint, binding_status, payload_json, report_id ) "
+                "VALUES( ?, 'manifest', ?, 'compatible', ?, ? )",
+                (manifest_id, fingerprint, json.dumps({
+                    "verification_id": verification_id,
+                    "expected": {"source_sha256": connection.execute(
+                        "SELECT current_sha256 FROM manifest_current WHERE manifest_id = ?", (manifest_id,),
+                    ).fetchone()[0]},
+                }), report_id),
+            )
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            connection, token_id, manifest_id = issue(Path(temp_dir))
+            try:
+                issued = connection.execute(
+                    "SELECT route_key FROM token_history WHERE token_id = ? AND event_kind = 'issued'", (token_id,),
+                ).fetchone()
+                self.assertIsNotNone(issued)
+                add_historical_binding(connection, manifest_id, str(issued["route_key"]))
+                current = registry_store._current_route_evidence(connection, manifest_id)
+                self.assertEqual(current[0]["bindings"], ())
+                accepted = reload_selection_token_for_launch(connection, token_id)
+                self.assertTrue(accepted.accepted)
+                self.assertEqual(accepted.reason, "first_run_bootstrap")
+            finally:
+                connection.close()
+
+        for mutation, expected_reason in (
+                ("missing", "route_missing"),
+                ("stale", "first_run_route_binding_changed"),
+                ("partial", "first_run_route_binding_changed"),
+                ("ambiguous", "route_ambiguous"),
+                ("substituted", "first_run_route_binding_changed")):
+            with self.subTest(mutation=mutation), tempfile.TemporaryDirectory() as temp_dir:
+                connection, token_id, manifest_id = issue(Path(temp_dir))
+                try:
+                    current = registry_store._current_route_evidence(connection, manifest_id)
+                    if mutation == "missing":
+                        mutated = ()
+                    elif mutation == "ambiguous":
+                        mutated = (current[0], current[0])
+                    else:
+                        changed = dict(current[0])
+                        if mutation == "stale":
+                            changed["evidence_state"] = "stale"
+                        else:
+                            details = dict(changed["details"])
+                            if mutation == "partial":
+                                details.pop("source_path")
+                            else:
+                                details["source_path"] = "substituted-source.json"
+                            changed["details"] = details
+                        mutated = (changed,)
+                    with mock.patch.object(registry_store, "_current_route_evidence", return_value=mutated):
+                        rejected = reload_selection_token_for_launch(connection, token_id)
+                    self.assertFalse(rejected.accepted)
+                    self.assertEqual(rejected.reason, expected_reason)
+                finally:
+                    connection.close()
+
+    def test_reconciliation_decodes_only_structurally_selected_reports(self) -> None:
+        connection = sqlite3.connect(":memory:")
+        connection.row_factory = sqlite3.Row
+        connection.execute(
+            "CREATE TABLE binding_history (report_id TEXT, binding_kind TEXT, payload_json TEXT)"
+        )
+        target = "target-report"
+        for kind in ("manifest", "runtime", "fixture", "profile"):
+            connection.execute(
+                "INSERT INTO binding_history VALUES (?, ?, ?)",
+                (target, kind, json.dumps({"report_id": target, "expected": {}})),
+            )
+        connection.execute(
+            "INSERT INTO binding_history VALUES (?, ?, ?)",
+            ("unrelated-report", "runtime", "{" + "x" * 1000000),
+        )
+        original = registry_store._json_object
+        decoded = []
+
+        def tracking_json(raw: str, label: str):
+            decoded.append(raw)
+            return original(raw, label)
+
+        with mock.patch.object(registry_store, "_json_object", tracking_json):
+            facts = registry_store._reconciled_report_facts_by_report(connection, {target})
+        self.assertEqual(set(facts), {target})
+        self.assertEqual(len(decoded), 4)
+        self.assertTrue(all("unrelated-report" not in payload for payload in decoded))
+        connection.close()
 
     def test_default_and_override_paths(self) -> None:
         default = resolve_registry_path()
@@ -89,6 +394,33 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
             connection = open_registry(str(override))
             connection.close()
             self.assertTrue(override.parent.exists())
+
+    def test_writable_registry_commits_while_a_reader_snapshot_is_open(self) -> None:
+        """A long-lived reader must not block an authoritative mutation commit."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            path = Path(temp_dir) / "registry.sqlite3"
+            writer = open_registry(str(path))
+            reader = open_registry(str(path), writable=False)
+            try:
+                self.assertEqual(writer.execute("PRAGMA journal_mode").fetchone()[0], "wal")
+                reader.execute("BEGIN")
+                reader.execute("SELECT * FROM manifest_current").fetchall()
+                with immediate_transaction(writer):
+                    writer.execute(
+                        "INSERT INTO wec_authority_history( authority_id, evidence_class, authority, "
+                        "run_id, binding_id, source_sha256, owner ) VALUES( ?, ?, ?, ?, ?, ?, ? )",
+                        ("reader-safe-write", "focused", "test", "run", "binding", "a" * 64, "test"),
+                    )
+                self.assertEqual(
+                    writer.execute(
+                        "SELECT COUNT(*) FROM wec_authority_history WHERE authority_id = 'reader-safe-write'"
+                    ).fetchone()[0],
+                    1,
+                )
+            finally:
+                reader.rollback()
+                reader.close()
+                writer.close()
 
     def test_fresh_schema_contains_contract_surface_foreign_keys_indexes_and_version(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

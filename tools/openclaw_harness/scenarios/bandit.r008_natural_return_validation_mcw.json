@@ -1,0 +1,185 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r008_natural_return_validation_mcw",
+  "description": "Independent focused R-008 natural-return validation. The production-generated safe-watch fixture is retained, but all dispatch and local-contact work is zero-credit setup. Only the additional native route from the established local pair through its eligibility boundary, abstract handoff, native save, new-process relaunch, and normalized audit is declared as proof.",
+  "profile": "r008-natural-return-validation",
+  "world": "r008-natural-bandit-039",
+  "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+  "fixture_profile": "r008-closure-039-natural",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "observer_safety_mode": "invisible",
+  "required_stabilizer_traits": [
+    "DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION", "DEBUG_CLOAK"
+  ],
+  "wait_input_trace": true,
+  "installed_save_player": "#R2xvcnkgVHJlam8=.sav.zzip",
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "world.natural_bandit_safe_watch_footing": {
+      "raw_seed": "830205385",
+      "camp_omt": "177,13,0",
+      "hostile_origin_omt": "177,9,0",
+      "watch_omt": "174,13,0",
+      "watch_route_cost": 10,
+      "persistent_ecology_unchanged": true
+    },
+    "capabilities.bandit.natural_structural_scout_return": "production_scheduler_only"
+  },
+  "source_binding": {
+    "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json"
+  },
+  "source_binding_validation": {
+    "validator": "r008_natural_wait_progress_source_binding",
+    "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json",
+    "capabilities": ["world.natural_bandit_safe_watch_footing"],
+    "exclusive_review_required": true
+  },
+  "setup_receipt_contract": {
+    "kind": "r008_source_bound_fixture",
+    "world": "r008-natural-bandit-039",
+    "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+    "required_player_abs_omt": [174, 13, 0],
+    "stabilizer_traits": [
+      "DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO",
+      "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION", "DEBUG_CLOAK"
+    ],
+    "source_binding": {
+      "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json",
+      "raw_seed": "830205385",
+      "world_name": "r008-natural-bandit-039",
+      "world_master_gsav_sha256": "cdec3aed809cd5ded71618fc75a0ae05c007ce70e0d688aea8ff31a5a36000e0",
+      "native_camp": "overmap_special:bandit_camp@177,13,0",
+      "hostile_origin_omt": [177, 9, 0],
+      "watch_omt": [174, 13, 0],
+      "watch_route_cost": 10
+    }
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.6h",
+      "semantic:wait.1h", "semantic:activity.ignore", "semantic:eoc_popup.space",
+      "press:.", "press:S", "press:Y", "press:q", "press:left", "press:enter"
+    ],
+    "forbidden_input": [
+      "debug:teleport", "debug:ecology_edit", "raw-save-rewrite",
+      "fixture-save-transform-after-install", "debug:inject_camp", "debug:inject_origin",
+      "debug:inject_lead", "debug:inject_dispatch", "debug:inject_operation",
+      "debug:drive", "debug:eligibility"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r008-natural-return-validation",
+    "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+    "requirements": {
+      "os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles",
+      "profile": "r008-natural-return-validation",
+      "fixture": "bandit_r008_natural_safe_watch_footing_v0", "helper": "Peekaboo",
+      "peekaboo": true, "ocr": true, "input": ["frame-bound semantic waits"], "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_gates": [
+    {
+      "id": "natural_structural_scout_returns_to_abstract",
+      "label": "The established natural local pair returns to sole abstract ownership at eligibility",
+      "boundary_step": "worker_owned_natural_return_through_eligibility",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "structured_event",
+          "predicate": {
+            "domain": "bandit_live_world", "transition": "local_pair_dematerialization",
+            "outcome": "committed", "simulation_owner": "local", "previous_state": "local",
+            "new_state": "abstract", "generation": 1, "handoff_epoch": 1,
+            "actor_ids": [4, 5], "at_minutes": 9300,
+            "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids", "handoff_epoch"]
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": ["Move:", "Wield:"]
+      }
+    },
+    {
+      "id": "persisted_natural_return_relaunch_audit",
+      "label": "The exact pair remains sole abstract owner after native save and new-process relaunch",
+      "boundary_step": "audit_persisted_natural_return_after_relaunch",
+      "predecessors": ["natural_structural_scout_returns_to_abstract"],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "same_run": true, "committed": true,
+            "required_field.required_active_outing_generation": 1,
+            "required_field.required_active_outing_simulation_owner": "abstract",
+            "required_field.required_active_outing_handoff_epoch": 2,
+            "required_field.required_active_outing_exact_pair": true,
+            "required_field.required_active_outing_pair_contract": true,
+            "required_field.required_local_handoff_state": "abstract_resume",
+            "required_field.required_local_handoff_exact_pair": true,
+            "required_field.required_local_return_eligibility_valid": true,
+            "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids", "simulation_owner", "handoff_epoch"]
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": ["Per:"]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": ["natural_structural_scout_returns_to_abstract", "persisted_natural_return_relaunch_audit"],
+    "terminal": ["persisted_natural_return_relaunch_audit"],
+    "capability_gates": {
+      "capabilities.bandit.natural_structural_scout_return": {
+        "terminal": ["persisted_natural_return_relaunch_audit"]
+      }
+    }
+  },
+  "cockpit_pre_descriptor_bootstrap": {
+    "schema": "caol-cockpit-pre-descriptor-bootstrap-v1",
+    "gameplay_credit": false,
+    "adaptive_prefix": [
+      {"label": "advance_first_semantic_scheduler_window", "objective": "Zero-credit preparation: use only advertised six-hour waits from the production safe-watch footing.", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.6h"], "adaptive_interrupt_actions": ["activity.ignore"]},
+      {"label": "advance_second_semantic_scheduler_window", "objective": "Zero-credit preparation: continue the same native scheduler route without altering ecology state.", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.6h"], "adaptive_interrupt_actions": ["activity.ignore"]},
+      {"label": "advance_force_due_scheduler_window_first_hour", "objective": "Zero-credit preparation: use the advertised one-hour wait toward the native force-due boundary.", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1h"], "adaptive_interrupt_actions": ["activity.ignore"]},
+      {"label": "advance_force_due_scheduler_window_second_hour", "objective": "Zero-credit preparation: complete the second native hour toward the force-due boundary.", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1h"], "adaptive_interrupt_actions": ["activity.ignore"]}
+    ],
+    "interstitial_setup_steps": [{"kind": "press", "label": "resolve_force_due_dispatch_at_minute_boundary", "keys": ["."]}]
+  },
+  "steps": [
+    {"kind": "wait", "label": "post_load_hud", "seconds": 2.0, "capture_after": true, "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"}, "checkpoint_evidence": {"classification": "incidental_bootstrap_observation", "authoritative_owner": "bound_startup_semantic_hud"}, "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r008_natural_return_hud_missing", "abort_reason": "the independently installed safe-watch fixture did not reach ordinary gameplay"},
+    {"kind": "audit_saved_game_turn", "label": "audit_installed_safe_watch_position", "player_save": "#R2xvcnkgVHJlam8=.sav.zzip", "required_player_abs_omt": [174, 13, 0], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_natural_return_safe_watch_position_not_installed", "abort_reason": "the fixture did not install the production-owned watch position"},
+    {"kind": "audit_saved_game_turn", "label": "audit_installed_safe_watch_turn_baseline", "record_baseline": true, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_natural_return_turn_baseline_missing", "abort_reason": "the installed fixture had no readable turn baseline"},
+    {"kind": "adaptive_semantic_window", "label": "advance_first_semantic_scheduler_window", "minimum_elapsed_minutes": 360, "observation_timeout_seconds": 420.0, "observation_interval_seconds": 1.0, "required_action_chain": ["world.wait", "wait.duration_menu", "wait.6h"], "adaptive_interrupt_actions": ["activity.ignore"], "adaptive_semantic_ui_recovery": {"intent": "eoc_popup", "action": "space", "postcondition": "eoc_popup_returned"}, "required_interrupt_action_chain": []},
+    {"kind": "adaptive_semantic_window", "label": "advance_second_semantic_scheduler_window", "minimum_elapsed_minutes": 360, "observation_timeout_seconds": 420.0, "observation_interval_seconds": 1.0, "required_action_chain": ["world.wait", "wait.duration_menu", "wait.6h"], "adaptive_interrupt_actions": ["activity.ignore"], "adaptive_semantic_ui_recovery": {"intent": "eoc_popup", "action": "space", "postcondition": "eoc_popup_returned"}, "required_interrupt_action_chain": []},
+    {"kind": "adaptive_semantic_window", "label": "advance_force_due_scheduler_window_first_hour", "minimum_elapsed_minutes": 60, "observation_timeout_seconds": 420.0, "observation_interval_seconds": 1.0, "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1h"], "adaptive_interrupt_actions": ["activity.ignore"], "adaptive_semantic_ui_recovery": {"intent": "eoc_popup", "action": "space", "postcondition": "eoc_popup_returned"}, "required_interrupt_action_chain": []},
+    {"kind": "adaptive_semantic_window", "label": "advance_force_due_scheduler_window_second_hour", "minimum_elapsed_minutes": 60, "observation_timeout_seconds": 420.0, "observation_interval_seconds": 1.0, "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1h"], "adaptive_interrupt_actions": ["activity.ignore"], "adaptive_semantic_ui_recovery": {"intent": "eoc_popup", "action": "space", "postcondition": "eoc_popup_returned"}, "required_interrupt_action_chain": []},
+    {"kind": "press", "label": "resolve_force_due_dispatch_at_minute_boundary", "keys": ["."], "settle_seconds": 1.0, "capture_after": true, "checkpoint_evidence": {"classification": "incidental_lifecycle_observation", "authoritative_owner": "structured_terminal_gate"}},
+    {"kind": "cockpit_live_session", "label": "worker_owned_natural_return_through_eligibility", "proof_targets": ["zero-credit setup establishes only actors 4 and 5, generation 1, sole local owner, epoch 1, and a valid local-return eligibility receipt at minute 8580", "then use native waits through minute 9300 and prove the same pair commits one local-to-abstract crossing at epoch 2", "finish immediately after the committed crossing receipt; malformed, stale, duplicate, partial, replacement, resumed, joined, or reused evidence is not a target"], "authority": ["one independent fresh registry authority controls the declared native route", "only advertised native cockpit actions may be dispatched"], "invariants": ["the local-contact setup receives zero natural-return credit", "do not alter ecology, actors, ownership, fixture, scenario, world, or binding", "derive every continuation bound from the eligibility receipt, production scheduler, path progress, game mechanic, or measured rate", "reject and finish fail-closed on malformed, stale, duplicate, partial, replacement, resumed, joined, reused, missing-receipt, binding-change, unsafe-divergence, no-progress, or derived-bound exhaustion"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1},
+    {"kind": "press", "label": "open_native_full_save_after_natural_return", "keys": ["S"], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Case Sensitive"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r008_natural_return_save_prompt_missing", "abort_reason": "the native save confirmation was not present after the abstract crossing"},
+    {"kind": "press", "label": "confirm_native_full_save_after_natural_return", "keys": ["Y"], "settle_seconds": 4.0, "proof_deferred_to_label": "audit_saved_turn_after_natural_return_save"},
+    {"kind": "press", "label": "open_native_main_menu_quit_confirmation_after_natural_return_save", "keys": ["q"], "settle_seconds": 1.0, "capture_after": true, "semantic_ui_expectation": {"intent": "main_menu_quit_confirmation", "valid_actions": ["left", "enter"]}, "checkpoint_evidence": {"classification": "incidental_lifecycle_observation", "authoritative_owner": "bound_semantic_ui"}, "abort_on_semantic_ui_failure": true, "abort_verdict": "blocked_r008_natural_return_main_menu_quit_prompt_missing"},
+    {"kind": "press", "label": "confirm_native_process_exit_after_natural_return_save", "keys": ["left", "enter"], "settle_seconds": 2.0, "checkpoint_evidence": {"classification": "incidental_lifecycle_observation", "authoritative_owner": "post_relaunch_lifecycle"}},
+    {"kind": "audit_saved_game_turn", "label": "audit_saved_turn_after_natural_return_save", "player_save": "#R2xvcnkgVHJlam8=.sav.zzip", "baseline_label": "audit_installed_safe_watch_turn_baseline", "required_min_delta_turns": 97200, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_natural_return_save_stale", "proof_deferred_to_label": "audit_persisted_natural_return_after_relaunch"}
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "confirm_native_process_exit_after_natural_return_save",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {"kind": "wait", "label": "post_natural_return_reload_hud", "seconds": 2.0, "capture_after": true, "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"}, "checkpoint_evidence": {"classification": "required_feature_evidence", "authoritative_owner": "bound_startup_semantic_hud"}, "abort_verdict": "blocked_r008_natural_return_save_did_not_reload", "abort_reason": "the native save did not relaunch into ordinary gameplay"},
+      {"kind": "audit_saved_bandit_live_world_state", "label": "audit_persisted_natural_return_after_relaunch", "required_site_id_contains": "overmap_special:bandit_camp@177,13,0", "required_active_outside_count": 2, "required_active_outing_kind": "structural_sortie", "required_active_outing_generation": 1, "required_active_outing_simulation_owner": "abstract", "required_active_outing_handoff_epoch": 2, "required_active_outing_exact_pair": true, "required_active_outing_pair_contract": true, "required_local_handoff_state": "abstract_resume", "required_local_handoff_exact_pair": true, "required_local_return_eligibility_valid": true, "required_local_return_eligibility_cohesion_assembled": false, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_natural_return_receipt_mismatch", "abort_reason": "the new-process save audit did not retain actors 4 and 5, generation 1, one abstract owner at epoch 2, and the local-return eligibility/crossing state"}
+    ]
+  },
+  "evidence_contract": {
+    "claim": "from the source-bound production footing, a newly authorized worker establishes a zero-credit local-contact receipt for actors 4 and 5 at minute 8580, then natively waits through eligibility minute 9300, commits the same pair from local to abstract ownership at epoch 2, saves, exits, relaunches in a new process, and audits the normalized owner and receipt state",
+    "zero_credit_setup": "dispatch, local contact, generation-1 local owner, epoch 1, and eligibility receipt are preconditions only. They cannot be borrowed from the prior local-contact report or receive natural-return credit.",
+    "failure_rule": "Malformed, stale, duplicate, partial, replacement, resumed, joined, reused, rollback, binding-drift, missing receipt, missing native wait, missing committed crossing, non-abstract epoch, non-native save, same-process reload, or failed normalized audit is red and cannot be promoted."
+  }
+}

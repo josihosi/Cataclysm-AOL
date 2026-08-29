@@ -1,0 +1,54 @@
+{
+  "manifest_version": 1,
+  "name": "r011.zombie_dog_setup_validation_mcw",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r011_zombie_dog_setup_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "actors.r011.required_zombie_dog": "mon_zombie_dog",
+    "actors.r011.required_zombie_dog_offset_ms": [0, 12, 0],
+    "actors.r011.incidental_dog": "absent",
+    "capabilities.r011.setup_only": true
+  },
+  "runtime_contract": {
+    "permitted_input": ["harness:startup_observation"],
+    "forbidden_input": ["debug:spawn", "raw-save-rewrite", "guessed-key", "direct-state-mutation"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r011_zombie_dog_setup_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "r011_zombie_dog_setup_v1",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": ["harness:startup_observation"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "setup_contract": {
+    "required_monster": {"typeid": "mon_zombie_dog", "offset_ms": [0, 12, 0]},
+    "incidental_absent_typeid": "mon_dog"
+  },
+  "steps": [
+    {"kind": "wait", "label": "r011_setup_receipt_boundary", "seconds": 1.0, "capture_after": true}
+  ],
+  "proof_route": {
+    "precondition": ["r011_setup_receipt_boundary"],
+    "production_behavior": ["r011_setup_receipt_boundary"],
+    "terminal_persistence": ["r011_setup_receipt_boundary"],
+    "artifact_verdict": ["r011_setup_receipt_boundary"],
+    "disallowed_shortcuts": ["r011_setup_receipt_boundary"]
+  }
+}

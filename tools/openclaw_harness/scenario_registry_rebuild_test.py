@@ -16,8 +16,12 @@ sys.path.insert(0, str(HARNESS_DIR))
 
 from scenario_registry_store import (  # noqa: E402
     ScenarioRegistryStoreError,
+    build_registry_query_candidate_snapshot,
     detect_scenario_relations,
+    execute_registry_query,
     open_registry,
+    parse_registry_query_request,
+    record_source_bound_review_decision,
     rebuild_manifest_projection,
 )
 import scenario_registry_store  # noqa: E402
@@ -76,6 +80,114 @@ class ScenarioRegistryRebuildTest(unittest.TestCase):
         path = root / f"{name}.json"
         path.write_text(json.dumps(value, indent=2) + "\n", encoding="utf-8")
         return path
+
+    def exclusive_review_manifest(self) -> dict:
+        manifest = self.strict_manifest()
+        manifest["name"] = "exclusive.review.fixture"
+        manifest["source_binding_validation"] = {
+            "validator": "r008_natural_wait_progress_source_binding",
+            "bootstrap_artifact": "fixture/bootstrap.json",
+            "capabilities": ["player.injured"],
+            "exclusive_review_required": True,
+        }
+        return manifest
+
+    def test_source_bound_exclusive_review_is_exact_and_fail_closed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            path = self.write_manifest(scenarios, "exclusive", self.exclusive_review_manifest())
+            connection = open_registry(str(root / "registry.sqlite3"))
+            try:
+                with mock.patch("scenario_registry_store._source_binding_validation_records", return_value=()):
+                    rebuild_manifest_projection(connection, scenarios)
+                snapshot = build_registry_query_candidate_snapshot(connection)[0]
+                manifest = snapshot.explanation["manifest"]
+                self.assertEqual(manifest["review_status"], "pending")
+                self.assertTrue(manifest["review_required"])
+                self.assertFalse(manifest["executable"])
+                self.assertFalse(snapshot.token_eligible)
+                request = parse_registry_query_request({
+                    "requirements": [{"key": "player.injured", "op": "eq", "value": False,
+                                      "minimum_evidence": "declared"}],
+                    "preferences": [],
+                })
+                issued = execute_registry_query(connection, request, drafts_root=root / "drafts")
+                self.assertIsNone(issued.token_id)
+                self.assertIsNotNone(issued.draft_path)
+
+                decision = record_source_bound_review_decision(
+                    connection,
+                    manifest_id=str(manifest["manifest_id"]), source_path=str(manifest["source_path"]),
+                    manifest_revision=int(manifest["revision"]), manifest_sha256=str(manifest["sha256"]),
+                    decision="accepted", reviewer_identity="external-reviewer",
+                )
+                self.assertEqual(decision["review_status"], "accepted")
+                accepted = build_registry_query_candidate_snapshot(connection)[0]
+                self.assertTrue(accepted.token_eligible)
+
+                changed = json.loads(path.read_text(encoding="utf-8"))
+                changed["description"] = "new source revision"
+                path.write_text(json.dumps(changed), encoding="utf-8")
+                with mock.patch("scenario_registry_store._source_binding_validation_records", return_value=()):
+                    rebuild_manifest_projection(connection, scenarios)
+                revised = build_registry_query_candidate_snapshot(connection)[0]
+                self.assertEqual(revised.explanation["manifest"]["review_status"], "changed_revision")
+                self.assertFalse(revised.token_eligible)
+            finally:
+                connection.close()
+
+    def test_source_bound_review_wrong_source_and_stale_are_non_executable(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            self.write_manifest(scenarios, "exclusive", self.exclusive_review_manifest())
+            connection = open_registry(str(root / "registry.sqlite3"))
+            try:
+                with mock.patch("scenario_registry_store._source_binding_validation_records", return_value=()):
+                    rebuild_manifest_projection(connection, scenarios)
+                row = connection.execute(
+                    "SELECT manifest_id, source_path, revision, current_sha256 FROM manifest_current"
+                ).fetchone()
+                with connection:
+                    connection.execute(
+                        "INSERT INTO source_bound_review_history( manifest_id, source_path, manifest_revision, "
+                        "manifest_sha256, decision, reviewer_identity ) VALUES( ?, ?, ?, ?, 'accepted', 'external' )",
+                        (str(row["manifest_id"]), "/wrong/source.json", int(row["revision"]),
+                         str(row["current_sha256"])),
+                    )
+                wrong_source = build_registry_query_candidate_snapshot(connection)[0]
+                self.assertEqual(wrong_source.explanation["manifest"]["review_status"], "wrong_source")
+                self.assertFalse(wrong_source.token_eligible)
+            finally:
+                connection.close()
+
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            self.write_manifest(scenarios, "exclusive", self.exclusive_review_manifest())
+            connection = open_registry(str(root / "registry.sqlite3"))
+            try:
+                with mock.patch("scenario_registry_store._source_binding_validation_records", return_value=()):
+                    rebuild_manifest_projection(connection, scenarios)
+                row = connection.execute(
+                    "SELECT manifest_id, source_path, revision, current_sha256 FROM manifest_current"
+                ).fetchone()
+                stale_sha256 = "0" * 64 if str(row["current_sha256"]) != "0" * 64 else "1" * 64
+                with connection:
+                    connection.execute(
+                        "INSERT INTO source_bound_review_history( manifest_id, source_path, manifest_revision, "
+                        "manifest_sha256, decision, reviewer_identity ) VALUES( ?, ?, ?, ?, 'accepted', 'external' )",
+                        (str(row["manifest_id"]), str(row["source_path"]), int(row["revision"]), stale_sha256),
+                    )
+                stale = build_registry_query_candidate_snapshot(connection)[0]
+                self.assertEqual(stale.explanation["manifest"]["review_status"], "stale")
+                self.assertFalse(stale.token_eligible)
+            finally:
+                connection.close()
 
     def test_rebuild_is_idempotent_revises_content_and_retains_absent_source(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

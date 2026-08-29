@@ -104,6 +104,14 @@ class CheckpointContractPreflightTest(unittest.TestCase):
             ["DEBUG_LS", "DEBUG_NOTEMP"],
         )
 
+    def test_invisible_observer_contract_requires_cloak(self) -> None:
+        contract = self.contract()
+        contract["observer_safety_mode"] = "invisible"
+        contract["required_stabilizer_traits"].append("DEBUG_CLOAK")
+        observer = startup_harness.checkpoint_contract_trait_policy(contract)
+        self.assertEqual(observer["required_traits"][-1], "DEBUG_CLOAK")
+        self.assertEqual(observer["declaration_error"], "")
+
     def test_valid_installed_save_records_the_exact_policy_and_observations(self) -> None:
         observed_audit = {
             "status": "required_state_present",

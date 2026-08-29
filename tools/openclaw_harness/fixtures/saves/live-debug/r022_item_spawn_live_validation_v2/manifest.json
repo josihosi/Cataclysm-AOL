@@ -1,0 +1,10 @@
+{
+  "name": "r022_item_spawn_live_validation_v2",
+  "claim": "R-022",
+  "closure_gap": "R-022-live-validation revision 2",
+  "description": "Disposable live-validation footing. The run-bound executable bridge, not this fixture or the closed bootstrap, owns the exact native transaction and cleanup.",
+  "source_fixture": "r009_m059_preopportunity_bootstrap",
+  "source_profile": "live-debug",
+  "source_binding": {"owner": "fixture_source_binding", "source_fixture": "r009_m059_preopportunity_bootstrap", "source_profile": "live-debug", "world": "McWilliams"},
+  "save_transforms": [{"kind": "player_mutations", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO"]}]
+}

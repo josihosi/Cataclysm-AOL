@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "name": "r019.keep_watch_meaningful_event_bootstrap_mcw",
+  "description": "Zero-credit R-019 bootstrap. It installs one deterministic hostile-sighting scene for a separately authorized guarded Keep watch probe. The bootstrap proves setup, binding, and cleanup only; it cannot grant guarded-stop, gameplay, matrix, or acceptance credit.",
+  "profile": "r009-m095",
+  "world": "McWilliams",
+  "fixture": "r019_keep_watch_meaningful_event_bootstrap_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r019.keep_watch_meaningful_event_bootstrap": "deterministic_hostile_sighting_setup_for_guarded_wait",
+    "runtime.r019.source_binding": "r019_keep_watch_meaningful_event_bootstrap_v1:r009-m095"
+  },
+  "runtime_contract": {
+    "permitted_input": ["native:in_game_main_menu.dismiss:escape"],
+    "forbidden_input": ["debug:teleport", "debug:spawn", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation", "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.6h", "cockpit:game.keep_watch"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "fixture": "r019_keep_watch_meaningful_event_bootstrap_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r019_keep_watch_meaningful_event_bootstrap_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["declared native in-game main-menu dismissal"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r019_keep_watch_meaningful_event_bootstrap_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/r009-m095.json", "source_run": ".userdata/dev-harness/harness_runs/20260811_215708/saved_world"},
+  "proof_gates": [
+    {"id": "r019_meaningful_event_setup_bound", "label": "R-019 deterministic hostile-sighting setup is source-bound and remains zero-credit", "boundary_step": "bind_r019_meaningful_event_bootstrap_cockpit", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "r014_native_semantic_bootstrap_frame", "gameplay_credit": false}}, {"kind": "saved_artifact", "predicate": {"artifact_kind": "native_cockpit_session_descriptor", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}
+  ],
+  "proof_route": {"gates": ["r019_meaningful_event_setup_bound"], "terminal": ["r019_meaningful_event_setup_bound"]},
+  "steps": [
+    {"kind": "press", "label": "dismiss_declared_in_game_main_menu", "keys": ["escape"]},
+    {"kind": "native_semantic_bootstrap", "label": "emit_r019_meaningful_event_bootstrap_frame", "expected_visible_fact": "the canonical launcher exposes a current run-bound native world frame before a later separately authorized guarded probe may use the staged hostile sighting", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world"}},
+    {"kind": "cockpit_live_session", "label": "bind_r019_meaningful_event_bootstrap_cockpit", "bootstrap_only": true, "objective": "Expose only the current run-bound native cockpit descriptor after the semantic world frame; do not observe, qualify, dispatch, continue, or finish an R-019 gameplay action.", "proof_targets": ["same-run native semantic world frame", "same-run cockpit descriptor"], "authority": [], "invariants": ["zero gameplay credit", "no R-019 action dispatch"]}
+  ],
+  "evidence_contract": {"claim": "the disposable source-bound fixture contains exactly the declared hostile-sighting setup for a later separately authorized guarded Keep watch run; this bootstrap has zero gameplay, guarded-stop, matrix, and R-019 acceptance credit", "failure_rule": "a changed source or fixture binding, non-exact monster setup, missing mutation stabilizers, failed cleanup, or any guarded action in this bootstrap leaves R-019 red"}
+}

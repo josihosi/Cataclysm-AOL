@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "name": "r019.keep_watch_off_interruption_bootstrap_mcw",
+  "description": "Zero-credit R-019 setup route. It uses the native debug spawn surface only in a disposable copy to create one exact hostile interruption source, then stops when the primitive wait exposes Cataclysm's native activity-distraction query. It never tests either Keep watch switch.",
+  "profile": "r009-m095",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r013_clean_wait_duration_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r019.off_interruption_bootstrap": "native_debug_spawned_hostile_exposes_current_activity_interruption",
+    "runtime.r019.source_binding": "r013_clean_wait_duration_v1:r009-m095"
+  },
+  "runtime_contract": {
+    "permitted_input": ["native:in_game_main_menu.dismiss:escape", "debug:spawn", "cockpit:game.act", "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.1m"],
+    "forbidden_input": ["cockpit:game.keep_watch", "cockpit:run.continue", "semantic:activity.ignore", "debug:teleport", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "fixture": "r013_clean_wait_duration_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r013_clean_wait_duration_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["native setup-only hostile spawn then one primitive wait"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r013_clean_wait_duration_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/r009-m095.json", "source_run": ".userdata/dev-harness/harness_runs/20260811_215708/saved_world"},
+  "proof_gates": [{"id": "r019_off_interruption_source_bound", "label": "R-019 native setup-only hostile source exposes a current activity interruption", "boundary_step": "observe_r019_off_interruption_source", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_debug_setup_intervention", "schema": "caol-native-debug-spawn-monster-receipt-v1", "creature_id": "mon_zombie_dog", "target_offset": [6, 0, 0], "spawn_count": 1, "gameplay_credit": false, "same_run": true}}, {"kind": "saved_artifact", "predicate": {"artifact_kind": "native_cockpit_transaction", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r019_off_interruption_source_bound"], "terminal": ["r019_off_interruption_source_bound"]},
+  "steps": [
+    {"kind": "press", "label": "dismiss_declared_in_game_main_menu", "keys": ["escape"]},
+    {"kind": "wait", "label": "post_load_r019_off_interruption_bootstrap_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r019_off_interruption_bootstrap_hud_missing"},
+    {"kind": "debug_spawn_monster", "label": "setup_only_spawn_zombie_dog_six_east", "monster_query": "zombie dog", "creature_id": "mon_zombie_dog", "target_offset": [6, 0, 0], "target_keys": ["right", "right", "right", "right", "right", "right"], "friendly": false, "capture_after": true, "expected_visible_fact": "the native debug-spawn surface creates exactly one hostile zombie dog six map squares east in the disposable current run; this is setup support only"},
+    {"kind": "cockpit_act", "label": "observe_r019_off_interruption_source", "action_chain": ["world.wait", "wait.duration_menu", "wait.1m"], "expected_final_action": "activity.ignore", "gameplay_credit": false, "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1, "expected_visible_fact": "the one primitive wait reaches a current native activity interruption after the native setup-only spawn; activity.ignore is advertised but never dispatched"}
+  ],
+  "evidence_contract": {"claim": "the exact disposable setup, current source binding, native interruption trigger, zero-credit classification, immutable report ingestion, and cleanup are retained for a later independently authorized off-switch control; this bootstrap awards no interruption-validation, gameplay, guarded-loop, matrix, or R-019 acceptance credit", "failure_rule": "a missing native interruption, any Keep watch or recovery input, stale or changed binding, missing setup receipt, failed ingestion, or failed cleanup leaves the off-switch interruption control unproved and R-019 red"}
+}

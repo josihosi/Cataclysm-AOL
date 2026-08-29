@@ -1,0 +1,46 @@
+{
+  "manifest_version": 2,
+  "name": "r019.keep_watch_meaningful_event_validation_mcw",
+  "description": "Fresh, separately authorized R-019 guarded-stop validation. It consumes the already-proved staged hostile-sighting fixture but has its own registry authority and immutable report. The first hostile-sighting classification must stop Keep watch before any unsafe continuation.",
+  "profile": "r009-m095",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r019_keep_watch_meaningful_event_bootstrap_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r019.keep_watch_meaningful_event_validation": "separately_authorized_guarded_stop_at_declared_hostile_sighting",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r019.source_binding": "r019_keep_watch_meaningful_event_bootstrap_v1:r009-m095"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.observe", "cockpit:game.keep_watch", "cockpit:run.finish"],
+    "forbidden_input": ["debug:teleport", "debug:spawn", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation", "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.1m", "semantic:activity.ignore"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "config_profile": "dev-harness",
+    "fixture": "r019_keep_watch_meaningful_event_bootstrap_v1",
+    "time_baseline": "current_run_native_semantic_frame",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r019_keep_watch_meaningful_event_bootstrap_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["fresh-frame cockpit Keep watch dispatch only"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r019_keep_watch_meaningful_event_bootstrap_v1/manifest.json", "bootstrap_report_id": "d269c9797b8ab1e59e3ec7dc4eab28d6a7ec8a4529e3989222bcac55fcb31965", "profile": "tools/openclaw_harness/profiles/r009-m095.json", "source_run": ".userdata/dev-harness/harness_runs/20260811_215708/saved_world"},
+  "setup_contract": {"required_monster": {"typeid": "mon_zombie_dog", "offset_ms": [6, 0, 0], "last_updated_at_save_turn": true}, "incidental_absent_typeid": "mon_zombie"},
+  "proof_gates": [{"id": "r019_keep_watch_meaningful_event_guarded_stop", "label": "R-019 guarded Keep watch stops at the declared hostile sighting before unsafe continuation", "boundary_step": "r019_meaningful_event_guarded_live_session", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r019_keep_watch_meaningful_event_guarded_stop"], "terminal": ["r019_keep_watch_meaningful_event_guarded_stop"], "capability_gates": {"capabilities.r019.keep_watch_meaningful_event_validation": {"terminal": ["r019_keep_watch_meaningful_event_guarded_stop"]}}},
+  "steps": [
+    {"kind": "press", "label": "dismiss_declared_in_game_main_menu", "keys": ["escape"], "expected_visible_fact": "the declared native in-game main menu is dismissed before the guarded safety frame is observed"},
+    {"kind": "wait", "label": "post_load_r019_meaningful_event_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r019_meaningful_event_hud_missing", "abort_reason": "the staged source-bound fixture did not reach ordinary gameplay"},
+    {"kind": "native_semantic_bootstrap", "label": "emit_r019_meaningful_event_native_frame", "expected_visible_fact": "the canonical launcher verifies a current run-bound native world frame before it admits the guarded dispatch", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world"}},
+    {"kind": "cockpit_live_session", "label": "r019_meaningful_event_guarded_live_session", "objective": "From the staged hostile-sighting fixture, issue game.keep_watch only from its fresh native safety frame. Stop at the first hostile-sighting classification, preserve partial progress, native receipts, and a post-stop observation, then finish and ingest the immutable report.", "proof_targets": ["a current native safety frame authorizes the guarded dispatch", "the staged hostile sighting is classified explicitly and stops guarded waiting before unsafe continuation", "the final record retains the exact stop reason, partial progress, native receipts, and post-stop observation", "run.finish ingests only this fresh separate authority after accepted cleanup"], "authority": ["game.keep_watch with enabled recipe and evidence-derived target", "run.finish"], "invariants": ["the zero-credit bootstrap report is a source fact, never this run's authority", "dispatch game.keep_watch only from a fresh safety frame", "the declared hostile-sighting classification must stop without a further native dispatch", "finish on the first meaningful, unsafe, unknown, stale, binding-drift, no-progress, or bound-exhaustion condition"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+  ],
+  "evidence_contract": {"claim": "a fresh separately authorized guarded Keep watch transaction consumes the declared staged hostile-sighting source, records its native frame and receipts, and stops fail-closed at the classified meaningful event before unsafe continuation", "failure_rule": "bootstrap-authority reuse, changed source or binding, a non-fresh frame, missing native receipt, absent declared classification, any dispatch after stop, missing post-stop observation, failed ingestion, or failed cleanup leaves R-019 red"}
+}

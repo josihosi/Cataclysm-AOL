@@ -1,0 +1,26 @@
+{
+  "name": "r019_keep_watch_pre_endpoint_popup_v1",
+  "source_fixture": "r013_clean_wait_duration_v1",
+  "source_profile": "live-debug",
+  "description": "Disposable R-019 diagnostic-only control from the same clean wait source as the endpoint fixture.  Restore consumes the measured 208 turns before the first native live frame, so its sole declared EOC is scheduled 238 turns after source-save turn: 30 turns after that frame and 30 turns before wait.1m completes.  The transform retains every inherited queue record byte-for-byte, rejects an inherited duplicate producer identity, and adds no gameplay authority.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION"
+      ]
+    },
+    {
+      "kind": "scheduled_global_eoc",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "eoc": "EOC_OPENCLAW_R019_SAFE_POPUP",
+      "offset_seconds": 238
+    }
+  ]
+}

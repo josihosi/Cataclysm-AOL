@@ -1,0 +1,58 @@
+{
+  "name": "r023_cardinal_movement_bootstrap_v1",
+  "claim": "R-023",
+  "closure_gap": "R-023-live-bootstrap revision 1",
+  "description": "Disposable source-bound R-023 movement footing.  It preserves the named avatar save, clears local active monsters, makes the east, south, and west cardinal tiles walkable forest floor and furniture-free, and places one blocking locker north.  This declares setup facts only; movement behavior, partial progress, and destination validation remain separate zero-credit work.",
+  "source_fixture": "r009_m059_preopportunity_bootstrap",
+  "source_profile": "live-debug",
+  "source_binding": {
+    "owner": "fixture_source_binding",
+    "source_fixture": "r009_m059_preopportunity_bootstrap",
+    "source_profile": "live-debug",
+    "world": "McWilliams"
+  },
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO"]
+    },
+    {
+      "kind": "clear_avatar_auto_move",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip"
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": []
+    },
+    {
+      "kind": "map_terrain_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "terrain": [
+        {"id": "t_forestfloor", "offset_ms": [1, 0, 0]},
+        {"id": "t_forestfloor", "offset_ms": [0, 1, 0]},
+        {"id": "t_forestfloor", "offset_ms": [-1, 0, 0]}
+      ]
+    },
+    {
+      "kind": "map_furniture_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "furniture": [
+        {"id": "f_null", "offset_ms": [1, 0, 0]},
+        {"id": "f_null", "offset_ms": [0, 1, 0]},
+        {"id": "f_null", "offset_ms": [-1, 0, 0]},
+        {"id": "f_locker", "offset_ms": [0, -1, 0]}
+      ]
+    }
+  ],
+  "r023_movement_scene": {
+    "avatar_identity": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "free_cardinal_offsets_ms": [[1, 0, 0], [0, 1, 0], [-1, 0, 0]],
+    "blocked_cardinal_offset_ms": [0, -1, 0],
+    "blocked_furniture_id": "f_locker",
+    "cleanup_owner": "r023_cardinal_movement_bootstrap_v1",
+    "evidence_ceiling": "none_for_disposable_movement_setup"
+  }
+}

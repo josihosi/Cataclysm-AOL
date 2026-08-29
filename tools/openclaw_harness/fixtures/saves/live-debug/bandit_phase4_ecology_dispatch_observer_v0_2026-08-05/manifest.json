@@ -32,6 +32,17 @@
   },
   "save_transforms": [
     {
+      "kind": "bandit_projection_leases",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "activity_id": "overmap_special:bandit_camp@140,51,0#structural",
+      "owner": "local",
+      "generation": 1,
+      "handoff_epoch": 1,
+      "last_advanced_minutes": 8280,
+      "npc_ids": [4, 5]
+    },
+    {
       "kind": "player_mutations",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "mutations": ["DEBUG_CLAIRVOYANCE"]

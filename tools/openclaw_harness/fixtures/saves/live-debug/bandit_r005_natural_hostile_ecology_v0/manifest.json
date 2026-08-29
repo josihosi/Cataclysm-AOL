@@ -1,0 +1,46 @@
+{
+  "name": "bandit_r005_natural_hostile_ecology_v0",
+  "source_fixture": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "R-005 natural hostile-ecology footing with mandatory non-combat observer stabilizers.",
+  "save_transforms": [
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "lead_kind": "structural_bounty",
+      "lead_id": "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@138,52,0",
+      "status": "scout_confirmed",
+      "target_id": "forest",
+      "target_omt": [138, 52, 0],
+      "radius_omt": 0,
+      "source_key": "fixture_r005_natural_hostile_ecology_forest",
+      "source_summary": "R-005 fixture-owned remembered forest opportunity; stale local-contact pressure cleared before natural scheduler run",
+      "first_seen_minutes": -720,
+      "last_seen_minutes": -720,
+      "last_checked_minutes": -720,
+      "last_scouted_minutes": -720,
+      "bounty": 8,
+      "threat": 0,
+      "confidence": 3,
+      "threat_confirmed": true,
+      "target_alert": false,
+      "scout_seen": false,
+      "generated_by_this_camp_routine": true,
+      "clear_active_pressure": true,
+      "mark_cleared_active_members_unready": false
+    },
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION"
+      ]
+    }
+  ]
+}

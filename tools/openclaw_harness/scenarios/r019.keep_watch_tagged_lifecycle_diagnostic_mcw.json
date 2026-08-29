@@ -1,0 +1,44 @@
+{
+  "manifest_version": 2,
+  "name": "r019.keep_watch_tagged_lifecycle_diagnostic_mcw",
+  "description": "Current zero-credit R-019 diagnostic route. It performs exactly one native primitive minute against the declared tagged hostile and preserves only that run-bound lifecycle stream; it cannot dispatch Keep watch, recover an interruption, or grant feature credit.",
+  "profile": "r009-m095",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r019_keep_watch_off_positive_progress_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "r019_lifecycle_actor_id": "r019-zombie-dog-positive-progress-v1",
+  "capabilities": {
+    "capabilities.r019.tagged_lifecycle_diagnostic": "one_primitive_diagnostic_minute_preserves_the_exact_tagged_hostile_lifecycle_stream_without_feature_credit",
+    "runtime.r019.source_binding": "r019_keep_watch_off_positive_progress_v1:r009-m095"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.1m"],
+    "forbidden_input": ["cockpit:game.keep_watch", "cockpit:run.continue", "semantic:activity.ignore", "debug:spawn", "debug:teleport", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "fixture": "r019_keep_watch_off_positive_progress_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r019_keep_watch_off_positive_progress_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["one primitive diagnostic minute"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r019_keep_watch_off_positive_progress_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/r009-m095.json"},
+  "setup_contract": {"required_monster": {"typeid": "mon_zombie_dog", "offset_ms": [4, 6, 0], "last_updated_at_save_turn": true}, "incidental_absent_typeid": "mon_zombie"},
+  "proof_gates": [{"id": "r019_tagged_lifecycle_diagnostic", "label": "R-019 current tagged-hostile diagnostic minute retains a zero-credit native transaction", "boundary_step": "r019_tagged_lifecycle_diagnostic_minute", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_cockpit_transaction", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r019_tagged_lifecycle_diagnostic"], "terminal": ["r019_tagged_lifecycle_diagnostic"], "capability_gates": {"capabilities.r019.tagged_lifecycle_diagnostic": {"terminal": ["r019_tagged_lifecycle_diagnostic"]}}},
+  "steps": [
+    {"kind": "wait", "label": "post_load_r019_tagged_lifecycle_diagnostic_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r019_tagged_lifecycle_diagnostic_hud_missing"},
+    {"kind": "native_semantic_bootstrap", "label": "emit_r019_tagged_lifecycle_diagnostic_native_frame", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_act", "label": "r019_tagged_lifecycle_diagnostic_minute", "action_chain": ["world.wait", "wait.duration_menu", "wait.1m"], "gameplay_credit": false, "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1, "expected_visible_fact": "one primitive minute runs under the exact tagged diagnostic binding; the resulting run-owned JSONL is diagnostic evidence only"}
+  ],
+  "evidence_contract": {"claim": "a current registry-authorized diagnostic route can run exactly one primitive minute and retain the exact tagged hostile lifecycle stream with zero feature credit", "failure_rule": "missing actor tag, missing run-bound lifecycle stream, guarded dispatch, interruption recovery, absent primitive transaction, failed immutable ingestion, or failed cleanup yields no R-019 feature or repair credit"}
+}

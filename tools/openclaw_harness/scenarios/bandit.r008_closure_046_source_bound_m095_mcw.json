@@ -1,0 +1,131 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r008_closure_046_source_bound_m095_mcw",
+  "description": "R-008 closure M095 continues the exact ordinary seed-830205385 world without a terrain, actor, ecology, lead, lifecycle, or save transform.  It first binds the source world and player location, then permits only native wait, save-and-quit, and relaunch actions until the first persisted production boundary fails.",
+  "profile": "r008-closure-046",
+  "world": "R008Closure045Seed830205385",
+  "fixture": "r008_closure_046_source_bound_m095",
+  "fixture_profile": "dev-harness",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION"
+  ],
+  "capture_world_after": true,
+  "wait_input_trace": true,
+  "capabilities": {
+    "world.r008_closure_046.fixed_native_footing": {
+      "raw_seed": "830205385",
+      "world": "R008Closure045Seed830205385",
+      "camp_omt": "177,13,0",
+      "hostile_origin_omt": "177,9,0",
+      "watch_omt": "174,13,0",
+      "watch_route_cost": 10,
+      "save_transforms": ["player_mutations"],
+      "stabilizer_traits": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION"
+      ]
+    },
+    "capabilities.shakedown.transform_free_m095": "native_wait_save_quit_relaunch"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:escape", "press:|", "press:8", "press:S", "press:Y", "press:q", "press:left", "press:enter"],
+    "forbidden_input": ["debug:teleport", "debug:ecology_edit", "debug:spawn", "debug:inject_camp", "debug:inject_lead", "debug:inject_lifecycle", "raw-save-rewrite", "fixture-save-transform", "segment-splice", "rollback"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "grants_gameplay_proof": false,
+    "platform": ["macos"],
+    "profile": "r008-closure-046",
+    "fixture": "r008_closure_046_source_bound_m095",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r008-closure-046",
+      "fixture": "r008_closure_046_source_bound_m095",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": ["ordinary wait", "native save-and-quit", "native relaunch"],
+      "cleanup": true
+    }
+  },
+  "source_binding": {
+    "bootstrap_artifact": ".userdata/r008-closure-045/r008-closure-045-footing-bootstrap.json",
+    "raw_seed": 830205385,
+    "world": "R008Closure045Seed830205385",
+    "world_master_gsav_sha256": "cdec3aed809cd5ded71618fc75a0ae05c007ce70e0d688aea8ff31a5a36000e0",
+    "camp": "overmap_special:bandit_camp@177,13,0",
+    "hostile_origin_omt": [177, 9, 0],
+    "lawful_watch_omt": [174, 13, 0],
+    "watch_route_cost": 10
+  },
+  "source_binding_validation": {
+    "validator": "r008_closure_046_source_binding",
+    "bootstrap_artifact": ".userdata/r008-closure-045/r008-closure-045-footing-bootstrap.json",
+    "capabilities": [
+      "world.r008_closure_046.fixed_native_footing",
+      "capabilities.shakedown.transform_free_m095"
+    ]
+  },
+  "setup_receipt_contract": {
+    "kind": "r008_source_bound_fixture",
+    "world": "R008Closure045Seed830205385",
+    "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+    "stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+    "source_binding": {
+      "bootstrap_artifact": ".userdata/r008-closure-045/r008-closure-045-footing-bootstrap.json",
+      "raw_seed": 830205385,
+      "world_name": "R008Closure045Seed830205385",
+      "world_master_gsav_sha256": "cdec3aed809cd5ded71618fc75a0ae05c007ce70e0d688aea8ff31a5a36000e0",
+      "native_camp": "overmap_special:bandit_camp@177,13,0",
+      "hostile_origin_omt": [177, 9, 0],
+      "watch_omt": [174, 13, 0],
+      "watch_route_cost": 10
+    }
+  },
+  "proof_route": {
+    "precondition": ["post_load_hud", "audit_source_player_omt"],
+    "production_behavior": ["ordinary_first_6_hours", "audit_native_camp_bootstrap"],
+    "terminal_persistence": ["audit_turn_after_native_wait", "post_relaunch_hud"],
+    "artifact_verdict": ["audit_native_camp_bootstrap"],
+    "disallowed_shortcuts": ["audit_source_player_omt"]
+  },
+  "steps": [
+    {"kind":"press","label":"dismiss_inherited_actions_overlay","keys":["escape"],"settle_seconds":0.5,"expected_visible_fact":"the declared startup Escape dismisses the native blocking actions overlay before source-world lifecycle input"},
+    {"kind":"wait","label":"post_load_hud","seconds":2.0,"capture_after":true,"extract_text_after_capture":true,"expected_screen_text_after_contains":["Move:","Wield:"],"rendered_hud_identity":["Move:","Wield:"],"abort_on_screen_text_expectation_failure":true,"abort_verdict":"blocked_r008_closure_046_source_world_not_playable","abort_reason":"the exact transform-free source world did not reach ordinary gameplay"},
+    {"kind":"audit_saved_game_turn","label":"audit_source_player_omt","required_player_abs_omt":[139,4,0],"abort_on_metadata_failure":true,"abort_verdict":"blocked_r008_closure_046_source_player_binding_mismatch","abort_reason":"the installed save did not retain the bootstrap player's exact OMT before lifecycle input"},
+    {"kind":"audit_saved_game_turn","label":"audit_turn_before_native_wait","record_baseline":true,"abort_on_metadata_failure":true,"abort_verdict":"blocked_r008_closure_046_turn_baseline_missing","abort_reason":"the source world had no readable saved player turn before ordinary lifecycle input"},
+    {"kind":"long_wait","label":"ordinary_first_6_hours","choice_key":"8","expected_duration":"6h","pre_menu_choice_key":"w","require_native_wait_menu_guards":true,"require_wait_input_trace":true,"pre_menu_expected_screen_text_contains":["Wait a while","Set an alarm"],"completion_wait_seconds":90.0,"completion_artifact_timeout_seconds":420.0,"minimum_artifact_elapsed_minutes":360,"allow_artifact_elapsed_without_menu_ocr":true,"allow_exact_artifact_meridiem_ambiguity":true,"expected_visible_fact":"ordinary gameplay advances the source-bound world without modifying its footing"},
+    {"kind":"press","label":"open_native_full_save_after_first_wait","keys":["S"],"settle_seconds":1.0,"capture_after":true,"extract_text_after_capture":true,"expected_screen_text_after_contains":["Case Sensitive"],"abort_on_screen_text_expectation_failure":true,"abort_verdict":"blocked_r008_closure_046_native_save_prompt_missing","abort_reason":"ordinary lifecycle input could not reach the native Save-and-Quit confirmation"},
+    {"kind":"press","label":"confirm_native_full_save_after_first_wait","keys":["Y"],"settle_seconds":4.0},
+    {"kind":"audit_saved_game_turn","label":"audit_turn_after_native_wait","baseline_label":"audit_turn_before_native_wait","required_min_delta_turns":21600,"abort_on_metadata_failure":true,"abort_verdict":"blocked_r008_closure_046_native_wait_not_persisted","abort_reason":"the native six-hour wait did not persist a matching saved turn advance"},
+    {"kind":"audit_saved_bandit_live_world_state","label":"audit_native_camp_bootstrap","required_site_id_contains":"overmap_special:bandit_camp@177,13,0","abort_on_metadata_failure":true,"abort_verdict":"blocked_r008_closure_046_native_camp_not_registered","abort_reason":"the production lifecycle did not persist the source-bound native camp before dispatch evidence"},
+    {"kind":"press","label":"open_native_main_menu_quit_confirmation","keys":["q"],"settle_seconds":1.0,"capture_after":true,"expected_visible_fact":"the native main-menu quit confirmation owns an active semantic modal instance after saving ordinary lifecycle input","semantic_ui_expectation":{"intent":"main_menu_quit_confirmation","valid_actions":["left","enter"]},"abort_on_semantic_ui_failure":true,"abort_verdict":"blocked_r008_closure_046_main_menu_quit_prompt_missing","abort_reason":"the native saved world did not expose the authoritative main-menu quit confirmation"},
+    {"kind":"press","label":"confirm_native_process_exit","keys":["left","enter"],"settle_seconds":2.0,"expected_visible_fact":"the original process exits before the persisted source world reloads"}
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label":"confirm_native_process_exit",
+    "terminal_exit_timeout_seconds":30.0,
+    "steps":[
+      {"kind":"wait","label":"post_relaunch_hud","seconds":2.0,"capture_after":true,"extract_text_after_capture":true,"expected_screen_text_after_contains":["Move:","Wield:"],"rendered_hud_identity":["Move:","Wield:"],"abort_on_screen_text_expectation_failure":true,"abort_verdict":"blocked_r008_closure_046_native_relaunch_failed","abort_reason":"the persisted transform-free source world did not reload into ordinary gameplay"}
+    ]
+  },
+  "evidence_contract": {
+    "claim":"the exact seed-830205385 source world reaches the first persisted native production lifecycle boundary without a transform; dispatch evidence is preserved only if it occurs before that boundary fails",
+    "failure_rule":"terminalize at the first failed transition and do not inject, repair, resume, roll back, splice, or reinterpret later lifecycle state"
+  }
+}

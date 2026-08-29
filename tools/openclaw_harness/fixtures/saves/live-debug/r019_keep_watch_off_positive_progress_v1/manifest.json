@@ -1,0 +1,34 @@
+{
+  "name": "r019_keep_watch_off_positive_progress_v1",
+  "source_fixture": "bandit_r002_m040_post_abort_recenter_return_v0_2026-08-22",
+  "source_profile": "live-debug",
+  "description": "Disposable R-019 off-switch fixture. It binds directly to the neutral save source, clears inherited avatar auto-move state and active monsters, then stages one tagged hostile zombie dog at saved [4,6,0]. The receipt binds saved and live absolute positions before accepting its cockpit-relative timed-entry coordinate. The target is free and visible, starts outside production DANGEROUS_PROXIMITY=5, and has a one-tile traversable path into that boundary during the declared one-minute primitive wait; setup is auditable and earns no gameplay credit.",
+  "save_transforms": [
+    {
+      "kind": "clear_avatar_auto_move",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip"
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "require_free_target": true,
+      "require_native_close_hostile_qualification": true,
+      "primitive_wait_minutes": 1,
+      "maximum_boundary_entry_steps": 1,
+      "monsters": [
+        {
+          "fixture_actor_id": "r019-zombie-dog-positive-progress-v1",
+          "typeid": "mon_zombie_dog",
+          "offset_ms": [4, 6, 0],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100,
+          "aggro_character": true
+        }
+      ]
+    }
+  ]
+}

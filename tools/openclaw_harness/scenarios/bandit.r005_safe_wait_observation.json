@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r005_safe_wait_observation",
+  "description": "Zero-credit observation of the unchanged R-005 route and natural ecology wait.  The ordinary route arrives with native Safe Mode already off, and that state is preserved into the wait so dynamically encountered threats cannot cancel avatar auto-move; it has no hostile-dialog authorization and cannot contribute certification evidence.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r005_safe_wait_observation_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.bandit.r005.safe_wait_observation": "zero_credit_preserved_native_safe_mode_off_route_and_wait"
+  },
+  "runtime_contract": {
+    "permitted_input": ["ordinary-overmap-route", "long_wait:6h"],
+    "forbidden_input": ["diagnostic_replay", "checkpoint_rollback", "segment_splice", "replacement_world", "replacement_identity", "debug:ecology_edit", "raw-save-rewrite", "hostile-dialog-authorization"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_r005_safe_wait_observation_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "bandit_r005_safe_wait_observation_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "cleanup": true, "input": ["ordinary-overmap-route", "long_wait:6h"]},
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {"kind": "wait", "label": "declared_zero_credit_observation", "seconds": 1, "capture_after": true},
+    {"kind": "ordinary_overmap_route_constructor", "label": "departure_and_overmap_advance", "origin_omt": [140, 41, 0], "destination_omt": [140, 31, 0], "cursor_keys": ["up", "up", "up", "up", "up", "up", "up", "up", "up", "up"], "route_key": "W", "abort_on_metadata_failure": true},
+    {"kind": "type", "label": "confirm_departure_route", "text": "W", "settle_seconds": 0.5},
+    {"kind": "type", "label": "accept_departure_route", "text": "Y", "settle_seconds": 180, "native_travel_stabilization": {"mode": "continue_exact_hostile_auto_move_until_hud", "require_completed_destination_cleared": true, "expected_destination_omt": [140, 31, 0]}},
+    {"kind": "long_wait", "label": "observe_safe_natural_ecology_window", "choice_key": "8", "expected_duration": "6h", "pre_menu_choice_key": "w", "allow_artifact_elapsed_without_menu_ocr": true, "completion_wait_seconds": 30, "completion_artifact_timeout_seconds": 120, "artifact_state_patterns": ["bandit_live_world"]},
+    {"kind": "audit_log_contains", "label": "observe_scheduler_reached", "required_line_patterns": [["bandit_live_world"]]}
+  ],
+  "proof_gates": [
+    {"id": "zero_credit_observation", "label": "Zero-credit safe wait observation", "boundary_step": "observe_scheduler_reached", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}
+  ],
+  "proof_route": {"gates": ["zero_credit_observation"], "terminal": ["zero_credit_observation"], "capability_gates": {"capabilities.bandit.r005.safe_wait_observation": {"terminal": ["zero_credit_observation"]}}}
+}

@@ -1,0 +1,30 @@
+{
+  "profile": "dev-harness",
+  "world": "R008Closure045Seed830205385",
+  "captured_at": "2026-08-25T04:56:15+0200",
+  "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/dev-harness/save/R008Closure045Seed830205385",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION"
+      ]
+    }
+  ],
+  "source_binding": {
+    "bootstrap_artifact": ".userdata/r008-closure-045/r008-closure-045-footing-bootstrap.json",
+    "raw_seed": 830205385,
+    "world_name": "R008Closure045Seed830205385",
+    "world_master_gsav_sha256": "cdec3aed809cd5ded71618fc75a0ae05c007ce70e0d688aea8ff31a5a36000e0",
+    "native_camp": "overmap_special:bandit_camp@177,13,0",
+    "hostile_origin_omt": [177, 9, 0],
+    "watch_omt": [174, 13, 0],
+    "watch_route_cost": 10
+  }
+}

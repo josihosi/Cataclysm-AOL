@@ -3,6 +3,21 @@
   "claim": "R-009",
   "gap": "G-002 revision 4",
   "name": "r009_m059_preopportunity_bootstrap",
+  "description": "Natural pre-opportunity footing with observer-only playtest stabilizers; the mutation is setup support and carries no ecology credit.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION"
+      ]
+    }
+  ],
   "world": "McWilliams",
   "source_run": ".userdata/dev-harness/harness_runs/20260811_215708/saved_world",
   "creation_route": "current executable ordinary load -> visible Save and quit -> visible main-menu Quit confirmation",

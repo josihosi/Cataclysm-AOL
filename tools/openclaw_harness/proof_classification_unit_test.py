@@ -29,6 +29,8 @@ from startup_harness import (  # noqa: E402
     audit_saved_weather_state,
     apply_direct_child_liveness,
     classify_blocking_interruption,
+    classify_wait_input_trace,
+    classify_run_bound_native_wait,
     classify_wait_screen_text,
     build_feature_debug_guard,
     build_runtime_binding,
@@ -44,10 +46,12 @@ from startup_harness import (  # noqa: E402
     compact_probe_report_for_stdout,
     collect_weather_audits_from_step_reports,
     count_pause_dispatches_since,
+    declared_startup_overlay_action_is_satisfied,
     extract_window_build_info,
     execute_long_wait_action,
     debug_map_editor_select_feature_and_apply,
     execute_probe_steps,
+    evaluate_structured_proof_gates,
     filter_debug_log_text,
     log_file_identity,
     missing_peekaboo_capabilities,
@@ -64,17 +68,88 @@ from startup_harness import (  # noqa: E402
     repeatability_run_is_green,
     repeatability_run_summary,
     run_repeatability,
+    run_probe_post_relaunch,
     runtime_relevant_worktree_changes,
     screen_checkpoint_verdict,
+    scenario_requests_startup_overlay_dismissal,
     should_auto_acknowledge_after_step,
     startup_proof_classification,
     startup_result_status,
+    startup_action_menu_overlay_is_active,
     startup_screen_probe_classification,
     step_interruption_flags,
     summarize_peekaboo_image_capture,
     summarize_probe_step_ledger,
     summarize_wait_step_ledgers,
+    wait_input_trace_child_environment,
 )
+
+
+class RunBoundNativeWaitClassificationTest(unittest.TestCase):
+    @staticmethod
+    def receipt() -> Dict[str, Any]:
+        return {
+            "run_id": "run-084",
+            "receipt_id": "wait-084",
+            "start_seconds_since_midnight": 8 * 60 * 60,
+            "end_seconds_since_midnight": 14 * 60 * 60,
+            "expected_seconds": 6 * 60 * 60,
+        }
+
+    def evidence(self, kind: str = "native_wait_completed") -> Dict[str, Any]:
+        return {
+            "run_id": "run-084",
+            "receipt_id": "wait-084",
+            "source": "native_wait_ui",
+            "kind": kind,
+        }
+
+    def test_accepts_current_receipt_bound_native_completion(self) -> None:
+        result = classify_run_bound_native_wait(
+            self.receipt(), self.evidence(), current_run_id="run-084",
+        )
+
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["observed_seconds"], 6 * 60 * 60)
+
+    def test_accepts_current_receipt_bound_native_interruption(self) -> None:
+        result = classify_run_bound_native_wait(
+            self.receipt(), self.evidence("native_wait_interrupted"), current_run_id="run-084",
+        )
+
+        self.assertEqual(result["status"], "interrupted_or_prompt_visible")
+
+    def test_rejects_stale_receipt_wrong_run_duration_and_unproved_terminal_fact(self) -> None:
+        receipt = self.receipt()
+        receipt["end_seconds_since_midnight"] = 13 * 60 * 60
+        evidence = self.evidence("")
+        evidence["run_id"] = "stale-run"
+        evidence["receipt_id"] = "other-wait"
+        result = classify_run_bound_native_wait(receipt, evidence, current_run_id="run-084")
+
+        self.assertEqual(result["status"], "unproved")
+        self.assertIn("wrong_or_missing_current_run", result["failures"])
+        self.assertIn("missing_or_mismatched_wait_receipt", result["failures"])
+        self.assertIn("wait_duration_mismatch", result["failures"])
+        self.assertIn("native_wait_termination_unproved", result["failures"])
+
+
+class StartupOverlayInputContractTest(unittest.TestCase):
+    def test_explicit_first_escape_is_the_only_positive_overlay_authority(self) -> None:
+        self.assertTrue(scenario_requests_startup_overlay_dismissal([
+            {"kind": "press", "keys": ["escape"]},
+            {"kind": "adaptive_semantic_window"},
+        ]))
+
+    def test_no_declared_escape_fails_closed_without_startup_input(self) -> None:
+        self.assertFalse(scenario_requests_startup_overlay_dismissal([]))
+        self.assertFalse(scenario_requests_startup_overlay_dismissal([
+            {"kind": "wait"},
+            {"kind": "adaptive_semantic_window"},
+        ]))
+        self.assertFalse(scenario_requests_startup_overlay_dismissal([
+            {"kind": "press", "keys": ["escape", "return"]},
+        ]))
 
 
 class WaitScreenClassificationTest(unittest.TestCase):
@@ -159,7 +234,45 @@ class AdvanceTurnInputContractTest(unittest.TestCase):
     def test_debug_menu_brace_uses_physical_hotkey(self):
         self.assertEqual(peekaboo_physical_hotkey_for_key("}"), "shift,]")
 
+    def test_native_wait_pipe_uses_character_input_not_unsupported_hotkey(self):
+        self.assertEqual(peekaboo_physical_hotkey_for_key("|"), "")
+
+    @patch("startup_harness.peekaboo_hotkey")
+    @patch("startup_harness.peekaboo_type_text")
+    def test_native_wait_pipe_delivers_the_bound_character(self, type_mock, hotkey_mock):
+        peekaboo_press_sequence(17, ["|"])
+        type_mock.assert_called_once_with(17, "|", delay_ms=200)
+        hotkey_mock.assert_not_called()
+
+    @patch("startup_harness.peekaboo_type_text")
+    @patch("startup_harness.peekaboo_focus_pid", return_value={"ok": True})
+    @patch("startup_harness.time.sleep")
+    def test_semantic_text_waits_for_focused_game_before_delivery(self, sleep_mock, focus_mock,
+            type_mock):
+        # The native dispatcher owns this focused text path.  The pause is the
+        # configured input delay, not an additional retry or guessed key.
+        from startup_harness import dispatch_semantic_input
+
+        dispatch_semantic_input(17, "|", delay_ms=200)
+
+        focus_mock.assert_called_once_with(17)
+        sleep_mock.assert_called_once_with(0.2)
+        type_mock.assert_called_once_with(17, "|", delay_ms=200, focus_pid=False)
+
+    @patch("startup_harness.peekaboo_type_text")
+    @patch("startup_harness.peekaboo_focus_pid", return_value={"ok": False})
+    def test_semantic_text_fails_closed_when_game_focus_cannot_be_verified(self, focus_mock,
+            type_mock):
+        from startup_harness import dispatch_semantic_input
+
+        with self.assertRaisesRegex(RuntimeError, "semantic text focus failed"):
+            dispatch_semantic_input(17, "|")
+
+        focus_mock.assert_called_once_with(17)
+        type_mock.assert_not_called()
+
     def test_named_navigation_keys_use_physical_press_mapping(self):
+        self.assertEqual(peekaboo_physical_hotkey_for_key("escape"), "escape")
         self.assertEqual(peekaboo_physical_hotkey_for_key("left"), "left")
         self.assertEqual(peekaboo_physical_hotkey_for_key("right"), "right")
         self.assertEqual(peekaboo_physical_hotkey_for_key("up"), "up")
@@ -189,6 +302,30 @@ class AdvanceTurnInputContractTest(unittest.TestCase):
             peekaboo_press_sequence(17, [".", "right"], focus_once=True)
         focus_mock.assert_not_called()
 
+    @patch("startup_harness.run_json_command")
+    @patch("startup_harness.wait_for_pid_exit", return_value=True)
+    def test_post_relaunch_forwards_declared_runtime_gates(self, _exit_mock, command_mock):
+        command_mock.return_value = (0, {
+            "ok": True,
+            "pid": 18,
+            "proof_classification": {"startup_clean_for_feature_steps": True},
+            "focus": {"ok": True},
+        }, "", "")
+        result = run_probe_post_relaunch(
+            initial_pid=17,
+            profile="test-profile",
+            config_profile="test-profile",
+            world="McWilliams",
+            scenario_name="test-scenario",
+            registry_launch_receipt="",
+            terminal_exit_timeout_seconds=1.0,
+            startup_dismiss_blocking_overlay=True,
+            wait_input_trace=True,
+        )
+        self.assertEqual(result["status"], "ready")
+        self.assertIn("--startup-dismiss-blocking-overlay", command_mock.call_args.args[0])
+        self.assertIn("--wait-input-trace", command_mock.call_args.args[0])
+
     @patch("startup_harness.time.sleep")
     @patch("startup_harness.peekaboo_press_sequence")
     @patch("startup_harness.apply_uilist_filter")
@@ -199,6 +336,113 @@ class AdvanceTurnInputContractTest(unittest.TestCase):
         )
         target_call = next(call for call in press_mock.call_args_list if call.args[1] == ["right"])
         self.assertTrue(target_call.kwargs["focus_once"])
+
+
+class WaitInputTraceContractTest(unittest.TestCase):
+    run_id = "selected-run"
+
+    def classify(self, *lines: str) -> Dict[str, Any]:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            trace = Path(temp_dir) / "debug.log"
+            trace.write_text("\n".join(lines) + "\n", encoding="utf-8")
+            return classify_wait_input_trace(trace, 0, run_id=self.run_id)
+
+    def sdl_event(self, event: str = "keydown") -> str:
+        return (
+            "openclaw_harness_wait_input_trace: component=sdl_input "
+            f"event={event} run_id=\"{self.run_id}\""
+        )
+
+    def resolution(self, *, action: str, rejection: str) -> str:
+        return (
+            "openclaw_harness_wait_input_trace: component=input_resolution event=resolved "
+            f"run_id=\"{self.run_id}\" resolved_action=\"{action}\" "
+            f"rejection_reason={rejection}"
+        )
+
+    def dispatch(self) -> str:
+        return (
+            "openclaw_harness_wait_input_trace: component=action_dispatch event=invoke_wait "
+            f"run_id=\"{self.run_id}\" action_id=\"wait\""
+        )
+
+    def menu_selection(self, action: str = "wait.1h") -> str:
+        return (
+            "openclaw_harness_wait_input_trace: component=wait_menu event=selection "
+            f"run_id=\"{self.run_id}\" action_id=\"{action}\" accepted=yes"
+        )
+
+    def test_missing_event_stops_at_raw_sdl_delivery(self) -> None:
+        result = self.classify()
+        self.assertEqual(result["status"], "missing_sdl_event")
+        self.assertEqual(result["first_divergence"], "raw_sdl_event_delivery")
+
+    def test_wrong_run_trace_is_not_credited_to_selected_run(self) -> None:
+        result = self.classify(
+            "openclaw_harness_wait_input_trace: component=sdl_input event=keydown "
+            "run_id=\"other-run\"",
+        )
+        self.assertEqual(result["status"], "foreign_run_only")
+        self.assertEqual(wait_input_trace_child_environment(False, self.run_id), {})
+        self.assertEqual(
+            wait_input_trace_child_environment(True, self.run_id),
+            {"OPENCLAW_HARNESS_WAIT_INPUT_TRACE_RUN_ID": self.run_id},
+        )
+
+    def test_wrong_context_is_a_resolution_rejection(self) -> None:
+        result = self.classify(self.sdl_event(), self.resolution(action="ERROR", rejection="wrong_context"))
+        self.assertEqual(result["status"], "wrong_context")
+
+    def test_modifier_mismatch_is_a_resolution_rejection(self) -> None:
+        result = self.classify(self.sdl_event(), self.resolution(action="ERROR", rejection="modifier_mismatch"))
+        self.assertEqual(result["status"], "modifier_mismatch")
+
+    def test_text_and_key_events_are_both_observable(self) -> None:
+        result = self.classify(
+            self.sdl_event("keydown"), self.sdl_event("textinput"),
+            self.resolution(action="ERROR", rejection="unmapped_input"),
+        )
+        self.assertEqual(result["sdl_event_count"], 2)
+        self.assertEqual(result["status"], "unmapped_input")
+
+    def test_successful_wait_resolution_requires_dispatch_evidence(self) -> None:
+        result = self.classify(self.sdl_event(), self.resolution(action="wait", rejection="none"))
+        self.assertEqual(result["status"], "action_dispatch_not_observed")
+        self.assertEqual(result["first_divergence"], "final_game_action_dispatch")
+
+    def test_successful_wait_dispatch_reaches_wait_menu_or_activity(self) -> None:
+        result = self.classify(
+            self.sdl_event(), self.resolution(action="wait", rejection="none"), self.dispatch(),
+        )
+        self.assertEqual(result["status"], "wait_dispatched")
+        self.assertEqual(result["first_divergence"], "wait_menu_or_activity")
+
+    def test_wait_menu_selection_is_a_native_duration_dispatch(self) -> None:
+        result = self.classify(
+            self.sdl_event(), self.resolution(action="CONFIRM", rejection="none"),
+            self.menu_selection(),
+        )
+        self.assertEqual(result["status"], "wait_menu_selected")
+        self.assertEqual(result["first_divergence"], "wait_activity")
+
+
+class StartupActionMenuTraceContractTest(unittest.TestCase):
+    def test_live_action_menu_trace_is_detected(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            trace = Path(temp_dir) / "debug.log"
+            trace.write_bytes(
+                b"openclaw_harness_ui_trace: component=action_menu event=open\n"
+            )
+            self.assertTrue(startup_action_menu_overlay_is_active(trace))
+
+    def test_other_action_trace_does_not_trigger_dismissal(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            trace = Path(temp_dir) / "debug.log"
+            trace.write_bytes(
+                b"openclaw_harness_ui_trace: component=action_menu event=open\n"
+                b"openclaw_harness_ui_trace: component=action_menu event=return\n"
+            )
+            self.assertFalse(startup_action_menu_overlay_is_active(trace))
 
 
 class RuntimeBindingContractTest(unittest.TestCase):
@@ -1112,11 +1356,28 @@ class BlockingInterruptionTest(unittest.TestCase):
         self.assertEqual(degraded_ocr["status"], "unknown_prompt")
         self.assertEqual(degraded_ocr["response_key"], "")
         self.assertTrue(degraded_ocr["release_blocking"])
+        garbled_ignore = self.classify(
+            "Safe:\nTired\nYou hear a noise\n"
+            "monster) x 20\nturn it orf, presde ito ignore"
+        )
+        self.assertEqual(garbled_ignore["status"], "clear")
+        self.assertEqual(garbled_ignore["classification"], "retained_safe_mode_hostile_message")
         self.assertEqual(repeated_ocr["status"], "unknown_prompt")
         self.assertEqual(repeated_ocr["response_key"], "")
         self.assertTrue(repeated_ocr["release_blocking"])
         self.assertEqual(partial["status"], "unknown_prompt")
         self.assertEqual(partial["response_key"], "")
+
+    def test_current_wait_banner_is_not_a_partial_safe_mode_prompt(self) -> None:
+        wait_activity = self.classify(
+            "Press . or 5 to interrupt\n"
+            "1 waiting: 232\n"
+            "You hear a crash from the northwest"
+        )
+
+        self.assertEqual(wait_activity["status"], "clear")
+        self.assertEqual(wait_activity["classification"], "wait_activity_in_progress")
+        self.assertEqual(wait_activity["response_key"], "")
 
     def test_destructive_and_unknown_confirmations_never_get_an_auto_key(self) -> None:
         save_prompt = self.classify("Save and quit? (Case Sensitive) Y/N")
@@ -1456,6 +1717,23 @@ class BlockingInterruptionTest(unittest.TestCase):
             {"auto_acknowledge_interruptions": False},
         ))
 
+    @patch("startup_harness.peekaboo_focus_pid")
+    @patch("startup_harness.peekaboo_press_sequence")
+    def test_ordinary_overmap_route_is_a_supported_live_step(
+        self, press_mock: Any, focus_mock: Any
+    ) -> None:
+        focus_mock.return_value = {"ok": True}
+        with tempfile.TemporaryDirectory() as temp_dir:
+            reports = execute_probe_steps(
+                42,
+                Path(temp_dir),
+                [{"kind": "ordinary_overmap_route", "label": "departure", "route_key": "W"}],
+                profile="test-profile",
+                world="test-world",
+            )
+        self.assertEqual(reports[0]["route_key"], "W")
+        press_mock.assert_called_once_with(42, ["W"], delay_ms=200)
+
     @patch("startup_harness.advance_turns")
     def test_execute_shaped_portal_stop_stays_yellow_without_generic_abort(
         self,
@@ -1744,6 +2022,34 @@ class CompletionPollInterruptionTest(unittest.TestCase):
 
 
 class StartupScreenGateTest(unittest.TestCase):
+    def test_native_action_menu_trace_authorizes_declared_overlay_dismissal(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            debug_log = Path(temporary_directory) / "debug.final.log"
+            debug_log.write_bytes(
+                b"openclaw_harness_ui_trace: component=action_menu event=open\n"
+            )
+            self.assertTrue(startup_action_menu_overlay_is_active(debug_log))
+            self.assertFalse(startup_action_menu_overlay_is_active(
+                Path(temporary_directory) / "missing.log",
+            ))
+
+    def test_declared_startup_overlay_action_accepts_dismissed_or_absent_overlay(self) -> None:
+        self.assertTrue(declared_startup_overlay_action_is_satisfied(
+            {"status": "dismissed_declared_blocking_overlay"},
+        ))
+        self.assertTrue(declared_startup_overlay_action_is_satisfied(
+            {"status": "declared_overlay_not_present"},
+        ))
+        self.assertTrue(declared_startup_overlay_action_is_satisfied(
+            {"requested": False, "status": "not_requested"},
+        ))
+        self.assertFalse(declared_startup_overlay_action_is_satisfied(
+            {"requested": True, "status": "not_requested"},
+        ))
+        self.assertFalse(declared_startup_overlay_action_is_satisfied(
+            {"status": "not_requested"},
+        ))
+
     def gameplay_probe(self) -> Dict[str, Any]:
         # These are real OCR line shapes from a captured gameplay HUD fixture.
         return startup_screen_probe_classification(
@@ -1953,6 +2259,28 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertEqual(probe["classification"], "green_gameplay_hud_present")
         self.assertIn("Hctivitu: None", probe["hud_status_markers"])
 
+    def test_native_hud_trace_and_sidebar_columns_cover_lost_body_label(self) -> None:
+        lines = ["Activitu: None", "Lighting: bright", "Weight: 0"]
+        trace = (
+            "openclaw_harness_ui_trace: component=gameplay_hud event=rendered "
+            'run_id="current-run" move_widget=move_count_mode_desc '
+            "wield_widget=wielding_desc"
+        )
+        proven = startup_screen_probe_classification(
+            ocr_payload={"ok": True, "lines": lines},
+            capture_warnings=[],
+            debug_delta_text=trace,
+        )
+        ocr_only = startup_screen_probe_classification(
+            ocr_payload={"ok": True, "lines": lines},
+            capture_warnings=[],
+            debug_delta_text="",
+        )
+
+        self.assertTrue(proven["gameplay_hud_present"])
+        self.assertIn("native_rendered_hud_sidebar_fallback", proven["hud_body_marker_types"])
+        self.assertFalse(ocr_only["gameplay_hud_present"])
+
     def test_body_label_without_map_status_is_not_enough(self) -> None:
         probe = startup_screen_probe_classification(
             ocr_payload={"ok": True, "lines": ["ARM"]},
@@ -2031,6 +2359,35 @@ class StartupScreenGateTest(unittest.TestCase):
                 "ok": True,
                 "lines": [
                     "Actions",
+                    "HEAD",
+                    "TORSO",
+                    "ARM",
+                    "LEG",
+                    "Move: 100",
+                    "Safe:",
+                ],
+            },
+            capture_warnings=[],
+            debug_delta_text="",
+        )
+        result = startup_proof_classification(
+            ok=True,
+            screen_summary=self.screen_summary(probe),
+            focus_result={"ok": True},
+        )
+
+        self.assertFalse(probe["gameplay_hud_present"])
+        self.assertTrue(probe["blocking_overlay_present"])
+        self.assertEqual(probe["classification"], "yellow_blocking_overlay_present")
+        self.assertEqual(result["feature_gate"], "blocking_overlay_present")
+        self.assertFalse(result["startup_clean_for_feature_steps"])
+
+    def test_main_menu_overlay_blocks_background_gameplay_hud_markers(self) -> None:
+        probe = startup_screen_probe_classification(
+            ocr_payload={
+                "ok": True,
+                "lines": [
+                    "MAIN MENU",
                     "HEAD",
                     "TORSO",
                     "ARM",
@@ -2179,7 +2536,205 @@ class ScreenCheckpointVerdictTest(unittest.TestCase):
         self.assertIn("deferred_guard_not_later", ledger[1]["issues"])
 
 
+class CockpitLocalProofLedgerTest(unittest.TestCase):
+    def report(self) -> Dict[str, Any]:
+        return {
+            "index": 9,
+            "kind": "cockpit_live_session",
+            "label": "worker_owned_local_contact_and_cohesion",
+            "metadata": {
+                "artifact_kind": "worker_controlled_live_cockpit_session",
+                "descriptor_ref": "worker.cockpit_live_session.json",
+                "final_report_ref": "cockpit.live.final.json",
+                "gameplay_credit": True,
+            },
+            "structured_event_watermark": {
+                "run_id": "semantic-run", "step_index": 9,
+                "step_label": "worker_owned_local_contact_and_cohesion",
+            },
+            "cockpit_live_session": {
+                "descriptor": {
+                    "schema": "caol-cockpit-live-session-v1",
+                    "entry_mode": "cockpit_live_session",
+                    "run_id": "semantic-run", "binding_id": "native-binding",
+                    "bridge_binding_id": "bridge-binding",
+                },
+                "final": {
+                    "schema": "caol-cockpit-live-final-v1",
+                    "run_id": "semantic-run", "binding_id": "native-binding",
+                    "state": "finished", "stop_reason": "target_predicate_proved",
+                    "stop_detail": {"observation_id": "semantic-run:102:3"},
+                    "target_receipt": {
+                        "schema": "caol-cockpit-target-receipt-v1",
+                        "run_id": "semantic-run", "binding_id": "native-binding",
+                        "step_label": "worker_owned_local_contact_and_cohesion", "step_index": 9,
+                        "observation_id": "semantic-run:102:3",
+                        "observed_game_minutes": 102,
+                        "stop_reason": "target_predicate_proved",
+                    },
+                    "action_observation_sequence": [
+                        {"kind": "observation"},
+                        {"kind": "action", "result": {"ok": True}},
+                        {"kind": "observation"},
+                    ],
+                },
+            },
+        }
+
+    def authority(self) -> Dict[str, Any]:
+        return {
+            "authority": "registry", "authority_id": "authority-1",
+            "binding_id": "complete-binding", "source_sha256": "source-1",
+        }
+
+    def ledger(self, report: Dict[str, Any], authority: Dict[str, Any] | None = None) -> Dict[str, Any]:
+        return build_probe_step_ledger(
+            [report], wec_authority=self.authority() if authority is None else authority,
+            report_binding_id="complete-binding", scenario_source_sha256="source-1",
+        )[0]
+
+    def test_exact_bound_worker_cockpit_step_is_local_proof(self) -> None:
+        self.assertEqual(self.ledger(self.report())["verdict"], "green_step_cockpit_local_proof")
+
+    def test_missing_stale_mismatched_and_valid_target_receipts(self) -> None:
+        missing = self.report()
+        del missing["cockpit_live_session"]["final"]["target_receipt"]
+        self.assertIn("cockpit_target_receipt_not_bound_to_run_and_step", self.ledger(missing)["issues"])
+
+        stale = self.report()
+        stale["cockpit_live_session"]["final"]["target_receipt"]["observation_id"] = "stale-observation"
+        self.assertEqual(self.ledger(stale)["verdict"], "yellow_step_cockpit_local_proof_unbound")
+        self.assertIn("cockpit_target_receipt_not_bound_to_run_and_step", self.ledger(stale)["issues"])
+
+        mismatched = self.report()
+        mismatched["cockpit_live_session"]["final"]["target_receipt"]["step_label"] = "other_step"
+        self.assertIn("cockpit_target_receipt_not_bound_to_run_and_step", self.ledger(mismatched)["issues"])
+
+        self.assertEqual(self.ledger(self.report())["verdict"], "green_step_cockpit_local_proof")
+
+    def test_stale_run_partial_final_and_wrong_authority_remain_non_authoritative(self) -> None:
+        stale = self.report()
+        stale["structured_event_watermark"]["run_id"] = "stale-run"
+        self.assertIn("cockpit_local_boundary_not_same_run", self.ledger(stale)["issues"])
+
+        partial = self.report()
+        partial["cockpit_live_session"]["final"]["state"] = "active"
+        self.assertIn("cockpit_target_not_explicitly_proved", self.ledger(partial)["issues"])
+
+        foreign_authority = self.authority()
+        foreign_authority["source_sha256"] = "other-source"
+        self.assertIn(
+            "cockpit_authority_not_bound_to_report_source_and_executable",
+            self.ledger(self.report(), foreign_authority)["issues"],
+        )
+
+    def test_r019_binding_drift_control_accepts_only_the_exact_zero_credit_terminal(self) -> None:
+        control = self.report()
+        control["metadata"]["gameplay_credit"] = False
+        final = control["cockpit_live_session"]["final"]
+        final["stop_reason"] = "binding_drift"
+        final.pop("target_receipt")
+        final["stop_detail"] = {
+            "observation_id": "semantic-run:102:3",
+            "r019_acceptance_matrix": {"role": "off:enabled"},
+            "binding_drift_receipt": {
+                "schema": "caol-r019-binding-drift-terminal-receipt-v1",
+                "before": {"identity": "runtime_binding", "hash": "before"},
+                "after": {"identity": "runtime_binding", "hash": "after"},
+                "supported_drift_mutation_receipt": {"schema": "caol-r019-supported-binding-drift-v1"},
+                "attempted_action": "world.wait", "stop_reason": "binding_drift",
+                "native_dispatch_after_drift": False, "native_dispatch_count_after_drift": 0,
+                "guarded_recipe_dispatch_count": 0, "guarded_handling_count": 0,
+                "hidden_batching": False,
+            },
+        }
+        self.assertEqual(self.ledger(control)["verdict"], "green_step_cockpit_local_proof")
+        control["cockpit_live_session"]["final"]["stop_detail"]["binding_drift_receipt"]["after"]["identity"] = "other_binding"
+        self.assertIn("cockpit_target_not_explicitly_proved", self.ledger(control)["issues"])
+
+    def test_r019_binding_drift_control_rejects_contradictory_gameplay_credit(self) -> None:
+        control = self.report()
+        control["metadata"]["gameplay_credit"] = False
+        final = control["cockpit_live_session"]["final"]
+        final["stop_reason"] = "binding_drift"
+        final.pop("target_receipt")
+        final["stop_detail"] = {
+            "r019_acceptance_matrix": {"role": "off:enabled"},
+            "binding_drift_receipt": {
+                "schema": "caol-r019-binding-drift-terminal-receipt-v1",
+                "before": {"identity": "runtime_binding", "hash": "before"},
+                "after": {"identity": "runtime_binding", "hash": "after"},
+                "supported_drift_mutation_receipt": {"schema": "caol-r019-supported-binding-drift-v1"},
+                "attempted_action": "world.wait", "stop_reason": "binding_drift",
+                "native_dispatch_after_drift": False, "native_dispatch_count_after_drift": 0,
+                "guarded_recipe_dispatch_count": 0, "guarded_handling_count": 0,
+                "hidden_batching": False,
+            },
+        }
+        self.assertEqual(self.ledger(control)["verdict"], "green_step_cockpit_local_proof")
+        control["metadata"]["gameplay_credit"] = True
+        self.assertIn("cockpit_final_artifacts_unavailable", self.ledger(control)["issues"])
+
+    def test_r019_binding_drift_gate_requires_zero_credit_artifact(self) -> None:
+        gates = [{
+            "id": "r019_off_binding_drift_control",
+            "boundary_step": "binding_drift",
+            "predecessors": [],
+            "expectations": [{"kind": "saved_artifact", "predicate": {
+                "artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": False,
+            }}],
+        }]
+        watermarks = {"binding_drift": {"run_id": "run-1", "step_index": 3}}
+        artifact = {
+            "artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": False,
+            "run_id": "run-1", "producer_step_index": 3,
+        }
+        self.assertEqual(evaluate_structured_proof_gates(
+            gates, events=[], watermarks=watermarks, saved_artifacts=[artifact], run_id="run-1",
+        )["status"], "green")
+        self.assertEqual(evaluate_structured_proof_gates(
+            gates, events=[], watermarks=watermarks, saved_artifacts=[], run_id="run-1",
+        )["status"], "red")
+        artifact["gameplay_credit"] = True
+        self.assertEqual(evaluate_structured_proof_gates(
+            gates, events=[], watermarks=watermarks, saved_artifacts=[artifact], run_id="run-1",
+        )["status"], "red")
+
+
 class ProbeProofClassificationTest(unittest.TestCase):
+    def test_required_checkpoint_uses_green_run_bound_semantic_hud_not_pixels(self) -> None:
+        ledger = build_probe_step_ledger([{
+            "index": 1,
+            "kind": "wait",
+            "label": "relaunch_hud",
+            "checkpoint_evidence": {
+                "classification": "required_feature_evidence",
+                "authoritative_owner": "bound_startup_semantic_hud",
+            },
+            "startup_semantic_hud_expectation": {
+                "status": "green",
+                "provenance": "run_bound_semantic_startup_gameplay_hud_verdict",
+            },
+        }])
+
+        self.assertEqual(ledger[0]["verdict"], "green_step_required_bound_semantic_hud")
+        self.assertEqual(summarize_probe_step_ledger(ledger)["status"], "green_step_local_proof")
+
+    def test_required_checkpoint_fails_closed_without_green_bound_semantic_hud(self) -> None:
+        ledger = build_probe_step_ledger([{
+            "index": 1,
+            "kind": "wait",
+            "label": "relaunch_hud",
+            "checkpoint_evidence": {
+                "classification": "required_feature_evidence",
+                "authoritative_owner": "bound_startup_semantic_hud",
+            },
+            "startup_semantic_hud_expectation": {"status": "yellow", "run_id": "wrong-run"},
+        }])
+
+        self.assertEqual(ledger[0]["verdict"], "red_step_required_semantic_hud_missing")
+        self.assertIn("bound_startup_semantic_hud_not_green", ledger[0]["issues"])
+
     def test_load_only_run_never_becomes_feature_proof(self) -> None:
         result = probe_proof_classification(
             verdict="artifacts_matched",

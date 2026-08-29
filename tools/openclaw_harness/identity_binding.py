@@ -185,7 +185,7 @@ def authoritative_identity_binding(*, repo_root: Path, executable: Path,
                                    fixture_path: Path | None, profile_path: Path | None,
                                    world_dir: Path, player_save: str,
                                    saved_player_payload: Mapping[str, Any],
-                                   ecology_audit: Mapping[str, Any]) -> dict[str, Any]:
+                                   ecology_audit: Mapping[str, Any] | None = None) -> dict[str, Any]:
     """Produce every G2 component from explicit authoritative installed inputs."""
     components: dict[str, Any] = {
         "worktree": git_worktree_identity(repo_root, runtime_paths),
@@ -197,7 +197,9 @@ def authoritative_identity_binding(*, repo_root: Path, executable: Path,
         "profile": file_identity(profile_path, domain="caol-profile:v1") if profile_path else None,
         "world_save": installed_world_save_identity(world_dir, player_save),
         "player": saved_player_identity(saved_player_payload, player_save=player_save),
-        "actors": ecology_actor_identity(ecology_audit),
+        # Actors are discovered from the started process and bound exactly
+        # once after launch; preflight seals an explicitly empty actor set.
+        "actors": ecology_actor_identity(ecology_audit) if ecology_audit is not None else [],
     }
     if any(value is None for value in (components["fixture"], components["profile"])):
         raise IdentityBindingError("fixture and profile inputs are required and must be explicit")
@@ -229,7 +231,7 @@ def normalized_records(records: Sequence[Mapping[str, Any]], *, key_fields: Sequ
     """Sort identity-bearing records by explicit stable keys and reject ambiguity."""
     result = [dict(record) for record in records]
     if not result:
-        raise IdentityBindingError("identity actor set is empty")
+        raise IdentityBindingError("identity record set is empty")
     keys: list[tuple[Any, ...]] = []
     for record in result:
         key = tuple(record.get(field) for field in key_fields)
@@ -250,7 +252,7 @@ def component_identity(name: str, value: Any) -> dict[str, Any]:
 def complete_identity_binding(*, worktree: Any, data_config: Any, world_save: Any,
                               player: Mapping[str, Any], actors: Sequence[Mapping[str, Any]]) -> dict[str, Any]:
     """Compose the five manifest components with one deterministic binding digest."""
-    actor_records = normalized_records(actors, key_fields=("actor_id",))
+    actor_records = normalized_records(actors, key_fields=("actor_id",)) if actors else []
     components = {
         "worktree": component_identity("worktree", worktree),
         "data_config": component_identity("data_config", data_config),

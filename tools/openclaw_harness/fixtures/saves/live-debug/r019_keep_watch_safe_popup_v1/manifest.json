@@ -1,0 +1,26 @@
+{
+  "name": "r019_keep_watch_safe_popup_v1",
+  "source_fixture": "r013_clean_wait_duration_v1",
+  "source_profile": "live-debug",
+  "description": "Disposable R-019 clean safe-interruption footing. It retains the clean no-active-monster start and queues exactly one conditionless production EOC popup thirty seconds after the native live frame, strictly inside the one-minute native wait. This source save consumes 208 restore turns before that frame, so the queued due time is the measured restore offset plus thirty seconds. The queue mutation is setup-only; native live safety observations classify the resulting popup.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION"
+      ]
+    },
+    {
+      "kind": "scheduled_global_eoc",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "eoc": "EOC_OPENCLAW_R019_SAFE_POPUP",
+      "offset_seconds": 238
+    }
+  ]
+}

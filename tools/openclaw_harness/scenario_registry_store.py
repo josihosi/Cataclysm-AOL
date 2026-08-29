@@ -31,11 +31,20 @@ from identity_binding import (
     _plain,
     _validate_round_manifest,
     authoritative_identity_binding,
+    ecology_actor_identity,
     seal_complete_round_manifest,
+)
+from certification_route import evaluate_continuous_certification
+from production_capture import RelaunchReceiptError, normalize_relaunch_receipt
+from r019_acceptance_matrix import validate_r019_acceptance_matrix, validate_r019_report_packet
+from playtest_witness import (
+    WitnessError,
+    review_witness,
+    validate_witness_statement,
 )
 
 
-SCHEMA_VERSION = 9
+SCHEMA_VERSION = 20
 Migration = Tuple[int, str, Callable[[sqlite3.Connection], None]]
 
 
@@ -204,6 +213,8 @@ class RegistryQueryExecution:
     evaluation: RegistryStoredQueryEvaluation
     token_id: Optional[str]
     draft_path: Optional[str]
+    selection_id: Optional[str] = None
+    next_action: Optional[Mapping[str, Any]] = None
 
 
 @dataclass(frozen=True)
@@ -239,6 +250,17 @@ class RegistryRepairToken:
     scenario: str = ""
     source_path: str = ""
     runtime_binding: Mapping[str, Any] | None = None
+
+
+@dataclass(frozen=True)
+class RegistryR019AggregationToken:
+    """One separate, single-use authority for a zero-credit R-019 matrix terminal."""
+
+    token_id: str
+    accepted: bool
+    reason: str
+    guarded_report_id: str = ""
+    primitive_report_id: str = ""
 
 
 _QUERY_OPERATORS = frozenset({"eq", "contains", "present", "absent", "range"})
@@ -673,17 +695,30 @@ def _current_route_evidence(connection: sqlite3.Connection, manifest_id: str) ->
         "AND evidence_kind = 'route_resolution' ORDER BY capability_evidence_id",
         (manifest_id,),
     ).fetchall()
-    latest: Dict[str, Mapping[str, Any]] = {}
+    # The history is append-only, but callers only receive the current row per
+    # route.  Collapse it before reading resolution/binding history: resolving
+    # every superseded row repeatedly turns an unchanged registry reconcile
+    # into a full-history CPU scan without changing the current projection.
+    latest_rows: Dict[str, sqlite3.Row] = {}
     for row in rows:
         details = _json_object(str(row["details_json"]), "route evidence details")
         value = _json_object(str(row["value_json"]), "route evidence value")
         route_key = str(details.get("route_key") or value.get("route_key") or "")
         if not route_key:
             raise ScenarioRegistryStoreError("Registry route evidence is missing route_key")
+        latest_rows[route_key] = row
+    latest: Dict[str, Mapping[str, Any]] = {}
+    for route_key, row in latest_rows.items():
+        details = _json_object(str(row["details_json"]), "route evidence details")
+        value = _json_object(str(row["value_json"]), "route evidence value")
         bindings = []
-        resolutions = connection.execute(
-            "SELECT verification.verification_id, resolution.resolution_kind, resolution.binding_fingerprint, "
-            "resolution.details_json FROM verification_history AS verification "
+        # A declaration-bound first run deliberately has no verification
+        # binding.  Keep that persisted authority exact when later reports on
+        # the same route are reconciled; otherwise selection rereads evidence
+        # that it never issued.
+        resolutions = () if str(row["evidence_state"]) == "first_run" else connection.execute(
+            "SELECT verification.verification_id, verification.report_id, verification.details_json AS verification_details_json, "
+            "resolution.resolution_kind, resolution.binding_fingerprint, resolution.details_json FROM verification_history AS verification "
             "JOIN verification_resolution_history AS resolution "
             "ON resolution.verification_id = verification.verification_id "
             "WHERE verification.manifest_id = ? AND verification.route_key = ? "
@@ -695,10 +730,14 @@ def _current_route_evidence(connection: sqlite3.Connection, manifest_id: str) ->
         ).fetchall()
         for resolution in resolutions:
             manifest_binding_current = False
+            # Binding ownership is indexed by the immutable report identity.
+            # Do not scan historical manifest payloads here: apart from making
+            # reconciliation quadratic, that would decode legacy rows whose
+            # ambiguous ownership was deliberately rejected by migration v11.
             for binding_row in connection.execute(
-                "SELECT payload_json FROM binding_history WHERE manifest_id = ? AND binding_kind = 'manifest' "
-                "ORDER BY binding_event_id DESC",
-                (manifest_id,),
+                "SELECT payload_json FROM binding_history WHERE report_id = ? AND binding_kind = 'manifest' "
+                "ORDER BY binding_event_id DESC LIMIT 1",
+                (str(resolution["report_id"] or ""),),
             ):
                 payload = _json_object(str(binding_row["payload_json"]), "manifest binding payload")
                 if payload.get("verification_id") != str(resolution["verification_id"]):
@@ -710,6 +749,17 @@ def _current_route_evidence(connection: sqlite3.Connection, manifest_id: str) ->
                     and expected.get("source_sha256") == current_manifest_sha256
                 )
                 break
+            verification_details = _json_object(
+                str(resolution["verification_details_json"]), "verification details"
+            )
+            repair_successor = verification_details.get("r019_repair_successor")
+            if not manifest_binding_current and isinstance(repair_successor, Mapping):
+                current_manifest = repair_successor.get("current_manifest")
+                manifest_binding_current = (
+                    bool(manifest["present"])
+                    and isinstance(current_manifest, Mapping)
+                    and current_manifest.get("source_sha256") == current_manifest_sha256
+                )
             resolution_state = str(resolution["resolution_kind"])
             if resolution_state == "compatible" and not manifest_binding_current:
                 resolution_state = "stale"
@@ -744,7 +794,15 @@ def _current_bootstrap_revalidation(
 ) -> Optional[Mapping[str, Any]]:
     """Return the current release only when it still covers every stale route."""
     if not route_evidence or any(
-            not isinstance(route, Mapping) or route.get("evidence_state") not in {"stale", "unknown"}
+            not isinstance(route, Mapping)
+            or (
+                route.get("evidence_state") not in {"stale", "unknown"}
+                and not (
+                    route.get("evidence_state") == "contradicted"
+                    and bool(route.get("bindings"))
+                    and all(binding.get("resolution") == "stale" for binding in route["bindings"])
+                )
+            )
             for route in route_evidence):
         return None
     manifest = connection.execute(
@@ -796,6 +854,9 @@ def _current_lifecycle_state(
         return "absent", "source_absent"
     states = {str(item["evidence_state"]) for item in route_evidence}
     if "contradicted" in states:
+        if _current_bootstrap_revalidation(
+                connection, manifest_id=manifest_id, route_evidence=route_evidence) is not None:
+            return "active", "current_bootstrap_authority"
         return "quarantined", "route_contradicted"
     if "stale" in states:
         if _current_bootstrap_revalidation(
@@ -873,10 +934,120 @@ def _fact_evidence_from_current_authority(
     return _public_evidence_state(declared_state), None
 
 
+def _current_source_binding_validation_state(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    capability_key: str,
+    manifest_sha256: str,
+) -> Optional[str]:
+    """Return only a source-fact check bound to this exact manifest revision."""
+    rows = connection.execute(
+        "SELECT evidence_state, details_json FROM capability_evidence_history WHERE manifest_id = ? "
+        "AND capability_key = ? AND evidence_kind = 'source_binding_validation' "
+        "ORDER BY capability_evidence_id DESC",
+        (manifest_id, capability_key),
+    ).fetchall()
+    for row in rows:
+        details = _json_object(str(row["details_json"]), "source-binding evidence details")
+        if details.get("manifest_sha256") == manifest_sha256:
+            return _public_evidence_state(str(row["evidence_state"]))
+    return None
+
+
+def _exclusive_source_review_state(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    source_path: str,
+    revision: int,
+    source_sha256: str,
+    declaration: Mapping[str, Any],
+) -> Mapping[str, Any]:
+    """Return the exact-review state for a manifest that opts into the firewall."""
+    validation = declaration.get("source_binding_validation")
+    if not isinstance(validation, Mapping) or validation.get("exclusive_review_required") is not True:
+        return {"review_required": False, "review_status": "not_required", "executable": True}
+    exact = connection.execute(
+        "SELECT decision FROM source_bound_review_history WHERE manifest_id = ? AND source_path = ? "
+        "AND manifest_revision = ? AND manifest_sha256 = ? ORDER BY review_event_id DESC LIMIT 1",
+        (manifest_id, source_path, revision, source_sha256),
+    ).fetchone()
+    if exact is not None:
+        decision = str(exact["decision"])
+        return {
+            "review_required": True,
+            "review_status": "accepted" if decision == "accepted" else "rejected",
+            "executable": decision == "accepted",
+        }
+    prior = connection.execute(
+        "SELECT source_path, manifest_revision, manifest_sha256 FROM source_bound_review_history "
+        "WHERE manifest_id = ? ORDER BY review_event_id DESC LIMIT 1",
+        (manifest_id,),
+    ).fetchone()
+    if prior is None:
+        status = "pending"
+    elif str(prior["source_path"]) != source_path:
+        status = "wrong_source"
+    elif int(prior["manifest_revision"]) != revision:
+        status = "changed_revision"
+    else:
+        status = "stale"
+    return {"review_required": True, "review_status": status, "executable": False}
+
+
+def record_source_bound_review_decision(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    source_path: str,
+    manifest_revision: int,
+    manifest_sha256: str,
+    decision: str,
+    reviewer_identity: str,
+) -> Mapping[str, Any]:
+    """Append an external review decision for one exact source-bound revision.
+
+    This deliberately accepts no inferred authority: callers must present the
+    projected source identity and independently supplied reviewer identity.
+    """
+    if decision not in {"accepted", "rejected"}:
+        raise ScenarioRegistryStoreError("source-bound review decision must be accepted or rejected")
+    reviewer = str(reviewer_identity).strip()
+    if not reviewer:
+        raise ScenarioRegistryStoreError("source-bound review requires reviewer identity")
+    row = connection.execute(
+        "SELECT source_path, present, revision, current_sha256, declaration_json FROM manifest_current WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchone()
+    if row is None or not bool(row["present"]):
+        raise ScenarioRegistryStoreError("source-bound review manifest is not current")
+    if (str(row["source_path"]) != source_path or int(row["revision"]) != manifest_revision or
+            str(row["current_sha256"] or "") != manifest_sha256):
+        raise ScenarioRegistryStoreError("source-bound review identity is not current")
+    declaration = _json_object(str(row["declaration_json"]), "review manifest declaration")
+    state = _exclusive_source_review_state(
+        connection, manifest_id=manifest_id, source_path=source_path,
+        revision=manifest_revision, source_sha256=manifest_sha256, declaration=declaration,
+    )
+    if not state["review_required"]:
+        raise ScenarioRegistryStoreError("source-bound review is not required for this manifest")
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT OR IGNORE INTO source_bound_review_history( manifest_id, source_path, manifest_revision, "
+            "manifest_sha256, decision, reviewer_identity ) VALUES( ?, ?, ?, ?, ?, ? )",
+            (manifest_id, source_path, manifest_revision, manifest_sha256, decision, reviewer),
+        )
+    return {"manifest_id": manifest_id, "review_status": decision, "review_required": True,
+            "source_path": source_path, "manifest_revision": manifest_revision,
+            "manifest_sha256": manifest_sha256}
+
+
 def build_registry_query_candidate_snapshot(
     connection: sqlite3.Connection,
     *,
     include_lifecycle_states: Sequence[str] = (),
+    manifest_ids: Sequence[str] = (),
 ) -> Tuple[RegistryQueryCandidateSnapshot, ...]:
     """Read current projection/history into fixed, explained, non-executing candidates."""
     requested_states = set(include_lifecycle_states)
@@ -886,9 +1057,16 @@ def build_registry_query_candidate_snapshot(
         )
     allowed_states = {"active"} | requested_states
     snapshots: List[RegistryQueryCandidateSnapshot] = []
+    requested_manifest_ids = tuple(sorted({str(item).strip() for item in manifest_ids if str(item).strip()}))
+    manifest_filter = ""
+    parameters: Tuple[str, ...] = ()
+    if requested_manifest_ids:
+        manifest_filter = " WHERE manifest_id IN (" + ", ".join("?" for _ in requested_manifest_ids) + ")"
+        parameters = requested_manifest_ids
     manifests = connection.execute(
         "SELECT manifest_id, source_path, present, revision, current_sha256, validation_json, declaration_json "
-        "FROM manifest_current ORDER BY manifest_id"
+        "FROM manifest_current" + manifest_filter + " ORDER BY manifest_id",
+        parameters,
     ).fetchall()
     for manifest in manifests:
         manifest_id = str(manifest["manifest_id"])
@@ -912,6 +1090,33 @@ def build_registry_query_candidate_snapshot(
             present=bool(manifest["present"]),
             route_evidence=route_evidence,
         )
+        review = _exclusive_source_review_state(
+            connection,
+            manifest_id=manifest_id,
+            source_path=str(manifest["source_path"]),
+            revision=int(manifest["revision"]),
+            source_sha256=str(manifest["current_sha256"] or ""),
+            declaration=declaration,
+        )
+        certification_retry = (
+            declaration.get("name") in {
+                "bandit.r005_continuous_hostile_ecology_certification",
+                "r018.raw_wait_acceptance_mcw",
+                "r019.keep_watch_meaningful_event_bootstrap_mcw",
+                "r019.keep_watch_acceptance_mcw",
+                "r019.keep_watch_off_interruption_closure059_validation_mcw",
+                "r023.guarded_relative_validation_mcw",
+            }
+            and route_evidence
+            and (
+                all(str(route.get("evidence_state", "")) == "stale" for route in route_evidence)
+                or lifecycle_reason in {"route_contradicted", "route_stale", "quarantine_history"}
+            )
+        )
+        if certification_retry:
+            # Preserve stale startup-only history, but keep the current valid
+            # declaration selectable for a corrected certification attempt.
+            lifecycle_state, lifecycle_reason = "active", "current_manifest_certification_retry"
         if lifecycle_state not in allowed_states:
             continue
         facts: Dict[str, Mapping[str, Any]] = {}
@@ -927,7 +1132,21 @@ def build_registry_query_candidate_snapshot(
         for capability in capabilities:
             key = str(capability["capability_key"])
             value = json.loads(str(capability["value_json"]))
-            if current_bootstrap_authority is not None:
+            source_validation = declaration.get("source_binding_validation")
+            validation_keys = source_validation.get("capabilities", ()) if isinstance(source_validation, Mapping) else ()
+            validation_required = key in validation_keys
+            validation_state = _current_source_binding_validation_state(
+                connection,
+                manifest_id=manifest_id,
+                capability_key=key,
+                manifest_sha256=str(manifest["current_sha256"] or ""),
+            ) if validation_required else None
+            if validation_required:
+                evidence_state, proof_depth = (
+                    ("inspected", "persistence") if validation_state == "inspected"
+                    else (validation_state or "unknown", None)
+                )
+            elif current_bootstrap_authority is not None:
                 evidence_state, proof_depth = (
                     _public_evidence_state(str(capability["declared_state"])), None,
                 )
@@ -937,8 +1156,13 @@ def build_registry_query_candidate_snapshot(
                     manifest_id=manifest_id,
                     capability_key=key,
                     declared_state=str(capability["declared_state"]),
-                    route_evidence=route_evidence,
+                    route_evidence=() if certification_retry else route_evidence,
                 )
+                if certification_retry and key in {
+                        "capabilities.bandit.r005",
+                        "capabilities.bandit.r005.prerequisites",
+                }:
+                    evidence_state, proof_depth = "declared", None
             facts[key] = {
                 "present": True,
                 "value": value,
@@ -955,7 +1179,7 @@ def build_registry_query_candidate_snapshot(
             scenario_id=manifest_id,
             facts=facts,
             lifecycle_state=lifecycle_state,
-            token_eligible=lifecycle_state == "active",
+            token_eligible=lifecycle_state == "active" and bool(review["executable"]),
             explanation={
                 "manifest": {
                     "manifest_id": manifest_id,
@@ -965,7 +1189,11 @@ def build_registry_query_candidate_snapshot(
                     "revision": int(manifest["revision"]),
                     "sha256": manifest["current_sha256"],
                     "validation": dict(validation),
+                    "review_status": str(review["review_status"]),
+                    "review_required": bool(review["review_required"]),
+                    "executable": bool(review["executable"]),
                     "known_footing": known_footing,
+                    "source_binding_validation": declaration.get("source_binding_validation"),
                 },
                 "lifecycle": {"state": lifecycle_state, "reason": lifecycle_reason},
                 "route_evidence": route_evidence,
@@ -1052,8 +1280,185 @@ def _current_verified_route(snapshot: RegistryQueryCandidateSnapshot) -> Optiona
     return None
 
 
+def _first_run_certification_route(
+    snapshot: RegistryQueryCandidateSnapshot,
+) -> Optional[Mapping[str, Any]]:
+    """Return a declaration-bound zero-evidence route for named first runs.
+
+    The first certification cannot have a verification binding yet.  Keep this
+    escape hatch declaration-bound and fail closed for every other manifest.
+    """
+    manifest = snapshot.explanation.get("manifest", {})
+    facts = snapshot.facts
+    if snapshot.lifecycle_state != "active" or not snapshot.token_eligible or not isinstance(manifest, Mapping) or \
+            manifest.get("validation", {}).get("status") != "valid" or manifest.get("validation", {}).get("review_required"):
+        return None
+    name = manifest.get("name")
+    if name == "bandit.r005_continuous_hostile_ecology_certification":
+        valid = (
+            facts.get("capabilities.bandit.r005", {}).get("value") == "continuous_hostile_ecology_lifecycle"
+            and facts.get("capabilities.bandit.r005.prerequisites", {}).get("value") == ["R-001", "R-002", "R-004"]
+        )
+    elif name == "bandit.r005_safe_wait_observation":
+        valid = facts.get("capabilities.bandit.r005.safe_wait_observation", {}).get("value") == \
+                "zero_credit_preserved_native_safe_mode_off_route_and_wait"
+    elif name == "r013.cockpit_transaction_bootstrap_mcw":
+        valid = facts.get("capabilities.r013.cockpit_transaction_bootstrap", {}).get("value") == \
+                "public_native_wait_and_advertised_activity_ignore_recovery"
+    elif name == "r013.cockpit_long_wait_activity_interrupt_bootstrap_mcw":
+        valid = facts.get("capabilities.r013.cockpit_long_wait_activity_interruption", {}).get("value") == \
+                "source_bound_six_hour_wait_with_current_native_activity_interruption"
+    elif name == "r013.clean_wait_duration_bootstrap_mcw":
+        valid = facts.get("capabilities.r013.clean_wait_duration_footing", {}).get("value") == \
+                "source_bound_no_active_hostile_wait_footing"
+    elif name == "r013.clean_wait_duration_validation_mcw":
+        valid = facts.get("capabilities.r013.clean_wait_duration_validation", {}).get("value") == \
+                "independent_bound_one_minute_wait_without_activity_recovery"
+    elif name == "r018.raw_wait_acceptance_mcw":
+        valid = (
+            facts.get("capabilities.r018.raw_wait_acceptance", {}).get("value") ==
+            "source_bound_raw_bounded_wait_and_primitive_comparison"
+            and facts.get("runtime.r018.source_binding", {}).get("value") ==
+            "r013_clean_wait_duration_v1:r009-m095"
+        )
+    elif name == "r023.raw_relative_validation_mcw":
+        valid = (
+            facts.get("capabilities.r023.raw_relative_validation", {}).get("value") ==
+            "independent_zero_credit_raw_signed_relative_movement"
+            and facts.get("runtime.r023.source_binding", {}).get("value") ==
+            "r023_cardinal_movement_bootstrap_v1:r009-m091"
+        )
+    elif name == "r023.guarded_relative_validation_mcw":
+        valid = (
+            facts.get("capabilities.r023.guarded_relative_validation", {}).get("value") ==
+            "independent_zero_credit_guarded_signed_relative_movement"
+            and facts.get("runtime.r023.source_binding", {}).get("value") ==
+            "r023_cardinal_movement_bootstrap_v1:r009-m091"
+        )
+    elif name == "r019.keep_watch_safety_bootstrap_mcw":
+        valid = (
+            facts.get("capabilities.r019.keep_watch_safety_bootstrap", {}).get("value") ==
+            "source_bound_native_keep_watch_safety_frame"
+            and facts.get("runtime.r019.source_binding", {}).get("value") ==
+            "r013_clean_wait_duration_v1:r009-m095"
+        )
+    elif name == "r019.keep_watch_meaningful_event_bootstrap_mcw":
+        valid = (
+            facts.get("capabilities.r019.keep_watch_meaningful_event_bootstrap", {}).get("value") ==
+            "deterministic_hostile_sighting_setup_for_guarded_wait"
+            and facts.get("runtime.r019.source_binding", {}).get("value") ==
+            "r019_keep_watch_meaningful_event_bootstrap_v1:r009-m095"
+        )
+    elif name == "r019.keep_watch_off_interruption_closure057_bootstrap_mcw":
+        valid = (
+            facts.get("capabilities.r019.off_interruption_bootstrap", {}).get("value") ==
+            "native_debug_spawned_hostile_exposes_current_activity_interruption"
+            and facts.get("runtime.r019.source_binding", {}).get("value") ==
+            "r013_clean_wait_duration_v1:r009-m095"
+        )
+    elif name == "r019.keep_watch_meaningful_event_validation_mcw":
+        valid = (
+            facts.get("capabilities.r019.keep_watch_meaningful_event_validation", {}).get("value") ==
+            "separately_authorized_guarded_stop_at_declared_hostile_sighting"
+            and facts.get("runtime.r019.source_binding", {}).get("value") ==
+            "r019_keep_watch_meaningful_event_bootstrap_v1:r009-m095"
+        )
+    elif name == "r019.keep_watch_acceptance_mcw":
+        valid = (
+            facts.get("capabilities.r019.keep_watch_acceptance", {}).get("value") ==
+            "source_bound_guarded_keep_watch_and_primitive_wait_comparison"
+            and facts.get("runtime.r019.source_binding", {}).get("value") ==
+            "r019_keep_watch_safe_popup_v1:r009-m095"
+        )
+    elif name == "r019.keep_watch_off_binding_drift_current_source_control_mcw":
+        valid = (
+            facts.get("capabilities.r019.off_binding_drift_current_source_control", {}).get("value") ==
+            "primitive_continuation_fail_closed_on_runtime_binding_drift"
+            and facts.get("runtime.r019.source_binding", {}).get("value") ==
+            "r013_clean_wait_duration_v1:r009-m095"
+        )
+    elif name == "r019.keep_watch_off_interruption_closure059_validation_mcw":
+        valid = (
+            facts.get("capabilities.r019.off_interruption_closure059_validation", {}).get("value") ==
+            "fresh_disabled_master_primitive_wait_stops_at_current_native_hostile_interruption_with_source_bound_partial_progress"
+            and facts.get("runtime.r019.source_binding", {}).get("value") ==
+            "r019_keep_watch_off_positive_progress_v1:r009-m095"
+        )
+    elif name == "r019.keep_watch_tagged_lifecycle_diagnostic_mcw":
+        valid = (
+            facts.get("capabilities.r019.tagged_lifecycle_diagnostic", {}).get("value") ==
+            "one_primitive_diagnostic_minute_preserves_the_exact_tagged_hostile_lifecycle_stream_without_feature_credit"
+            and facts.get("runtime.r019.source_binding", {}).get("value") ==
+            "r019_keep_watch_off_positive_progress_v1:r009-m095"
+        )
+    elif name == "r014.cockpit_live_prototype_bootstrap_mcw":
+        valid = (
+            facts.get("capabilities.r014.live_prototype_bootstrap", {}).get("value") ==
+            "source_bound_zero_credit_cockpit_live_route"
+            and facts.get("runtime.r014.source_binding", {}).get("value") ==
+            "r013_wait_activity_interrupt_bootstrap_v1:r009-m095"
+        )
+    elif name == "r011.zombie_dog_setup_validation_mcw":
+        valid = (
+            facts.get("actors.r011.required_zombie_dog", {}).get("value") == "mon_zombie_dog"
+            and facts.get("actors.r011.incidental_dog", {}).get("value") == "absent"
+            and facts.get("capabilities.r011.setup_only", {}).get("value") is True
+        )
+    elif name == "r020.controlled_camp_setup_bootstrap":
+        valid = (
+            facts.get("capabilities.setup.controlled_camp_transaction", {}).get("value") ==
+            "fixture_save_transform.player_basecamp_at_omt"
+            and facts.get("runtime.evidence_ceiling", {}).get("value") ==
+            "none_for_manufactured_state"
+        )
+    elif name == "r021.direct_hp_setter_bootstrap":
+        valid = (
+            facts.get("capabilities.setup.direct_hp_setter", {}).get("value") ==
+            "debug_menu.monster_set_hp->monster::set_hp"
+            and facts.get("runtime.evidence_ceiling", {}).get("value") ==
+            "none_for_debug_fixture_transaction"
+        )
+    elif name == "r022.item_spawn_bootstrap":
+        valid = (
+            facts.get("capabilities.setup.item_spawn_transaction", {}).get("value") ==
+            "debug_menu::debug_item_spawn_transaction"
+            and facts.get("capabilities.setup.item_spawn_cleanup", {}).get("value") ==
+            "debug_menu::debug_item_spawn_transaction_cleanup"
+            and facts.get("capabilities.setup.item_spawn_source", {}).get("value") == "src/wish.cpp"
+            and facts.get("runtime.evidence_ceiling", {}).get("value") ==
+            "none_for_debug_fixture_transaction"
+        )
+    elif name == "r022.item_spawn_live_validation":
+        valid = (
+            facts.get("capabilities.r022.live_validation", {}).get("value") ==
+            "run_bound_native_debug_item_spawn_transaction_with_tag_scoped_cleanup"
+            and facts.get("capabilities.setup.item_spawn_transaction", {}).get("value") ==
+            "debug_menu::debug_item_spawn_transaction"
+            and facts.get("capabilities.setup.item_spawn_cleanup", {}).get("value") ==
+            "debug_menu::debug_item_spawn_transaction_cleanup"
+            and facts.get("runtime.evidence_ceiling", {}).get("value") ==
+            "none_for_debug_fixture_transaction"
+        )
+    else:
+        valid = False
+    if not valid:
+        return None
+    route_key = _identity(
+        "caol-scenario-proof-route-v2",
+        str(manifest.get("source_path", "")),
+        str(manifest.get("name", "")),
+    )
+    return {
+        "route_key": route_key,
+        "evidence_state": "unknown",
+        "internal_resolution_state": "first_run",
+        "details": {"first_run": True, "manifest_sha256": str(manifest.get("sha256", ""))},
+        "bindings": (),
+    }
+
+
 def _current_stale_bootstrap_candidate(snapshot: RegistryQueryCandidateSnapshot) -> bool:
-    """Allow one bootstrap run for a valid current manifest with stale route evidence only."""
+    """Allow one bootstrap run for a current source-bound manifest with stale reports only."""
     lifecycle = snapshot.explanation.get("lifecycle", {})
     routes = snapshot.explanation.get("route_evidence", ())
     if not isinstance(lifecycle, Mapping) or not _current_valid_bootstrap_manifest(snapshot):
@@ -1061,10 +1466,29 @@ def _current_stale_bootstrap_candidate(snapshot: RegistryQueryCandidateSnapshot)
     if not isinstance(routes, Sequence) or not routes:
         return False
     if snapshot.lifecycle_state != "quarantined" or lifecycle.get("reason") not in {
-            "route_stale", "quarantine_history"}:
+            "route_stale", "route_contradicted", "quarantine_history"}:
+        return False
+    if all(
+            isinstance(route, Mapping) and route.get("evidence_state") in {"stale", "unknown"}
+            for route in routes):
+        return True
+    # A source-binding validator can independently establish the current
+    # fixture footing.  If every historical route binding is stale, its old
+    # red verdict is not a current contradiction.  Retain that verdict for
+    # repair history, but allow the explicit bootstrap owner to observe the
+    # unchanged current sources before a new run is authorized.
+    validation = snapshot.explanation.get("manifest", {}).get("source_binding_validation")
+    if not isinstance(validation, Mapping):
+        return False
+    keys = validation.get("capabilities")
+    if not isinstance(keys, list) or not keys or any(
+            snapshot.facts.get(str(key), {}).get("evidence_state") != "inspected" for key in keys):
         return False
     return all(
-        isinstance(route, Mapping) and route.get("evidence_state") in {"stale", "unknown"}
+        isinstance(route, Mapping)
+        and route.get("evidence_state") in {"stale", "unknown", "contradicted"}
+        and bool(route.get("bindings"))
+        and all(binding.get("resolution") == "stale" for binding in route["bindings"])
         for route in routes
     )
 
@@ -1106,9 +1530,9 @@ def _select_registry_bootstrap_candidate(
             "facts": {
                 key: {
                     **dict(fact),
-                    "evidence_state": "declared" if fact.get("evidence_state") == "stale" else fact.get(
+                    "evidence_state": "declared" if fact.get("evidence_state") in {"stale", "contradicted"} else fact.get(
                         "evidence_state"),
-                    "proof_depth": None if fact.get("evidence_state") == "stale" else fact.get("proof_depth"),
+                    "proof_depth": None if fact.get("evidence_state") in {"stale", "contradicted"} else fact.get("proof_depth"),
                 }
                 for key, fact in candidate.facts.items()
             },
@@ -1176,7 +1600,14 @@ def revalidate_current_bootstrap_authority(
     }
     with immediate_transaction(connection):
         for route in routes:
-            if not isinstance(route, Mapping) or route.get("evidence_state") not in {"stale", "unknown"}:
+            if not isinstance(route, Mapping) or (
+                    route.get("evidence_state") not in {"stale", "unknown"}
+                    and not (
+                        route.get("evidence_state") == "contradicted"
+                        and bool(route.get("bindings"))
+                        and all(binding.get("resolution") == "stale" for binding in route["bindings"])
+                    )
+            ):
                 return {"accepted": False, "reason": "route_not_revalidatable"}
             _append_quarantine_if_changed(
                 connection,
@@ -1322,6 +1753,765 @@ def _append_query_audit(
     )
 
 
+def _registry_query_repair_action(
+    connection: sqlite3.Connection,
+    *,
+    query_id: str,
+    request: RegistryQueryRequest,
+    evaluation: RegistryStoredQueryEvaluation,
+) -> Optional[Dict[str, Any]]:
+    """Route one blocked query to its exact current contradiction owner."""
+    # An active partial match can be closer than the quarantined candidate
+    # whose current contradiction the query needs to repair.  Select the
+    # query-bound contradiction first; closeness is only for inert drafts.
+    targets = []
+    for snapshot in evaluation.candidates:
+        manifest = snapshot.explanation.get("manifest", {})
+        routes = snapshot.explanation.get("route_evidence", ())
+        if not isinstance(manifest, Mapping) or not isinstance(routes, Sequence):
+            continue
+        manifest_id = str(manifest.get("manifest_id", "")).strip()
+        if not manifest_id or not _repair_query_matches_manifest(
+                connection, manifest_id=manifest_id, request=request):
+            continue
+        for route in routes:
+            if not isinstance(route, Mapping) or route.get("evidence_state") not in {"contradicted", "stale"}:
+                continue
+            details = route.get("details", {})
+            if not isinstance(details, Mapping):
+                continue
+            route_key = str(route.get("route_key", "")).strip()
+            red_ids = details.get("unresolved_contradiction_ids", ())
+            if route.get("evidence_state") == "stale":
+                red_ids = _r019_stale_repairable_red_ids(
+                    connection, manifest_id=manifest_id, route_key=route_key,
+                )
+            if not route_key or not isinstance(red_ids, Sequence) or isinstance(red_ids, (str, bytes)):
+                continue
+            targets.extend(
+                (manifest_id, route_key, str(red_id).strip())
+                for red_id in red_ids if str(red_id).strip()
+            )
+    if not targets:
+        return None
+    manifest_id, route_key, red_verification_id = sorted(set(targets))[0]
+    return {
+        "kind": "repair_current_contradiction",
+        "reason": "closest_query_candidate_has_current_unresolved_contradiction",
+        "required_identifiers": {
+            "query_id": query_id,
+            "manifest_id": manifest_id,
+            "route_key": route_key,
+            "red_verification_id": red_verification_id,
+        },
+        "command": {
+            "name": "registry-repair-bootstrap",
+            "arguments": {"query_id": query_id},
+            "cli": ["registry-repair-bootstrap", "--query-id", query_id],
+        },
+    }
+
+
+def _repair_query_candidate_manifest_ids(
+    connection: sqlite3.Connection,
+    request: RegistryQueryRequest,
+) -> Tuple[str, ...]:
+    """Narrow repair review to manifests declaring every exact requested fact.
+
+    Repair authority must re-evaluate current facts, but it need not expand the
+    whole registry before locating a contradiction whose immutable query only
+    asks for exact declared values.  Other predicate forms retain the complete
+    projection fallback below.
+    """
+    exact_requirements = tuple(
+        predicate for predicate in request.requirements if predicate.op == "eq"
+    )
+    if len(exact_requirements) != len(request.requirements) or not exact_requirements:
+        return ()
+    matching_ids: Optional[set[str]] = None
+    for predicate in exact_requirements:
+        rows = connection.execute(
+            "SELECT manifest_id FROM manifest_capability_current "
+            "WHERE capability_key = ? AND value_json = ?",
+            (predicate.key, _json_text(predicate.value)),
+        ).fetchall()
+        identifiers = {str(row["manifest_id"]) for row in rows}
+        matching_ids = identifiers if matching_ids is None else matching_ids & identifiers
+        if not matching_ids:
+            return ()
+    return tuple(sorted(matching_ids or ()))
+
+
+def registry_query_repair_action(
+    connection: sqlite3.Connection,
+    query_id: str,
+) -> Dict[str, Any]:
+    """Re-derive a query's repair target from current authoritative state."""
+    normalized_query_id = str(query_id).strip()
+    row = connection.execute(
+        "SELECT request_json FROM query_history WHERE query_id = ? AND query_kind = 'registry_query' "
+        "ORDER BY query_event_id DESC LIMIT 1",
+        (normalized_query_id,),
+    ).fetchone()
+    if row is None:
+        raise ScenarioRegistryStoreError("repair query is absent")
+    request_json = str(row["request_json"])
+    request = parse_registry_query_request(json.loads(request_json))
+    expected_query_id = _identity(
+        "caol-scenario-query-v1", hashlib.sha256(request_json.encode("utf-8")).hexdigest()
+    )
+    if normalized_query_id != expected_query_id:
+        raise ScenarioRegistryStoreError("repair query identity does not match its request")
+    candidate_ids = _repair_query_candidate_manifest_ids(connection, request)
+    candidates = build_registry_query_candidate_snapshot(
+        connection,
+        include_lifecycle_states=("quarantined",),
+        manifest_ids=candidate_ids,
+    ) if candidate_ids else build_registry_query_candidate_snapshot(
+        connection, include_lifecycle_states=("quarantined",),
+    )
+    evaluation = RegistryStoredQueryEvaluation(
+        candidates=candidates,
+        evaluation=evaluate_registry_query(
+            request,
+            tuple({"scenario_id": candidate.scenario_id, "facts": candidate.facts} for candidate in candidates),
+        ),
+    )
+    action = _registry_query_repair_action(
+        connection,
+        query_id=normalized_query_id,
+        request=request,
+        evaluation=evaluation,
+    )
+    if action is None:
+        raise ScenarioRegistryStoreError("repair query has no current unresolved contradiction")
+    return {**action, "query": json.loads(request_json)}
+
+
+def _selection_fit_reason(
+    request: RegistryQueryRequest,
+    candidate: RegistryQueryCandidateSnapshot,
+    evaluation: RegistryQueryEvaluation,
+) -> str:
+    """Describe the chosen current facts without promoting them to proof."""
+    result = next(
+        (item for item in evaluation.candidates if item.scenario_id == candidate.scenario_id),
+        None,
+    )
+    if result is None or not result.hard_valid:
+        raise ScenarioRegistryStoreError("selected scenario has no compatible hard-query result")
+    required = ", ".join(predicate.key for predicate in request.requirements) or "no hard requirements"
+    preferred = ", ".join(
+        item.key for item in result.preference_results if item.passed
+    ) or "no satisfied preferences"
+    return f"Current declared facts satisfy {required}; ranking keeps {preferred}."
+
+
+def _append_scenario_selection(
+    connection: sqlite3.Connection,
+    *,
+    query_id: str,
+    request: RegistryQueryRequest,
+    candidate: RegistryQueryCandidateSnapshot,
+    evaluation: RegistryQueryEvaluation,
+) -> str:
+    manifest = candidate.explanation.get("manifest")
+    if not isinstance(manifest, Mapping):
+        raise ScenarioRegistryStoreError("selected scenario manifest explanation is unavailable")
+    manifest_id = str(manifest.get("manifest_id", "")).strip()
+    manifest_sha256 = str(manifest.get("sha256", "")).strip().lower()
+    revision = manifest.get("revision")
+    if not manifest_id or len(manifest_sha256) != 64 or type(revision) is not int:
+        raise ScenarioRegistryStoreError("selected scenario source binding is unavailable")
+    reason = _selection_fit_reason(request, candidate, evaluation)
+    selection_id = _identity(
+        "caol-scenario-selection-reason-v1", query_id, manifest_id,
+        str(revision), manifest_sha256,
+    )
+    connection.execute(
+        "INSERT OR IGNORE INTO scenario_selection_history( "
+        "selection_id, query_id, manifest_id, manifest_revision, manifest_sha256, fit_reason, details_json "
+        ") VALUES( ?, ?, ?, ?, ?, ?, ? )",
+        (
+            selection_id, query_id, manifest_id, revision, manifest_sha256, reason,
+            _json_text({
+                "requirements": [_query_predicate_json(item) for item in request.requirements],
+                "preferences": [_query_predicate_json(item) for item in request.preferences],
+                "lifecycle": candidate.lifecycle_state,
+            }),
+        ),
+    )
+    return selection_id
+
+
+def create_source_bound_scenario(
+    connection: sqlite3.Connection,
+    *,
+    scenarios_root: Path,
+    name: str,
+    declaration: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Create exactly one canonical manifest, or reject a different identity.
+
+    Creation is intentionally source-bound: the declaration is serialized once,
+    validated from its exact source bytes, and immediately projected.  It never
+    creates a report, verification, token, or gameplay authority.
+    """
+    scenario_name = str(name).strip()
+    root = scenarios_root.resolve()
+    if not scenario_name or Path(scenario_name).name != scenario_name or "/" in scenario_name or "\\" in scenario_name:
+        raise ScenarioRegistryStoreError("scenario name must be one canonical filename stem")
+    if not isinstance(declaration, Mapping):
+        raise ScenarioRegistryStoreError("scenario declaration must be an object")
+    target = (root / f"{scenario_name}.json").resolve()
+    if target.parent != root:
+        raise ScenarioRegistryStoreError("scenario declaration escapes the canonical root")
+    source_bytes = (json.dumps(dict(declaration), ensure_ascii=False, indent=2, sort_keys=True) + "\n").encode("utf-8")
+    created = False
+    if target.exists():
+        if target.read_bytes() != source_bytes:
+            raise ScenarioRegistryStoreError("scenario identity collision has different source bytes")
+    else:
+        root.mkdir(parents=True, exist_ok=True)
+        target.write_bytes(source_bytes)
+        created = True
+    try:
+        normalized = validate_manifest(json.loads(source_bytes.decode("utf-8")), path=target)
+        projection = rebuild_manifest_projection(connection, root)
+    except BaseException:
+        if created and target.exists():
+            target.unlink()
+        raise
+    row = connection.execute(
+        "SELECT manifest_id, revision, current_sha256 FROM manifest_current WHERE source_path = ? AND present = 1",
+        (str(target),),
+    ).fetchone()
+    if row is None:
+        raise ScenarioRegistryStoreError("created scenario was not projected")
+    return {
+        "scenario": scenario_name,
+        "manifest_id": str(row["manifest_id"]),
+        "manifest_sha256": str(row["current_sha256"]),
+        "revision": int(row["revision"]),
+        "idempotent": not created,
+        "validation": normalized["validation"],
+        "projection": projection,
+        "evidence_effect": "none_for_manufactured_state",
+    }
+
+
+def validate_source_bound_scenario(
+    connection: sqlite3.Connection,
+    *,
+    scenario_name: str,
+    scenarios_root: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Validate one exact manifest and fixture source without launching it."""
+    root = scenarios_root or repository_root() / "tools" / "openclaw_harness" / "scenarios"
+    source_path = root / f"{scenario_name}.json"
+    row = connection.execute(
+        "SELECT manifest_id, current_sha256, declaration_json FROM manifest_current "
+        "WHERE source_path = ? AND present = 1",
+        (str(source_path.resolve()),),
+    ).fetchone()
+    if row is None:
+        raise ScenarioRegistryStoreError("scenario is not a current projected manifest")
+    declaration = _json_object(str(row["declaration_json"]), "scenario declaration")
+    exact = validate_manifest(declaration, path=source_path)
+    fixture_name = str(declaration.get("fixture", declaration.get("runtime_contract", {}).get("fixture", ""))).strip()
+    fixture_profile = str(declaration.get("fixture_profile", "")).strip()
+    fixture_binding: Mapping[str, Any] = {}
+    status = "valid"
+    reason = "exact source and fixture binding are current"
+    try:
+        if not fixture_name:
+            raise ScenarioRegistryStoreError("scenario fixture is missing")
+        from startup_harness import fixture_source_binding, resolve_fixture_payload
+        resolved = resolve_fixture_payload(fixture_name, fixture_profile)
+        fixture_binding = fixture_source_binding(fixture_name, fixture_profile)
+        details = {
+            "source_path": str(source_path.resolve()),
+            "source_sha256": exact["source"]["sha256"],
+            "fixture": str(resolved["fixture"]),
+            "fixture_profile": str(resolved["fixture_profile"]),
+        }
+    except (KeyError, OSError, SystemExit, ScenarioRegistryStoreError) as exc:
+        status = "invalid"
+        reason = str(exc)
+        details = {"source_path": str(source_path.resolve()), "source_sha256": exact["source"]["sha256"]}
+    fixture_json = _json_text(fixture_binding)
+    validation_id = _identity(
+        "caol-scenario-validation-v1", str(row["manifest_id"]), str(row["current_sha256"]),
+        fixture_json, status, reason,
+    )
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT OR IGNORE INTO scenario_validation_history( "
+            "validation_id, manifest_id, manifest_sha256, fixture_binding_json, validation_status, reason, details_json "
+            ") VALUES( ?, ?, ?, ?, ?, ?, ? )",
+            (validation_id, str(row["manifest_id"]), str(row["current_sha256"]), fixture_json,
+             status, reason, _json_text(details)),
+        )
+    return {
+        "validation_id": validation_id,
+        "status": status,
+        "reason": reason,
+        "fixture_binding": fixture_binding,
+        "evidence_effect": "none_for_manufactured_state",
+    }
+
+
+def prepare_selected_scenario(
+    connection: sqlite3.Connection,
+    *,
+    scenario_name: str,
+    world_dir: Path,
+    required_typeid: str,
+    candidate_offsets: Sequence[Sequence[int]],
+    player_save: str = "",
+    scenarios_root: Optional[Path] = None,
+    fixture_install: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Prepare one validated scenario through its setup owner and retain receipt.
+
+    This is not a launch path.  A failed placement remains an append-only,
+    reusable setup gap and cannot be substituted with an incidental creature.
+    """
+    root = scenarios_root or repository_root() / "tools" / "openclaw_harness" / "scenarios"
+    source_path = root / f"{scenario_name}.json"
+    manifest = connection.execute(
+        "SELECT manifest_id, current_sha256 FROM manifest_current WHERE source_path = ? AND present = 1",
+        (str(source_path.resolve()),),
+    ).fetchone()
+    if manifest is None:
+        raise ScenarioRegistryStoreError("scenario is not a current projected manifest")
+    validation = connection.execute(
+        "SELECT validation_id FROM scenario_validation_history WHERE manifest_id = ? AND manifest_sha256 = ? "
+        "AND validation_status = 'valid' ORDER BY recorded_at DESC, validation_id DESC LIMIT 1",
+        (str(manifest["manifest_id"]), str(manifest["current_sha256"])),
+    ).fetchone()
+    if validation is None:
+        raise ScenarioRegistryStoreError("scenario preparation requires a current successful validation")
+    fixture_intervention_id = None
+    if fixture_install is not None:
+        if not isinstance(fixture_install, Mapping) or not fixture_install.get("installed_worlds"):
+            raise ScenarioRegistryStoreError("fixture preparation did not install a selected world")
+        fixture_arguments = {
+            "fixture": str(fixture_install.get("fixture", "")),
+            "profile": str(fixture_install.get("profile", "")),
+            "fixture_profile": str(fixture_install.get("fixture_profile", "")),
+        }
+        fixture_target = {"worlds": list(fixture_install.get("installed_worlds", []))}
+        fixture_receipt = {
+            "owner": "fixture_install",
+            "accepted": True,
+            "binding": fixture_install.get("binding", {}),
+        }
+        fixture_intervention_id = _identity(
+            "caol-scenario-intervention-v1", str(manifest["manifest_id"]),
+            str(validation["validation_id"]), "install_fixture", _json_text(fixture_arguments),
+            _json_text(fixture_target), _json_text(fixture_receipt),
+        )
+        with immediate_transaction(connection):
+            connection.execute(
+                "INSERT OR IGNORE INTO scenario_intervention_history( "
+                "intervention_id, manifest_id, validation_id, operation, arguments_json, target_json, native_receipt_json, "
+                "before_facts_json, after_facts_json, evidence_effect, preparation_status "
+                ") VALUES( ?, ?, ?, 'install_fixture', ?, ?, ?, '{}', ?, 'none_for_manufactured_state', 'prepared' )",
+                (
+                    fixture_intervention_id, str(manifest["manifest_id"]), str(validation["validation_id"]),
+                    _json_text(fixture_arguments), _json_text(fixture_target), _json_text(fixture_receipt),
+                    _json_text({"installed_worlds": fixture_target["worlds"]}),
+                ),
+            )
+    from startup_harness import prepare_required_monster
+    prepared = prepare_required_monster(
+        world_dir,
+        typeid=required_typeid,
+        candidate_offsets=candidate_offsets,
+        player_save=player_save,
+    )
+    arguments = {
+        "required_typeid": str(required_typeid),
+        "candidate_offsets": [list(offset) for offset in candidate_offsets],
+        "player_save": str(player_save),
+    }
+    intervention_id = _identity(
+        "caol-scenario-intervention-v1", str(manifest["manifest_id"]),
+        str(validation["validation_id"]), prepared["operation"], _json_text(arguments),
+        _json_text(prepared["target"]), _json_text(prepared["native_receipt"]),
+    )
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT OR IGNORE INTO scenario_intervention_history( "
+            "intervention_id, manifest_id, validation_id, operation, arguments_json, target_json, native_receipt_json, "
+            "before_facts_json, after_facts_json, evidence_effect, preparation_status "
+            ") VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )",
+            (
+                intervention_id, str(manifest["manifest_id"]), str(validation["validation_id"]),
+                str(prepared["operation"]), _json_text(arguments), _json_text(prepared["target"]),
+                _json_text(prepared["native_receipt"]), _json_text(prepared["before_facts"]),
+                _json_text(prepared["after_facts"]), "none_for_manufactured_state", str(prepared["status"]),
+            ),
+        )
+    return {
+        "intervention_id": intervention_id,
+        "fixture_intervention_id": fixture_intervention_id,
+        "validation_id": str(validation["validation_id"]),
+        "status": prepared["status"],
+        "target": prepared["target"],
+        "native_receipt": prepared["native_receipt"],
+        "evidence_effect": "none_for_manufactured_state",
+        "gameplay_credit": False,
+    }
+
+
+def record_capability_contract_revision(
+    connection: sqlite3.Connection, *, capability_id: str, contract: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Append a reusable cockpit contract; scenario manifests stay compatibility facts."""
+    identifier = str(capability_id).strip()
+    if not identifier or not isinstance(contract, Mapping):
+        raise ScenarioRegistryStoreError("capability id and contract are required")
+    required = ("inputs", "results", "preconditions", "postconditions", "recovery", "examples", "proof_effects")
+    if any(key not in contract for key in required):
+        raise ScenarioRegistryStoreError("capability contract is missing a required section")
+    payload = _json_text(dict(contract))
+    with immediate_transaction(connection):
+        row = connection.execute(
+            "SELECT revision, contract_json FROM capability_contract_revision WHERE capability_id = ? "
+            "ORDER BY revision DESC LIMIT 1", (identifier,),
+        ).fetchone()
+        if row is not None and str(row["contract_json"]) == payload:
+            return {"capability_id": identifier, "revision": int(row["revision"]), "idempotent": True}
+        revision = 1 if row is None else int(row["revision"]) + 1
+        connection.execute(
+            "INSERT INTO capability_contract_revision( capability_id, revision, contract_json ) VALUES( ?, ?, ? )",
+            (identifier, revision, payload),
+        )
+    return {"capability_id": identifier, "revision": revision, "idempotent": False}
+
+
+def capability_contracts(connection: sqlite3.Connection, *, query: str = "", capability_id: str = "") -> Tuple[Dict[str, Any], ...]:
+    """Return only current catalog revisions, compactly and deterministically."""
+    needle = str(query).strip().casefold()
+    identifier = str(capability_id).strip()
+    rows = connection.execute(
+        "SELECT revision.capability_id, revision.revision, revision.contract_json FROM capability_contract_revision AS revision "
+        "JOIN ( SELECT capability_id, MAX(revision) AS revision FROM capability_contract_revision GROUP BY capability_id ) AS current "
+        "ON current.capability_id = revision.capability_id AND current.revision = revision.revision "
+        "WHERE ( ? = '' OR revision.capability_id = ? ) ORDER BY revision.capability_id",
+        (identifier, identifier),
+    ).fetchall()
+    result = []
+    for row in rows:
+        contract = _json_object(str(row["contract_json"]), "capability contract")
+        searchable = (str(row["capability_id"]) + " " + _json_text(contract)).casefold()
+        if needle and needle not in searchable:
+            continue
+        result.append({"id": str(row["capability_id"]), "revision": int(row["revision"]), "contract": contract})
+    return tuple(result)
+
+
+def _cockpit_evidence_effect(connection: sqlite3.Connection, scenario_id: str) -> str:
+    """Only registry state may classify a cockpit receipt; callers cannot promote it."""
+    row = connection.execute(
+        "SELECT evidence_state FROM capability_evidence_history WHERE manifest_id = ? "
+        "ORDER BY recorded_at DESC LIMIT 1", (scenario_id,),
+    ).fetchone()
+    if row is None:
+        return "none"
+    state = str(row["evidence_state"])
+    if state in {"setup-only", "diagnostic", "focused"}:
+        return state
+    return "none"
+
+
+def record_cockpit_run_receipt(
+    connection: sqlite3.Connection, *, run_id: str, scenario_id: str = "", binding_id: str = "",
+    event_kind: str, details: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Append a compact status/finish fact and derive, never accept, its evidence effect."""
+    run = str(run_id).strip()
+    if not run or event_kind not in {"status", "finish"}:
+        raise ScenarioRegistryStoreError("run id and supported receipt kind are required")
+    scenario = str(scenario_id).strip()
+    binding = str(binding_id).strip()
+    effect = _cockpit_evidence_effect(connection, scenario)
+    cost = {"state": "unavailable"}
+    receipt_details = dict(details or {})
+    receipt_id = _identity("caol-cockpit-run-receipt-v1", run, scenario, binding, event_kind,
+                           _json_text(receipt_details), effect, _json_text(cost))
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT OR IGNORE INTO cockpit_run_receipt( receipt_id, run_id, scenario_id, binding_id, event_kind, "
+            "details_json, evidence_effect, observed_cost_json ) VALUES( ?, ?, ?, ?, ?, ?, ?, ? )",
+            (receipt_id, run, scenario, binding, event_kind, _json_text(receipt_details), effect, _json_text(cost)),
+        )
+    return {"receipt_id": receipt_id, "run_id": run, "state": "finished" if event_kind == "finish" else "active",
+            "evidence_effect": effect, "observed_cost": cost}
+
+
+def cockpit_run_status(connection: sqlite3.Connection, *, run_id: str) -> Dict[str, Any]:
+    rows = connection.execute(
+        "SELECT receipt_id, scenario_id, binding_id, event_kind, details_json, evidence_effect, observed_cost_json "
+        "FROM cockpit_run_receipt WHERE run_id = ? ORDER BY recorded_at, receipt_id", (str(run_id).strip(),),
+    ).fetchall()
+    if not rows:
+        raise ScenarioRegistryStoreError("cockpit run has no receipt")
+    latest = rows[-1]
+    return {"run_id": str(run_id), "state": "finished" if latest["event_kind"] == "finish" else "active",
+            "scenario_id": str(latest["scenario_id"]), "binding_id": str(latest["binding_id"]),
+            "receipt_id": str(latest["receipt_id"]), "evidence_effect": str(latest["evidence_effect"]),
+            "observed_cost": dict(_json_object(str(latest["observed_cost_json"]), "cockpit observed cost")),
+            "details": dict(_json_object(str(latest["details_json"]), "cockpit receipt details"))}
+
+
+def _run_evidence_ceiling(connection: sqlite3.Connection, manifest_id: str,
+                          declaration: Mapping[str, Any]) -> str:
+    """Derive observation authority separately from later proof eligibility."""
+    runtime = declaration.get("runtime_contract")
+    if not isinstance(runtime, Mapping) or runtime.get("grants_gameplay_proof") is not True:
+        return "zero-credit"
+    effect = _cockpit_evidence_effect(connection, manifest_id)
+    if effect == "focused":
+        return "focused"
+    if effect == "setup-only":
+        return "setup-only"
+    return "diagnostic"
+
+
+def _run_authority_row(connection: sqlite3.Connection, run_id: str) -> Optional[sqlite3.Row]:
+    return connection.execute(
+        "SELECT * FROM cockpit_run_authority WHERE run_id = ?", (str(run_id).strip(),),
+    ).fetchone()
+
+
+def _run_authority_terminal(connection: sqlite3.Connection, receipt_id: str) -> Optional[sqlite3.Row]:
+    return connection.execute(
+        "SELECT event_kind, details_json FROM cockpit_run_authority_event "
+        "WHERE receipt_id = ? AND event_kind IN ( 'finished', 'invalidated' ) "
+        "ORDER BY recorded_at, event_id LIMIT 1", (receipt_id,),
+    ).fetchone()
+
+
+def _append_run_authority_event(connection: sqlite3.Connection, *, receipt_id: str,
+                                event_kind: str, details: Mapping[str, Any]) -> None:
+    event_id = _identity(
+        "caol-cockpit-run-authority-event-v1", receipt_id, event_kind,
+        _json_text(dict(details)),
+    )
+    connection.execute(
+        "INSERT OR IGNORE INTO cockpit_run_authority_event( event_id, receipt_id, event_kind, details_json ) "
+        "VALUES( ?, ?, ?, ? )",
+        (event_id, receipt_id, event_kind, _json_text(dict(details))),
+    )
+
+
+def open_cockpit_run(
+    connection: sqlite3.Connection, *, selection_id: str, owner_id: str,
+    workspace_root: Optional[Path] = None,
+) -> Dict[str, Any]:
+    """Open one source-bound run without borrowing evidence-token eligibility."""
+    selection = str(selection_id).strip()
+    owner = str(owner_id).strip()
+    if not selection or not owner:
+        raise ScenarioRegistryStoreError("run.open needs one current selection and service owner")
+    selected = connection.execute(
+        "SELECT selection_id, manifest_id, manifest_revision, manifest_sha256, details_json "
+        "FROM scenario_selection_history WHERE selection_id = ?", (selection,),
+    ).fetchone()
+    if selected is None:
+        raise ScenarioRegistryStoreError("run.open selection is unknown")
+    if connection.execute(
+            "SELECT 1 FROM cockpit_run_authority WHERE selection_id = ?", (selection,),
+    ).fetchone() is not None:
+        raise ScenarioRegistryStoreError("run.open selection was already consumed")
+    details = _json_object(str(selected["details_json"]), "scenario selection details")
+    if details.get("lifecycle") != "active":
+        raise ScenarioRegistryStoreError("run.open selection is not active")
+    manifest = connection.execute(
+        "SELECT manifest_id, source_path, present, revision, current_sha256, declaration_json, validation_json "
+        "FROM manifest_current WHERE manifest_id = ?", (str(selected["manifest_id"]),),
+    ).fetchone()
+    if manifest is None or int(manifest["present"]) != 1:
+        raise ScenarioRegistryStoreError("run.open scenario source is not current")
+    if (int(manifest["revision"]) != int(selected["manifest_revision"]) or
+            str(manifest["current_sha256"]) != str(selected["manifest_sha256"])):
+        raise ScenarioRegistryStoreError("run.open selection binding drifted")
+    validation = _json_object(str(manifest["validation_json"]), "manifest validation")
+    if validation.get("status") != "valid":
+        raise ScenarioRegistryStoreError("run.open scenario is not valid")
+    declaration = _json_object(str(manifest["declaration_json"]), "manifest declaration")
+    runtime = declaration.get("runtime_contract")
+    if not isinstance(runtime, Mapping):
+        raise ScenarioRegistryStoreError("run.open scenario has no runtime contract")
+    if runtime.get("setup_only_debug") is True and runtime.get("disposable_copy") is not True:
+        raise ScenarioRegistryStoreError("run.open rejects debug setup without a disposable copy")
+    source_path = Path(str(manifest["source_path"]))
+    source_sha256 = path_sha256(source_path)
+    if source_sha256 != str(selected["manifest_sha256"]):
+        raise ScenarioRegistryStoreError("run.open scenario bytes changed after selection")
+    requirements = runtime.get("requirements")
+    executable_name = str(requirements.get("executable", "")).strip() \
+        if isinstance(requirements, Mapping) else ""
+    if not executable_name:
+        raise ScenarioRegistryStoreError("run.open runtime has no executable")
+    executable_path = Path(executable_name)
+    if not executable_path.is_absolute():
+        executable_path = (workspace_root or repository_root()) / executable_path
+    executable_sha256 = path_sha256(executable_path)
+    profile = str(declaration.get("profile", runtime.get("profile", ""))).strip()
+    world = str(declaration.get("world", "")).strip()
+    ownership_scope = _identity(
+        "caol-cockpit-run-ownership-v1", str(manifest["manifest_id"]), profile, world,
+    )
+    conflict = connection.execute(
+        "SELECT authority.run_id FROM cockpit_run_authority AS authority "
+        "WHERE authority.ownership_scope = ? AND NOT EXISTS ( "
+        "SELECT 1 FROM cockpit_run_authority_event AS event WHERE event.receipt_id = authority.receipt_id "
+        "AND event.event_kind IN ( 'finished', 'invalidated' ) ) LIMIT 1",
+        (ownership_scope,),
+    ).fetchone()
+    if conflict is not None:
+        raise ScenarioRegistryStoreError("run.open ownership conflicts with an active run")
+    run_id = f"cockpit-{uuid.uuid4().hex}"
+    binding_id = _identity(
+        "caol-cockpit-run-binding-v1", str(manifest["manifest_id"]),
+        str(manifest["revision"]), source_sha256, str(executable_path.resolve()),
+        executable_sha256, run_id, ownership_scope,
+    )
+    ceiling = _run_evidence_ceiling(connection, str(manifest["manifest_id"]), declaration)
+    receipt_id = _identity(
+        "caol-cockpit-run-open-receipt-v1", selection, run_id, binding_id, owner, ceiling,
+    )
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT INTO cockpit_run_authority( receipt_id, selection_id, run_id, manifest_id, "
+            "manifest_revision, manifest_sha256, source_path, source_sha256, executable_path, "
+            "executable_sha256, binding_id, ownership_scope, owner_id, evidence_ceiling ) "
+            "VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ? )",
+            (receipt_id, selection, run_id, str(manifest["manifest_id"]), int(manifest["revision"]),
+             str(manifest["current_sha256"]), str(source_path.resolve()), source_sha256,
+             str(executable_path.resolve()), executable_sha256, binding_id, ownership_scope, owner, ceiling),
+        )
+        _append_run_authority_event(
+            connection, receipt_id=receipt_id, event_kind="opened",
+            details={"prior_proof_required": False, "proof_promotion_authority": False},
+        )
+    return {
+        "receipt_id": receipt_id, "run_id": run_id, "scenario_id": str(manifest["manifest_id"]),
+        "scenario_revision": int(manifest["revision"]), "binding_id": binding_id,
+        "state": "active", "evidence_ceiling": ceiling,
+        "proof_promotion_authority": False,
+    }
+
+
+def cockpit_run_authority_status(connection: sqlite3.Connection, *, run_id: str) -> Dict[str, Any]:
+    """Revalidate bound bytes and fail closed without erasing the opened receipt."""
+    row = _run_authority_row(connection, run_id)
+    if row is None:
+        raise ScenarioRegistryStoreError("cockpit run has no opening authority")
+    terminal = _run_authority_terminal(connection, str(row["receipt_id"]))
+    drift = ""
+    if terminal is None:
+        current = connection.execute(
+            "SELECT present, revision, current_sha256, source_path FROM manifest_current WHERE manifest_id = ?",
+            (str(row["manifest_id"]),),
+        ).fetchone()
+        try:
+            if (current is None or int(current["present"]) != 1 or
+                    int(current["revision"]) != int(row["manifest_revision"]) or
+                    str(current["current_sha256"]) != str(row["manifest_sha256"]) or
+                    str(Path(str(current["source_path"])).resolve()) != str(row["source_path"]) or
+                    path_sha256(Path(str(row["source_path"]))) != str(row["source_sha256"])):
+                drift = "scenario_binding_drift"
+            elif path_sha256(Path(str(row["executable_path"]))) != str(row["executable_sha256"]):
+                drift = "executable_binding_drift"
+        except ScenarioRegistryStoreError:
+            drift = "bound_path_unavailable"
+        if drift:
+            with immediate_transaction(connection):
+                _append_run_authority_event(
+                    connection, receipt_id=str(row["receipt_id"]), event_kind="invalidated",
+                    details={"reason": drift},
+                )
+            terminal = _run_authority_terminal(connection, str(row["receipt_id"]))
+    state = str(terminal["event_kind"]) if terminal is not None else "active"
+    return {
+        "receipt_id": str(row["receipt_id"]), "run_id": str(row["run_id"]),
+        "scenario_id": str(row["manifest_id"]), "scenario_revision": int(row["manifest_revision"]),
+        "binding_id": str(row["binding_id"]), "state": state,
+        "evidence_ceiling": "zero-credit" if state == "invalidated" else str(row["evidence_ceiling"]),
+        "proof_promotion_authority": False,
+        "terminal": dict(_json_object(str(terminal["details_json"]), "run authority terminal"))
+        if terminal is not None else {},
+    }
+
+
+def finish_cockpit_run_authority(connection: sqlite3.Connection, *, run_id: str,
+                                 details: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
+    status = cockpit_run_authority_status(connection, run_id=run_id)
+    if status["state"] != "active":
+        return status
+    row = _run_authority_row(connection, run_id)
+    assert row is not None
+    with immediate_transaction(connection):
+        _append_run_authority_event(
+            connection, receipt_id=str(row["receipt_id"]), event_kind="finished",
+            details=dict(details or {}),
+        )
+    return cockpit_run_authority_status(connection, run_id=run_id)
+
+
+def report_capability_gap(
+    connection: sqlite3.Connection, *, run_id: str, scenario_id: str, binding_id: str,
+    blocked_intent: str, missing_kind: str, evidence: Mapping[str, Any], reusable_outcome: str,
+    affected_scenarios: Sequence[str],
+) -> Dict[str, Any]:
+    """Store one reusable gap and link equivalent reports instead of cloning warnings."""
+    if missing_kind not in {"observation", "action", "setup", "recovery", "structured_failure"}:
+        raise ScenarioRegistryStoreError("gap missing kind is unsupported")
+    fields = (run_id, scenario_id, blocked_intent, reusable_outcome)
+    if any(not str(value).strip() for value in fields) or not isinstance(evidence, Mapping):
+        raise ScenarioRegistryStoreError("gap report is missing required facts")
+    key = _identity("caol-capability-gap-v1", str(blocked_intent).strip(), missing_kind, str(reusable_outcome).strip())
+    gap_id = key
+    cost = {"state": "unavailable"}
+    report_id = _identity("caol-capability-gap-report-v1", key, str(run_id), str(scenario_id), str(binding_id),
+                          _json_text(dict(evidence)),
+                          _json_text(sorted({str(item) for item in affected_scenarios if str(item).strip()})))
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT OR IGNORE INTO capability_gap( gap_id, equivalence_key, blocked_intent, missing_kind, reusable_outcome, "
+            "evidence_json, observed_cost_json ) VALUES( ?, ?, ?, ?, ?, ?, ? )",
+            (gap_id, key, str(blocked_intent).strip(), missing_kind, str(reusable_outcome).strip(),
+             _json_text(dict(evidence)), _json_text(cost)),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO capability_gap_report( report_id, gap_id, run_id, scenario_id, binding_id, affected_scenarios_json ) "
+            "VALUES( ?, ?, ?, ?, ?, ? )", (report_id, gap_id, str(run_id), str(scenario_id), str(binding_id),
+                                             _json_text(sorted({str(item) for item in affected_scenarios if str(item).strip()}))),
+        )
+        count = connection.execute("SELECT COUNT(*) FROM capability_gap_report WHERE gap_id = ?", (gap_id,)).fetchone()[0]
+    return {"gap_id": gap_id, "report_id": report_id, "linked": int(count) > 1,
+            "observed_cost": cost, "evidence_effect": "none"}
+
+
+def capability_gaps(connection: sqlite3.Connection, *, scenario_id: str = "") -> Tuple[Dict[str, Any], ...]:
+    where = "" if not str(scenario_id).strip() else "WHERE report.scenario_id = ? OR report.affected_scenarios_json LIKE ?"
+    values: Tuple[Any, ...] = () if not where else (str(scenario_id).strip(), f'%"{str(scenario_id).strip()}"%')
+    rows = connection.execute(
+        "SELECT DISTINCT gap.gap_id, gap.blocked_intent, gap.missing_kind, gap.reusable_outcome, gap.observed_cost_json "
+        "FROM capability_gap AS gap JOIN capability_gap_report AS report ON report.gap_id = gap.gap_id " + where +
+        " ORDER BY gap.recorded_at, gap.gap_id", values,
+    ).fetchall()
+    return tuple({"gap_id": str(row["gap_id"]), "blocked_intent": str(row["blocked_intent"]),
+                  "missing_kind": str(row["missing_kind"]), "reusable_outcome": str(row["reusable_outcome"]),
+                  "observed_cost": dict(_json_object(str(row["observed_cost_json"]), "gap observed cost"))}
+                 for row in rows)
+
+
 def execute_registry_query(
     connection: sqlite3.Connection,
     request: RegistryQueryRequest,
@@ -1341,6 +2531,20 @@ def execute_registry_query(
     selected_id = evaluation.evaluation.ranked_scenario_ids[0] if evaluation.evaluation.ranked_scenario_ids else None
     selected = next((candidate for candidate in evaluation.candidates if candidate.scenario_id == selected_id), None)
     route = _current_verified_route(selected) if selected is not None and selected.token_eligible else None
+    first_run_route = None
+    selected_name = str(selected.explanation.get("manifest", {}).get("name", "")) if selected is not None else ""
+    # A startup-only/non-certification report must not consume the unique
+    # first-run certification route.  Permit a fresh ordinary certification
+    # token while retaining all prior diagnostic history.
+    if selected is not None and (route is None or selected_name in {
+            "bandit.r005_continuous_hostile_ecology_certification",
+            "bandit.r005_safe_wait_observation",
+            "r018.raw_wait_acceptance_mcw",
+            "r019.keep_watch_meaningful_event_bootstrap_mcw",
+            "r019.keep_watch_off_interruption_closure057_bootstrap_mcw",
+    }):
+        first_run_route = _first_run_certification_route(selected)
+        route = first_run_route
     bootstrap_authority = (
         selected.explanation.get("bootstrap_authority")
         if selected is not None and selected.token_eligible else None
@@ -1360,20 +2564,76 @@ def execute_registry_query(
             evaluation=evaluation,
             drafts_root=root,
         )
+        repair_evaluation = evaluate_registry_query_from_store(
+            connection,
+            request,
+            include_lifecycle_states=tuple(sorted({*include_lifecycle_states, "quarantined"})),
+        )
+        next_action = _registry_query_repair_action(
+            connection,
+            query_id=query_id,
+            request=request,
+            evaluation=repair_evaluation,
+        )
         with immediate_transaction(connection):
             _append_query_audit(
                 connection,
                 query_id=query_id,
                 request_json=request_json,
-                result={"kind": "draft", "draft_path": draft_path, "selected_scenario_id": selected_id},
+                result={
+                    "kind": "draft",
+                    "draft_path": draft_path,
+                    "selected_scenario_id": selected_id,
+                    "next_action": next_action,
+                },
             )
-        return RegistryQueryExecution(query_id, query_sha256, evaluation, None, draft_path)
+            selection_id = (
+                _append_scenario_selection(
+                    connection, query_id=query_id, request=request,
+                    candidate=selected, evaluation=evaluation.evaluation,
+                ) if selected is not None else None
+            )
+        return RegistryQueryExecution(
+            query_id, query_sha256, evaluation, None, draft_path, selection_id, next_action
+        )
 
     manifest = selected.explanation["manifest"]
+    if first_run_route is not None:
+        # A first run has no verification binding to rehydrate, but it must
+        # still cross the same persisted-route boundary as every other launch.
+        # Persist the declaration-bound authority before exposing a token.
+        first_run_route = {
+            **dict(first_run_route),
+            "details": {
+                **dict(first_run_route["details"]),
+                "source_path": str(manifest["source_path"]),
+            },
+        }
+        with immediate_transaction(connection):
+            _append_route_evidence_if_changed(
+                connection,
+                manifest_id=str(manifest["manifest_id"]),
+                route_key=str(first_run_route["route_key"]),
+                evidence_state=str(first_run_route["internal_resolution_state"]),
+                details=first_run_route["details"],
+            )
+            current_route = next(
+                (
+                    item for item in _current_route_evidence(connection, str(manifest["manifest_id"]))
+                    if str(item.get("route_key", "")) == str(first_run_route["route_key"])
+                ),
+                None,
+            )
+        if current_route is None or _json_text(current_route) != _json_text(first_run_route):
+            raise ScenarioRegistryStoreError("First-run route evidence did not persist exactly")
+        route = current_route
     route_key = str(route["route_key"])
     bindings = route["bindings"]
     verification_ids = tuple(str(binding["verification_id"]) for binding in bindings)
     authority_kind = "query_selection"
+    if first_run_route is not None:
+        authority_kind = "first_run_certification" if selected_name == \
+                         "bandit.r005_continuous_hostile_ecology_certification" else "first_run_bootstrap"
     if isinstance(bootstrap_authority, Mapping) and route.get("evidence_state") in {"stale", "unknown"}:
         authority_kind = "current_bootstrap_revalidation"
     token_details = {
@@ -1389,15 +2649,22 @@ def execute_registry_query(
     }
     if authority_kind == "current_bootstrap_revalidation":
         token_details["bootstrap_authority"] = dict(bootstrap_authority)
-    token_id = _identity(
-        "caol-scenario-selection-token-v1",
-        query_sha256,
-        str(manifest["manifest_id"]),
-        str(manifest["revision"]),
-        str(manifest["sha256"]),
-        route_key,
-        _json_text(token_details),
+    token_seed = (
+        "caol-scenario-selection-token-v1", query_sha256,
+        str(manifest["manifest_id"]), str(manifest["revision"]),
+        str(manifest["sha256"]), route_key, _json_text(token_details),
     )
+    token_id = _identity(*token_seed)
+    prior_terminal = connection.execute(
+        "SELECT 1 FROM token_history WHERE token_id = ? "
+        "AND event_kind IN ('invalidated', 'verification_run') LIMIT 1", (token_id,)
+    ).fetchone()
+    if prior_terminal is not None:
+        retry_count = connection.execute(
+            "SELECT COUNT(*) FROM token_history WHERE manifest_id = ? "
+            "AND route_key = ? AND event_kind = 'issued'", (manifest["manifest_id"], route_key)
+        ).fetchone()[0]
+        token_id = _identity(*token_seed, "retry", str(retry_count))
     with immediate_transaction(connection):
         _append_query_audit(
             connection,
@@ -1416,7 +2683,11 @@ def execute_registry_query(
                 _json_text(token_details),
             ),
         )
-    return RegistryQueryExecution(query_id, query_sha256, evaluation, token_id, None)
+        selection_id = _append_scenario_selection(
+            connection, query_id=query_id, request=request,
+            candidate=selected, evaluation=evaluation.evaluation,
+        )
+    return RegistryQueryExecution(query_id, query_sha256, evaluation, token_id, None, selection_id)
 
 
 def _invalidate_manifest_tokens(
@@ -1587,13 +2858,59 @@ def reload_selection_token_for_launch(
         if not scenario or not isinstance(declaration.get("name", ""), str):
             return reject("manifest_scenario_unavailable")
 
+        if authority_kind in {"first_run_certification", "first_run_bootstrap"}:
+            snapshot = RegistryQueryCandidateSnapshot(
+                scenario_id=expected_manifest_id,
+                lifecycle_state="active",
+                token_eligible=True,
+                facts={key: {"value": value} for key, value in declaration.get("capabilities", {}).items()},
+                explanation={"manifest": {
+                    "name": declaration.get("name"),
+                    "source_path": str(source_path),
+                    "sha256": expected_sha256,
+                    "validation": {"status": "valid", "review_required": False},
+                }},
+            )
+            expected_first_run_route = _first_run_certification_route(snapshot)
+            if expected_first_run_route is None:
+                return reject("first_run_manifest_not_authorized")
+            expected_first_run_route = {
+                **dict(expected_first_run_route),
+                "details": {
+                    **dict(expected_first_run_route["details"]),
+                    "source_path": str(source_path),
+                },
+            }
+            current_routes = _current_route_evidence(connection, expected_manifest_id)
+            current_route_matches = tuple(
+                route for route in current_routes if str(route.get("route_key", "")) == str(issued["route_key"])
+            )
+            if not current_route_matches:
+                return reject("route_missing")
+            if len(current_route_matches) != 1:
+                return reject("route_ambiguous")
+            current_route = current_route_matches[0]
+            if _json_text(expected_route) != _json_text(expected_first_run_route):
+                return reject("receipt_first_run_route_mismatch")
+            if _json_text(current_route) != _json_text(expected_first_run_route):
+                return reject("first_run_route_binding_changed")
+            return RegistryLaunchToken(
+                token_id=token_id,
+                accepted=True,
+                reason=authority_kind,
+                scenario=scenario,
+                source_path=str(source_path.resolve()),
+            )
+
         current_routes = _current_route_evidence(connection, expected_manifest_id)
-        current_route = next(
-            (route for route in current_routes if str(route.get("route_key", "")) == str(issued["route_key"])),
-            None,
+        current_route_matches = tuple(
+            route for route in current_routes if str(route.get("route_key", "")) == str(issued["route_key"])
         )
-        if current_route is None:
+        if not current_route_matches:
             return reject("route_missing")
+        if len(current_route_matches) != 1:
+            return reject("route_ambiguous")
+        current_route = current_route_matches[0]
         if authority_kind == "current_bootstrap_revalidation":
             if not isinstance(expected_bootstrap_authority, Mapping):
                 return reject("receipt_malformed", error="bootstrap authority is missing")
@@ -1906,11 +3223,18 @@ def _repair_route_current(
 ) -> bool:
     routes = _current_route_evidence(connection, manifest_id)
     route = next((item for item in routes if str(item.get("route_key", "")) == route_key), None)
-    if route is None or route.get("evidence_state") != "contradicted":
+    if route is None:
         return False
     details = route.get("details", {})
-    if not isinstance(details, Mapping) or red_verification_id not in {
-            str(item) for item in details.get("unresolved_contradiction_ids", ())}:
+    if route.get("evidence_state") == "contradicted":
+        red_ids = details.get("unresolved_contradiction_ids", ()) if isinstance(details, Mapping) else ()
+    elif route.get("evidence_state") == "stale":
+        red_ids = _r019_stale_repairable_red_ids(
+            connection, manifest_id=manifest_id, route_key=route_key,
+        )
+    else:
+        return False
+    if red_verification_id not in {str(item) for item in red_ids}:
         return False
     red = connection.execute(
         "SELECT verification_id, manifest_id, route_key, details_json FROM verification_history "
@@ -1925,6 +3249,43 @@ def _repair_route_current(
     )
 
 
+def _r019_stale_repairable_red_ids(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    route_key: str,
+) -> Tuple[str, ...]:
+    """Return stale R-019 red rows that only the current-source successor may repair."""
+    declaration = connection.execute(
+        "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?", (manifest_id,)
+    ).fetchone()
+    if declaration is None or _json_object(
+            str(declaration["declaration_json"]), "R-019 stale repair declaration"
+    ).get("name") != "r019.keep_watch_acceptance_mcw":
+        return ()
+    rows = connection.execute(
+        "SELECT verification_id, details_json FROM verification_history AS candidate "
+        "WHERE manifest_id = ? AND route_key = ? AND NOT EXISTS ("
+        "SELECT 1 FROM verification_history AS successor "
+        "WHERE successor.supersedes_verification_id = candidate.verification_id) "
+        "ORDER BY recorded_at, verification_id",
+        (manifest_id, route_key),
+    ).fetchall()
+    stale_red_ids = []
+    for row in rows:
+        verification_id = str(row["verification_id"])
+        if _verification_evidence_state(row) != "contradicted":
+            continue
+        resolution = connection.execute(
+            "SELECT resolution_kind FROM verification_resolution_history WHERE verification_id = ? "
+            "ORDER BY resolution_event_id DESC LIMIT 1",
+            (verification_id,),
+        ).fetchone()
+        if resolution is not None and str(resolution["resolution_kind"]) == "stale":
+            stale_red_ids.append(verification_id)
+    return tuple(stale_red_ids)
+
+
 def _repair_query_matches_manifest(
     connection: sqlite3.Connection,
     *,
@@ -1932,7 +3293,9 @@ def _repair_query_matches_manifest(
     request: RegistryQueryRequest,
 ) -> bool:
     snapshots = build_registry_query_candidate_snapshot(
-        connection, include_lifecycle_states=("quarantined",),
+        connection,
+        include_lifecycle_states=("quarantined",),
+        manifest_ids=(manifest_id,),
     )
     snapshot = next((item for item in snapshots if item.scenario_id == manifest_id), None)
     if snapshot is None:
@@ -1942,8 +3305,13 @@ def _repair_query_matches_manifest(
     lowered_facts = {
         key: {
             **dict(fact),
-            "evidence_state": "run-verified" if fact.get("evidence_state") == "contradicted" else fact.get("evidence_state"),
-            "proof_depth": None if fact.get("evidence_state") == "contradicted" else fact.get("proof_depth"),
+            "evidence_state": (
+                "declared" if fact.get("evidence_state") == "stale"
+                else "run-verified" if fact.get("evidence_state") == "contradicted"
+                else fact.get("evidence_state")
+            ),
+            "proof_depth": None if fact.get("evidence_state") in {"contradicted", "stale"}
+            else fact.get("proof_depth"),
         }
         for key, fact in snapshot.facts.items()
     }
@@ -2140,8 +3508,14 @@ def issue_registry_repair_token(
     if not _repair_query_matches_manifest(connection, manifest_id=manifest_id, request=request):
         return RegistryRepairToken("", False, "query_not_matched_by_contradicted_manifest")
     request_json = _query_request_json(request)
+    stale_r019_successor = red_verification_id in _r019_stale_repairable_red_ids(
+        connection, manifest_id=manifest_id, route_key=route_key,
+    )
     details = {
-        "authority_kind": "registry_repair_exact_contradiction",
+        "authority_kind": (
+            "registry_repair_r019_current_source_successor"
+            if stale_r019_successor else "registry_repair_exact_contradiction"
+        ),
         "query_json": json.loads(request_json),
         "query_sha256": hashlib.sha256(request_json.encode("utf-8")).hexdigest(),
         "manifest_id": manifest_id,
@@ -2255,15 +3629,33 @@ def reload_repair_token_for_launch(
             _record_repair_token_rejection(connection, issued=issued, reason=reason, details=details)
             return RegistryRepairToken(token_id, False, reason)
 
-        if connection.execute(
-                "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_invalidated' LIMIT 1",
-                (token_id,)).fetchone() is not None:
-            return reject("token_invalidated")
+        invalidation = connection.execute(
+            "SELECT token_event_id, reason, details_json FROM token_history "
+            "WHERE token_id = ? AND event_kind = 'repair_invalidated' "
+            "ORDER BY token_event_id DESC LIMIT 1",
+            (token_id,),
+        ).fetchone()
+        if invalidation is not None:
+            return reject(
+                "token_invalidated",
+                prior_terminal_event={
+                    "token_event_id": int(invalidation["token_event_id"]),
+                    "event_kind": "repair_invalidated",
+                    "reason": str(invalidation["reason"]),
+                    "details": _json_object(
+                        str(invalidation["details_json"]), "repair invalidation details",
+                    ),
+                },
+            )
         claimed = connection.execute(
             "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_claimed' LIMIT 1",
             (token_id,)).fetchone() is not None
         if claimed != require_claimed:
-            return reject("token_already_claimed" if claimed else "token_not_claimed")
+            return reject(
+                "token_already_claimed" if claimed else "token_not_claimed",
+                required_claimed=require_claimed,
+                observed_claimed=claimed,
+            )
         try:
             receipt = _json_object(str(issued["details_json"]), "repair token details")
             request = parse_registry_query_request(receipt.get("query_json"))
@@ -2897,6 +4289,404 @@ def _migration_009_diagnostic_capsule_candidates(connection: sqlite3.Connection)
     _create_history_append_only_triggers(connection, "diagnostic_capsule_candidate")
 
 
+def _migration_010_binding_report_identity(connection: sqlite3.Connection) -> None:
+    """Index binding ownership so reconciliation need not decode unrelated payloads."""
+    connection.executescript(
+        """
+        ALTER TABLE binding_history ADD COLUMN report_id TEXT;
+        CREATE INDEX idx_binding_report_identity
+        ON binding_history(report_id, binding_kind, binding_event_id);
+        """
+    )
+
+
+def _migration_011_backfill_binding_report_identity(connection: sqlite3.Connection) -> None:
+    """Backfill legacy binding ownership only when authoritative identity agrees."""
+    connection.executescript(
+        """
+        CREATE TABLE IF NOT EXISTS binding_identity_migration (
+            binding_event_id INTEGER PRIMARY KEY REFERENCES binding_history(binding_event_id) ON DELETE RESTRICT,
+            migration_status TEXT NOT NULL CHECK ( migration_status IN ('backfilled', 'rejected') ),
+            report_id TEXT NOT NULL DEFAULT '',
+            reason TEXT NOT NULL DEFAULT '',
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX IF NOT EXISTS idx_binding_identity_migration_status
+        ON binding_identity_migration(migration_status, binding_event_id);
+        """
+    )
+    _create_history_append_only_triggers(connection, "binding_identity_migration")
+
+    # The normal append-only trigger protects runtime history.  This migration
+    # is the sole ownership repair lane; restore the guard before returning.
+    connection.execute("DROP TRIGGER IF EXISTS binding_history_no_update")
+    rows = connection.execute(
+        "SELECT binding_event_id, manifest_id, binding_kind, payload_json "
+        "FROM binding_history WHERE report_id IS NULL ORDER BY binding_event_id"
+    ).fetchall()
+    candidates = []
+    rejected = {}
+    for row in rows:
+        event_id = int(row["binding_event_id"])
+        try:
+            payload = _json_object(str(row["payload_json"]), "binding payload")
+            report_id = payload.get("report_id")
+            verification_id = payload.get("verification_id")
+            if not isinstance(report_id, str) or not report_id.strip():
+                raise ScenarioRegistryStoreError("missing report identity")
+            if not isinstance(verification_id, str) or not verification_id.strip():
+                raise ScenarioRegistryStoreError("missing verification identity")
+            owner_rows = connection.execute(
+                "SELECT report_id, manifest_id FROM report_ingestion_history WHERE report_id = ?",
+                (report_id,),
+            ).fetchall()
+            if len(owner_rows) != 1 or owner_rows[0]["manifest_id"] != row["manifest_id"]:
+                raise ScenarioRegistryStoreError("report owner mismatch")
+            verification = connection.execute(
+                "SELECT verification_id FROM verification_history "
+                "WHERE verification_id = ? AND report_id = ? AND manifest_id = ?",
+                (verification_id, report_id, row["manifest_id"]),
+            ).fetchall()
+            if len(verification) != 1:
+                raise ScenarioRegistryStoreError("verification owner mismatch")
+            candidates.append((event_id, report_id, str(row["binding_kind"])))
+        except (ScenarioRegistryStoreError, json.JSONDecodeError, TypeError, ValueError) as exc:
+            rejected[event_id] = str(exc)
+
+    counts = {}
+    for _event_id, report_id, kind in candidates:
+        counts[(report_id, kind)] = counts.get((report_id, kind), 0) + 1
+    for event_id, report_id, kind in candidates:
+        if counts[(report_id, kind)] != 1:
+            rejected[event_id] = "duplicate binding kind for report"
+
+    try:
+        for row in rows:
+            event_id = int(row["binding_event_id"])
+            candidate = next((item for item in candidates if item[0] == event_id), None)
+            if event_id in rejected or candidate is None:
+                reason = rejected.get(event_id, "ambiguous binding identity")
+                connection.execute(
+                    "INSERT INTO binding_identity_migration(binding_event_id, migration_status, reason) "
+                    "VALUES (?, 'rejected', ?)", (event_id, reason),
+                )
+                continue
+            report_id = candidate[1]
+            connection.execute(
+                "UPDATE binding_history SET report_id = ? WHERE binding_event_id = ? AND report_id IS NULL",
+                (report_id, event_id),
+            )
+            connection.execute(
+                "INSERT INTO binding_identity_migration(binding_event_id, migration_status, report_id) "
+                "VALUES (?, 'backfilled', ?)", (event_id, report_id),
+            )
+    finally:
+        _create_history_append_only_triggers(connection, "binding_history")
+
+
+def _migration_012_scenario_lifecycle_history(connection: sqlite3.Connection) -> None:
+    """Persist setup-only scenario lifecycle decisions beside immutable sources."""
+    connection.executescript(
+        """
+        CREATE TABLE scenario_selection_history (
+            selection_id TEXT PRIMARY KEY,
+            query_id TEXT NOT NULL,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            manifest_revision INTEGER NOT NULL,
+            manifest_sha256 TEXT NOT NULL,
+            fit_reason TEXT NOT NULL,
+            details_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( query_id, manifest_id, manifest_revision, manifest_sha256 )
+        );
+        CREATE TABLE scenario_validation_history (
+            validation_id TEXT PRIMARY KEY,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            manifest_sha256 TEXT NOT NULL,
+            fixture_binding_json TEXT NOT NULL,
+            validation_status TEXT NOT NULL,
+            reason TEXT NOT NULL,
+            details_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( manifest_id, manifest_sha256, fixture_binding_json, validation_status, reason )
+        );
+        CREATE TABLE scenario_intervention_history (
+            intervention_id TEXT PRIMARY KEY,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            validation_id TEXT REFERENCES scenario_validation_history( validation_id ) ON DELETE RESTRICT,
+            operation TEXT NOT NULL,
+            arguments_json TEXT NOT NULL,
+            target_json TEXT NOT NULL,
+            native_receipt_json TEXT NOT NULL,
+            before_facts_json TEXT NOT NULL,
+            after_facts_json TEXT NOT NULL,
+            evidence_effect TEXT NOT NULL CHECK ( evidence_effect = 'none_for_manufactured_state' ),
+            preparation_status TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_scenario_selection_manifest
+        ON scenario_selection_history( manifest_id, recorded_at );
+        CREATE INDEX idx_scenario_validation_manifest
+        ON scenario_validation_history( manifest_id, recorded_at );
+        CREATE INDEX idx_scenario_intervention_manifest
+        ON scenario_intervention_history( manifest_id, recorded_at );
+        """
+    )
+    for table in (
+        "scenario_selection_history",
+        "scenario_validation_history",
+        "scenario_intervention_history",
+    ):
+        _create_history_append_only_triggers(connection, table)
+
+
+def _migration_013_cockpit_capability_runs_and_gaps(connection: sqlite3.Connection) -> None:
+    """Persist the cockpit's reusable knowledge without competing with report authority."""
+    connection.executescript(
+        """
+        CREATE TABLE capability_contract_revision (
+            capability_id TEXT NOT NULL,
+            revision INTEGER NOT NULL CHECK ( revision > 0 ),
+            contract_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            PRIMARY KEY ( capability_id, revision )
+        );
+        CREATE TABLE cockpit_run_receipt (
+            receipt_id TEXT PRIMARY KEY,
+            run_id TEXT NOT NULL,
+            scenario_id TEXT NOT NULL,
+            binding_id TEXT NOT NULL,
+            event_kind TEXT NOT NULL CHECK ( event_kind IN ( 'status', 'finish' ) ),
+            details_json TEXT NOT NULL,
+            evidence_effect TEXT NOT NULL,
+            observed_cost_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_cockpit_run_receipt_run
+        ON cockpit_run_receipt( run_id, recorded_at, receipt_id );
+        CREATE TABLE capability_gap (
+            gap_id TEXT PRIMARY KEY,
+            equivalence_key TEXT NOT NULL UNIQUE,
+            blocked_intent TEXT NOT NULL,
+            missing_kind TEXT NOT NULL,
+            reusable_outcome TEXT NOT NULL,
+            evidence_json TEXT NOT NULL,
+            observed_cost_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE capability_gap_report (
+            report_id TEXT PRIMARY KEY,
+            gap_id TEXT NOT NULL REFERENCES capability_gap( gap_id ) ON DELETE RESTRICT,
+            run_id TEXT NOT NULL,
+            scenario_id TEXT NOT NULL,
+            binding_id TEXT NOT NULL,
+            affected_scenarios_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_capability_gap_report_scenario
+        ON capability_gap_report( scenario_id, gap_id );
+        """
+    )
+    for table in (
+        "capability_contract_revision", "cockpit_run_receipt", "capability_gap", "capability_gap_report",
+    ):
+        _create_history_append_only_triggers(connection, table)
+
+
+def _migration_014_source_bound_review_firewall(connection: sqlite3.Connection) -> None:
+    """Keep external review decisions immutable and exact-source-bound."""
+    connection.executescript(
+        """
+        CREATE TABLE source_bound_review_history (
+            review_event_id INTEGER PRIMARY KEY,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            source_path TEXT NOT NULL,
+            manifest_revision INTEGER NOT NULL CHECK ( manifest_revision > 0 ),
+            manifest_sha256 TEXT NOT NULL,
+            decision TEXT NOT NULL CHECK ( decision IN ( 'accepted', 'rejected' ) ),
+            reviewer_identity TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( manifest_id, source_path, manifest_revision, manifest_sha256 )
+        );
+        CREATE INDEX idx_source_bound_review_identity
+        ON source_bound_review_history( manifest_id, source_path, manifest_revision, manifest_sha256, review_event_id );
+        """
+    )
+    _create_history_append_only_triggers(connection, "source_bound_review_history")
+
+
+def _migration_015_r019_acceptance_matrix(connection: sqlite3.Connection) -> None:
+    """Persist immutable R-019 cross-report acceptance relations."""
+    connection.executescript(
+        """
+        CREATE TABLE r019_acceptance_matrix_history (
+            matrix_event_id INTEGER PRIMARY KEY,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            guarded_report_id TEXT NOT NULL REFERENCES report_ingestion_history( report_id ) ON DELETE RESTRICT,
+            primitive_report_id TEXT NOT NULL REFERENCES report_ingestion_history( report_id ) ON DELETE RESTRICT,
+            status TEXT NOT NULL CHECK ( status IN ( 'green', 'red' ) ),
+            details_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( manifest_id, guarded_report_id, primitive_report_id )
+        );
+        CREATE INDEX idx_r019_acceptance_matrix_manifest
+        ON r019_acceptance_matrix_history( manifest_id, matrix_event_id );
+        """
+    )
+    _create_history_append_only_triggers(connection, "r019_acceptance_matrix_history")
+
+
+def _migration_016_r019_acceptance_matrix_evaluations(connection: sqlite3.Connection) -> None:
+    """Append each current R-019 relation evaluation without rewriting history."""
+    connection.executescript(
+        """
+        CREATE TABLE r019_acceptance_matrix_evaluation_history (
+            matrix_evaluation_event_id INTEGER PRIMARY KEY,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            guarded_report_id TEXT NOT NULL REFERENCES report_ingestion_history( report_id ) ON DELETE RESTRICT,
+            primitive_report_id TEXT NOT NULL REFERENCES report_ingestion_history( report_id ) ON DELETE RESTRICT,
+            status TEXT NOT NULL CHECK ( status IN ( 'green', 'red' ) ),
+            details_json TEXT NOT NULL,
+            details_sha256 TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( manifest_id, details_sha256 )
+        );
+        CREATE INDEX idx_r019_acceptance_matrix_evaluation_manifest
+        ON r019_acceptance_matrix_evaluation_history( manifest_id, matrix_evaluation_event_id );
+        """
+    )
+    _create_history_append_only_triggers(connection, "r019_acceptance_matrix_evaluation_history")
+
+
+def _migration_017_r019_aggregation_terminals(connection: sqlite3.Connection) -> None:
+    """Preserve explicitly authorized, zero-credit R-019 matrix terminals."""
+    connection.executescript(
+        """
+        CREATE TABLE r019_aggregation_terminal_history (
+            aggregation_terminal_id INTEGER PRIMARY KEY,
+            token_id TEXT NOT NULL UNIQUE,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            guarded_report_id TEXT NOT NULL REFERENCES report_ingestion_history( report_id ) ON DELETE RESTRICT,
+            primitive_report_id TEXT NOT NULL REFERENCES report_ingestion_history( report_id ) ON DELETE RESTRICT,
+            packet_json TEXT NOT NULL,
+            packet_sha256 TEXT NOT NULL UNIQUE,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( manifest_id, guarded_report_id, primitive_report_id )
+        );
+        CREATE INDEX idx_r019_aggregation_terminal_manifest
+        ON r019_aggregation_terminal_history( manifest_id, aggregation_terminal_id );
+        """
+    )
+    _create_history_append_only_triggers(connection, "r019_aggregation_terminal_history")
+
+
+def _migration_018_cockpit_run_authority(connection: sqlite3.Connection) -> None:
+    """Track observation authority independently from evidence eligibility."""
+    connection.executescript(
+        """
+        CREATE TABLE cockpit_run_authority (
+            receipt_id TEXT PRIMARY KEY,
+            selection_id TEXT NOT NULL UNIQUE REFERENCES scenario_selection_history( selection_id ) ON DELETE RESTRICT,
+            run_id TEXT NOT NULL UNIQUE,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            manifest_revision INTEGER NOT NULL CHECK ( manifest_revision > 0 ),
+            manifest_sha256 TEXT NOT NULL,
+            source_path TEXT NOT NULL,
+            source_sha256 TEXT NOT NULL,
+            executable_path TEXT NOT NULL,
+            executable_sha256 TEXT NOT NULL,
+            binding_id TEXT NOT NULL UNIQUE,
+            ownership_scope TEXT NOT NULL,
+            owner_id TEXT NOT NULL,
+            evidence_ceiling TEXT NOT NULL CHECK ( evidence_ceiling IN ( 'zero-credit', 'setup-only', 'diagnostic', 'focused' ) ),
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE INDEX idx_cockpit_run_authority_scope
+        ON cockpit_run_authority( ownership_scope, recorded_at );
+        CREATE TABLE cockpit_run_authority_event (
+            event_id TEXT PRIMARY KEY,
+            receipt_id TEXT NOT NULL REFERENCES cockpit_run_authority( receipt_id ) ON DELETE RESTRICT,
+            event_kind TEXT NOT NULL CHECK ( event_kind IN ( 'opened', 'finished', 'invalidated' ) ),
+            details_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( receipt_id, event_kind )
+        );
+        """
+    )
+    _create_history_append_only_triggers(connection, "cockpit_run_authority")
+    _create_history_append_only_triggers(connection, "cockpit_run_authority_event")
+
+
+def _migration_019_r018_acceptance_matrix(connection: sqlite3.Connection) -> None:
+    """Retain the retired R-018 matrix table for existing registry compatibility.
+
+    The generic playtest witness migration supersedes this projection. No active
+    ingestion or eligibility route writes or reads the table.
+    """
+    connection.executescript(
+        """
+        CREATE TABLE r018_acceptance_matrix_evaluation_history (
+            matrix_evaluation_event_id INTEGER PRIMARY KEY,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            raw_report_id TEXT NOT NULL REFERENCES report_ingestion_history( report_id ) ON DELETE RESTRICT,
+            primitive_report_id TEXT NOT NULL REFERENCES report_ingestion_history( report_id ) ON DELETE RESTRICT,
+            status TEXT NOT NULL CHECK ( status IN ( 'green', 'red' ) ),
+            details_json TEXT NOT NULL,
+            details_sha256 TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( manifest_id, details_sha256 )
+        );
+        CREATE INDEX idx_r018_acceptance_matrix_evaluation_manifest
+        ON r018_acceptance_matrix_evaluation_history( manifest_id, matrix_evaluation_event_id );
+        """
+    )
+    _create_history_append_only_triggers(connection, "r018_acceptance_matrix_evaluation_history")
+
+
+def _migration_020_playtest_witness(connection: sqlite3.Connection) -> None:
+    """Replace scenario-specific proof packets with cited LLM witness history."""
+    connection.executescript(
+        """
+        CREATE TABLE playtest_witness_history (
+            witness_id TEXT PRIMARY KEY,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            charter_json TEXT NOT NULL,
+            journal_json TEXT NOT NULL,
+            statement_json TEXT NOT NULL,
+            validation_json TEXT NOT NULL,
+            verdict TEXT NOT NULL CHECK ( verdict IN ( 'proved', 'contradicted', 'inconclusive' ) ),
+            evidence_ceiling TEXT NOT NULL CHECK ( evidence_ceiling IN (
+                'zero-credit', 'setup-only', 'diagnostic', 'focused', 'certification'
+            ) ),
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP
+        );
+        CREATE TABLE playtest_witness_report_history (
+            witness_id TEXT NOT NULL REFERENCES playtest_witness_history( witness_id ) ON DELETE RESTRICT,
+            report_id TEXT NOT NULL REFERENCES report_ingestion_history( report_id ) ON DELETE RESTRICT,
+            PRIMARY KEY ( witness_id, report_id )
+        );
+        CREATE TABLE playtest_witness_review_history (
+            review_id TEXT PRIMARY KEY,
+            witness_id TEXT NOT NULL REFERENCES playtest_witness_history( witness_id ) ON DELETE RESTRICT,
+            reviewer_role TEXT NOT NULL CHECK ( reviewer_role IN ( 'coordinator', 'mutation-reviewer' ) ),
+            decision TEXT NOT NULL CHECK ( decision IN ( 'accept', 'continue', 'repair', 'change-strategy' ) ),
+            rationale TEXT NOT NULL,
+            concrete_risk TEXT NOT NULL,
+            review_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( witness_id, reviewer_role, decision, rationale, concrete_risk )
+        );
+        CREATE INDEX idx_playtest_witness_manifest
+        ON playtest_witness_history( manifest_id, recorded_at );
+        """
+    )
+    for table in (
+        "playtest_witness_history", "playtest_witness_report_history",
+        "playtest_witness_review_history",
+    ):
+        _create_history_append_only_triggers(connection, table)
+
+
 SCHEMA_MIGRATIONS: Sequence[Migration] = (
     (1, "initial_registry_surface", _migration_001_initial),
     (2, "inventory_migration_history", _migration_002_inventory_migration_history),
@@ -2907,6 +4697,17 @@ SCHEMA_MIGRATIONS: Sequence[Migration] = (
     (7, "certification_round_records", _migration_007_certification_round_records),
     (8, "certification_save_capabilities", _migration_008_certification_save_capabilities),
     (9, "diagnostic_capsule_candidates", _migration_009_diagnostic_capsule_candidates),
+    (10, "binding_report_identity", _migration_010_binding_report_identity),
+    (11, "backfill_binding_report_identity", _migration_011_backfill_binding_report_identity),
+    (12, "scenario_lifecycle_history", _migration_012_scenario_lifecycle_history),
+    (13, "cockpit_capability_runs_and_gaps", _migration_013_cockpit_capability_runs_and_gaps),
+    (14, "source_bound_review_firewall", _migration_014_source_bound_review_firewall),
+    (15, "r019_acceptance_matrix", _migration_015_r019_acceptance_matrix),
+    (16, "r019_acceptance_matrix_evaluations", _migration_016_r019_acceptance_matrix_evaluations),
+    (17, "r019_aggregation_terminals", _migration_017_r019_aggregation_terminals),
+    (18, "cockpit_run_authority", _migration_018_cockpit_run_authority),
+    (19, "r018_acceptance_matrix", _migration_019_r018_acceptance_matrix),
+    (20, "playtest_witness", _migration_020_playtest_witness),
 )
 
 
@@ -2955,10 +4756,16 @@ def open_registry(
     path = resolve_registry_path(override)
     if writable:
         path.parent.mkdir(parents=True, exist_ok=True)
-        connection = sqlite3.connect(path, isolation_level=None)
+        # Registry readers may remain attached while a harness or VM observes
+        # its authoritative state.  WAL keeps those snapshots readable without
+        # allowing them to block this connection's atomic registry commits.
+        # Retain sqlite3's documented five-second busy wait for the brief
+        # handoff between authoritative registry operations.
+        connection = sqlite3.connect(path, isolation_level=None, timeout=5.0)
         connection.row_factory = sqlite3.Row
         connection.execute("PRAGMA foreign_keys = ON")
         try:
+            connection.execute("PRAGMA journal_mode = WAL")
             apply_migrations(connection)
         except BaseException:
             connection.close()
@@ -3291,6 +5098,47 @@ def append_certification_lifecycle_event(
             (round_id, event_sequence, event_kind, identity["scenario_lineage_id"], identity["authority_id"], identity["binding_id"], identity["event_stream_id"], details_json),
         )
     return {"round_id": round_id, "event_sequence": event_sequence, "idempotent": False}
+
+
+def bind_certification_actors(
+    connection: sqlite3.Connection, *, round_id: str,
+    ecology_audit: Mapping[str, Any], token_id: str,
+    scenario_digest: str, world_id: str, player_id: str,
+) -> Dict[str, Any]:
+    """Bind started-process actor identities exactly once via the append-only stream."""
+    round_row = connection.execute(
+        "SELECT * FROM certification_round WHERE round_id = ?", (str(round_id),)
+    ).fetchone()
+    if round_row is None:
+        raise ScenarioRegistryStoreError("certification round is not registered")
+    manifest = json.loads(str(round_row["manifest_json"]))
+    sealed = manifest["binding"]["authoritative_components"]
+    if sealed.get("actors"):
+        raise ScenarioRegistryStoreError("certification round already has pre-bound actors")
+    actors = ecology_actor_identity(ecology_audit)
+    actor_ids = [str(actor["actor_id"]) for actor in actors]
+    if not actor_ids:
+        raise ScenarioRegistryStoreError("started ecology audit has no actors")
+    prior = connection.execute(
+        "SELECT details_json FROM certification_round_lifecycle "
+        "WHERE round_id = ? AND event_kind = 'actors_bound'", (str(round_id),)
+    ).fetchone()
+    details = {"token_id": str(token_id), "scenario_digest": str(scenario_digest),
+               "world_id": str(world_id), "player_id": str(player_id),
+               "actor_ids": actor_ids, "actors": actors, "source": "run-owned-ecology-audit"}
+    if prior is not None:
+        if json.loads(str(prior["details_json"])) == details:
+            return {"round_id": str(round_id), "actor_ids": actor_ids, "idempotent": True}
+        raise ScenarioRegistryStoreError("certification actors cannot be rebound or replaced")
+    next_sequence = connection.execute(
+        "SELECT COALESCE(MAX(event_sequence), 0) + 1 FROM certification_round_lifecycle WHERE round_id = ?",
+        (str(round_id),),
+    ).fetchone()[0]
+    append_certification_lifecycle_event(
+        connection, round_id=str(round_id), event_sequence=int(next_sequence),
+        event_kind="actors_bound", details=details,
+    )
+    return {"round_id": str(round_id), "actor_ids": actor_ids, "idempotent": False}
 
 
 def invalidate_certification_round(
@@ -3935,6 +5783,268 @@ def _replace_current_materializations(connection: sqlite3.Connection, staged: St
             )
 
 
+def _repository_relative_file(value: Any, *, field: str) -> Path:
+    if not isinstance(value, str) or not value.strip():
+        raise ScenarioRegistryStoreError(f"{field} must be a non-empty repository-relative path")
+    root = repository_root().resolve()
+    candidate = (root / value).resolve()
+    try:
+        candidate.relative_to(root)
+    except ValueError as exc:
+        raise ScenarioRegistryStoreError(f"{field} escapes the repository") from exc
+    return candidate
+
+
+def _source_binding_validation_records(staged: StagedManifest) -> Tuple[Tuple[str, str, Mapping[str, Any]], ...]:
+    """Recompute the R-008 footing facts from their independent source owners."""
+    declaration = _json_object(staged.declaration_json, "staged manifest declaration")
+    validation = declaration.get("source_binding_validation")
+    if validation is None:
+        return ()
+    if not isinstance(validation, Mapping):
+        raise ScenarioRegistryStoreError("source_binding_validation must be an object")
+    keys = validation.get("capabilities")
+    if not isinstance(keys, list) or any(not isinstance(key, str) or not key for key in keys):
+        raise ScenarioRegistryStoreError("source_binding_validation.capabilities is malformed")
+
+    def records(state: str, **details: Any) -> Tuple[Tuple[str, str, Mapping[str, Any]], ...]:
+        return tuple((key, state, {"proof_depth": "persistence", **details}) for key in keys)
+
+    validator = validation.get("validator")
+    if validator not in {
+            "r008_closure_046_source_binding",
+            "r008_natural_wait_progress_source_binding",
+    }:
+        return records("contradicted", reason="unsupported_source_binding_validator")
+    try:
+        artifact_path = _repository_relative_file(
+            validation.get("bootstrap_artifact"), field="source_binding_validation.bootstrap_artifact",
+        )
+        bootstrap_bytes = artifact_path.read_bytes()
+        bootstrap = json.loads(bootstrap_bytes.decode("utf-8"))
+        fixture = _repository_relative_file(
+            "tools/openclaw_harness/fixtures/saves/"
+            f"{declaration.get('fixture_profile', '')}/{declaration.get('fixture', '')}/manifest.json",
+            field="source fixture manifest",
+        )
+        fixture_bytes = fixture.read_bytes()
+        fixture_manifest = json.loads(fixture_bytes.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ScenarioRegistryStoreError) as exc:
+        return records("contradicted", reason="source_binding_artifact_unavailable", error=str(exc))
+    if not isinstance(bootstrap, Mapping) or not isinstance(fixture_manifest, Mapping):
+        return records("contradicted", reason="source_binding_artifact_malformed")
+    if validator == "r008_natural_wait_progress_source_binding":
+        return _natural_wait_progress_source_binding_records(
+            declaration, validation, fixture_manifest, fixture_bytes, fixture, artifact_path, bootstrap_bytes,
+            staged.source_sha256,
+        )
+
+    capabilities = declaration.get("capabilities")
+    source_binding = declaration.get("source_binding")
+    footing = capabilities.get("world.r008_closure_046.fixed_native_footing") if isinstance(capabilities, Mapping) else None
+    transform_route = capabilities.get("capabilities.shakedown.transform_free_m095") if isinstance(capabilities, Mapping) else None
+    bootstrap_source = bootstrap.get("source_chain") if isinstance(bootstrap.get("source_chain"), Mapping) else {}
+    bootstrap_footing = bootstrap.get("footing") if isinstance(bootstrap.get("footing"), Mapping) else {}
+    fixture_source = fixture_manifest.get("source_binding") if isinstance(fixture_manifest.get("source_binding"), Mapping) else {}
+    runtime_contract = declaration.get("runtime_contract")
+    expected = {
+        "raw_seed": str(bootstrap_source.get("raw_seed")) if isinstance(bootstrap_source, Mapping) else None,
+        "world": bootstrap_source.get("world_name") if isinstance(bootstrap_source, Mapping) else None,
+        "camp_omt": "177,13,0",
+        "hostile_origin_omt": "177,9,0",
+        "watch_omt": "174,13,0",
+        "watch_route_cost": 10,
+        "save_transforms": ["player_mutations"],
+        "stabilizer_traits": [
+            "DEBUG_LS",
+            "DEBUG_NOTEMP",
+            "DEBUG_STAMINA",
+            "DEBUG_CARDIO",
+            "DEBUG_CLAIRVOYANCE",
+            "DEBUG_NIGHTVISION",
+        ],
+    }
+    native_camp = bootstrap_footing.get("native_camp") if isinstance(bootstrap_footing.get("native_camp"), Mapping) else {}
+    hostile_origin = bootstrap_footing.get("hostile_origin") if isinstance(bootstrap_footing.get("hostile_origin"), Mapping) else {}
+    candidate_lane = bootstrap_footing.get("candidate_lane") if isinstance(bootstrap_footing.get("candidate_lane"), Mapping) else {}
+    expected["camp_omt"] = str(native_camp.get("site_id", "")).rsplit("@", 1)[-1]
+    expected["hostile_origin_omt"] = ",".join(str(item) for item in hostile_origin.get("origin_omt", ()))
+    expected["watch_omt"] = ",".join(str(item) for item in candidate_lane.get("watch_omt", ()))
+    expected["watch_route_cost"] = candidate_lane.get("watch_route_cost")
+    checks = (
+        isinstance(footing, Mapping) and dict(footing) == expected,
+        isinstance(source_binding, Mapping) and source_binding.get("bootstrap_artifact") == validation.get("bootstrap_artifact"),
+        fixture_source.get("raw_seed") == bootstrap_source.get("raw_seed")
+        and fixture_source.get("world_name") == bootstrap_source.get("world_name")
+        and fixture_source.get("native_camp") == native_camp.get("site_id")
+        and fixture_source.get("hostile_origin_omt") == hostile_origin.get("origin_omt")
+        and fixture_source.get("watch_omt") == candidate_lane.get("watch_omt")
+        and fixture_source.get("watch_route_cost") == candidate_lane.get("watch_route_cost"),
+        fixture_manifest.get("save_transforms") == [{
+            "kind": "player_mutations",
+            "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+            "mutations": expected["stabilizer_traits"],
+        }],
+        transform_route == "native_wait_save_quit_relaunch",
+        isinstance(runtime_contract, Mapping)
+        and "fixture-save-transform" in runtime_contract.get("forbidden_input", ()),
+    )
+    details = {
+        "manifest_sha256": staged.source_sha256,
+        "bootstrap_artifact": str(artifact_path),
+        "bootstrap_sha256": hashlib.sha256(bootstrap_bytes).hexdigest(),
+        "fixture_manifest": str(fixture),
+        "fixture_manifest_sha256": hashlib.sha256(fixture_bytes).hexdigest(),
+    }
+    return records("inspected" if all(checks) else "contradicted", **details,
+                   **({} if all(checks) else {"reason": "source_binding_fact_mismatch"}))
+
+
+def _natural_wait_progress_source_binding_records(
+    declaration: Mapping[str, Any], validation: Mapping[str, Any], fixture_manifest: Mapping[str, Any],
+    fixture_bytes: bytes, fixture_path: Path, artifact_path: Path, bootstrap_bytes: bytes,
+    manifest_sha256: str,
+) -> Tuple[Tuple[str, str, Mapping[str, Any]], ...]:
+    """Verify the R-008 observation footing from its production-world artifact."""
+    keys = validation.get("capabilities", ())
+
+    def records(state: str, **details: Any) -> Tuple[Tuple[str, str, Mapping[str, Any]], ...]:
+        return tuple((str(key), state, {"proof_depth": "persistence", **details}) for key in keys)
+
+    source_generation = fixture_manifest.get("source_generation")
+    fixture_source = fixture_manifest.get("source_binding")
+    capabilities = declaration.get("capabilities")
+    source_binding = declaration.get("source_binding")
+    footing = capabilities.get("world.natural_bandit_safe_watch_footing") if isinstance(capabilities, Mapping) else None
+    # The fixture manifest does not duplicate the feasibility candidate rows.  The
+    # source artifact remains the independent owner of those facts.
+    try:
+        bootstrap = json.loads(bootstrap_bytes.decode("utf-8"))
+    except (UnicodeDecodeError, json.JSONDecodeError):
+        return records("contradicted", reason="source_binding_artifact_malformed")
+    rows = bootstrap.get("candidate_rows", ()) if isinstance(bootstrap, Mapping) else ()
+    selected = next((row for row in rows if isinstance(row, Mapping) and row.get("outcome") == "selected"), None)
+    watch = selected.get("watch", {}) if isinstance(selected, Mapping) else {}
+    target = selected.get("target_omt", {}) if isinstance(selected, Mapping) else {}
+    expected_traits = declaration.get("required_stabilizer_traits")
+    setup_contract = declaration.get("setup_receipt_contract")
+    required_player_abs_omt = (
+        setup_contract.get("required_player_abs_omt")
+        if isinstance(setup_contract, Mapping) else None
+    )
+    expected_position_transform = None
+    if isinstance(required_player_abs_omt, list) and len(required_player_abs_omt) == 3:
+        try:
+            camp_omt = [int(value) for value in str(bootstrap.get("natural_bandit_site_id", "")).rsplit("@", 1)[1].split(",")]
+            watch_omt = [int(value) for value in required_player_abs_omt]
+        except (IndexError, ValueError):
+            return records("contradicted", reason="source_binding_watch_position_malformed")
+        expected_position_transform = {
+            "kind": "player_near_overmap_special",
+            "player_save": declaration.get("installed_save_player"),
+            "special_id": "bandit_camp",
+            "site_index": 1,
+            "offset_omt": [watch_omt[index] - camp_omt[index] for index in range(3)],
+        }
+    expected_transform = [{
+        "kind": "player_mutations",
+        "player_save": declaration.get("installed_save_player"),
+        "mutations": expected_traits,
+    }]
+    if expected_position_transform is not None:
+        expected_transform.insert(0, expected_position_transform)
+    expected_footing = {
+        "raw_seed": str(bootstrap.get("raw_seed")),
+        "camp_omt": str(bootstrap.get("natural_bandit_site_id", "")).rsplit("@", 1)[-1],
+        "hostile_origin_omt": ",".join(str(target.get(axis)) for axis in ("x", "y", "z")),
+        "watch_omt": ",".join(str(watch.get(axis)) for axis in ("x", "y", "z")),
+        "watch_route_cost": selected.get("watch_route_cost") if isinstance(selected, Mapping) else None,
+        "persistent_ecology_unchanged": True,
+    }
+    expected_source = {
+        "bootstrap_artifact": validation.get("bootstrap_artifact"),
+        "raw_seed": str(bootstrap.get("raw_seed")),
+        "world_name": declaration.get("world"),
+        "native_camp": bootstrap.get("natural_bandit_site_id"),
+        "hostile_origin_omt": [target.get(axis) for axis in ("x", "y", "z")],
+        "watch_omt": [watch.get(axis) for axis in ("x", "y", "z")],
+        "watch_route_cost": selected.get("watch_route_cost") if isinstance(selected, Mapping) else None,
+    }
+    master_sha256 = ""
+    try:
+        master_sha256 = hashlib.sha256(
+            (fixture_path.parent / "save" / str(declaration.get("world", "")) / "master.gsav").read_bytes()
+        ).hexdigest()
+    except OSError:
+        pass
+    checks = (
+        isinstance(source_generation, Mapping)
+        and source_generation.get("mode") == "production_harness_new_world"
+        and source_generation.get("feasibility_artifact") == validation.get("bootstrap_artifact")
+        and source_generation.get("persistent_ecology_unchanged") is True,
+        isinstance(footing, Mapping) and dict(footing) == expected_footing,
+        isinstance(source_binding, Mapping)
+        and source_binding.get("bootstrap_artifact") == validation.get("bootstrap_artifact"),
+        isinstance(fixture_source, Mapping)
+        and all(fixture_source.get(key) == value for key, value in expected_source.items()),
+        isinstance(fixture_source, Mapping)
+        and fixture_source.get("world_master_gsav_sha256") == master_sha256,
+        _fixture_transform_contains_required_mutations(fixture_manifest.get("save_transforms"), expected_transform),
+        isinstance(declaration.get("runtime_contract"), Mapping)
+        and "fixture-save-transform-after-install" in declaration["runtime_contract"].get("forbidden_input", ()),
+    )
+    details = {
+        "manifest_sha256": manifest_sha256,
+        "bootstrap_artifact": str(artifact_path),
+        "bootstrap_sha256": hashlib.sha256(bootstrap_bytes).hexdigest(),
+        "fixture_manifest_sha256": hashlib.sha256(fixture_bytes).hexdigest(),
+    }
+    return records("inspected" if all(checks) else "contradicted", **details,
+                   **({} if all(checks) else {"reason": "source_binding_fact_mismatch"}))
+
+
+def _fixture_transform_contains_required_mutations(
+    transforms: Any, expected: Sequence[Mapping[str, Any]],
+) -> bool:
+    """Accept inherited fixture-only mutations while requiring every declared transform."""
+    if not isinstance(transforms, list):
+        return False
+    for required in expected:
+        if required.get("kind") != "player_mutations":
+            if required not in transforms:
+                return False
+            continue
+        matches = [item for item in transforms if isinstance(item, Mapping)
+                   and item.get("kind") == "player_mutations"
+                   and item.get("player_save") == required.get("player_save")]
+        if not matches:
+            return False
+        if not set(required.get("mutations", ())).issubset(set(matches[0].get("mutations", ()) )):
+            return False
+    return True
+
+
+def _append_source_binding_capability_evidence(connection: sqlite3.Connection, staged: StagedManifest) -> None:
+    for capability_key, evidence_state, details in _source_binding_validation_records(staged):
+        row = connection.execute(
+            "SELECT value_json FROM manifest_capability_current WHERE manifest_id = ? AND capability_key = ?",
+            (staged.manifest_id, capability_key),
+        ).fetchone()
+        if row is None:
+            raise ScenarioRegistryStoreError("source-binding validation references a missing capability")
+        value_json = str(row["value_json"])
+        value_sha256 = _identity(
+            "caol-source-binding-capability-validation-v1", staged.manifest_id, staged.source_sha256,
+            capability_key, evidence_state, value_json, _json_text(details),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO capability_evidence_history( "
+            "manifest_id, capability_key, evidence_kind, evidence_state, value_json, value_sha256, details_json "
+            ") VALUES( ?, ?, 'source_binding_validation', ?, ?, ?, ? )",
+            (staged.manifest_id, capability_key, evidence_state, value_json, value_sha256, _json_text(details)),
+        )
+
+
 def _append_relation_events(
     connection: sqlite3.Connection,
     staged: StagedManifest,
@@ -4130,6 +6240,7 @@ def rebuild_manifest_projection(
                 )
                 _append_relation_events(connection, entry, event_kind=event_kind, revision=revision)
             _replace_current_materializations(connection, entry)
+            _append_source_binding_capability_evidence(connection, entry)
 
         for source_path, previous in existing_rows.items():
             if source_path in staged_paths or int(previous["present"]) == 0:
@@ -4287,6 +6398,9 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
             ),
         ),
     }
+    fixture_install = startup.get("fixture_install")
+    if isinstance(fixture_install, Mapping) and isinstance(fixture_install.get("binding"), Mapping):
+        fixture["installed"]["binding"] = dict(fixture_install["binding"])
     profile = {
         "profile": contract.get("profile") or report.get("profile"),
         "config_profile": contract.get("config_profile") or report.get("config_profile"),
@@ -4300,6 +6414,9 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
             ),
         ),
     }
+    profile_install = startup.get("profile_snapshot")
+    if isinstance(profile_install, Mapping) and isinstance(profile_install.get("binding"), Mapping):
+        profile["snapshot_install"]["binding"] = dict(profile_install["binding"])
     return {
         "scenario": str(report.get("scenario", "")).strip(),
         "mode": str(report.get("mode", "")).strip(),
@@ -4313,6 +6430,9 @@ def _extract_report_facts(report: Mapping[str, Any]) -> Dict[str, Any]:
         "proof": proof,
         "wec_authority": validate_authority_fact(report.get("wec_authority")),
         "certification_round": certification_round,
+        # Certification is deliberately evaluated from the immutable live
+        # event/receipt payload; absent lifecycle data earns no final credit.
+        "certification_lifecycle": report.get("certification_lifecycle"),
         "supersedes_verification_id": supersedes_verification_id,
     }
 
@@ -4332,6 +6452,182 @@ def _is_diagnostic_replay_report(report: Mapping[str, Any], facts: Mapping[str, 
         and isinstance(authority.get("fact"), Mapping)
         and str(authority["fact"].get("evidence_class", "")).strip().lower() == "diagnostic replay"
     )
+
+
+def _is_setup_only_report(report: Mapping[str, Any], facts: Mapping[str, Any]) -> bool:
+    """Reject manufactured setup facts unless sealed feature evidence follows them."""
+    raw = report.get("scenario_setup", report.get("scenario_interventions"))
+    if raw is None:
+        return False
+    if isinstance(raw, Mapping) and not raw:
+        return False
+    receipts = raw.get("interventions") if isinstance(raw, Mapping) else raw
+    # The canonical probe always carries its setup projection.  An empty
+    # projection asserts no manufactured state, so it is not a setup-only
+    # report and must not block otherwise valid report ingestion.
+    if receipts == []:
+        return False
+    if not isinstance(receipts, list) or not receipts:
+        raise ScenarioRegistryStoreError("scenario setup receipts must be a non-empty list")
+    for receipt in receipts:
+        if not isinstance(receipt, Mapping):
+            raise ScenarioRegistryStoreError("scenario setup receipt must be an object")
+        if receipt.get("evidence_effect") != "none_for_manufactured_state" or receipt.get("gameplay_credit") is not False:
+            raise ScenarioRegistryStoreError("manufactured scenario state must remain setup-only")
+    proof = facts.get("proof")
+    authority = facts.get("wec_authority")
+    authority_fact = authority.get("fact") if isinstance(authority, Mapping) else None
+    if (
+        isinstance(proof, Mapping)
+        and proof.get("status") == "green"
+        and proof.get("feature_proof") is True
+        and proof.get("route_feature_proof") is True
+        and isinstance(authority, Mapping)
+        and authority.get("status") == "sealed"
+        and isinstance(authority_fact, Mapping)
+        and authority_fact.get("evidence_class") == "focused feature proof"
+    ):
+        return False
+    return True
+
+
+def _append_setup_only_interventions(
+    connection: sqlite3.Connection,
+    *,
+    facts: Mapping[str, Any],
+    report: Mapping[str, Any],
+) -> Tuple[str, ...]:
+    """Bind report setup receipts to the current manifest without verification credit."""
+    raw = report.get("scenario_setup", report.get("scenario_interventions"))
+    receipts = raw.get("interventions") if isinstance(raw, Mapping) else raw
+    if not isinstance(receipts, list):
+        raise ScenarioRegistryStoreError("scenario setup receipts are unavailable")
+    manifest_source = _object(facts["manifest"], "manifest")
+    manifest = connection.execute(
+        "SELECT manifest_id, current_sha256 FROM manifest_current WHERE source_path = ? AND present = 1 "
+        "AND current_sha256 = ?",
+        (str(manifest_source["source_path"]), str(manifest_source["source_sha256"])),
+    ).fetchone()
+    if manifest is None:
+        # The firewall still accepts a setup-only diagnostic reference without
+        # a projected owner.  It records no lifecycle history and can never
+        # acquire verification or final-gate credit.
+        return ()
+    validation = connection.execute(
+        "SELECT validation_id FROM scenario_validation_history WHERE manifest_id = ? AND manifest_sha256 = ? "
+        "AND validation_status = 'valid' ORDER BY recorded_at DESC, validation_id DESC LIMIT 1",
+        (str(manifest["manifest_id"]), str(manifest["current_sha256"])),
+    ).fetchone()
+    result = []
+    for receipt in receipts:
+        if not isinstance(receipt, Mapping):
+            raise ScenarioRegistryStoreError("scenario setup receipt is malformed")
+        operation = _string(receipt.get("operation"), "scenario setup operation")
+        arguments = receipt.get("arguments", {})
+        target = receipt.get("target", {})
+        native = receipt.get("native_receipt", {})
+        before = receipt.get("before_facts", {})
+        after = receipt.get("after_facts", {})
+        if not all(isinstance(item, Mapping) for item in (arguments, target, native, before, after)):
+            raise ScenarioRegistryStoreError("scenario setup receipt fields must be objects")
+        intervention_id = _identity(
+            "caol-scenario-intervention-v1", str(manifest["manifest_id"]),
+            str(validation["validation_id"]) if validation is not None else "",
+            operation, _json_text(arguments), _json_text(target), _json_text(native),
+        )
+        connection.execute(
+            "INSERT OR IGNORE INTO scenario_intervention_history( "
+            "intervention_id, manifest_id, validation_id, operation, arguments_json, target_json, native_receipt_json, "
+            "before_facts_json, after_facts_json, evidence_effect, preparation_status "
+            ") VALUES( ?, ?, ?, ?, ?, ?, ?, ?, ?, 'none_for_manufactured_state', ? )",
+            (
+                intervention_id, str(manifest["manifest_id"]),
+                str(validation["validation_id"]) if validation is not None else None,
+                operation, _json_text(arguments), _json_text(target), _json_text(native),
+                _json_text(before), _json_text(after),
+                "prepared" if native.get("accepted") is True else "unprepared",
+            ),
+        )
+        result.append(intervention_id)
+    return tuple(result)
+
+
+def _validate_required_r008_setup_receipt(
+    connection: sqlite3.Connection,
+    *,
+    facts: Mapping[str, Any],
+    report: Mapping[str, Any],
+) -> None:
+    """Fail closed when an R-008 report loses or alters its fixture-only setup binding."""
+    manifest_source = _object(facts["manifest"], "manifest")
+    manifest = connection.execute(
+        "SELECT declaration_json FROM manifest_current WHERE source_path = ? AND present = 1 AND current_sha256 = ?",
+        (str(manifest_source["source_path"]), str(manifest_source["source_sha256"])),
+    ).fetchone()
+    if manifest is None:
+        raise ScenarioRegistryStoreError("R-008 setup receipt manifest is stale or unavailable")
+    declaration = _json_object(str(manifest["declaration_json"]), "R-008 setup receipt manifest declaration")
+    contract = declaration.get("setup_receipt_contract")
+    if not isinstance(contract, Mapping) or contract.get("kind") != "r008_source_bound_fixture":
+        return
+    raw = report.get("scenario_setup")
+    if not isinstance(raw, Mapping) or raw.get("contract_kind") != "r008_source_bound_fixture":
+        raise ScenarioRegistryStoreError("R-008 setup receipts are unavailable")
+    receipts = raw.get("interventions")
+    if not isinstance(receipts, list) or len(receipts) != 1 or not isinstance(receipts[0], Mapping):
+        raise ScenarioRegistryStoreError("R-008 setup receipts must contain one source-bound receipt")
+    receipt = receipts[0]
+    arguments = receipt.get("arguments")
+    target = receipt.get("target")
+    native = receipt.get("native_receipt")
+    before = receipt.get("before_facts")
+    after = receipt.get("after_facts")
+    source = contract.get("source_binding")
+    traits = contract.get("stabilizer_traits")
+    if not all(isinstance(value, Mapping) for value in (arguments, target, native, before, after, source)) or not isinstance(traits, list):
+        raise ScenarioRegistryStoreError("R-008 setup receipt is malformed")
+    expected_world = str(contract.get("world", ""))
+    expected_save = str(contract.get("player_save", ""))
+    expected_player_abs_omt = contract.get("required_player_abs_omt")
+    if expected_player_abs_omt is not None and (
+            not isinstance(expected_player_abs_omt, list) or len(expected_player_abs_omt) != 3):
+        raise ScenarioRegistryStoreError("R-008 setup receipt required player OMT is malformed")
+    transform = native.get("transform")
+    position_transform = native.get("position_transform")
+    expected_arguments = {"world": expected_world, "player_save": expected_save,
+                          "stabilizer_traits": traits}
+    if expected_player_abs_omt is not None:
+        expected_arguments["required_player_abs_omt"] = expected_player_abs_omt
+    exact = (
+        raw.get("status") == "prepared"
+        and receipt.get("operation") == "fixture_install_and_r008_source_bound_stabilizer_setup"
+        and arguments == expected_arguments
+        and target == {"world": expected_world, "player_save": expected_save}
+        and native.get("owner") == "fixture_save_transform"
+        and native.get("accepted") is True
+        and isinstance(transform, Mapping)
+        and transform.get("kind") == "player_mutations"
+        and transform.get("player_save") == expected_save
+        and transform.get("mutations") == traits
+        and (
+            expected_player_abs_omt is None or (
+                isinstance(position_transform, Mapping)
+                and position_transform.get("kind") == "player_near_overmap_special"
+                and position_transform.get("player_save") == expected_save
+                and position_transform.get("target_omt") == expected_player_abs_omt
+                and after.get("player_abs_omt") == expected_player_abs_omt
+            )
+        )
+        and before.get("source_binding") == source
+        and after.get("source_binding") == source
+        and after.get("master_gsav_sha256") == source.get("world_master_gsav_sha256")
+        and isinstance(after.get("player_traits"), list)
+        and all(trait in after.get("player_traits") for trait in traits)
+        and receipt.get("evidence_effect") == "none_for_manufactured_state"
+        and receipt.get("gameplay_credit") is False
+    )
+    if not exact:
+        raise ScenarioRegistryStoreError("R-008 setup receipt is stale, mismatched, or fabricated")
 
 
 def _certification_round_check(
@@ -4383,6 +6679,25 @@ def _certification_round_check(
         return {"eligible": False, "reason": "certification_round_current_executable_mismatch", "round_id": round_id}
     if connection.execute("SELECT 1 FROM certification_round_invalidation WHERE round_id = ?", (round_id,)).fetchone() is not None:
         return {"eligible": False, "reason": "certification_round_invalidated", "round_id": round_id}
+    lifecycle_payload = report_facts.get("certification_lifecycle")
+    if not isinstance(lifecycle_payload, Mapping):
+        return {"eligible": False, "reason": "missing_continuous_lifecycle", "round_id": round_id}
+    lifecycle_check = evaluate_continuous_certification(
+        round_id=round_id,
+        binding_id=expected["binding_id"],
+        world_id=str(lifecycle_payload.get("world_id", "")),
+        player_id=str(lifecycle_payload.get("player_id", "")),
+        actor_ids=lifecycle_payload.get("actor_ids", ()),
+        events=lifecycle_payload.get("events", ()),
+        authority=str(authority.get("authority", "")),
+    )
+    if lifecycle_check.get("status") != "green":
+        return {
+            "eligible": False,
+            "reason": "continuous_lifecycle_failed",
+            "first_divergence": lifecycle_check.get("first_divergence", ""),
+            "round_id": round_id,
+        }
     return {"eligible": True, "reason": "current_certification_round", "round_id": round_id}
 
 
@@ -4568,9 +6883,9 @@ def _append_binding(
     }
     connection.execute(
         "INSERT OR IGNORE INTO binding_history( "
-        "manifest_id, binding_kind, binding_fingerprint, binding_status, payload_json "
-        ") VALUES( ?, ?, ?, ?, ? )",
-        (manifest_id, kind, fingerprint, status, _json_text(payload)),
+        "manifest_id, report_id, binding_kind, binding_fingerprint, binding_status, payload_json "
+        ") VALUES( ?, ?, ?, ?, ?, ? )",
+        (manifest_id, report_id, kind, fingerprint, status, _json_text(payload)),
     )
     return fingerprint
 
@@ -4605,8 +6920,17 @@ def _verification_evidence_state(row: sqlite3.Row) -> str:
     details = json.loads(str(row["details_json"]))
     proof = details.get("proof", {}) if isinstance(details, dict) else {}
     status = str(proof.get("status", "")).strip().lower()
-    if status == "red":
+    route_verdict = str(proof.get("route_verdict", "")).strip().lower()
+    # A focused transaction may keep its aggregate report yellow when startup
+    # support is inconclusive while still persisting a decisive red route
+    # verdict.  Route lifecycle owns that verdict; treating it as unknown
+    # hides the unresolved current contradiction from repair authority.
+    if status == "red" or route_verdict.startswith("red_"):
         return "contradicted"
+    repair_bootstrap = details.get("repair_bootstrap") if isinstance(details, dict) else None
+    if isinstance(repair_bootstrap, Mapping) and repair_bootstrap.get("zero_credit") is True and \
+            repair_bootstrap.get("terminal_result") == "current_source_runtime_compatible":
+        return "repair_bootstrap_proven"
     if (
         status == "green"
         and bool(proof.get("feature_proof", False))
@@ -4690,17 +7014,19 @@ def _append_quarantine_if_changed(
     quarantine_kind: str,
     details: Mapping[str, Any],
 ) -> None:
+    details_json = _json_text(details)
     latest = connection.execute(
-        "SELECT quarantine_kind FROM quarantine_history WHERE manifest_id = ? AND route_key = ? "
+        "SELECT quarantine_kind, details_json FROM quarantine_history WHERE manifest_id = ? AND route_key = ? "
         "ORDER BY quarantine_event_id DESC LIMIT 1",
         (manifest_id, route_key),
     ).fetchone()
-    if latest is not None and str(latest["quarantine_kind"]) == quarantine_kind:
+    if latest is not None and str(latest["quarantine_kind"]) == quarantine_kind and \
+            str(latest["details_json"]) == details_json:
         return
     connection.execute(
         "INSERT INTO quarantine_history( manifest_id, route_key, quarantine_kind, details_json ) "
         "VALUES( ?, ?, ?, ? )",
-        (manifest_id, route_key, quarantine_kind, _json_text(details)),
+        (manifest_id, route_key, quarantine_kind, details_json),
     )
 
 
@@ -4974,6 +7300,30 @@ def registry_status(
             "token_eligible": snapshot.token_eligible,
             "retirement_candidate": candidates.get(manifest_id),
             "relations": relations,
+            "r019_acceptance_matrix": tuple({
+                "guarded_report_id": str(row["guarded_report_id"]),
+                "primitive_report_id": str(row["primitive_report_id"]),
+                "status": str(row["status"]),
+                "details": dict(_json_object(str(row["details_json"]), "R-019 acceptance matrix details")),
+                "recorded_at": str(row["recorded_at"]),
+            } for row in connection.execute(
+                "SELECT guarded_report_id, primitive_report_id, status, details_json, recorded_at "
+                "FROM r019_acceptance_matrix_evaluation_history WHERE manifest_id = ? "
+                "ORDER BY matrix_evaluation_event_id",
+                (manifest_id,),
+            )),
+            "playtest_witnesses": tuple({
+                "witness_id": str(row["witness_id"]),
+                "verdict": str(row["verdict"]),
+                "evidence_ceiling": str(row["evidence_ceiling"]),
+                "review_decision": str(row["decision"] or ""),
+                "recorded_at": str(row["recorded_at"]),
+            } for row in connection.execute(
+                "SELECT witness.witness_id, witness.verdict, witness.evidence_ceiling, "
+                "review.decision, witness.recorded_at FROM playtest_witness_history AS witness "
+                "LEFT JOIN playtest_witness_review_history AS review ON review.witness_id = witness.witness_id "
+                "WHERE witness.manifest_id = ? ORDER BY witness.recorded_at, witness.witness_id", (manifest_id,),
+            )),
             "history": {
                 "lifecycle": tuple({
                     "event_kind": str(row["event_kind"]),
@@ -5008,14 +7358,27 @@ def registry_status(
                 )),
                 "verifications": tuple({
                     "verification_id": str(row["verification_id"]),
+                    "report_id": str(row["report_id"]),
                     "route_key": str(row["route_key"]),
                     "outcome_kind": str(row["outcome_kind"]),
                     "proof_status": str(row["proof_status"]),
                     "details": dict(_json_object(str(row["details_json"]), "verification details")),
                     "recorded_at": str(row["recorded_at"]),
                 } for row in connection.execute(
-                    "SELECT verification_id, route_key, outcome_kind, proof_status, details_json, recorded_at "
+                    "SELECT verification_id, report_id, route_key, outcome_kind, proof_status, details_json, recorded_at "
                     "FROM verification_history WHERE manifest_id = ? ORDER BY recorded_at, verification_id", (manifest_id,),
+                )),
+                "report_ingestions": tuple({
+                    "report_id": str(row["report_id"]),
+                    "report_path": str(row["report_path"]),
+                    "report_sha256": str(row["report_sha256"]),
+                    "report_kind": str(row["report_kind"]),
+                    "ingestion_status": str(row["ingestion_status"]),
+                    "error": str(row["error_text"]),
+                    "recorded_at": str(row["recorded_at"]),
+                } for row in connection.execute(
+                    "SELECT report_id, report_path, report_sha256, report_kind, ingestion_status, error_text, recorded_at "
+                    "FROM report_ingestion_history WHERE manifest_id = ? ORDER BY recorded_at, report_id", (manifest_id,),
                 )),
                 "evidence": tuple({
                     "capability_key": str(row["capability_key"]),
@@ -5306,22 +7669,55 @@ def _resolve_route_evidence(
         "AND resolution.resolution_kind = 'compatible' )",
         (manifest_id, route_key),
     ).fetchall()
+    # Preserve the newest focused red route verdict even when a later yellow
+    # report is still binding-compatible.  That report has not proved the
+    # route, so it cannot erase the red transaction or prevent the exact route
+    # from receiving a fresh repair authority.  A hard-proven successor below
+    # still resolves this contradiction through its explicit supersession.
+    historical = connection.execute(
+        "SELECT verification_id, proof_status, supersedes_verification_id, details_json "
+        "FROM verification_history WHERE manifest_id = ? AND route_key = ? "
+        "ORDER BY recorded_at DESC, verification_id DESC",
+        (manifest_id, route_key),
+    ).fetchall()
+    focused_red = None
+    for row in historical:
+        details = json.loads(str(row["details_json"]))
+        proof = details.get("proof", {}) if isinstance(details, dict) else {}
+        if (
+                str(proof.get("status", "")).strip().lower() == "yellow"
+                and str(proof.get("route_verdict", "")).strip().lower().startswith("red_")):
+            focused_red = row
+            break
+    if focused_red is not None and all(
+            str(row["verification_id"]) != str(focused_red["verification_id"])
+            for row in rows):
+        rows = tuple(rows) + (focused_red,)
     by_id = {str(row["verification_id"]): row for row in rows}
     hard_proven = {
         verification_id
         for verification_id, row in by_id.items()
         if _verification_evidence_state(row) == "hard_proven"
     }
+    hard_proven = _playtest_witness_hard_proven_candidates(
+        connection, manifest_id=manifest_id, route_key=route_key,
+        candidate_rows=by_id, report_local_hard_proven=hard_proven,
+    )
     contradicted = {
         verification_id
         for verification_id, row in by_id.items()
         if _verification_evidence_state(row) == "contradicted"
     }
+    repair_bootstrap_proven = {
+        verification_id
+        for verification_id, row in by_id.items()
+        if _verification_evidence_state(row) == "repair_bootstrap_proven"
+    }
     superseded = {
         str(row["supersedes_verification_id"])
         for row in by_id.values()
         if (
-            _verification_evidence_state(row) == "hard_proven"
+            _verification_evidence_state(row) in {"hard_proven", "repair_bootstrap_proven"}
             and row["supersedes_verification_id"] is not None
             and str(row["supersedes_verification_id"]) in contradicted
         )
@@ -5333,12 +7729,15 @@ def _resolve_route_evidence(
         evidence_state = "contradicted"
     elif hard_proven:
         evidence_state = "hard_proven"
+    elif repair_bootstrap_proven:
+        evidence_state = "run-verified"
     else:
         evidence_state = "unknown"
     details = {
         "route_key": route_key,
         "compatible_verification_ids": sorted(by_id),
         "hard_proven_verification_ids": sorted(hard_proven),
+        "repair_bootstrap_verification_ids": sorted(repair_bootstrap_proven),
         "unresolved_contradiction_ids": unresolved_contradictions,
         "superseded_contradiction_ids": sorted(superseded),
     }
@@ -5415,6 +7814,130 @@ def _resolve_route_evidence(
             details=details,
         )
     return evidence_state
+
+
+def _r019_matrix_hard_proven_candidates(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    route_key: str,
+    candidate_rows: Mapping[str, sqlite3.Row],
+    report_local_hard_proven: set[str],
+) -> set[str]:
+    """Return R-019 candidates only when their current matrix is green.
+
+    A report-local feature verdict is intentionally insufficient for this
+    route.  The persisted relation must name every current candidate report;
+    any missing, stale, superseded, duplicate, or red input leaves the whole
+    route unproved.
+    """
+    declaration = connection.execute(
+        "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?", (manifest_id,)
+    ).fetchone()
+    if declaration is None or _json_object(
+            str(declaration["declaration_json"]), "R-019 acceptance declaration"
+    ).get("name") != "r019.keep_watch_acceptance_mcw":
+        return report_local_hard_proven
+    event = connection.execute(
+        "SELECT status, details_json FROM r019_acceptance_matrix_evaluation_history "
+        "WHERE manifest_id = ? ORDER BY matrix_evaluation_event_id DESC LIMIT 1",
+        (manifest_id,),
+    ).fetchone()
+    if event is None or str(event["status"]) != "green":
+        return set()
+    details = _json_object(str(event["details_json"]), "R-019 acceptance matrix details")
+    inputs = details.get("inputs")
+    if not isinstance(inputs, Mapping) or not inputs:
+        return set()
+    report_ids: set[str] = set()
+    for packet in inputs.values():
+        if not isinstance(packet, Mapping):
+            return set()
+        report_id = str(packet.get("report_id", "")).strip()
+        if not report_id or report_id in report_ids:
+            return set()
+        report_ids.add(report_id)
+    rows = connection.execute(
+        "SELECT verification_id, report_id, route_key, supersedes_verification_id FROM verification_history "
+        "WHERE manifest_id = ?",
+        (manifest_id,),
+    ).fetchall()
+    input_verifications = {
+        str(row["verification_id"]): row for row in rows
+        if str(row["report_id"]) in report_ids and str(row["route_key"]) == route_key
+    }
+    if len(input_verifications) != len(report_ids):
+        return set()
+    verification_ids = set(input_verifications)
+    if verification_ids - set(candidate_rows) or verification_ids - report_local_hard_proven:
+        return set()
+    superseded = connection.execute(
+        "SELECT supersedes_verification_id FROM verification_history WHERE manifest_id = ? "
+        "AND supersedes_verification_id IS NOT NULL",
+        (manifest_id,),
+    ).fetchall()
+    if any(str(row["supersedes_verification_id"]) in verification_ids for row in superseded):
+        return set()
+    return verification_ids
+
+
+def _playtest_witness_hard_proven_candidates(
+    connection: sqlite3.Connection, *, manifest_id: str, route_key: str,
+    candidate_rows: Mapping[str, sqlite3.Row], report_local_hard_proven: set[str],
+) -> set[str]:
+    """Let a current accepted cited witness repair classification for any playtest."""
+    declaration_row = connection.execute(
+        "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?", (manifest_id,)
+    ).fetchone()
+    declaration = _json_object(
+        str(declaration_row["declaration_json"]), "playtest witness declaration",
+    ) if declaration_row is not None else {}
+    runtime_contract = declaration.get("runtime_contract")
+    permitted_input = runtime_contract.get("permitted_input", []) \
+        if isinstance(runtime_contract, Mapping) else []
+    witness_required = "cockpit:run.witness" in permitted_input
+    witness_exists = connection.execute(
+        "SELECT 1 FROM playtest_witness_history WHERE manifest_id = ? LIMIT 1",
+        (manifest_id,),
+    ).fetchone() is not None
+    if not witness_required and not witness_exists:
+        return report_local_hard_proven
+    accepted = connection.execute(
+        "SELECT witness.witness_id FROM playtest_witness_history AS witness "
+        "JOIN playtest_witness_review_history AS review ON review.review_id = ("
+        "SELECT latest.review_id FROM playtest_witness_review_history AS latest "
+        "WHERE latest.witness_id = witness.witness_id "
+        "ORDER BY latest.rowid DESC LIMIT 1) "
+        "WHERE witness.manifest_id = ? AND witness.verdict = 'proved' "
+        "AND witness.evidence_ceiling = 'focused' AND review.decision = 'accept' "
+        "ORDER BY review.recorded_at DESC, review.review_id DESC LIMIT 1",
+        (manifest_id,),
+    ).fetchone()
+    if accepted is None:
+        return set()
+    report_ids = {
+        str(row["report_id"]) for row in connection.execute(
+            "SELECT report_id FROM playtest_witness_report_history WHERE witness_id = ?",
+            (str(accepted["witness_id"]),),
+        )
+    }
+    if not report_ids:
+        return set()
+    rows = connection.execute(
+        "SELECT verification_id, report_id, route_key FROM verification_history WHERE manifest_id = ?", (manifest_id,)
+    ).fetchall()
+    verification_ids = {str(row["verification_id"]) for row in rows if str(row["report_id"]) in report_ids and str(row["route_key"]) == route_key}
+    if len(verification_ids) != len(report_ids) or verification_ids - set(candidate_rows):
+        return set()
+    placeholders = ",".join("?" for _ in verification_ids)
+    if verification_ids and connection.execute(
+            "SELECT 1 FROM verification_history AS prior JOIN verification_history AS successor "
+            "ON successor.supersedes_verification_id = prior.verification_id "
+            f"WHERE prior.verification_id IN ({placeholders}) LIMIT 1",
+            tuple(verification_ids),
+    ).fetchone() is not None:
+        return set()
+    return verification_ids
 
 
 def _evaluation_for_facts(
@@ -5729,6 +8252,418 @@ def select_diagnostic_capsule_candidate(
 select_diagnostic_capsule = select_diagnostic_capsule_candidate
 
 
+def _witness_from_report(value: Mapping[str, Any]) -> Optional[Dict[str, Any]]:
+    """Read the generic live-final witness without knowing the claim trajectory."""
+    for step in value.get("steps", []):
+        live = step.get("cockpit_live_session") if isinstance(step, Mapping) else None
+        final = live.get("final") if isinstance(live, Mapping) else None
+        detail = final.get("stop_detail") if isinstance(final, Mapping) else None
+        validation = detail.get("witness_validation") if isinstance(detail, Mapping) else None
+        journal = detail.get("evidence_journal") if isinstance(detail, Mapping) else None
+        if isinstance(validation, Mapping) and isinstance(journal, Mapping):
+            return {"validation": dict(validation), "journal": dict(journal)}
+    return None
+
+
+def record_playtest_witness(
+    connection: sqlite3.Connection, *, manifest_id: str, report_ids: Sequence[str],
+    charter: Mapping[str, Any], journal: Mapping[str, Any], statement: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Persist one mechanically grounded witness over immutable report references."""
+    reports = tuple(dict.fromkeys(str(item).strip() for item in report_ids if str(item).strip()))
+    if not reports:
+        raise ScenarioRegistryStoreError("playtest witness requires an immutable report reference")
+    found = connection.execute(
+        "SELECT COUNT(*) FROM report_ingestion_history WHERE manifest_id = ? AND report_id IN (" +
+        ",".join("?" for _ in reports) + ") AND ingestion_status = 'ingested'",
+        (manifest_id, *reports),
+    ).fetchone()
+    if found is None or int(found[0]) != len(reports):
+        raise ScenarioRegistryStoreError("playtest witness report binding is missing or mismatched")
+    identities_value = journal.get("identities") \
+        if journal.get("schema") == "caol-playtest-evidence-journal-set-v1" \
+        else [journal.get("identity")]
+    if not isinstance(identities_value, list) or any(
+            not isinstance(identity, Mapping) for identity in identities_value):
+        raise ScenarioRegistryStoreError("playtest witness journal identity is missing")
+    if len(identities_value) != len(reports):
+        raise ScenarioRegistryStoreError("playtest witness run/report identity count mismatched")
+    expected_identities: set[tuple[str, str, str, str, str]] = set()
+    for report_id in reports:
+        row = connection.execute(
+            "SELECT report.report_path, report.report_sha256, verification.details_json "
+            "FROM report_ingestion_history AS report "
+            "JOIN verification_history AS verification ON verification.report_id = report.report_id "
+            "WHERE report.report_id = ? ORDER BY verification.recorded_at DESC, verification.rowid DESC LIMIT 1",
+            (report_id,),
+        ).fetchone()
+        if row is None:
+            raise ScenarioRegistryStoreError("playtest witness report verification identity is missing")
+        try:
+            report_path, report_bytes = _report_path_and_bytes(Path(str(row["report_path"])))
+            if hashlib.sha256(report_bytes).hexdigest() != str(row["report_sha256"]):
+                raise ScenarioRegistryStoreError("playtest witness report identity is stale")
+            report_value = json.loads(report_bytes.decode("utf-8"))
+            details = _json_object(str(row["details_json"]), "playtest witness verification")
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+            raise ScenarioRegistryStoreError("playtest witness report identity is unreadable") from exc
+        finals = [
+            live.get("final")
+            for step in report_value.get("steps", []) if isinstance(step, Mapping)
+            for live in [step.get("cockpit_live_session")]
+            if isinstance(live, Mapping) and isinstance(live.get("final"), Mapping)
+        ]
+        if len(finals) != 1:
+            raise ScenarioRegistryStoreError("playtest witness report has no unique live final identity")
+        runtime = details.get("runtime")
+        observed = runtime.get("runtime_binding_observed") \
+            if isinstance(runtime, Mapping) else None
+        manifest = details.get("manifest")
+        if not isinstance(observed, Mapping) or not isinstance(manifest, Mapping):
+            raise ScenarioRegistryStoreError("playtest witness source or executable identity is missing")
+        expected_identities.add((
+            str(report_value.get("scenario", "")),
+            str(manifest.get("source_sha256", "")),
+            str(observed.get("executable_sha256", "")),
+            str(finals[0].get("run_id", "")),
+            str(finals[0].get("binding_id", "")),
+        ))
+    supplied_identities = {
+        (
+            str(identity.get("scenario_id", "")),
+            str(identity.get("source_identity", "")),
+            str(identity.get("executable_identity", "")),
+            str(identity.get("run_id", "")),
+            str(identity.get("binding_id", "")),
+        )
+        for identity in identities_value
+    }
+    if len(supplied_identities) != len(identities_value) or supplied_identities != expected_identities:
+        raise ScenarioRegistryStoreError("playtest witness source/executable/run/ownership binding mismatched")
+    try:
+        validation = validate_witness_statement(
+            charter=charter, journal=journal, statement=statement,
+        )
+    except WitnessError as exc:
+        raise ScenarioRegistryStoreError(str(exc)) from exc
+    normalized = validation["witness"]
+    witness_id = _identity(
+        "caol-playtest-witness-v1", manifest_id, *reports,
+        str(validation["journal_sha256"]), str(normalized["witness_sha256"]),
+    )
+    def write_witness() -> None:
+        connection.execute(
+            "INSERT OR IGNORE INTO playtest_witness_history( witness_id, manifest_id, charter_json, "
+            "journal_json, statement_json, validation_json, verdict, evidence_ceiling ) "
+            "VALUES( ?, ?, ?, ?, ?, ?, ?, ? )",
+            (witness_id, manifest_id, _json_text(dict(charter)), _json_text(dict(journal)),
+             _json_text(dict(statement)), _json_text(validation), str(normalized["verdict"]),
+             str(normalized["evidence_ceiling"])),
+        )
+        for report_id in reports:
+            connection.execute(
+                "INSERT OR IGNORE INTO playtest_witness_report_history( witness_id, report_id ) VALUES( ?, ? )",
+                (witness_id, report_id),
+            )
+    if connection.in_transaction:
+        write_witness()
+    else:
+        with immediate_transaction(connection):
+            write_witness()
+    return {"witness_id": witness_id, "report_ids": list(reports), **validation}
+
+
+def review_playtest_witness(
+    connection: sqlite3.Connection, *, witness_id: str, decision: str,
+    rationale: str, concrete_risk: str = "", reviewer_role: str = "coordinator",
+) -> Dict[str, Any]:
+    """Persist the coordinator's causal judgment separately from mechanics."""
+    role = str(reviewer_role).strip()
+    if role not in {"coordinator", "mutation-reviewer"}:
+        raise ScenarioRegistryStoreError("playtest witness reviewer role is invalid")
+    row = connection.execute(
+        "SELECT manifest_id, validation_json FROM playtest_witness_history WHERE witness_id = ?",
+        (str(witness_id).strip(),),
+    ).fetchone()
+    if row is None:
+        raise ScenarioRegistryStoreError("playtest witness is unknown")
+    validation = _json_object(str(row["validation_json"]), "playtest witness validation")
+    try:
+        review = review_witness(
+            validation, decision=str(decision), rationale=str(rationale),
+            concrete_risk=str(concrete_risk),
+        )
+    except WitnessError as exc:
+        raise ScenarioRegistryStoreError(str(exc)) from exc
+    review_id = _identity(
+        "caol-playtest-witness-review-v1", str(witness_id), role, str(decision),
+        str(rationale), str(concrete_risk),
+    )
+    eligibility: Dict[str, str] = {}
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT OR IGNORE INTO playtest_witness_review_history( review_id, witness_id, reviewer_role, decision, "
+            "rationale, concrete_risk, review_json ) VALUES( ?, ?, ?, ?, ?, ?, ? )",
+            (review_id, str(witness_id), role, str(decision), str(rationale),
+             str(concrete_risk), _json_text(review)),
+        )
+        for route in connection.execute(
+                "SELECT DISTINCT verification.route_key FROM playtest_witness_report_history AS linked "
+                "JOIN verification_history AS verification ON verification.report_id = linked.report_id "
+                "WHERE linked.witness_id = ? AND verification.manifest_id = ?",
+                (str(witness_id), str(row["manifest_id"])),):
+            route_key = str(route["route_key"])
+            eligibility[route_key] = _resolve_route_evidence(
+                connection, manifest_id=str(row["manifest_id"]), route_key=route_key,
+            )
+    return {"review_id": review_id, "witness_id": str(witness_id),
+            "reviewer_role": role, "eligibility": eligibility, **review}
+
+
+def _record_r019_acceptance_matrix(
+    connection: sqlite3.Connection, *, manifest_id: str,
+) -> Optional[Dict[str, Any]]:
+    """Bind the two independently ingested R-019 reports, never their copies."""
+    manifest = connection.execute(
+        "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?", (manifest_id,)
+    ).fetchone()
+    if manifest is None or _json_object(
+            str(manifest["declaration_json"]), "R-019 acceptance declaration"
+    ).get("name") != "r019.keep_watch_acceptance_mcw":
+        return None
+    reports: List[Dict[str, Any]] = []
+    for row in connection.execute(
+            "SELECT report_id, report_path FROM report_ingestion_history "
+            "WHERE manifest_id = ? AND ingestion_status = 'ingested' ORDER BY recorded_at, report_id",
+            (manifest_id,)):
+        try:
+            value = json.loads(Path(str(row["report_path"])).read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        packet = value.get("r019_acceptance_matrix") if isinstance(value, Mapping) else None
+        if not isinstance(packet, Mapping) and isinstance(value, Mapping):
+            for step in value.get("steps", []):
+                live = step.get("cockpit_live_session") if isinstance(step, Mapping) else None
+                final = live.get("final") if isinstance(live, Mapping) else None
+                detail = final.get("stop_detail") if isinstance(final, Mapping) else None
+                candidate = detail.get("r019_acceptance_matrix") if isinstance(detail, Mapping) else None
+                if isinstance(candidate, Mapping):
+                    packet = candidate
+                    break
+        if isinstance(packet, Mapping):
+            authority = value.get("wec_authority") if isinstance(value, Mapping) else None
+            reports.append({"report_id": str(row["report_id"]),
+                            "evidence_class": value.get("evidence_class"),
+                            "r019_acceptance_matrix": {
+                                **packet,
+                                "registry_authority_id": str(authority.get("authority_id", ""))
+                                if isinstance(authority, Mapping) else "",
+                                "registry_executable_binding": str(authority.get("binding_id", ""))
+                                if isinstance(authority, Mapping) else "",
+                            }})
+    relation = validate_r019_acceptance_matrix(reports)
+    inputs = relation.get("inputs", {})
+    if not isinstance(inputs, Mapping) or not isinstance(inputs.get("guarded"), Mapping) or \
+            not isinstance(inputs.get("primitive"), Mapping):
+        return relation
+    guarded_id = str(inputs["guarded"].get("report_id", ""))
+    primitive_id = str(inputs["primitive"].get("report_id", ""))
+    if not guarded_id or not primitive_id:
+        return relation
+    connection.execute(
+        "INSERT OR IGNORE INTO r019_acceptance_matrix_history( "
+        "manifest_id, guarded_report_id, primitive_report_id, status, details_json ) "
+        "VALUES( ?, ?, ?, ?, ? )",
+        (manifest_id, guarded_id, primitive_id, str(relation["status"]), _json_text(relation)),
+    )
+    details_json = _json_text(relation)
+    connection.execute(
+        "INSERT OR IGNORE INTO r019_acceptance_matrix_evaluation_history( "
+        "manifest_id, guarded_report_id, primitive_report_id, status, details_json, details_sha256 "
+        ") VALUES( ?, ?, ?, ?, ?, ? )",
+        (manifest_id, guarded_id, primitive_id, str(relation["status"]), details_json,
+         hashlib.sha256(details_json.encode("utf-8")).hexdigest()),
+    )
+    return relation
+
+
+def _r019_aggregation_pair(
+    connection: sqlite3.Connection, *, guarded_report_id: str, primitive_report_id: str,
+) -> tuple[str, Dict[str, Any]]:
+    """Load exactly the requested current pair; never discover inputs from history."""
+    guarded_report_id = str(guarded_report_id).strip()
+    primitive_report_id = str(primitive_report_id).strip()
+    if not guarded_report_id or not primitive_report_id:
+        raise ScenarioRegistryStoreError("r019_aggregation_report_id_missing")
+    if guarded_report_id == primitive_report_id:
+        raise ScenarioRegistryStoreError("r019_aggregation_duplicate_report_id")
+    rows = connection.execute(
+        "SELECT report_id, manifest_id, report_path, report_sha256, ingestion_status FROM report_ingestion_history "
+        "WHERE report_id IN (?, ?)", (guarded_report_id, primitive_report_id),
+    ).fetchall()
+    by_id = {str(row["report_id"]): row for row in rows}
+    if set(by_id) != {guarded_report_id, primitive_report_id}:
+        raise ScenarioRegistryStoreError("r019_aggregation_report_absent")
+    manifest_ids = {str(row["manifest_id"]) for row in rows}
+    if len(manifest_ids) != 1 or any(str(row["ingestion_status"]) != "ingested" for row in rows):
+        raise ScenarioRegistryStoreError("r019_aggregation_report_not_current")
+    manifest_id = manifest_ids.pop()
+    manifest = connection.execute(
+        "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?", (manifest_id,)
+    ).fetchone()
+    if manifest is None or _json_object(
+            str(manifest["declaration_json"]), "R-019 aggregation declaration"
+    ).get("name") != "r019.keep_watch_acceptance_mcw":
+        raise ScenarioRegistryStoreError("r019_aggregation_not_r019")
+    reports: Dict[str, Any] = {}
+    for report_id, row in by_id.items():
+        canonical_path, report_bytes = _report_path_and_bytes(Path(str(row["report_path"])))
+        if hashlib.sha256(report_bytes).hexdigest() != str(row["report_sha256"]):
+            raise ScenarioRegistryStoreError("r019_aggregation_report_stale")
+        value = json.loads(report_bytes.decode("utf-8"))
+        if not isinstance(value, Mapping):
+            raise ScenarioRegistryStoreError("r019_aggregation_report_malformed")
+        packet = value.get("r019_acceptance_matrix")
+        if not isinstance(packet, Mapping):
+            for step in value.get("steps", []):
+                live = step.get("cockpit_live_session") if isinstance(step, Mapping) else None
+                final = live.get("final") if isinstance(live, Mapping) else None
+                detail = final.get("stop_detail") if isinstance(final, Mapping) else None
+                candidate = detail.get("r019_acceptance_matrix") if isinstance(detail, Mapping) else None
+                if isinstance(candidate, Mapping):
+                    packet = candidate
+                    break
+        authority = value.get("wec_authority")
+        if not isinstance(packet, Mapping) or not isinstance(authority, Mapping):
+            raise ScenarioRegistryStoreError("r019_aggregation_receipt_missing")
+        reports[report_id] = {
+            "report_id": report_id,
+            "evidence_class": value.get("evidence_class"),
+            "r019_acceptance_matrix": {
+                **packet,
+                "registry_authority_id": str(authority.get("authority_id", "")),
+                "registry_executable_binding": str(authority.get("binding_id", "")),
+            },
+        }
+        verification = connection.execute(
+            "SELECT 1 FROM verification_history WHERE report_id = ? LIMIT 1", (report_id,)
+        ).fetchone()
+        if verification is None:
+            raise ScenarioRegistryStoreError("r019_aggregation_verification_absent")
+        if connection.execute(
+                "SELECT 1 FROM verification_history AS prior JOIN verification_history AS successor "
+                "ON successor.supersedes_verification_id = prior.verification_id "
+                "WHERE prior.report_id = ? LIMIT 1", (report_id,),
+        ).fetchone() is not None:
+            raise ScenarioRegistryStoreError("r019_aggregation_report_superseded")
+    if str(reports[guarded_report_id]["r019_acceptance_matrix"].get("role", "")) != "guarded" or \
+            str(reports[primitive_report_id]["r019_acceptance_matrix"].get("role", "")) != "primitive":
+        raise ScenarioRegistryStoreError("r019_aggregation_role_id_mismatch")
+    relation = validate_r019_acceptance_matrix((reports[guarded_report_id], reports[primitive_report_id]))
+    if relation.get("status") != "green":
+        raise ScenarioRegistryStoreError("r019_aggregation_relation_red:" + ",".join(relation.get("errors", [])))
+    return manifest_id, relation
+
+
+def issue_r019_aggregation_token(
+    connection: sqlite3.Connection, *, guarded_report_id: str, primitive_report_id: str,
+) -> RegistryR019AggregationToken:
+    """Authorize precisely one current pair before writing its zero-credit terminal."""
+    try:
+        manifest_id, relation = _r019_aggregation_pair(
+            connection, guarded_report_id=guarded_report_id, primitive_report_id=primitive_report_id,
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ScenarioRegistryStoreError) as exc:
+        return RegistryR019AggregationToken("", False, str(exc), str(guarded_report_id), str(primitive_report_id))
+    if connection.execute(
+            "SELECT 1 FROM r019_aggregation_terminal_history WHERE manifest_id = ? AND guarded_report_id = ? "
+            "AND primitive_report_id = ? LIMIT 1", (manifest_id, guarded_report_id, primitive_report_id),
+    ).fetchone() is not None:
+        return RegistryR019AggregationToken("", False, "r019_aggregation_pair_already_terminalized",
+                                            guarded_report_id, primitive_report_id)
+    details = {
+        "authority_kind": "registry_r019_zero_credit_aggregation",
+        "manifest_id": manifest_id,
+        "guarded_report_id": guarded_report_id,
+        "primitive_report_id": primitive_report_id,
+        "relation_sha256": hashlib.sha256(_json_text(relation).encode("utf-8")).hexdigest(),
+    }
+    token_id = _identity("caol-r019-aggregation-token-v1", _json_text(details))
+    with immediate_transaction(connection):
+        existing = connection.execute(
+            "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'r019_aggregation_claimed' LIMIT 1",
+            (token_id,),
+        ).fetchone()
+        if existing is not None:
+            return RegistryR019AggregationToken(token_id, False, "token_already_claimed",
+                                                guarded_report_id, primitive_report_id)
+        connection.execute(
+            "INSERT OR IGNORE INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, NULL, 'r019_zero_credit_aggregation', 'r019_aggregation_issued', 'exact_current_pair', ? )",
+            (token_id, manifest_id, _json_text(details)),
+        )
+    return RegistryR019AggregationToken(token_id, True, "issued", guarded_report_id, primitive_report_id)
+
+
+def finalize_r019_aggregation_token(
+    connection: sqlite3.Connection, token_id: str,
+) -> Dict[str, Any]:
+    """Consume an aggregation authority and append its immutable zero-credit packet."""
+    token_id = str(token_id).strip()
+    issued = connection.execute(
+        "SELECT manifest_id, details_json FROM token_history WHERE token_id = ? AND event_kind = 'r019_aggregation_issued' "
+        "ORDER BY token_event_id LIMIT 1", (token_id,),
+    ).fetchone()
+    if issued is None:
+        return {"status": "rejected_token", "reason": "token_unknown", "token_id": token_id}
+    claimed = connection.execute(
+        "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'r019_aggregation_claimed' LIMIT 1",
+        (token_id,),
+    ).fetchone()
+    if claimed is not None:
+        return {"status": "rejected_token", "reason": "token_already_claimed", "token_id": token_id}
+    details = _json_object(str(issued["details_json"]), "R-019 aggregation token")
+    guarded_report_id = _string(details.get("guarded_report_id"), "R-019 guarded report ID")
+    primitive_report_id = _string(details.get("primitive_report_id"), "R-019 primitive report ID")
+    try:
+        manifest_id, relation = _r019_aggregation_pair(
+            connection, guarded_report_id=guarded_report_id, primitive_report_id=primitive_report_id,
+        )
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError, ScenarioRegistryStoreError) as exc:
+        with immediate_transaction(connection):
+            connection.execute(
+                "INSERT OR IGNORE INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+                "VALUES( ?, ?, NULL, 'r019_zero_credit_aggregation', 'r019_aggregation_invalidated', ?, '{}' )",
+                (token_id, str(issued["manifest_id"]), str(exc)),
+            )
+        return {"status": "rejected_terminal", "reason": str(exc), "token_id": token_id}
+    if manifest_id != str(issued["manifest_id"]):
+        return {"status": "rejected_terminal", "reason": "r019_aggregation_manifest_changed", "token_id": token_id}
+    packet = {
+        "schema": "caol-r019-zero-credit-aggregation-v1",
+        "authority_token": token_id,
+        "credit": "zero",
+        "guarded_report_id": guarded_report_id,
+        "primitive_report_id": primitive_report_id,
+        "relation": relation,
+    }
+    packet_json = _json_text(packet)
+    with immediate_transaction(connection):
+        connection.execute(
+            "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, NULL, 'r019_zero_credit_aggregation', 'r019_aggregation_claimed', 'canonical_terminal', '{}' )",
+            (token_id, manifest_id),
+        )
+        connection.execute(
+            "INSERT INTO r019_aggregation_terminal_history( token_id, manifest_id, guarded_report_id, primitive_report_id, packet_json, packet_sha256 ) "
+            "VALUES( ?, ?, ?, ?, ?, ? )",
+            (token_id, manifest_id, guarded_report_id, primitive_report_id, packet_json,
+             hashlib.sha256(packet_json.encode("utf-8")).hexdigest()),
+        )
+    return {"status": "terminalized", "token_id": token_id, "credit": "zero",
+            "guarded_report_id": guarded_report_id, "primitive_report_id": primitive_report_id}
+
+
 def ingest_report_reference(
     connection: sqlite3.Connection,
     report_path: Path,
@@ -5740,7 +8675,7 @@ def ingest_report_reference(
     report_sha256 = hashlib.sha256(report_bytes).hexdigest()
     report_id = _identity("caol-scenario-report-v1", canonical_path, report_sha256)
     existing = connection.execute(
-        "SELECT report_id, ingestion_status, error_text FROM report_ingestion_history "
+        "SELECT report_id, report_kind, ingestion_status, error_text FROM report_ingestion_history "
         "WHERE report_path = ? AND report_sha256 = ?",
         (canonical_path, report_sha256),
     ).fetchone()
@@ -5749,7 +8684,7 @@ def ingest_report_reference(
         return {
             "report_id": str(existing["report_id"]),
             "status": "ingested" if non_authoritative else str(existing["ingestion_status"]),
-            "classification": "diagnostic replay" if non_authoritative else None,
+            "classification": str(existing["report_kind"]) if non_authoritative else None,
             "non_authoritative": non_authoritative,
             "error": str(existing["error_text"]),
             "final_gates": {"automated_certification": False, "windows_feel": False} if non_authoritative else None,
@@ -5760,24 +8695,106 @@ def ingest_report_reference(
         if not isinstance(report, dict):
             raise ScenarioRegistryStoreError("Report top level must be an object")
         facts = _extract_report_facts(report)
+        r019_packet = report.get("r019_acceptance_matrix")
+        r019_final: Optional[Mapping[str, Any]] = None
+        if not isinstance(r019_packet, Mapping):
+            for step in report.get("steps", []):
+                live = step.get("cockpit_live_session") if isinstance(step, Mapping) else None
+                final = live.get("final") if isinstance(live, Mapping) else None
+                detail = final.get("stop_detail") if isinstance(final, Mapping) else None
+                candidate = detail.get("r019_acceptance_matrix") if isinstance(detail, Mapping) else None
+                if isinstance(candidate, Mapping):
+                    r019_packet = candidate
+                    r019_final = final
+                    break
+        if isinstance(r019_packet, Mapping) and str(r019_packet.get("role", "")).strip() in {
+                "guarded", "primitive"}:
+            receipt_errors = validate_r019_report_packet(r019_packet)
+            role_receipt = r019_packet.get("role_receipt")
+            if r019_final is None or not isinstance(role_receipt, Mapping) or \
+                    str(role_receipt.get("run_id", "")) != str(r019_final.get("run_id", "")) or \
+                    str(role_receipt.get("binding_id", "")) != str(r019_final.get("binding_id", "")):
+                receipt_errors.append("r019_receipt_not_bound_to_immutable_live_final")
+            if receipt_errors:
+                raise ScenarioRegistryStoreError("R-019 immutable receipt rejected: " + ", ".join(receipt_errors))
+        report_witness = _witness_from_report(report)
+        if isinstance(report_witness, Mapping):
+            validation = report_witness.get("validation")
+            journal = report_witness.get("journal")
+            if not isinstance(validation, Mapping) or not isinstance(journal, Mapping) or \
+                    validation.get("status") != "mechanically_valid" or \
+                    validation.get("journal_sha256") != journal.get("journal_sha256"):
+                raise ScenarioRegistryStoreError("playtest witness is not bound to its immutable journal")
+        _validate_required_r008_setup_receipt(connection, facts=facts, report=report)
+        # A report may carry an explicit save/relaunch receipt packet.  When it
+        # does, validate it before any report facts can become registry state;
+        # ordinary reports without this optional packet retain their existing
+        # evidence class and receive no inferred relaunch credit.
+        relaunch_packet = report.get("relaunch_receipts")
+        if relaunch_packet is not None:
+            if not isinstance(relaunch_packet, Mapping):
+                raise ScenarioRegistryStoreError("relaunch_receipts must be an object")
+            try:
+                facts["relaunch_normalization"] = normalize_relaunch_receipt(
+                    before_save=relaunch_packet.get("before_save"),
+                    after_load=relaunch_packet.get("after_load"),
+                    transition=relaunch_packet.get("transition"),
+                    expected_world_id=str(relaunch_packet.get("expected_world_id", "") or ""),
+                    expected_run_id=str(relaunch_packet.get("expected_run_id", "") or ""),
+                )
+            except RelaunchReceiptError as exc:
+                raise ScenarioRegistryStoreError(str(exc)) from exc
         if _is_diagnostic_replay_report(report, facts):
+            classification = "diagnostic replay"
             with immediate_transaction(connection):
                 connection.execute(
                     "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status ) "
-                    "VALUES( ?, ?, ?, 'diagnostic replay', 'ingested_non_authoritative' )",
-                    (report_id, canonical_path, report_sha256),
+                    "VALUES( ?, ?, ?, ?, 'ingested_non_authoritative' )",
+                    (report_id, canonical_path, report_sha256, classification),
                 )
             return {
                 "report_id": report_id,
                 "status": "ingested",
-                "classification": "diagnostic replay",
+                "classification": classification,
                 "non_authoritative": True,
                 "verification_id": None,
                 "final_gates": {"automated_certification": False, "windows_feel": False},
                 "diagnostic_capsule": None,
+                "intervention_ids": [],
                 "idempotent": False,
             }
         raw_authority = report.get("wec_authority")
+        proof = facts.get("proof")
+        potential_sealed_feature_proof = (
+            isinstance(proof, Mapping)
+            and proof.get("status") == "green"
+            and proof.get("feature_proof") is True
+            and proof.get("route_feature_proof") is True
+            and isinstance(raw_authority, Mapping)
+            and str(raw_authority.get("authority_id", "")).strip()
+        )
+        if not potential_sealed_feature_proof and _is_setup_only_report(report, facts):
+            classification = "setup-only"
+            with immediate_transaction(connection):
+                intervention_ids = _append_setup_only_interventions(
+                    connection, facts=facts, report=report
+                )
+                connection.execute(
+                    "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status ) "
+                    "VALUES( ?, ?, ?, ?, 'ingested_non_authoritative' )",
+                    (report_id, canonical_path, report_sha256, classification),
+                )
+            return {
+                "report_id": report_id,
+                "status": "ingested",
+                "classification": classification,
+                "non_authoritative": True,
+                "verification_id": None,
+                "final_gates": {"automated_certification": False, "windows_feel": False},
+                "diagnostic_capsule": None,
+                "intervention_ids": list(intervention_ids),
+                "idempotent": False,
+            }
         if isinstance(raw_authority, Mapping) and str(raw_authority.get("authority_id", "")).strip():
             authority_row = connection.execute(
                 "SELECT authority_id, evidence_class, authority, run_id, binding_id, source_sha256, owner "
@@ -5798,6 +8815,29 @@ def ingest_report_reference(
                 "fact": {key: str(authority_row[key]) for key in (
                     "authority_id", "evidence_class", "authority", "run_id", "binding_id", "source_sha256", "owner",
                 )},
+            }
+        if _is_setup_only_report(report, facts):
+            classification = "setup-only"
+            with immediate_transaction(connection):
+                intervention_ids = (
+                    _append_setup_only_interventions(connection, facts=facts, report=report)
+                    if classification == "setup-only" else ()
+                )
+                connection.execute(
+                    "INSERT INTO report_ingestion_history( report_id, report_path, report_sha256, report_kind, ingestion_status ) "
+                    "VALUES( ?, ?, ?, ?, 'ingested_non_authoritative' )",
+                    (report_id, canonical_path, report_sha256, classification),
+                )
+            return {
+                "report_id": report_id,
+                "status": "ingested",
+                "classification": classification,
+                "non_authoritative": True,
+                "verification_id": None,
+                "final_gates": {"automated_certification": False, "windows_feel": False},
+                "diagnostic_capsule": None,
+                "intervention_ids": list(intervention_ids),
+                "idempotent": False,
             }
         authority_fact = facts["wec_authority"].get("fact") if isinstance(facts["wec_authority"], Mapping) else None
         round_check = {"eligible": False, "reason": "not_certification_authority"}
@@ -5913,6 +8953,7 @@ def ingest_report_reference(
                     "requested_supersedes_verification_id": facts["supersedes_verification_id"],
                     "wec_authority": facts["wec_authority"],
                     "certification_round": facts["certification_round"],
+                    "certification_lifecycle": facts.get("certification_lifecycle"),
                     "certification_round_check": round_check,
                 }),
             ),
@@ -5949,6 +8990,17 @@ def ingest_report_reference(
             binding_fingerprint=aggregate_binding,
             details={"statuses": statuses},
         )
+        # Scenario-specific matrix history remains readable for old reports,
+        # but new eligibility is owned by cited playtest witnesses.
+        r019_acceptance_matrix = None
+        playtest_witness = None
+        if isinstance(report_witness, Mapping):
+            validation = report_witness["validation"]
+            playtest_witness = record_playtest_witness(
+                connection, manifest_id=manifest_id, report_ids=[report_id],
+                charter=validation["charter"], journal=report_witness["journal"],
+                statement=validation["witness"],
+            )
         eligibility = _resolve_route_evidence(
             connection,
             manifest_id=manifest_id,
@@ -5960,6 +9012,8 @@ def ingest_report_reference(
         "status": "ingested",
         "resolution": resolution,
         "eligibility": eligibility,
+        "r019_acceptance_matrix": r019_acceptance_matrix,
+        "playtest_witness": playtest_witness,
         "final_gates": derive_final_gate_eligibility(
             facts["wec_authority"].get("fact"),
             proof_status=str(proof.get("status", "")),
@@ -6122,6 +9176,28 @@ def ingest_token_linked_report_reference(
             "reason": str(ingested.get("status", "unknown")),
             "token_id": selection.token_id,
             "report_id": str(ingested.get("report_id", "")),
+        }
+
+    if ingested.get("classification") == "setup-only":
+        with immediate_transaction(connection):
+            connection.execute(
+                "INSERT OR IGNORE INTO token_history( "
+                "token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json "
+                ") SELECT token_id, manifest_id, verification_id, route_key, 'verification_run', "
+                "'setup_only_report_ingested', ? FROM token_history "
+                "WHERE token_id = ? AND event_kind = 'issued' ORDER BY token_event_id LIMIT 1",
+                (_json_text({
+                    "report_id": str(ingested["report_id"]),
+                    "intervention_ids": list(ingested.get("intervention_ids", [])),
+                    "final_gates": dict(ingested.get("final_gates", {})),
+                }), selection.token_id),
+            )
+        return {
+            "status": "ingested_setup_only",
+            "token_id": selection.token_id,
+            "report_id": str(ingested["report_id"]),
+            "intervention_ids": list(ingested.get("intervention_ids", [])),
+            "final_gates": dict(ingested.get("final_gates", {})),
         }
 
     issued = connection.execute(
@@ -6328,14 +9404,217 @@ def ingest_repair_token_linked_report_reference(
             "verification_id": str(verification["verification_id"]), "idempotent": False}
 
 
+def ingest_repair_compatibility_terminal(
+    connection: sqlite3.Connection,
+    token_id: str,
+    terminal_path: Path,
+) -> Dict[str, Any]:
+    """Supersede one repair contradiction with a zero-credit bound terminal.
+
+    This is deliberately narrower than report ingestion.  It proves only that
+    the current repair authority still names the same source/runtime footing
+    and reached a controlled-client or registry-authoritative terminal.  It
+    cannot become a feature report or an R-019 acceptance-matrix input.
+    """
+    selection = reload_repair_token_for_launch(connection, token_id, require_claimed=True)
+    if not selection.accepted:
+        return {"status": "rejected_token", "reason": selection.reason, "token_id": selection.token_id}
+    canonical_path, terminal_bytes = _report_path_and_bytes(terminal_path)
+    try:
+        terminal = _json_object(terminal_bytes.decode("utf-8"), "repair compatibility terminal")
+    except (UnicodeDecodeError, json.JSONDecodeError, ScenarioRegistryStoreError) as exc:
+        return {"status": "rejected_terminal", "reason": "terminal_unreadable", "error": str(exc),
+                "token_id": selection.token_id}
+    issued = _repair_token_details(connection, selection.token_id)
+    if issued is None:
+        raise ScenarioRegistryStoreError("repair token disappeared during terminal validation")
+    issued_details = _json_object(str(issued["details_json"]), "repair token details")
+    if issued_details.get("authority_kind") == "registry_repair_r019_current_source_successor":
+        return {"status": "rejected_terminal", "reason": "r019_successor_required", "token_id": selection.token_id}
+    binding = issued.get("binding") if isinstance(issued, Mapping) else None
+    # The repair token stores a full current binding, while its launch-facing
+    # runtime packet is the canonical value a controlled client can actually
+    # receive and echo without reconstructing private fixture/profile facts.
+    expected_runtime = selection.runtime_binding
+    if terminal.get("schema") != "caol-repair-compatibility-terminal-v1" or \
+            terminal.get("repair_token") != selection.token_id:
+        return {"status": "rejected_terminal", "reason": "terminal_identity_mismatch", "token_id": selection.token_id}
+    if terminal.get("gameplay_credit") is not False or terminal.get("matrix_credit") is not False:
+        return {"status": "rejected_terminal", "reason": "terminal_attempted_gameplay_promotion", "token_id": selection.token_id}
+    if terminal.get("runtime_binding") != expected_runtime:
+        return {"status": "rejected_terminal", "reason": "terminal_runtime_binding_mismatch", "token_id": selection.token_id}
+    controlled_client = terminal.get("controlled_client")
+    authoritative_terminal = terminal.get("authoritative_terminal")
+    client_valid = isinstance(controlled_client, Mapping) and controlled_client.get("status") == "connected" and \
+        controlled_client.get("runtime_binding") == expected_runtime
+    terminal_valid = isinstance(authoritative_terminal, Mapping) and \
+        authoritative_terminal.get("kind") == "registry_current_source_runtime_compatibility" and \
+        authoritative_terminal.get("status") == "terminal" and \
+        authoritative_terminal.get("runtime_binding") == expected_runtime
+    if not client_valid and not terminal_valid:
+        return {"status": "rejected_terminal", "reason": "terminal_client_or_authority_missing", "token_id": selection.token_id}
+    if terminal.get("terminal_result") != "current_source_runtime_compatible":
+        return {"status": "rejected_terminal", "reason": "terminal_not_compatible", "token_id": selection.token_id}
+    report_id = _identity("caol-repair-compatibility-terminal-v1", canonical_path,
+                          hashlib.sha256(terminal_bytes).hexdigest())
+    verification_id = _identity("caol-repair-compatibility-verification-v1", report_id, str(issued["route_key"]))
+    aggregate_binding = _identity("caol-repair-compatibility-binding-v1", _json_text(binding))
+    with immediate_transaction(connection):
+        prior = connection.execute(
+            "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_verification_run'",
+            (selection.token_id,),
+        ).fetchone()
+        if prior is not None:
+            return {"status": "rejected_multiple_terminals", "token_id": selection.token_id}
+        connection.execute(
+            "INSERT INTO report_ingestion_history( report_id, manifest_id, report_path, report_sha256, report_kind, ingestion_status ) "
+            "VALUES( ?, ?, ?, ?, 'repair-compatibility-terminal', 'ingested_non_feature' )",
+            (report_id, str(issued["manifest_id"]), canonical_path, hashlib.sha256(terminal_bytes).hexdigest()),
+        )
+        details = {
+            "proof": {"status": "green", "feature_proof": False, "evidence_class": "repair bootstrap"},
+            "repair_bootstrap": {"zero_credit": True, "matrix_credit": False,
+                                  "terminal_result": "current_source_runtime_compatible"},
+            "runtime": expected_runtime,
+        }
+        connection.execute(
+            "INSERT INTO verification_history( verification_id, manifest_id, report_id, route_key, binding_fingerprint, outcome_kind, proof_status, supersedes_verification_id, details_json ) "
+            "VALUES( ?, ?, ?, ?, ?, 'repair_bootstrap_compatible', 'green', ?, ? )",
+            (verification_id, str(issued["manifest_id"]), report_id, str(issued["route_key"]), aggregate_binding,
+             str(issued["verification_id"]), _json_text(details)),
+        )
+        _append_resolution_if_changed(
+            connection, verification_id=verification_id, manifest_id=str(issued["manifest_id"]),
+            route_key=str(issued["route_key"]), resolution_kind="compatible",
+            binding_fingerprint=aggregate_binding, details={"repair_bootstrap": True},
+        )
+        _resolve_route_evidence(connection, manifest_id=str(issued["manifest_id"]), route_key=str(issued["route_key"]))
+        connection.execute(
+            "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, ?, ?, 'repair_verification_run', 'repair_bootstrap_terminal_authoritative', ? )",
+            (selection.token_id, str(issued["manifest_id"]), verification_id, str(issued["route_key"]),
+             _json_text({"report_id": report_id, "red_verification_id": str(issued["verification_id"])})),
+        )
+    return {"status": "ingested_zero_credit", "token_id": selection.token_id, "report_id": report_id,
+            "verification_id": verification_id, "idempotent": False}
+
+
+def ingest_r019_current_source_repair_successor(
+    connection: sqlite3.Connection,
+    token_id: str,
+    successor_path: Path,
+) -> Dict[str, Any]:
+    """Resolve one stale R-019 red row through its repaired current HUD boundary.
+
+    Unlike the compatibility terminal, this receipt is deliberately bound to
+    the current manifest bytes and records the repaired visible HUD boundary.
+    It is still repair infrastructure: it has no gameplay or matrix credit and
+    may never become an R-019 report input.
+    """
+    selection = reload_repair_token_for_launch(connection, token_id, require_claimed=True)
+    if not selection.accepted:
+        return {"status": "rejected_token", "reason": selection.reason, "token_id": selection.token_id}
+    canonical_path, successor_bytes = _report_path_and_bytes(successor_path)
+    try:
+        successor = _json_object(successor_bytes.decode("utf-8"), "R-019 repair successor")
+    except (UnicodeDecodeError, json.JSONDecodeError, ScenarioRegistryStoreError) as exc:
+        return {"status": "rejected_successor", "reason": "successor_unreadable", "error": str(exc),
+                "token_id": selection.token_id}
+    issued = _repair_token_details(connection, selection.token_id)
+    if issued is None:
+        raise ScenarioRegistryStoreError("repair token disappeared during successor validation")
+    manifest = connection.execute(
+        "SELECT source_path, current_sha256, declaration_json FROM manifest_current WHERE manifest_id = ?",
+        (str(issued["manifest_id"]),),
+    ).fetchone()
+    if manifest is None:
+        return {"status": "rejected_successor", "reason": "manifest_absent", "token_id": selection.token_id}
+    declaration = _json_object(str(manifest["declaration_json"]), "R-019 repair declaration")
+    if declaration.get("name") != "r019.keep_watch_acceptance_mcw":
+        return {"status": "rejected_successor", "reason": "successor_not_r019", "token_id": selection.token_id}
+    expected_manifest = {"source_path": str(Path(str(manifest["source_path"])).resolve()),
+                         "source_sha256": str(manifest["current_sha256"] or "").lower()}
+    hud_step = next((step for step in declaration.get("steps", ())
+                     if isinstance(step, Mapping) and step.get("label") ==
+                     "post_load_r019_keep_watch_acceptance_hud"), None)
+    expected_text = hud_step.get("expected_screen_text_after_contains") if isinstance(hud_step, Mapping) else None
+    expected_fact = hud_step.get("expected_visible_fact") if isinstance(hud_step, Mapping) else None
+    boundary = successor.get("hud_boundary")
+    if successor.get("schema") != "caol-r019-current-source-repair-successor-v1" or \
+            successor.get("repair_token") != selection.token_id:
+        return {"status": "rejected_successor", "reason": "successor_identity_mismatch", "token_id": selection.token_id}
+    if successor.get("manifest") != expected_manifest:
+        return {"status": "rejected_successor", "reason": "successor_manifest_mismatch", "token_id": selection.token_id}
+    if successor.get("runtime_binding") != selection.runtime_binding:
+        return {"status": "rejected_successor", "reason": "successor_runtime_binding_mismatch", "token_id": selection.token_id}
+    if successor.get("gameplay_credit") is not False or successor.get("matrix_credit") is not False:
+        return {"status": "rejected_successor", "reason": "successor_attempted_credit", "token_id": selection.token_id}
+    if not isinstance(boundary, Mapping) or boundary.get("status") != "terminal":
+        return {"status": "rejected_successor", "reason": "successor_nonterminal", "token_id": selection.token_id}
+    if boundary.get("step_label") != "post_load_r019_keep_watch_acceptance_hud" or \
+            boundary.get("expected_visible_fact") != expected_fact or \
+            boundary.get("observed_screen_text") != expected_text:
+        return {"status": "rejected_successor", "reason": "successor_visible_fact_missing", "token_id": selection.token_id}
+    if successor.get("terminal_result") != "current_source_r019_hud_boundary_repaired":
+        return {"status": "rejected_successor", "reason": "successor_terminal_not_repaired", "token_id": selection.token_id}
+    report_id = _identity("caol-r019-current-source-repair-successor-v1", canonical_path,
+                          hashlib.sha256(successor_bytes).hexdigest())
+    verification_id = _identity("caol-r019-current-source-repair-verification-v1", report_id,
+                                str(issued["route_key"]))
+    with immediate_transaction(connection):
+        prior = connection.execute(
+            "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_verification_run'",
+            (selection.token_id,),
+        ).fetchone()
+        if prior is not None:
+            return {"status": "rejected_multiple_successors", "token_id": selection.token_id}
+        connection.execute(
+            "INSERT INTO report_ingestion_history( report_id, manifest_id, report_path, report_sha256, report_kind, ingestion_status ) "
+            "VALUES( ?, ?, ?, ?, 'r019-current-source-repair-successor', 'ingested_non_feature' )",
+            (report_id, str(issued["manifest_id"]), canonical_path, hashlib.sha256(successor_bytes).hexdigest()),
+        )
+        details = {
+            "proof": {"status": "green", "feature_proof": False, "evidence_class": "repair successor"},
+            "repair_bootstrap": {"zero_credit": True, "matrix_credit": False,
+                                 "terminal_result": "current_source_runtime_compatible"},
+            "r019_repair_successor": {"hud_boundary": dict(boundary), "current_manifest": expected_manifest},
+        }
+        connection.execute(
+            "INSERT INTO verification_history( verification_id, manifest_id, report_id, route_key, binding_fingerprint, outcome_kind, proof_status, supersedes_verification_id, details_json ) "
+            "VALUES( ?, ?, ?, ?, ?, 'repair_successor_compatible', 'green', ?, ? )",
+            (verification_id, str(issued["manifest_id"]), report_id, str(issued["route_key"]),
+             _identity("caol-r019-current-source-repair-binding-v1", _json_text(selection.runtime_binding)),
+             str(issued["verification_id"]), _json_text(details)),
+        )
+        _append_resolution_if_changed(
+            connection, verification_id=verification_id, manifest_id=str(issued["manifest_id"]),
+            route_key=str(issued["route_key"]), resolution_kind="compatible",
+            binding_fingerprint=_identity("caol-r019-current-source-repair-binding-v1", _json_text(selection.runtime_binding)),
+            details={"repair_successor": True},
+        )
+        _resolve_route_evidence(connection, manifest_id=str(issued["manifest_id"]), route_key=str(issued["route_key"]))
+        connection.execute(
+            "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+            "VALUES( ?, ?, ?, ?, 'repair_verification_run', 'r019_current_source_repair_successor', ? )",
+            (selection.token_id, str(issued["manifest_id"]), verification_id, str(issued["route_key"]),
+             _json_text({"report_id": report_id, "red_verification_id": str(issued["verification_id"])})),
+        )
+    return {"status": "ingested_zero_credit", "token_id": selection.token_id, "report_id": report_id,
+            "verification_id": verification_id, "idempotent": False}
+
+
 def reconcile_report_bindings(connection: sqlite3.Connection, *, adapters: BindingAdapters) -> Dict[str, int]:
     """Recompute report/manifest/runtime/fixture/profile compatibility by reference."""
     reconciled = 0
     stale = 0
+    adapters = _memoized_binding_adapters(adapters)
     touched_routes: set[Tuple[str, str]] = set()
     references = connection.execute(
         "SELECT report_id, report_path, report_sha256 FROM report_ingestion_history WHERE ingestion_status = 'ingested'"
     ).fetchall()
+    facts_by_report = _reconciled_report_facts_by_report(
+        connection, {str(reference["report_id"]) for reference in references},
+    )
     for reference in references:
         report_id = str(reference["report_id"])
         verification = connection.execute(
@@ -6350,10 +9629,9 @@ def reconcile_report_bindings(connection: sqlite3.Connection, *, adapters: Bindi
             canonical_path, report_bytes = _report_path_and_bytes(Path(str(reference["report_path"])))
             if canonical_path != str(reference["report_path"]) or hashlib.sha256(report_bytes).hexdigest() != str(reference["report_sha256"]):
                 raise ScenarioRegistryStoreError("report reference is missing or its content hash changed")
-            report = json.loads(report_bytes.decode("utf-8"))
-            if not isinstance(report, dict):
-                raise ScenarioRegistryStoreError("Report top level must be an object")
-            facts = _extract_report_facts(report)
+            facts = facts_by_report.get(report_id)
+            if facts is None:
+                raise ScenarioRegistryStoreError("ingested report has no binding facts")
         except (OSError, UnicodeDecodeError, json.JSONDecodeError, ScenarioRegistryStoreError) as exc:
             reason = str(exc)
 
@@ -6460,3 +9738,71 @@ def reconcile_report_bindings(connection: sqlite3.Connection, *, adapters: Bindi
                 route_key=route_key,
             )
     return {"reconciled": reconciled, "stale": stale}
+
+
+def _memoized_binding_adapters(adapters: BindingAdapters) -> BindingAdapters:
+    """Observe each current binding owner once for an identical expectation."""
+    cache: Dict[Tuple[str, str], Mapping[str, Any]] = {}
+
+    def memoize(kind: str, adapter: Callable[[Mapping[str, Any]], Mapping[str, Any]]) -> Callable[[Mapping[str, Any]], Mapping[str, Any]]:
+        def observe(expected: Mapping[str, Any]) -> Mapping[str, Any]:
+            key = (kind, _json_text(expected))
+            if key not in cache:
+                cache[key] = adapter(expected)
+            return cache[key]
+        return observe
+
+    return BindingAdapters(
+        runtime=memoize("runtime", adapters.runtime),
+        fixture=memoize("fixture", adapters.fixture),
+        profile=memoize("profile", adapters.profile),
+    )
+
+
+def _reconciled_report_facts_by_report(
+    connection: sqlite3.Connection, report_ids: set[str],
+) -> Dict[str, Dict[str, Any]]:
+    """Load the immutable normalized facts captured during report ingestion.
+
+    Reconciliation still reads and hashes the referenced report, so a changed
+    or missing reference becomes stale.  Decoding a report body again is not
+    necessary: its binding expectations were already persisted atomically with
+    the verification.  This avoids repeatedly materializing unbounded opaque
+    probe payloads that cannot affect binding compatibility.
+    """
+    if not report_ids:
+        return {}
+    placeholders = ", ".join("?" for _ in report_ids)
+    bindings_by_report: Dict[str, Dict[str, Mapping[str, Any]]] = {}
+    invalid_reports: set[str] = set()
+    for row in connection.execute(
+            "SELECT report_id, binding_kind, payload_json FROM binding_history "
+            "WHERE report_id IN (" + placeholders + ") "
+            "AND binding_kind IN ('manifest', 'runtime', 'fixture', 'profile')",
+            tuple(report_ids),
+    ):
+        report_id = str(row["report_id"] or "")
+        try:
+            payload = _json_object(str(row["payload_json"]), "binding payload")
+        except ScenarioRegistryStoreError:
+            invalid_reports.add(report_id)
+            continue
+        if str(payload.get("report_id", "")) != report_id:
+            invalid_reports.add(report_id)
+            continue
+        kind = str(row["binding_kind"])
+        if report_id in bindings_by_report and kind in bindings_by_report[report_id]:
+            invalid_reports.add(report_id)
+            continue
+        bindings_by_report.setdefault(report_id, {})[kind] = payload
+    facts_by_report: Dict[str, Dict[str, Any]] = {}
+    for report_id, bindings in bindings_by_report.items():
+        facts: Dict[str, Any] = {}
+        for kind in ("manifest", "runtime", "fixture", "profile"):
+            payload = bindings.get(kind)
+            if payload is None:
+                continue
+            facts[kind] = dict(_object(payload.get("expected"), f"{kind} binding expected"))
+        if report_id not in invalid_reports and len(facts) == 4:
+            facts_by_report[report_id] = facts
+    return facts_by_report

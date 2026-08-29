@@ -1,0 +1,39 @@
+{
+  "manifest_version": 2,
+  "name": "r019.keep_watch_safety_bootstrap_mcw",
+  "description": "Zero-credit R-019 bootstrap. It binds the clean wait fixture and verifies that the current source emits run-bound Keep watch safety frames before a guarded route can be selected.",
+  "profile": "r009-m095",
+  "world": "McWilliams",
+  "fixture": "r013_clean_wait_duration_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r019.keep_watch_safety_bootstrap": "source_bound_native_keep_watch_safety_frame",
+    "runtime.r019.source_binding": "r013_clean_wait_duration_v1:r009-m095"
+  },
+  "runtime_contract": {
+    "permitted_input": ["native:in_game_main_menu.dismiss:escape"],
+    "forbidden_input": ["debug:teleport", "debug:spawn", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation", "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.1m", "cockpit:game.keep_watch"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "fixture": "r013_clean_wait_duration_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r013_clean_wait_duration_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["declared native in-game main-menu dismissal"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r013_clean_wait_duration_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/r009-m095.json", "source_run": ".userdata/dev-harness/harness_runs/20260811_215708/saved_world"},
+  "proof_gates": [{"id": "r019_keep_watch_safety_footing_bound", "label": "R-019 source-bound Keep watch safety-frame footing reaches ordinary gameplay", "boundary_step": "post_load_r019_keep_watch_hud", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "startup_harness", "gameplay_credit": false}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r019_keep_watch_safety_footing_bound"], "terminal": ["r019_keep_watch_safety_footing_bound"], "capability_gates": {"capabilities.r019.keep_watch_safety_bootstrap": {"startup": ["r019_keep_watch_safety_footing_bound"]}}},
+  "steps": [
+    {"kind": "press", "label": "dismiss_declared_in_game_main_menu", "keys": ["escape"], "expected_visible_fact": "the declared native in-game main menu is dismissed before the safety frame is observed"},
+    {"kind": "wait", "label": "post_load_r019_keep_watch_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r019_keep_watch_hud_missing", "abort_reason": "the source-bound clean fixture did not reach ordinary gameplay"}
+  ],
+  "evidence_contract": {"claim": "the clean source-bound fixture can supply native Keep watch safety classification footing; this bootstrap grants zero gameplay and R-019 acceptance credit", "failure_rule": "a missing HUD, changed binding, absent native safety field, failed cleanup, or any attempt to use this setup artifact as guarded-loop proof leaves R-019 red"}
+}

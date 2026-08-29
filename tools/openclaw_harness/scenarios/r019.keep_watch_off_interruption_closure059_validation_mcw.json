@@ -1,0 +1,44 @@
+{
+  "manifest_version": 2,
+  "name": "r019.keep_watch_off_interruption_closure059_validation_mcw",
+  "description": "Fresh zero-credit R-019 route. It receipts the exact saved-to-live hostile projection before dispatch, rejects disabled master Keep watch, then performs only the ordered primitive wait until the first hostile interruption and stops without handling it. The target is visible, hostile, outside production DANGEROUS_PROXIMITY=5, and retains the fixture-qualified one-tile traversable entry route only after native time advances.",
+  "profile": "r009-m095",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r019_keep_watch_off_positive_progress_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r019.off_interruption_closure059_validation": "fresh_disabled_master_primitive_wait_stops_at_current_native_hostile_interruption_with_source_bound_partial_progress",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r019.source_binding": "r019_keep_watch_off_positive_progress_v1:r009-m095"
+  },
+  "runtime_contract": {
+    "permitted_input": ["native:in_game_main_menu.dismiss:escape", "cockpit:game.observe", "cockpit:game.qualify_r019_timed_entry", "cockpit:game.keep_watch", "cockpit:run.continue", "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.1m", "cockpit:run.finish"],
+    "forbidden_input": ["semantic:activity.ignore", "cockpit:run.controlled_binding_drift", "debug:spawn", "debug:teleport", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "fixture": "r019_keep_watch_off_positive_progress_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r019_keep_watch_off_positive_progress_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["fresh native hostile setup outside DANGEROUS_PROXIMITY, disabled master Keep watch rejection, then one primitive wait"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r019_keep_watch_off_positive_progress_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/r009-m095.json"},
+  "setup_contract": {"required_monster": {"typeid": "mon_zombie_dog", "offset_ms": [4, 6, 0], "last_updated_at_save_turn": true, "native_close_hostile_qualification": "free_visible_route_with_one_tile_post_progress_dangerous_proximity_entry"}, "incidental_absent_typeid": "mon_zombie"},
+  "proof_gates": [{"id": "r019_off_interruption_closure059_validation", "label": "R-019 disabled-master primitive-only wait stops at its own current-source hostile interruption", "boundary_step": "r019_off_interruption_closure059_live_session", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r019_off_interruption_closure059_validation"], "terminal": ["r019_off_interruption_closure059_validation"], "capability_gates": {"capabilities.r019.off_interruption_closure059_validation": {"terminal": ["r019_off_interruption_closure059_validation"]}}},
+  "steps": [
+    {"kind": "wait", "label": "post_load_r019_off_interruption_closure059_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r019_off_interruption_closure059_hud_missing"},
+    {"kind": "native_semantic_bootstrap", "label": "emit_r019_off_interruption_closure059_native_frame", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "r019_off_interruption_closure059_live_session", "objective": "Use fresh authority only. Reject disabled master Keep watch, receipt the exact saved-to-live hostile projection and geometry, bind the primitive wait from that frame, dispatch world.wait, wait.duration_menu, and wait.1m in order, then stop immediately when hostile_spotted_near is observed without activity.ignore or any continuation.", "proof_targets": ["exact fresh run, source, executable, and off-state identities", "one exact native zombie-dog setup receipt", "one receipt from saved absolute placement through live actor and player origins to cockpit-relative coordinate", "disabled master Keep watch rejection", "ordered primitive native receipts", "hostile_spotted_near at the native activity-distraction boundary", "zero guarded dispatch, handling, hidden batching, and activity.ignore", "positive partial progress derived from source-bound pre-wait and interruption calendar times plus a post-stop native interruption observation", "immutable ingestion after accepted cleanup"], "authority": ["disabled game.keep_watch rejection", "game.qualify_r019_timed_entry", "advertised primitive actions", "run.finish"], "invariants": ["the prior bootstrap is source context only and supplies no authority or credit", "the tagged zombie dog projection receipt must agree from saved placement through live absolute coordinates to [4,6,0], outside DANGEROUS_PROXIMITY=5, before world.wait", "neutral attitude, stale origin, actor drift, stale coordinates, and impossible one-minute entry stop before dispatch", "the first hostile interruption is terminal", "no activity.ignore and no continuation after the interruption", "this route is zero credit and does not validate guarded Keep watch"], "r019_timed_entry": {"saved_offset_ms": [4, 6, 0], "saved_player_absolute_ms": [3844, 957, 0], "saved_actor_absolute_ms": [3848, 963, 0], "live_player_absolute_ms": [3844, 957, 0], "live_actor_absolute_ms": [3848, 963, 0], "target_offset_ms": [4, 6, 0], "fixture_actor": {"fixture_actor_id": "r019-zombie-dog-positive-progress-v1", "typeid": "mon_zombie_dog", "faction": "zombie", "friendly": 0, "aggro_character": true}, "dangerous_proximity": 5, "maximum_boundary_entry_steps": 1}, "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+  ],
+  "evidence_contract": {"claim": "a wholly fresh disabled-master control owns its exact native setup and proves primitive-only fail-closed stopping at hostile_spotted_near without reusing bootstrap authority or testing the guarded meaningful-event route", "failure_rule": "missing identity, setup, primitive receipt, hostile boundary, positive source-bound pre-wait-to-interruption partial progress, post-stop observation, immutable ingestion, or accepted cleanup; stale, missing, or contradictory calendar time, guarded handling, activity.ignore, continuation after interruption, or bootstrap-authority reuse leaves R-019 red"}
+}

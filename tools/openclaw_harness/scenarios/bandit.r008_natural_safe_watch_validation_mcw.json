@@ -1,0 +1,574 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r008_natural_safe_watch_validation_mcw",
+  "description": "Independent focused R-008 local-return bootstrap from the production-generated safe-watch footing.  The fixture's invisible observer prevents hostile interference while one registry-owned worker uses only frame-bound semantic waits from abstract structural dispatch through the first persisted production local contact; no ecology, lead, actor, geography, lifecycle, or save state is injected.",
+  "profile": "r008-closure-059-validation",
+  "world": "r008-natural-bandit-039",
+  "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+  "fixture_profile": "r008-closure-039-natural",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "observer_safety_mode": "invisible",
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION",
+    "DEBUG_CLOAK"
+  ],
+  "wait_input_trace": true,
+  "installed_save_player": "#R2xvcnkgVHJlam8=.sav.zzip",
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "world.natural_bandit_safe_watch_footing": {
+      "raw_seed": "830205385",
+      "camp_omt": "177,13,0",
+      "hostile_origin_omt": "177,9,0",
+      "watch_omt": "174,13,0",
+      "watch_route_cost": 10,
+      "persistent_ecology_unchanged": true
+    },
+    "capabilities.bandit.natural_structural_scout_dispatch": "production_scheduler_only",
+    "capabilities.bandit.natural_structural_scout_local_contact": "production_scheduler_only"
+  },
+  "source_binding": {
+    "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json"
+  },
+  "source_binding_validation": {
+    "validator": "r008_natural_wait_progress_source_binding",
+    "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json",
+    "capabilities": [
+      "world.natural_bandit_safe_watch_footing"
+    ]
+  },
+  "setup_receipt_contract": {
+    "kind": "r008_source_bound_fixture",
+    "world": "r008-natural-bandit-039",
+    "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+    "required_player_abs_omt": [174, 13, 0],
+    "stabilizer_traits": [
+      "DEBUG_LS",
+      "DEBUG_NOTEMP",
+      "DEBUG_STAMINA",
+      "DEBUG_CARDIO",
+      "DEBUG_CLAIRVOYANCE",
+      "DEBUG_NIGHTVISION",
+      "DEBUG_CLOAK"
+    ],
+    "source_binding": {
+      "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json",
+      "raw_seed": "830205385",
+      "world_name": "r008-natural-bandit-039",
+      "world_master_gsav_sha256": "cdec3aed809cd5ded71618fc75a0ae05c007ce70e0d688aea8ff31a5a36000e0",
+      "native_camp": "overmap_special:bandit_camp@177,13,0",
+      "hostile_origin_omt": [177, 9, 0],
+      "watch_omt": [174, 13, 0],
+      "watch_route_cost": 10
+    }
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.wait",
+      "semantic:wait.duration_menu",
+      "semantic:wait.6h",
+      "semantic:wait.1h",
+      "semantic:activity.ignore",
+      "semantic:eoc_popup.space",
+      "press:.",
+      "press:S",
+      "press:Y",
+      "press:q",
+      "press:left",
+      "press:enter"
+    ],
+    "forbidden_input": [
+      "debug:teleport",
+      "debug:ecology_edit",
+      "raw-save-rewrite",
+      "fixture-save-transform-after-install",
+      "debug:inject_camp",
+      "debug:inject_origin",
+      "debug:inject_lead",
+      "debug:inject_dispatch",
+      "debug:inject_operation",
+      "debug:drive",
+      "debug:eligibility"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r008-closure-059-validation",
+    "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r008-closure-059-validation",
+      "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": [
+        "frame-bound semantic waits"
+      ],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_gates": [
+    {
+      "id": "natural_structural_scout_dispatched",
+      "label": "Natural structural scout dispatch",
+      "boundary_step": "resolve_force_due_dispatch_at_minute_boundary",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "structured_event",
+          "predicate": {
+            "domain": "bandit_live_world",
+            "transition": "active_sortie_dispatch",
+            "outcome": "committed",
+          "continuity_fields": [
+            "site_id",
+            "operation_id",
+            "generation",
+            "actor_ids"
+          ]
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:",
+          "Wield:"
+        ]
+      }
+  },
+  {
+    "id": "natural_structural_scout_local_handoff",
+    "label": "Natural structural scout commits its local ownership handoff",
+      "boundary_step": "worker_owned_local_contact_and_cohesion",
+    "predecessors": [
+      "natural_structural_scout_dispatched"
+    ],
+    "expectations": [
+      {
+        "kind": "structured_event",
+        "predicate": {
+          "domain": "bandit_live_world",
+          "transition": "local_pair_handoff",
+          "outcome": "committed",
+          "simulation_owner": "local",
+          "continuity_fields": [
+            "site_id",
+            "operation_id",
+            "generation",
+            "actor_ids",
+            "simulation_owner",
+            "handoff_epoch"
+          ]
+        }
+      }
+    ],
+    "checkpoint_safe_ui": {
+      "screen_text_contains": [
+        "Move:",
+        "Wield:"
+      ]
+    }
+  },
+  {
+      "id": "persisted_local_contact_eligibility",
+      "label": "Natural structural scout reaches persisted local contact with its eligibility receipt",
+      "boundary_step": "audit_persisted_local_contact_eligibility",
+    "predecessors": [
+      "natural_structural_scout_local_handoff"
+      ],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "same_run": true,
+            "artifact_hash_present": true,
+            "continuity_fields": [
+              "site_id",
+              "operation_id",
+              "generation",
+              "actor_ids",
+              "simulation_owner",
+              "handoff_epoch"
+            ]
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Per:"
+        ]
+      }
+    }
+  ],
+  "causal_boundary_gate": "natural_structural_scout_local_handoff",
+  "proof_route": {
+    "gates": [
+      "natural_structural_scout_dispatched",
+      "natural_structural_scout_local_handoff",
+      "persisted_local_contact_eligibility"
+    ],
+    "terminal": [
+    "persisted_local_contact_eligibility"
+    ],
+    "capability_gates": {
+      "capabilities.bandit.natural_structural_scout_dispatch": {
+        "terminal": [
+          "natural_structural_scout_dispatched"
+        ]
+      },
+      "capabilities.bandit.natural_structural_scout_local_contact": {
+        "terminal": [
+          "persisted_local_contact_eligibility"
+        ]
+      }
+    }
+  },
+  "cockpit_pre_descriptor_bootstrap": {
+    "schema": "caol-cockpit-pre-descriptor-bootstrap-v1",
+    "gameplay_credit": false,
+    "adaptive_prefix": [
+      {
+        "label": "advance_first_semantic_scheduler_window",
+        "objective": "Observe the current native frame and choose only its advertised six-hour wait actions.  Advance the first ordinary scheduler window from the production-generated safe-watch footing.  Do not move the player, create a camp or lead, or inject ecology state.",
+        "required_action_chain": ["world.wait", "wait.duration_menu", "wait.6h"],
+        "adaptive_interrupt_actions": ["activity.ignore"]
+      },
+      {
+        "label": "advance_second_semantic_scheduler_window",
+        "objective": "Continue the same native worker session through the second ordinary six-hour scheduler window.  Preserve the production-owned world and treat only advertised interruptions as the next observation.",
+        "required_action_chain": ["world.wait", "wait.duration_menu", "wait.6h"],
+        "adaptive_interrupt_actions": ["activity.ignore"]
+      },
+      {
+        "label": "advance_force_due_scheduler_window_first_hour",
+        "objective": "Continue the same native worker session through the first advertised one-hour wait toward the site-specific force-due scheduler boundary.  Do not create or alter any lifecycle state.",
+        "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1h"],
+        "adaptive_interrupt_actions": ["activity.ignore"]
+      },
+      {
+        "label": "advance_force_due_scheduler_window_second_hour",
+        "objective": "Continue the same native worker session through the second advertised one-hour wait toward the site-specific force-due scheduler boundary.  Do not create or alter any lifecycle state.",
+        "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1h"],
+        "adaptive_interrupt_actions": ["activity.ignore"]
+      }
+    ],
+    "interstitial_setup_steps": [
+      {
+        "kind": "press",
+        "label": "resolve_force_due_dispatch_at_minute_boundary",
+        "keys": ["."]
+      }
+    ]
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_hud",
+      "seconds": 2.0,
+      "capture_after": true,
+      "startup_semantic_hud_expectation": {
+        "classification": "green_gameplay_hud_present"
+      },
+      "checkpoint_evidence": {
+        "classification": "incidental_bootstrap_observation",
+        "authoritative_owner": "bound_startup_semantic_hud"
+      },
+      "expected_visible_fact": "the worker is in the ordinary gameplay HUD before the production scheduler advances",
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r008_natural_safe_watch_validation_hud_missing",
+      "abort_reason": "the independently installed safe-watch fixture did not reach ordinary gameplay"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_installed_safe_watch_position",
+      "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+      "required_player_abs_omt": [174, 13, 0],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r008_safe_watch_position_not_installed",
+      "abort_reason": "the fixture declared a safe watch OMT but did not install the avatar at that production-owned position"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_installed_safe_watch_turn_baseline",
+      "record_baseline": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r008_safe_watch_turn_baseline_missing",
+      "abort_reason": "the installed fixture had no readable player turn from which a later native save could be proven fresh"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "advance_first_semantic_scheduler_window",
+      "objective": "Observe the current native frame and choose only its advertised six-hour wait actions.  Advance the first ordinary scheduler window from the production-generated safe-watch footing.  Do not move the player, create a camp or lead, or inject ecology state.",
+      "minimum_elapsed_minutes": 360,
+      "observation_timeout_seconds": 420.0,
+      "observation_interval_seconds": 1.0,
+      "required_action_chain": [
+        "world.wait",
+        "wait.duration_menu",
+        "wait.6h"
+      ],
+      "adaptive_interrupt_actions": [
+        "activity.ignore"
+      ],
+      "adaptive_semantic_ui_recovery": {
+        "intent": "eoc_popup",
+        "action": "space",
+        "postcondition": "eoc_popup_returned"
+      },
+      "required_interrupt_action_chain": [],
+      "expected_visible_fact": "the same worker accepts native semantic receipts and advances ordinary game time into the production scheduler"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "advance_second_semantic_scheduler_window",
+      "objective": "Continue the same native worker session through the second ordinary six-hour scheduler window.  Preserve the production-owned world and treat only advertised interruptions as the next observation.",
+      "minimum_elapsed_minutes": 360,
+      "observation_timeout_seconds": 420.0,
+      "observation_interval_seconds": 1.0,
+      "required_action_chain": [
+        "world.wait",
+        "wait.duration_menu",
+        "wait.6h"
+      ],
+      "adaptive_interrupt_actions": [
+        "activity.ignore"
+      ],
+      "required_interrupt_action_chain": [],
+      "adaptive_semantic_ui_recovery": {
+        "intent": "eoc_popup",
+        "action": "space",
+        "postcondition": "eoc_popup_returned"
+      },
+      "required_interrupt_action_chain": [],
+      "expected_visible_fact": "the same worker reaches the site-specific force-due window without injecting ecology state"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "advance_force_due_scheduler_window_first_hour",
+      "objective": "Continue the same native worker session through the first advertised one-hour wait toward the site-specific force-due scheduler boundary.  Do not create or alter any lifecycle state.",
+      "minimum_elapsed_minutes": 60,
+      "observation_timeout_seconds": 420.0,
+      "observation_interval_seconds": 1.0,
+      "required_action_chain": [
+        "world.wait",
+        "wait.duration_menu",
+        "wait.1h"
+      ],
+      "adaptive_interrupt_actions": [
+        "activity.ignore"
+      ],
+      "adaptive_semantic_ui_recovery": {
+        "intent": "eoc_popup",
+        "action": "space",
+        "postcondition": "eoc_popup_returned"
+      },
+      "required_interrupt_action_chain": [],
+      "expected_visible_fact": "the native scheduler advances one production-owned hour toward the deterministic force-due boundary"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "advance_force_due_scheduler_window_second_hour",
+      "objective": "Continue the same native worker session through the second advertised one-hour wait toward the site-specific force-due scheduler boundary.  Do not create or alter any lifecycle state.",
+      "minimum_elapsed_minutes": 60,
+      "observation_timeout_seconds": 420.0,
+      "observation_interval_seconds": 1.0,
+      "required_action_chain": [
+        "world.wait",
+        "wait.duration_menu",
+        "wait.1h"
+      ],
+      "adaptive_interrupt_actions": [
+        "activity.ignore"
+      ],
+      "adaptive_semantic_ui_recovery": {
+        "intent": "eoc_popup",
+        "action": "space",
+        "postcondition": "eoc_popup_returned"
+      },
+      "required_interrupt_action_chain": [],
+      "expected_visible_fact": "the native scheduler advances a second production-owned hour toward the deterministic force-due boundary"
+    },
+    {
+      "kind": "press",
+      "label": "resolve_force_due_dispatch_at_minute_boundary",
+      "keys": [
+        "."
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "checkpoint_evidence": {
+        "classification": "incidental_lifecycle_observation",
+        "authoritative_owner": "structured_terminal_gate"
+      },
+      "expected_visible_fact": "the ordinary gameplay frame remains responsive while the scheduler resolves the due production dispatch; the immediately following transition gate owns dispatch proof"
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "worker_owned_local_contact_and_cohesion",
+      "objective": "Continue this same registry-owned native session from abstract dispatch until the exact structural scout pair has transferred to local ownership and completed authoritative cohesion.  Observe after every transaction, choose further advertised semantic waits only while production evidence is advancing, then explicitly finish so the scenario can perform its terminal native save.",
+      "proof_targets": [
+        "the run-bound structural pair transfers from abstract to local ownership",
+        "the same actors and generation retain one owner and complete local cohesion",
+        "the schema-11 local-return eligibility receipt is available for terminal persistence"
+      ],
+      "authority": [
+        "advertised native cockpit actions",
+        "activity.ignore only when a current native interruption advertises it"
+      ],
+      "invariants": [
+        "do not alter ecology, actors, ownership, fixture, scenario, or binding",
+        "derive every continuation bound from the production scheduler, path progress, game mechanic, or measured rate",
+        "finish on target proof, no progress, unsafe divergence, binding change, missing receipt, or derived-bound exhaustion"
+      ],
+      "transition_timeout_seconds": 10.0,
+      "observe_interval_seconds": 0.1,
+      "expected_visible_fact": "the worker, rather than a fixed observation window, owns continuation through local contact and cohesion"
+    },
+    {
+      "kind": "press",
+      "label": "open_native_full_save_after_local_contact",
+      "causal_boundary_persistence_for": "natural_structural_scout_local_handoff",
+      "keys": [
+        "S"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": [
+        "Case Sensitive"
+      ],
+      "expected_visible_fact": "the native Save-and-Quit confirmation is visible before the terminal production save is confirmed",
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r008_local_contact_save_prompt_missing",
+      "abort_reason": "the local-contact route could not reach the native Save-and-Quit confirmation"
+    },
+    {
+        "kind": "press",
+        "label": "confirm_native_full_save_after_local_contact",
+        "causal_boundary_persistence_for": "natural_structural_scout_local_handoff",
+        "keys": [
+          "Y"
+        ],
+        "settle_seconds": 4.0,
+        "proof_deferred_to_label": "audit_saved_turn_after_local_contact_save"
+    },
+    {
+      "kind": "press",
+      "label": "open_native_main_menu_quit_confirmation_after_local_contact_save",
+      "causal_boundary_persistence_for": "natural_structural_scout_local_handoff",
+      "keys": [
+        "q"
+      ],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the saved game has returned to the native main menu and exposes its authoritative quit confirmation",
+      "semantic_ui_expectation": {
+        "intent": "main_menu_quit_confirmation",
+        "valid_actions": [
+          "left",
+          "enter"
+        ]
+      },
+      "checkpoint_evidence": {
+        "classification": "incidental_lifecycle_observation",
+        "authoritative_owner": "bound_semantic_ui"
+      },
+      "abort_on_semantic_ui_failure": true,
+      "abort_verdict": "blocked_r008_local_contact_main_menu_quit_prompt_missing",
+      "abort_reason": "the completed native save did not return to an authoritative main-menu quit confirmation"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_native_process_exit_after_local_contact_save",
+      "causal_boundary_persistence_for": "natural_structural_scout_local_handoff",
+      "keys": [
+        "left",
+        "enter"
+      ],
+      "settle_seconds": 2.0,
+      "checkpoint_evidence": {
+        "classification": "incidental_lifecycle_observation",
+        "authoritative_owner": "post_relaunch_lifecycle"
+      },
+      "expected_visible_fact": "the saved native process exits before the same world is reloaded"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_saved_turn_after_local_contact_save",
+      "causal_boundary_persistence_for": "natural_structural_scout_local_handoff",
+      "baseline_label": "audit_installed_safe_watch_turn_baseline",
+      "required_min_delta_turns": 54000,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r008_local_contact_save_stale",
+      "abort_reason": "the post-contact saved player turn did not advance from the installed fixture, so persisted ecology state would be stale or unproved",
+      "proof_deferred_to_label": "audit_persisted_local_contact_eligibility"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_persisted_local_contact_eligibility",
+      "causal_boundary_persistence_for": "natural_structural_scout_local_handoff",
+      "required_site_id_contains": "overmap_special:bandit_camp@177,13,0",
+      "required_active_outside_count": 2,
+      "required_active_outing_kind": "structural_sortie",
+      "required_active_outing_generation": 1,
+      "required_active_outing_simulation_owner": "local",
+      "required_active_outing_handoff_epoch": 1,
+      "required_active_outing_exact_pair": true,
+      "required_active_outing_pair_contract": true,
+      "required_local_handoff_state": "local",
+      "required_local_handoff_exact_pair": true,
+      "required_local_handoff_pair_contract": true,
+      "required_local_return_eligibility_valid": true,
+      "required_local_return_eligibility_cohesion_assembled": false,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r008_local_contact_receipt_mismatch",
+      "abort_reason": "the fresh production handoff did not persist the exact structural local pair, sole local owner, odd epoch, and pre-cohesion eligibility receipt"
+    }
+  ],
+    "post_relaunch": {
+      "terminal_save_step_label": "confirm_native_process_exit_after_local_contact_save",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "post_local_contact_save_reload_hud",
+        "seconds": 2.0,
+        "capture_after": true,
+        "startup_semantic_hud_expectation": {
+          "classification": "green_gameplay_hud_present"
+        },
+        "checkpoint_evidence": {
+          "classification": "required_feature_evidence",
+          "authoritative_owner": "bound_startup_semantic_hud"
+        },
+        "expected_visible_fact": "the same native save reloads into an ordinary gameplay HUD before the final feature-phase guard",
+        "abort_verdict": "blocked_r008_local_contact_save_did_not_reload",
+        "abort_reason": "the terminal native local-contact save did not reload into ordinary gameplay according to the run-bound semantic HUD verdict"
+      }
+    ]
+  },
+  "evidence_contract": {
+    "claim": "one fresh production route naturally dispatches a structural scout and continues in the same worker session until the first persisted local-contact handoff",
+    "failure_rule": "the first missing or rejected native dispatch, local handoff, or eligibility receipt is the product divergence.  Preserve its run-bound semantic receipts, transition stream, and cleanup; do not create, repair, resume, roll back, splice, or reinterpret later lifecycle state."
+  }
+}

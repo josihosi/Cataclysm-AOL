@@ -1,0 +1,189 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r008_natural_wait_progress_observation_mcw",
+  "description": "Independent focused observation that proves one native wait advances authoritative game time and returns to a fresh ordinary world frame from the production-generated safe-watch footing.  It does not alter ecology state or earn lifecycle credit.",
+  "profile": "r008-closure-059-validation",
+  "world": "r008-natural-bandit-039",
+  "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+  "fixture_profile": "r008-closure-039-natural",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION"
+  ],
+  "wait_input_trace": true,
+  "installed_save_player": "#R2xvcnkgVHJlam8=.sav.zzip",
+  "capabilities": {
+    "world.natural_bandit_safe_watch_footing": {
+      "raw_seed": "830205385",
+      "camp_omt": "177,13,0",
+      "hostile_origin_omt": "177,9,0",
+      "watch_omt": "174,13,0",
+      "watch_route_cost": 10,
+      "persistent_ecology_unchanged": true
+    },
+    "capabilities.harness.native_wait_progress": true
+  },
+  "source_binding": {
+    "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json"
+  },
+  "source_binding_validation": {
+    "validator": "r008_natural_wait_progress_source_binding",
+    "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json",
+    "capabilities": [
+      "world.natural_bandit_safe_watch_footing"
+    ]
+  },
+  "setup_receipt_contract": {
+    "kind": "r008_source_bound_fixture",
+    "world": "r008-natural-bandit-039",
+    "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+    "required_player_abs_omt": [
+      174,
+      13,
+      0
+    ]
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.wait",
+      "semantic:wait.duration_menu",
+      "semantic:wait.1m"
+    ],
+    "forbidden_input": [
+      "debug:teleport",
+      "debug:ecology_edit",
+      "raw-save-rewrite",
+      "fixture-save-transform-after-install",
+      "debug:inject_camp",
+      "debug:inject_origin",
+      "debug:inject_lead",
+      "debug:inject_dispatch",
+      "debug:inject_operation",
+      "debug:drive",
+      "debug:eligibility"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r008-closure-059-validation",
+    "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r008-closure-059-validation",
+      "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": [
+        "frame-bound semantic waits"
+      ],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_gates": [
+    {
+      "id": "native_wait_progress_and_next_world_frame",
+      "label": "Native wait progress and next ordinary world frame",
+      "boundary_step": "prove_native_wait_progress_and_next_world_frame",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "same_run": true,
+            "artifact_kind": "semantic_wait_progress",
+            "progress_proved": true,
+            "interruption_receipts_proved": true,
+            "next_frame_state": "world"
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:",
+          "Wield:"
+        ]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": [
+      "native_wait_progress_and_next_world_frame"
+    ],
+    "terminal": [
+      "native_wait_progress_and_next_world_frame"
+    ],
+    "capability_gates": {
+      "capabilities.harness.native_wait_progress": {
+        "terminal": [
+          "native_wait_progress_and_next_world_frame"
+        ]
+      }
+    }
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_hud",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": [
+        "Move:",
+        "Wield:"
+      ],
+      "rendered_hud_identity": [
+        "Move:",
+        "Wield:"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r008_natural_wait_progress_hud_missing",
+      "abort_reason": "the independently installed safe-watch fixture did not reach ordinary gameplay"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "prove_native_wait_progress_and_next_world_frame",
+      "objective": "Observe the current native frame and choose only its advertised one-minute wait actions.  Prove that ordinary game time advances and that the completed activity returns to a fresh ordinary world frame.  Do not move the player or change ecology state.",
+      "minimum_elapsed_minutes": 1,
+      "observation_timeout_seconds": 420.0,
+      "observation_interval_seconds": 1.0,
+      "required_action_chain": [
+        "world.wait",
+        "wait.duration_menu",
+        "wait.1m"
+      ],
+      "adaptive_interrupt_actions": ["activity.ignore"],
+      "required_interrupt_action_chain": ["activity.ignore"],
+      "recovery_contract": {
+        "issuer_action": "wait.duration_menu",
+        "modal_state": "wait_duration_choice",
+        "modal_owner": "native_semantic_step_trace",
+        "actions": ["wait.1m"]
+      },
+      "expected_visible_fact": "the same worker accepts world.wait, observes the current native wait-duration modal, accepts its advertised wait.1m recovery receipt, advances one authoritative game minute, and reaches the next ordinary world frame"
+    }
+  ],
+  "evidence_contract": {
+    "claim": "a completed native one-minute wait produces authoritative game-time progress and a next ordinary world frame from the immutable safe-watch footing",
+    "failure_rule": "preserve the run-bound native semantic receipts, time markers, next frame, and cleanup.  This observation has zero natural lifecycle and certification credit."
+  }
+}

@@ -10,9 +10,10 @@ import json
 import os
 from pathlib import Path
 import sqlite3
+import subprocess
 import sys
 import uuid
-from typing import Any, Dict, Mapping, Sequence
+from typing import Any, Dict, Mapping, Optional, Sequence
 
 from scenario_registry import ManifestValidationError, validate_manifest
 from scenario_registry_store import (
@@ -31,12 +32,17 @@ from scenario_registry_store import (
     issue_registry_repair_token,
     ingest_report_reference,
     ingest_bootstrap_token_linked_report_reference,
+    ingest_repair_compatibility_terminal,
+    ingest_r019_current_source_repair_successor,
+    issue_r019_aggregation_token,
+    finalize_r019_aggregation_token,
     ingest_repair_token_linked_report_reference,
     ingest_token_linked_report_reference,
     migration_item_current,
     migration_run_snapshot,
     open_registry,
     quarantine_scenario,
+    registry_query_repair_action,
     registry_status,
     record_migration_attempt,
     record_migration_terminal,
@@ -58,12 +64,17 @@ from scenario_registry_store import (
     parse_registry_query_request,
     path_sha256,
     record_migration_run_success,
+    record_playtest_witness,
+    review_playtest_witness,
     revalidate_current_bootstrap_authority,
     snapshot_migration_run,
 )
 import startup_harness
+import production_capture
 from startup_harness import (
     CLEANUP_ACCEPTED_STATUSES,
+    fixture_source_binding,
+    profile_snapshot_source_binding,
     resolve_fixture_payload,
     resolve_profile_snapshot_payload,
     runtime_source_binding,
@@ -87,21 +98,32 @@ def _identity_sha256(label: str) -> str:
     return hashlib.sha256(label.encode("utf-8")).hexdigest()
 
 
-def _runtime_adapter(expected: Mapping[str, Any]) -> Mapping[str, Any]:
+def _runtime_adapter(
+    expected: Mapping[str, Any], *, observation_cache: Optional[Dict[str, Any]] = None,
+) -> Mapping[str, Any]:
     observed = expected.get("runtime_binding_observed", {})
     if not isinstance(observed, Mapping):
         observed = {}
     executable_text = str(observed.get("executable_path", "")).strip()
     expected_executable_sha256 = str(observed.get("executable_sha256", "")).strip().lower()
     expected_source_sha256 = str(observed.get("runtime_source_sha256", "")).strip().lower()
-    current_source = runtime_source_binding()
+    cache = observation_cache if observation_cache is not None else {}
+    current_source = cache.get("current_source")
+    if not isinstance(current_source, Mapping):
+        current_source = runtime_source_binding()
+        cache["current_source"] = current_source
     source_sha256 = str(current_source.get("sha256", "")).lower()
     facts: Dict[str, Any] = {"source_sha256": source_sha256 or _identity_sha256("runtime source unavailable")}
     if not executable_text:
         facts["reason"] = "runtime executable path is absent"
         return {"status": "stale", "facts": facts}
     executable_path = Path(executable_text)
-    executable_sha256, executable_error = sha256_file(executable_path)
+    executable_observations = cache.setdefault("executables", {})
+    cached_executable = executable_observations.get(str(executable_path.resolve()))
+    if cached_executable is None:
+        cached_executable = sha256_file(executable_path)
+        executable_observations[str(executable_path.resolve())] = cached_executable
+    executable_sha256, executable_error = cached_executable
     facts.update({
         "executable_path": str(executable_path.resolve()),
         "executable_sha256": executable_sha256,
@@ -121,20 +143,81 @@ def _runtime_adapter(expected: Mapping[str, Any]) -> Mapping[str, Any]:
     return {"status": "compatible" if compatible else "stale", "facts": facts}
 
 
-def _fixture_adapter(expected: Mapping[str, Any]) -> Mapping[str, Any]:
+def _fixture_current_observation(
+    fixture_name: str, fixture_profile: str, *, observation_cache: Dict[str, Any],
+) -> Mapping[str, Any]:
+    """Observe one fixture owner once; expected bindings are compared by each caller."""
+    observations = observation_cache.setdefault("fixtures", {})
+    request_identity = (fixture_name, fixture_profile)
+    aliases = observation_cache.setdefault("fixture_aliases", {})
+    if request_identity in aliases:
+        return observations[aliases[request_identity]]
+    try:
+        resolved = resolve_fixture_payload(fixture_name, fixture_profile)
+        identity = (
+            str(resolved["fixture"]), str(resolved["fixture_profile"]),
+        )
+        if identity in observations:
+            aliases[request_identity] = identity
+            return observations[identity]
+        source_path = Path(resolved["fixture_dir"])
+        current_binding = fixture_source_binding(
+            fixture_name,
+            fixture_profile,
+            content_identity_cache=observation_cache.setdefault("directory_content_identities", {}),
+        )
+        observation = {
+            "status": "observed",
+            "source_sha256": current_binding["sha256"],
+            "source_path": str(source_path.resolve()),
+            "binding": current_binding,
+            "resolved": resolved,
+        }
+    except (KeyError, OSError, SystemExit, ScenarioRegistryStoreError) as exc:
+        identity = (fixture_name, fixture_profile)
+        observation = {
+            "status": "stale",
+            "source_sha256": _identity_sha256(f"fixture error:{exc}"),
+            "reason": str(exc),
+        }
+    observations[identity] = observation
+    aliases[request_identity] = identity
+    return observation
+
+
+def _fixture_adapter(
+    expected: Mapping[str, Any], *, observation_cache: Optional[Dict[str, Any]] = None,
+) -> Mapping[str, Any]:
     fixture_name = str(expected.get("fixture", "")).strip()
     fixture_profile = str(expected.get("fixture_profile", "")).strip()
     if not fixture_name:
         return {"status": "compatible", "facts": {"source_sha256": _identity_sha256("fixture not requested")}}
+    cache = observation_cache if observation_cache is not None else {}
     installed = expected.get("installed", {})
     if not isinstance(installed, Mapping):
         installed = {}
-    try:
-        resolved = resolve_fixture_payload(fixture_name, fixture_profile)
-        source_path = Path(resolved["fixture_dir"])
-        source_sha256 = path_sha256(source_path)
-    except (KeyError, OSError, SystemExit, ScenarioRegistryStoreError) as exc:
-        return {"status": "stale", "facts": {"source_sha256": _identity_sha256(f"fixture error:{exc}"), "reason": str(exc)}}
+    binding = installed.get("binding")
+    observation = _fixture_current_observation(
+        fixture_name, fixture_profile, observation_cache=cache,
+    )
+    if observation.get("status") != "observed":
+        return {"status": "stale", "facts": dict(observation)}
+    resolved = observation["resolved"]
+    source_path = Path(str(observation["source_path"]))
+    source_sha256 = str(observation["source_sha256"])
+    current_binding = observation["binding"]
+    if isinstance(binding, Mapping):
+        expected_binding_sha256 = str(binding.get("sha256", "")).strip().lower()
+        compatible = bool(expected_binding_sha256) and current_binding["sha256"] == expected_binding_sha256
+        return {
+            "status": "compatible" if compatible else "stale",
+            "facts": {
+                "source_sha256": current_binding["sha256"],
+                "source_path": str(source_path.resolve()),
+                "binding": current_binding,
+                **({} if compatible else {"reason": "fixture source-chain binding mismatch"}),
+            },
+        }
     expected_sha256 = str(installed.get("source_sha256", "")).strip().lower()
     compatible = (
         bool(expected_sha256)
@@ -148,20 +231,81 @@ def _fixture_adapter(expected: Mapping[str, Any]) -> Mapping[str, Any]:
     }
 
 
-def _profile_adapter(expected: Mapping[str, Any]) -> Mapping[str, Any]:
+def _profile_current_observation(
+    snapshot_name: str, snapshot_profile: str, *, observation_cache: Dict[str, Any],
+) -> Mapping[str, Any]:
+    """Observe one profile snapshot owner once; compare expected bindings separately."""
+    observations = observation_cache.setdefault("profiles", {})
+    request_identity = (snapshot_name, snapshot_profile)
+    aliases = observation_cache.setdefault("profile_aliases", {})
+    if request_identity in aliases:
+        return observations[aliases[request_identity]]
+    try:
+        resolved = resolve_profile_snapshot_payload(snapshot_name, snapshot_profile)
+        identity = (
+            str(resolved["snapshot"]), str(resolved["snapshot_profile"]),
+        )
+        if identity in observations:
+            aliases[request_identity] = identity
+            return observations[identity]
+        source_path = Path(resolved["snapshot_dir"])
+        current_binding = profile_snapshot_source_binding(
+            snapshot_name,
+            snapshot_profile,
+            content_identity_cache=observation_cache.setdefault("directory_content_identities", {}),
+        )
+        observation = {
+            "status": "observed",
+            "source_sha256": current_binding["sha256"],
+            "source_path": str(source_path.resolve()),
+            "binding": current_binding,
+            "resolved": resolved,
+        }
+    except (KeyError, OSError, SystemExit, ScenarioRegistryStoreError) as exc:
+        identity = (snapshot_name, snapshot_profile)
+        observation = {
+            "status": "stale",
+            "source_sha256": _identity_sha256(f"profile error:{exc}"),
+            "reason": str(exc),
+        }
+    observations[identity] = observation
+    aliases[request_identity] = identity
+    return observation
+
+
+def _profile_adapter(
+    expected: Mapping[str, Any], *, observation_cache: Optional[Dict[str, Any]] = None,
+) -> Mapping[str, Any]:
     snapshot_name = str(expected.get("profile_snapshot", "")).strip()
     snapshot_profile = str(expected.get("profile_snapshot_profile", "")).strip()
     if not snapshot_name:
         return {"status": "compatible", "facts": {"source_sha256": _identity_sha256("profile snapshot not requested")}}
+    cache = observation_cache if observation_cache is not None else {}
     installed = expected.get("snapshot_install", {})
     if not isinstance(installed, Mapping):
         installed = {}
-    try:
-        resolved = resolve_profile_snapshot_payload(snapshot_name, snapshot_profile)
-        source_path = Path(resolved["snapshot_dir"])
-        source_sha256 = path_sha256(source_path)
-    except (KeyError, OSError, SystemExit, ScenarioRegistryStoreError) as exc:
-        return {"status": "stale", "facts": {"source_sha256": _identity_sha256(f"profile error:{exc}"), "reason": str(exc)}}
+    binding = installed.get("binding")
+    observation = _profile_current_observation(
+        snapshot_name, snapshot_profile, observation_cache=cache,
+    )
+    if observation.get("status") != "observed":
+        return {"status": "stale", "facts": dict(observation)}
+    resolved = observation["resolved"]
+    source_path = Path(str(observation["source_path"]))
+    source_sha256 = str(observation["source_sha256"])
+    current_binding = observation["binding"]
+    if isinstance(binding, Mapping):
+        expected_binding_sha256 = str(binding.get("sha256", "")).strip().lower()
+        compatible = bool(expected_binding_sha256) and current_binding["sha256"] == expected_binding_sha256
+        return {
+            "status": "compatible" if compatible else "stale",
+            "facts": {
+                "source_sha256": current_binding["sha256"],
+                "source_path": str(source_path.resolve()),
+                "binding": current_binding,
+                **({} if compatible else {"reason": "profile source-chain binding mismatch"}),
+            },
+        }
     expected_sha256 = str(installed.get("source_sha256", "")).strip().lower()
     compatible = (
         bool(expected_sha256)
@@ -178,10 +322,20 @@ def _profile_adapter(expected: Mapping[str, Any]) -> Mapping[str, Any]:
 
 def production_binding_adapters() -> BindingAdapters:
     """Recompute report bindings from actual runtime, fixture, and profile owners."""
+    runtime_observation_cache: Dict[str, Any] = {}
+    # This map belongs to exactly one reconciliation invocation.  Never retain it
+    # beyond these adapters: a later observation must notice source changes.
+    directory_content_identities: Dict[str, str] = {}
+    fixture_observation_cache: Dict[str, Any] = {
+        "directory_content_identities": directory_content_identities,
+    }
+    profile_observation_cache: Dict[str, Any] = {
+        "directory_content_identities": directory_content_identities,
+    }
     return BindingAdapters(
-        runtime=_runtime_adapter,
-        fixture=_fixture_adapter,
-        profile=_profile_adapter,
+        runtime=lambda expected: _runtime_adapter(expected, observation_cache=runtime_observation_cache),
+        fixture=lambda expected: _fixture_adapter(expected, observation_cache=fixture_observation_cache),
+        profile=lambda expected: _profile_adapter(expected, observation_cache=profile_observation_cache),
     )
 
 
@@ -197,12 +351,18 @@ def _current_bootstrap_revalidation_facts(declaration: Mapping[str, Any]) -> Map
             source_path = Path(
                 resolved["fixture_dir"] if kind == "fixture" else resolved["snapshot_dir"]
             )
+            binding = (
+                fixture_source_binding(name, profile)
+                if kind == "fixture"
+                else profile_snapshot_source_binding(name, profile)
+            )
             return {
                 "status": "compatible",
                 "name": name,
                 "profile": profile,
                 "source_path": str(source_path.resolve()),
-                "source_sha256": path_sha256(source_path),
+                "source_sha256": binding["sha256"],
+                "binding": binding,
             }
         except (KeyError, OSError, SystemExit, ScenarioRegistryStoreError) as exc:
             return {"status": "stale", "reason": str(exc)}
@@ -783,10 +943,16 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken) -> argparse
             "Selected scenario source is not the canonical probe manifest: "
             f"{source_path}"
         )
-    return startup_harness.build_parser().parse_args(["probe", selection.scenario])
+    command = ["probe", selection.scenario]
+    scenario = startup_harness.load_scenario(selection.scenario)
+    if bool(scenario.get("replace_existing_worlds", False)):
+        command.append("--replace-existing-worlds")
+    return startup_harness.build_parser().parse_args(command)
 
 
-def _registry_bootstrap_probe_namespace(selection: RegistryBootstrapToken) -> argparse.Namespace:
+def _registry_bootstrap_probe_namespace(
+    selection: RegistryBootstrapToken, *, cockpit_live_session: bool = False,
+) -> argparse.Namespace:
     """Adapt a separately authorized bootstrap run into the same canonical probe route."""
     source_path = Path(selection.source_path).resolve()
     canonical_path = startup_harness.scenario_path(selection.scenario).resolve()
@@ -795,10 +961,19 @@ def _registry_bootstrap_probe_namespace(selection: RegistryBootstrapToken) -> ar
             "Bootstrap scenario source is not the canonical probe manifest: "
             f"{source_path}"
         )
-    return startup_harness.build_parser().parse_args(["probe", selection.scenario])
+    # A detached bridge owns the child's stdout.  The terminal probe report is
+    # already immutable on disk and ingested by the post-finalize hook; emit
+    # only its bounded index card so a completed child cannot block on an
+    # unread stdout pipe after its correlated run.finish reply was persisted.
+    command = ["probe", selection.scenario, "--compact-stdout"]
+    if cockpit_live_session:
+        command.append("--cockpit-live-session")
+    return startup_harness.build_parser().parse_args(command)
 
 
-def _registry_repair_probe_namespace(selection: RegistryRepairToken) -> argparse.Namespace:
+def _registry_repair_probe_namespace(
+    selection: RegistryRepairToken, *, cockpit_live_session: bool = False,
+) -> argparse.Namespace:
     """Adapt a separately authorized repair run into the same canonical probe route."""
     source_path = Path(selection.source_path).resolve()
     canonical_path = startup_harness.scenario_path(selection.scenario).resolve()
@@ -807,7 +982,12 @@ def _registry_repair_probe_namespace(selection: RegistryRepairToken) -> argparse
             "Repair scenario source is not the canonical probe manifest: "
             f"{source_path}"
         )
-    return startup_harness.build_parser().parse_args(["probe", selection.scenario])
+    # See the bootstrap counterpart: the file bridge persists correlated
+    # request replies, while the post-session report must stay bounded.
+    command = ["probe", selection.scenario, "--compact-stdout"]
+    if cockpit_live_session:
+        command.append("--cockpit-live-session")
+    return startup_harness.build_parser().parse_args(command)
 
 
 def _registry_post_finalize_ingest(receipt: str) -> Any:
@@ -863,6 +1043,11 @@ def build_parser() -> argparse.ArgumentParser:
     )
     ingest = commands.add_parser("ingest-report", help="ingest one immutable report reference")
     ingest.add_argument("--report", required=True, help="full probe or handoff report JSON path")
+    validate_observation = commands.add_parser(
+        "validate-production-observation",
+        help="revalidate one uncredited production-observation source report",
+    )
+    validate_observation.add_argument("--source-report", required=True)
     commands.add_parser("reconcile", help="recompute report bindings from their authoritative owners")
     commands.add_parser("final-gates", help="derive automated-certification and Windows-feel eligibility")
     bootstrap = commands.add_parser(
@@ -917,11 +1102,98 @@ def build_parser() -> argparse.ArgumentParser:
         "--certification-inputs",
         help="authoritative installed-input JSON for a registry-owned certification launch",
     )
+    detached_launch = commands.add_parser(
+        "registry-detached-launch",
+        help="start one selected live-cockpit scenario on its bound file bridge",
+    )
+    detached_launch.add_argument("selection_token", help="selection token returned by registry-query")
+    detached_launch.add_argument(
+        "--session-dir", required=True,
+        help="new private file-backed bridge session directory",
+    )
+    detached_launch.add_argument(
+        "--witness-charter", required=True,
+        help="coordinator-authored compact playtest witness charter JSON",
+    )
+    witness = commands.add_parser(
+        "registry-record-witness",
+        help="validate and append one cited witness over immutable reports",
+    )
+    witness.add_argument("--manifest-id", required=True)
+    witness.add_argument("--report-id", action="append", required=True)
+    witness.add_argument("--charter", required=True)
+    witness.add_argument("--journal", required=True)
+    witness.add_argument("--statement", required=True)
+    witness_review = commands.add_parser(
+        "registry-review-witness",
+        help="record the coordinator's causal judgment of a valid witness",
+    )
+    witness_review.add_argument("witness_id")
+    witness_review.add_argument("--decision", required=True,
+                                choices=("accept", "continue", "repair", "change-strategy"))
+    witness_review.add_argument("--rationale", required=True)
+    witness_review.add_argument("--concrete-risk", default="")
+    witness_review.add_argument("--reviewer-role", default="coordinator",
+                                choices=("coordinator", "mutation-reviewer"))
+    certification_launch = commands.add_parser(
+        "certification-launch",
+        help="launch one selected scenario under the registry-owned continuous-certification authority",
+    )
+    certification_launch.add_argument("selection_token", help="selection token returned by registry-query")
+    certification_launch.add_argument(
+        "--certification-inputs",
+        help="authoritative installed-input JSON for this certification launch",
+    )
     bootstrap_launch = commands.add_parser(
         "registry-bootstrap-launch",
         help="claim one bootstrap authority and run its canonical probe route",
     )
     bootstrap_launch.add_argument("bootstrap_token", help="token returned by registry-bootstrap")
+    bootstrap_launch.add_argument(
+        "--adaptive-semantic-autodrive",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    bootstrap_launch.add_argument(
+        "--cockpit-live-session",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    detached_bootstrap_launch = commands.add_parser(
+        "registry-bootstrap-detached-launch",
+        help="start one bootstrap-owned cockpit on the file-backed JSONL bridge",
+    )
+    detached_bootstrap_launch.add_argument(
+        "bootstrap_token", help="token returned by registry-bootstrap",
+    )
+    detached_bootstrap_launch.add_argument(
+        "--session-dir", required=True,
+        help="new private file-backed bridge session directory",
+    )
+    detached_bootstrap_launch.add_argument("--witness-charter")
+    production_capture_command = commands.add_parser(
+        "capture-production-fixture",
+        help="capture one normal production world with registry-owned focused provenance",
+    )
+    production_capture_command.add_argument("fixture", help="fixture name to create or replace")
+    production_capture_command.add_argument("--report", required=True, help="green source report from the normal production run")
+    production_capture_command.add_argument("--scenario", required=True, help="exact scenario source named by the source report")
+    production_capture_command.add_argument("--profile", default="", help="profile containing the source world")
+    production_capture_command.add_argument("--world", default="", help="explicit source world name")
+    production_capture_command.add_argument("--overwrite", action="store_true", help="replace an existing fixture")
+    observation = commands.add_parser(
+        "production-observe",
+        help="run one transform-free ordinary probe and write uncredited source evidence",
+    )
+    observation.add_argument("scenario", help="packaged scenario to execute without registry selection")
+    observation.add_argument("--fixture", required=True, help="transform-free fixture to install")
+    observation.add_argument("--fixture-profile", default="", help="fixture source profile")
+    observation.add_argument("--profile", default="", help="target harness profile")
+    observation.add_argument("--world", default="", help="explicit fixture world")
+    observation.add_argument("--source-report", default="production.source.json", help="relative output within the run directory, or an absolute path")
+    observation.add_argument("--replace-existing-worlds", action="store_true")
+    observation.add_argument("--compact-stdout", action="store_true")
+    observation.add_argument("--dry-run", action="store_true")
     repair = commands.add_parser(
         "registry-repair-bootstrap",
         help="issue one exact manifest/route/red-verification repair authority",
@@ -929,14 +1201,38 @@ def build_parser() -> argparse.ArgumentParser:
     repair_source = repair.add_mutually_exclusive_group(required=True)
     repair_source.add_argument("--query-file", help="typed repair query JSON file")
     repair_source.add_argument("--query-json", help="typed repair query JSON object")
-    repair.add_argument("--manifest-id", required=True)
-    repair.add_argument("--route-key", required=True)
-    repair.add_argument("--red-verification-id", required=True)
+    repair_source.add_argument(
+        "--query-id",
+        help="derive the current manifest, route, red verification, and typed request from registry-query",
+    )
+    repair.add_argument("--manifest-id")
+    repair.add_argument("--route-key")
+    repair.add_argument("--red-verification-id")
     repair_launch = commands.add_parser(
         "registry-repair-launch",
         help="claim one repair authority and run its canonical probe route",
     )
     repair_launch.add_argument("repair_token", help="token returned by registry-repair-bootstrap")
+    repair_launch.add_argument(
+        "--adaptive-semantic-autodrive",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    repair_launch.add_argument(
+        "--cockpit-live-session",
+        action="store_true",
+        help=argparse.SUPPRESS,
+    )
+    detached_repair_launch = commands.add_parser(
+        "registry-repair-detached-launch",
+        help="start one repair-owned cockpit on the file-backed JSONL bridge",
+    )
+    detached_repair_launch.add_argument("repair_token", help="token returned by registry-repair-bootstrap")
+    detached_repair_launch.add_argument(
+        "--session-dir", required=True,
+        help="new private file-backed bridge session directory",
+    )
+    detached_repair_launch.add_argument("--witness-charter")
     repair_terminal = commands.add_parser(
         "registry-repair-finalize-no-report",
         help="append accepted cleanup for one claimed repair that produced no probe report",
@@ -944,6 +1240,29 @@ def build_parser() -> argparse.ArgumentParser:
     repair_terminal.add_argument("repair_token")
     repair_terminal.add_argument("--run-dir", required=True)
     repair_terminal.add_argument("--cleanup-json", required=True)
+    repair_compatibility_terminal = commands.add_parser(
+        "registry-repair-compatibility-terminal",
+        help="record one zero-credit current-source/runtime repair terminal",
+    )
+    repair_compatibility_terminal.add_argument("repair_token")
+    repair_compatibility_terminal.add_argument("--terminal-json", required=True)
+    repair_successor = commands.add_parser(
+        "registry-repair-r019-current-source-successor",
+        help="record the zero-credit current-source R-019 HUD repair successor",
+    )
+    repair_successor.add_argument("repair_token")
+    repair_successor.add_argument("--successor-json", required=True)
+    r019_aggregation_authorize = commands.add_parser(
+        "registry-r019-aggregation-authorize",
+        help="issue one separate authority for an exact zero-credit R-019 report pair",
+    )
+    r019_aggregation_authorize.add_argument("--guarded-report-id", required=True)
+    r019_aggregation_authorize.add_argument("--primitive-report-id", required=True)
+    r019_aggregation_finalize = commands.add_parser(
+        "registry-r019-aggregation-finalize",
+        help="consume one R-019 aggregation authority and append its immutable zero-credit packet",
+    )
+    r019_aggregation_finalize.add_argument("aggregation_token")
     migrate = commands.add_parser(
         "registry-migrate-all",
         help="claim and classify one immutable scenario inventory snapshot",
@@ -961,9 +1280,459 @@ def build_parser() -> argparse.ArgumentParser:
     return parser
 
 
+def _bootstrap_bridge_binding_id(selection: RegistryBootstrapToken) -> str:
+    """Bind a private bridge session to the exact bootstrap launch inputs."""
+    binding = selection.runtime_binding
+    payload = {
+        "bootstrap_token": selection.token_id,
+        "executable_sha256": str(binding.get("executable_sha256", "")),
+        "runtime_source_sha256": str(binding.get("runtime_source_sha256", "")),
+        "source_path": selection.source_path,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _repair_bridge_binding_id(selection: RegistryRepairToken, repair_details: Mapping[str, Any]) -> str:
+    """Bind a private bridge session to one exact repair authority and footing."""
+    payload = {
+        "repair_token": selection.token_id,
+        "manifest_id": repair_details.get("manifest_id"),
+        "route_key": repair_details.get("route_key"),
+        "red_verification_id": repair_details.get("red_verification_id"),
+        "binding": repair_details.get("binding"),
+        "executable_sha256": str(selection.runtime_binding.get("executable_sha256", "")),
+        "runtime_source_sha256": str(selection.runtime_binding.get("runtime_source_sha256", "")),
+        "source_path": selection.source_path,
+    }
+    return hashlib.sha256(
+        json.dumps(payload, ensure_ascii=False, sort_keys=True, separators=(",", ":")).encode("utf-8")
+    ).hexdigest()
+
+
+def _declared_pre_descriptor_prefix(selection: Any) -> list[dict[str, Any]]:
+    """Return only the scenario-owned adaptive stages allowed before live entry."""
+    try:
+        scenario = json.loads(Path(selection.source_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ScenarioRegistryStoreError("bootstrap scenario declaration is unavailable") from exc
+    if not isinstance(scenario, Mapping):
+        raise ScenarioRegistryStoreError("bootstrap scenario declaration is malformed")
+    declared = scenario.get("cockpit_pre_descriptor_bootstrap")
+    if declared is None:
+        return []
+    if not isinstance(declared, Mapping) or declared.get("schema") != \
+            "caol-cockpit-pre-descriptor-bootstrap-v1" or declared.get("gameplay_credit") is not False:
+        raise ScenarioRegistryStoreError("scenario has no zero-credit pre-descriptor bootstrap contract")
+    prefix = declared.get("adaptive_prefix")
+    if not isinstance(prefix, list) or not prefix:
+        raise ScenarioRegistryStoreError("pre-descriptor bootstrap prefix is missing")
+    declared_steps = scenario.get("steps")
+    if not isinstance(declared_steps, list):
+        raise ScenarioRegistryStoreError("scenario steps are unavailable")
+    result: list[dict[str, Any]] = []
+    first_label = str(prefix[0].get("label", "")) if isinstance(prefix[0], Mapping) else ""
+    start_index = next((index for index, step in enumerate(declared_steps)
+                        if isinstance(step, Mapping) and step.get("label") == first_label), -1)
+    for index, expected in enumerate(prefix):
+        step_index = start_index + index
+        if not isinstance(expected, Mapping) or start_index < 0 or step_index >= len(declared_steps):
+            raise ScenarioRegistryStoreError("pre-descriptor bootstrap prefix is malformed")
+        step = declared_steps[step_index]
+        if not isinstance(step, Mapping) or step.get("kind") != "adaptive_semantic_window":
+            raise ScenarioRegistryStoreError("pre-descriptor stage is not an adaptive semantic window")
+        stage = {
+            "label": str(expected.get("label", "")),
+            "objective": str(expected.get("objective", "")),
+            "required_action_chain": expected.get("required_action_chain"),
+            "adaptive_interrupt_actions": expected.get("adaptive_interrupt_actions", []),
+        }
+        if not stage["objective"] or not isinstance(stage["required_action_chain"], list) or \
+                not isinstance(stage["adaptive_interrupt_actions"], list) or \
+                not stage["label"] or step.get("label") != stage["label"] or \
+                step.get("objective") != stage["objective"] or \
+                step.get("required_action_chain") != stage["required_action_chain"] or \
+                step.get("adaptive_interrupt_actions", []) != stage["adaptive_interrupt_actions"]:
+            raise ScenarioRegistryStoreError("pre-descriptor bootstrap stage does not match scenario declaration")
+        result.append(stage)
+    interstitial = declared.get("interstitial_setup_steps", [])
+    if not isinstance(interstitial, list):
+        raise ScenarioRegistryStoreError("pre-descriptor interstitial setup is malformed")
+    next_step_index = start_index + len(prefix)
+    for expected in interstitial:
+        if not isinstance(expected, Mapping) or next_step_index >= len(declared_steps):
+            raise ScenarioRegistryStoreError("pre-descriptor interstitial setup is malformed")
+        step = declared_steps[next_step_index]
+        if not isinstance(step, Mapping) or step.get("kind") != expected.get("kind") or \
+                step.get("label") != expected.get("label") or step.get("keys") != expected.get("keys"):
+            raise ScenarioRegistryStoreError("pre-descriptor interstitial setup does not match scenario declaration")
+        next_step_index += 1
+    next_step = declared_steps[next_step_index] if next_step_index < len(declared_steps) else None
+    if not isinstance(next_step, Mapping) or next_step.get("kind") != "cockpit_live_session":
+        raise ScenarioRegistryStoreError("pre-descriptor prefix does not end at a live cockpit entry")
+    return result
+
+
+def _scenario_requires_bound_live_bridge(scenario_name: str) -> bool:
+    """Identify a selected scenario whose public owner needs a live stdin channel."""
+    scenario = startup_harness.load_scenario(scenario_name)
+    return any(
+        isinstance(step, Mapping) and step.get("kind") == "cockpit_live_session"
+        for step in scenario.get("steps", [])
+    )
+
+
+def _witness_launch_environment(args: argparse.Namespace) -> Dict[str, str]:
+    """Validate the coordinator charter before any launch authority is claimed."""
+    environment = dict(os.environ)
+    charter_path = str(getattr(args, "witness_charter", "") or "").strip()
+    if not charter_path:
+        return environment
+    try:
+        value = json.loads(Path(charter_path).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ScenarioRegistryStoreError("witness charter is unreadable") from exc
+    if not isinstance(value, Mapping):
+        raise ScenarioRegistryStoreError("witness charter must be a JSON object")
+    from playtest_witness import WitnessError, normalize_witness_charter
+    try:
+        charter = normalize_witness_charter(value)
+    except WitnessError as exc:
+        raise ScenarioRegistryStoreError(str(exc)) from exc
+    environment["OPENCLAW_PLAYTEST_WITNESS_CHARTER"] = json.dumps(
+        charter, ensure_ascii=False, sort_keys=True, separators=(",", ":"),
+    )
+    return environment
+
+
+def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path) -> int:
+    """Start an unclaimed selected live session with stdin owned by the bridge."""
+    session_dir = Path(args.session_dir).resolve()
+    if session_dir.exists():
+        _write_result({"ok": False, "command": args.command,
+                       "error": "bridge session directory already exists",
+                       "session_dir": str(session_dir)}, stream=sys.stderr)
+        return 1
+    connection = open_registry(str(registry_path))
+    try:
+        selection = reload_selection_token_for_launch(connection, args.selection_token)
+        if not selection.accepted:
+            _write_result({"ok": False, "command": args.command, "registry": str(registry_path),
+                           "result": asdict(selection)}, stream=sys.stderr)
+            return 1
+        if not _scenario_requires_bound_live_bridge(selection.scenario):
+            _write_result({"ok": False, "command": args.command,
+                           "error": "selected scenario has no live cockpit session"}, stream=sys.stderr)
+            return 1
+    finally:
+        connection.close()
+    try:
+        pre_descriptor_prefix = _declared_pre_descriptor_prefix(selection)
+    except (OSError, SystemExit, ScenarioRegistryStoreError) as exc:
+        _write_result({"ok": False, "command": args.command, "error": str(exc),
+                       "session_dir": str(session_dir)}, stream=sys.stderr)
+        return 1
+    bridge_binding_id = _identity_sha256(
+        f"caol-selected-cockpit-bridge-v1:{selection.token_id}:{selection.source_path}"
+    )
+    bridge_command = [
+        sys.executable, str(Path(__file__).with_name("cockpit_file_bridge.py")), "start",
+        "--session-dir", str(session_dir), "--binding-id", bridge_binding_id,
+        "--require-session-ready",
+        "--pre-descriptor-prefix-json", json.dumps(pre_descriptor_prefix, separators=(",", ":")),
+        "--", sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
+        "registry-launch", selection.token_id,
+    ]
+    started = subprocess.run(bridge_command, cwd=str(repository_root()), check=False,
+                             env=_witness_launch_environment(args),
+                             capture_output=True, text=True)
+    if started.returncode != 0:
+        _write_result({"ok": False, "command": args.command,
+                       "error": "file-backed bridge did not start", "session_dir": str(session_dir)},
+                      stream=sys.stderr)
+        return 1
+    try:
+        bridge_receipt = json.loads(started.stdout)
+    except json.JSONDecodeError:
+        bridge_receipt = {}
+    if not isinstance(bridge_receipt, Mapping) or not bridge_receipt.get("ok"):
+        _write_result({"ok": False, "command": args.command,
+                       "error": "file-backed bridge returned an invalid launch receipt",
+                       "session_dir": str(session_dir)}, stream=sys.stderr)
+        return 1
+    _write_result({
+        "ok": True, "command": args.command, "registry": str(registry_path),
+        "selection_token": selection.token_id, "session_dir": str(session_dir),
+        "binding_id": bridge_binding_id, "bridge": bridge_receipt,
+        "authority": "selection token remains unclaimed until the canonical child launch",
+    })
+    return 0
+
+
+def _launch_bootstrap_file_bridge(args: argparse.Namespace, registry_path: Path) -> int:
+    """Start one detached bridge whose child owns the canonical bootstrap claim.
+
+    The wrapper only verifies that the still-unclaimed authority can start.  The
+    child invokes ``registry-bootstrap-launch`` unchanged, retaining its
+    one-use claim, exact source/runtime revalidation, report ingestion, and
+    cleanup behavior.  Claiming in this wrapper would strand a token if bridge
+    startup failed.
+    """
+    session_dir = Path(args.session_dir).resolve()
+    if session_dir.exists():
+        _write_result({
+            "ok": False,
+            "command": args.command,
+            "error": "bridge session directory already exists",
+            "session_dir": str(session_dir),
+        }, stream=sys.stderr)
+        return 1
+    connection = open_registry(str(registry_path))
+    try:
+        selection = reload_bootstrap_token_for_launch(connection, args.bootstrap_token)
+        if not selection.accepted:
+            _write_result({
+                "ok": False,
+                "command": args.command,
+                "registry": str(registry_path),
+                "result": asdict(selection),
+            }, stream=sys.stderr)
+            return 1
+        comparison = startup_harness.compare_runtime_binding(selection.runtime_binding)
+        if comparison.get("status") != "matched":
+            record_bootstrap_token_rejection(
+                connection,
+                selection.token_id,
+                reason="runtime_binding_changed",
+                details={"comparison": dict(comparison)},
+            )
+            _write_result({
+                "ok": False,
+                "command": args.command,
+                "registry": str(registry_path),
+                "result": asdict(RegistryBootstrapToken(
+                    selection.token_id, False, "runtime_binding_changed",
+                )),
+            }, stream=sys.stderr)
+            return 1
+    finally:
+        connection.close()
+
+    try:
+        pre_descriptor_prefix = _declared_pre_descriptor_prefix(selection)
+    except (OSError, SystemExit, ScenarioRegistryStoreError) as exc:
+        _write_result({
+            "ok": False,
+            "command": args.command,
+            "error": str(exc),
+            "session_dir": str(session_dir),
+        }, stream=sys.stderr)
+        return 1
+    bridge_binding_id = _bootstrap_bridge_binding_id(selection)
+    cockpit_command = [
+        sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
+        "registry-bootstrap-launch", selection.token_id, "--cockpit-live-session",
+        "--adaptive-semantic-autodrive",
+    ]
+    bridge_command = [
+        sys.executable, str(Path(__file__).with_name("cockpit_file_bridge.py")), "start",
+        "--session-dir", str(session_dir), "--binding-id", bridge_binding_id,
+        "--require-session-ready",
+        "--pre-descriptor-prefix-json", json.dumps(pre_descriptor_prefix, separators=(",", ":")),
+        "--", *cockpit_command,
+    ]
+    started = subprocess.run(bridge_command, cwd=str(repository_root()), check=False,
+                             env=_witness_launch_environment(args),
+                             capture_output=True, text=True)
+    if started.returncode != 0:
+        _write_result({
+            "ok": False,
+            "command": args.command,
+            "error": "file-backed bridge did not start",
+            "session_dir": str(session_dir),
+        }, stream=sys.stderr)
+        return 1
+    try:
+        bridge_receipt = json.loads(started.stdout)
+    except json.JSONDecodeError:
+        bridge_receipt = {}
+    if not isinstance(bridge_receipt, Mapping) or not bridge_receipt.get("ok"):
+        _write_result({
+            "ok": False,
+            "command": args.command,
+            "error": "file-backed bridge returned an invalid launch receipt",
+            "session_dir": str(session_dir),
+        }, stream=sys.stderr)
+        return 1
+    _write_result({
+        "ok": True,
+        "command": args.command,
+        "registry": str(registry_path),
+        "bootstrap_token": selection.token_id,
+        "session_dir": str(session_dir),
+        "binding_id": bridge_binding_id,
+        "runtime_binding": selection.runtime_binding,
+        "bridge": bridge_receipt,
+        "authority": "bootstrap token remains unclaimed until the canonical child launch",
+    })
+    return 0
+
+
+def _launch_repair_file_bridge(args: argparse.Namespace, registry_path: Path) -> int:
+    """Start an unclaimed repair authority through the canonical file bridge."""
+    session_dir = Path(args.session_dir).resolve()
+    if session_dir.exists():
+        _write_result({"ok": False, "command": args.command,
+                       "error": "bridge session directory already exists",
+                       "session_dir": str(session_dir)}, stream=sys.stderr)
+        return 1
+    connection = open_registry(str(registry_path))
+    try:
+        issued = connection.execute(
+            "SELECT manifest_id, verification_id, route_key, details_json FROM token_history "
+            "WHERE token_id = ? AND event_kind = 'repair_issued' ORDER BY token_event_id LIMIT 1",
+            (args.repair_token,),
+        ).fetchone()
+        if issued is None:
+            _write_result({"ok": False, "command": args.command,
+                           "result": asdict(RegistryRepairToken(args.repair_token, False, "token_unknown"))},
+                          stream=sys.stderr)
+            return 1
+        manifest = connection.execute(
+            "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?", (str(issued["manifest_id"]),),
+        ).fetchone()
+        if manifest is None:
+            _write_result({"ok": False, "command": args.command,
+                           "result": asdict(RegistryRepairToken(args.repair_token, False, "manifest_absent"))},
+                          stream=sys.stderr)
+            return 1
+        declaration = json.loads(str(manifest["declaration_json"]))
+        if not isinstance(declaration, Mapping):
+            raise ScenarioRegistryStoreError("repair manifest declaration must be an object")
+        binding = _current_repair_binding(declaration)
+        selection = reload_repair_token_for_launch(connection, args.repair_token, binding=binding)
+        if not selection.accepted:
+            _write_result({"ok": False, "command": args.command, "registry": str(registry_path),
+                           "result": asdict(selection)}, stream=sys.stderr)
+            return 1
+        comparison = startup_harness.compare_runtime_binding(selection.runtime_binding)
+        if comparison.get("status") != "matched":
+            record_repair_token_rejection(connection, selection.token_id, reason="runtime_binding_changed",
+                                          details={"comparison": dict(comparison)})
+            _write_result({"ok": False, "command": args.command, "registry": str(registry_path),
+                           "result": asdict(RegistryRepairToken(selection.token_id, False,
+                                                                  "runtime_binding_changed"))}, stream=sys.stderr)
+            return 1
+        repair_details = json.loads(str(issued["details_json"]))
+        if not isinstance(repair_details, Mapping):
+            raise ScenarioRegistryStoreError("repair token details must be an object")
+    finally:
+        connection.close()
+    try:
+        pre_descriptor_prefix = _declared_pre_descriptor_prefix(selection)
+    except (OSError, SystemExit, ScenarioRegistryStoreError) as exc:
+        _write_result({"ok": False, "command": args.command, "error": str(exc),
+                       "session_dir": str(session_dir)}, stream=sys.stderr)
+        return 1
+    bridge_binding_id = _repair_bridge_binding_id(selection, repair_details)
+    cockpit_command = [
+        sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
+        "registry-repair-launch", selection.token_id, "--cockpit-live-session",
+        "--adaptive-semantic-autodrive",
+    ]
+    bridge_command = [
+        sys.executable, str(Path(__file__).with_name("cockpit_file_bridge.py")), "start",
+        "--session-dir", str(session_dir), "--binding-id", bridge_binding_id,
+        "--require-session-ready",
+        "--pre-descriptor-prefix-json", json.dumps(pre_descriptor_prefix, separators=(",", ":")),
+        "--", *cockpit_command,
+    ]
+    started = subprocess.run(bridge_command, cwd=str(repository_root()), check=False,
+                             env=_witness_launch_environment(args),
+                             capture_output=True, text=True)
+    if started.returncode != 0:
+        _write_result({"ok": False, "command": args.command,
+                       "error": "file-backed bridge did not start", "session_dir": str(session_dir)},
+                      stream=sys.stderr)
+        return 1
+    try:
+        bridge_receipt = json.loads(started.stdout)
+    except json.JSONDecodeError:
+        bridge_receipt = {}
+    if not isinstance(bridge_receipt, Mapping) or not bridge_receipt.get("ok"):
+        _write_result({"ok": False, "command": args.command,
+                       "error": "file-backed bridge returned an invalid launch receipt",
+                       "session_dir": str(session_dir)}, stream=sys.stderr)
+        return 1
+    _write_result({
+        "ok": True, "command": args.command, "registry": str(registry_path),
+        "repair_token": selection.token_id, "session_dir": str(session_dir),
+        "binding_id": bridge_binding_id, "runtime_binding": selection.runtime_binding,
+        "repair_provenance": {
+            "manifest_id": repair_details["manifest_id"], "route_key": repair_details["route_key"],
+            "red_verification_id": repair_details["red_verification_id"],
+            "authority_kind": repair_details["authority_kind"],
+        },
+        "bridge": bridge_receipt,
+        "authority": "repair token remains unclaimed until the canonical child launch",
+    })
+    return 0
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     args = build_parser().parse_args(argv)
+    if args.command == "production-observe":
+        # This deliberately bypasses registry open/query/token paths.  The
+        # resulting report carries explicit zero-credit evidence; an operator
+        # must choose canonical ingest separately after reviewing it.
+        scenario = startup_harness.load_scenario(args.scenario)
+        fixture_profile = args.fixture_profile or str(scenario.get("fixture_profile", ""))
+        resolved_fixture = startup_harness.resolve_fixture_payload(args.fixture, fixture_profile)
+        transforms = resolved_fixture.get("save_transforms", [])
+        allowed_transform = [{
+            "kind": "player_mutations",
+            "player_save": scenario.get("installed_save_player"),
+            "mutations": scenario.get("required_stabilizer_traits"),
+        }]
+        source_binding = resolved_fixture.get("source_binding")
+        if transforms != allowed_transform or not isinstance(source_binding, Mapping):
+            raise SystemExit("production observation requires a transform-free fixture source chain")
+        return startup_harness.run_probe(argparse.Namespace(
+            scenario=args.scenario,
+            profile=args.profile,
+            world=args.world,
+            fixture=args.fixture,
+            fixture_profile=fixture_profile,
+            replace_existing_worlds=args.replace_existing_worlds,
+            advance_turns=None,
+            settle_seconds=None,
+            artifact_pattern="",
+            test_command="",
+            compact_stdout=args.compact_stdout,
+            production_observation_output=args.source_report,
+            certification_registry="",
+            certification_round_manifest="",
+            certification_lease_id="",
+            certification_recheck_inputs="",
+            dry_run=args.dry_run,
+        ))
     registry_path = resolve_registry_path(args.registry)
+    if args.command == "registry-detached-launch":
+        return _launch_selection_file_bridge(args, registry_path)
+    if args.command == "registry-repair-detached-launch":
+        return _launch_repair_file_bridge(args, registry_path)
+    if args.command == "registry-bootstrap-detached-launch":
+        return _launch_bootstrap_file_bridge(args, registry_path)
+    if args.command in {"registry-bootstrap-launch", "registry-repair-launch"} and \
+            bool(args.cockpit_live_session) and not \
+            str(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")).strip():
+        _write_result({
+            "ok": False,
+            "command": args.command,
+            "error": "cockpit_live_session_requires_bound_file_bridge",
+        }, stream=sys.stderr)
+        return 1
     probe_namespace: argparse.Namespace | None = None
     try:
         connection = open_registry(str(registry_path))
@@ -971,15 +1740,76 @@ def main(argv: Sequence[str] | None = None) -> int:
             if args.command == "rebuild":
                 result = rebuild_manifest_projection(connection, Path(args.scenarios_root))
             elif args.command == "ingest-report":
+                try:
+                    report = json.loads(Path(args.report).read_text(encoding="utf-8"))
+                except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise ScenarioRegistryStoreError("report is unreadable") from exc
+                observation = report.get("production_observation") if isinstance(report, Mapping) else None
+                if isinstance(observation, Mapping) and observation.get("status") == "recorded":
+                    production_capture.validate_observation_source_report(
+                        source_path=Path(str(observation.get("source_report", ""))),
+                        runtime_binding=startup_harness.build_runtime_binding(startup_harness.detect_executable()),
+                    )
                 result = ingest_report_reference(
                     connection,
                     Path(args.report),
                     adapters=production_binding_adapters(),
                 )
+            elif args.command == "validate-production-observation":
+                result = production_capture.validate_observation_source_report(
+                    source_path=Path(args.source_report),
+                    runtime_binding=startup_harness.build_runtime_binding(startup_harness.detect_executable()),
+                )
             elif args.command == "reconcile":
                 result = reconcile_report_bindings(connection, adapters=production_binding_adapters())
             elif args.command == "final-gates":
                 result = final_gate_eligibility(connection)
+            elif args.command == "registry-record-witness":
+                try:
+                    charter = json.loads(Path(args.charter).read_text(encoding="utf-8"))
+                    journal = json.loads(Path(args.journal).read_text(encoding="utf-8"))
+                    statement = json.loads(Path(args.statement).read_text(encoding="utf-8"))
+                except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+                    raise ScenarioRegistryStoreError("witness input is unreadable") from exc
+                if not all(isinstance(value, Mapping) for value in (charter, journal, statement)):
+                    raise ScenarioRegistryStoreError("witness inputs must be JSON objects")
+                result = record_playtest_witness(
+                    connection, manifest_id=args.manifest_id, report_ids=args.report_id,
+                    charter=charter, journal=journal, statement=statement,
+                )
+            elif args.command == "registry-review-witness":
+                result = review_playtest_witness(
+                    connection, witness_id=args.witness_id, decision=args.decision,
+                    rationale=args.rationale, concrete_risk=args.concrete_risk,
+                    reviewer_role=args.reviewer_role,
+                )
+            elif args.command == "capture-production-fixture":
+                report_path = Path(args.report).resolve()
+                scenario_path = Path(args.scenario).resolve()
+                runtime_binding = startup_harness.build_runtime_binding(
+                    startup_harness.detect_executable()
+                )
+                provenance = production_capture.prepare_production_capture(
+                    report_path=report_path,
+                    scenario_path=scenario_path,
+                    runtime_binding=runtime_binding,
+                )
+                profile = startup_harness.resolve_profile_name(args.profile)
+                world = startup_harness.choose_world_for_fixture(profile, args.world)
+                manifest = production_capture.capture_production_fixture(
+                    source_world=world.path,
+                    fixture_dir=startup_harness.profile_fixture_root(profile) / args.fixture,
+                    production_origin=provenance,
+                    overwrite=bool(args.overwrite),
+                )
+                result = {
+                    "status": "captured",
+                    "fixture": args.fixture,
+                    "profile": profile,
+                    "world": world.name,
+                    "manifest": manifest,
+                    "credit": "none; canonical report ingestion is required before route authority exists",
+                }
             elif args.command == "registry-query":
                 request = parse_registry_query_request(_load_query_request(args))
                 result = asdict(execute_registry_query(
@@ -1003,9 +1833,31 @@ def main(argv: Sequence[str] | None = None) -> int:
                     runtime_binding=runtime_binding,
                 ))
             elif args.command == "registry-repair-bootstrap":
+                if args.query_id:
+                    action = registry_query_repair_action(connection, args.query_id)
+                    identifiers = action["required_identifiers"]
+                    manifest_id = str(identifiers["manifest_id"])
+                    route_key = str(identifiers["route_key"])
+                    red_verification_id = str(identifiers["red_verification_id"])
+                    request = parse_registry_query_request(action["query"])
+                else:
+                    required = {
+                        "manifest-id": args.manifest_id,
+                        "route-key": args.route_key,
+                        "red-verification-id": args.red_verification_id,
+                    }
+                    missing = [name for name, value in required.items() if not str(value or "").strip()]
+                    if missing:
+                        raise ScenarioRegistryStoreError(
+                            "repair bootstrap requires " + ", ".join("--" + name for name in missing)
+                        )
+                    manifest_id = str(args.manifest_id)
+                    route_key = str(args.route_key)
+                    red_verification_id = str(args.red_verification_id)
+                    request = parse_registry_query_request(_load_query_request(args))
                 manifest = connection.execute(
                     "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?",
-                    (args.manifest_id,),
+                    (manifest_id,),
                 ).fetchone()
                 if manifest is None:
                     result = asdict(RegistryRepairToken("", False, "manifest_absent"))
@@ -1015,10 +1867,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                         raise ScenarioRegistryStoreError("repair manifest declaration must be an object")
                     result = asdict(issue_registry_repair_token(
                         connection,
-                        parse_registry_query_request(_load_query_request(args)),
-                        manifest_id=args.manifest_id,
-                        route_key=args.route_key,
-                        red_verification_id=args.red_verification_id,
+                        request,
+                        manifest_id=manifest_id,
+                        route_key=route_key,
+                        red_verification_id=red_verification_id,
                         binding=_current_repair_binding(declaration),
                     ))
             elif args.command == "registry-repair-finalize-no-report":
@@ -1056,13 +1908,32 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
             elif args.command == "retirement-action":
                 result = execute_retirement_action(connection, args.action_id)
-            elif args.command == "registry-launch":
+            elif args.command in {"registry-launch", "certification-launch"}:
                 selection = reload_selection_token_for_launch(connection, args.selection_token)
                 if not selection.accepted:
                     result = asdict(selection)
+                elif _scenario_requires_bound_live_bridge(selection.scenario) and not \
+                        str(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")).strip():
+                    result = asdict(RegistryLaunchToken(
+                        token_id=selection.token_id,
+                        accepted=False,
+                        reason="live_cockpit_requires_registry_detached_launch",
+                    ))
                 else:
                     try:
                         probe_namespace = _registry_launch_probe_namespace(selection)
+                        # A registry-owned launch is the canonical executor for
+                        # an adaptive semantic window.  Leaving this disabled
+                        # makes the run wait for an external caller after the
+                        # issuing observation, which cannot produce a bound
+                        # transaction receipt or final report evidence.
+                        probe_namespace.adaptive_semantic_autodrive = True
+                        if args.command == "certification-launch":
+                            # The selected fixture is the sealed setup input;
+                            # reinstalling that same fixture is not a world or
+                            # identity replacement.  It makes retries after
+                            # an interrupted setup deterministic.
+                            probe_namespace.replace_existing_worlds = True
                     except ScenarioRegistryStoreError as exc:
                         record_selection_token_rejection(
                             connection,
@@ -1093,10 +1964,41 @@ def main(argv: Sequence[str] | None = None) -> int:
                             ))
                             probe_namespace = None
                         else:
+                            certification_setup_installed = False
+                            # Only ordinary focused routes may be marked as a
+                            # diagnostic replay.  A certification launch owns
+                            # its continuous-round authority below.
+                            diagnostic_replay = False
                             if args.certification_inputs:
-                                producer_inputs = startup_harness._certification_recheck_producer_inputs(
-                                    args.certification_inputs
+                                producer_inputs = startup_harness.capture_certification_inputs(args.certification_inputs)
+                            elif args.command == "certification-launch":
+                                # Fixture installation is a registry-owned setup
+                                # mutation.  Perform it before sealing the
+                                # manifest, then prevent the probe from
+                                # reinstalling (and thereby changing) the
+                                # sealed world between preflight and recheck.
+                                launch_scenario = startup_harness.load_scenario(selection.scenario)
+                                launch_profile = startup_harness.resolve_profile_name(
+                                    str(launch_scenario.get("profile", ""))
                                 )
+                                launch_fixture = str(launch_scenario.get("fixture", "")).strip()
+                                launch_fixture_profile = str(
+                                    launch_scenario.get("fixture_profile", "")
+                                ).strip()
+                                if launch_fixture:
+                                    startup_harness.install_fixture(
+                                        launch_profile,
+                                        launch_fixture,
+                                        replace=True,
+                                        fixture_profile=launch_fixture_profile,
+                                    )
+                                    certification_setup_installed = True
+                                producer_inputs = startup_harness.derive_registry_owned_certification_inputs(
+                                    selection.scenario
+                                )
+                            else:
+                                producer_inputs = None
+                            if producer_inputs is not None:
                                 route = connection.execute(
                                     "SELECT route_key FROM token_history WHERE token_id = ? AND event_kind = 'issued' "
                                     "ORDER BY token_event_id LIMIT 1", (selection.token_id,),
@@ -1121,7 +2023,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     encoding="utf-8",
                                 )
                                 recheck_path.write_text(
-                                    json.dumps(json.loads(Path(args.certification_inputs).read_text(encoding="utf-8")),
+                                    json.dumps(producer_inputs, default=str,
                                                ensure_ascii=False, sort_keys=True),
                                     encoding="utf-8",
                                 )
@@ -1131,9 +2033,25 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 probe_namespace.certification_recheck_inputs = str(recheck_path)
                                 probe_namespace.certification_save_capability = created["save_capability"]
                                 wec_authority = created["authority"]
+                                if certification_setup_installed:
+                                    probe_namespace.fixture = ""
+                                    probe_namespace.fixture_profile = ""
                             else:
-                                wec_authority = issue_wec_authority(
-                                    connection, evidence_class="focused feature proof", authority="registry",
+                                launch_scenario = startup_harness.load_scenario(selection.scenario)
+                                runtime_contract = launch_scenario.get("runtime_contract", {})
+                                setup_support = isinstance(runtime_contract, Mapping) and \
+                                    runtime_contract.get("setup_only_debug") is True and \
+                                    runtime_contract.get("disposable_copy") is True
+                                diagnostic_replay = isinstance(runtime_contract, Mapping) and \
+                                    runtime_contract.get("diagnostic_replay") is True
+                                # A disposable setup transaction still needs registry-owned
+                                # authority, run, and executable binding so its immutable,
+                                # zero-credit receipt can be ingested.  Only an explicit
+                                # diagnostic replay is authority-free.
+                                wec_authority = None if diagnostic_replay else issue_wec_authority(
+                                    connection,
+                                    evidence_class="setup support" if setup_support else "focused feature proof",
+                                    authority="registry",
                                     run_id=selection.token_id, binding_id=str(runtime_binding.get("executable_sha256", "")),
                                     source_sha256=path_sha256(Path(selection.source_path)),
                                 )
@@ -1144,6 +2062,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 "source_path": selection.source_path,
                                 "runtime_binding": runtime_binding,
                                 "wec_authority": wec_authority,
+                                "diagnostic_replay": diagnostic_replay,
                             }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
                             probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
                                 probe_namespace.registry_launch_receipt
@@ -1153,6 +2072,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 selection = reload_bootstrap_token_for_launch(connection, args.bootstrap_token)
                 if not selection.accepted:
                     result = asdict(selection)
+                elif _scenario_requires_bound_live_bridge(selection.scenario) and not \
+                        str(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")).strip():
+                    # A live session reads its worker protocol from stdin.  The public
+                    # bootstrap command has no worker attached, so claiming here would
+                    # consume a one-use token and immediately produce a disconnected
+                    # zero-action report.  The detached bridge is the canonical route.
+                    result = asdict(RegistryBootstrapToken(
+                        selection.token_id, False, "cockpit_live_session_requires_bound_file_bridge",
+                    ))
                 else:
                     comparison = startup_harness.compare_runtime_binding(selection.runtime_binding)
                     if comparison.get("status") != "matched":
@@ -1171,7 +2099,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                             result = asdict(selection)
                         else:
                             try:
-                                probe_namespace = _registry_bootstrap_probe_namespace(selection)
+                                probe_namespace = _registry_bootstrap_probe_namespace(
+                                    selection,
+                                    cockpit_live_session=bool(args.cockpit_live_session),
+                                )
                             except ScenarioRegistryStoreError as exc:
                                 record_bootstrap_token_rejection(
                                     connection,
@@ -1183,6 +2114,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     selection.token_id, False, "canonical_probe_source_mismatch",
                                 ))
                             else:
+                                probe_namespace.adaptive_semantic_autodrive = bool(
+                                    args.adaptive_semantic_autodrive
+                                )
                                 wec_authority = issue_wec_authority(
                                     connection, evidence_class="focused feature proof", authority="registry",
                                     run_id=selection.token_id, binding_id=str(selection.runtime_binding.get("executable_sha256", "")),
@@ -1247,7 +2181,10 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     result = asdict(selection)
                                 else:
                                     try:
-                                        probe_namespace = _registry_repair_probe_namespace(selection)
+                                        probe_namespace = _registry_repair_probe_namespace(
+                                            selection,
+                                            cockpit_live_session=bool(args.cockpit_live_session),
+                                        )
                                     except ScenarioRegistryStoreError as exc:
                                         record_repair_token_rejection(
                                             connection,
@@ -1259,6 +2196,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                                             selection.token_id, False, "canonical_probe_source_mismatch",
                                         ))
                                     else:
+                                        # A repair authority is the canonical executor for its
+                                        # current semantic transaction.  Leaving autodrive off
+                                        # only observes the frame and cannot produce the
+                                        # bound receipts that the repair route requires.
+                                        probe_namespace.adaptive_semantic_autodrive = True
+                                        wec_authority = issue_wec_authority(
+                                            connection, evidence_class="focused feature proof", authority="registry",
+                                            run_id=selection.token_id,
+                                            binding_id=str(selection.runtime_binding.get("executable_sha256", "")),
+                                            source_sha256=path_sha256(Path(selection.source_path)),
+                                        )
                                         probe_namespace.registry_launch_receipt = json.dumps({
                                             "schema": 1,
                                             "authority_kind": "registry_repair_exact_contradiction",
@@ -1267,11 +2215,74 @@ def main(argv: Sequence[str] | None = None) -> int:
                                             "red_verification_id": str(issued["verification_id"]),
                                             "source_path": selection.source_path,
                                             "runtime_binding": selection.runtime_binding,
+                                            "wec_authority": wec_authority,
                                         }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
                                         probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
                                             probe_namespace.registry_launch_receipt
                                         )
                                         result = asdict(selection)
+            elif args.command == "registry-repair-compatibility-terminal":
+                issued = connection.execute(
+                    "SELECT manifest_id FROM token_history WHERE token_id = ? AND event_kind = 'repair_issued' "
+                    "ORDER BY token_event_id LIMIT 1", (args.repair_token,),
+                ).fetchone()
+                if issued is None:
+                    result = asdict(RegistryRepairToken(args.repair_token, False, "token_unknown"))
+                else:
+                    manifest = connection.execute(
+                        "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?", (str(issued["manifest_id"]),),
+                    ).fetchone()
+                    if manifest is None:
+                        result = asdict(RegistryRepairToken(args.repair_token, False, "manifest_absent"))
+                    else:
+                        binding = _current_repair_binding(json.loads(str(manifest["declaration_json"])))
+                        selection = reload_repair_token_for_launch(connection, args.repair_token, binding=binding)
+                        comparison = startup_harness.compare_runtime_binding(selection.runtime_binding) if selection.accepted else {}
+                        if not selection.accepted or comparison.get("status") != "matched":
+                            result = asdict(RegistryRepairToken(
+                                args.repair_token, False,
+                                selection.reason if not selection.accepted else "runtime_binding_changed",
+                            ))
+                        else:
+                            claimed = claim_repair_token_for_launch(connection, args.repair_token, binding=binding)
+                            result = (ingest_repair_compatibility_terminal(
+                                connection, claimed.token_id, Path(args.terminal_json),
+                            ) if claimed.accepted else asdict(claimed))
+            elif args.command == "registry-repair-r019-current-source-successor":
+                issued = connection.execute(
+                    "SELECT manifest_id FROM token_history WHERE token_id = ? AND event_kind = 'repair_issued' "
+                    "ORDER BY token_event_id LIMIT 1", (args.repair_token,),
+                ).fetchone()
+                if issued is None:
+                    result = asdict(RegistryRepairToken(args.repair_token, False, "token_unknown"))
+                else:
+                    manifest = connection.execute(
+                        "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?", (str(issued["manifest_id"]),),
+                    ).fetchone()
+                    if manifest is None:
+                        result = asdict(RegistryRepairToken(args.repair_token, False, "manifest_absent"))
+                    else:
+                        binding = _current_repair_binding(json.loads(str(manifest["declaration_json"])))
+                        selection = reload_repair_token_for_launch(connection, args.repair_token, binding=binding)
+                        comparison = startup_harness.compare_runtime_binding(selection.runtime_binding) if selection.accepted else {}
+                        if not selection.accepted or comparison.get("status") != "matched":
+                            result = asdict(RegistryRepairToken(
+                                args.repair_token, False,
+                                selection.reason if not selection.accepted else "runtime_binding_changed",
+                            ))
+                        else:
+                            claimed = claim_repair_token_for_launch(connection, args.repair_token, binding=binding)
+                            result = (ingest_r019_current_source_repair_successor(
+                                connection, claimed.token_id, Path(args.successor_json),
+                            ) if claimed.accepted else asdict(claimed))
+            elif args.command == "registry-r019-aggregation-authorize":
+                result = asdict(issue_r019_aggregation_token(
+                    connection,
+                    guarded_report_id=args.guarded_report_id,
+                    primitive_report_id=args.primitive_report_id,
+                ))
+            elif args.command == "registry-r019-aggregation-finalize":
+                result = finalize_r019_aggregation_token(connection, args.aggregation_token)
             elif args.command == "registry-migrate-all":
                 if args.resume:
                     migration = migration_run_snapshot(connection, str(args.resume))
@@ -1310,7 +2321,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     except (OSError, sqlite3.Error, ScenarioRegistryStoreError, SystemExit, ValueError) as exc:
         _write_result({"ok": False, "command": args.command, "error": str(exc)}, stream=sys.stderr)
         return 1
-    if args.command in {"registry-launch", "registry-bootstrap-launch", "registry-repair-launch"}:
+    if args.command in {"registry-launch", "certification-launch", "registry-bootstrap-launch", "registry-repair-launch"}:
         if probe_namespace is None:
             _write_result({
                 "ok": False,

@@ -177,6 +177,18 @@ class ScenarioRegistryContractTest(unittest.TestCase):
                 "proof_route": declaration["proof_route"],
             })
 
+            invisible = copy.deepcopy(declaration)
+            invisible["observer_safety_mode"] = "invisible"
+            invisible_path = self.write_manifest(root, "invisible-checkpoint.json", invisible)
+            invisible_result = validate_manifest(invisible, path=invisible_path)
+            self.assertEqual(
+                invisible_result["normalized"]["observer_safety_mode"]["value"], "invisible"
+            )
+            self.assertEqual(
+                normalize_relation_contract(invisible)["checkpoint_contract"]["observer_safety_mode"],
+                "invisible",
+            )
+
             invalid_cases = []
 
             duplicate_id = copy.deepcopy(declaration)

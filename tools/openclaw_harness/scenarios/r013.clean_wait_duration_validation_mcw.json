@@ -1,0 +1,40 @@
+{
+  "manifest_version": 2,
+  "name": "r013.clean_wait_duration_validation_mcw",
+  "description": "Independent focused R-013 validation from the clean source-bound wait footing.  It performs the deterministic one-minute native wait transaction and requires a fresh world postcondition without dispatching or recovering an unrelated activity modal.",
+  "profile": "r009-m095",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r013_clean_wait_duration_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "wait_input_trace": true,
+  "capabilities": {"capabilities.r013.clean_wait_duration_validation": "independent_bound_one_minute_wait_without_activity_recovery", "runtime.r013.source_binding": "r013_clean_wait_duration_v1:r009-m095"},
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.1m"],
+    "forbidden_input": ["debug:teleport", "debug:spawn", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation", "semantic:activity.ignore"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "config_profile": "dev-harness",
+    "fixture": "r013_clean_wait_duration_v1",
+    "time_baseline": "current_run_native_semantic_frame",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r013_clean_wait_duration_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["frame-bound semantic one-minute wait"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r013_clean_wait_duration_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/r009-m095.json", "source_run": ".userdata/dev-harness/harness_runs/20260811_215708/saved_world"},
+  "proof_gates": [{"id": "r013_clean_bound_wait_complete", "label": "R-013 bound wait-duration transaction reaches a fresh world frame without unrelated recovery", "boundary_step": "prove_r013_clean_bound_wait", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "semantic_wait_progress", "progress_proved": true, "interruption_receipts_proved": true, "next_frame_state": "world"}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r013_clean_bound_wait_complete"], "terminal": ["r013_clean_bound_wait_complete"], "capability_gates": {"capabilities.r013.clean_wait_duration_validation": {"terminal": ["r013_clean_bound_wait_complete"]}}},
+  "steps": [
+    {"kind": "wait", "label": "post_load_r013_clean_validation_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "ordinary gameplay HUD shows Move and Wield before the semantic transaction", "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r013_clean_validation_hud_missing", "abort_reason": "the independent clean fixture did not reach ordinary gameplay"},
+    {"kind": "adaptive_semantic_window", "label": "prove_r013_clean_bound_wait", "objective": "Accept only the current advertised one-minute native wait actions.  Prove the bound wait-duration modal receipt chain, one authoritative minute of progress, and a fresh ordinary world frame.  Do not dispatch activity recovery.", "minimum_elapsed_minutes": 1, "observation_timeout_seconds": 420.0, "observation_interval_seconds": 1.0, "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [], "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.1m"]}, "expected_visible_fact": "the worker accepts world.wait, observes its current wait-duration modal, accepts advertised wait.1m bound to that modal, advances game time, and reaches a fresh ordinary world frame without an activity-recovery transaction"}
+  ],
+  "evidence_contract": {"claim": "one separately authorized clean-scene validation proves the deterministic bound wait-duration receipt chain, changed authoritative time, and fresh world postcondition without an unrelated second modal", "failure_rule": "an unadvertised action, rejected or unbound receipt, missing time progress, non-world successor, activity modal, failed ingestion, or failed cleanup leaves R-013 unproved"}
+}

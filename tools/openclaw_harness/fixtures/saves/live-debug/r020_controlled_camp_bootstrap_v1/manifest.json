@@ -1,0 +1,33 @@
+{
+  "name": "r020_controlled_camp_bootstrap_v1",
+  "claim": "R-020",
+  "closure_gap": "R-020-live-bootstrap revision 1",
+  "description": "Disposable source-bound camp-transaction fixture. Its camp is created only inside the controlled transaction and restored before any gameplay route begins.",
+  "source_fixture": "r009_m059_preopportunity_bootstrap",
+  "source_profile": "live-debug",
+  "source_binding": {
+    "owner": "fixture_source_binding",
+    "source_fixture": "r009_m059_preopportunity_bootstrap",
+    "source_profile": "live-debug",
+    "world": "McWilliams"
+  },
+  "save_transforms": [{
+    "kind": "player_mutations",
+    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO"]
+  }],
+  "controlled_camp_setup": {
+    "owner": "fixture_save_transform.player_basecamp_at_omt",
+    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "camp_name": "R020 Disposable Camp",
+    "owner_value": "your_followers",
+    "camp_omt": [162, 36, 0],
+    "expected_composition": {
+      "player_registry_entries": 1,
+      "overmap_registry_entries": 1,
+      "owner": "your_followers"
+    },
+    "cleanup_owner": "controlled_camp_setup",
+    "evidence_ceiling": "none_for_manufactured_state"
+  }
+}

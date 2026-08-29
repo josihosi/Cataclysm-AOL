@@ -1,0 +1,46 @@
+{
+  "manifest_version": 2,
+  "name": "r019.primitive_safe_popup_comparison_mcw",
+  "description": "Separately bound R-019 primitive reference from the clean scheduled-safe-popup fixture.  It directly follows only currently advertised native actions and never calls Keep watch or raw wait.",
+  "profile": "r009-m095",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r019_keep_watch_safe_popup_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r019.primitive_safe_popup_comparison": "separately_bound_direct_native_popup_recovery",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r019.source_binding": "r019_keep_watch_safe_popup_v1:r009-m095"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.observe", "cockpit:game.act", "cockpit:run.continue", "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.1m", "semantic:modal.acknowledge", "semantic:activity.continue", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["cockpit:game.keep_watch", "cockpit:game.raw_wait", "debug:teleport", "debug:spawn", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation", "semantic:activity.ignore"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "config_profile": "dev-harness",
+    "fixture": "r019_keep_watch_safe_popup_v1",
+    "time_baseline": "current_run_native_semantic_frame",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r019_keep_watch_safe_popup_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["direct advertised native primitive chain"], "cleanup": true},
+    "grants_gameplay_proof": true
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r019_keep_watch_safe_popup_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/r009-m095.json"},
+  "setup_contract": {"safe_start": {"visible_monsters": 0, "danger": false, "damage": false, "scheduled_interruption": "one declared-safe native popup"}},
+  "proof_gates": [{"id": "r019_primitive_safe_popup_live", "label": "R-019 separately bound primitive safe-popup comparison route reaches a worker-owned live session", "boundary_step": "r019_primitive_safe_popup_live_session", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r019_primitive_safe_popup_live"], "terminal": ["r019_primitive_safe_popup_live"], "capability_gates": {"capabilities.r019.primitive_safe_popup_comparison": {"terminal": ["r019_primitive_safe_popup_live"]}}},
+  "steps": [
+    {"kind": "wait", "label": "post_load_r019_primitive_safe_popup_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_visible_fact": "the ordinary gameplay HUD visibly presents the declared Move: and Wield: controls before the primitive comparison session opens", "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r019_primitive_safe_popup_hud_missing", "abort_reason": "the source-bound clean fixture did not reach ordinary gameplay"},
+    {"kind": "native_semantic_bootstrap", "label": "emit_r019_primitive_native_semantic_bootstrap", "expected_visible_fact": "the canonical launcher verifies a run-bound native world frame before the primitive session admits direct native actions", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "r019_primitive_safe_popup_live_session", "objective": "From a fresh clean start, directly perform the advertised primitive chain world.wait, wait.duration_menu, wait.1m, modal.acknowledge for EOC_OPENCLAW_R019_SAFE_POPUP, and advertised activity.continue; then preserve receipts, terminal state, round trips, witness, ingestion, and cleanup.", "proof_targets": ["the primitive comparison facts or first fail-closed contradiction", "native safety frames, receipts, terminal state, cleanup, round trips, and evidence ceiling"], "authority": ["currently advertised primitive actions only", "run.witness", "run.finish"], "invariants": ["Keep watch and raw wait are forbidden", "the popup acknowledgement and activity continuation must be advertised by current native frames", "setup artifacts receive no gameplay credit", "finish only at target or the first meaningful, unsafe, unknown, stale, binding-drift, no-progress, or bound-exhaustion condition"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+  ],
+  "evidence_contract": {"claim": "a fresh separately authorized primitive start supplies the cited direct-native comparison facts", "failure_rule": "changed binding, missing native safety frame or receipt, unknown or unsafe continuation, absent causal fact, failed ingestion, contradiction, false promotion, or failed cleanup leaves the charter inconclusive"}
+}

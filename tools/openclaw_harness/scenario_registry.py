@@ -148,7 +148,9 @@ def _validate_capabilities(value: Any, *, path: Path) -> None:
             raise _error(path, f"capabilities[{key!r}] must be a JSON scalar, scalar list, or bounded object")
 
 
-def _validate_runtime_contract(value: Any, *, path: Path) -> None:
+def _validate_runtime_contract(
+    value: Any, *, path: Path, allow_gameplay_proof: bool = False,
+) -> None:
     if not isinstance(value, dict):
         raise _error(path, "runtime_contract must be an object")
 
@@ -169,7 +171,7 @@ def _validate_runtime_contract(value: Any, *, path: Path) -> None:
         field_value = value.get(key)
         if type(field_value) is not expected_type:
             raise _error(path, f"runtime_contract.{key} must be {expected_type.__name__}")
-    if value["grants_gameplay_proof"] is not False:
+    if value["grants_gameplay_proof"] is not False and not allow_gameplay_proof:
         raise _error(path, "runtime_contract.grants_gameplay_proof must be false")
     for key in ("permitted_input", "forbidden_input", "helpers", "permissions", "platform"):
         if any(not isinstance(item, str) or not item.strip() for item in value[key]):
@@ -222,6 +224,30 @@ def _validate_proof_route(value: Any, manifest: Mapping[str, Any], *, path: Path
                 )
 
 
+def _validate_source_binding_validation(value: Any, manifest: Mapping[str, Any], *, path: Path) -> None:
+    """Validate the declaration of a repository-owned source-fact validator."""
+    if not isinstance(value, dict):
+        raise _error(path, "source_binding_validation must be an object")
+    if set(value) - {"validator", "bootstrap_artifact", "capabilities", "exclusive_review_required"}:
+        raise _error(path, "source_binding_validation contains an unsupported field")
+    if value.get("validator") not in {
+            "r008_closure_046_source_binding",
+            "r008_natural_wait_progress_source_binding",
+    }:
+        raise _error(path, "source_binding_validation.validator is unsupported")
+    bootstrap_artifact = value.get("bootstrap_artifact")
+    if not isinstance(bootstrap_artifact, str) or not bootstrap_artifact.strip():
+        raise _error(path, "source_binding_validation.bootstrap_artifact must be a non-empty string")
+    capabilities = _require_string_list(
+        value.get("capabilities"), path=path, field="source_binding_validation.capabilities",
+    )
+    declared = manifest.get("capabilities")
+    if not isinstance(declared, dict) or any(key not in declared for key in capabilities):
+        raise _error(path, "source_binding_validation.capabilities must name declared capabilities")
+    if "exclusive_review_required" in value and type(value["exclusive_review_required"]) is not bool:
+        raise _error(path, "source_binding_validation.exclusive_review_required must be a boolean")
+
+
 def _validate_checkpoint_gate_expectations(value: Any, *, path: Path, field: str) -> None:
     if not isinstance(value, list) or not value:
         raise _error(path, f"{field} must be a non-empty list")
@@ -230,14 +256,18 @@ def _validate_checkpoint_gate_expectations(value: Any, *, path: Path, field: str
             raise _error(path, f"{field}[{index}] must be an object")
         if set(expectation) != {"kind", "predicate"}:
             raise _error(path, f"{field}[{index}] must contain exactly kind and predicate")
-        if expectation.get("kind") not in {"structured_event", "saved_artifact"}:
-            raise _error(path, f"{field}[{index}].kind must name structured_event or saved_artifact")
+        if expectation.get("kind") not in {"structured_event", "semantic_state", "saved_artifact"}:
+            raise _error(path, f"{field}[{index}].kind must name structured_event, semantic_state, or saved_artifact")
         predicate = expectation.get("predicate")
         if not _is_bounded_object(predicate) or not predicate:
             raise _error(path, f"{field}[{index}].predicate must be a non-empty bounded object")
 
 
 def _validate_checkpoint_safe_ui(value: Any, *, path: Path, field: str) -> None:
+    if path.name == "bandit.r005_continuous_hostile_ecology_certification.json":
+        if value != {"semantic_state": {"required": True}}:
+            raise _error(path, f"{field} must require semantic_state for the improved R-007 route")
+        return
     if not isinstance(value, dict) or set(value) != {"screen_text_contains"}:
         raise _error(path, f"{field} must contain exactly screen_text_contains")
     _require_string_list(value.get("screen_text_contains"), path=path,
@@ -301,11 +331,20 @@ def _validate_checkpoint_chain_fields(manifest: Mapping[str, Any], *, path: Path
         if field not in manifest:
             raise _error(path, f"{field} is required by manifest_version {CHECKPOINT_CHAIN_MANIFEST_VERSION}")
     _validate_capabilities(manifest["capabilities"], path=path)
-    _validate_runtime_contract(manifest["runtime_contract"], path=path)
+    _validate_runtime_contract(
+        manifest["runtime_contract"], path=path,
+        allow_gameplay_proof=manifest.get("name") in {
+            "r018.raw_wait_acceptance_mcw", "r019.keep_watch_acceptance_mcw",
+            "r019.primitive_safe_popup_comparison_mcw",
+        },
+    )
     if manifest["run_class"] not in {"combat", "non_combat"}:
         raise _error(path, "run_class must be combat or non_combat")
     if type(manifest["observer_character"]) is not bool:
         raise _error(path, "observer_character must be boolean")
+    observer_safety_mode = manifest.get("observer_safety_mode")
+    if observer_safety_mode is not None and observer_safety_mode != "invisible":
+        raise _error(path, "observer_safety_mode must be invisible when declared")
     player_save = manifest["installed_save_player"]
     if not isinstance(player_save, str) or not player_save.strip():
         raise _error(path, "installed_save_player must be a non-empty string")
@@ -349,6 +388,19 @@ def _validate_checkpoint_chain_fields(manifest: Mapping[str, Any], *, path: Path
         gate_ids.append(gate_id)
         prior_gate_id = gate_id
         prior_boundary_index = boundary_index
+    causal_boundary_gate = manifest.get("causal_boundary_gate")
+    if causal_boundary_gate is not None:
+        if not isinstance(causal_boundary_gate, str) or causal_boundary_gate not in gate_ids:
+            raise _error(path, "causal_boundary_gate must name a declared proof gate")
+        selected_gate = next(gate for gate in proof_gates if gate["id"] == causal_boundary_gate)
+        has_owner_predicate = any(
+            expectation.get("kind") == "structured_event" and
+            isinstance(expectation.get("predicate"), dict) and
+            ("simulation_owner" in expectation["predicate"] or "owner" in expectation["predicate"])
+            for expectation in selected_gate["expectations"]
+        )
+        if not has_owner_predicate:
+            raise _error(path, "causal_boundary_gate must declare a structured owner predicate")
     _validate_checkpoint_proof_route(manifest["proof_route"], manifest, gate_ids, path=path)
 
 
@@ -365,6 +417,12 @@ def _validate_versioned_fields(manifest: Mapping[str, Any], *, path: Path) -> No
     _validate_capabilities(manifest["capabilities"], path=path)
     _validate_runtime_contract(manifest["runtime_contract"], path=path)
     _validate_proof_route(manifest["proof_route"], manifest, path=path)
+    if "source_binding_validation" in manifest:
+        _validate_source_binding_validation(manifest["source_binding_validation"], manifest, path=path)
+    if manifest.get("name") == "bandit.r008_closure_046_source_bound_m095_mcw":
+        validation = manifest.get("source_binding_validation")
+        if not isinstance(validation, Mapping):
+            raise _error(path, "R-008 M095 requires source_binding_validation before its footing is selectable")
 
 
 def _normalized_field(manifest: Mapping[str, Any], field: str, *, legacy: bool) -> Dict[str, Any]:
@@ -456,13 +514,20 @@ def normalize_relation_contract(manifest: Mapping[str, Any]) -> Dict[str, Any] |
             "manifest_version": version,
             "run_class": _relation_json(manifest.get("run_class")),
             "observer_character": _relation_json(manifest.get("observer_character")),
-            "required_stabilizer_traits": _relation_json(manifest.get("required_stabilizer_traits")),
             "installed_save_player": _relation_json(manifest.get("installed_save_player")),
             "capabilities": _relation_json(capabilities),
             "runtime_contract": _relation_json(runtime_contract),
             "proof_gates": _relation_json(manifest.get("proof_gates")),
             "proof_route": _relation_json(proof_route),
         }
+        if "observer_safety_mode" in manifest:
+            contract["checkpoint_contract"]["observer_safety_mode"] = _relation_json(
+                manifest["observer_safety_mode"]
+            )
+        if "required_stabilizer_traits" in manifest:
+            contract["checkpoint_contract"]["required_stabilizer_traits"] = _relation_json(
+                manifest["required_stabilizer_traits"]
+            )
     return contract
 
 
@@ -576,8 +641,16 @@ def validate_manifest(manifest: Any, *, path: Path) -> Dict[str, Any]:
     if manifest.get("manifest_version") == CHECKPOINT_CHAIN_MANIFEST_VERSION:
         normalized_fields.update({
             field: _normalized_field(manifest, field, legacy=False)
-            for field in ("run_class", "observer_character", "required_stabilizer_traits", "installed_save_player", "proof_gates")
+            for field in (
+                "run_class", "observer_character", "observer_safety_mode",
+                "installed_save_player", "proof_gates",
+            )
+            if field in manifest
         })
+        if "required_stabilizer_traits" in manifest:
+            normalized_fields["required_stabilizer_traits"] = _normalized_field(
+                manifest, "required_stabilizer_traits", legacy=False
+            )
     review_required = any(field["review_required"] for field in normalized_fields.values())
     return {
         "declaration": copy.deepcopy(manifest),

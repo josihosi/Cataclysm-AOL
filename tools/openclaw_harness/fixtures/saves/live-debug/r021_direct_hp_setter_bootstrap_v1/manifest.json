@@ -1,0 +1,44 @@
+{
+  "name": "r021_direct_hp_setter_bootstrap_v1",
+  "claim": "R-021",
+  "closure_gap": "R-021-live-bootstrap revision 1",
+  "description": "Disposable exact-identity R-021 fixture. It clears inherited active monsters and installs one tagged inert zombie under the fixture save owner; direct HP mutation is a later zero-credit debug transaction with this fixture as its cleanup owner.",
+  "source_fixture": "r009_m059_preopportunity_bootstrap",
+  "source_profile": "live-debug",
+  "source_binding": {
+    "owner": "fixture_source_binding",
+    "source_fixture": "r009_m059_preopportunity_bootstrap",
+    "source_profile": "live-debug",
+    "world": "McWilliams"
+  },
+  "save_transforms": [{
+    "kind": "player_mutations",
+    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO"]
+  }, {
+    "kind": "active_monsters_near_player",
+    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "clear_existing": true,
+    "require_free_target": true,
+    "monsters": [{
+      "fixture_actor_id": "r021-disposable-hp-target-v1",
+      "typeid": "mon_zombie",
+      "offset_ms": [4, 0, 0],
+      "hp": 80,
+      "friendly": 1,
+      "faction": "zombie",
+      "anger": 0,
+      "morale": 0,
+      "aggro_character": false
+    }]
+  }],
+  "r021_direct_hp_setter": {
+    "fixture_actor_id": "r021-disposable-hp-target-v1",
+    "expected_typeid": "mon_zombie",
+    "expected_offset_ms": [4, 0, 0],
+    "target_hp": 0,
+    "action_owner": "debug_menu.monster_set_hp",
+    "cleanup_owner": "r021_direct_hp_setter_bootstrap_v1",
+    "evidence_ceiling": "none_for_debug_fixture_transaction"
+  }
+}

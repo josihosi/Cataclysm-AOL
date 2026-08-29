@@ -1,0 +1,36 @@
+{
+  "name": "r013_wait_activity_interrupt_bootstrap_v1",
+  "source_fixture": "r012_avatar_visible_bootstrap_v1",
+  "source_profile": "live-debug",
+  "description": "Disposable R-013 setup fixture.  It clears inherited active monsters and stages one hostile zombie dog six map squares east of the avatar.  Starting the authorized one-minute native wait must therefore reach Cataclysm's current activity-distraction query before the creature can act.  The creature and every transform are setup-only and receive no gameplay credit.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION"
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_zombie_dog",
+          "offset_ms": [6, 0, 0],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}

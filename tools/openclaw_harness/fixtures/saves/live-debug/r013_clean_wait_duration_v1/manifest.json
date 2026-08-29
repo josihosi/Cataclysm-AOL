@@ -1,0 +1,14 @@
+{
+  "name": "r013_clean_wait_duration_v1",
+  "source_fixture": "r012_avatar_visible_bootstrap_v1",
+  "source_profile": "live-debug",
+  "description": "Disposable R-013 clean wait fixture.  It retains the source observer footing and explicitly clears every inherited active monster before the wait transaction.  This is setup-only and proves only that the installed scene has no staged active hostile distraction.",
+  "save_transforms": [
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": []
+    }
+  ]
+}

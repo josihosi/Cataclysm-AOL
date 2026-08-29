@@ -1,0 +1,24 @@
+{
+  "name": "r019_keep_watch_meaningful_event_bootstrap_v1",
+  "source_fixture": "r013_clean_wait_duration_v1",
+  "source_profile": "live-debug",
+  "description": "Disposable R-019 zero-credit setup fixture. It starts from the clean wait footing, removes every inherited active monster, and stages exactly one hostile zombie dog six map squares east of the avatar. A guarded Keep watch probe can therefore encounter the declared hostile-sighting event without crediting manufactured state or guarded-stop behavior.",
+  "save_transforms": [
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "typeid": "mon_zombie_dog",
+          "offset_ms": [6, 0, 0],
+          "hp": 80,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}

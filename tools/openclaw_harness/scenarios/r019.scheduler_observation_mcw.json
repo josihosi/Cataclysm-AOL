@@ -1,0 +1,48 @@
+{
+  "manifest_version": 2,
+  "name": "r019.scheduler_observation_mcw",
+  "description": "Zero-credit R-019 scheduler observation from the declared clean popup fixture. It records the installed queue record and the run-bound native scheduler decision around one advertised wait. It cannot supply guarded or primitive gameplay proof.",
+  "profile": "r009-m095",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r019_keep_watch_safe_popup_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "scheduler_trace_eoc": "EOC_OPENCLAW_R019_SAFE_POPUP",
+  "capabilities": {
+    "capabilities.r019.scheduler_observation": "zero_credit_global_eoc_due_turn_observation",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r019.source_binding": "r019_keep_watch_safe_popup_v1:r009-m095"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.observe", "cockpit:run.continue", "semantic:advertised_wait_action", "cockpit:run.finish"],
+    "forbidden_input": ["cockpit:game.keep_watch", "debug:teleport", "debug:spawn", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "config_profile": "dev-harness",
+    "fixture": "r019_keep_watch_safe_popup_v1",
+    "time_baseline": "current_run_native_semantic_frame",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r019_keep_watch_safe_popup_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["one advertised native wait"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r019_keep_watch_safe_popup_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/r009-m095.json"},
+  "setup_contract": {"safe_start": {"visible_monsters": 0, "danger": false, "damage": false, "scheduled_interruption": "one declared-safe native popup"}},
+  "proof_gates": [
+    {"id": "r019_scheduler_observation_bound", "label": "R-019 scheduler observation binds one zero-credit native cockpit session", "boundary_step": "r019_scheduler_observation_live_session", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}
+  ],
+  "proof_route": {"gates": ["r019_scheduler_observation_bound"], "terminal": ["r019_scheduler_observation_bound"]},
+  "steps": [
+    {"kind": "wait", "label": "post_load_r019_scheduler_observation_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r019_scheduler_observation_hud_missing"},
+    {"kind": "native_semantic_bootstrap", "label": "emit_r019_scheduler_observation_bootstrap", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "r019_scheduler_observation_live_session", "objective": "Observe the declared scheduler record through the due turn, then finish with no gameplay claim.", "proof_targets": ["the exact queued record before wait", "the native global-EOC due decision, execution identity, popup trace, and post-decision record state"], "authority": ["currently advertised primitive wait actions", "run.finish"], "invariants": ["this is a zero-credit diagnostic run", "do not invoke guarded Keep watch", "record no guarded or primitive comparison claim", "finish after the first due-turn observation or first scheduler divergence"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+  ]
+}

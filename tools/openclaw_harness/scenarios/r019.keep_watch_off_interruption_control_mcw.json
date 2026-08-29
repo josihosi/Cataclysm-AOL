@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "name": "r019.keep_watch_off_interruption_control_mcw",
+  "description": "Zero-credit R-019 counterexample. With the master Keep watch switch disabled, the worker must use only the advertised primitive one-minute wait. The staged hostile must interrupt that primitive wait; the session stops without guarded recovery or unsafe continuation.",
+  "profile": "r009-m095",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r013_wait_activity_interrupt_bootstrap_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r019.off_interruption_control": "primitive_wait_interrupts_fail_closed_when_keep_watch_master_is_disabled",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.observe", "cockpit:game.keep_watch", "cockpit:run.continue", "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.1m"],
+    "forbidden_input": ["debug:teleport", "debug:spawn", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "guessed-key", "direct-state-mutation", "semantic:activity.ignore"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "fixture": "r013_wait_activity_interrupt_bootstrap_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r013_wait_activity_interrupt_bootstrap_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["disabled Keep watch followed by a frame-bound primitive wait"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r013_wait_activity_interrupt_bootstrap_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/r009-m095.json", "source_run": ".userdata/dev-harness/harness_runs/20260811_215708/saved_world"},
+  "proof_gates": [{"id": "r019_off_interruption_control", "label": "R-019 disabled-master primitive wait stops at the staged native interruption", "boundary_step": "r019_off_interruption_live_session", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r019_off_interruption_control"], "terminal": ["r019_off_interruption_control"]},
+  "steps": [
+    {"kind": "press", "label": "dismiss_declared_in_game_main_menu", "keys": ["escape"]},
+    {"kind": "wait", "label": "post_load_r019_off_interruption_hud", "seconds": 2.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Move:", "Wield:"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r019_off_interruption_hud_missing"},
+    {"kind": "native_semantic_bootstrap", "label": "emit_r019_off_interruption_native_frame", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world"}},
+    {"kind": "cockpit_live_session", "label": "r019_off_interruption_live_session", "objective": "Prove the disabled master switch has no guarded path: reject game.keep_watch, dispatch only one frame-bound primitive wait, and stop at the staged native interruption without recovery.", "proof_targets": ["exact precondition and run/binding identities", "one rejected disabled Keep watch request", "ordered primitive native receipts through the interruption", "explicit interruption stop with partial progress and no unsafe continuation", "immutable report ingestion and accepted cleanup"], "authority": ["disabled game.keep_watch rejection", "advertised primitive wait actions", "run.continue", "run.finish"], "invariants": ["zero guarded dispatch, handling, and hidden batching", "no activity.ignore or other interruption handling", "the first native interruption is terminal"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+  ],
+  "evidence_contract": {"claim": "this fresh zero-credit counterexample demonstrates that a disabled master Keep watch switch leaves the primitive wait unguarded and fail-closed at its first native interruption", "failure_rule": "guarded dispatch or handling, hidden batching, missing identity or native receipts, continuation after interruption, failed ingestion, or failed cleanup is red"}
+}

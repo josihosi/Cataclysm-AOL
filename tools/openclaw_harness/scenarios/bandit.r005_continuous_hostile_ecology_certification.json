@@ -1,0 +1,53 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r005_continuous_hostile_ecology_certification",
+  "description": "One natural hostile-ecology certification round. R-001 binding and round isolation, R-002 diagnostic boundaries, and R-004 durable actor ownership are prerequisites; save/quit/relaunch remains inside this same round.",
+  "capabilities": {
+    "capabilities.bandit.r005": "continuous_hostile_ecology_lifecycle",
+    "capabilities.bandit.r005.prerequisites": ["R-001", "R-002", "R-004"]
+  },
+  "runtime_contract": {
+    "permitted_input": ["ordinary-overmap-route", "long_wait:6h", "bubble-crossing", "press:S", "press:Y"],
+    "forbidden_input": ["diagnostic_replay", "checkpoint_rollback", "segment_splice", "replacement_world", "replacement_identity", "fixture-mutation", "scenario-mutation", "debug:ecology_edit", "raw-save-rewrite"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_r005_natural_hostile_ecology_v0",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "bandit_r005_natural_hostile_ecology_v0", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "cleanup": true, "input": ["ordinary-overmap-route", "long_wait:6h", "bubble-crossing", "press:S", "press:Y"]},
+    "grants_gameplay_proof": false
+  },
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r005_natural_hostile_ecology_v0",
+  "fixture_profile": "live-debug",
+  "run_class": "non_combat",
+  "observer_character": true,
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "steps": [
+    {"kind": "wait", "label": "declared_world", "seconds": 1, "capture_after": true},
+    {"kind": "ordinary_overmap_route_constructor", "label": "departure_and_overmap_advance", "origin_omt": [140, 41, 0], "destination_omt": [140, 31, 0], "cursor_keys": ["up", "up", "up", "up", "up", "up", "up", "up", "up", "up"], "route_key": "W", "abort_on_metadata_failure": true},
+    {"kind": "type", "label": "confirm_departure_route", "text": "W", "settle_seconds": 0.5},
+    {"kind": "type", "label": "accept_departure_route", "text": "Y", "settle_seconds": 30, "native_travel_stabilization": {"mode": "continue_exact_hostile_auto_move_until_hud", "require_completed_destination_cleared": true, "expected_destination_omt": [140, 31, 0]}},
+    {"kind": "long_wait", "label": "advance_natural_ecology_window", "choice_key": "8", "expected_duration": "6h", "pre_menu_choice_key": "w", "allow_hostile_auto_move_cancel": true, "continue_hostile_auto_move": true, "hostile_auto_move_continuation": {"actor": "feral human", "native_prompt": "feral human spotted! Cancel auto move? (Case Sensitive)", "observed_prompt": "eral human spotted! Cancel auto move? (Case Sensitive", "response_key": "N"}, "allow_artifact_elapsed_without_menu_ocr": true, "completion_wait_seconds": 30, "completion_artifact_timeout_seconds": 120, "artifact_state_patterns": ["bandit_live_world"]},
+    {"kind": "audit_log_contains", "label": "bubble_crossing_out_and_actor_outcomes", "required_line_patterns": [["bandit_live_world", "committed"]]},
+    {"kind": "press", "label": "save", "keys": ["S"], "settle_seconds": 1},
+    {"kind": "press", "label": "quit", "keys": ["Y"], "settle_seconds": 3},
+    {"kind": "audit_saved_bandit_live_world_state", "label": "relaunch_and_bubble_crossing_in", "required_site_id_contains": "overmap_special:bandit_camp", "required_active_outing_exact_pair": true},
+    {"kind": "audit_log_contains", "label": "return_report", "required_line_patterns": [["bandit_live_world", "receipt", "committed"]]},
+    {"kind": "audit_saved_bandit_live_world_state", "label": "camp_decision", "required_site_id_contains": "overmap_special:bandit_camp"}
+  ],
+  "proof_gates": [
+    {"id": "declared_world", "label": "One declared natural world", "boundary_step": "declared_world", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true}}], "checkpoint_safe_ui": {"semantic_state": {"required": true}}},
+    {"id": "departure", "label": "Departure and overmap advance", "boundary_step": "departure_and_overmap_advance", "predecessors": ["declared_world"], "expectations": [{"kind": "structured_event", "predicate": {"same_run": true, "continuity_fields": ["round_id", "binding_id", "actor_ids"]}}], "checkpoint_safe_ui": {"semantic_state": {"required": true}}},
+    {"id": "bubble_crossings", "label": "Both bubble crossings and actor outcomes", "boundary_step": "bubble_crossing_out_and_actor_outcomes", "predecessors": ["departure"], "expectations": [{"kind": "structured_event", "predicate": {"outcome": "committed", "continuity_fields": ["round_id", "binding_id", "actor_ids", "simulation_owner"]}}], "checkpoint_safe_ui": {"semantic_state": {"required": true}}},
+    {"id": "save_quit_relaunch", "label": "Save quit and relaunch in one round", "boundary_step": "relaunch_and_bubble_crossing_in", "predecessors": ["bubble_crossings"], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true, "continuity_fields": ["round_id", "binding_id", "actor_ids"]}}], "checkpoint_safe_ui": {"semantic_state": {"required": true}}},
+    {"id": "return_report", "label": "Return report and downstream camp decision", "boundary_step": "camp_decision", "predecessors": ["save_quit_relaunch"], "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true, "continuity_fields": ["round_id", "binding_id", "actor_ids", "simulation_owner"]}}], "checkpoint_safe_ui": {"semantic_state": {"required": true}}}
+  ],
+  "proof_route": {"gates": ["declared_world", "departure", "bubble_crossings", "save_quit_relaunch", "return_report"], "terminal": ["return_report"], "capability_gates": {"capabilities.bandit.r005": {"terminal": ["return_report"]}, "capabilities.bandit.r005.prerequisites": {"startup": ["declared_world"]}}}
+}

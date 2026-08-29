@@ -14,7 +14,9 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from startup_harness import (
     StructuredTransitionEventReader,
     bind_transition_event_stream,
+    evaluate_causal_boundary,
     evaluate_structured_proof_gates,
+    execute_probe_steps,
     build_first_divergence_diagnostic,
     normalize_saved_artifact_receipt,
     summarize_noncommitted_transition_events,
@@ -44,6 +46,156 @@ def event(sequence: int, run_id: str = "run-a", **fields):
 
 
 class TransitionEventReaderTest(unittest.TestCase):
+    def test_causal_owner_boundary_uses_first_exact_same_run_event(self):
+        gates = [
+            {
+                "id": "local_owner", "boundary_step": "persist_local", "expectations": [{
+                    "kind": "structured_event", "predicate": {
+                        "domain": "bandit_live_world", "transition": "local_pair_handoff",
+                        "outcome": "committed", "actor_ids": [101, 102],
+                        "simulation_owner": "local",
+                    },
+                }],
+            },
+            {
+                "id": "abstract_owner", "boundary_step": "persist_abstract", "expectations": [{
+                    "kind": "structured_event", "predicate": {
+                        "domain": "bandit_live_world", "transition": "local_pair_dematerialization",
+                        "outcome": "committed", "actor_ids": [101, 102],
+                        "simulation_owner": "abstract",
+                    },
+                }],
+            },
+        ]
+        wrong_run = event(1, run_id="other", domain="bandit_live_world", transition="local_pair_handoff", actor_ids=[101, 102], simulation_owner="local")
+        wrong_actor = event(2, domain="bandit_live_world", transition="local_pair_handoff", actor_ids=[101, 999], simulation_owner="local")
+        wrong_owner = event(3, domain="bandit_live_world", transition="local_pair_handoff", actor_ids=[101, 102], simulation_owner="abstract")
+        local = event(4, domain="bandit_live_world", transition="local_pair_handoff", actor_ids=[101, 102], simulation_owner="local")
+        abstract = event(5, domain="bandit_live_world", transition="local_pair_dematerialization", actor_ids=[101, 102], simulation_owner="abstract")
+
+        pending = evaluate_causal_boundary(gates, gate_id="local_owner", events=[wrong_run, wrong_actor, wrong_owner], run_id="run-a")
+        self.assertEqual(pending["status"], "pending")
+        stopped = evaluate_causal_boundary(gates, gate_id="local_owner", events=[wrong_run, wrong_actor, wrong_owner, local, abstract], run_id="run-a")
+        self.assertEqual(stopped["status"], "matched")
+        self.assertEqual(stopped["first_matching_event"]["sequence"], 4)
+        later = evaluate_causal_boundary(gates, gate_id="abstract_owner", events=[wrong_run, wrong_actor, wrong_owner, local, abstract], run_id="run-a")
+        self.assertEqual(later["status"], "matched")
+        self.assertEqual(later["first_matching_event"]["sequence"], 5)
+
+    def test_causal_boundary_stops_before_unmarked_wait_and_allows_declared_persistence(self):
+        gates = [{
+            "id": "local_owner", "boundary_step": "persist_local", "expectations": [{
+                "kind": "structured_event", "predicate": {
+                    "domain": "bandit_live_world", "transition": "local_pair_handoff",
+                    "outcome": "committed", "actor_ids": [101, 102], "simulation_owner": "local",
+                },
+            }],
+        }]
+        matched = event(1, domain="bandit_live_world", transition="local_pair_handoff", actor_ids=[101, 102], simulation_owner="local")
+        with tempfile.TemporaryDirectory() as temp:
+            run_dir = Path(temp)
+            (run_dir / "transition.events.binding.json").write_text('{"run_id":"run-a"}', encoding="utf-8")
+            blocked = execute_probe_steps(
+                0, run_dir, [{"kind": "wait", "label": "queued_wait", "seconds": 0.001}],
+                profile="unused", world="unused", structured_events=[matched],
+                causal_boundary_gate_id="local_owner", causal_boundary_gates=gates,
+            )
+            persisted = execute_probe_steps(
+                0, run_dir, [{
+                    "kind": "wait", "label": "persist_now", "seconds": 0.001,
+                    "causal_boundary_persistence_for": "local_owner",
+                }], profile="unused", world="unused", structured_events=[matched],
+                causal_boundary_gate_id="local_owner", causal_boundary_gates=gates,
+            )
+        self.assertEqual(blocked[0]["abort"]["status"], "blocked_causal_boundary_progression")
+        self.assertEqual(blocked[0]["causal_boundary"]["first_matching_event"]["sequence"], 1)
+        self.assertEqual(persisted[0]["label"], "persist_now")
+
+    def test_schema11_local_return_receipt_uses_authoritative_active_outing_identity(self):
+        metadata = {
+            "matching_sites": [{
+                "site_id": "overmap_special:bandit_camp@177,13,0",
+                "active_outing": {
+                    "schema_version": 11,
+                    "is_active": True,
+                    "kind": "structural_sortie",
+                    "activity_id": "camp-r008#structural",
+                    "generation": 1,
+                    "member_ids": [4, 5],
+                    "simulation_owner": "local",
+                    "handoff_epoch": 1,
+                    "exact_pair_with_leader": True,
+                    "pair_contract_valid": True,
+                    "local_return_eligibility": {"valid": True},
+                },
+                "current_scout_report": {
+                    "present": True,
+                    "source_activity_id": "stale-scout-report",
+                    "source_generation": 8,
+                    "carrier_ids": [81, 82],
+                },
+                "active_hostile_operation": {"reservation": {
+                    "activity_id": "replacement-operation",
+                    "generation": 9,
+                    "member_ids": [91, 92],
+                }},
+            }],
+        }
+
+        receipt = normalize_saved_artifact_receipt(
+            metadata, "audit_saved_bandit_live_world_state"
+        )
+
+        self.assertEqual(receipt["identity"], {
+            "site_id": "overmap_special:bandit_camp@177,13,0",
+            "operation_id": "camp-r008#structural",
+            "generation": 1,
+            "actor_ids": [4, 5],
+            "source": "schema11_active_outing_local_return",
+            "simulation_owner": "local",
+            "handoff_epoch": 1,
+        })
+
+    def test_invalid_schema11_local_return_receipt_cannot_fall_back_to_other_identity(self):
+        metadata = {
+            "matching_sites": [{
+                "site_id": "overmap_special:bandit_camp@177,13,0",
+                "active_outing": {
+                    "schema_version": 11,
+                    "is_active": True,
+                    "kind": "structural_sortie",
+                    "activity_id": "camp-r008#structural",
+                    "generation": 1,
+                    "member_ids": [4, 4],
+                    "simulation_owner": "local",
+                    "handoff_epoch": 1,
+                    "exact_pair_with_leader": False,
+                    "pair_contract_valid": False,
+                    "local_return_eligibility": {"valid": False},
+                },
+                "current_scout_report": {
+                    "present": True,
+                    "source_activity_id": "stale-scout-report",
+                    "source_generation": 8,
+                    "carrier_ids": [81, 82],
+                },
+                "active_hostile_operation": {"reservation": {
+                    "activity_id": "replacement-operation",
+                    "generation": 9,
+                    "member_ids": [91, 92],
+                }},
+            }],
+        }
+
+        receipt = normalize_saved_artifact_receipt(
+            metadata, "audit_saved_bandit_live_world_state"
+        )
+
+        self.assertEqual(receipt["identity"]["source"], "invalid_schema11_active_outing")
+        self.assertEqual(receipt["identity"]["operation_id"], "")
+        self.assertEqual(receipt["identity"]["generation"], 0)
+        self.assertEqual(receipt["identity"]["actor_ids"], [])
+
     def test_first_divergence_is_earliest_red_even_when_later_gate_is_green(self):
         gates = [
             {"id": "depart", "label": "departure", "predecessors": [], "expectations": [{"kind": "structured_event", "predicate": {"transition": "depart"}}]},
@@ -411,7 +563,7 @@ class TransitionEventReaderTest(unittest.TestCase):
                     "required_fields": {"required_active_outside_count": 0},
                     "matching_sites": [{
                         "site_id": "overmap_special:bandit_camp@164,39,0",
-                        "active_outing": {"is_active": False},
+                        "active_outing": {"is_active": False, "handoff_epoch": 3},
                         "current_scout_report": {
                             "present": True,
                             "source_activity_id": "camp#scout-7",
@@ -435,7 +587,7 @@ class TransitionEventReaderTest(unittest.TestCase):
             handoff = event(
                 1, domain="bandit_live_world", transition="local_pair_handoff",
                 site_id="overmap_special:bandit_camp@164,39,0",
-                operation_id="camp#scout-7", generation=7, actor_ids=[101, 102],
+                operation_id="camp#scout-7", generation=7, actor_ids=[101, 102], handoff_epoch=3,
             )
             gates = [
                 {
@@ -443,7 +595,7 @@ class TransitionEventReaderTest(unittest.TestCase):
                     "expectations": [{"kind": "structured_event", "predicate": {
                         "domain": "bandit_live_world", "transition": "local_pair_handoff",
                         "outcome": "committed",
-                        "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids"],
+                        "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids", "handoff_epoch"],
                     }}],
                 },
                 {
@@ -453,7 +605,7 @@ class TransitionEventReaderTest(unittest.TestCase):
                         "artifact_kind": "audit_saved_bandit_live_world_state",
                         "status": "required_state_present", "artifact_hash_present": True,
                         "same_run": True,
-                        "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids"],
+                        "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids", "handoff_epoch"],
                     }}],
                 },
             ]
@@ -465,6 +617,7 @@ class TransitionEventReaderTest(unittest.TestCase):
             self.assertEqual(scout_receipt["identity"]["source"], "current_scout_report")
             self.assertEqual(scout_receipt["identity"]["operation_id"], "camp#scout-7")
             self.assertEqual(scout_receipt["identity"]["actor_ids"], [101, 102])
+            self.assertEqual(scout_receipt["identity"]["handoff_epoch"], 3)
             green = evaluate_structured_proof_gates(
                 gates, events=[handoff], watermarks=watermarks,
                 saved_artifacts=[scout_receipt], run_id="run-a",

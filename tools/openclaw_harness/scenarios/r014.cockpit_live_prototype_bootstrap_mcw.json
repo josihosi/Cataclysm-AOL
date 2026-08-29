@@ -1,0 +1,205 @@
+{
+  "capabilities": {
+    "capabilities.r014.live_prototype_bootstrap": "source_bound_zero_credit_cockpit_live_route",
+    "capabilities.r014.native_observe": "native_avatar_visible_observation",
+    "capabilities.r014.native_action": "frame_bound_native_action",
+    "capabilities.r014.approved_recovery": "advertised_activity_recovery",
+    "capabilities.r014.fresh_observation": "post_transaction_native_observation",
+    "capabilities.r014.run_finish": "worker_owned_immutable_terminal_report",
+    "capabilities.r014.run_ingestion": "registry_owned_immutable_report_ingestion",
+    "capabilities.r014.long_activity_boundaries": "native_activity_boundaries_without_per_turn_stream",
+    "capabilities.r014.run_cleanup": "bound_process_and_session_cleanup",
+    "runtime.r014.source_binding": "r013_wait_activity_interrupt_bootstrap_v1:r009-m095"
+  },
+  "description": "Zero-credit R-014 bootstrap. It validates the current source-bound fixture and declares the smallest live cockpit surface needed to observe, issue one native action, recover only the advertised activity interruption, return a fresh observation, retain long-activity boundaries, finish, ingest, and clean up. Setup and this bootstrap grant no gameplay or certification credit.",
+  "evidence_contract": {
+    "claim": "the current source-bound R-014 prototype footing is selectable and may receive exactly one canonical live cockpit authority; setup and bootstrap artifacts remain zero-credit",
+    "failure_rule": "a changed source or fixture, missing required stabilizer, unadvertised native action or recovery, missing fresh observation or long-activity boundary, absent terminal report/ingestion, or failed cleanup leaves the R-014 live route unproved; no setup artifact may be promoted"
+  },
+  "fixture": "r013_wait_activity_interrupt_bootstrap_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "manifest_version": 2,
+  "name": "r014.cockpit_live_prototype_bootstrap_mcw",
+  "observer_character": true,
+  "profile": "r009-m095",
+  "proof_gates": [
+    {
+      "boundary_step": "bind_r014_live_prototype_observation",
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:",
+          "Wield:"
+        ]
+      },
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "r014_live_prototype_bootstrap",
+            "gameplay_credit": false
+          }
+        }
+      ],
+      "id": "r014_live_prototype_footing_bound",
+      "label": "R-014 source-bound zero-credit cockpit prototype footing",
+      "predecessors": []
+    }
+  ],
+  "proof_route": {
+    "capability_gates": {
+      "capabilities.r014.live_prototype_bootstrap": {
+        "startup": [
+          "r014_live_prototype_footing_bound"
+        ]
+      }
+    },
+    "gates": [
+      "r014_live_prototype_footing_bound"
+    ],
+    "terminal": [
+      "r014_live_prototype_footing_bound"
+    ]
+  },
+  "replace_existing_worlds": true,
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION"
+  ],
+  "run_class": "non_combat",
+  "setup_contract": {
+    "required_monster": {
+      "offset_ms": [
+        6,
+        0,
+        0
+      ],
+      "typeid": "mon_zombie_dog"
+    }
+  },
+  "runtime_contract": {
+    "disposable_copy": true,
+    "forbidden_input": [
+      "debug:teleport",
+      "debug:spawn",
+      "debug:ecology_edit",
+      "raw-save-rewrite",
+      "fixture-save-transform-after-install",
+      "guessed-key",
+      "direct-state-mutation"
+    ],
+    "grants_gameplay_proof": false,
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "permitted_input": [
+      "cockpit:game.observe",
+      "semantic:world.wait",
+      "semantic:wait.duration_menu",
+      "semantic:wait.1m",
+      "semantic:activity.ignore",
+      "cockpit:run.finish"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r009-m095",
+    "fixture": "r013_wait_activity_interrupt_bootstrap_v1",
+    "requirements": {
+      "cleanup": true,
+      "executable": "cataclysm-tiles",
+      "fixture": "r013_wait_activity_interrupt_bootstrap_v1",
+      "helper": "Peekaboo",
+      "input": [
+        "frame-bound semantic wait and advertised activity recovery"
+      ],
+      "ocr": true,
+      "os": "macos",
+      "peekaboo": true,
+      "profile": "r009-m095",
+      "source": "current-worktree"
+    },
+    "setup_only_debug": true
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r013_wait_activity_interrupt_bootstrap_v1/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/r009-m095.json"
+  },
+  "steps": [
+    {
+      "expected_visible_fact": "the declared native in-game main menu is dismissed before the source-bound gameplay frame is observed",
+      "keys": [
+        "escape"
+      ],
+      "kind": "press",
+      "label": "dismiss_declared_in_game_main_menu"
+    },
+    {
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_reason": "the source-bound R-014 fixture did not reach ordinary gameplay",
+      "abort_verdict": "blocked_r014_live_prototype_hud_missing",
+      "capture_after": true,
+      "expected_screen_text_after_contains": [
+        "Move:",
+        "Wield:"
+      ],
+      "expected_visible_fact": "the installed current fixture reaches ordinary gameplay before a worker-owned live cockpit is opened",
+      "extract_text_after_capture": true,
+      "kind": "wait",
+      "label": "bind_r014_live_prototype_footing",
+      "seconds": 2.0
+    },
+    {
+      "expected_visible_fact": "the canonical launcher verifies the first run-bound native world frame before cockpit observation without sending an incidental input",
+      "kind": "native_semantic_bootstrap",
+      "label": "emit_r014_native_semantic_bootstrap",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world"
+      }
+    },
+    {
+      "artifact_kind": "r014_live_prototype_bootstrap",
+      "expected_visible_fact": "one current native game.observe result binds the R-014 live cockpit footing without awarding gameplay credit",
+      "kind": "cockpit_observe",
+      "label": "bind_r014_live_prototype_observation",
+      "r014_step_evidence": true
+    },
+    {
+      "authority": [
+        "advertised native cockpit actions",
+        "activity.ignore only when a current native interruption advertises it"
+      ],
+      "expected_visible_fact": "the worker owns one bound live prototype transaction: native action, only advertised recovery, a new avatar-visible observation, explicit finish, immutable ingestion, and accepted cleanup",
+      "invariants": [
+        "preserve the bootstrap scenario, exact source and executable binding, fixture world, player, and current native session",
+        "do not use debug state mutation, repair authority, or setup artifacts as gameplay proof",
+        "finish on a confirmed transaction or the first unsafe, unclassified, stale, missing-receipt, binding-drift, or no-progress divergence"
+      ],
+      "kind": "cockpit_live_session",
+      "label": "r014_worker_owned_live_prototype",
+      "objective": "Use the bound cockpit to perform one advertised native action, recover only an advertised activity interruption if it occurs, receive a fresh observation, report the unsupported action once as a reusable gap, retrieve that gap for the declared companion scenario, and explicitly finish.",
+      "observe_interval_seconds": 0.1,
+      "r014_step_evidence": true,
+      "proof_targets": [
+        "one native action has a bound receipt and confirmed postcondition",
+        "a fresh observation follows the transaction",
+        "an unsupported action creates exactly one reusable durable gap and the companion scenario can retrieve it",
+        "run.finish creates an immutable report that the registry ingests only after accepted cleanup"
+      ],
+      "transition_timeout_seconds": 10.0
+    }
+  ],
+  "wait_input_trace": true,
+  "world": "McWilliams"
+}

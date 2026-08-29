@@ -1,0 +1,129 @@
+{
+  "manifest_version": 2,
+  "name": "r012.live_avatar_visible_bootstrap_mcw",
+  "description": "Zero-gameplay-credit live bootstrap for a later independent R-012 observation proof.  It binds one native avatar-visible terrain target while an explicitly staged zombie dog remains twelve map squares south, outside the native 3x3 observation payload.  A later worker may move the avatar south and call game.look on the pre-move opaque handle; this bootstrap does not perform that stale-handle validation.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r012_avatar_visible_bootstrap_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION"
+  ],
+  "wait_input_trace": true,
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "capabilities": {
+    "runtime.r012.live_avatar_observation_bootstrap": "native_avatar_visible_target_with_offscreen_zombie_dog"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.observe"
+    ],
+    "forbidden_input": [
+      "debug:teleport",
+      "debug:spawn",
+      "debug:ecology_edit",
+      "raw-save-rewrite",
+      "fixture-save-transform-after-install",
+      "game.look"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "dev-harness",
+    "fixture": "r012_avatar_visible_bootstrap_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "r012_avatar_visible_bootstrap_v1",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": [
+        "native game.observe only"
+      ],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_gates": [
+    {
+      "id": "r012_live_observation_bootstrap_bound",
+      "label": "R-012 live observation bootstrap binding",
+      "boundary_step": "bind_native_avatar_visible_observation",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "r012_live_observation_bootstrap",
+            "gameplay_credit": false
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:"
+        ]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": [
+      "r012_live_observation_bootstrap_bound"
+    ],
+    "terminal": [
+      "r012_live_observation_bootstrap_bound"
+    ],
+    "capability_gates": {
+      "runtime.r012.live_avatar_observation_bootstrap": {
+        "startup": [
+          "r012_live_observation_bootstrap_bound"
+        ]
+      }
+    }
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_r012_bootstrap_hud",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": [
+        "Move:"
+      ],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r012_bootstrap_hud_missing",
+      "abort_reason": "the source-bound R-012 fixture did not reach ordinary gameplay"
+    },
+    {
+      "kind": "cockpit_observe",
+      "label": "bind_native_avatar_visible_observation",
+      "movement_route": "Later independent validation: retain one opaque handle from this game.observe result, make one ordinary south movement, then call game.look on the old handle and require stale_visible_handle.  The dog starts at offset_ms=[0,12,0], outside the native 3x3 payload; no dog observation or gameplay behavior is asserted here.",
+      "expected_visible_fact": "one avatar-visible native terrain target is bound through game.observe without exposing the offscreen zombie dog"
+    }
+  ],
+  "evidence_contract": {
+    "claim": "only source/setup binding and the live native game.observe boundary are prepared; this scenario grants zero gameplay credit",
+    "failure_rule": "a missing native frame, empty avatar-visible payload, incompatible source fixture, missing required stabilizer, or failed cleanup leaves the later R-012 proof unproved; do not infer stale-handle behavior from this bootstrap"
+  }
+}

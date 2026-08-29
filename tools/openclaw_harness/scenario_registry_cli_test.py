@@ -7,6 +7,7 @@ import argparse
 import hashlib
 import io
 import json
+import os
 from pathlib import Path
 import sqlite3
 import subprocess
@@ -25,6 +26,7 @@ import scenario_registry_cli  # noqa: E402
 import startup_harness  # noqa: E402
 from scenario_registry_store import (  # noqa: E402
     BindingAdapters,
+    RegistryRepairToken,
     ScenarioRegistryStoreError,
     claim_bootstrap_token_for_launch,
     execute_registry_query,
@@ -45,6 +47,22 @@ from startup_harness import finalize_probe_report  # noqa: E402
 
 
 class ScenarioRegistryCliTest(unittest.TestCase):
+    def test_detached_live_namespaces_force_bounded_terminal_stdout(self) -> None:
+        scenario = "bandit.r008_natural_safe_watch_validation_mcw"
+        source_path = str(startup_harness.scenario_path(scenario))
+        selection = scenario_registry_cli.RegistryBootstrapToken(
+            "token", True, "accepted", scenario, source_path, {},
+        )
+        repair = RegistryRepairToken("token", True, "accepted", scenario, source_path, {})
+        bootstrap = scenario_registry_cli._registry_bootstrap_probe_namespace(
+            selection, cockpit_live_session=True,
+        )
+        repaired = scenario_registry_cli._registry_repair_probe_namespace(
+            repair, cockpit_live_session=True,
+        )
+        self.assertTrue(bootstrap.compact_stdout)
+        self.assertTrue(repaired.compact_stdout)
+
     def strict_manifest(self) -> dict:
         return {
             "manifest_version": 1,
@@ -346,6 +364,18 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 reloaded = reload_selection_token_for_launch(connection, str(canonical.token_id))
                 self.assertTrue(reloaded.accepted)
                 self.assertEqual(reloaded.reason, "current_bootstrap_authority")
+
+                manifest["description"] = "a second current manifest with stale prior verification"
+                self.write_json(manifest_path, manifest)
+                rebuild_manifest_projection(connection, scenarios)
+                released_again = revalidate_current_bootstrap_authority(
+                    connection, request, current_facts=lambda _manifest: current_facts,
+                )
+                self.assertTrue(released_again["accepted"])
+                reconcile_report_bindings(connection, adapters=adapters)
+                canonical_again = execute_registry_query(connection, request, drafts_root=root / "drafts")
+                self.assertIsNotNone(canonical_again.token_id)
+
                 bootstrap = issue_registry_bootstrap_token(
                     connection, request, runtime_binding=self.bootstrap_runtime(executable)
                 )
@@ -419,10 +449,12 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
                 result = scenario_registry_cli.main([
                     "--registry", str(registry_path), "registry-bootstrap-launch", bootstrap.token_id,
+                    "--adaptive-semantic-autodrive",
                 ])
 
             self.assertEqual(result, 29)
             run_probe.assert_called_once()
+            self.assertTrue(run_probe.call_args.args[0].adaptive_semantic_autodrive)
             receipt = json.loads(run_probe.call_args.args[0].registry_launch_receipt)
             self.assertEqual(receipt["authority_kind"], "registry_bootstrap_first_compatible_run")
             self.assertEqual(receipt["token_id"], bootstrap.token_id)
@@ -467,6 +499,200 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 ("bootstrap_invalidated", "runtime_binding_changed"),
                 self.token_events(registry_path, bootstrap.token_id),
             )
+
+    def test_bootstrap_live_session_without_bound_bridge_keeps_authority_unclaimed(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            self.write_json(scenarios / "bootstrap.json", self.strict_manifest())
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"bootstrap runtime")
+            registry_path = root / "registry.sqlite3"
+            connection = open_registry(str(registry_path))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+                bootstrap = issue_registry_bootstrap_token(
+                    connection,
+                    parse_registry_query_request(self.bootstrap_request()),
+                    runtime_binding=self.bootstrap_runtime(executable),
+                )
+            finally:
+                connection.close()
+
+            with mock.patch.dict(os.environ, {"OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": ""}), \
+                    mock.patch.object(startup_harness, "run_probe_mode") as run_probe, \
+                    redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
+                result = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-bootstrap-launch", bootstrap.token_id,
+                ])
+
+            self.assertEqual(result, 1)
+            run_probe.assert_not_called()
+            self.assertEqual(self.token_events(registry_path, bootstrap.token_id), [
+                ("bootstrap_issued", "first_compatible_evidence_run"),
+            ])
+
+    def test_bootstrap_detached_launch_uses_file_bridge_without_claiming_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            self.write_json(scenarios / "bootstrap.json", self.strict_manifest())
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"bootstrap runtime")
+            registry_path = root / "registry.sqlite3"
+            session_dir = root / "bridge-session"
+            connection = open_registry(str(registry_path))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+                bootstrap = issue_registry_bootstrap_token(
+                    connection,
+                    parse_registry_query_request(self.bootstrap_request()),
+                    runtime_binding=self.bootstrap_runtime(executable),
+                )
+            finally:
+                connection.close()
+            bridge_result = subprocess.CompletedProcess(
+                [], 0,
+                stdout=json.dumps({"ok": True, "bridge_pid": 123, "session_dir": str(session_dir)}),
+                stderr="",
+            )
+            with mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}), \
+                    mock.patch.object(scenario_registry_cli.subprocess, "run", return_value=bridge_result) as run, \
+                    mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
+                exit_code = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-bootstrap-detached-launch",
+                    bootstrap.token_id, "--session-dir", str(session_dir),
+                ])
+
+            self.assertEqual(exit_code, 0)
+            command = run.call_args.args[0]
+            self.assertIn("cockpit_file_bridge.py", command[1])
+            self.assertIn("start", command)
+            self.assertIn("registry-bootstrap-launch", command)
+            self.assertIn(bootstrap.token_id, command)
+            self.assertIn("--cockpit-live-session", command)
+            self.assertIn("--adaptive-semantic-autodrive", command)
+            result = write_result.call_args.args[0]
+            self.assertTrue(result["ok"])
+            self.assertEqual(result["bootstrap_token"], bootstrap.token_id)
+            self.assertEqual(result["bridge"]["bridge_pid"], 123)
+            self.assertEqual(self.token_events(registry_path, bootstrap.token_id), [
+                ("bootstrap_issued", "first_compatible_evidence_run"),
+            ])
+
+    def test_query_routes_current_contradiction_to_query_bound_repair(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            manifest_path = scenarios / "repair.json"
+            self.write_json(manifest_path, self.strict_manifest())
+            executable = root / "cataclysm-tiles"
+            executable.write_bytes(b"repair runtime")
+            report = self.report(manifest_path, executable)
+            report["proof_classification"].update({
+                "status": "red",
+                "verdict": "repair contradiction",
+                "evidence_class": "startup/load",
+                "feature_proof": False,
+            })
+            report.update({
+                "verdict": "red route",
+                "evidence_class": "startup/load",
+                "feature_proof": False,
+            })
+            report_path = root / "red.probe.report.json"
+            self.write_json(report_path, report)
+            registry_path = root / "registry.sqlite3"
+            connection = open_registry(str(registry_path))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+                adapters = BindingAdapters(
+                    runtime=lambda _expected: {"status": "compatible", "facts": {}},
+                    fixture=lambda _expected: {"status": "compatible", "facts": {
+                        "source_sha256": hashlib.sha256(b"fixture").hexdigest(),
+                    }},
+                    profile=lambda _expected: {"status": "compatible", "facts": {
+                        "source_sha256": hashlib.sha256(b"profile").hexdigest(),
+                    }},
+                )
+                red = ingest_report_reference(connection, report_path, adapters=adapters)
+                route_key = str(connection.execute(
+                    "SELECT route_key FROM verification_history WHERE verification_id = ?",
+                    (red["verification_id"],),
+                ).fetchone()[0])
+                manifest_id = str(connection.execute(
+                    "SELECT manifest_id FROM verification_history WHERE verification_id = ?",
+                    (red["verification_id"],),
+                ).fetchone()[0])
+            finally:
+                connection.close()
+
+            query = self.bootstrap_request()
+            queried = self.run_cli(
+                "--registry", str(registry_path), "registry-query", "--query-json", json.dumps(query),
+            )
+            self.assertEqual(queried.returncode, 0, queried.stderr)
+            query_result = json.loads(queried.stdout)["result"]
+            self.assertIsNone(query_result["token_id"])
+            self.assertTrue(Path(query_result["draft_path"]).is_file())
+            action = query_result["next_action"]
+            self.assertEqual(action["reason"], "closest_query_candidate_has_current_unresolved_contradiction")
+            self.assertEqual(action["required_identifiers"], {
+                "query_id": query_result["query_id"],
+                "manifest_id": manifest_id,
+                "route_key": route_key,
+                "red_verification_id": red["verification_id"],
+            })
+            self.assertEqual(action["command"]["cli"], [
+                "registry-repair-bootstrap", "--query-id", query_result["query_id"],
+            ])
+
+            binding = {
+                "runtime": self.bootstrap_runtime(executable),
+                "fixture": {
+                    "status": "compatible", "name": "", "profile": "",
+                    "source_path": str(root),
+                    "source_sha256": hashlib.sha256(b"fixture").hexdigest(),
+                },
+                "profile": {
+                    "status": "compatible", "name": "", "profile": "",
+                    "source_path": str(root),
+                    "source_sha256": hashlib.sha256(b"profile").hexdigest(),
+                },
+            }
+            with mock.patch.object(scenario_registry_cli, "_current_repair_binding", return_value=binding), \
+                    mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
+                exit_code = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-repair-bootstrap",
+                    "--query-id", query_result["query_id"],
+                ])
+            self.assertEqual(exit_code, 0)
+            repair = write_result.call_args.args[0]["result"]
+            self.assertTrue(repair["accepted"], repair["reason"])
+
+            connection = open_registry(str(registry_path))
+            try:
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM token_history WHERE event_kind = 'issued'"
+                ).fetchone()[0], 0)
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM token_history WHERE token_id = ? AND event_kind = 'repair_issued'",
+                    (repair["token_id"],),
+                ).fetchone()[0], 1)
+                self.assertEqual(
+                    connection.execute(
+                        "SELECT evidence_state FROM capability_evidence_history "
+                        "WHERE manifest_id = ? AND capability_key = '_registry.proof_route' "
+                        "ORDER BY capability_evidence_id DESC LIMIT 1",
+                        (manifest_id,),
+                    ).fetchone()[0],
+                    "contradicted",
+                )
+            finally:
+                connection.close()
 
     def test_repair_cli_uses_its_own_claimed_canonical_launch_and_rejects_ordinary_launch(self) -> None:
         def issue_repair(root: Path) -> tuple[Path, Path, str, dict]:
@@ -569,9 +795,12 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 ])
             self.assertEqual(result, 31)
             run_probe.assert_called_once()
+            self.assertTrue(run_probe.call_args.args[0].adaptive_semantic_autodrive)
             receipt = json.loads(run_probe.call_args.args[0].registry_launch_receipt)
             self.assertEqual(receipt["authority_kind"], "registry_repair_exact_contradiction")
             self.assertEqual(receipt["token_id"], token_id)
+            self.assertEqual(receipt["wec_authority"]["evidence_class"], "focused feature proof")
+            self.assertEqual(receipt["wec_authority"]["run_id"], token_id)
             connection = open_registry(str(registry_path))
             try:
                 expected_red = connection.execute(
@@ -600,6 +829,58 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(rejected["status"], "rejected")
             self.assertEqual(rejected["reason"], "receipt_contradiction_changed")
 
+    def test_repair_detached_launch_uses_file_bridge_without_claiming_authority(self) -> None:
+        """Repair authority reaches the live owner only through the bound file bridge."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            session_dir = root / "bridge-session"
+            args = argparse.Namespace(
+                command="registry-repair-detached-launch",
+                repair_token="repair-token",
+                session_dir=str(session_dir),
+            )
+            selection = RegistryRepairToken(
+                "repair-token", True, "current", "repair", str(root / "repair.json"),
+                {"executable_sha256": "exe", "runtime_source_sha256": "source"},
+            )
+            issued = {
+                "manifest_id": "manifest", "verification_id": "5bb0e5f8", "route_key": "route",
+                "details_json": json.dumps({
+                    "authority_kind": "registry_repair_exact_contradiction",
+                    "manifest_id": "manifest", "route_key": "route",
+                    "red_verification_id": "5bb0e5f8", "binding": {"runtime": selection.runtime_binding},
+                }),
+            }
+            connection = mock.Mock()
+            connection.execute.side_effect = [mock.Mock(fetchone=mock.Mock(return_value=issued)),
+                                              mock.Mock(fetchone=mock.Mock(return_value={
+                                                  "declaration_json": "{}"}))]
+            bridge_result = subprocess.CompletedProcess(
+                [], 0, stdout=json.dumps({"ok": True, "bridge_pid": 123}), stderr="",
+            )
+            with mock.patch.object(scenario_registry_cli, "open_registry", return_value=connection), \
+                    mock.patch.object(scenario_registry_cli, "_current_repair_binding", return_value={}), \
+                    mock.patch.object(scenario_registry_cli, "reload_repair_token_for_launch", return_value=selection), \
+                    mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}), \
+                    mock.patch.object(scenario_registry_cli, "_declared_pre_descriptor_prefix", return_value=[]), \
+                    mock.patch.object(scenario_registry_cli.subprocess, "run", return_value=bridge_result) as run, \
+                    mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
+                result = scenario_registry_cli._launch_repair_file_bridge(args, root / "registry.sqlite3")
+
+            self.assertEqual(result, 0)
+            command = run.call_args.args[0]
+            self.assertIn("cockpit_file_bridge.py", command[1])
+            self.assertIn("registry-repair-launch", command)
+            self.assertIn("--cockpit-live-session", command)
+            self.assertIn("--adaptive-semantic-autodrive", command)
+            self.assertIn("repair-token", command)
+            receipt = write_result.call_args.args[0]
+            self.assertTrue(receipt["ok"])
+            self.assertEqual(receipt["repair_provenance"]["red_verification_id"], "5bb0e5f8")
+            self.assertEqual(receipt["authority"],
+                             "repair token remains unclaimed until the canonical child launch")
+            connection.close.assert_called_once()
+
     def test_registry_launch_adapts_exact_probe_namespace_and_honors_registry_override(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -615,7 +896,9 @@ class ScenarioRegistryCliTest(unittest.TestCase):
 
             self.assertEqual(result, 23)
             run_probe.assert_called_once()
+            self.assertTrue(run_probe.call_args.args[0].adaptive_semantic_autodrive)
             expected = startup_harness.build_parser().parse_args(["probe", "cli"])
+            expected.adaptive_semantic_autodrive = True
             received = vars(run_probe.call_args.args[0]).copy()
             receipt = json.loads(received.pop("registry_launch_receipt"))
             post_finalize_hook = received.pop("registry_post_finalize_hook")
@@ -625,6 +908,13 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(receipt["token_id"], token_id)
             self.assertEqual(receipt["source_path"], str((scenarios / "cli.json").resolve()))
             self.assertEqual(receipt["runtime_binding"]["schema"], 1)
+            self.assertEqual(receipt["wec_authority"]["evidence_class"], "setup support")
+            self.assertEqual(receipt["wec_authority"]["run_id"], token_id)
+            self.assertEqual(
+                receipt["wec_authority"]["binding_id"],
+                receipt["runtime_binding"]["executable_sha256"],
+            )
+            self.assertFalse(receipt["diagnostic_replay"])
             self.assertEqual(self.token_events(registry_path, token_id), [("issued", "query_selection")])
             other_connection = sqlite3.connect(other_registry)
             try:
