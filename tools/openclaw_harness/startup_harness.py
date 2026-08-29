@@ -86,6 +86,7 @@ from r009_technical_witness import (
     complete_child_resource_interval,
     host_platform as r009_host_platform,
     observe_integrated_wait,
+    preflight_contract as r009_preflight_contract,
     sample_child_resources,
     technical_witness as r009_technical_witness,
 )
@@ -147,6 +148,7 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "tools/openclaw_harness/semantic_state.py",
     "tools/openclaw_harness/cockpit.py",
     "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/r009_technical_witness.py",
     "tools/openclaw_harness/r021_direct_hp_setter_adapter.py",
     "tools/openclaw_harness/r021_direct_hp_transaction.py",
     "tools/openclaw_harness/r022_item_spawn_adapter.py",
@@ -2561,6 +2563,72 @@ def create_run_dir(profile: str) -> Path:
     )
     run_dir.mkdir(parents=True, exist_ok=False)
     return run_dir
+
+
+def r009_artifact_location_preflight(profile: str) -> Dict[str, Any]:
+    """Describe the future witness artifact layout without creating a run."""
+    artifact_root = userdir_for_profile(profile) / "harness_runs"
+    existing_parent = artifact_root
+    while not existing_parent.exists() and existing_parent != existing_parent.parent:
+        existing_parent = existing_parent.parent
+    writable = existing_parent.exists() and os.access(existing_parent, os.W_OK | os.X_OK)
+    return {
+        "status": "ready" if writable else "unavailable",
+        "root": str(artifact_root),
+        "existing_parent": str(existing_parent),
+        "future_run_directory": str(artifact_root / "<authorized-run-id>"),
+        "required_artifacts": [
+            RUNTIME_BINDING_FILENAME,
+            "process.json",
+            TRANSITION_EVENT_FILENAME,
+            "probe.report.json",
+        ],
+        "reason": "" if writable else "the nearest existing artifact parent is not writable",
+        "created": False,
+    }
+
+
+def r009_platform_preflight(profile: str) -> Dict[str, Any]:
+    """Verify R-009's portable witness prerequisites without launching a run."""
+    contract = r009_preflight_contract()
+    binding: Dict[str, Any]
+    try:
+        executable = detect_executable()
+        binding = build_runtime_binding(executable)
+    except SystemExit as error:
+        executable = None
+        binding = {"ok": False, "error": str(error)}
+
+    artifacts = r009_artifact_location_preflight(profile)
+    source_bound = bool(binding.get("ok"))
+    launch_prerequisites = {
+        "executable": {
+            "status": "ready" if source_bound else "unavailable",
+            "path": str(executable.resolve()) if executable is not None else "",
+            "reason": "" if source_bound else str(binding.get("error", "runtime binding failed")),
+        },
+        "source_and_executable_binding": {
+            "status": "matched" if source_bound else "unavailable",
+            "binding": binding,
+        },
+        "artifact_location": artifacts,
+        "selected_run_authority": {
+            "status": "not_requested",
+            "reason": "This preflight never selects or launches a scenario.",
+        },
+    }
+    ready = source_bound and artifacts["status"] == "ready"
+    return {
+        **contract,
+        "host_platform": r009_host_platform(),
+        "launch_prerequisites": launch_prerequisites,
+        "status": "ready" if ready else "blocked",
+        "no_process_started": True,
+        "summary": (
+            "R-009 preflight verified portable contract and local prerequisites; "
+            "it is not a platform witness."
+        ),
+    }
 
 
 def build_plan(
@@ -31031,6 +31099,16 @@ def build_parser() -> argparse.ArgumentParser:
     plan_p.add_argument("--harness-raw-seed", default="", help=argparse.SUPPRESS)
     plan_p.add_argument("--harness-bandit-feasibility", action="store_true", help=argparse.SUPPRESS)
 
+    r009_preflight_p = subparsers.add_parser(
+        "r009-platform-preflight",
+        help="Verify R-009 witness bindings and prerequisites without launching a run.",
+    )
+    r009_preflight_p.add_argument("--profile", default="", help="Target artifact profile.")
+    r009_preflight_p.add_argument(
+        "--output", default="",
+        help="Optional explicit JSON output path; no artifact is written by default.",
+    )
+
     start_p = subparsers.add_parser("start", help="Launch and try to reach gameplay.")
     start_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
     start_p.add_argument("--config-profile", default="", help="Startup policy profile; defaults to the target user-data profile.")
@@ -31190,6 +31268,12 @@ def main() -> int:
             parser.error(str(error))
         print(json.dumps(asdict(plan), indent=2, ensure_ascii=False))
         return 0
+    if args.command == "r009-platform-preflight":
+        result = r009_platform_preflight(resolve_profile_name(args.profile))
+        if args.output:
+            write_json(Path(args.output), result)
+        print(json.dumps(result, indent=2, ensure_ascii=False))
+        return 0 if result["status"] == "ready" else 1
     if args.command == "start":
         return run_startup(args)
     if args.command == "list-fixtures":

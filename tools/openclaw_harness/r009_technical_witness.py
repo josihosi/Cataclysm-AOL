@@ -18,6 +18,48 @@ from typing import Any, Callable, Mapping, Optional, Sequence
 
 SEMANTIC_CONTRACT = "r009-integrated-wait-v1"
 FOCUSED_EVIDENCE_CLASS = "focused-qualification"
+SUPPORTED_PLATFORM_ROUTES = {
+    "macos": {
+        "executable_names": ["Cataclysm-AOL", "cataclysm-tlg-tiles", "cataclysm-tiles"],
+        "resource_sampler": "ps %cpu and rss",
+    },
+    "linux-wsl": {
+        "executable_names": ["cataclysm-tlg-tiles", "cataclysm-tiles"],
+        "resource_sampler": "/proc/<pid>/stat and statm",
+    },
+    "linux": {
+        "executable_names": ["cataclysm-tlg-tiles", "cataclysm-tiles"],
+        "resource_sampler": "/proc/<pid>/stat and statm",
+    },
+    "windows": {
+        "executable_names": ["Cataclysm-AOL.exe", "cataclysm-tlg-tiles.exe", "cataclysm-tiles.exe"],
+        "resource_sampler": "Get-Process CPU and WorkingSet64",
+    },
+}
+
+
+def preflight_contract() -> dict[str, Any]:
+    """Return the portable R-009 contract before a witness is authorized.
+
+    This is deliberately declarative: it validates the harness route without
+    starting a game process or claiming that any platform witness ran.
+    """
+    return {
+        "schema": "r009-platform-preflight-v1",
+        "semantic_contract": SEMANTIC_CONTRACT,
+        "semantic_wait_request": {
+            "required_action_chain": ["world.wait", "wait.duration_menu", "wait.6h"],
+            "completion_source": "native_transition_stream",
+        },
+        "resource_field_contract": {
+            "required_fields": ["cpu_percent", "resident_memory"],
+            "unavailable_representation": {"status": "unavailable", "value": None},
+        },
+        "supported_platform_routes": SUPPORTED_PLATFORM_ROUTES,
+        "evidence_class": FOCUSED_EVIDENCE_CLASS,
+        "continuous_final_certification_credit": 0,
+        "starts_selected_run": False,
+    }
 
 
 def host_platform() -> str:

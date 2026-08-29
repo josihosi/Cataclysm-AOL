@@ -12,6 +12,7 @@ sys.path.insert(0, str(Path(__file__).resolve().parent))
 from r009_technical_witness import (
     complete_child_resource_interval,
     observe_integrated_wait,
+    preflight_contract,
     technical_witness,
 )
 
@@ -81,6 +82,24 @@ class R009TechnicalWitnessTest(unittest.TestCase):
         self.assertEqual(witness["platform"], "windows")
         self.assertEqual(witness["continuous_final_certification_credit"], 0)
         self.assertTrue(witness["platform_limitation"])
+
+    def test_preflight_contract_covers_every_supported_route_without_launch_credit(self) -> None:
+        contract = preflight_contract()
+
+        self.assertEqual(contract["schema"], "r009-platform-preflight-v1")
+        self.assertEqual(
+            contract["semantic_wait_request"]["required_action_chain"],
+            ["world.wait", "wait.duration_menu", "wait.6h"],
+        )
+        self.assertEqual(
+            contract["resource_field_contract"]["unavailable_representation"],
+            {"status": "unavailable", "value": None},
+        )
+        self.assertTrue({"macos", "linux", "linux-wsl", "windows"}.issubset(
+            contract["supported_platform_routes"]
+        ))
+        self.assertFalse(contract["starts_selected_run"])
+        self.assertEqual(contract["continuous_final_certification_credit"], 0)
 
 
 if __name__ == "__main__":
