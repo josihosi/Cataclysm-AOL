@@ -8,6 +8,7 @@ from pathlib import Path
 
 SCENARIO_PATH = Path( __file__ ).resolve().parent / "scenarios" / \
                 "bandit.r008_closure_229_source_route_local_pair_bootstrap_mcw.json"
+PROFILE_PATH = Path( __file__ ).resolve().parent / "profiles" / "r008-closure-229-bootstrap.json"
 
 
 class R008Closure229SourceRouteManifestTest( unittest.TestCase ):
@@ -18,6 +19,8 @@ class R008Closure229SourceRouteManifestTest( unittest.TestCase ):
         scenario = self.load_scenario()
         self.assertEqual( scenario["steps"][0]["label"], "dismiss_inherited_actions_overlay" )
         self.assertEqual( scenario["steps"][0]["keys"], ["escape"] )
+        profile = json.loads( PROFILE_PATH.read_text( encoding="utf-8" ) )
+        self.assertEqual( profile["startup"]["post_lastworld_continue_keys"], ["escape"] )
         waits = [step for step in scenario["steps"] if step["kind"] == "long_wait"]
         self.assertEqual( [step["choice_key"] for step in waits], ["8", "8", "5", "5"] )
         self.assertEqual( [step["expected_duration"] for step in waits], ["6h", "6h", "1h", "1h"] )
