@@ -3240,8 +3240,10 @@ def _repair_binding(
         source_sha256 = str(item.get("source_sha256", "")).strip().lower()
         if actual_name != expected_name or actual_profile != expected_profile:
             raise ScenarioRegistryStoreError(f"repair {kind} identity changed")
-        if not source_path or len(source_sha256) != 64 or any(
+        if len(source_sha256) != 64 or any(
                 character not in "0123456789abcdef" for character in source_sha256):
+            raise ScenarioRegistryStoreError(f"repair {kind} binding is incomplete")
+        if expected_name and not source_path:
             raise ScenarioRegistryStoreError(f"repair {kind} binding is incomplete")
         normalized[kind] = {
             "name": expected_name,
