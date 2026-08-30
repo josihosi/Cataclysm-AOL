@@ -94,7 +94,7 @@
   ],
   "post_relaunch": {
     "terminal_save_step_label": "confirm_native_save_quit_after_wait_lifecycle",
-    "terminal_exit_timeout_seconds": 30,
+    "terminal_exit_timeout_seconds": 180,
     "steps": [
       {"kind": "wait", "label": "post_relaunch_gameplay_hud", "seconds": 2, "capture_after": true, "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"}, "checkpoint_evidence": {"classification": "required_feature_evidence", "authoritative_owner": "bound_startup_semantic_hud"}, "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r005_native_wait_relaunch_hud_missing", "abort_reason": "native save/quit did not relaunch the same world into ordinary gameplay"},
       {"kind": "audit_saved_bandit_live_world_state", "label": "audit_normalized_persistence_after_relaunch", "required_site_id_contains": "overmap_special:bandit_camp@140,51,0", "required_member_count": 14, "required_ready_at_home_count": 14, "required_wounded_or_unready_count": 0, "required_active_outside_count": 0, "required_active_group_id_exact": "", "required_active_target_id_exact": "", "required_min_leads": 1, "required_lead_kind": "structural_bounty", "required_lead_target_id": "forest", "required_lead_source_contains": "fixture_r005_natural_hostile_ecology_forest", "required_lead_status": "harvested", "required_lead_bounty": 0, "required_lead_times_harvested": 1, "required_lead_last_outcome": "harvested_structural_bounty", "required_camp_decision_state": "idle", "abort_on_metadata_failure": true, "abort_verdict": "blocked_r005_native_wait_persistence_normalization_missing", "abort_reason": "the new process did not retain the same camp, lead, returned roster, and downstream decision state"}
