@@ -1,0 +1,18 @@
+{
+  "name": "bandit_r008_natural_safe_watch_withdrawal_free_v1",
+  "source_fixture": "bandit_r008_natural_safe_watch_footing_v0",
+  "source_profile": "r008-closure-039-natural",
+  "description": "Disposable zero-credit R-008 player fixture. It inherits the production-generated safe-watch footing and removes only the exact saved sleeping-pill addiction that produces the native withdrawal interruption. Ecology, crossings, actors, and all other player state remain source-owned.",
+  "save_transforms": [
+    {
+      "kind": "player_remove_addiction",
+      "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+      "addiction_type": "sleeping pill",
+      "expected_intensity": 20,
+      "expected_sated": 3599
+    }
+  ],
+  "setup_authority": "R-008-closure-231 disposable-player-fixture",
+  "cleanup_owner": "cleanup_harness_world",
+  "evidence_ceiling": "none_for_disposable_player_fixture"
+}

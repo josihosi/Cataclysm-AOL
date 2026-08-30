@@ -10739,6 +10739,74 @@ def r008_source_bound_setup_receipts_from_installed_save(
     }
 
 
+def r008_withdrawal_free_player_fixture_receipt(
+    world_dir: Path,
+    *,
+    setup_contract: Mapping[str, Any],
+    fixture_install: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Bind the one-off R-008 withdrawal repair as disposable setup only."""
+    world = str(setup_contract.get("world", "") or "").strip()
+    player_save = str(setup_contract.get("player_save", "") or "").strip()
+    cause = setup_contract.get("withdrawal_cause")
+    cleanup_owner = str(setup_contract.get("cleanup_owner", "") or "").strip()
+    if world_dir.name != world or not player_save or not isinstance(cause, Mapping) or \
+            cleanup_owner != "cleanup_harness_world":
+        raise RuntimeError("R-008 withdrawal-free fixture contract is malformed")
+    expected = {
+        "type": str(cause.get("type", "") or "").strip(),
+        "intensity": int(cause.get("intensity", -1)),
+        "sated": int(cause.get("sated", -1)),
+    }
+    _selected, _path, payload, _stat = load_saved_player_payload(world_dir, player_save)
+    player = payload.get("player") if isinstance(payload, Mapping) else None
+    applied = fixture_install.get("applied_save_transforms", [])
+    transform = next((
+        item for item in reversed(applied) if isinstance(item, Mapping)
+        and item.get("kind") == "player_remove_addiction"
+        and item.get("player_save") == player_save
+    ), None)
+    accepted = (
+        isinstance(player, Mapping)
+        and player.get("addictions") == []
+        and isinstance(transform, Mapping)
+        and transform.get("declared_addiction") == expected
+        and transform.get("before_addictions") == [expected]
+        and transform.get("after_addictions") == []
+        and transform.get("removed_addiction") == expected
+        and transform.get("declared_mutation_only") is True
+        and transform.get("cleanup_owner") == cleanup_owner
+        and transform.get("gameplay_credit") is False
+    )
+    intervention = {
+        "operation": "fixture_install_and_r008_withdrawal_cause_removal",
+        "arguments": {"world": world, "player_save": player_save, "withdrawal_cause": expected},
+        "target": {"world": world, "player_save": player_save},
+        "native_receipt": {
+            "owner": "fixture_save_transform", "accepted": accepted,
+            "transform": dict(transform) if isinstance(transform, Mapping) else {},
+        },
+        "before_facts": {
+            "source_binding": fixture_install.get("binding", {}),
+            "player_addictions": transform.get("before_addictions", []) if isinstance(transform, Mapping) else [],
+        },
+        "after_facts": {
+            "source_binding": fixture_install.get("binding", {}),
+            "player_addictions": player.get("addictions", []) if isinstance(player, Mapping) else None,
+            "cleanup_owner": cleanup_owner,
+        },
+        "evidence_effect": "none_for_disposable_player_fixture",
+        "gameplay_credit": False,
+    }
+    return {
+        "status": "prepared" if accepted else "unprepared",
+        "contract_kind": "r008_withdrawal_free_player_fixture",
+        "interventions": [intervention],
+        "evidence_effect": "none_for_disposable_player_fixture",
+        "gameplay_credit": False,
+    }
+
+
 def saved_overmap_terrain_id(world_dir: Path, abs_omt: Sequence[int]) -> str:
     """Read one saved overmap terrain without changing the installed world."""
     if not isinstance(abs_omt, (list, tuple)) or len(abs_omt) != 3 or any(
@@ -18671,6 +18739,37 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "player_remove_addiction":
+            unexpected_keys = sorted(set(raw) - {
+                "kind", "player_save", "addiction_type", "expected_intensity", "expected_sated",
+            })
+            if unexpected_keys:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] player_remove_addiction has unexpected keys "
+                    f"{unexpected_keys} in {manifest_path}"
+                )
+            addiction_type = str(raw.get("addiction_type", "") or "").strip()
+            if not addiction_type:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] player_remove_addiction needs addiction_type in {manifest_path}"
+                )
+            try:
+                expected_intensity = int(raw.get("expected_intensity"))
+                expected_sated = int(raw.get("expected_sated"))
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] player_remove_addiction needs integer "
+                    f"expected_intensity/expected_sated in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "addiction_type": addiction_type,
+                "expected_intensity": expected_intensity,
+                "expected_sated": expected_sated,
+            })
+            continue
+
         if kind == "clear_avatar_auto_move":
             unexpected_keys = sorted(set(raw) - {"kind", "player_save"})
             if unexpected_keys:
@@ -19657,7 +19756,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
 
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
-            "supported kinds: player_mutations, clear_avatar_auto_move, player_items, player_worn_items, player_condition, player_location_offset_ms, player_basecamp_at_omt, player_near_overmap_special, "
+            "supported kinds: player_mutations, player_remove_addiction, clear_avatar_auto_move, player_items, player_worn_items, player_condition, player_location_offset_ms, player_basecamp_at_omt, player_near_overmap_special, "
             "overmap_terrain_id_at_abs_omt, player_view_seen_omt, seed_overmap_special_near_player, map_fields_near_player, map_terrain_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
             "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
@@ -19886,6 +19985,78 @@ def apply_player_mutations_transform(world_dir: Path, transform: Dict[str, Any])
         "added_traits": added_traits,
         "already_present": already_present,
         "newly_added": bool(added_traits),
+    }
+
+
+def apply_player_remove_addiction_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Remove one exactly declared addiction from a disposable copied player save."""
+    player_save_name = str(transform.get("player_save", "")).strip()
+    player_save = world_dir / player_save_name
+    if not player_save.exists() or player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture player-remove-addiction transform target is unavailable: {player_save}")
+
+    expected = {
+        "type": str(transform.get("addiction_type", "") or "").strip(),
+        "intensity": int(transform.get("expected_intensity", -1)),
+        "sated": int(transform.get("expected_sated", -1)),
+    }
+    if not expected["type"]:
+        raise SystemExit("Fixture player-remove-addiction transform has no declared addiction type")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    if not extracted_save.exists():
+        raise SystemExit(f"Fixture player-remove-addiction transform did not extract save: {extracted_save}")
+    try:
+        payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+        player = payload.get("player") if isinstance(payload, dict) else None
+        if not isinstance(player, dict):
+            raise SystemExit(f"Extracted player save is missing player object: {extracted_save}")
+        addictions = player.get("addictions")
+        if not isinstance(addictions, list):
+            raise SystemExit(f"Player addictions is not a list in {extracted_save}")
+        before_addictions = copy.deepcopy(addictions)
+        matches = [entry for entry in addictions if isinstance(entry, dict) and entry == expected]
+        if len(addictions) != 1 or len(matches) != 1:
+            raise SystemExit(
+                "Fixture player-remove-addiction transform requires exactly one declared addiction; "
+                f"expected={expected!r} observed={before_addictions!r}"
+            )
+        player_without_addictions = copy.deepcopy(player)
+        player_without_addictions.pop("addictions", None)
+        player["addictions"] = []
+        after_without_addictions = copy.deepcopy(player)
+        after_without_addictions.pop("addictions", None)
+        if after_without_addictions != player_without_addictions:
+            raise SystemExit("Fixture player-remove-addiction transform changed undeclared player state")
+        extracted_save.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+        run_zzip(extracted_save)
+    finally:
+        if extracted_save.exists():
+            extracted_save.unlink()
+
+    _selected_save, _path, saved_payload, _stat = load_saved_player_payload(world_dir, player_save_name)
+    saved_player = saved_payload.get("player") if isinstance(saved_payload, dict) else None
+    after_addictions = saved_player.get("addictions") if isinstance(saved_player, dict) else None
+    if after_addictions != []:
+        raise RuntimeError("Fixture player-remove-addiction transform did not remove the declared addiction")
+    after_without_addictions = copy.deepcopy(saved_player)
+    after_without_addictions.pop("addictions", None)
+    declared_mutation_only = after_without_addictions == player_without_addictions
+    if not declared_mutation_only:
+        raise RuntimeError("Fixture player-remove-addiction transform persisted undeclared player mutation")
+    return {
+        "kind": "player_remove_addiction",
+        "world": world_dir.name,
+        "player_save": player_save_name,
+        "declared_addiction": expected,
+        "before_addictions": before_addictions,
+        "after_addictions": after_addictions,
+        "removed_addiction": expected,
+        "declared_mutation_only": declared_mutation_only,
+        "cleanup_owner": "cleanup_harness_world",
+        "evidence_effect": "none_for_disposable_player_fixture",
+        "gameplay_credit": False,
     }
 
 
@@ -23872,6 +24043,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "player_mutations":
             reports.append(apply_player_mutations_transform(world_dir, transform))
+            continue
+        if kind == "player_remove_addiction":
+            reports.append(apply_player_remove_addiction_transform(world_dir, transform))
             continue
         if kind == "clear_avatar_auto_move":
             reports.append(apply_clear_avatar_auto_move_transform(world_dir, transform))
@@ -31787,6 +31961,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 raise RuntimeError("startup fixture-install receipt is missing")
             if declared_setup.get("kind") == "r008_source_bound_fixture":
                 scenario_setup = r008_source_bound_setup_receipts_from_installed_save(
+                    save_dir_for_profile(profile) / world,
+                    setup_contract=declared_setup,
+                    fixture_install=fixture_install,
+                )
+            elif declared_setup.get("kind") == "r008_withdrawal_free_player_fixture":
+                scenario_setup = r008_withdrawal_free_player_fixture_receipt(
                     save_dir_for_profile(profile) / world,
                     setup_contract=declared_setup,
                     fixture_install=fixture_install,

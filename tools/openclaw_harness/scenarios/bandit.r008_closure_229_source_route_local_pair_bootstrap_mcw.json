@@ -1,11 +1,11 @@
 {
   "manifest_version": 2,
-  "name": "bandit.r008_closure_229_source_route_local_pair_bootstrap_mcw",
-  "description": "Fresh zero-credit R-008 bootstrap from the immutable production-generated safe-watch footing.  This is a source-route-equivalent native wait route, not a replay of the quarantined closure-228 run: every wait proves its parent and duration-menu context, safely recovers only structured EOC flavour popups, then records the exact active-sortie dispatch predecessor and the local pair for a separately authorized return validation.",
-  "profile": "r008-closure-229-bootstrap",
+  "name": "bandit.r008_closure_231_withdrawal_free_local_pair_bootstrap_mcw",
+  "description": "Fresh zero-credit R-008 bootstrap from the immutable production-generated safe-watch footing.  It removes only the observed sleeping-pill withdrawal cause from a disposable player copy, then follows the source-route-equivalent native wait route: every wait proves its parent and duration-menu context, safely recovers only structured EOC flavour popups, and records the exact active-sortie dispatch predecessor and local pair for a separately authorized return validation.",
+  "profile": "r008-closure-231-bootstrap",
   "world": "r008-natural-bandit-039",
-  "fixture": "bandit_r008_natural_safe_watch_footing_v0",
-  "fixture_profile": "r008-closure-039-natural",
+  "fixture": "bandit_r008_natural_safe_watch_withdrawal_free_v1",
+  "fixture_profile": "r008-closure-231-withdrawal-free",
   "replace_existing_worlds": true,
   "run_class": "non_combat",
   "observer_character": true,
@@ -23,7 +23,7 @@
   "installed_save_player": "#R2xvcnkgVHJlam8=.sav.zzip",
   "capabilities": {
     "runtime.entry_mode": "cockpit_live_session",
-    "runtime.r008.closure_229_bootstrap": "zero_credit_source_route_native_local_pair",
+    "runtime.r008.closure_231_bootstrap": "zero_credit_source_route_native_local_pair_after_disposable_player_fixture",
     "world.natural_bandit_safe_watch_footing": {
       "raw_seed": "830205385",
       "camp_omt": "177,13,0",
@@ -46,6 +46,13 @@
     "validator": "r008_natural_wait_progress_source_binding",
     "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json",
     "capabilities": ["world.natural_bandit_safe_watch_footing"]
+  },
+  "setup_receipt_contract": {
+    "kind": "r008_withdrawal_free_player_fixture",
+    "world": "r008-natural-bandit-039",
+    "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+    "withdrawal_cause": { "type": "sleeping pill", "intensity": 20, "sated": 3599 },
+    "cleanup_owner": "cleanup_harness_world"
   },
   "source_route_equivalence": {
     "reference_manifest": "bandit.r008_closure_046_source_bound_m095_mcw",
@@ -70,14 +77,14 @@
     "helpers": ["Peekaboo"],
     "permissions": ["accessibility", "screen-recording"],
     "platform": ["macos"],
-    "profile": "r008-closure-229-bootstrap",
-    "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+    "profile": "r008-closure-231-bootstrap",
+    "fixture": "bandit_r008_natural_safe_watch_withdrawal_free_v1",
     "requirements": {
       "os": "macos",
       "source": "current-worktree",
       "executable": "cataclysm-tiles",
-      "profile": "r008-closure-229-bootstrap",
-      "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+      "profile": "r008-closure-231-bootstrap",
+      "fixture": "bandit_r008_natural_safe_watch_withdrawal_free_v1",
       "helper": "Peekaboo",
       "peekaboo": true,
       "ocr": true,
