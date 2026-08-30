@@ -833,6 +833,80 @@ void record_live_transition_event( transition_event event )
     }
 }
 
+void record_local_pair_handoff_snapshot( const transition_event &event,
+        const std::string_view site_payload, const std::string_view owner_transition,
+        const std::string_view omt )
+{
+    const char *const path_value = std::getenv(
+                                      "OPENCLAW_HARNESS_LOCAL_PAIR_SNAPSHOT_PATH" );
+    const char *const source_sha256 = std::getenv(
+                                     "OPENCLAW_HARNESS_RUNTIME_SOURCE_SHA256" );
+    const char *const executable_sha256 = std::getenv(
+                                         "OPENCLAW_HARNESS_EXECUTABLE_SHA256" );
+    if( path_value == nullptr || path_value[0] == '\0' || source_sha256 == nullptr ||
+        source_sha256[0] == '\0' || executable_sha256 == nullptr ||
+        executable_sha256[0] == '\0' || site_payload.empty() ||
+        owner_transition.empty() || omt.empty() || !live_transition_stream_enabled() ||
+        event.transition != "local_pair_handoff" || event.outcome != "committed" ||
+        event.simulation_owner != "local" || event.run_id.empty() ||
+        event.run_id != transition_stream.run_id || event.site_id.empty() ||
+        event.operation_id.empty() || event.generation <= 0 || event.handoff_epoch <= 0 ||
+        event.game_minutes < 0 || event.actor_ids.size() != 2 ) {
+        return;
+    }
+
+    const std::filesystem::path path( path_value );
+    std::error_code error;
+    if( std::filesystem::exists( path, error ) || error ) {
+        return;
+    }
+    const std::filesystem::path temporary = path.string() + ".tmp." + event.run_id;
+    std::ofstream output( temporary, std::ios::binary | std::ios::trunc );
+    if( !output ) {
+        return;
+    }
+    JsonOut json( output );
+    json.start_object();
+    json.member( "schema_version", 1 );
+    json.member( "run_id", event.run_id );
+    json.member( "source" );
+    json.start_object();
+    json.member( "runtime_source_sha256", source_sha256 );
+    json.member( "executable_sha256", executable_sha256 );
+    json.end_object();
+    json.member( "transition" );
+    json.start_object();
+    json.member( "domain", event.domain );
+    json.member( "transition", event.transition );
+    json.member( "outcome", event.outcome );
+    json.member( "site_id", event.site_id );
+    json.member( "operation_id", event.operation_id );
+    json.member( "actor_ids", event.actor_ids );
+    json.member( "generation", event.generation );
+    json.member( "simulation_owner", event.simulation_owner );
+    json.member( "previous_state", event.previous_phase );
+    json.member( "new_state", event.new_phase );
+    json.member( "handoff_epoch", event.handoff_epoch );
+    json.member( "game_minutes", event.game_minutes );
+    json.member( "omt", omt );
+    json.member( "owner_transition", owner_transition );
+    json.end_object();
+    json.member( "site_payload" );
+    *json.get_stream() << site_payload;
+    json.set_need_separator();
+    json.end_object();
+    output << '\n';
+    output.close();
+    if( !output ) {
+        std::filesystem::remove( temporary, error );
+        return;
+    }
+    std::filesystem::rename( temporary, path, error );
+    if( error ) {
+        std::filesystem::remove( temporary, error );
+    }
+}
+
 void record_fixture_monster_lifecycle( const monster &critter, const std::string_view event,
                                        const std::string_view owner )
 {

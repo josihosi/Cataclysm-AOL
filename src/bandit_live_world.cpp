@@ -4225,6 +4225,28 @@ local_handoff_commit_result commit_local_pair_handoff( site_record &site,
 
     site = std::move( candidate );
     record_result( "committed", "local pair handoff committed" );
+    if( bandit_live_world_probe::transition_events_enabled() ) {
+        bandit_live_world_probe::transition_event snapshot_event;
+        snapshot_event.run_id = current_harness_run_id();
+        snapshot_event.game_minutes = plan.snapshot.committed_minutes;
+        snapshot_event.domain = "bandit_live_world";
+        snapshot_event.transition = "local_pair_handoff";
+        snapshot_event.outcome = "committed";
+        snapshot_event.site_id = site.site_id;
+        snapshot_event.operation_id = site.active_outing.activity_id;
+        snapshot_event.generation = site.active_outing.generation;
+        snapshot_event.handoff_epoch = site.active_outing.handoff_epoch;
+        snapshot_event.simulation_owner = to_string( site.active_outing.owner );
+        snapshot_event.previous_phase = initial_owner;
+        snapshot_event.new_phase = "local";
+        snapshot_event.actor_ids = transition_actor_ids( site.active_outing.member_ids );
+        std::ostringstream serialized_site;
+        JsonOut json( serialized_site );
+        site.serialize( json );
+        bandit_live_world_probe::record_local_pair_handoff_snapshot(
+            snapshot_event, serialized_site.str(), "abstract_to_local",
+            plan.snapshot.route_position.to_string() );
+    }
     return local_handoff_commit_result::applied;
 }
 

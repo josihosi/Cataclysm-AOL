@@ -275,6 +275,12 @@ void record_transition_event( transition_event event );
 void record_fixture_monster_lifecycle( const monster &critter, std::string_view event,
                                        std::string_view owner );
 void record_live_transition_event( transition_event event );
+// Writes one opt-in, launch-bound, canonical persistence snapshot for a committed
+// local-pair handoff.  The caller owns serializing the exact site payload so this
+// probe stays independent of the live-world persistence types.
+void record_local_pair_handoff_snapshot( const transition_event &event,
+        std::string_view site_payload, std::string_view owner_transition,
+        std::string_view omt );
 void record_certification_save_receipt( int game_minutes, const std::string &world_path );
 
 std::string_view to_string( section target );
