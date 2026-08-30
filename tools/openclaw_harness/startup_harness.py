@@ -62,6 +62,10 @@ from certification_process_lease import (
     reserve_certification_lease,
     transfer_certification_lease,
 )
+from certification_route import (
+    capture_and_finalize_certification,
+    continuous_capture_proof_classification,
+)
 from identity_binding import (
     authoritative_identity_binding,
     canonical_digest,
@@ -6725,7 +6729,7 @@ def extract_clock_or_turn_evidence( screen_text_report: Dict[str, Any] ) -> Dict
     text = screen_text_body( screen_text_report )
     clock_matches: List[Dict[str, Any]] = []
     for match in re.finditer(
-        r"\b([0-2]?\d):([0-5]\d)(?::([0-5]\d))?[ \t\r\n]{0,8}([ap]m)?\b",
+        r"\b([0-2]?\d):([0-5]\d)(?::([0-5]\d))?[ \t\r\n]{0,8}([ap][mn])?\b",
         text,
         flags=re.IGNORECASE,
     ):

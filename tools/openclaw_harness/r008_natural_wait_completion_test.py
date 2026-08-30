@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import sys
+import tempfile
 import unittest
 from pathlib import Path
 
@@ -14,6 +15,8 @@ sys.path.insert( 0, str( HARNESS_DIR ) )
 from startup_harness import (  # noqa: E402
     classify_native_wait_activity_completion,
     classify_run_bound_native_wait,
+    classify_wait_input_trace,
+    extract_clock_or_turn_evidence,
 )
 
 
@@ -96,6 +99,39 @@ class R008NaturalWaitCompletionTest( unittest.TestCase ):
         )
         self.assertEqual( result["status"], "unproved" )
         self.assertIn( "native_wait_termination_unproved", result["failures"] )
+
+    def test_recovers_the_fixed_hud_pm_ocr_substitution( self ) -> None:
+        clocks = extract_clock_or_turn_evidence( {"text": "8:00:00 AM\n2:00:00 PN"} )
+
+        self.assertEqual(
+            [entry["seconds_since_midnight"] for entry in clocks["clock_matches"]],
+            [8 * 60 * 60, 14 * 60 * 60],
+        )
+
+    def test_wait_input_trace_uses_only_the_current_attempt( self ) -> None:
+        previous = (
+            'openclaw_harness_wait_input_trace: component=wait_menu event=selection '
+            f'run_id="{self.run_id}" action_id="wait.6h" accepted=yes\n'
+        )
+        current = (
+            'openclaw_harness_wait_input_trace: component=sdl_input '
+            f'run_id="{self.run_id}"\n'
+            'openclaw_harness_wait_input_trace: component=input_resolution '
+            f'run_id="{self.run_id}" resolved_action="wait" rejection_reason=none\n'
+            'openclaw_harness_wait_input_trace: component=action_dispatch '
+            f'run_id="{self.run_id}" action_id="wait"\n'
+        )
+        with tempfile.NamedTemporaryFile( mode="w+", encoding="utf-8" ) as trace:
+            trace.write( previous )
+            trace.flush()
+            current_offset = trace.tell()
+            trace.write( current )
+            trace.flush()
+            result = classify_wait_input_trace(
+                Path( trace.name ), current_offset, run_id=self.run_id,
+            )
+
+        self.assertEqual( result["status"], "wait_dispatched" )
 
 
 if __name__ == "__main__":
