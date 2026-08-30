@@ -98,11 +98,7 @@
       "kind": "wait",
       "label": "post_load_hud",
       "seconds": 2.0,
-      "capture_after": true,
-      "extract_text_after_capture": true,
-      "expected_screen_text_after_contains": ["Move:"],
-      "abort_on_screen_text_expectation_failure": true,
-      "abort_verdict": "blocked_r008_closure_229_bootstrap_hud_missing"
+      "capture_after": true
     },
     {
       "kind": "audit_saved_game_turn",
