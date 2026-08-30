@@ -1,0 +1,68 @@
+#!/usr/bin/env python3
+"""Fail-closed controls for the R-008 flavor-popup continuation path."""
+
+import sys
+import tempfile
+import unittest
+from pathlib import Path
+from unittest.mock import patch
+
+sys.path.insert( 0, str( Path( __file__ ).resolve().parent ) )
+
+import startup_harness
+
+
+class R008HarmlessFlavorWaitRecoveryTest( unittest.TestCase ):
+    def test_accepts_bound_semantic_popup_then_native_eoc_continue( self ):
+        popup = {
+            "status": "semantic_recovered",
+            "acknowledgements": [{
+                "response_key": "space",
+                "classification": {"provenance": "semantic_ui_trace"},
+            }],
+        }
+        activity = {
+            "status": "clear",
+            "acknowledgements": [{
+                "response_key": "I",
+                "classification": {
+                    "structured_activity_query_trace": {"type": "eoc"},
+                },
+            }],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object( startup_harness, "acknowledge_blocking_interruptions",
+                              side_effect=[popup, activity] ) as acknowledge:
+            result = startup_harness.recover_harmless_wilderness_flavor_wait(
+                123, Path( temp ), "r008", delay_ms=1,
+                action_trace_log=Path( temp ) / "native.log",
+                action_trace_start_offset=0,
+            )
+
+        self.assertEqual( result["status"], "recovered_harmless_flavor_wait_sequence" )
+        self.assertEqual( result["response_keys"], ["space", "I"] )
+        self.assertEqual( acknowledge.call_count, 2 )
+
+    def test_rejects_nonsemantic_popup_even_if_it_claims_recovery( self ):
+        popup = {
+            "status": "semantic_recovered",
+            "acknowledgements": [{
+                "response_key": "space",
+                "classification": {"provenance": "ocr"},
+            }],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object( startup_harness, "acknowledge_blocking_interruptions",
+                              return_value=popup ) as acknowledge:
+            result = startup_harness.recover_harmless_wilderness_flavor_wait(
+                123, Path( temp ), "r008", delay_ms=1,
+                action_trace_log=Path( temp ) / "native.log",
+                action_trace_start_offset=0,
+            )
+
+        self.assertEqual( result["status"], "blocked_harmless_flavor_popup_sequence" )
+        self.assertEqual( acknowledge.call_count, 1 )
+
+
+if __name__ == "__main__":
+    unittest.main()

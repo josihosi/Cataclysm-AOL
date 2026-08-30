@@ -15772,7 +15772,7 @@ def recover_harmless_wilderness_flavor_wait(
     if popup.get("status") == "clear":
         return {"status": "clear", "acknowledgement_count": 0, "acknowledgements": []}
     popup_acks = popup.get("acknowledgements", [])
-    if popup.get("status") not in {"clear", "blocked_acknowledgement_limit", "blocked_unknown_prompt"} or len(popup_acks) != 1 or \
+    if popup.get("status") not in {"clear", "semantic_recovered", "blocked_acknowledgement_limit", "blocked_unknown_prompt"} or len(popup_acks) != 1 or \
             popup_acks[0].get("response_key") != "space" or \
             popup_acks[0].get("classification", {}).get("provenance") not in {
                 "structured_eoc_popup_trace", "semantic_ui_trace"
