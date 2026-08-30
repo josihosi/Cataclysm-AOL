@@ -21,6 +21,8 @@ class R008Closure229SourceRouteManifestTest( unittest.TestCase ):
         self.assertEqual( scenario["steps"][0]["keys"], ["escape"] )
         profile = json.loads( PROFILE_PATH.read_text( encoding="utf-8" ) )
         self.assertEqual( profile["startup"]["post_lastworld_continue_keys"], ["escape"] )
+        post_load_hud = next( step for step in scenario["steps"] if step["label"] == "post_load_hud" )
+        self.assertEqual( post_load_hud["expected_screen_text_after_contains"], ["Move:"] )
         waits = [step for step in scenario["steps"] if step["kind"] == "long_wait"]
         self.assertEqual( [step["choice_key"] for step in waits], ["8", "8", "5", "5"] )
         self.assertEqual( [step["expected_duration"] for step in waits], ["6h", "6h", "1h", "1h"] )
