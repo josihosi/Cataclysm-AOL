@@ -1,0 +1,85 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r008_natural_return_from_bound_local_pair_mcw",
+  "description": "Fresh R-008 return validation from the separately produced, zero-credit local-pair bootstrap.  This scenario deliberately does not install a fixture: it binds the retained local save, audits actors 4 and 5 before input, then credits only their two ordered native physical-return receipts and the terminal save/exit/relaunch normalization.",
+  "profile": "r008-closure-059-validation",
+  "world": "r008-natural-bandit-039",
+  "run_class": "non_combat",
+  "observer_character": true,
+  "observer_safety_mode": "invisible",
+  "wait_input_trace": true,
+  "installed_save_player": "#R2xvcnkgVHJlam8=.sav.zzip",
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r008.source_binding": "r008_natural_safe_watch_local_pair_bootstrap_v1:r008-closure-059-validation",
+    "capabilities.bandit.natural_structural_scout_return_from_bound_local_pair": "native_wait_only",
+    "world.r008.bound_local_pair_bootstrap": {
+      "actor_ids": [4, 5],
+      "generation": 1,
+      "simulation_owner": "local",
+      "handoff_epoch": 1,
+      "source_report_sha256": "625acd8e13fac3fea72f05047ab03f855c1cac2fe68875b3a53bf8387380a7da"
+    }
+  },
+  "source_binding": {
+    "stage_one_report": ".userdata/r008-closure-059-validation/harness_runs/20260830_122155_7210601bbee84c6185606aa28a8fa160/probe.report.json",
+    "stage_one_report_sha256": "625acd8e13fac3fea72f05047ab03f855c1cac2fe68875b3a53bf8387380a7da",
+    "stage_one_runtime_binding": ".userdata/r008-closure-059-validation/harness_runs/20260830_122155_7210601bbee84c6185606aa28a8fa160/runtime.binding.json",
+    "stage_one_runtime_binding_sha256": "0cce8e4f2114c0a87ee51d2e4abe2dde66766849da65757a2585f484d50ca896",
+    "stage_one_local_audit": ".userdata/r008-closure-059-validation/harness_runs/20260830_122155_7210601bbee84c6185606aa28a8fa160/audit_persisted_local_contact_eligibility.metadata.json",
+    "stage_one_local_audit_sha256": "62c81a639c98cec9afb442d85602e2a4b32e09962faeee708d9fee4f2154bbfd",
+    "credit": "none for dispatch, local contact, save, exit, relaunch, and fixture transforms in the stage-one bootstrap"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.6h", "press:S", "press:Y", "press:q", "press:left", "press:enter"],
+    "forbidden_input": ["debug:teleport", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "debug:inject_camp", "debug:inject_origin", "debug:inject_lead", "debug:inject_dispatch", "debug:inject_operation", "debug:drive", "debug:eligibility"],
+    "setup_only_debug": false,
+    "disposable_copy": false,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r008-closure-059-validation",
+    "fixture": "",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r008-closure-059-validation", "fixture": "", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["frame-bound semantic waits"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "proof_gates": [
+    {
+      "id": "bound_local_pair_returns_to_abstract",
+      "label": "The independently established exact local pair returns through two native physical receipts",
+      "boundary_step": "native_local_to_abstract_return",
+      "predecessors": [],
+      "expectations": [{"kind": "structural_member_return_pair", "predicate": {"domain": "bandit_live_world", "transition": "structural_member_physical_return", "outcome": "committed", "previous_state": "local_contact", "new_state": "at_home", "site_id": "overmap_special:bandit_camp@177,13,0", "operation_id": "overmap_special:bandit_camp@177,13,0#structural", "generation": 1, "actor_ids": [4, 5], "owner_progression": ["local", "abstract"], "handoff_epoch_progression": [1, 2], "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids"]}}],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    },
+    {
+      "id": "bound_local_pair_persistence_relaunch",
+      "label": "The exact returned pair remains normalized after native save, exit, and relaunch",
+      "boundary_step": "audit_normalized_persistence_after_relaunch",
+      "predecessors": ["bound_local_pair_returns_to_abstract"],
+      "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true, "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids", "simulation_owner", "handoff_epoch"]}}],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    }
+  ],
+  "proof_route": {"gates": ["bound_local_pair_returns_to_abstract", "bound_local_pair_persistence_relaunch"], "terminal": ["bound_local_pair_persistence_relaunch"], "capability_gates": {"capabilities.bandit.natural_structural_scout_return_from_bound_local_pair": {"terminal": ["bound_local_pair_persistence_relaunch"]}}},
+  "steps": [
+    {"kind": "wait", "label": "post_bound_local_bootstrap_hud", "seconds": 2.0, "capture_after": true, "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"}, "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r008_bound_local_bootstrap_hud_missing"},
+    {"kind": "audit_saved_bandit_live_world_state", "label": "audit_bound_local_pair_before_crossing", "required_site_id_contains": "overmap_special:bandit_camp@177,13,0", "required_active_outside_count": 2, "required_active_outing_kind": "structural_sortie", "required_active_outing_generation": 1, "required_active_outing_simulation_owner": "local", "required_active_outing_handoff_epoch": 1, "required_active_outing_exact_pair": true, "required_active_outing_pair_contract": true, "required_local_handoff_state": "local", "required_local_handoff_exact_pair": true, "required_local_handoff_pair_contract": true, "required_local_return_eligibility_valid": true, "required_local_return_eligibility_cohesion_assembled": false, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_bound_local_pair_unavailable", "abort_reason": "stage two did not begin from the exact independently verified local pair"},
+    {"kind": "audit_saved_game_turn", "label": "audit_bound_local_turn_baseline", "record_baseline": true, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_bound_local_turn_baseline_missing"},
+    {"kind": "cockpit_live_session", "label": "native_local_to_abstract_return", "objective": "Use only advertised native waits from the independently bound local pair.  Stop immediately when the same actors 4 and 5 commit their ordered physical returns and the second receipt establishes the terminal abstract owner.", "proof_targets": ["actors 4 and 5, generation 1, owner local, epoch 1 are preconditions only", "the same pair commits exactly two actor-specific physical-return receipts: actor 4 under local owner at epoch 1, then actor 5 under abstract owner at epoch 2", "do not use bootstrap, fixture, debug, rollback, or replacement state as crossing evidence"], "authority": ["one fresh registry authority", "advertised native cockpit actions only"], "invariants": ["derive every continuation bound from the scheduler boundary, path progress, game mechanic, or measured rate", "finish fail-closed on missing, malformed, partial, duplicate, replacement, resumed, reused, or non-progress evidence"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1},
+    {"kind": "press", "label": "open_native_full_save_after_bound_return", "keys": ["S"], "settle_seconds": 1.0, "capture_after": true, "extract_text_after_capture": true, "expected_screen_text_after_contains": ["Case Sensitive"], "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r008_bound_return_save_prompt_missing"},
+    {"kind": "press", "label": "confirm_native_full_save_after_bound_return", "keys": ["Y"], "settle_seconds": 4.0},
+    {"kind": "press", "label": "open_native_main_menu_quit_confirmation_after_bound_return", "keys": ["q"], "settle_seconds": 1.0, "capture_after": true, "semantic_ui_expectation": {"intent": "main_menu_quit_confirmation", "valid_actions": ["left", "enter"]}, "abort_on_semantic_ui_failure": true, "abort_verdict": "blocked_r008_bound_return_quit_prompt_missing"},
+    {"kind": "press", "label": "confirm_native_process_exit_after_bound_return", "keys": ["left", "enter"], "settle_seconds": 2.0},
+    {"kind": "audit_saved_game_turn", "label": "audit_saved_turn_after_bound_return", "baseline_label": "audit_bound_local_turn_baseline", "required_min_delta_turns": 43200, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_bound_return_save_stale", "proof_deferred_to_label": "audit_normalized_persistence_after_relaunch"}
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "confirm_native_process_exit_after_bound_return",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {"kind": "wait", "label": "post_bound_return_reload_hud", "seconds": 2.0, "capture_after": true, "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"}, "abort_verdict": "blocked_r008_bound_return_reload_missing"},
+      {"kind": "audit_saved_bandit_live_world_state", "label": "audit_normalized_persistence_after_relaunch", "required_site_id_contains": "overmap_special:bandit_camp@177,13,0", "required_active_group_id_exact": "", "required_active_outside_count": 0, "required_active_outing_kind": "none", "required_active_outing_simulation_owner": "abstract", "required_local_handoff_state": "empty", "required_member_count": 7, "required_ready_at_home_count": 7, "required_scout_report_present": true, "required_scout_report_source_activity_id": "overmap_special:bandit_camp@177,13,0#structural", "required_scout_report_source_generation": 1, "required_scout_report_exact_carrier_ids": [4, 5], "required_report_decision_identity_match": true, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_bound_return_receipt_mismatch"}
+    ]
+  },
+  "evidence_contract": {"claim": "a fresh authority begins from the zero-credit independently audited local pair and proves only the same pair's two native physical-return receipts, terminal abstract ownership, native save, original-process exit, relaunch, and closed-outing normalization", "failure_rule": "The first mismatched bootstrap, source/executable binding, run, receipt order, carrier, operation, generation, owner/epoch progression, save, exit, relaunch, terminal owner state, identity, or cleanup fact is red; never borrow stage-one crossing or persistence credit."}
+}

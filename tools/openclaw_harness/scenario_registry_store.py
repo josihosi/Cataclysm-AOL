@@ -1451,6 +1451,31 @@ def _first_run_certification_route(
             and facts.get("runtime.evidence_ceiling", {}).get("value") ==
             "none_for_debug_fixture_transaction"
         )
+    elif name == "bandit.r008_natural_return_from_bound_local_pair_mcw":
+        valid = (
+            facts.get("capabilities.bandit.natural_structural_scout_return_from_bound_local_pair", {}).get("value") ==
+            "native_wait_only"
+            and facts.get("runtime.r008.source_binding", {}).get("value") ==
+            "r008_natural_safe_watch_local_pair_bootstrap_v1:r008-closure-059-validation"
+        )
+    elif name == "bandit.r008_closure_228_local_pair_bootstrap_mcw":
+        valid = (
+            facts.get("runtime.r008.closure_228_bootstrap", {}).get("value") ==
+            "zero_credit_native_local_pair"
+            and facts.get("world.r008.closure_228_local_pair", {}).get("value") == {
+                "actor_ids": [4, 5], "generation": 1, "handoff_epoch": 1,
+                "simulation_owner": "local",
+            }
+        )
+    elif name == "bandit.r008_closure_229_source_route_local_pair_bootstrap_mcw":
+        valid = (
+            facts.get("runtime.r008.closure_229_bootstrap", {}).get("value") ==
+            "zero_credit_source_route_native_local_pair"
+            and facts.get("world.r008.closure_229_local_pair", {}).get("value") == {
+                "actor_ids": [4, 5], "generation": 1, "handoff_epoch": 1,
+                "simulation_owner": "local",
+            }
+        )
     else:
         valid = False
     if not valid:

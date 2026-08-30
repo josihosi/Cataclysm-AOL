@@ -1,0 +1,308 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r008_closure_229_source_route_local_pair_bootstrap_mcw",
+  "description": "Fresh zero-credit R-008 bootstrap from the immutable production-generated safe-watch footing.  This is a source-route-equivalent native wait route, not a replay of the quarantined closure-228 run: every wait proves its parent and duration-menu context, safely recovers only structured EOC flavour popups, then records the exact active-sortie dispatch predecessor and the local pair for a separately authorized return validation.",
+  "profile": "r008-closure-229-bootstrap",
+  "world": "r008-natural-bandit-039",
+  "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+  "fixture_profile": "r008-closure-039-natural",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "observer_safety_mode": "invisible",
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION",
+    "DEBUG_CLOAK"
+  ],
+  "wait_input_trace": true,
+  "installed_save_player": "#R2xvcnkgVHJlam8=.sav.zzip",
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r008.closure_229_bootstrap": "zero_credit_source_route_native_local_pair",
+    "world.natural_bandit_safe_watch_footing": {
+      "raw_seed": "830205385",
+      "camp_omt": "177,13,0",
+      "hostile_origin_omt": "177,9,0",
+      "watch_omt": "174,13,0",
+      "watch_route_cost": 10,
+      "persistent_ecology_unchanged": true
+    },
+    "world.r008.closure_229_local_pair": {
+      "actor_ids": [4, 5],
+      "generation": 1,
+      "simulation_owner": "local",
+      "handoff_epoch": 1
+    }
+  },
+  "source_binding": {
+    "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json"
+  },
+  "source_binding_validation": {
+    "validator": "r008_natural_wait_progress_source_binding",
+    "bootstrap_artifact": ".userdata/r008-closure-039-natural/harness_runs/20260825_031519/harness_new_world_feasibility.json",
+    "capabilities": ["world.natural_bandit_safe_watch_footing"]
+  },
+  "source_route_equivalence": {
+    "reference_manifest": "bandit.r008_closure_046_source_bound_m095_mcw",
+    "native_wait_dispatch_predecessor": "world_hud -> native_wait_mode_choice -> native_wait_duration_choice",
+    "duration_menu_context": "Wait a while / Set an alarm parent chooser followed by the declared duration chooser",
+    "eoc_popup_recovery": "structured harmless EOC flavour popup only; unknown interruption remains red",
+    "authoritative_successor": "one same-run active_sortie_dispatch at_home->outbound, abstract owner, followed by one local_pair_handoff for actors 4 and 5"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "press:escape", "press:|", "press:w", "press:8", "press:5", "press:.",
+      "press:S", "press:Y", "press:q", "press:left", "press:enter"
+    ],
+    "forbidden_input": [
+      "debug:teleport", "debug:ecology_edit", "raw-save-rewrite",
+      "fixture-save-transform-after-install", "debug:inject_camp", "debug:inject_origin",
+      "debug:inject_lead", "debug:inject_dispatch", "debug:inject_operation",
+      "debug:drive", "debug:eligibility", "semantic:activity.ignore"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r008-closure-229-bootstrap",
+    "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "r008-closure-229-bootstrap",
+      "fixture": "bandit_r008_natural_safe_watch_footing_v0",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": ["native guarded wait", "native save-and-quit"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {
+      "kind": "press",
+      "label": "dismiss_inherited_actions_overlay",
+      "keys": ["escape"],
+      "settle_seconds": 0.5,
+      "expected_visible_fact": "the source-route Escape dismisses the inherited native actions overlay before the first wait"
+    },
+    {
+      "kind": "wait",
+      "label": "post_load_hud",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r008_closure_229_bootstrap_hud_missing"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_safe_watch_position",
+      "player_save": "#R2xvcnkgVHJlam8=.sav.zzip",
+      "required_player_abs_omt": [174, 13, 0],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r008_closure_229_safe_watch_position_missing"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_turn_baseline",
+      "record_baseline": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r008_closure_229_turn_baseline_missing"
+    },
+    {
+      "kind": "long_wait",
+      "label": "source_route_first_six_hour_scheduler_window",
+      "wait_key": "|",
+      "pre_menu_choice_key": "w",
+      "choice_key": "8",
+      "expected_duration": "6h",
+      "require_native_wait_menu_guards": true,
+      "require_wait_input_trace": true,
+      "pre_menu_expected_screen_text_contains": ["Wait a while", "Set an alarm"],
+      "duration_menu_expected_screen_text_contains": ["6 hours"],
+      "allow_harmless_flavor_popup_wait_recovery": true,
+      "completion_wait_seconds": 90.0,
+      "completion_artifact_timeout_seconds": 420.0,
+      "minimum_artifact_elapsed_minutes": 360,
+      "abort_verdict": "blocked_r008_closure_229_first_native_wait_unproved"
+    },
+    {
+      "kind": "long_wait",
+      "label": "source_route_second_six_hour_scheduler_window",
+      "wait_key": "|",
+      "pre_menu_choice_key": "w",
+      "choice_key": "8",
+      "expected_duration": "6h",
+      "require_native_wait_menu_guards": true,
+      "require_wait_input_trace": true,
+      "pre_menu_expected_screen_text_contains": ["Wait a while", "Set an alarm"],
+      "duration_menu_expected_screen_text_contains": ["6 hours"],
+      "allow_harmless_flavor_popup_wait_recovery": true,
+      "completion_wait_seconds": 90.0,
+      "completion_artifact_timeout_seconds": 420.0,
+      "minimum_artifact_elapsed_minutes": 360,
+      "abort_verdict": "blocked_r008_closure_229_second_native_wait_unproved"
+    },
+    {
+      "kind": "long_wait",
+      "label": "source_route_first_hour_to_dispatch",
+      "wait_key": "|",
+      "pre_menu_choice_key": "w",
+      "choice_key": "5",
+      "expected_duration": "1h",
+      "require_native_wait_menu_guards": true,
+      "require_wait_input_trace": true,
+      "pre_menu_expected_screen_text_contains": ["Wait a while", "Set an alarm"],
+      "duration_menu_expected_screen_text_contains": ["1 hour"],
+      "allow_harmless_flavor_popup_wait_recovery": true,
+      "completion_wait_seconds": 90.0,
+      "completion_artifact_timeout_seconds": 420.0,
+      "minimum_artifact_elapsed_minutes": 60,
+      "abort_verdict": "blocked_r008_closure_229_first_dispatch_wait_unproved"
+    },
+    {
+      "kind": "long_wait",
+      "label": "source_route_second_hour_to_dispatch",
+      "wait_key": "|",
+      "pre_menu_choice_key": "w",
+      "choice_key": "5",
+      "expected_duration": "1h",
+      "require_native_wait_menu_guards": true,
+      "require_wait_input_trace": true,
+      "pre_menu_expected_screen_text_contains": ["Wait a while", "Set an alarm"],
+      "duration_menu_expected_screen_text_contains": ["1 hour"],
+      "allow_harmless_flavor_popup_wait_recovery": true,
+      "completion_wait_seconds": 90.0,
+      "completion_artifact_timeout_seconds": 420.0,
+      "minimum_artifact_elapsed_minutes": 60,
+      "abort_verdict": "blocked_r008_closure_229_second_dispatch_wait_unproved"
+    },
+    {
+      "kind": "press",
+      "label": "resolve_native_active_sortie_dispatch_boundary",
+      "keys": ["."],
+      "settle_seconds": 1.0
+    },
+    {
+      "kind": "audit_structured_transition_event",
+      "label": "audit_native_active_sortie_dispatch_predecessor",
+      "predicate": {
+        "domain": "bandit_live_world",
+        "transition": "active_sortie_dispatch",
+        "outcome": "committed",
+        "site_id": "overmap_special:bandit_camp@177,13,0",
+        "operation_id": "overmap_special:bandit_camp@177,13,0#structural",
+        "generation": 1,
+        "simulation_owner": "abstract",
+        "previous_state": "at_home",
+        "new_state": "outbound",
+        "actor_ids": [4, 5]
+      },
+      "require_exactly_one": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r008_closure_229_active_sortie_dispatch_predecessor_missing"
+    },
+    {
+      "kind": "audit_structured_transition_event",
+      "label": "audit_native_local_pair_successor",
+      "predicate": {
+        "domain": "bandit_live_world",
+        "transition": "local_pair_handoff",
+        "outcome": "committed",
+        "site_id": "overmap_special:bandit_camp@177,13,0",
+        "operation_id": "overmap_special:bandit_camp@177,13,0#structural",
+        "generation": 1,
+        "simulation_owner": "local",
+        "previous_state": "abstract",
+        "new_state": "local",
+        "actor_ids": [4, 5],
+        "handoff_epoch": 1
+      },
+      "require_exactly_one": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r008_closure_229_local_pair_successor_missing"
+    },
+    {
+      "kind": "press",
+      "label": "save_local_pair",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Case Sensitive"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r008_closure_229_save_prompt_missing"
+    },
+    {"kind": "press", "label": "confirm_local_pair_save", "keys": ["Y"], "settle_seconds": 4.0},
+    {"kind": "press", "label": "exit_original_process", "keys": ["q"], "settle_seconds": 1.0},
+    {
+      "kind": "press",
+      "label": "confirm_original_process_exit",
+      "keys": ["left", "enter"],
+      "settle_seconds": 4.0
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_persisted_local_pair",
+      "required_site_id_contains": "overmap_special:bandit_camp@177,13,0",
+      "required_active_outside_count": 2,
+      "required_active_outing_kind": "structural_sortie",
+      "required_active_outing_generation": 1,
+      "required_active_outing_simulation_owner": "local",
+      "required_active_outing_handoff_epoch": 1,
+      "required_active_outing_exact_pair": true,
+      "required_active_outing_pair_contract": true,
+      "required_local_handoff_state": "local",
+      "required_local_handoff_exact_pair": true,
+      "required_local_handoff_pair_contract": true,
+      "required_local_return_eligibility_valid": true,
+      "required_local_return_eligibility_cohesion_assembled": false,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r008_closure_229_local_pair_not_persisted"
+    }
+  ],
+  "proof_gates": [
+    {
+      "id": "native_dispatch",
+      "label": "Exact native active-sortie dispatch predecessor",
+      "boundary_step": "audit_native_active_sortie_dispatch_predecessor",
+      "predecessors": [],
+      "expectations": [{"kind": "structured_event", "predicate": {"domain": "bandit_live_world", "transition": "active_sortie_dispatch", "outcome": "committed", "site_id": "overmap_special:bandit_camp@177,13,0", "operation_id": "overmap_special:bandit_camp@177,13,0#structural", "generation": 1, "simulation_owner": "abstract", "previous_state": "at_home", "new_state": "outbound", "actor_ids": [4, 5]}}],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    },
+    {
+      "id": "native_local_pair",
+      "label": "Exact authoritative local-pair successor",
+      "boundary_step": "audit_native_local_pair_successor",
+      "predecessors": ["native_dispatch"],
+      "expectations": [{"kind": "structured_event", "predicate": {"domain": "bandit_live_world", "transition": "local_pair_handoff", "outcome": "committed", "simulation_owner": "local", "generation": 1, "actor_ids": [4, 5], "handoff_epoch": 1, "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids", "simulation_owner", "handoff_epoch"]}}],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    },
+    {
+      "id": "persisted_local_pair",
+      "label": "Persisted zero-credit local pair",
+      "boundary_step": "audit_persisted_local_pair",
+      "predecessors": ["native_local_pair"],
+      "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true, "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids", "simulation_owner", "handoff_epoch"]}}],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    }
+  ],
+  "causal_boundary_gate": "native_local_pair",
+  "proof_route": {
+    "gates": ["native_dispatch", "native_local_pair", "persisted_local_pair"],
+    "terminal": ["persisted_local_pair"],
+    "capability_gates": {
+      "world.r008.closure_229_local_pair": {"persistence": ["persisted_local_pair"]}
+    }
+  }
+}

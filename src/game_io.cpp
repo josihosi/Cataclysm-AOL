@@ -806,9 +806,6 @@ bool game::save()
                 fout.imbue( std::locale::classic() );
                 fout << total_time_played.count();
             } );
-            bandit_live_world_probe::record_certification_save_receipt(
-                to_turns<int>( calendar::turn - calendar::turn_zero ),
-                PATH_INFO::world_base_save_path().get_unrelative_path().string() );
             const std::vector<bandit_live_world::world_state::crossing_receipt_identity>
             acknowledged_crossings =
                 overmap_buffer.global_state.bandit_live_world.acknowledge_persisted_crossings();
@@ -818,6 +815,11 @@ bool game::save()
                 debugmsg( "game save could not persist crossing acknowledgement" );
                 return false;
             }
+            // The certification digest must describe the completed ordinary
+            // save, including any persisted crossing acknowledgement above.
+            bandit_live_world_probe::record_certification_save_receipt(
+                to_turns<int>( calendar::turn - calendar::turn_zero ),
+                PATH_INFO::world_base_save_path().get_unrelative_path().string() );
 #if defined(EMSCRIPTEN)
             // This will allow the window to be closed without a prompt, until do_turn()
             // is called.

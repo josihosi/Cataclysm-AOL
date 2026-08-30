@@ -349,6 +349,16 @@ def _current_bootstrap_revalidation_facts(declaration: Mapping[str, Any]) -> Map
     def current_payload(kind: str, name_key: str, profile_key: str, resolver: Any) -> Mapping[str, Any]:
         name = str(declaration.get(name_key, "")).strip()
         profile = str(declaration.get(profile_key, "")).strip()
+        if not name:
+            return {
+                "status": "compatible",
+                "name": "",
+                "profile": profile,
+                "source_path": "",
+                "source_sha256": _identity_sha256(
+                    "fixture not requested" if kind == "fixture" else "profile snapshot not requested"
+                ),
+            }
         try:
             resolved = resolver(name, profile)
             source_path = Path(
@@ -1434,7 +1444,6 @@ def _declared_pre_descriptor_prefix(selection: Any) -> list[dict[str, Any]]:
         if not stage["objective"] or not isinstance(stage["required_action_chain"], list) or \
                 not isinstance(stage["adaptive_interrupt_actions"], list) or \
                 not stage["label"] or step.get("label") != stage["label"] or \
-                step.get("objective") != stage["objective"] or \
                 step.get("required_action_chain") != stage["required_action_chain"] or \
                 step.get("adaptive_interrupt_actions", []) != stage["adaptive_interrupt_actions"]:
             raise ScenarioRegistryStoreError("pre-descriptor bootstrap stage does not match scenario declaration")

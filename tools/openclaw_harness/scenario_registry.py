@@ -256,8 +256,15 @@ def _validate_checkpoint_gate_expectations(value: Any, *, path: Path, field: str
             raise _error(path, f"{field}[{index}] must be an object")
         if set(expectation) != {"kind", "predicate"}:
             raise _error(path, f"{field}[{index}] must contain exactly kind and predicate")
-        if expectation.get("kind") not in {"structured_event", "semantic_state", "saved_artifact"}:
-            raise _error(path, f"{field}[{index}].kind must name structured_event, semantic_state, or saved_artifact")
+        if expectation.get("kind") not in {
+                "structured_event", "structural_member_return_pair", "semantic_state",
+                "saved_artifact",
+        }:
+            raise _error(
+                path,
+                f"{field}[{index}].kind must name structured_event, "
+                "structural_member_return_pair, semantic_state, or saved_artifact",
+            )
         predicate = expectation.get("predicate")
         if not _is_bounded_object(predicate) or not predicate:
             raise _error(path, f"{field}[{index}].predicate must be a non-empty bounded object")

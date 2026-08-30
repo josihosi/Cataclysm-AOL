@@ -605,6 +605,105 @@ def audit_structured_transition_event(
     }
 
 
+def classify_structural_member_physical_return_pair(
+    events: Sequence[Mapping[str, Any]], *, run_id: str, binding_id: str,
+    predicate: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Aggregate the two native physical-return receipts into one pair boundary.
+
+    Production records one receipt per returning actor.  The harness may only
+    call that a pair boundary when the two receipts are complete, ordered, and
+    share the run, bound stream, operation identity, generation, minute, and
+    terminal ownership progression.  It deliberately does not accept the
+    retired atomic ``local_pair_dematerialization`` spelling.
+    """
+    required_ids = predicate.get("actor_ids", [])
+    expected_owners = predicate.get("owner_progression", [])
+    expected_epochs = predicate.get("handoff_epoch_progression", [])
+    expected_binding = str(predicate.get("binding_id", binding_id) or "").strip()
+    expected_fields = {
+        key: predicate.get(key)
+        for key in ("domain", "transition", "outcome", "previous_state", "new_state",
+                    "site_id", "operation_id", "generation")
+        if key in predicate
+    }
+    failures: List[str] = []
+    if not isinstance(required_ids, list) or len(required_ids) != 2 or len({str(value) for value in required_ids}) != 2:
+        failures.append("invalid_required_pair")
+    if not isinstance(expected_owners, list) or len(expected_owners) != len(required_ids):
+        failures.append("invalid_owner_progression")
+    if not isinstance(expected_epochs, list) or len(expected_epochs) != len(required_ids):
+        failures.append("invalid_epoch_progression")
+    if not str(run_id or "").strip():
+        failures.append("missing_run_binding")
+    if not str(binding_id or "").strip() or not expected_binding or binding_id != expected_binding:
+        failures.append("wrong_binding")
+
+    candidates: List[Mapping[str, Any]] = []
+    for event in events:
+        if not isinstance(event, Mapping):
+            failures.append("malformed_receipt")
+            continue
+        event_ids = event.get("actor_ids")
+        if str(event.get("transition", "")) != "structural_member_physical_return" or \
+                not isinstance(event_ids, list) or len(event_ids) != 1 or \
+                event_ids[0] not in required_ids:
+            continue
+        if event.get("run_id") != run_id:
+            failures.append("stale_or_mixed_run")
+            continue
+        event_binding = str(event.get("_harness_binding_id", binding_id) or "").strip()
+        if event_binding != expected_binding:
+            failures.append("stale_or_mixed_binding")
+            continue
+        candidates.append(event)
+
+    by_actor: Dict[Any, List[Mapping[str, Any]]] = {actor_id: [] for actor_id in required_ids} \
+        if isinstance(required_ids, list) else {}
+    for event in candidates:
+        by_actor[event["actor_ids"][0]].append(event)
+    if isinstance(required_ids, list) and [
+            event["actor_ids"][0] for event in candidates
+    ] != required_ids:
+        failures.append("unordered_or_mixed_actor_receipts")
+    if any(len(receipts) != 1 for receipts in by_actor.values()):
+        failures.append("partial_or_duplicate_pair")
+    ordered = [by_actor[actor_id][0] for actor_id in required_ids if len(by_actor[actor_id]) == 1]
+    if len(ordered) == len(required_ids):
+        sequences = [event.get("sequence") for event in ordered]
+        if any(isinstance(value, bool) or not isinstance(value, int) for value in sequences) or \
+                sequences != sorted(sequences) or len(set(sequences)) != len(sequences):
+            failures.append("unordered_or_duplicate_receipt_sequence")
+        minutes = [event.get("game_minutes") for event in ordered]
+        if any(isinstance(value, bool) or not isinstance(value, (int, float)) for value in minutes) or \
+                len(set(minutes)) != 1:
+            failures.append("mixed_return_minute")
+        for event in ordered:
+            for key, expected in expected_fields.items():
+                if _transition_event_value(event, key) != expected:
+                    failures.append("mixed_or_wrong_" + key)
+        if [event.get("simulation_owner") for event in ordered] != expected_owners:
+            failures.append("wrong_owner_progression")
+        if [event.get("handoff_epoch") for event in ordered] != expected_epochs:
+            failures.append("wrong_epoch_progression")
+    failures = list(dict.fromkeys(failures))
+    references = [
+        {"sequence": event.get("sequence"), "byte_start": event.get("_stream_byte_start"),
+         "byte_end": event.get("_stream_byte_end"), "actor_id": event["actor_ids"][0]}
+        for event in ordered
+    ]
+    return {
+        "status": "matched" if not failures else "unproved",
+        "failures": failures,
+        "run_id": run_id,
+        "binding_id": binding_id,
+        "actor_ids": required_ids,
+        "event_references": references,
+        "terminal_owner": expected_owners[-1] if isinstance(expected_owners, list) and expected_owners else "",
+        "terminal_handoff_epoch": expected_epochs[-1] if isinstance(expected_epochs, list) and expected_epochs else None,
+    }
+
+
 def evaluate_causal_boundary(
     proof_gates: Sequence[Mapping[str, Any]],
     *, gate_id: str, events: Sequence[Mapping[str, Any]], run_id: str,
@@ -846,6 +945,7 @@ def evaluate_structured_proof_gates(
     step_reports: Optional[Sequence[Mapping[str, Any]]] = None,
     diagnostics: Optional[Sequence[Mapping[str, Any]]] = None,
     run_id: str = "",
+    binding_id: str = "",
 ) -> Dict[str, Any]:
     """Evaluate v2 predicates only over each gate's predecessor/current range."""
     artifacts = list(saved_artifacts or [])
@@ -893,7 +993,9 @@ def evaluate_structured_proof_gates(
         current_boundary = str(gate.get("boundary_step", ""))
         observed_watermark = watermarks.get(current_boundary, {})
         owns_structured_events = any(
-            str(expectation.get("kind", "")) in {"structured_event", "semantic_state"}
+            str(expectation.get("kind", "")) in {
+                "structured_event", "structural_member_return_pair", "semantic_state",
+            }
             for expectation in gate.get("expectations", [])
             if isinstance(expectation, Mapping)
         )
@@ -916,7 +1018,11 @@ def evaluate_structured_proof_gates(
         start_step_index = int(predecessor_artifact_watermark.get("step_index", 0) or 0)
         end_step_index = int(current_artifact_watermark.get("step_index", 0) or 0)
         in_range = [
-            event for event in events
+            {
+                **event,
+                "_harness_binding_id": str(event.get("_harness_binding_id", binding_id) or ""),
+            }
+            for event in events
             if start_sequence < int(event.get("sequence", 0) or 0) <= end_sequence
             and start_offset <= int(event.get("_stream_byte_start", start_offset) or start_offset) < end_offset
             and event.get("run_id") == run_id
@@ -945,6 +1051,23 @@ def evaluate_structured_proof_gates(
                 matched = [event for event in in_range if _structured_event_matches(event, predicate)]
                 refs = [{"sequence": event.get("sequence"), "byte_start": event.get("_stream_byte_start"), "byte_end": event.get("_stream_byte_end")} for event in matched]
                 expectation_results.append({"kind": kind, "predicate": dict(predicate), "matched": bool(matched), "event_references": refs, "_matched_events": matched})
+            elif kind == "structural_member_return_pair":
+                pair = classify_structural_member_physical_return_pair(
+                    in_range, run_id=run_id, binding_id=binding_id, predicate=predicate,
+                )
+                matched = [
+                    event for event in in_range
+                    if event.get("sequence") in {
+                        reference.get("sequence") for reference in pair["event_references"]
+                    }
+                ]
+                expectation_results.append({
+                    "kind": kind, "predicate": dict(predicate),
+                    "matched": pair["status"] == "matched",
+                    "event_references": pair["event_references"],
+                    "pair_boundary": pair,
+                    "_matched_events": matched,
+                })
             elif kind == "semantic_state":
                 semantic = decide_event_facts(
                     in_range,
@@ -978,7 +1101,9 @@ def evaluate_structured_proof_gates(
                 expectation_results.append({"kind": kind, "predicate": dict(predicate), "matched": False, "reason": "unsupported_expectation_kind"})
         identity_expectations = [
             result for result in expectation_results
-            if result.get("kind") in {"structured_event", "saved_artifact"}
+            if result.get("kind") in {
+                "structured_event", "structural_member_return_pair", "saved_artifact",
+            }
             and isinstance(result.get("predicate"), Mapping)
             and (result["predicate"].get("continuity_fields") or result["predicate"].get("identity_fields"))
         ]
@@ -1052,6 +1177,7 @@ def evaluate_structured_proof_gates(
         artifact_boundaries[gate_id] = current_artifact_watermark
     return {
         "status": "green" if all_green and evidence else "red", "run_id": run_id,
+        "binding_id": binding_id,
         "gates": evidence, "diagnostics": list(diagnostics or []),
         "diagnostic_summary": summarize_transition_diagnostics(diagnostics or []),
     }
@@ -12150,6 +12276,9 @@ def audit_saved_bandit_live_world_state(
     required_scout_report_present: Optional[bool] = None,
     required_scout_report_provisional: Optional[bool] = None,
     required_scout_report_min_observations: Optional[int] = None,
+    required_scout_report_source_activity_id: str = "",
+    required_scout_report_source_generation: Optional[int] = None,
+    required_scout_report_exact_carrier_ids: Optional[List[int]] = None,
     required_camp_decision_state: str = "",
     required_report_decision_identity_match: Optional[bool] = None,
     required_report_hostile_operation_claim_match: Optional[bool] = None,
@@ -12356,6 +12485,13 @@ def audit_saved_bandit_live_world_state(
         required_active_hostile_reservation_simulation_owner or ""
     ).strip()
     required_local_handoff_state = str(required_local_handoff_state or "").strip()
+    required_scout_report_source_activity_id = str(
+        required_scout_report_source_activity_id or ""
+    ).strip()
+    normalized_scout_report_carrier_ids = (
+        [int(value) for value in required_scout_report_exact_carrier_ids]
+        if required_scout_report_exact_carrier_ids is not None else None
+    )
     normalized_local_handoff_route_position: Optional[List[int]] = None
     if required_local_handoff_route_position is not None:
         if len(required_local_handoff_route_position) < 3:
@@ -12507,6 +12643,15 @@ def audit_saved_bandit_live_world_state(
             return False
         if required_scout_report_min_observations is not None and int(scout_report.get("observation_count", 0) or 0) < required_scout_report_min_observations:
             return False
+        if required_scout_report_source_activity_id and str(
+                scout_report.get("source_activity_id", "")) != required_scout_report_source_activity_id:
+            return False
+        if required_scout_report_source_generation is not None and int(
+                scout_report.get("source_generation", 0) or 0) != required_scout_report_source_generation:
+            return False
+        if normalized_scout_report_carrier_ids is not None and list(
+                scout_report.get("carrier_ids", [])) != normalized_scout_report_carrier_ids:
+            return False
         camp_decision = site.get("camp_decision", {})
         if not isinstance(camp_decision, dict):
             camp_decision = {}
@@ -12654,6 +12799,9 @@ def audit_saved_bandit_live_world_state(
         required_local_return_eligibility_cohesion_assembled,
         "required_local_handoff_cohesion_abort_return": required_local_handoff_cohesion_abort_return,
         "required_local_handoff_route_position": normalized_local_handoff_route_position,
+        "required_scout_report_source_activity_id": required_scout_report_source_activity_id,
+        "required_scout_report_source_generation": required_scout_report_source_generation,
+        "required_scout_report_exact_carrier_ids": normalized_scout_report_carrier_ids,
         "required_member_count": required_member_count,
         "required_ready_at_home_count": required_ready_at_home_count,
         "required_min_ready_at_home_count": required_min_ready_at_home_count,
@@ -15441,10 +15589,17 @@ def evaluate_bound_startup_gameplay_hud_verdict(
         issues.append("incomplete_runtime_binding")
     if screen.get("runtime_binding_status") != "matched" or str(observed_runtime.get("executable_sha256", "")).lower() != executable_sha256 or str(observed_runtime.get("runtime_source_sha256", "")).lower() != source_sha256:
         issues.append("stale_or_wrong_executable_binding")
-    if str(authority.get("authority", "")) != "registry" or not str(authority.get("authority_id", "")):
+    authority_kind = str(authority.get("authority", ""))
+    authority_binding_id = str(authority.get("binding_id", "")).lower()
+    if authority_kind not in {"registry", "certification"} or not str(authority.get("authority_id", "")):
         issues.append("missing_registry_authority")
-    if str(authority.get("binding_id", "")).lower() != executable_sha256:
+    if authority_kind == "registry" and authority_binding_id != executable_sha256:
         issues.append("wrong_registry_executable_binding")
+    if authority_kind == "certification" and (
+            str(authority.get("evidence_class", "")) != "automated continuous-round certification" or
+            len(authority_binding_id) != 64
+    ):
+        issues.append("wrong_certification_round_binding")
     if not scenario_source_sha256 or str(authority.get("source_sha256", "")).lower() != scenario_source_sha256.lower():
         issues.append("stale_or_wrong_scenario_source_binding")
     return {
@@ -15459,7 +15614,7 @@ def evaluate_bound_startup_gameplay_hud_verdict(
             "previous_process_pid": previous_process_pid,
         },
         "runtime_binding": {"executable_sha256": executable_sha256, "runtime_source_sha256": source_sha256, "screen_status": screen.get("runtime_binding_status", "")},
-        "registry_authority": {"authority": str(authority.get("authority", "")), "authority_id": str(authority.get("authority_id", "")), "binding_id": str(authority.get("binding_id", "")), "run_id": str(authority.get("run_id", "")), "source_sha256": str(authority.get("source_sha256", ""))},
+        "registry_authority": {"authority": authority_kind, "authority_id": str(authority.get("authority_id", "")), "binding_id": authority_binding_id, "run_id": str(authority.get("run_id", "")), "source_sha256": str(authority.get("source_sha256", ""))},
         "scenario_source_sha256": scenario_source_sha256,
         "issues": issues,
         "provenance": "run_bound_semantic_startup_gameplay_hud_verdict",
@@ -23962,6 +24117,27 @@ def normalize_scenario_steps(raw_steps: Any, advance_count: int, settle_seconds:
     return []
 
 
+def bind_pre_descriptor_bootstrap_objectives(
+    steps: Sequence[Dict[str, Any]], scenario: Mapping[str, Any],
+) -> None:
+    """Copy zero-credit bridge objectives into their emitted semantic descriptors."""
+    bootstrap = scenario.get("cockpit_pre_descriptor_bootstrap")
+    if not isinstance(bootstrap, Mapping):
+        return
+    prefix = bootstrap.get("adaptive_prefix")
+    if not isinstance(prefix, list):
+        return
+    objectives = {
+        str(entry.get("label", "")).strip(): str(entry.get("objective", "")).strip()
+        for entry in prefix if isinstance(entry, Mapping)
+    }
+    for step in steps:
+        label = str(step.get("label", "")).strip()
+        objective = objectives.get(label, "")
+        if objective and str(step.get("objective", "")).strip() == "":
+            step["objective"] = objective
+
+
 def scenario_requests_startup_overlay_dismissal( steps: Sequence[Mapping[str, Any]] ) -> bool:
     """Allow startup Escape only for a scenario's explicit first-step declaration."""
     if not steps:
@@ -26733,6 +26909,15 @@ def execute_probe_steps(
             required_scout_report_min_observations = optional_step_int(
                 "required_scout_report_min_observations"
             )
+            required_scout_report_source_generation = optional_step_int(
+                "required_scout_report_source_generation"
+            )
+            raw_scout_report_carrier_ids = step.get("required_scout_report_exact_carrier_ids")
+            required_scout_report_exact_carrier_ids: Optional[List[int]] = None
+            if isinstance(raw_scout_report_carrier_ids, list):
+                required_scout_report_exact_carrier_ids = [
+                    int(value) for value in raw_scout_report_carrier_ids
+                ]
             required_report_decision_identity_match = optional_step_bool(
                 "required_report_decision_identity_match"
             )
@@ -26859,6 +27044,14 @@ def execute_probe_steps(
                     required_min_active_member_ids=required_min_active_member_ids,
                     required_active_members_found=bool(step.get("required_active_members_found", False)),
                     required_active_member_max_abs_offset_ms=required_max_offset,
+                    required_scout_report_present=required_scout_report_present,
+                    required_scout_report_provisional=required_scout_report_provisional,
+                    required_scout_report_min_observations=required_scout_report_min_observations,
+                    required_scout_report_source_activity_id=str(
+                        step.get("required_scout_report_source_activity_id", "") or ""
+                    ).strip(),
+                    required_scout_report_source_generation=required_scout_report_source_generation,
+                    required_scout_report_exact_carrier_ids=required_scout_report_exact_carrier_ids,
                     player_save=str(step.get("player_save", "") or "").strip(),
                     required_remembered_target_or_mark_prefix=str(
                         step.get("required_remembered_target_or_mark_prefix", "") or ""
@@ -26884,9 +27077,6 @@ def execute_probe_steps(
                     required_known_recent_mark_contains=str(
                         step.get("required_known_recent_mark_contains", "") or ""
                     ).strip(),
-                    required_scout_report_present=required_scout_report_present,
-                    required_scout_report_provisional=required_scout_report_provisional,
-                    required_scout_report_min_observations=required_scout_report_min_observations,
                     required_camp_decision_state=str(
                         step.get("required_camp_decision_state", "") or ""
                     ).strip(),
@@ -31262,6 +31452,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     recommended_test_command = args.test_command or str(scenario.get("recommended_test_command", "")).strip()
     artifact_source = str(scenario.get("artifact_source", "debug.log")).strip() or "debug.log"
     steps = normalize_scenario_steps(scenario.get("steps", []), advance_count, settle_seconds)
+    bind_pre_descriptor_bootstrap_objectives(steps, scenario)
     try:
         native_preview_requests = native_preview_segment_requests(steps)
     except ValueError as error:
@@ -32227,6 +32418,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         saved_artifacts=ledger_artifacts,
         diagnostics=structured_event_diagnostics,
         run_id=transition_event_run_id,
+        binding_id=str(ledger_authority.get("binding_id", "")),
     )
     step_ledger = build_probe_step_ledger(
         step_reports,
@@ -32275,6 +32467,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         saved_artifacts=saved_artifacts_for_gates,
         diagnostics=structured_event_diagnostics,
         run_id=transition_event_run_id,
+        binding_id=str(ledger_authority.get("binding_id", "")),
     )
     if scenario.get("proof_gates"):
         write_json(run_dir / "proof.gates.json", structured_gate_evidence)

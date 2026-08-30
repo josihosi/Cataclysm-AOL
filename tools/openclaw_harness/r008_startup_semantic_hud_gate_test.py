@@ -100,6 +100,33 @@ class R008StartupSemanticHudGateTest( unittest.TestCase ):
                 self.assertEqual( result["status"], "red" )
                 self.assertIn( expected_issue, result["issues"] )
 
+    def test_accepts_sealed_certification_round_binding( self ) -> None:
+        _, _, _, _, _, authority, _ = self.inputs()
+        certification_authority = {
+            **authority,
+            "authority": "certification",
+            "binding_id": "c" * 64,
+            "evidence_class": "automated continuous-round certification",
+        }
+
+        result = self.evaluate( authority=certification_authority )
+
+        self.assertEqual( result["status"], "green" )
+
+    def test_rejects_incomplete_certification_round_binding( self ) -> None:
+        _, _, _, _, _, authority, _ = self.inputs()
+        certification_authority = {
+            **authority,
+            "authority": "certification",
+            "binding_id": "not-a-round-binding",
+            "evidence_class": "automated continuous-round certification",
+        }
+
+        result = self.evaluate( authority=certification_authority )
+
+        self.assertEqual( result["status"], "red" )
+        self.assertIn( "wrong_certification_round_binding", result["issues"] )
+
 
 if __name__ == "__main__":
     unittest.main()

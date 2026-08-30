@@ -47,6 +47,30 @@ from startup_harness import finalize_probe_report  # noqa: E402
 
 
 class ScenarioRegistryCliTest(unittest.TestCase):
+    def test_r008_pre_descriptor_prefix_uses_declared_objectives_without_step_duplicates(self) -> None:
+        scenario = "bandit.r008_natural_return_validation_mcw"
+        declaration = startup_harness.load_scenario(scenario)
+        selection = scenario_registry_cli.RegistryBootstrapToken(
+            "token", True, "current", scenario,
+            str(startup_harness.scenario_path(scenario)), {},
+        )
+
+        prefix = scenario_registry_cli._declared_pre_descriptor_prefix(selection)
+
+        self.assertEqual(len(prefix), 4)
+        self.assertEqual(prefix[0]["label"], "advance_first_semantic_scheduler_window")
+        self.assertIn("Zero-credit preparation", prefix[0]["objective"])
+        self.assertEqual(prefix[0]["required_action_chain"], [
+            "world.wait", "wait.duration_menu", "wait.6h",
+        ])
+        steps = startup_harness.normalize_scenario_steps(declaration["steps"], 0, 1.0)
+        startup_harness.bind_pre_descriptor_bootstrap_objectives(steps, declaration)
+        first_window = next(
+            step for step in steps
+            if step["label"] == "advance_first_semantic_scheduler_window"
+        )
+        self.assertEqual(first_window["objective"], prefix[0]["objective"])
+
     def test_query_readiness_routes_stale_product_build_before_repair_authority(self) -> None:
         repair = {
             "kind": "repair_current_contradiction",
