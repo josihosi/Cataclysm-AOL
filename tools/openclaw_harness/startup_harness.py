@@ -8297,13 +8297,22 @@ def execute_long_wait_action(
             }
             report["stop_after_step"] = True
             return report
+    # Each long-wait guard is scoped to its own input attempt.  Reusing the
+    # run baseline makes a prior accepted duration selection contaminate the
+    # next wait's pre-submenu dispatch observation.
+    input_trace_start_offset = action_trace_start_offset
+    if action_trace_log is not None:
+        try:
+            input_trace_start_offset = action_trace_log.stat().st_size
+        except OSError:
+            pass
     peekaboo_press_sequence(pid, [wait_key], delay_ms=delay_ms)
     if menu_settle_seconds > 0:
         time.sleep(menu_settle_seconds)
     if action_trace_log is not None:
         if trace_run_id:
             report["input_resolution_trace"] = classify_wait_input_trace(
-                action_trace_log, action_trace_start_offset, run_id=trace_run_id
+                action_trace_log, input_trace_start_offset, run_id=trace_run_id
             )
     if require_native_wait_menu_guards and bool(step.get("require_wait_input_trace", False)):
         receipt = append_wait_diagnostic_record(
