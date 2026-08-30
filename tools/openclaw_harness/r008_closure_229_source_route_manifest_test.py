@@ -87,6 +87,25 @@ class R008Closure229SourceRouteManifestTest( unittest.TestCase ):
         self.assertEqual( boundary["contact_boundary"]["owner"], "local" )
         self.assertEqual( boundary["cleanup_owner"], "cleanup_harness_world" )
 
+    def test_only_the_declared_local_pair_persistence_path_crosses_the_boundary( self ) -> None:
+        scenario = self.load_scenario()
+        labels = {
+            "audit_native_active_sortie_dispatch_predecessor",
+            "audit_native_local_pair_successor",
+            "save_local_pair",
+            "confirm_local_pair_save",
+            "exit_original_process",
+            "confirm_original_process_exit",
+            "audit_persisted_local_pair",
+        }
+        annotated = {
+            step["label"] for step in scenario["steps"]
+            if step.get("causal_boundary_persistence_for") == "native_local_pair"
+        }
+
+        self.assertEqual( scenario["causal_boundary_gate"], "native_local_pair" )
+        self.assertEqual( annotated, labels )
+
 
 if __name__ == "__main__":
     unittest.main()

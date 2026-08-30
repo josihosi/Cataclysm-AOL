@@ -251,6 +251,7 @@
         "actor_ids": [4, 5]
       },
       "require_exactly_one": true,
+      "causal_boundary_persistence_for": "native_local_pair",
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_r008_closure_229_active_sortie_dispatch_predecessor_missing"
     },
@@ -271,6 +272,7 @@
         "handoff_epoch": 1
       },
       "require_exactly_one": true,
+      "causal_boundary_persistence_for": "native_local_pair",
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_r008_closure_229_local_pair_successor_missing"
     },
@@ -278,6 +280,7 @@
       "kind": "press",
       "label": "save_local_pair",
       "keys": ["S"],
+      "causal_boundary_persistence_for": "native_local_pair",
       "settle_seconds": 1.0,
       "capture_after": true,
       "extract_text_after_capture": true,
@@ -285,12 +288,13 @@
       "abort_on_screen_text_expectation_failure": true,
       "abort_verdict": "blocked_r008_closure_229_save_prompt_missing"
     },
-    {"kind": "press", "label": "confirm_local_pair_save", "keys": ["Y"], "settle_seconds": 4.0},
-    {"kind": "press", "label": "exit_original_process", "keys": ["q"], "settle_seconds": 1.0},
+    {"kind": "press", "label": "confirm_local_pair_save", "keys": ["Y"], "causal_boundary_persistence_for": "native_local_pair", "settle_seconds": 4.0},
+    {"kind": "press", "label": "exit_original_process", "keys": ["q"], "causal_boundary_persistence_for": "native_local_pair", "settle_seconds": 1.0},
     {
       "kind": "press",
       "label": "confirm_original_process_exit",
       "keys": ["left", "enter"],
+      "causal_boundary_persistence_for": "native_local_pair",
       "settle_seconds": 4.0
     },
     {
@@ -309,6 +313,7 @@
       "required_local_handoff_pair_contract": true,
       "required_local_return_eligibility_valid": true,
       "required_local_return_eligibility_cohesion_assembled": false,
+      "causal_boundary_persistence_for": "native_local_pair",
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_r008_closure_229_local_pair_not_persisted"
     }
