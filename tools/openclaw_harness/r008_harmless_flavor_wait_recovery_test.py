@@ -81,6 +81,31 @@ class R008HarmlessFlavorWaitRecoveryTest( unittest.TestCase ):
         self.assertEqual( result["response_keys"], ["I", "space"] )
         self.assertEqual( acknowledge.call_count, 2 )
 
+    def test_accepts_standalone_semantic_eoc_flavor_popup( self ):
+        popup = {
+            "status": "semantic_recovered",
+            "acknowledgements": [{
+                "response_key": "space",
+                "classification": {
+                    "classification": "semantic_ui_recovered",
+                    "provenance": "semantic_ui_trace",
+                },
+            }],
+        }
+        clear = {"status": "clear", "acknowledgements": []}
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object( startup_harness, "acknowledge_blocking_interruptions",
+                              side_effect=[popup, clear] ) as acknowledge:
+            result = startup_harness.recover_harmless_wilderness_flavor_wait(
+                123, Path( temp ), "r008", delay_ms=1,
+                action_trace_log=Path( temp ) / "native.log",
+                action_trace_start_offset=0,
+            )
+
+        self.assertEqual( result["status"], "recovered_harmless_flavor_wait_sequence" )
+        self.assertEqual( result["response_keys"], ["space"] )
+        self.assertEqual( acknowledge.call_count, 2 )
+
     def test_rejects_nonsemantic_popup_even_if_it_claims_recovery( self ):
         popup = {
             "status": "semantic_recovered",
