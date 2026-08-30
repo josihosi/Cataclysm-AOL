@@ -1820,7 +1820,7 @@ def _registry_query_repair_action(
             route_key = str(route.get("route_key", "")).strip()
             red_ids = details.get("unresolved_contradiction_ids", ())
             if route.get("evidence_state") == "stale":
-                red_ids = _r019_stale_repairable_red_ids(
+                red_ids = _stale_repairable_red_ids(
                     connection, manifest_id=manifest_id, route_key=route_key,
                 )
             if not route_key or not isinstance(red_ids, Sequence) or isinstance(red_ids, (str, bytes)):
@@ -3269,7 +3269,7 @@ def _repair_route_current(
     if route.get("evidence_state") == "contradicted":
         red_ids = details.get("unresolved_contradiction_ids", ()) if isinstance(details, Mapping) else ()
     elif route.get("evidence_state") == "stale":
-        red_ids = _r019_stale_repairable_red_ids(
+        red_ids = _stale_repairable_red_ids(
             connection, manifest_id=manifest_id, route_key=route_key,
         )
     else:
@@ -3289,20 +3289,13 @@ def _repair_route_current(
     )
 
 
-def _r019_stale_repairable_red_ids(
+def _stale_repairable_red_ids(
     connection: sqlite3.Connection,
     *,
     manifest_id: str,
     route_key: str,
 ) -> Tuple[str, ...]:
-    """Return stale R-019 red rows that only the current-source successor may repair."""
-    declaration = connection.execute(
-        "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?", (manifest_id,)
-    ).fetchone()
-    if declaration is None or _json_object(
-            str(declaration["declaration_json"]), "R-019 stale repair declaration"
-    ).get("name") != "r019.keep_watch_acceptance_mcw":
-        return ()
+    """Return unsuperseded stale contradictions for a current-source repair."""
     rows = connection.execute(
         "SELECT verification_id, details_json FROM verification_history AS candidate "
         "WHERE manifest_id = ? AND route_key = ? AND NOT EXISTS ("
@@ -3324,6 +3317,25 @@ def _r019_stale_repairable_red_ids(
         if resolution is not None and str(resolution["resolution_kind"]) == "stale":
             stale_red_ids.append(verification_id)
     return tuple(stale_red_ids)
+
+
+def _r019_stale_repairable_red_ids(
+    connection: sqlite3.Connection,
+    *,
+    manifest_id: str,
+    route_key: str,
+) -> Tuple[str, ...]:
+    """Return stale R-019 reds reserved for its successor terminal."""
+    declaration = connection.execute(
+        "SELECT declaration_json FROM manifest_current WHERE manifest_id = ?", (manifest_id,)
+    ).fetchone()
+    if declaration is None or _json_object(
+            str(declaration["declaration_json"]), "R-019 stale repair declaration"
+    ).get("name") != "r019.keep_watch_acceptance_mcw":
+        return ()
+    return _stale_repairable_red_ids(
+        connection, manifest_id=manifest_id, route_key=route_key,
+    )
 
 
 def _repair_query_matches_manifest(

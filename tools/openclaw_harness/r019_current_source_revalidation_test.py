@@ -76,7 +76,7 @@ class R019CurrentSourceRevalidationTest( unittest.TestCase ):
 
         self.assertTrue( _current_stale_bootstrap_candidate( stale ) )
         with mock.patch.object( registry_store, "_repair_query_matches_manifest", return_value=True ), \
-                mock.patch.object( registry_store, "_r019_stale_repairable_red_ids", return_value=() ):
+                mock.patch.object( registry_store, "_stale_repairable_red_ids", return_value=() ):
             self.assertIsNone(
                 _registry_query_repair_action(
                     object(), query_id="r019-query", request=request, evaluation=evaluation,
