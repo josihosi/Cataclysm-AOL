@@ -25,8 +25,8 @@ class R008Closure229SourceRouteManifestTest( unittest.TestCase ):
         self.assertTrue( post_load_hud["capture_after"] )
         self.assertNotIn( "expected_screen_text_after_contains", post_load_hud )
         waits = [step for step in scenario["steps"] if step["kind"] == "long_wait"]
-        self.assertEqual( [step["choice_key"] for step in waits], ["8", "8", "5", "5"] )
-        self.assertEqual( [step["expected_duration"] for step in waits], ["6h", "6h", "1h", "1h"] )
+        self.assertEqual( [step["choice_key"] for step in waits], ["8", "8", "5", "5", "5"] )
+        self.assertEqual( [step["expected_duration"] for step in waits], ["6h", "6h", "1h", "1h", "1h"] )
         for step in waits:
             with self.subTest( step=step["label"] ):
                 self.assertEqual( step["wait_key"], "|" )
@@ -59,6 +59,33 @@ class R008Closure229SourceRouteManifestTest( unittest.TestCase ):
         )
         self.assertEqual( local_audit["kind"], "audit_structured_transition_event" )
         self.assertTrue( local_audit["require_exactly_one"] )
+
+    def test_local_pair_waits_one_native_hour_after_dispatch_before_auditing( self ) -> None:
+        scenario = self.load_scenario()
+        steps = scenario["steps"]
+        labels = [step["label"] for step in steps]
+        dispatch = labels.index( "resolve_native_active_sortie_dispatch_boundary" )
+        boundary_wait = labels.index( "source_route_native_local_pair_boundary_hour" )
+        local_audit = labels.index( "audit_native_local_pair_successor" )
+
+        self.assertLess( dispatch, boundary_wait )
+        self.assertLess( boundary_wait, local_audit )
+        wait = steps[boundary_wait]
+        self.assertEqual( wait["kind"], "long_wait" )
+        self.assertEqual( wait["expected_duration"], "1h" )
+        self.assertEqual( wait["minimum_artifact_elapsed_minutes"], 60 )
+        self.assertTrue( wait["require_native_wait_menu_guards"] )
+        self.assertTrue( wait["require_wait_input_trace"] )
+
+    def test_local_pair_boundary_is_source_bound_and_zero_credit( self ) -> None:
+        boundary = self.load_scenario()["setup_receipt_contract"]["local_pair_boundary"]
+
+        self.assertEqual( boundary["predecessor"]["at_minutes"], 8520 )
+        self.assertEqual( boundary["predecessor"]["actor_ids"], [4, 5] )
+        self.assertEqual( boundary["contact_boundary"]["at_minutes"], 8580 )
+        self.assertEqual( boundary["contact_boundary"]["route_position_omt"], [175, 13, 0] )
+        self.assertEqual( boundary["contact_boundary"]["owner"], "local" )
+        self.assertEqual( boundary["cleanup_owner"], "cleanup_harness_world" )
 
 
 if __name__ == "__main__":
