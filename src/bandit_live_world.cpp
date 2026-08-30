@@ -3290,9 +3290,6 @@ static void record_live_transition( const site_record &site, const active_outing
                                     const int current_minutes,
                                     const std::vector<character_id> &actor_ids = {} )
 {
-    if( !bandit_live_world_probe::transition_events_enabled() ) {
-        return;
-    }
     bandit_live_world_probe::transition_event event;
     event.game_minutes = current_minutes;
     event.at_minutes = current_minutes;
@@ -3334,10 +3331,14 @@ static void record_camp_decision_transition( const site_record &site,
     event.site_id = site.site_id;
     event.operation_id = decision.source_report_activity_id;
     event.generation = decision.source_report_generation;
+    // Camp decisions are committed by the abstract camp owner, even when the
+    // report originated from a just-returned local pair.
+    event.simulation_owner = "abstract";
     event.previous_phase = previous_state;
     event.new_phase = new_state;
     event.reason = reason;
-    bandit_live_world_probe::record_live_transition_event( std::move( event ) );
+    bandit_live_world_probe::record_live_transition_event( event );
+    bandit_live_world_probe::record_transition_event( std::move( event ) );
 }
 
 bool upsert_camp_map_lead( site_record &site, camp_map_lead lead )
@@ -15094,7 +15095,10 @@ static bool deliver_structural_scout_assessment_report( site_record &site,
     report.action_policy = report_policy_for_profile( effective_profile( site ) );
     report.source_activity_id = reported_outing.activity_id;
     report.source_generation = reported_outing.generation;
-    report.source_job_type = reported_outing.job_type;
+    // Structural outings are scout reports even when their scheduler job has
+    // the structural_bounty label.  Camp assessment owns the scout report
+    // contract and rejects scheduler labels as non-report job types.
+    report.source_job_type = "scout";
     report.target_id = lead->target_id;
     report.target_omt = lead->omt;
     report.target_lead_id = lead->lead_id;
@@ -15616,9 +15620,21 @@ structural_outing_result advance_structural_bounty_outings( world_state &state, 
                         returned_carrier_ids.push_back( member_id );
                     }
                 }
-                if( !candidate.active_outing.assessment.exit_reason.empty() &&
-                    !deliver_structural_scout_assessment_report( candidate, now_minutes,
-                            returned_carrier_ids, false ) ) {
+                // A physically returned structural pair has reached its terminal
+                // production outcome even when no local danger or normal-watch
+                // assessment set a reason first.  Publish that exact return to
+                // the camp decision owner instead of releasing the outing
+                // without a report boundary.
+                if( candidate.active_outing.assessment.exit_reason.empty() ) {
+                    candidate.active_outing.assessment.exit_reason =
+                        "structural outing completed its shared route home";
+                    candidate.active_outing.assessment.last_progress_minutes = now_minutes;
+                    candidate.active_outing.assessment.next_eligible_minutes =
+                        std::max( candidate.active_outing.assessment.next_eligible_minutes,
+                                  now_minutes );
+                }
+                if( !deliver_structural_scout_assessment_report( candidate, now_minutes,
+                        returned_carrier_ids, false ) ) {
                     continue;
                 }
                 const std::optional<int> returned = release_structural_outing_reservation(
@@ -19932,6 +19948,9 @@ static std::optional<covert_scout_relationship_read> read_active_covert_scout_me
         const bool terminal_homeward = outing.phase == scout_phase::returning_exposed ||
                                        outing.phase == scout_phase::returning_report ||
                                        outing.phase == scout_phase::returning_home;
+        const bool ordinary_homeward_local_reentry =
+            outing.phase == scout_phase::returning_home &&
+            !active_outing_has_current_covert_burn_receipt( outing );
         std::vector<tripoint_abs_omt> forbidden_route_omts;
         if( terminal_homeward ) {
             if( outing.selected_watch_kind != structural_watch_kind::none ) {
@@ -19955,7 +19974,8 @@ static std::optional<covert_scout_relationship_read> read_active_covert_scout_me
         result = covert_scout_relationship_read{
             outing.phase, outing.target_footprint,
             terminal_homeward ? site.anchor : outing.local_handoff.egress_omt,
-            *minimum_target_distance, std::move( forbidden_route_omts )
+            *minimum_target_distance, std::move( forbidden_route_omts ),
+            ordinary_homeward_local_reentry
         };
     }
     return result;
@@ -20560,7 +20580,10 @@ local_structural_watch_exit_plan plan_local_structural_watch_exit(
     next.assessment.last_progress_minutes = current_minutes;
     next.assessment.next_eligible_minutes = minutes_after_saturated(
             current_minutes, 24 * 60 );
-    next.assessment.exit_reason.clear();
+    // A hard-danger withdrawal is a completed negative assessment, not an
+    // unfinished watch.  The exact physical return pair needs this durable
+    // outcome to publish its report and let the camp decision owner assess it.
+    next.assessment.exit_reason = "overwhelming local danger forced a return";
     next.last_progress_minutes = current_minutes;
     next.last_advanced_minutes = current_minutes;
     next.local_handoff.committed_minutes = current_minutes;

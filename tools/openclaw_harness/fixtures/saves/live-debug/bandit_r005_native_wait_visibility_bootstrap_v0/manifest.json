@@ -1,0 +1,40 @@
+{
+  "name": "bandit_r005_native_wait_visibility_bootstrap_v0",
+  "source_fixture": "bandit_r005_natural_hostile_ecology_v0",
+  "source_profile": "live-debug",
+  "description": "Disposable source-bound R-005 observation footing. It preserves the camp, structural forest bounty, roster, scheduler, and player identity while placing that unchanged player at one safe concealed watch candidate whose native line-of-sight costs fit the production clear-day budget. Setup is zero-credit and must be reported separately from the later wait-only run.",
+  "source_bound_geography": {
+    "world": "McWilliams",
+    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "camp_site_id": "overmap_special:bandit_camp@140,51,0",
+    "lead_id": "overmap_special:bandit_camp@140,51,0#lead:structural_bounty:forest@138,52,0",
+    "target_omt": [138, 52, 0],
+    "candidate_omt": [141, 49, 0],
+    "player_source_omt": [140, 41, 0],
+    "player_observation_omt": [141, 49, 0],
+    "player_offset_ms": [24, 192, 0],
+    "candidate_terrain_id": "communitygarden_east",
+    "candidate_see_cost": 1,
+    "intervening_omts": [[140, 50, 0], [139, 51, 0]],
+    "intervening_terrain_ids": ["field", "field"],
+    "intervening_see_costs": [0, 0],
+    "clear_day_sight_points": 3,
+    "route": "candidate-to-forest-bounty",
+    "setup_only": true,
+    "gameplay_credit": false,
+    "evidence_ceiling": "zero-credit"
+  },
+  "save_transforms": [
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [24, 192, 0]
+    },
+    {
+      "kind": "overmap_terrain_id_at_abs_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [141, 49, 0],
+      "terrain_id": "communitygarden_east"
+    }
+  ]
+}

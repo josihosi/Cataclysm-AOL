@@ -2057,6 +2057,7 @@ struct covert_scout_relationship_read {
     tripoint_abs_omt egress_omt;
     int minimum_target_distance = -1;
     std::vector<tripoint_abs_omt> forbidden_route_omts;
+    bool ordinary_homeward_local_reentry = false;
 };
 struct covert_scout_member_acquire_read {
     character_id npc_id;

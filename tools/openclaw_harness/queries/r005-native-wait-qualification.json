@@ -1,0 +1,53 @@
+{
+  "requirements": [
+    {
+      "key": "capabilities.bandit.r005.native_wait_qualification",
+      "op": "eq",
+      "value": "source_bound_native_wait_only_structural_outing_lifecycle",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "runtime.r005.source_binding",
+      "op": "eq",
+      "value": "current-worktree:cataclysm-tiles:dev-harness",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "runtime.r005.route_mode",
+      "op": "eq",
+      "value": "native_wait_only",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "runtime.r005.player_travel",
+      "op": "eq",
+      "value": "forbidden",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "runtime.r005.fixture_footing",
+      "op": "eq",
+      "value": "bandit_r005_native_wait_visibility_bootstrap_v0",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "runtime.r005.outcome",
+      "op": "eq",
+      "value": "dispatch_shared_route_crossing_actor_return_camp_decision_save_relaunch_persistence",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "runtime.evidence_ceiling",
+      "op": "eq",
+      "value": "zero-credit",
+      "minimum_evidence": "declared"
+    },
+    {
+      "key": "world.id",
+      "op": "eq",
+      "value": "McWilliams",
+      "minimum_evidence": "declared"
+    }
+  ],
+  "preferences": []
+}

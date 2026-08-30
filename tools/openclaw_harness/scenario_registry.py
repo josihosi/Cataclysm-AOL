@@ -264,7 +264,12 @@ def _validate_checkpoint_gate_expectations(value: Any, *, path: Path, field: str
 
 
 def _validate_checkpoint_safe_ui(value: Any, *, path: Path, field: str) -> None:
-    if path.name == "bandit.r005_continuous_hostile_ecology_certification.json":
+    if path.name in {
+            "bandit.r005_continuous_hostile_ecology_certification.json",
+            "bandit.r005_natural_route_qualification.json",
+            "bandit.r005_direct_native_route_qualification.json",
+            "bandit.r005_native_wait_qualification.json",
+    }:
         if value != {"semantic_state": {"required": True}}:
             raise _error(path, f"{field} must require semantic_state for the improved R-007 route")
         return

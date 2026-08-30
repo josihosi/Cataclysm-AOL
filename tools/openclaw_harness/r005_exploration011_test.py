@@ -35,6 +35,12 @@ class R005Exploration011Test( unittest.TestCase ):
             "ordinary-overmap-route-confirm",
             observation["runtime_contract"]["forbidden_input"],
         )
+        route_steps = [
+            step for step in observation["steps"]
+            if step["kind"] == "ordinary_overmap_route_constructor"
+        ]
+        self.assertTrue( route_steps )
+        self.assertTrue( all( step["require_native_corridor"] for step in route_steps ) )
 
 
 if __name__ == "__main__":

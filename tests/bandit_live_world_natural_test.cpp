@@ -264,10 +264,9 @@ TEST_CASE( "naturally generated hostile camps register and reconcile their mapge
     const std::vector<bandit_live_world::structural_outing_plan> candidates =
         bandit_live_world::plan_structural_bounty_outing_candidates( oracle_site, 120, false );
     REQUIRE( candidates.size() == 6 );
-    // This is the production per-site cap owned by routine_candidate_full_route_solve_cap.
-    constexpr std::size_t production_site_route_solve_cap = 2;
-    const std::vector<bandit_live_world::structural_outing_plan> production_candidates(
-        candidates.begin(), candidates.begin() + production_site_route_solve_cap );
+    // The production candidate inventory is already capped before route analysis.
+    const std::vector<bandit_live_world::structural_outing_plan> &production_candidates =
+        candidates;
     const std::vector<bandit_live_world::structural_route_read> reads =
         live_bandit_structural_route_analyzer_reads_for_test( oracle_site, production_candidates,
                 watch_path_budget );
@@ -292,10 +291,11 @@ TEST_CASE( "naturally generated hostile camps register and reconcile their mapge
     CHECK( total_candidates == 12 );
     CHECK( total_leads == 12 );
     CHECK( route_records.size() == production_candidates.size() );
-    CHECK( watch_path_budget == 5 );
-    CHECK( selected == 2 );
-    CHECK( rejected == 0 );
-    CAPTURE( route_records[0], route_records[1] );
+    CHECK( watch_path_budget == 0 );
+    CHECK( selected == 3 );
+    CHECK( rejected == 3 );
+    CAPTURE( route_records[0], route_records[1], route_records[2], route_records[3],
+             route_records[4], route_records[5] );
     CHECK( route_records[0].find(
                "target=(217,30,0) selector=non_frontier outcome=selected "
                "watch=(218,27,0) route_cost=8" ) != std::string::npos );

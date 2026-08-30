@@ -5154,7 +5154,11 @@ bool complete_loaded_live_bandit_route_arrivals()
     bool changed = false;
     for( bandit_live_world::site_record &site : state.sites ) {
         const bandit_live_world::active_outing_state &outing = site.active_outing;
-        if( outing.schema_version != 10 ||
+        // Schema 11 seals the local-return eligibility receipt at handoff.
+        // It remains the same local structural outing, so the exact-pair
+        // arrival motor must admit it rather than stranding the assembled
+        // pair before its outcome and physical return path.
+        if( outing.schema_version < 10 ||
             outing.owner != bandit_live_world::simulation_owner::local ||
             outing.phase != bandit_live_world::scout_phase::observing ||
             !outing.local_handoff.is_active() ||
@@ -5903,7 +5907,7 @@ bool materialize_live_bandit_structural_handoffs()
 
         std::vector<live_bandit_local_handoff_member_backup> backups;
         std::vector<bandit_live_world::local_handoff_member_read> reads;
-        std::set<character_id> auto_loaded_retained_resume_members;
+        std::set<character_id> auto_loaded_boundary_members;
         backups.reserve( surviving_member_ids.size() );
         reads.reserve( surviving_member_ids.size() );
         bool preflight_failed = false;
@@ -5922,12 +5926,25 @@ bool materialize_live_bandit_structural_handoffs()
                 resumes_physical_homeward_cursor && member && member->is_active() &&
                 g->find_npc( member_id ) == member.get() && here.inbounds( member->pos_abs() ) &&
                 ( member->pos_abs_omt() == route_position || exact_auto_loaded_abort_resume );
+            // When the player bubble first reaches a newly dispatched route, native map
+            // loading may activate the exact pair at its authoritative home anchor before
+            // the abstract owner gets its first departure handoff.  That is a legal source
+            // boundary: only the complete persisted pair, at waypoint one and at this
+            // site's own anchor, may be rebound to the route cursor.  Any other active NPC
+            // still denotes a competing local owner and must remain fail-closed.
+            const bool exact_auto_loaded_outbound_departure =
+                !resumes_physical_homeward_cursor &&
+                outing.phase == bandit_live_world::scout_phase::observing &&
+                outing.waypoint_index == 1 && outing.shared_route.front() == site.anchor &&
+                member && member->is_active() && g->find_npc( member_id ) == member.get() &&
+                here.inbounds( member->pos_abs() ) && member->pos_abs_omt() == site.anchor;
             if( !member || member->is_dead() ||
-                ( member->is_active() && !exact_auto_loaded_resume ) ) {
+                ( member->is_active() && !exact_auto_loaded_resume &&
+                  !exact_auto_loaded_outbound_departure ) ) {
                 preflight_failed = true;
                 log_homeward_rejection( !member ? "member unavailable" :
                                         member->is_dead() ? "member dead" :
-                                        string_format( "member already active id=%s active_omt=%s route_position=%s "
+                                        string_format( "member already active id=%d active_omt=%s route_position=%s "
                                                        "abort_return=%s",
                                                        member_id.get_value(),
                                                        member->pos_abs_omt().to_string(),
@@ -5935,8 +5952,8 @@ bool materialize_live_bandit_structural_handoffs()
                                                        outing.local_handoff.cohesion_abort_return ? "yes" : "no" ) );
                 break;
             }
-            if( exact_auto_loaded_resume ) {
-                auto_loaded_retained_resume_members.insert( member_id );
+            if( exact_auto_loaded_resume || exact_auto_loaded_outbound_departure ) {
+                auto_loaded_boundary_members.insert( member_id );
             }
             // The persisted abstract-resume cursor is the route authority here.
             // A concrete NPC's transient goal/path can be stale after the pair was
@@ -5997,7 +6014,7 @@ bool materialize_live_bandit_structural_handoffs()
             bandit_live_world::scout_phase_requires_homeward_only( outing.phase );
         std::string bind_failure_reason;
         const auto bind_member = [&find_backup, &backups, &site, &plan, homeward_handoff,
-                                  &bind_failure_reason, &auto_loaded_retained_resume_members](
+                                  &bind_failure_reason, &auto_loaded_boundary_members](
         const bandit_live_world::local_handoff_member_snapshot & snapshot ) {
             if( snapshot.dead ) {
                 return true;
@@ -6007,7 +6024,7 @@ bool materialize_live_bandit_structural_handoffs()
                 bind_failure_reason = "member backup unavailable";
                 return false;
             }
-            if( auto_loaded_retained_resume_members.count( snapshot.npc_id ) > 0 ) {
+            if( auto_loaded_boundary_members.count( snapshot.npc_id ) > 0 ) {
                 npc *loaded_member = g->find_npc( snapshot.npc_id );
                 if( loaded_member != backup->member.get() || !loaded_member->is_active() ) {
                     bind_failure_reason = "loaded retained resume identity changed";
@@ -6046,7 +6063,7 @@ bool materialize_live_bandit_structural_handoffs()
             return true;
         };
         const auto rollback_member = [&find_backup, &backups, &here,
-                                      &auto_loaded_retained_resume_members](
+                                      &auto_loaded_boundary_members](
         const bandit_live_world::local_handoff_member_snapshot & snapshot ) {
             const auto backup = find_backup( snapshot.npc_id );
             if( backup == backups.end() ) {
@@ -6070,7 +6087,7 @@ bool materialize_live_bandit_structural_handoffs()
             member->path = backup->local_path;
             member->set_bandit_live_world_projection_lease( backup->projection_lease );
             overmap_buffer.insert_npc( member );
-            if( auto_loaded_retained_resume_members.count( snapshot.npc_id ) > 0 &&
+            if( auto_loaded_boundary_members.count( snapshot.npc_id ) > 0 &&
                 here.inbounds( backup->position ) ) {
                 g->load_npcs();
             }
@@ -9962,15 +9979,19 @@ void monmove()
                     const pathfinding_target next_target = pathfinding_target::radius( next_center, 2 );
                     const std::function<bool( const tripoint_bub_ms & )> npc_avoid =
                         guy.get_path_avoid();
+                    const bool allow_ordinary_homeward_local_reentry =
+                        relationship->ordinary_homeward_local_reentry && m.inbounds( next_center );
                     const auto combined_avoid = [&npc_avoid, &avoid_nonreentry](
                     const tripoint_bub_ms & step ) {
                         return npc_avoid( step ) || avoid_nonreentry( step );
                     };
+                    const std::function<bool( const tripoint_bub_ms & )> local_homeward_avoid =
+                        allow_ordinary_homeward_local_reentry ? npc_avoid : combined_avoid;
                     bandit_live_world_probe::scoped_loaded_covert_local_path_solve path_solve_probe;
                     std::vector<tripoint_bub_ms> preflight_path =
                         m.inbounds( next_center ) ? m.route(
                             guy.pos_bub(), next_target, guy.get_pathfinding_settings( false ),
-                            combined_avoid ) : std::vector<tripoint_bub_ms>();
+                            local_homeward_avoid ) : std::vector<tripoint_bub_ms>();
                     // The retained-edge materialization has just assigned this member a
                     // homeward OMT route.  Normalize that route in the active local-map
                     // frame before checking cohesion or consuming it: map::route includes
@@ -9979,11 +10000,60 @@ void monmove()
                            preflight_path.front() == guy.pos_bub( m ) ) {
                         preflight_path.erase( preflight_path.begin() );
                     }
-                    if( preflight_path.empty() ||
-                        !local_path_respects_nonreentry( preflight_path ) ) {
+                    const bool preflight_route_safe = !preflight_path.empty() &&
+                                                      ( allow_ordinary_homeward_local_reentry ||
+                                                        local_path_respects_nonreentry(
+                                                            preflight_path ) );
+                    if( !preflight_route_safe ) {
+                        const bool emit_local_rejection = log_homeward_route_result &&
+                                                          logged_homeward_route_result_ids.insert(
+                                                              guy.getID() ).second;
+                        if( emit_local_rejection ) {
+                            const auto avoid_none = []( const tripoint_bub_ms & ) {
+                                return false;
+                            };
+                            const std::vector<tripoint_bub_ms> base_path = m.route(
+                                        guy.pos_bub(), next_target,
+                                        guy.get_pathfinding_settings( false ), avoid_none );
+                            const std::vector<tripoint_bub_ms> npc_avoid_path = m.route(
+                                        guy.pos_bub(), next_target,
+                                        guy.get_pathfinding_settings( false ), npc_avoid );
+                            const std::vector<tripoint_bub_ms> nonreentry_path = m.route(
+                                        guy.pos_bub(), next_target,
+                                        guy.get_pathfinding_settings( false ), avoid_nonreentry );
+                            DebugLog( D_INFO, DC_ALL )
+                                    << "bandit_live_world loaded homeward local movement rejected"
+                                    << " member=" << guy.getID().get_value()
+                                    << " phase=" << bandit_live_world::to_string(
+                                        relationship->phase )
+                                    << " owner=local"
+                                    << " position=" << guy.pos_abs().to_string()
+                                    << " goal=" << guy.goal.to_string()
+                                    << " next_omt=" << next_omt->to_string()
+                                    << " route_found=" << ( preflight_path.empty() ? "no" : "yes" )
+                                    << " route_safe=" << ( preflight_route_safe ? "yes" : "no" )
+                                    << " base_route_found=" <<
+                                    ( base_path.empty() ? "no" : "yes" )
+                                    << " npc_avoid_route_found=" <<
+                                    ( npc_avoid_path.empty() ? "no" : "yes" )
+                                    << " nonreentry_route_found=" <<
+                                    ( nonreentry_path.empty() ? "no" : "yes" )
+                                    << " reason=local_route_unavailable\n";
+                        }
                         break;
                     }
                     if( !step_preserves_pair_cohesion( preflight_path.front() ) ) {
+                        DebugLog( D_INFO, DC_ALL )
+                                << "bandit_live_world loaded homeward local movement deferred"
+                                << " member=" << guy.getID().get_value()
+                                << " phase=" << bandit_live_world::to_string(
+                                    relationship->phase )
+                                << " owner=local"
+                                << " position=" << guy.pos_abs().to_string()
+                                << " goal=" << guy.goal.to_string()
+                                << " next_omt=" << next_omt->to_string()
+                                << " next_step=" << preflight_path.front().to_string()
+                                << " reason=pair_cohesion\n";
                         guy.move_pause();
                         continue;
                     }

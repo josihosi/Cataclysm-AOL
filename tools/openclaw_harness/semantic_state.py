@@ -9,7 +9,7 @@ from __future__ import annotations
 
 import json
 from pathlib import Path
-from typing import Any, Mapping, Optional, Sequence
+from typing import Any, Mapping, Optional, Sequence, Set
 
 
 MAX_EVENT_BYTES = 256 * 1024
@@ -59,6 +59,7 @@ def read_bounded_transition_facts(path: Path, run_dir: Path, run_id: str) -> tup
 
 def read_semantic_step_trace(
     path: Path, run_dir: Path, run_id: str, *, start_offset: int = 0,
+    event_filter: Optional[Set[str]] = None,
 ) -> tuple[list[dict[str, Any]], str]:
     """Read run-owned semantic frames and native action receipts from a debug trace."""
     path = Path(path)
@@ -120,11 +121,21 @@ def read_semantic_step_trace(
                     str(normalized.get("receipt_id", "")).strip() == "" or \
                     str(normalized.get("state", "")) not in {
                         "active", "progress", "completed_cleared", "blocked", "interrupted",
+                        "hostile_boundary",
                     } or not isinstance(destination, list) or len(destination) != 3 or \
                     any(isinstance(value, bool) or not isinstance(value, int) for value in destination) or \
                     not isinstance(normalized.get("destination_present"), bool) or \
                     not isinstance(normalized.get("destination_cleared"), bool):
                 return [], "malformed_semantic_travel"
+            if normalized["state"] == "hostile_boundary":
+                avatar_omt = normalized.get("avatar_omt")
+                if not isinstance(avatar_omt, list) or len(avatar_omt) != 3 or any(
+                        isinstance(value, bool) or not isinstance(value, int)
+                        for value in avatar_omt):
+                    return [], "malformed_semantic_travel"
+        if event_filter is not None and event not in event_filter:
+            byte_cursor += len(raw_line.encode("utf-8"))
+            continue
         events.append(normalized)
         if len(events) > MAX_EVENTS:
             return [], "unbounded_output"
@@ -134,7 +145,7 @@ def read_semantic_step_trace(
 
 def decide_native_travel_boundary(
     events: Sequence[Mapping[str, Any]], *, run_id: str,
-    expected_destination: Sequence[int],
+    expected_destination: Sequence[int], allow_handled_hostile_boundaries: bool = False,
 ) -> dict[str, Any]:
     """Prove one native travel route completed and cleared its destination."""
     expected = list(expected_destination)
@@ -143,7 +154,9 @@ def decide_native_travel_boundary(
         return {"status": "blocked", "reason": "invalid_expected_destination"}
     active: Optional[dict[str, Any]] = None
     progress: Optional[dict[str, Any]] = None
-    for event in events:
+    handled_hostile_boundaries: list[dict[str, Any]] = []
+    first_handled_hostile_boundary: Optional[dict[str, Any]] = None
+    for event_index, event in enumerate(events):
         if str(event.get("event", "")) != "travel":
             continue
         if str(event.get("run_id", "")) != str(run_id):
@@ -159,11 +172,47 @@ def decide_native_travel_boundary(
         if active is None or str(event.get("travel_id", "")) != str(active.get("travel_id", "")):
             continue
         if state == "progress":
-            if event.get("destination_present") is not True or event.get("destination_cleared") is not False:
+            # Native travel publishes the zero-remaining-path progress fact before
+            # its distinct completed_cleared receipt.  It establishes no terminal
+            # proof by itself, but it is a valid transition that must remain visible
+            # so the following completion receipt can settle the boundary.
+            if (event.get("destination_present") is not True or event.get("destination_cleared") is not False) and \
+                    (event.get("destination_present") is not False or event.get("destination_cleared") is not True):
                 return {"status": "blocked", "reason": "progress_travel_fact_invalid",
                         "travel_id": active["travel_id"]}
             progress = dict(event)
             continue
+        if state == "hostile_boundary":
+            if allow_handled_hostile_boundaries:
+                handled_boundary = {
+                    "receipt_id": event.get("receipt_id"),
+                    "avatar_omt": event.get("avatar_omt"),
+                }
+                handled_hostile_boundaries.append(handled_boundary)
+                if first_handled_hostile_boundary is None:
+                    first_handled_hostile_boundary = handled_boundary
+                continue
+            for later_event in events[event_index + 1:]:
+                if str( later_event.get( "event", "" ) ) != "travel" or \
+                        str( later_event.get( "run_id", "" ) ) != str( run_id ) or \
+                        str( later_event.get( "travel_id", "" ) ) != str( active["travel_id"] ):
+                    continue
+                if str( later_event.get( "state", "" ) ) in {
+                    "progress", "completed_cleared", "blocked", "interrupted",
+                }:
+                    return {
+                        "status": "blocked",
+                        "reason": "post_hostile_boundary_travel",
+                        "travel_id": active["travel_id"],
+                        "hostile_boundary_omt": event.get( "avatar_omt" ),
+                        "post_boundary_receipt_id": later_event.get( "receipt_id" ),
+                    }
+            return {
+                "status": "blocked",
+                "reason": "hostile_boundary",
+                "travel_id": active["travel_id"],
+                "hostile_boundary_omt": event.get("avatar_omt"),
+            }
         if state in {"blocked", "interrupted"}:
             return {"status": "blocked", "reason": state, "travel_id": active["travel_id"]}
         if state == "completed_cleared":
@@ -177,8 +226,22 @@ def decide_native_travel_boundary(
                 "active_receipt_id": active["receipt_id"],
                 "completion_receipt_id": event["receipt_id"],
                 "destination": expected,
+                "handled_hostile_boundaries": handled_hostile_boundaries,
             }
     if active is not None:
+        if first_handled_hostile_boundary is not None:
+            # A permissive choice permits observing a hostile boundary, never
+            # promotes an incomplete route to success.  Keep the native fact
+            # available for a durable adverse-terminal receipt.
+            return {
+                "status": "blocked",
+                "reason": "hostile_boundary_without_terminal",
+                "travel_id": active["travel_id"],
+                "hostile_boundary_omt": first_handled_hostile_boundary.get("avatar_omt"),
+                "hostile_boundary_receipt_id": first_handled_hostile_boundary.get("receipt_id"),
+                "handled_hostile_boundaries": handled_hostile_boundaries,
+                "last_progress_receipt_id": progress.get("receipt_id") if progress else None,
+            }
         return {
             "status": "blocked",
             "reason": "active_travel_progress_without_terminal" if progress else "active_travel_no_progress",
