@@ -45,7 +45,7 @@ Focused, bootstrap, and diagnostic evidence never becomes final certification or
 
 ## Active work
 
-- [ ] R-005 causal qualification — Complete the proved wait-only lifecycle across a real process boundary and persistence audit.
+- [x] R-005 causal qualification — The proved wait-only lifecycle now crosses a real process boundary and passes its persistence audit.
   - DFS slices: `R-005-S001`
   - Playtest witness: required. Use `r005-native-wait-qualification-rev1.json` or a source-bound successor.
   - Preserved evidence: exact same-run receipts now cover production dispatch, shared-route advance,
@@ -54,20 +54,35 @@ Focused, bootstrap, and diagnostic evidence never becomes final certification or
   - Closure-075 proves the next native Quit action and advertised confirmation. The current-run
     `main-menu-quit-1` receipt was accepted. PID `72384` exited through the native route before
     cleanup. This closes the process-exit gap at focused authority.
-  - The new process started as PID `73603`, then rejected the saved local projection ownership state.
-    The exact error was `bandit_live_world rejected loaded local projection claims`. Normalized
-    persistence and immutable report ingestion remain unproved and receive no credit.
-  - Preserve closure-074's save/quit evidence and closure-075's native-exit evidence. Repair or
-    correctly reconcile the loaded projection ownership conflict. Rerun the same source-bound route
-    and audit the same world, player, camp, outing generation, and actor identities after relaunch.
-    Preserve fail-closed identity checks, contradictions, and cleanup.
+  - Closure-076 repaired stale local-projection lease writeback and reran the bound route. The new
+    process loaded the same world, camp, outing generation, and actors without the prior ownership
+    rejection. All six focused proof gates passed, including normalized persistence.
+  - Immutable report `679decb…` was ingested at setup-only authority. This proves qualification only.
+    It gives no independent continuous-certification credit. The yellow report summary comes only
+    from caveated save-menu screenshots; the structured route is green through persistence.
   - Prior coordinate and interruption runs remain zero-credit history. Do not reopen them or the
     green production gates unless a fresh bound run directly contradicts their receipts.
 - [ ] R-005 certification — Run one separate certification lifecycle after qualification succeeds.
   - DFS slices: `R-005-S001`
+  - Qualification is now available through run
+    `20260830_092833_dadc7d7a724d42939267637dcd67b19d` and must not be promoted or replayed.
   - Obtain separate fresh certification authority. Prove departure, both crossings, actor outcomes,
-    save, quit, relaunch, return, report, and the downstream camp decision in one uninterrupted
-    round.
+    save, native quit, original-process exit, new-process relaunch, normalized persistence, return,
+    report, and the downstream camp decision in one uninterrupted round.
+  - Certification run `80492fc14c424ece96730a7fef6b1ae8` used fresh authority and binding, then
+    failed before actor binding because the observer died during native wait. Native quit
+    confirmation was unavailable. Every certification gate stayed red, cleanup succeeded, and the
+    run receives no credit.
+  - Closure-078 proved that the harness continued through nearby-zombie, attack, injury, and
+    limb-break prompts. Those prompts now fail closed, and five targeted tests pass.
+  - Fresh certification `cb25d3d5…` stopped at hostile boundary `[141,39,0]` before actor binding.
+    Separate x=144 qualification `de226886…` stopped at `[140,29,0]` on its west return. Both runs
+    remain zero-credit and cleaned up without native-exit credit.
+  - A new x=139 west-flank route stopped at hostile boundary `[140,41,0]` on its first departure.
+    Its report was ingested and the route was quarantined as `route_contradicted`.
+  - Coordinate guessing is retired. Derive a complete corridor from authoritative current world
+    state, then zero-credit qualify it. This bootstrap cannot certify itself. After it succeeds, a
+    separate worker may mint fresh certification authority and run the uninterrupted lifecycle.
   - Reject rollback, replacement identities, replay, and segment splicing. Do not repair the
     proposed final handoff unless the independent run reproduces it.
 
