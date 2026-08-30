@@ -1376,7 +1376,7 @@ class BlockingInterruptionTest(unittest.TestCase):
             "Press I to also ignore this particular message in the future."
         )
         activity_prompt = self.classify(
-            "Ouch, something hurts! Stop activity? (Case Sensitive)\n"
+            "A distant bird call distracts you. Stop activity? (Case Sensitive)\n"
             "Yes\nNo\nOpen manager\nIgnore this distraction and continue"
         )
         portal_query = self.classify(
@@ -1393,6 +1393,13 @@ class BlockingInterruptionTest(unittest.TestCase):
         )
         self.assertTrue(debug_popup["release_blocking"])
         self.assertEqual((activity_prompt["classification"], activity_prompt["response_key"]), ("activity_distraction_prompt", "I"))
+        dangerous_activity_prompt = self.classify(
+            "The zombie attacked you! Stop waiting? (Case Sensitive)\n"
+            "Open manager\nIgnore this distraction and continue"
+        )
+        self.assertEqual(dangerous_activity_prompt["status"], "unsafe_prompt")
+        self.assertEqual(dangerous_activity_prompt["classification"], "dangerous_activity_distraction_prompt")
+        self.assertEqual(dangerous_activity_prompt["response_key"], "")
         spotted_activity_prompt = self.classify(
             "Spotted! Stop waiting?\nIgnore this distraction and continue"
         )

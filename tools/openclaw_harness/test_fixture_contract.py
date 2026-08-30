@@ -277,6 +277,21 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertEqual(observed_ocr["classification"], "activity_distraction_prompt")
         self.assertEqual(observed_ocr["response_key"], "I")
 
+    def test_activity_distraction_prompt_rejects_observed_combat_or_injury(self) -> None:
+        for observed_text in (
+            "The zombies are dangerously close! Stop waiting? (Case Sensitive)\n"
+            "Open [M]anager\n[I]gnore this distraction and continue",
+            "You were attacked by the zombie! Stop waiting? (Case Sensitive)\n"
+            "Open [M]anager\n[I]gnore this distraction and continue",
+            "Ouch, something hurts! Stop waiting? (Case Sensitive)\n"
+            "Open [M]anager\n[I]gnore this distraction and continue",
+        ):
+            result = classify_blocking_interruption({"ok": True, "text": observed_text})
+
+            self.assertEqual(result["status"], "unsafe_prompt")
+            self.assertEqual(result["classification"], "dangerous_activity_distraction_prompt")
+            self.assertEqual(result["response_key"], "")
+
     def test_emergency_wait_distraction_modal_accepts_scattered_observed_ocr(self) -> None:
         observed_ocr = (
             'Heard [Y]es "EMERGENCY, [N]o Upen EMERGENCY! CMlanager Stop '

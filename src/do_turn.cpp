@@ -5524,6 +5524,14 @@ bool record_live_bandit_structural_member_returns()
                                        << site.active_outing.member_return_receipts.size()
                                        << " owner=" << bandit_live_world::to_string(
                                            site.active_outing.owner ) << '\n';
+            // This receipt finalizes the outing.  Clear its local ownership
+            // lease from the persisted record and the active NPC before either
+            // can be written back after the durable state has become abstract.
+            member->clear_bandit_live_world_projection_lease();
+            if( npc *active_member = g->find_npc( member_id ); active_member != nullptr &&
+                active_member != member.get() ) {
+                active_member->clear_bandit_live_world_projection_lease();
+            }
             member->on_unload();
             g->remove_npc( member_id );
             changed = true;

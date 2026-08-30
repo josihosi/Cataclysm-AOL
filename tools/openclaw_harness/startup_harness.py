@@ -5950,6 +5950,30 @@ def classify_blocking_interruption(
             "classification": "retained_safe_mode_hostile_message",
             "matched_markers": ["monster", "ignore"],
         }
+    # The activity modal offers I for both harmless flavour and immediate
+    # threats.  Continuing through a direct attack, injury, or close-hostile
+    # warning leaves the observer unable to act while the game resolves
+    # combat.  Preserve the prompt as evidence, but require an explicit
+    # scenario-owned recovery instead of treating its advertised I as safe.
+    activity_hazard_markers = [
+        marker
+        for marker in (
+            "dangerously close",
+            "attacked by",
+            "attacked you",
+            "something hurts",
+            "you are bleeding",
+            "your limb breaks",
+        )
+        if marker in lowered
+    ]
+    if activity_markers and activity_hazard_markers:
+        return {
+            **base,
+            "status": "unsafe_prompt",
+            "classification": "dangerous_activity_distraction_prompt",
+            "matched_markers": activity_markers + activity_hazard_markers,
+        }
     if len(activity_markers) == 2:
         return {
             **base,
