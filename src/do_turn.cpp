@@ -7521,8 +7521,16 @@ std::string live_bandit_structural_route_analyzer_record(
                           !read.watch_shared_route.empty();
     std::string selected_fields;
     if( selected ) {
+        std::ostringstream corridor;
+        for( std::size_t index = 0; index < read.watch_shared_route.size(); ++index ) {
+            if( index > 0 ) {
+                corridor << '>';
+            }
+            corridor << read.watch_shared_route[index].to_string();
+        }
         selected_fields = " watch=" + selected_watch->omt.to_string() +
-                          " route_cost=" + std::to_string( selected_watch->route_cost );
+                          " route_cost=" + std::to_string( selected_watch->route_cost ) +
+                          " corridor=" + corridor.str();
     }
     return "bandit_live_world structural_route_analyzer site=" + site.site_id +
            " lead=" + plan.lead_id + " target=" + plan.target_omt.to_string() +

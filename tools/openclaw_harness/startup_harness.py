@@ -7446,7 +7446,10 @@ def parse_structural_route_analyzer_line(line: str) -> Optional[Dict[str, str]]:
         if "=" not in token:
             continue
         key, value = token.split("=", 1)
-        if key in {"site", "lead", "target", "selector", "outcome", "watch", "route_cost", "summary"}:
+        if key in {
+                "site", "lead", "target", "selector", "outcome", "watch", "route_cost",
+                "corridor", "summary"
+        }:
             fields[key] = value
     summary_marker = " summary="
     if summary_marker in body:
@@ -7463,6 +7466,22 @@ def parse_structural_route_analyzer_line(line: str) -> Optional[Dict[str, str]]:
     if outcome not in {"selected", "rejected"}:
         return None
     return fields
+
+
+def parse_structural_route_analyzer_corridor(value: str) -> Optional[List[List[int]]]:
+    """Read an owner-derived closed OMT corridor without imposing coordinates."""
+    raw_points = str(value).split(">")
+    if len(raw_points) < 2:
+        return None
+    corridor: List[List[int]] = []
+    for raw_point in raw_points:
+        matched = re.fullmatch(r"\((-?\d+),(-?\d+),(-?\d+)\)", raw_point)
+        if matched is None:
+            return None
+        corridor.append([int(component) for component in matched.groups()])
+    if corridor[0] != corridor[-1]:
+        return None
+    return corridor
 
 
 def audit_local_reality_safety_preflight_text(text: str) -> Dict[str, Any]:
@@ -7541,6 +7560,7 @@ def audit_structural_route_analyzer(
     required_outcomes: List[str],
     required_site: str = "",
     required_target: str = "",
+    require_complete_corridor: bool = False,
     filter_debug_noise: bool = False,
 ) -> Dict[str, Any]:
     required = [outcome for outcome in required_outcomes if outcome in {"selected", "rejected"}]
@@ -7565,6 +7585,20 @@ def audit_structural_route_analyzer(
         parsed.append(entry)
     observed = {entry["outcome"] for entry in parsed}
     missing = [outcome for outcome in required if outcome not in observed]
+    derived_corridors = [
+        {
+            "site": entry["site"],
+            "lead": entry["lead"],
+            "target": entry["target"],
+            "watch": entry["watch"],
+            "corridor": parse_structural_route_analyzer_corridor(entry.get("corridor", "")),
+        }
+        for entry in parsed
+        if entry.get("outcome") == "selected"
+        and parse_structural_route_analyzer_corridor(entry.get("corridor", "")) is not None
+    ]
+    if require_complete_corridor and not derived_corridors:
+        missing.append("complete owner-derived corridor")
     artifact_path = run_dir / f"{label}.metadata.json"
     metadata = {
         "status": "required_state_present" if required and not missing else (
@@ -7577,8 +7611,10 @@ def audit_structural_route_analyzer(
         "required_outcomes": required,
         "required_site": required_site,
         "required_target": required_target,
+        "require_complete_corridor": require_complete_corridor,
         "missing_required_outcomes": missing,
         "matches": parsed,
+        "derived_corridors": derived_corridors,
     }
     write_json(artifact_path, metadata)
     return metadata
@@ -26373,6 +26409,7 @@ def execute_probe_steps(
                 required_outcomes=required_outcomes,
                 required_site=str(step.get("required_site", "") or "").strip(),
                 required_target=str(step.get("required_target", "") or "").strip(),
+                require_complete_corridor=bool(step.get("require_complete_corridor", False)),
                 filter_debug_noise=filter_debug_noise,
             )
             report.update({

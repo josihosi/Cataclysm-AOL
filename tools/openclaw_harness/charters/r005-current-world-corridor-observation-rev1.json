@@ -1,0 +1,33 @@
+{
+  "claim": "A disposable R-005 observation can obtain one complete corridor from the production route owner for the current McWilliams world without proposing coordinates or travel input.",
+  "material_proof": "A current source and executable binding run the read-only production route analyzer. Its selected row names the current site, lead, target, watch, and one closed corridor emitted by the owner. The immutable run artifact and cleanup are accepted at zero credit.",
+  "material_contradiction": [
+    "a current source or executable binding is absent",
+    "the owner emits no selected corridor",
+    "the emitted corridor is malformed or not closed",
+    "the observation confirms movement, handles a hostile, or receives certification authority"
+  ],
+  "already_accepted_evidence": [
+    "cb25d3d5… preserves its no-response hostile boundary at [141,39,0].",
+    "de226886… preserves its no-response hostile boundary at [140,29,0].",
+    "The x=139 west-flank route is route_contradicted and remains zero-credit history."
+  ],
+  "current_uncertainty": "The production owner may derive a different corridor or no corridor in this current world. This observation records that fact only; it does not qualify travel.",
+  "forbidden_shortcuts": [
+    "preselected coordinates",
+    "ordinary route confirmation",
+    "diagnostic replay",
+    "checkpoint rollback",
+    "segment splicing",
+    "raw-save rewriting",
+    "debug ecology edits",
+    "combat handling",
+    "certification authority"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch when current selection or source-matching executable binding is absent",
+    "after selection, stop when the source owner emits no valid selected corridor or cleanup fails",
+    "after a valid zero-credit observation, return the derived corridor; only a separate worker may request qualification or certification authority"
+  ],
+  "requested_evidence_ceiling": "zero-credit"
+}

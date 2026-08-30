@@ -1305,6 +1305,9 @@ def _first_run_certification_route(
     elif name == "bandit.r005_natural_route_qualification":
         valid = facts.get("capabilities.bandit.r005.route_qualification", {}).get("value") == \
                 "observed_x144_y29_source_bound_zero_credit_destination_arrival"
+    elif name == "bandit.r005_current_world_corridor_observation":
+        valid = facts.get("capabilities.bandit.r005.current_world_corridor_observation", {}).get("value") == \
+                "source_derived_zero_credit_current_world_corridor"
     elif name == "bandit.r005_safe_wait_observation":
         valid = facts.get("capabilities.bandit.r005.safe_wait_observation", {}).get("value") == \
                 "zero_credit_preserved_native_safe_mode_off_route_and_wait"

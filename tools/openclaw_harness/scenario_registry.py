@@ -268,6 +268,7 @@ def _validate_checkpoint_safe_ui(value: Any, *, path: Path, field: str) -> None:
             "bandit.r005_continuous_hostile_ecology_certification.json",
             "bandit.r005_natural_route_qualification.json",
             "bandit.r005_direct_native_route_qualification.json",
+            "bandit.r005_current_world_corridor_observation.json",
             "bandit.r005_native_wait_qualification.json",
     }:
         if value != {"semantic_state": {"required": True}}:

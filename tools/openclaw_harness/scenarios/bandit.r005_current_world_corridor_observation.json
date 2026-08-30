@@ -1,0 +1,108 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r005_current_world_corridor_observation",
+  "description": "One disposable, zero-credit R-005 observation obtains a complete corridor from the current McWilliams world through the production structural route owner. It never supplies coordinates, confirms travel, or starts certification.",
+  "capabilities": {
+    "capabilities.bandit.r005.current_world_corridor_observation": "source_derived_zero_credit_current_world_corridor",
+    "world.id": "McWilliams"
+  },
+  "runtime_contract": {
+    "permitted_input": ["debug:read_only_current_world_route_observation"],
+    "forbidden_input": [
+      "ordinary-overmap-route-confirm",
+      "diagnostic_replay",
+      "checkpoint_rollback",
+      "segment_splice",
+      "replacement_world",
+      "replacement_identity",
+      "fixture-mutation",
+      "scenario-mutation",
+      "debug:ecology_edit",
+      "raw-save-rewrite",
+      "combat",
+      "hostile-dialog-authorization",
+      "certification-authority"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_r005_natural_hostile_ecology_v0",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_r005_natural_hostile_ecology_v0",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "cleanup": true,
+      "input": ["debug:read_only_current_world_route_observation"]
+    },
+    "grants_gameplay_proof": false
+  },
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r005_natural_hostile_ecology_v0",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION"
+  ],
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "declared_current_world",
+      "seconds": 1,
+      "capture_after": true,
+      "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"},
+      "checkpoint_evidence": {"classification": "incidental_bootstrap_observation", "authoritative_owner": "bound_startup_semantic_hud"},
+      "abort_verdict": "blocked_r005_current_world_corridor_hud_missing",
+      "abort_reason": "the declared current world did not reach ordinary gameplay before source-derived corridor observation"
+    },
+    {
+      "kind": "debug_run_structural_route_analyzer",
+      "label": "derive_current_world_corridor"
+    },
+    {
+      "kind": "audit_structural_route_analyzer",
+      "label": "audit_current_world_corridor",
+      "required_outcomes": ["selected"],
+      "require_complete_corridor": true,
+      "abort_verdict": "blocked_r005_current_world_corridor_unavailable",
+      "abort_reason": "the production route owner did not derive one complete current-world corridor"
+    }
+  ],
+  "proof_gates": [
+    {
+      "id": "current_world_corridor_observed",
+      "label": "Production route owner derives a complete current-world corridor",
+      "boundary_step": "audit_current_world_corridor",
+      "predecessors": [],
+      "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true}}],
+      "checkpoint_safe_ui": {"semantic_state": {"required": true}}
+    }
+  ],
+  "proof_route": {
+    "gates": ["current_world_corridor_observed"],
+    "terminal": ["current_world_corridor_observed"],
+    "capability_gates": {
+      "capabilities.bandit.r005.current_world_corridor_observation": {
+        "terminal": ["current_world_corridor_observed"]
+      }
+    }
+  }
+}

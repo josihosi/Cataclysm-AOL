@@ -260,6 +260,8 @@ TEST_CASE( "live structural bounty watch route read uses overmap geography",
            std::string::npos );
     CHECK( selected_record.find( "selector=structural_bounty outcome=selected watch=" +
                                 watch.to_string() + " route_cost=" ) != std::string::npos );
+    CHECK( selected_record.find( "corridor=" + site.anchor.to_string() + ">" ) !=
+           std::string::npos );
     CHECK( selected_record.find( "summary=live structural route" ) != std::string::npos );
 
     const int route_reads_used = 8 - selected_budget;
