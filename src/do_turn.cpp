@@ -9197,6 +9197,21 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                         site, *cursor, member->getID(), boundary_omt, current_minutes ) ) {
                     continue;
                 }
+                // The active NPC and the overmap record are separate instances.
+                // A completed in-site return must normalize the persisted record
+                // too, otherwise its old local lease survives the save after the
+                // global outing has already been finalized.
+                shared_ptr_fast<npc> persistent_member = overmap_buffer.remove_npc( member->getID() );
+                if( persistent_member ) {
+                    persistent_member->spawn_at_precise( member->pos_abs() );
+                    persistent_member->clear_bandit_live_world_projection_lease();
+                    persistent_member->on_unload();
+                    overmap_buffer.insert_npc( persistent_member );
+                } else {
+                    DebugLog( D_ERROR, DC_ALL ) << "bandit_live_world local return lost persistent member"
+                                               << " member=" << member->getID().get_value();
+                }
+                member->clear_bandit_live_world_projection_lease();
                 member->on_unload();
                 g->remove_npc( member->getID() );
                 site_committed_member_ids.insert( member->getID() );
@@ -9314,6 +9329,11 @@ std::set<character_id> complete_live_bandit_homeward_boundary_steps(
                 persistent_member->path = crossing->first->path;
                 persistent_member->clear_bandit_live_world_projection_lease();
                 persistent_member->on_unload();
+                // The active reality-bubble NPC is distinct from the persistent
+                // overmap record.  Clear the completed local lease on both before
+                // removing the active instance, so a later persistence pass cannot
+                // resurrect an ownership claim for an outing that is now abstract.
+                crossing->first->clear_bandit_live_world_projection_lease();
                 g->remove_npc( snapshot.npc_id );
                 for( const npc &remaining : g->all_npcs() ) {
                     if( remaining.getID() == snapshot.npc_id ) {

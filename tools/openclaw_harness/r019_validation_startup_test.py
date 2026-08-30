@@ -19,6 +19,7 @@ from startup_harness import (  # noqa: E402
     first_initial_hud_world_frame_after_boundary,
     initial_hud_world_semantic_frame_is_qualified,
     load_scenario,
+    recover_declared_startup_action_menu_overlay,
     resolve_fixture_payload,
     startup_profile_continue_keys,
 )
@@ -130,6 +131,26 @@ class R019ValidationStartupTest(unittest.TestCase):
             "native_action_menu_active_before": False,
             "native_main_menu_active_before": False,
         }))
+
+    def test_declared_overlay_recovery_does_not_open_a_menu_at_a_clean_hud(self) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory) / "debug.log"
+            receipt = Path(directory) / "overlay-recovery.log"
+            trace.write_text("current-run world HUD\n", encoding="utf-8")
+            with mock.patch("startup_harness.peekaboo_focus_pid") as focus, \
+                    mock.patch("startup_harness.peekaboo_press_sequence") as press:
+                recovery = recover_declared_startup_action_menu_overlay(
+                    42, trace, receipt, profile_owned_input=["escape"],
+                )
+
+        self.assertEqual(recovery["status"], "declared_overlay_not_present")
+        self.assertEqual(recovery["input_dispatch_count"], 0)
+        self.assertFalse(recovery["native_main_menu_active_after"])
+        self.assertTrue(declared_startup_overlay_state_is_qualified({
+            "requested": True, **recovery,
+        }))
+        focus.assert_not_called()
+        press.assert_not_called()
 
     def test_closure_validation_requires_the_initial_hud_world_frame(self) -> None:
         scenario = load_scenario("r019.keep_watch_off_interruption_closure059_validation_mcw")

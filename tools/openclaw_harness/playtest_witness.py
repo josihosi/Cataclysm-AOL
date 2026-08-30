@@ -127,6 +127,7 @@ def _compact_observation(value: Mapping[str, Any]) -> dict[str, Any]:
         "actor_owners": log.get("actor_owners", []),
         "persistence": log.get("persistence", "unavailable"),
         "contradictory_evidence": log.get("contradictory_evidence", []),
+        "child_resources": log.get("child_resources", {}),
     }
     return result
 

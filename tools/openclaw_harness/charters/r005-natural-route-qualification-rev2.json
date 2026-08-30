@@ -1,0 +1,30 @@
+{
+  "claim": "A disposable, zero-credit R-005 route qualification can reach the unchanged destination [140,31,0] in the preserved McWilliams world through the materially different east-flank geography, without undeclared threat handling or drift of the player, ecology actors, scheduler inputs, lifecycle gates, or destination.",
+  "material_proof": "One explicitly selected run starts from the preserved bandit_r005_natural_hostile_ecology_v0 copy and proves its bound world, player, exact ecology actor identities, scheduler inputs, and lifecycle gates before native travel. It uses ordinary overmap routing on the east-flank geography—first [140,41,0] to [141,40,0], then [141,40,0] to [141,31,0], then [141,31,0] to [140,31,0]—and records native route construction, travel progress, every threat prompt and its declared resolution, destination arrival, binding comparison, report ingestion, and accepted cleanup beneath a fresh disposable run directory. This qualification has zero certification credit; it only establishes whether the east-flank route reaches the remaining-path-one boundary without an undeclared threat or identity/scheduler/destination/lifecycle drift.",
+  "material_contradiction": [
+    "a preserved-binding preflight finds a changed world, player, ecology actor, scheduler input, destination, or lifecycle gate",
+    "a required east-flank leg cannot be constructed by ordinary native overmap routing",
+    "an undeclared threat prompt, combat action, replacement identity, scheduler change, destination change, or lifecycle drift occurs before arrival",
+    "the run cannot reach [140,31,0] with a bound native arrival receipt",
+    "the run changes the fixture or scenario, uses a replay or checkpoint rollback, or cleanup is not accepted"
+  ],
+  "already_accepted_evidence": [
+    "Preserved zero-credit counterexample report 1115bdc9790c943d59fed8563974ba651b1dd977d3e835bda5e99114ccd0e299 and verification e437bc7ae93a923f85aae0ff66fe4554f9e983031c039ef9f2f38a9c291fb9c7 show that the west flank encountered a different hostile survivor before arrival. The prompt received no response and that route cannot qualify under the declared actor boundary.",
+    "The R-005 scenario declares McWilliams, bandit_r005_natural_hostile_ecology_v0, the preserved player save, the two-actor hostile ecology lifecycle, destination [140,31,0], and fail-closed native travel stabilization."
+  ],
+  "current_uncertainty": "The east-flank geography is unqualified. It is materially different from the failed west flank, but it must still prove each preserved precondition and native destination arrival before certification may begin.",
+  "forbidden_shortcuts": [
+    "repairing or asserting a final-handoff defect from west-flank counterexample evidence",
+    "editing the fixture, save, ecology state, actor identities, scheduler inputs, destination, or lifecycle gates to make the east flank pass",
+    "using diagnostic replay, checkpoint rollback, segment splicing, raw-save rewriting, debug ecology edits, combat handling, or an undeclared threat response",
+    "treating charter creation, route preview, startup, or a prior route report as destination-arrival or certification proof",
+    "claiming R-005 certification or R-006 Windows-feel credit"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch when the coordinator playtest brief does not name this validated charter or the typed query has no current executable selection",
+    "after selection, stop and report the first binding drift, native-route construction failure, undeclared threat, unsafe interaction, missing arrival receipt, ingestion failure, or cleanup failure",
+    "after selection, seal and finish when the one disposable run either reaches [140,31,0] through every declared east-flank leg with all preserved preconditions or records its first incompatible causal divergence",
+    "only after qualified arrival, obtain separate fresh certification authority; diagnose a final-handoff divergence only if that certification run actually reproduces one"
+  ],
+  "requested_evidence_ceiling": "zero-credit"
+}

@@ -1,0 +1,170 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r005_direct_native_route_qualification",
+  "description": "One disposable, zero-credit qualification of the selected direct native [140,41,0] to [140,31,0] corridor. It stops on arrival or the first causal divergence and cannot start certification.",
+  "capabilities": {
+    "capabilities.bandit.r005.direct_native_route_qualification": "selected_direct_native_140_31_source_bound_zero_credit_destination_arrival"
+  },
+  "runtime_contract": {
+    "permitted_input": ["ordinary-overmap-route"],
+    "forbidden_input": [
+      "diagnostic_replay",
+      "checkpoint_rollback",
+      "segment_splice",
+      "replacement_world",
+      "replacement_identity",
+      "fixture-mutation",
+      "scenario-mutation",
+      "debug:ecology_edit",
+      "raw-save-rewrite",
+      "combat",
+      "hostile-dialog-authorization"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_r005_natural_hostile_ecology_v0",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_r005_natural_hostile_ecology_v0",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "cleanup": true,
+      "input": ["ordinary-overmap-route"]
+    },
+    "grants_gameplay_proof": false
+  },
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r005_natural_hostile_ecology_v0",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION"
+  ],
+  "steps": [
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "declared_world",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "record_baseline": true,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "arrival_save_baseline",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_direct_native_player_save_missing",
+      "abort_reason": "the preserved player save was absent before the selected direct-route qualification"
+    },
+    {
+      "kind": "ordinary_overmap_route_constructor",
+      "label": "selected_direct_native_corridor",
+      "origin_omt": [140, 41, 0],
+      "destination_omt": [140, 31, 0],
+      "cursor_keys": ["up", "up", "up", "up", "up", "up", "up", "up", "up", "up"],
+      "route_key": "W",
+      "require_native_corridor": true,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "type",
+      "label": "confirm_selected_direct_native_corridor",
+      "text": "W",
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "type",
+      "label": "accept_selected_direct_native_corridor",
+      "text": "Y",
+      "settle_seconds": 0,
+      "native_travel_stabilization": {
+        "mode": "continue_exact_hostile_auto_move_until_hud",
+        "allow_hostile_auto_move_cancel": false,
+        "require_completed_destination_cleared": true,
+        "expected_destination_omt": [140, 31, 0]
+      }
+    },
+    {
+      "kind": "press",
+      "label": "open_arrived_world_save_prompt",
+      "keys": ["S"],
+      "settle_seconds": 1,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Case Sensitive"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_direct_native_save_prompt_missing",
+      "abort_reason": "the native Save-and-Quit confirmation did not open after direct destination arrival"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_arrived_world_save",
+      "keys": ["Y"],
+      "settle_seconds": 5,
+      "proof_deferred_to_label": "arrival_save_persisted"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "arrival_save_persisted",
+      "changed_since_label": "arrival_save_baseline",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_direct_native_save_not_persisted",
+      "abort_reason": "the native Save-and-Quit confirmation did not update the arrived player save"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "arrival_world_artifact",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_player_abs_omt": [140, 31, 0],
+      "abort_on_metadata_failure": true
+    }
+  ],
+  "proof_gates": [
+    {
+      "id": "declared_world",
+      "label": "One declared natural world",
+      "boundary_step": "declared_world",
+      "predecessors": [],
+      "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true}}],
+      "checkpoint_safe_ui": {"semantic_state": {"required": true}}
+    },
+    {
+      "id": "destination_arrival",
+      "label": "Selected direct native destination arrival",
+      "boundary_step": "arrival_world_artifact",
+      "predecessors": ["declared_world"],
+      "expectations": [
+        {"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "destination": [140, 31, 0], "artifact_hash_present": true}},
+        {"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "audit_saved_game_turn", "artifact_hash_present": true, "required_field.player_abs_omt": [140, 31, 0]}}
+      ],
+      "checkpoint_safe_ui": {"semantic_state": {"required": true}}
+    }
+  ],
+  "proof_route": {
+    "gates": ["declared_world", "destination_arrival"],
+    "terminal": ["destination_arrival"],
+    "capability_gates": {
+      "capabilities.bandit.r005.direct_native_route_qualification": {
+        "terminal": ["destination_arrival"]
+      }
+    }
+  }
+}

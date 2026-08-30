@@ -311,7 +311,7 @@ class ProbeRelaunchTest(unittest.TestCase):
                             "proof_classification": {"startup_clean_for_feature_steps": True},
                         }, "", "")) as launch:
                     relaunch = harness.run_probe_post_relaunch(
-                        initial_pid=101, profile="profile", config_profile="profile", world="world",
+                        initial_pid=101, initial_process_command="/tmp/cataclysm-tiles", profile="profile", config_profile="profile", world="world",
                         scenario_name="scenario", registry_launch_receipt="", terminal_exit_timeout_seconds=1,
                         certification_registry=str(root / "registry.sqlite3"),
                         certification_round_manifest=str(manifest_path), certification_lease_id="lease-1",
@@ -368,6 +368,7 @@ class ProbeRelaunchTest(unittest.TestCase):
                 mock.patch.object(harness, "run_json_command", return_value=(0, start_result, "out", "err")) as run:
             result = harness.run_probe_post_relaunch(
                 initial_pid=101,
+                initial_process_command="/tmp/cataclysm-tiles",
                 profile="probe-profile",
                 config_profile="dev-harness",
                 world="McWilliams",
@@ -394,6 +395,7 @@ class ProbeRelaunchTest(unittest.TestCase):
                 mock.patch.object(harness, "run_json_command") as run:
             missing_exit = harness.run_probe_post_relaunch(
                 initial_pid=101,
+                initial_process_command="/tmp/cataclysm-tiles",
                 profile="profile",
                 config_profile="config",
                 world="McWilliams",
@@ -413,6 +415,7 @@ class ProbeRelaunchTest(unittest.TestCase):
                 }, "", "")):
             same_pid = harness.run_probe_post_relaunch(
                 initial_pid=101,
+                initial_process_command="/tmp/cataclysm-tiles",
                 profile="profile",
                 config_profile="config",
                 world="McWilliams",

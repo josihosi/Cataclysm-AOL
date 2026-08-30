@@ -32,7 +32,7 @@ import sys
 import tempfile
 import time
 import uuid
-from datetime import datetime
+from datetime import datetime, timezone
 from dataclasses import asdict, dataclass
 from pathlib import Path
 from typing import Any, Callable, Dict, Iterable, List, Mapping, Optional, Pattern, Sequence, Set, Tuple
@@ -156,6 +156,14 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "tools/openclaw_harness/scenario_registry_cli.py",
     "tools/openclaw_harness/scenario_registry_store.py",
 )
+PRODUCT_BINARY_RELEVANT_PATHS: Tuple[str, ...] = (
+    "src",
+    "build-data",
+    "cmake",
+    "CMakeLists.txt",
+    "Makefile",
+    "make.sh",
+)
 PROFILE_SNAPSHOT_SKIP_ENTRIES = {"manifest.json", "save", "harness_runs", "cache"}
 RUNTIME_BINDING_FILENAME = "runtime.binding.json"
 CONTRACT_PREFLIGHT_FILENAME = "contract.preflight.json"
@@ -251,6 +259,7 @@ SEMANTIC_UI_TRACE_PATTERN = re.compile(
     r'(?:run_id=("(?:\\.|[^"\\])*") )?intent=("(?:\\.|[^"\\])*") valid_actions=(\[[^\r\n]*?\]) '
     r'postcondition=("(?:\\.|[^"\\])*")(?: destination=("(?:\\.|[^"\\])*"))?'
 )
+TRACE_TIMESTAMP_PATTERN = re.compile(r"(?P<timestamp>\d{2}:\d{2}:\d{2}\.\d{3})\s+INFO\s*:")
 SEMANTIC_UI_TRACE_READ_CAP_BYTES = 256 * 1024
 GAMEPLAY_HUD_TRACE_PATTERN = re.compile(
     r'openclaw_harness_ui_trace: component=gameplay_hud event=rendered '
@@ -572,6 +581,30 @@ def _structured_event_matches(event: Mapping[str, Any], predicate: Mapping[str, 
     return True
 
 
+def audit_structured_transition_event(
+    events: Sequence[Mapping[str, Any]], *, run_id: str,
+    predicate: Mapping[str, Any], require_exactly_one: bool = False,
+) -> Dict[str, Any]:
+    """Fail closed unless this run contains the declared committed receipt."""
+    matches = [
+        dict(event) for event in events
+        if event.get("run_id") == run_id and _structured_event_matches(event, predicate)
+    ]
+    matches.sort(key=lambda event: int(event.get("sequence", 0) or 0))
+    count_is_valid = not require_exactly_one or len(matches) == 1
+    return {
+        "status": "required_state_present" if matches and count_is_valid else "required_state_missing",
+        "run_id": run_id,
+        "predicate": dict(predicate),
+        "require_exactly_one": require_exactly_one,
+        "match_count": len(matches),
+        "matching_events": matches,
+        "missing_required_items": ([] if matches and count_is_valid else [
+            "one same-run committed structured transition matching the declared predicate"
+        ]),
+    }
+
+
 def evaluate_causal_boundary(
     proof_gates: Sequence[Mapping[str, Any]],
     *, gate_id: str, events: Sequence[Mapping[str, Any]], run_id: str,
@@ -826,7 +859,15 @@ def evaluate_structured_proof_gates(
             artifacts.append(artifact)
     by_id = {str(gate.get("id", "")): gate for gate in proof_gates}
     evidence: List[Dict[str, Any]] = []
-    previous_watermark: Mapping[str, Any] = {"last_sequence": 0, "byte_offset": 0, "run_id": run_id}
+    # A saved-artifact gate may be observed after a later transition receipt
+    # without owning that receipt.  Keep the event cursor separate from the
+    # artifact-step cursor so an artifact-only gate cannot consume a future
+    # structured owner's handoff simply because its audit ran later.
+    initial_watermark: Mapping[str, Any] = {
+        "last_sequence": 0, "byte_offset": 0, "run_id": run_id,
+    }
+    event_boundaries: Dict[str, Mapping[str, Any]] = {}
+    artifact_boundaries: Dict[str, Mapping[str, Any]] = {}
     continuity_context: Dict[str, Any] = {}
     integrity_poisoned = any(
         diagnostic.get("kind") == "stream_truncated_or_replaced" or
@@ -839,22 +880,41 @@ def evaluate_structured_proof_gates(
         predecessor_ids = gate.get("predecessors", [])
         if predecessor_ids:
             predecessor = by_id.get(str(predecessor_ids[-1]), {})
-            predecessor_boundary = str(predecessor.get("boundary_step", ""))
-            predecessor_watermark = watermarks.get(predecessor_boundary, previous_watermark)
+            predecessor_id = str(predecessor.get("id", "")).strip()
+            predecessor_event_watermark = event_boundaries.get(
+                predecessor_id, initial_watermark,
+            )
+            predecessor_artifact_watermark = artifact_boundaries.get(
+                predecessor_id, initial_watermark,
+            )
         else:
-            predecessor_watermark = previous_watermark
+            predecessor_event_watermark = initial_watermark
+            predecessor_artifact_watermark = initial_watermark
         current_boundary = str(gate.get("boundary_step", ""))
-        current_watermark = watermarks.get(current_boundary, {})
-        gate_integrity_poisoned = bool(
-            integrity_poisoned or predecessor_watermark.get("integrity_poisoned") or
-            current_watermark.get("integrity_poisoned")
+        observed_watermark = watermarks.get(current_boundary, {})
+        owns_structured_events = any(
+            str(expectation.get("kind", "")) in {"structured_event", "semantic_state"}
+            for expectation in gate.get("expectations", [])
+            if isinstance(expectation, Mapping)
         )
-        start_sequence = int(predecessor_watermark.get("last_sequence", 0) or 0)
-        end_sequence = int(current_watermark.get("last_sequence", start_sequence) or start_sequence)
-        start_offset = int(predecessor_watermark.get("byte_offset", 0) or 0)
-        end_offset = int(current_watermark.get("byte_offset", start_offset) or start_offset)
-        start_step_index = int(predecessor_watermark.get("step_index", 0) or 0)
-        end_step_index = int(current_watermark.get("step_index", 0) or 0)
+        # Only a gate which declares structured evidence advances the event
+        # partition.  This makes sequence ownership monotone and non-overlap
+        # explicit, while preserving the declared artifact-step boundary for
+        # artifact expectations.
+        current_event_watermark = (
+            observed_watermark if owns_structured_events else predecessor_event_watermark
+        )
+        current_artifact_watermark = observed_watermark
+        gate_integrity_poisoned = bool(
+            integrity_poisoned or predecessor_event_watermark.get("integrity_poisoned") or
+            current_event_watermark.get("integrity_poisoned")
+        )
+        start_sequence = int(predecessor_event_watermark.get("last_sequence", 0) or 0)
+        end_sequence = int(current_event_watermark.get("last_sequence", start_sequence) or start_sequence)
+        start_offset = int(predecessor_event_watermark.get("byte_offset", 0) or 0)
+        end_offset = int(current_event_watermark.get("byte_offset", start_offset) or start_offset)
+        start_step_index = int(predecessor_artifact_watermark.get("step_index", 0) or 0)
+        end_step_index = int(current_artifact_watermark.get("step_index", 0) or 0)
         in_range = [
             event for event in events
             if start_sequence < int(event.get("sequence", 0) or 0) <= end_sequence
@@ -968,8 +1028,10 @@ def evaluate_structured_proof_gates(
         all_green = all_green and gate_green
         evidence.append({
             "id": gate_id, "label": str(gate.get("label", "")), "status": "green" if gate_green else "red",
-            "boundary_step": current_boundary, "predecessor_watermark": dict(predecessor_watermark),
-            "watermark": dict(current_watermark),
+            "boundary_step": current_boundary,
+            "predecessor_watermark": dict(predecessor_event_watermark),
+            "watermark": dict(current_event_watermark),
+            "observed_watermark": dict(observed_watermark),
             "event_range": {"sequence_start_exclusive": start_sequence, "sequence_end_inclusive": end_sequence, "byte_start": start_offset, "byte_end_exclusive": end_offset},
             "artifact_step_range": {
                 "step_index_start_exclusive": start_step_index,
@@ -986,7 +1048,8 @@ def evaluate_structured_proof_gates(
             "integrity_diagnostics": range_diagnostics,
             "integrity_poisoned": gate_integrity_poisoned,
         })
-        previous_watermark = current_watermark
+        event_boundaries[gate_id] = current_event_watermark
+        artifact_boundaries[gate_id] = current_artifact_watermark
     return {
         "status": "green" if all_green and evidence else "red", "run_id": run_id,
         "gates": evidence, "diagnostics": list(diagnostics or []),
@@ -1463,6 +1526,103 @@ def runtime_source_binding() -> Dict[str, Any]:
         "sha256": hashlib.sha256(source).hexdigest(),
         "worktree_changes": changes,
         "untracked_paths": untracked_paths,
+    }
+
+
+def _product_binary_path(relative: str) -> bool:
+    """Return whether one repository path can change the compiled game binary."""
+    normalized = str(relative).replace("\\", "/").strip("/")
+    return any(
+        normalized == prefix or normalized.startswith(prefix + "/")
+        for prefix in PRODUCT_BINARY_RELEVANT_PATHS
+    )
+
+
+def executable_source_readiness(
+    executable: Path,
+    *,
+    isolated_harness_diagnosis: bool = False,
+) -> Dict[str, Any]:
+    """Cheaply decide whether a binary can support a current-product run.
+
+    The game already exposes its compiled Git baseline through ``--version``.
+    This preflight compares that baseline with committed and dirty binary inputs
+    before registry authority can be issued.  A deliberately isolated harness
+    diagnosis may proceed provisionally, but it cannot claim the playtest
+    outcome until a current binary is revalidated.
+    """
+    executable_path = Path(executable).resolve()
+    version_output = ""
+    version_error = ""
+    try:
+        completed = subprocess.run(
+            [str(executable_path), "--version"],
+            capture_output=True,
+            text=True,
+            check=False,
+        )
+        version_output = "\n".join(
+            value for value in (completed.stdout, completed.stderr) if value
+        )
+        if completed.returncode != 0:
+            version_error = f"version command exited {completed.returncode}"
+    except OSError as exc:
+        version_error = str(exc)
+
+    match = re.search(
+        r"(?<![0-9a-f])(?P<head>[0-9a-f]{10,40})(?P<dirty>-dirty)?(?:\+[^\s]+)?",
+        version_output,
+    )
+    captured_head = match.group("head") if match else ""
+    committed_changes: List[str] = []
+    worktree_changes: List[str] = []
+    comparison_error = version_error
+    if captured_head:
+        committed, committed_error = runtime_relevant_changes_since(captured_head)
+        dirty, dirty_error = runtime_relevant_worktree_changes()
+        committed_changes = [path for path in committed if _product_binary_path(path)]
+        worktree_changes = [path for path in dirty if _product_binary_path(path)]
+        comparison_error = "; ".join(
+            error for error in (committed_error, dirty_error) if error
+        )
+    elif not comparison_error:
+        comparison_error = "compiled source identity is absent from executable --version output"
+
+    ready = bool(
+        captured_head and not comparison_error and
+        not committed_changes and not worktree_changes
+    )
+    if ready:
+        status = "ready"
+        reason = "source_matching_executable"
+        next_action = "continue with the current registry query"
+        evidence_ceiling = "requested run ceiling"
+    elif isolated_harness_diagnosis:
+        status = "provisional_diagnosis_allowed"
+        reason = "isolated_harness_diagnosis_does_not_depend_on_current_product_code"
+        next_action = (
+            "run only the isolated harness diagnosis, label its evidence provisional, then "
+            "revalidate the playtest outcome with a source-matching executable"
+        )
+        evidence_ceiling = "provisional harness diagnosis only"
+    else:
+        status = "build_required"
+        reason = "product_binary_source_is_stale_or_unproved"
+        next_action = (
+            "build or select a source-matching executable, then repeat the same registry query"
+        )
+        evidence_ceiling = "none until source-matching executable revalidation"
+    return {
+        "status": status,
+        "reason": reason,
+        "next_action": next_action,
+        "evidence_ceiling": evidence_ceiling,
+        "executable_path": str(executable_path),
+        "captured_head": captured_head,
+        "repository_head": current_head_short(),
+        "binary_relevant_committed_changes": committed_changes,
+        "binary_relevant_worktree_changes": worktree_changes,
+        "comparison_error": comparison_error,
     }
 
 
@@ -3234,6 +3394,10 @@ def read_active_semantic_ui_trace(
             "start_offset": start_offset,
             "read_truncated": bounded_start > start_offset,
         }
+        line_start = body.rfind("\n", 0, match.start()) + 1
+        timestamp_match = TRACE_TIMESTAMP_PATTERN.search(body, line_start, match.start())
+        if timestamp_match is not None:
+            trace["timestamp"] = timestamp_match.group("timestamp")
         if match.group(1) == "open":
             active = trace
         elif match.group(1) == "progress":
@@ -3241,6 +3405,90 @@ def read_active_semantic_ui_trace(
         elif active is not None and active["instance_id"] == instance_id:
             active = None
     return active
+
+
+def read_semantic_ui_trace_events(
+    log_path: Optional[Path],
+    start_offset: int,
+    *,
+    run_id: str = "",
+) -> List[Dict[str, Any]]:
+    """Return every current-run semantic UI receipt with its log timestamp."""
+    if log_path is None or not log_path.exists():
+        return []
+    size = log_path.stat().st_size
+    bounded_start = max(start_offset if 0 <= start_offset <= size else 0,
+                        size - SEMANTIC_UI_TRACE_READ_CAP_BYTES)
+    with log_path.open("rb") as handle:
+        handle.seek(bounded_start)
+        body = handle.read(SEMANTIC_UI_TRACE_READ_CAP_BYTES).decode("utf-8", errors="replace")
+    events: List[Dict[str, Any]] = []
+    for match in SEMANTIC_UI_TRACE_PATTERN.finditer(body):
+        try:
+            instance_id = json.loads(match.group(2))
+            observed_run_id = json.loads(match.group(3)) if match.group(3) else ""
+            intent = json.loads(match.group(4))
+            valid_actions = json.loads(match.group(5))
+            postcondition = json.loads(match.group(6))
+            destination = json.loads(match.group(7)) if match.group(7) else None
+        except (TypeError, ValueError, json.JSONDecodeError):
+            continue
+        if not isinstance(instance_id, str) or not isinstance(observed_run_id, str) or \
+                not isinstance(intent, str) or not isinstance(valid_actions, list) or \
+                not isinstance(postcondition, str) or (run_id and observed_run_id != run_id):
+            continue
+        event: Dict[str, Any] = {
+            "component": "semantic_ui",
+            "event": match.group(1),
+            "instance_id": instance_id,
+            "run_id": observed_run_id,
+            "intent": intent,
+            "valid_actions": valid_actions,
+            "postcondition": postcondition,
+            "destination": destination,
+            "event_offset": bounded_start + len(body[:match.start()].encode("utf-8")),
+            "start_offset": start_offset,
+            "read_truncated": bounded_start > start_offset,
+        }
+        line_start = body.rfind("\n", 0, match.start()) + 1
+        timestamp_match = TRACE_TIMESTAMP_PATTERN.search(body, line_start, match.start())
+        if timestamp_match is not None:
+            event["timestamp"] = timestamp_match.group("timestamp")
+        events.append(event)
+    return events
+
+
+def native_save_quit_receipt(
+    log_path: Optional[Path], start_offset: int, *, run_id: str,
+) -> Dict[str, Any]:
+    """Require one complete, same-run native save/quit modal receipt."""
+    events = [event for event in read_semantic_ui_trace_events(
+        log_path, start_offset, run_id=run_id
+    ) if event.get("intent") == "save_quit_confirmation"]
+    opens = [event for event in events if event.get("event") == "open"]
+    returns = [event for event in events if event.get("event") == "return"]
+    matching_pairs = []
+    for opened in opens:
+        for returned in returns:
+            if returned.get("instance_id") == opened.get("instance_id"):
+                matching_pairs.append({"open": opened, "return": returned})
+    if len(matching_pairs) != 1:
+        return {
+            "status": "missing_or_ambiguous",
+            "run_id": run_id,
+            "event_count": len(events),
+            "matching_pair_count": len(matching_pairs),
+            "events": events,
+        }
+    pair = matching_pairs[0]
+    if pair["open"].get("valid_actions") != ["Y"] or \
+            pair["return"].get("valid_actions") != ["Y"]:
+        return {
+            "status": "invalid_actions",
+            "run_id": run_id,
+            "pair": pair,
+        }
+    return {"status": "matched", "run_id": run_id, "pair": pair}
 
 
 def evaluate_semantic_ui_expectation(
@@ -3652,8 +3900,35 @@ def semantic_step_source_trace(profile: str) -> Path:
     return config_dir_for_profile(resolve_profile_name(profile)) / "debug.log"
 
 
+def compact_semantic_step_channel_event(event: Mapping[str, Any]) -> Dict[str, Any]:
+    """Keep the action-relevant native observation inside the bounded channel.
+
+    Native HUD frames include full minimap and overmap render payloads.  The
+    semantic action path derives its handles and safety facts from the avatar,
+    local visibility, entities, zones, and advertised actions; the full render
+    maps are neither an action authority nor evidence consumed by this trace.
+    Preserve a small local-map declaration for the cockpit while allowing its
+    public fallback to render the same visible-local facts.
+    """
+    compact = dict(event)
+    observation = event.get("observation")
+    if str(event.get("event", "")) != "frame" or not isinstance(observation, Mapping):
+        return compact
+    compact_observation = dict(observation)
+    minimap = observation.get("minimap")
+    if isinstance(minimap, Mapping):
+        compact_observation["minimap"] = {
+            key: minimap[key] for key in ("schema", "radius", "coordinate_system")
+            if key in minimap
+        }
+    compact_observation.pop("overmap", None)
+    compact["observation"] = compact_observation
+    return compact
+
+
 def refresh_semantic_step_trace(
     *, profile: str, run_dir: Path, run_id: str, start_offset: int,
+    event_filter: Optional[Set[str]] = None,
 ) -> tuple[Path, Path]:
     """Copy only the current run's bounded native trace into its owned artifact."""
     run_dir = Path(run_dir).resolve()
@@ -3688,7 +3963,13 @@ def refresh_semantic_step_trace(
                 continue
             if not isinstance(event, Mapping) or str(event.get("run_id", "")) != str(run_id):
                 continue
-            selected.extend(raw_line)
+            if event_filter is not None and str(event.get("event", "")) not in event_filter:
+                continue
+            compact_event = compact_semantic_step_channel_event(event)
+            compact_line = (
+                SEMANTIC_STEP_PREFIX + json.dumps(compact_event, separators=(",", ":")) + "\n"
+            ).encode("utf-8")
+            selected.extend(compact_line)
             if len(selected) > SEMANTIC_STEP_MAX_BYTES:
                 raise ValueError("semantic events exceed the bounded run channel")
     owned = run_dir / "semantic.native.log"
@@ -4022,7 +4303,9 @@ def open_cockpit_game_service(
         }
 
     def read_evidence() -> Mapping[str, Any]:
-        return compact_cockpit_live_evidence( Path( run_dir ), run_id, profile=profile )
+        return compact_cockpit_live_evidence(
+            Path( run_dir ), run_id, profile=profile, pid=pid or 0,
+        )
 
     finalizer = None
     if live_session:
@@ -4072,7 +4355,7 @@ def _read_jsonl_objects(path: Path) -> List[Dict[str, Any]]:
 
 
 def compact_cockpit_live_evidence(
-    run_dir: Path, run_id: str, *, profile: str = "",
+    run_dir: Path, run_id: str, *, profile: str = "", pid: int = 0,
 ) -> Dict[str, Any]:
     """Return bounded semantic facts, never raw logs, for one live decision."""
     receipts = [
@@ -4124,6 +4407,14 @@ def compact_cockpit_live_evidence(
             "reason": str( first_rejected.get( "reason", "" ) ),
         })
     scheduler_trace = read_scheduler_trace(profile, run_id) if profile else []
+    child_resources = sample_child_resources(pid) if pid > 0 else {
+        "pid": None,
+        "platform": r009_host_platform(),
+        "cpu_percent": {"status": "unavailable", "value": None,
+                        "reason": "the live game pid was unavailable"},
+        "resident_memory": {"status": "unavailable", "value": None,
+                            "reason": "the live game pid was unavailable"},
+    }
     return {
         "receipt_count": len( receipts ),
         "latest_receipt": compact_receipt,
@@ -4141,6 +4432,7 @@ def compact_cockpit_live_evidence(
                if compact_transition is not None else [] ),
         ],
         "scheduler_trace": scheduler_trace,
+        "child_resources": child_resources,
     }
 
 
@@ -4735,6 +5027,24 @@ LONG_WAIT_MENU_CHOICES = {
     "W": "weather",
 }
 
+PLAYTEST_DANGER_HANDLING_MODES = {
+    "stop_on_interruption",
+    "handle_classified_non_dangerous",
+    "ignore_danger_and_interruptions",
+}
+
+
+def normalize_playtest_danger_handling(value: Any, *, legacy_ignore: Optional[bool] = None) -> str:
+    """Return one explicit playtest danger policy; ordinary use stays cautious."""
+    if value is None or str(value).strip() == "":
+        if legacy_ignore is not None:
+            return "ignore_danger_and_interruptions" if legacy_ignore else "stop_on_interruption"
+        return "stop_on_interruption"
+    mode = str(value).strip()
+    if mode not in PLAYTEST_DANGER_HANDLING_MODES:
+        raise ValueError(f"unsupported playtest danger handling mode: {mode}")
+    return mode
+
 
 def is_retained_hostile_auto_move_cancelled_hud_message(
     screen_text_report: Dict[str, Any],
@@ -4824,16 +5134,26 @@ def stabilize_native_travel_after_route_confirmation(
     timeout_seconds: float,
     structured_event_reader: Optional[StructuredTransitionEventReader] = None,
     native_travel_boundary_reader: Optional[Callable[[], Dict[str, Any]]] = None,
+    allow_hostile_auto_move_cancel: Optional[bool] = None,
+    danger_handling: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Stabilize native travel after a route confirmation without guessing input.
+    """Stabilize native travel under one explicit, receipt-bearing danger policy.
 
-    The scenario-owned settlement is the sole timeout.  The complete
-    case-sensitive auto-move modal is continued with N.  Exact wilderness
-    flavor retained in the message log is nonblocking only when the gameplay
-    HUD is still visible; every other prompt remains terminal.
+    The default stops on interruption.  Classified mode handles only known
+    non-dangerous interruptions.  Ignore mode may answer the exact native
+    auto-move cancellation prompt with N and records that choice.  Unknown
+    prompts remain terminal in every mode.
     """
-    if timeout_seconds <= 0:
-        raise ValueError("native_travel_stabilization requires positive settle_seconds")
+    selected_danger_handling = normalize_playtest_danger_handling(
+        danger_handling, legacy_ignore=allow_hostile_auto_move_cancel,
+    )
+    ignore_danger = selected_danger_handling == "ignore_danger_and_interruptions"
+    if timeout_seconds < 0:
+        raise ValueError("native_travel_stabilization requires nonnegative settle_seconds")
+    if timeout_seconds == 0 and native_travel_boundary_reader is None:
+        raise ValueError(
+            "unbounded native_travel_stabilization requires a native completion boundary"
+        )
 
     def capture_state(suffix: str) -> Tuple[Dict[str, Any], Dict[str, Any]]:
         capture = capture_screenshot(pid, run_dir, f"{label}.native_travel_stabilization.{suffix}")
@@ -4846,8 +5166,9 @@ def stabilize_native_travel_after_route_confirmation(
 
     acknowledgement_count = 0
     response_keys: List[str] = []
+    handled_interruptions: List[Dict[str, Any]] = []
     observation_count = 0
-    deadline = time.monotonic() + timeout_seconds
+    deadline = time.monotonic() + timeout_seconds if timeout_seconds > 0 else None
 
     def activity_none_matches(screen_text: Dict[str, Any]) -> List[Dict[str, str]]:
         matches = find_screen_text_matches(screen_text, ["Activity: None"])
@@ -4903,6 +5224,9 @@ def stabilize_native_travel_after_route_confirmation(
         ) and bool(activity_none_matches(screen_text))
 
     def wait_for_next_observation() -> bool:
+        if deadline is None:
+            time.sleep(delay_ms / 1000.0)
+            return True
         remaining_seconds = deadline - time.monotonic()
         if remaining_seconds <= 0:
             return False
@@ -4913,7 +5237,7 @@ def stabilize_native_travel_after_route_confirmation(
     before_capture, before_text = capture_state("before")
     observation_count += 1
     before_classification = classify_blocking_interruption(
-        before_text, allow_hostile_auto_move_cancel=True,
+        before_text, allow_hostile_auto_move_cancel=ignore_danger,
     )
     after_capture = before_capture
     after_text = before_text
@@ -4921,6 +5245,12 @@ def stabilize_native_travel_after_route_confirmation(
     travel_activity_complete = False
     native_travel_boundary: Dict[str, Any] = {}
     while True:
+        if not pid_is_alive(pid):
+            classification = {
+                "status": "process_exited",
+                "classification": "process_exited_before_native_travel_completion",
+            }
+            break
         status = str(classification.get("status", ""))
         classification_name = str(classification.get("classification", ""))
         modal_present = is_hostile_auto_move_cancel_modal(after_text)
@@ -4932,24 +5262,31 @@ def stabilize_native_travel_after_route_confirmation(
             is_nonblocking_wilderness_flavor_on_hud( classification, after_text )
         noninteractive_wilderness_flavor_on_idle_hud = \
             is_noninteractive_wilderness_flavor_on_idle_hud( classification, after_text )
-        # A partial or otherwise unknown prompt is the first divergence.  Do
-        # not poll a still-active semantic travel trace past it: that changes
-        # neither the prompt nor the absence of authority to answer it.
-        if status not in {"clear", "known_prompt"} and \
-                not nonblocking_wilderness_flavor_on_hud:
-            break
         if native_travel_boundary_reader is not None:
             native_travel_boundary = native_travel_boundary_reader()
             if native_travel_boundary.get("status") == "green":
                 travel_activity_complete = True
                 break
+        # A partial or otherwise unknown prompt is the first divergence.  Its
+        # corresponding native travel receipt has already been sampled above;
+        # do not answer it or advance travel beyond this point.
+        if status not in {"clear", "known_prompt"} and \
+                not nonblocking_wilderness_flavor_on_hud:
+            break
         if status == "known_prompt" and \
                 classification_name == "authorized_hostile_auto_move_cancel":
-            if time.monotonic() >= deadline:
+            if deadline is not None and time.monotonic() >= deadline:
                 break
             peekaboo_type_text(pid, "N", delay_ms=delay_ms)
             acknowledgement_count += 1
             response_keys.append("N")
+            handled_interruptions.append({
+                "classification": classification_name,
+                "response": "continue_auto_move",
+                "response_key": "N",
+                "danger_handling": selected_danger_handling,
+                "native_boundary": dict(native_travel_boundary),
+            })
             if not wait_for_next_observation():
                 break
             after_capture, after_text = capture_state(
@@ -4957,9 +5294,19 @@ def stabilize_native_travel_after_route_confirmation(
             )
             observation_count += 1
             classification = classify_blocking_interruption(
-                after_text, allow_hostile_auto_move_cancel=True,
+                after_text, allow_hostile_auto_move_cancel=ignore_danger,
             )
             continue
+        if native_travel_boundary.get("reason") in {
+                "hostile_boundary", "hostile_boundary_without_terminal"
+        }:
+            # The native receipt is the first authoritative hostile boundary.
+            # A permissive policy may handle an identified modal before the
+            # incomplete boundary becomes terminal, but it cannot authorize
+            # polling past a route with no following completion receipt.
+            break
+        if native_travel_boundary.get("reason") == "post_hostile_boundary_travel" and not ignore_danger:
+            break
         hud_recovered = len(hud_matches) == 2 or bool(stable_hud_matches)
         if ( status == "clear" or nonblocking_wilderness_flavor_on_hud ) and \
                 hud_recovered and not modal_present:
@@ -4973,7 +5320,7 @@ def stabilize_native_travel_after_route_confirmation(
             )
             observation_count += 1
             classification = classify_blocking_interruption(
-                after_text, allow_hostile_auto_move_cancel=True,
+                after_text, allow_hostile_auto_move_cancel=allow_hostile_auto_move_cancel,
             )
             continue
         if noninteractive_wilderness_flavor_on_idle_hud and native_travel_boundary_reader is None:
@@ -4985,7 +5332,7 @@ def stabilize_native_travel_after_route_confirmation(
             )
             observation_count += 1
             classification = classify_blocking_interruption(
-                after_text, allow_hostile_auto_move_cancel=True,
+                after_text, allow_hostile_auto_move_cancel=ignore_danger,
             )
             continue
         break
@@ -5002,8 +5349,10 @@ def stabilize_native_travel_after_route_confirmation(
         is_noninteractive_wilderness_flavor_on_idle_hud( classification, after_text )
     hud_recovered = len(hud_matches) == 2 or bool(stable_hud_matches)
     result: Dict[str, Any] = {
+        "danger_handling": selected_danger_handling,
         "response_key": response_keys[-1] if response_keys else "",
         "response_keys": response_keys,
+        "handled_interruptions": handled_interruptions,
         "acknowledgement_count": acknowledgement_count,
         "observation_count": observation_count,
         "recognized_prompt": str(before_classification.get("classification", "")),
@@ -5027,7 +5376,27 @@ def stabilize_native_travel_after_route_confirmation(
     }
     if native_travel_boundary_reader is not None:
         result["native_travel_boundary"] = native_travel_boundary
-    if str(classification.get("status", "")) != "clear" and not modal_present and \
+    if str(classification.get("status", "")) == "process_exited":
+        result.update({
+            "status": "blocked_native_travel_process_exited",
+            "verdict": "blocked_native_travel_process_exited",
+            "reason": "game process exited before the native travel completion boundary",
+        })
+    elif native_travel_boundary.get("reason") == "post_hostile_boundary_travel" and not ignore_danger:
+        result.update({
+            "status": "blocked_native_travel_post_hostile_boundary_travel",
+            "verdict": "blocked_native_travel_post_hostile_boundary_travel",
+            "reason": "native travel continued after its first hostile boundary receipt",
+        })
+    elif native_travel_boundary.get("reason") in {
+            "hostile_boundary", "hostile_boundary_without_terminal"
+    }:
+        result.update({
+            "status": "blocked_native_travel_hostile_boundary",
+            "verdict": "blocked_native_travel_hostile_boundary",
+            "reason": "native travel reached a hostile boundary without a later native completion receipt",
+        })
+    elif str(classification.get("status", "")) != "clear" and not modal_present and \
             not nonblocking_wilderness_flavor_on_hud:
         result.update({
             "status": "blocked_native_travel_unknown_prompt",
@@ -5045,6 +5414,16 @@ def stabilize_native_travel_after_route_confirmation(
             "status": "blocked_native_travel_hostile_auto_move_modal_persisted",
             "verdict": "blocked_native_travel_hostile_auto_move_modal_persisted",
             "reason": "the exact hostile auto-move modal remained after the authorized N response",
+        })
+    elif native_travel_boundary_reader is not None and native_travel_boundary.get("status") == "green":
+        # The native completion receipt is authoritative for route completion.
+        # OCR may omit the idle HUD labels on the same settled frame; do not
+        # turn that presentation gap into a false route failure.  Unknown
+        # prompts and hostile modals have already stopped above.
+        result.update({
+            "status": "green_native_travel_terminal_receipt",
+            "verdict": "green_native_travel_stabilized",
+            "reason": "native travel completion boundary is green and no blocking modal is present",
         })
     elif not hud_recovered:
         result.update({
@@ -5071,7 +5450,7 @@ def stabilize_native_travel_after_route_confirmation(
 
 def evaluate_native_travel_completion_boundary(
     *, profile: str, run_dir: Path, run_id: str, trace_start_offset: int,
-    expected_destination: Sequence[int],
+    expected_destination: Sequence[int], allow_handled_hostile_boundaries: bool = False,
 ) -> Dict[str, Any]:
     """Read the first post-travel native fact boundary, never OCR."""
     if not run_id:
@@ -5079,17 +5458,119 @@ def evaluate_native_travel_completion_boundary(
     try:
         _, owned_trace = refresh_semantic_step_trace(
             profile=profile, run_dir=run_dir, run_id=run_id,
-            start_offset=trace_start_offset,
+            start_offset=trace_start_offset, event_filter={"travel"},
         )
-        events, read_status = read_semantic_step_trace(owned_trace, run_dir, run_id)
+        events, read_status = read_semantic_step_trace(
+            owned_trace, run_dir, run_id, event_filter={"travel"},
+        )
     except (OSError, ValueError) as exc:
         return {"status": "blocked", "reason": "native_trace_unavailable", "detail": str(exc)}
     if read_status != "ok":
         return {"status": "blocked", "reason": read_status}
     result = decide_native_travel_boundary(
         events, run_id=run_id, expected_destination=expected_destination,
+        allow_handled_hostile_boundaries=allow_handled_hostile_boundaries,
     )
     return {**result, "source": str(owned_trace), "event_count": len(events)}
+
+
+def persist_native_travel_terminal_receipt(
+    stabilization: Mapping[str, Any], *, run_dir: Path, label: str, run_id: str,
+) -> Dict[str, Any]:
+    """Seal a green native terminal receipt as a run-owned proof artifact."""
+    boundary = stabilization.get("native_travel_boundary")
+    if not isinstance(boundary, Mapping) or boundary.get("status") != "green":
+        return {
+            "status": "required_state_missing",
+            "artifact_kind": "native_travel_terminal_receipt",
+            "run_id": run_id,
+            "reason": "native_travel_completion_boundary_not_green",
+        }
+    source = Path(str(boundary.get("source", "") or ""))
+    try:
+        source.resolve().relative_to(run_dir.resolve())
+        source_sha256 = path_sha256(source)
+    except (OSError, ValueError):
+        return {
+            "status": "required_state_missing",
+            "artifact_kind": "native_travel_terminal_receipt",
+            "run_id": run_id,
+            "reason": "native_travel_receipt_source_not_owned",
+        }
+    receipt_path = run_dir / f"{label}.native_travel_terminal_receipt.json"
+    receipt = {
+        "status": "required_state_present",
+        "committed": True,
+        "artifact_kind": "native_travel_terminal_receipt",
+        "run_id": run_id,
+        "travel_id": str(boundary.get("travel_id", "")),
+        "active_receipt_id": str(boundary.get("active_receipt_id", "")),
+        "completion_receipt_id": str(boundary.get("completion_receipt_id", "")),
+        "destination": boundary.get("destination"),
+        "danger_handling": str(stabilization.get("danger_handling", "")),
+        "handled_interruptions": list(stabilization.get("handled_interruptions", [])),
+        "handled_hostile_boundaries": list(boundary.get("handled_hostile_boundaries", [])),
+        "semantic_trace_path": str(source),
+        "semantic_trace_sha256": source_sha256,
+        "event_count": int(boundary.get("event_count", 0) or 0),
+        "artifact_path": str(receipt_path),
+    }
+    receipt_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False), encoding="utf-8")
+    receipt["artifact_sha256"] = path_sha256(receipt_path)
+    return receipt
+
+
+def persist_native_travel_hostile_boundary_receipt(
+    stabilization: Mapping[str, Any], *, run_dir: Path, label: str, run_id: str,
+) -> Dict[str, Any]:
+    """Seal a real first-hostile terminal without treating it as arrival."""
+    boundary = stabilization.get("native_travel_boundary")
+    reason = str(boundary.get("reason", "")) if isinstance(boundary, Mapping) else ""
+    if reason not in {"hostile_boundary", "hostile_boundary_without_terminal"}:
+        return {
+            "status": "required_state_missing",
+            "artifact_kind": "native_travel_hostile_boundary_receipt",
+            "run_id": run_id,
+            "reason": "first_hostile_boundary_not_observed",
+        }
+    if reason == "hostile_boundary" and stabilization.get("response_keys"):
+        return {
+            "status": "required_state_missing",
+            "artifact_kind": "native_travel_hostile_boundary_receipt",
+            "run_id": run_id,
+            "reason": "hostile_boundary_prompt_was_answered",
+        }
+    source = Path(str(boundary.get("source", "") or ""))
+    try:
+        source.resolve().relative_to(run_dir.resolve())
+        source_sha256 = path_sha256(source)
+    except (OSError, ValueError):
+        return {
+            "status": "required_state_missing",
+            "artifact_kind": "native_travel_hostile_boundary_receipt",
+            "run_id": run_id,
+            "reason": "native_travel_receipt_source_not_owned",
+        }
+    receipt_path = run_dir / f"{label}.native_travel_hostile_boundary_receipt.json"
+    receipt = {
+        "status": "required_state_present",
+        "committed": True,
+        "artifact_kind": "native_travel_hostile_boundary_receipt",
+        "run_id": run_id,
+        "travel_id": str(boundary.get("travel_id", "")),
+        "omt": boundary.get("hostile_boundary_omt"),
+        "boundary_reason": reason,
+        "prompt_responses": list(stabilization.get("response_keys", [])),
+        "danger_handling": str(stabilization.get("danger_handling", "")),
+        "completed_destination_cleared": False,
+        "semantic_trace_path": str(source),
+        "semantic_trace_sha256": source_sha256,
+        "event_count": int(boundary.get("event_count", 0) or 0),
+        "artifact_path": str(receipt_path),
+    }
+    receipt_path.write_text(json.dumps(receipt, indent=2, ensure_ascii=False), encoding="utf-8")
+    receipt["artifact_sha256"] = path_sha256(receipt_path)
+    return receipt
 
 
 def classify_wait_screen_text(
@@ -5200,6 +5681,124 @@ def classify_run_bound_native_wait(
         "observed_seconds": observed_seconds,
         "expected_seconds": expected_seconds,
         "native_terminal_kind": terminal_kind,
+    }
+
+
+def evaluate_native_wait_return_continuation(
+    events: Sequence[Mapping[str, Any]],
+    *,
+    run_id: str,
+    transition: str,
+    actor_ids: Sequence[Any],
+    postcondition: Mapping[str, Any],
+    final_postcondition: Optional[Mapping[str, Any]] = None,
+) -> Dict[str, Any]:
+    """Authorize a native-wait continuation from exact same-run return receipts.
+
+    This is a narrow bridge for a wait whose native finish text is not
+    observable.  The transition stream remains authoritative: every required
+    actor must have one committed receipt, the stream must be monotone, and the
+    final receipt must satisfy the declared ownership/postcondition boundary.
+    No screen text or caller-supplied completion label participates in this
+    decision.
+    """
+    selected_run_id = str(run_id or "").strip()
+    selected_transition = str(transition or "").strip()
+    required_actor_ids = list(actor_ids) if isinstance(actor_ids, Sequence) and \
+        not isinstance(actor_ids, (str, bytes, bytearray)) else []
+    required_postcondition = dict(postcondition) if isinstance(postcondition, Mapping) else {}
+    final_condition = dict(final_postcondition) if isinstance(final_postcondition, Mapping) else {}
+    failures: List[str] = []
+    if not selected_run_id:
+        failures.append("missing_current_run")
+    if not selected_transition:
+        failures.append("missing_return_transition")
+    if not required_actor_ids or len(set(json.dumps(item, sort_keys=True) for item in required_actor_ids)) != len(required_actor_ids):
+        failures.append("missing_or_duplicate_required_actor_ids")
+    if not required_postcondition:
+        failures.append("missing_return_postcondition")
+
+    observed_events = list(events) if isinstance(events, Sequence) and \
+        not isinstance(events, (str, bytes, bytearray)) else []
+    previous_sequence: Optional[int] = None
+    matching: List[Dict[str, Any]] = []
+    for event in observed_events:
+        if not isinstance(event, Mapping):
+            failures.append("malformed_return_receipt")
+            continue
+        sequence = event.get("sequence")
+        if isinstance(sequence, bool) or not isinstance(sequence, int) or \
+                (previous_sequence is not None and sequence <= previous_sequence):
+            failures.append("non_monotone_sequence")
+        elif previous_sequence is None or sequence > previous_sequence:
+            previous_sequence = sequence
+        if event.get("run_id") != selected_run_id:
+            failures.append("wrong_or_stale_run")
+            continue
+        if str(event.get("transition", "")).strip() != selected_transition or \
+                str(event.get("outcome", "")).strip().lower() != "committed":
+            continue
+        event_actor_ids = event.get("actor_ids")
+        if not isinstance(event_actor_ids, list) or len(event_actor_ids) != 1:
+            failures.append("missing_or_ambiguous_actor")
+            continue
+        member_id = event_actor_ids[0]
+        if member_id not in required_actor_ids:
+            continue
+        if not str(_transition_event_value(event, "owner") or "").strip():
+            failures.append("missing_return_owner")
+        for key, expected in required_postcondition.items():
+            observed = _transition_event_value(event, key)
+            if observed != expected:
+                failures.append(
+                    "missing_return_postcondition" if observed in (None, "", [], {})
+                    else "return_postcondition_mismatch"
+                )
+                break
+        matching.append(dict(event))
+
+    matches_by_actor: Dict[Any, List[Dict[str, Any]]] = {}
+    for event in matching:
+        matches_by_actor.setdefault(event.get("actor_ids", [None])[0], []).append(event)
+    if any(len(receipts) > 1 for receipts in matches_by_actor.values()):
+        failures.append("duplicate_return_receipt")
+    missing_actors = [actor_id for actor_id in required_actor_ids if actor_id not in matches_by_actor]
+    if missing_actors:
+        failures.append("missing_return_actor")
+    ordered_matches = sorted(
+        (receipts[0] for receipts in matches_by_actor.values() if receipts),
+        key=lambda event: int(event.get("sequence", 0)),
+    )
+    if ordered_matches and final_condition:
+        final_event = ordered_matches[-1]
+        for key, expected in final_condition.items():
+            observed = _transition_event_value(final_event, key)
+            if observed != expected:
+                failures.append(
+                    "missing_return_postcondition" if observed in (None, "", [], {})
+                    else "return_postcondition_mismatch"
+                )
+    failures = list(dict.fromkeys(failures))
+    if failures:
+        return {
+            "status": "unproved",
+            "verdict": "red_native_wait_return_continuation_unproved",
+            "failures": failures,
+            "run_id": selected_run_id,
+            "transition": selected_transition,
+            "required_actor_ids": required_actor_ids,
+            "matched_actor_ids": sorted(matches_by_actor),
+        }
+    return {
+        "status": "matched",
+        "verdict": "green_native_wait_return_continuation",
+        "failures": [],
+        "run_id": selected_run_id,
+        "transition": selected_transition,
+        "required_actor_ids": required_actor_ids,
+        "matched_actor_ids": sorted(matches_by_actor),
+        "receipt_sequences": [int(event.get("sequence", 0)) for event in ordered_matches],
+        "completion_signal": "same_run_native_return_receipts_and_postcondition",
     }
 
 
@@ -5916,6 +6515,7 @@ def classify_wait_step_ledger(
     artifact_after_wait: Optional[Dict[str, Any]] = None,
     allow_artifact_elapsed_without_menu_ocr: bool = False,
     allow_exact_artifact_meridiem_ambiguity: bool = False,
+    native_wait_continuation: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     expected_seconds = wait_duration_seconds( expected_duration )
     selected_duration = LONG_WAIT_MENU_CHOICES.get( choice_key, "" )
@@ -5955,11 +6555,18 @@ def classify_wait_step_ledger(
         re.fullmatch( r"now_minutes=\d+", pattern )
         for pattern in artifact_patterns
     )
+    native_continuation_proved = isinstance(native_wait_continuation, Mapping) and \
+        native_wait_continuation.get("status") == "matched"
     elapsed: Dict[str, Any] = {
         "status": "not_parsed",
         "expected_seconds": expected_seconds,
     }
-    if before_clock["turn_matches"] and after_clock["turn_matches"]:
+    if native_continuation_proved:
+        elapsed.update( {
+            "status": "native_receipt_postcondition",
+            "note": "same-run native return receipts supplied the wait continuation boundary",
+        } )
+    elif before_clock["turn_matches"] and after_clock["turn_matches"]:
         delta = after_clock["turn_matches"][0]["turn"] - before_clock["turn_matches"][0]["turn"]
         elapsed.update( {"status": "turn_delta_parsed", "delta_turns": delta} )
     elif before_clock["clock_matches"] and after_clock["clock_matches"]:
@@ -6036,7 +6643,8 @@ def classify_wait_step_ledger(
     if wait_status == "unknown_after_wait" and artifact_elapsed["matched"]:
         effective_wait_status = "completed_by_artifact_delta"
     menu_ocr_deferred_to_artifact_delta = bool(
-        allow_artifact_elapsed_without_menu_ocr and artifact_elapsed["matched"] and expected_seconds is not None
+        native_continuation_proved or
+        ( allow_artifact_elapsed_without_menu_ocr and artifact_elapsed["matched"] and expected_seconds is not None )
     )
     issues: List[str] = []
     if expected_seconds is not None and selected_seconds != expected_seconds:
@@ -6045,7 +6653,7 @@ def classify_wait_step_ledger(
         issues.append( "wait_menu_ocr_missing_prompt" )
     if expected_seconds is not None and not menu_expected_matches and not menu_ocr_deferred_to_artifact_delta:
         issues.append( "wait_menu_ocr_missing_expected_duration" )
-    if elapsed["status"] == "not_parsed":
+    if elapsed["status"] == "not_parsed" and not native_continuation_proved:
         issues.append( "before_after_clock_or_turn_not_parsed" )
     elif elapsed["status"] == "turn_delta_parsed" and expected_seconds is not None and \
             elapsed.get( "delta_turns" ) != expected_seconds:
@@ -6055,6 +6663,9 @@ def classify_wait_step_ledger(
         issues.append( "clock_delta_does_not_match_expected_duration" )
     if effective_wait_status == "interrupted_or_prompt_visible":
         verdict = "blocked_wait_interrupted_or_prompt_visible"
+    elif native_continuation_proved:
+        effective_wait_status = "completed_by_native_receipt"
+        verdict = "green_wait_step_proven" if not issues else "yellow_wait_elapsed_or_menu_not_fully_proven"
     elif effective_wait_status not in {"completed", "completed_by_artifact_delta"}:
         verdict = "yellow_wait_finish_or_interrupt_not_classified"
         issues.append( "missing_finish_or_interruption_signal" )
@@ -6082,6 +6693,8 @@ def classify_wait_step_ledger(
         "meridiem_ambiguity_confirmed": meridiem_ambiguity_confirmed,
         "elapsed": elapsed,
         "finish_or_interrupt_status": effective_wait_status,
+        "native_wait_continuation": dict(native_wait_continuation)
+        if isinstance(native_wait_continuation, Mapping) else {},
         "issues": issues,
         "verdict": verdict,
         "review_rule": (
@@ -7251,6 +7864,12 @@ def execute_long_wait_action(
         {"authorized_hostile_auto_move_cancel": "N"}
         if continue_hostile_auto_move else None
     )
+    native_wait_continuation_declaration = step.get("native_wait_continuation")
+    if native_wait_continuation_declaration is not None and \
+            not isinstance(native_wait_continuation_declaration, Mapping):
+        raise SystemExit(
+            f"Scenario step '{label}' native_wait_continuation must be an object"
+        )
     allow_harmless_flavor_popup_wait_recovery = bool(
         step.get("allow_harmless_flavor_popup_wait_recovery", False)
     )
@@ -7516,11 +8135,27 @@ def execute_long_wait_action(
     peekaboo_press_sequence(pid, [choice_key], delay_ms=delay_ms)
     if after_choice_settle_seconds > 0:
         time.sleep(after_choice_settle_seconds)
-    if completion_wait_seconds > 0:
+    native_wait_continuation: Dict[str, Any] = {}
+    if structured_event_reader is not None and isinstance(
+            native_wait_continuation_declaration, Mapping
+    ):
+        native_wait_continuation = evaluate_native_wait_return_continuation(
+            structured_event_reader.events,
+            run_id=semantic_run_id,
+            transition=str(native_wait_continuation_declaration.get("transition", "")),
+            actor_ids=native_wait_continuation_declaration.get("actor_ids", []),
+            postcondition=native_wait_continuation_declaration.get("postcondition", {}),
+            final_postcondition=native_wait_continuation_declaration.get(
+                "final_postcondition", {}
+            ),
+        )
+        report["native_wait_continuation"] = native_wait_continuation
+    continuation_proved = native_wait_continuation.get("status") == "matched"
+    if completion_wait_seconds > 0 and not continuation_proved:
         time.sleep(completion_wait_seconds)
     completion_poll_timed_out = False
     completion_poll_aborted = False
-    if completion_artifact_timeout_seconds > 0 and \
+    if not continuation_proved and completion_artifact_timeout_seconds > 0 and \
             (state_patterns or minimum_artifact_elapsed_minutes > 0) and \
             artifact_log is not None:
         poll_acknowledgement_count = 0
@@ -7615,6 +8250,32 @@ def execute_long_wait_action(
         if report["completion_artifact_poll"]["status"] == "matched" and \
                 completion_artifact_settle_seconds > 0:
             time.sleep( completion_artifact_settle_seconds )
+    elif continuation_proved:
+        report["completion_artifact_poll"] = {
+            "status": "matched_native_receipt_continuation",
+            "aborted": False,
+            "abort_reason": "",
+            "attempts": 0,
+            "elapsed_seconds": 0.0,
+            "timeout_seconds": 0.0,
+            "poll_seconds": 0.0,
+            "start_size": completion_start_size,
+            "match": {
+                "matched": True,
+                "patterns": state_patterns,
+                "matched_patterns": [],
+                "missing_patterns": list(state_patterns),
+                "source": "same_run_native_return_receipts",
+            },
+            "interruption_handling": {
+                "status": "clear",
+                "acknowledgement_count": 0,
+                "response_keys": [],
+                "release_blocking": False,
+                "contaminating": False,
+                "reports": [],
+            },
+        }
     after_capture = capture_screenshot(pid, run_dir, f"{label}.after")
     report["screen_after"] = after_capture.get("screen_summary", {})
     after_text = capture_screen_text_artifact(run_dir, f"{label}.after", after_capture, tail_lines=tail_lines)
@@ -7632,6 +8293,14 @@ def execute_long_wait_action(
     report["wait_classification"] = classify_wait_screen_text(
         classification_text, complete_patterns, interrupt_patterns, preexisting_complete_patterns
     )
+    if continuation_proved and report["wait_classification"].get("status") != \
+            "interrupted_or_prompt_visible":
+        report["wait_classification"] = {
+            **report["wait_classification"],
+            "status": "completed",
+            "screen_status": report["wait_classification"].get("status", ""),
+            "completion_signal": "same_run_native_return_receipts_and_postcondition",
+        }
     require_run_bound_wait_classification = bool(
         step.get( "require_run_bound_wait_classification", bool( semantic_run_id ) )
     )
@@ -7910,6 +8579,7 @@ def execute_long_wait_action(
         allow_exact_artifact_meridiem_ambiguity=bool(
             step.get("allow_exact_artifact_meridiem_ambiguity", False)
         ),
+        native_wait_continuation=native_wait_continuation,
     )
     if report.get("status") == "stopped_by_contaminating_interruption":
         base_wait_verdict = str(report["wait_step_ledger"].get("verdict", ""))
@@ -9881,6 +10551,217 @@ def r008_source_bound_setup_receipts_from_installed_save(
         "evidence_effect": "none_for_manufactured_state",
         "gameplay_credit": False,
     }
+
+
+def saved_overmap_terrain_id(world_dir: Path, abs_omt: Sequence[int]) -> str:
+    """Read one saved overmap terrain without changing the installed world."""
+    if not isinstance(abs_omt, (list, tuple)) or len(abs_omt) != 3 or any(
+            isinstance(value, bool) or not isinstance(value, int) for value in abs_omt):
+        raise RuntimeError("saved overmap terrain coordinate is malformed")
+    point = (int(abs_omt[0]), int(abs_omt[1]), int(abs_omt[2]))
+    overmap_x, overmap_y, local_omt = overmap_file_coords_from_abs_omt(point)
+    overmap_path = world_dir / "overmaps" / f"o.{overmap_x}.{overmap_y}.zzip"
+    if not overmap_path.exists():
+        raise RuntimeError(f"saved overmap terrain payload is unavailable: {overmap_path}")
+    plain_path, _version_line, payload = extract_overmap_payload(overmap_path)
+    try:
+        layers = payload.get("layers")
+        layer_index = overmap_layer_index(point[2])
+        if not isinstance(layers, list) or layer_index >= len(layers):
+            raise RuntimeError(f"saved overmap terrain layer is unavailable: {point}")
+        layer = decode_overmap_layer(layers[layer_index], context=str(overmap_path))
+        return str(layer[overmap_flat_index(local_omt)])
+    finally:
+        cleanup_extracted_overmap(plain_path, keep=False)
+
+
+def r005_source_bound_visibility_setup_receipts_from_installed_save(
+    world_dir: Path,
+    *,
+    setup_contract: Mapping[str, Any],
+    fixture_install: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Prove the disposable R-005 geography bootstrap, never gameplay."""
+    expected_world = str(setup_contract.get("world", "")).strip()
+    player_save = str(setup_contract.get("player_save", "")).strip()
+    camp_site_id = str(setup_contract.get("camp_site_id", "")).strip()
+    lead_id = str(setup_contract.get("lead_id", "")).strip()
+    target_omt = setup_contract.get("target_omt")
+    target_terrain_id = str(setup_contract.get("target_terrain_id", "")).strip()
+    candidate_omt = setup_contract.get("candidate_omt")
+    player_source_omt = setup_contract.get("player_source_omt")
+    player_observation_omt = setup_contract.get("player_observation_omt")
+    player_offset_ms = setup_contract.get("player_offset_ms")
+    candidate_terrain_id = str(setup_contract.get("candidate_terrain_id", "")).strip()
+    candidate_see_cost = setup_contract.get("candidate_see_cost")
+    intervening_omts = setup_contract.get("intervening_omts")
+    intervening_terrain_ids = setup_contract.get("intervening_terrain_ids")
+    intervening_see_costs = setup_contract.get("intervening_see_costs")
+    sight_points = setup_contract.get("clear_day_sight_points")
+    evidence_ceiling = str(setup_contract.get("evidence_ceiling", "")).strip()
+    if not expected_world or not player_save or not camp_site_id or not lead_id or \
+            not isinstance(target_omt, list) or len(target_omt) != 3 or \
+            not isinstance(candidate_omt, list) or len(candidate_omt) != 3 or \
+            not isinstance(player_source_omt, list) or len(player_source_omt) != 3 or \
+            not isinstance(player_observation_omt, list) or len(player_observation_omt) != 3 or \
+            not isinstance(player_offset_ms, list) or len(player_offset_ms) != 3 or \
+            any(isinstance(value, bool) or not isinstance(value, int)
+                for value in player_source_omt + player_observation_omt + player_offset_ms) or \
+            not target_terrain_id or not candidate_terrain_id or \
+            not isinstance(candidate_see_cost, int) or \
+            candidate_see_cost <= 0 or not isinstance(intervening_omts, list) or \
+            not isinstance(intervening_terrain_ids, list) or \
+            len(intervening_omts) != len(intervening_terrain_ids) or \
+            not isinstance(intervening_see_costs, list) or \
+            len(intervening_see_costs) != len(intervening_omts) or \
+            any(isinstance(cost, bool) or not isinstance(cost, int) or cost < 0
+                for cost in intervening_see_costs) or \
+            not isinstance(sight_points, int) or sight_points < 0 or \
+            evidence_ceiling != "zero-credit":
+        raise RuntimeError("R-005 visibility setup contract is malformed")
+    if world_dir.name != expected_world:
+        raise RuntimeError("R-005 visibility setup world identity drifted")
+
+    expected_fixture = "bandit_r005_native_wait_visibility_bootstrap_v0"
+    expected_source_fixture = "bandit_r005_natural_hostile_ecology_v0"
+    expected_camp_site_id = "overmap_special:bandit_camp@140,51,0"
+    expected_lead_id = expected_camp_site_id + "#lead:structural_bounty:forest@138,52,0"
+    expected_target_omt = [138, 52, 0]
+    expected_candidate_omt = [141, 49, 0]
+    expected_player_source_omt = [140, 41, 0]
+    expected_player_observation_omt = [141, 49, 0]
+    expected_player_offset_ms = [24, 192, 0]
+    expected_intervening_omts = [[140, 50, 0], [139, 51, 0]]
+    expected_intervening_terrain_ids = ["field", "field"]
+    expected_intervening_see_costs = [0, 0]
+    expected_candidate_terrain_id = "communitygarden_east"
+    expected_candidate_see_cost = 1
+    expected_sight_points = 3
+    fixture_name = str(fixture_install.get("fixture", "")).strip()
+    manifest = fixture_install.get("manifest", {})
+    declared_geometry = manifest.get("source_bound_geography") if isinstance(manifest, Mapping) else None
+    transform = next((item for item in reversed(fixture_install.get("applied_save_transforms", []))
+                      if isinstance(item, Mapping) and item.get("kind") == "overmap_terrain_id_at_abs_omt"
+                      and item.get("abs_omt") == candidate_omt and item.get("terrain_id") == candidate_terrain_id), None)
+    player_transform = next((item for item in reversed(fixture_install.get("applied_save_transforms", []))
+                             if isinstance(item, Mapping) and item.get("kind") == "player_location_offset_ms"
+                             and item.get("player_save") == player_save), None)
+    _selected_save, _player_save_path, player_payload, _player_stat = load_saved_player_payload(
+        world_dir, player_save
+    )
+    player = player_payload.get("player")
+    player_location = player.get("location") if isinstance(player, Mapping) else None
+    observed_player_omt = (
+        [int(player_location[0]) // 24, int(player_location[1]) // 24, int(player_location[2])]
+        if isinstance(player_location, list) and len(player_location) >= 3 else []
+    )
+    observed: Dict[str, Any] = {
+        "target_terrain_id": saved_overmap_terrain_id(world_dir, target_omt),
+        "candidate_terrain_id": saved_overmap_terrain_id(world_dir, candidate_omt),
+        "intervening_terrain_ids": [saved_overmap_terrain_id(world_dir, point) for point in intervening_omts],
+    }
+    observed["sight_costs"] = [int(candidate_see_cost)] + [int(cost) for cost in intervening_see_costs]
+    observed["sight_cost_total"] = sum(observed["sight_costs"])
+    observed["line_of_sight_within_budget"] = observed["sight_cost_total"] <= sight_points
+    declared_match = isinstance(declared_geometry, Mapping) and all(
+        declared_geometry.get(key) == setup_contract.get(key)
+        for key in ("world", "player_save", "camp_site_id", "lead_id", "target_omt",
+                    "candidate_omt", "player_source_omt", "player_observation_omt",
+                    "player_offset_ms", "candidate_terrain_id", "candidate_see_cost",
+                    "intervening_omts", "intervening_terrain_ids", "clear_day_sight_points",
+                    "intervening_see_costs", "evidence_ceiling")
+    )
+    fixed_geometry_match = (
+        fixture_name == expected_fixture
+        and str(manifest.get("name", "")).strip() == expected_fixture
+        and str(manifest.get("source_fixture", "")).strip() == expected_source_fixture
+        and expected_world == "McWilliams"
+        and player_save == "#Wm9yYWlkYSBWaWNr.sav.zzip"
+        and camp_site_id == expected_camp_site_id
+        and lead_id == expected_lead_id
+        and target_omt == expected_target_omt
+        and target_terrain_id == "forest"
+        and candidate_omt == expected_candidate_omt
+        and player_source_omt == expected_player_source_omt
+        and player_observation_omt == expected_player_observation_omt
+        and player_offset_ms == expected_player_offset_ms
+        and candidate_terrain_id == expected_candidate_terrain_id
+        and candidate_see_cost == expected_candidate_see_cost
+        and intervening_omts == expected_intervening_omts
+        and intervening_terrain_ids == expected_intervening_terrain_ids
+        and intervening_see_costs == expected_intervening_see_costs
+        and sight_points == expected_sight_points
+    )
+    geometry_match = (
+        observed["target_terrain_id"] == target_terrain_id
+        and observed["candidate_terrain_id"] == candidate_terrain_id
+        and observed["intervening_terrain_ids"] == intervening_terrain_ids
+        and observed["line_of_sight_within_budget"]
+    )
+    player_position_match = (
+        observed_player_omt == player_observation_omt and
+        isinstance(player_transform, Mapping) and
+        player_transform.get("offset_ms") == player_offset_ms and
+        isinstance(player_transform.get("previous_location"), list) and
+        len(player_transform["previous_location"]) >= 3 and
+        [int(player_transform["previous_location"][0]) // 24,
+         int(player_transform["previous_location"][1]) // 24,
+         int(player_transform["previous_location"][2])] == player_source_omt and
+        player_transform.get("target_location") == player_location
+    )
+    source_fixture = fixture_name
+    source_match = source_fixture == str(setup_contract.get("fixture", source_fixture)).strip()
+    identity_audit: Dict[str, Any] = {"status": "not_run"}
+    if transform and player_position_match and declared_match and fixed_geometry_match and geometry_match and source_match:
+        identity_audit = audit_saved_bandit_live_world_state(
+            world_dir,
+            required_site_id_contains=expected_camp_site_id,
+            required_member_count=14,
+            required_ready_at_home_count=14,
+            required_wounded_or_unready_count=0,
+            required_active_outside_count=0,
+            required_active_group_id_exact="",
+            required_active_target_id_exact="",
+            required_min_leads=1,
+            required_lead_kind="structural_bounty",
+            required_lead_target_id="forest",
+            required_lead_source_contains="fixture_r005_natural_hostile_ecology_forest",
+            required_lead_status="scout_confirmed",
+            required_lead_bounty=8,
+            required_lead_threat=0,
+            required_lead_times_harvested=0,
+            required_lead_confidence=3,
+        )
+    accepted = bool(transform and player_position_match and declared_match and fixed_geometry_match and geometry_match
+                    and source_match and identity_audit.get("status") == "required_state_present")
+    intervention = {
+        "operation": "fixture_install_and_r005_visibility_geography_bootstrap",
+        "arguments": {key: setup_contract.get(key) for key in (
+            "world", "player_save", "camp_site_id", "lead_id", "target_omt", "candidate_omt",
+            "player_source_omt", "player_observation_omt", "player_offset_ms",
+            "candidate_terrain_id", "candidate_see_cost", "intervening_omts",
+            "intervening_terrain_ids", "intervening_see_costs", "clear_day_sight_points",
+            "evidence_ceiling")},
+        "target": {"world": expected_world, "player_save": player_save, "camp_site_id": camp_site_id,
+                   "lead_id": lead_id, "target_omt": list(target_omt),
+                   "candidate_omt": list(candidate_omt),
+                   "player_observation_omt": list(player_observation_omt)},
+        "native_receipt": {"owner": "fixture_save_transform", "accepted": accepted,
+                           "fixture": source_fixture,
+                           "terrain_transform": dict(transform) if transform else {},
+                           "player_transform": dict(player_transform) if player_transform else {}},
+        "before_facts": {"source_bound_geography": dict(declared_geometry) if isinstance(declared_geometry, Mapping) else {},
+                         "target_terrain_id": observed["target_terrain_id"]},
+        "after_facts": {**observed, "player_abs_omt": observed_player_omt,
+                        "player_position_match": player_position_match,
+                        "camp_lead_identity_audit": identity_audit},
+        "evidence_effect": "none_for_manufactured_state",
+        "gameplay_credit": False,
+    }
+    return {"status": "prepared" if accepted else "unprepared",
+            "contract_kind": "r005_source_bound_visibility_fixture",
+            "interventions": [intervention],
+            "evidence_effect": "none_for_manufactured_state", "gameplay_credit": False}
 
 
 def load_saved_player_payload(world_dir: Path, player_save: str = "") -> Tuple[str, Path, Dict[str, Any], os.stat_result]:
@@ -12912,15 +13793,21 @@ def populate_runtime_version_comparison(
         summary["runtime_binding_status"] = binding_result["status"]
         summary["runtime_binding_error"] = binding_result.get("error", "")
         summary["runtime_binding_observed"] = binding_result
-        # The title still has to identify the bound committed baseline.  The
-        # binding is an additional proof for the dirty portion, not a bypass
-        # of the existing version/title gate.
+        # The title identifies the executable's compiled product baseline.  A
+        # current harness may legitimately be ahead of that baseline when no
+        # product-binary input changed; the executable-source readiness check
+        # keeps that case bound to the actual product paths instead of making
+        # the title's older commit look like a route failure.
         expected_head = str(runtime_binding.get("captured_head", "") or "").strip()
         title_matches_binding_head = bool(
             expected_head and captured_head and expected_head.startswith(captured_head)
         )
+        executable_path = Path(str(runtime_binding.get("executable_path", "")).strip())
+        source_readiness = executable_source_readiness(executable_path) if executable_path else {}
+        summary["source_executable_readiness"] = source_readiness
         summary["version_matches_runtime_paths"] = bool(
-            binding_result["status"] == "matched" and title_matches_binding_head
+            binding_result["status"] == "matched" and
+            (title_matches_binding_head or source_readiness.get("status") == "ready")
         )
     else:
         # A dirty executable is never trusted from the title alone.  It needs
@@ -17082,9 +17969,132 @@ def pid_command(pid: int) -> str:
     return proc.stdout.strip()
 
 
+def _utc_timestamp(epoch_seconds: float) -> str:
+    return datetime.fromtimestamp(
+        float(epoch_seconds), tz=timezone.utc
+    ).isoformat(timespec="milliseconds")
+
+
+def observe_bound_process_exit(
+    pid: int,
+    timeout_seconds: float,
+    *,
+    expected_command: str,
+    poll_seconds: float = 0.1,
+) -> Dict[str, Any]:
+    """Observe native exit for one exact PID/command pair.
+
+    A PID disappearing is not enough for a qualification receipt: the command
+    must be captured while the bound process is alive and remain unchanged at
+    every live sample.  The returned ``native_exit`` state is the only state
+    that may support relaunch; timeout, unavailable identity, and PID reuse
+    remain fail-closed.  ``poll_seconds`` is recorded as the scheduling
+    uncertainty, so callers can derive the smallest honest observation window
+    from the measured native shutdown rather than crediting cleanup.
+    """
+    started_epoch = time.time()
+    started_monotonic = time.monotonic()
+    expected = str(expected_command or "").strip()
+    result: Dict[str, Any] = {
+        "pid": int(pid),
+        "expected_command": expected,
+        "started_at": _utc_timestamp(started_epoch),
+        "started_epoch_seconds": started_epoch,
+        "poll_seconds": float(poll_seconds),
+        "scheduling_uncertainty_seconds": float(poll_seconds),
+        "observations": [],
+    }
+    if pid <= 0 or not expected:
+        result.update({
+            "status": "identity_unavailable",
+            "reason": "exact PID and live command identity are required",
+        })
+        return result
+
+    deadline = started_monotonic + max(float(timeout_seconds), 0.0)
+    while True:
+        sampled_epoch = time.time()
+        alive = pid_is_alive(pid)
+        command = pid_command(pid) if alive else ""
+        observation = {
+            "sampled_at": _utc_timestamp(sampled_epoch),
+            "sampled_epoch_seconds": sampled_epoch,
+            "pid": int(pid),
+            "alive": bool(alive),
+            "command": command,
+        }
+        result["observations"].append(observation)
+        if alive and command != expected:
+            result.update({
+                "status": "wrong_process_identity",
+                "reason": "PID remained alive but command identity changed",
+                "observed_command": command,
+                "identity_mismatch_at": observation["sampled_at"],
+                "elapsed_seconds": time.monotonic() - started_monotonic,
+            })
+            return result
+        if not alive:
+            result.update({
+                "status": "native_exit",
+                "native_shutdown_at": observation["sampled_at"],
+                "native_shutdown_epoch_seconds": sampled_epoch,
+                "elapsed_seconds": time.monotonic() - started_monotonic,
+            })
+            return result
+        if time.monotonic() >= deadline:
+            result.update({
+                "status": "timeout",
+                "elapsed_seconds": time.monotonic() - started_monotonic,
+                "deadline_at": _utc_timestamp(started_epoch + max(float(timeout_seconds), 0.0)),
+            })
+            return result
+        time.sleep(max(float(poll_seconds), 0.0))
+
+
+def derive_terminal_exit_observation_window(
+    native_shutdown_elapsed_seconds: Sequence[float],
+    *,
+    scheduling_uncertainty_seconds: float,
+    safety_ceiling_seconds: float,
+) -> Dict[str, Any]:
+    """Derive a minimal measured window while enforcing a separate ceiling."""
+    measurements = [float(value) for value in native_shutdown_elapsed_seconds
+                    if isinstance(value, (int, float)) and float(value) >= 0]
+    uncertainty = float(scheduling_uncertainty_seconds)
+    ceiling = float(safety_ceiling_seconds)
+    if not measurements or uncertainty < 0 or ceiling <= 0:
+        return {
+            "status": "insufficient_measurement",
+            "measured_native_shutdown_elapsed_seconds": measurements,
+            "scheduling_uncertainty_seconds": uncertainty,
+            "safety_ceiling_seconds": ceiling,
+        }
+    measured = max(measurements)
+    window = measured + uncertainty
+    return {
+        "status": "within_safety_ceiling" if window <= ceiling else "exceeds_safety_ceiling",
+        "measured_native_shutdown_elapsed_seconds": measurements,
+        "measured_native_shutdown_elapsed_max_seconds": measured,
+        "scheduling_uncertainty_seconds": uncertainty,
+        "derived_observation_window_seconds": window,
+        "safety_ceiling_seconds": ceiling,
+    }
+
+
 def pid_is_alive(pid: int) -> bool:
     if pid <= 0:
         return False
+    # The harness owns its launched game process.  On POSIX, an exited child
+    # remains addressable until reaped, so kill(pid, 0) alone mistakes a
+    # native save-and-quit zombie for a live process and blocks relaunch.
+    if os.name == "posix":
+        try:
+            reaped_pid, _ = os.waitpid(pid, os.WNOHANG)
+            if reaped_pid == pid:
+                return False
+        except ChildProcessError:
+            # A non-child PID is still checked with the portable probe below.
+            pass
     try:
         os.kill(pid, 0)
     except ProcessLookupError:
@@ -17104,12 +18114,17 @@ def wait_for_pid_exit(pid: int, timeout_seconds: float) -> bool:
 
 
 def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, Any]:
+    cleanup_started_epoch = time.time()
     info: Dict[str, Any] = {
         "pid": pid,
         "grace_seconds": grace_seconds,
+        "cleanup_started_at": _utc_timestamp(cleanup_started_epoch),
+        "cleanup_started_epoch_seconds": cleanup_started_epoch,
+        "native_exit_credit": False,
     }
     if pid <= 0:
         info["status"] = "invalid_pid"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
 
     command = pid_command(pid)
@@ -17117,10 +18132,12 @@ def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, A
     if not command:
         if not pid_is_alive(pid):
             info["status"] = "already_exited"
+            info["cleanup_finished_at"] = _utc_timestamp(time.time())
             return info
         info["command_lookup"] = "unavailable"
     elif not re.search(r"(?:Cataclysm-AOL|cataclysm-(?:tiles|tlg-tiles))(?:\.exe)?(?:\s|$)", command):
         info["status"] = "skipped_non_cataclysm_process"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
 
     try:
@@ -17128,13 +18145,16 @@ def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, A
         info["signal"] = "SIGTERM"
     except ProcessLookupError:
         info["status"] = "already_exited"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
     except PermissionError:
         info["status"] = "permission_denied"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
 
     if wait_for_pid_exit(pid, grace_seconds):
         info["status"] = "terminated"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
 
     try:
@@ -17142,12 +18162,15 @@ def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, A
         info["signal"] = "SIGKILL"
     except ProcessLookupError:
         info["status"] = "terminated_during_kill_escalation"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
     except PermissionError:
         info["status"] = "permission_denied_on_kill"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
 
     info["status"] = "killed" if wait_for_pid_exit(pid, 1.0) else "still_running_after_kill"
+    info["cleanup_finished_at"] = _utc_timestamp(time.time())
     return info
 
 
@@ -17270,11 +18293,12 @@ def harness_feasibility_artifact_ready(artifact: Dict[str, Any], expected_raw_se
         and isinstance(artifact.get("structural_scan_candidates_sampled"), int)
         and artifact.get("structural_scan_candidates_sampled") >= 2
         and isinstance(artifact.get("structural_scan_notes"), list)
-        and artifact.get("candidate_prefix_limit") == 2
+        and isinstance(artifact.get("candidate_prefix_limit"), int)
+        and 2 <= artifact.get("candidate_prefix_limit") <= 6
         and isinstance(rows, list)
-        and len(rows) == 2
+        and len(rows) == artifact.get("candidate_prefix_limit")
         and all(harness_feasibility_candidate_row_ready(row) for row in rows)
-        and rows[0].get("lead_id") != rows[1].get("lead_id")
+        and len({row.get("lead_id") for row in rows}) == len(rows)
         and budget_before == 8
         and isinstance(budget_after, int)
         and 0 <= budget_after <= budget_before
@@ -18260,6 +19284,40 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "bandit_camp_supply":
+            site_id = str(raw.get("site_id", "") or "").strip()
+            if not site_id:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_camp_supply needs exact site_id in {manifest_path}"
+                )
+            try:
+                supply_units = int(raw.get("supply_units"))
+                supply_last_update_minutes = int(raw.get("supply_last_update_minutes"))
+                supply_accounted_living_total = int(raw.get("supply_accounted_living_total"))
+                supply_member_minute_remainder = int(raw.get("supply_member_minute_remainder"))
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_camp_supply needs integer supply values in {manifest_path}"
+                )
+            if supply_units < 0 or supply_units > 256 or supply_last_update_minutes < -1 or \
+                    supply_accounted_living_total < 0 or supply_member_minute_remainder < 0 or \
+                    supply_member_minute_remainder >= 1440:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_camp_supply values are outside the durable camp bounds in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "site_id": site_id,
+                "supply_units": supply_units,
+                "supply_last_update_minutes": supply_last_update_minutes,
+                "supply_accounted_living_total": supply_accounted_living_total,
+                "supply_member_minute_remainder": supply_member_minute_remainder,
+                "source_key": str(raw.get("source_key", "fixture_bandit_camp_supply") or "").strip(),
+                "source_summary": str(raw.get("source_summary", "") or "").strip(),
+            })
+            continue
+
         if kind == "bandit_clear_site_evidence":
             site_id = str(raw.get("site_id", "") or "").strip()
             if not site_id:
@@ -18389,7 +19447,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
             "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
-            "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_clear_site_evidence, "
+            "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_camp_supply, bandit_clear_site_evidence, "
             "bandit_clone_site, bandit_site_roster_shape, bandit_projection_leases"
         )
     return transforms
@@ -22155,6 +23213,58 @@ def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, A
     }
 
 
+def apply_bandit_camp_supply_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Fixture bandit camp-supply transform target not found: {dimension_path}")
+
+    site_id = str(transform.get("site_id", "") or "").strip()
+    if not site_id:
+        raise SystemExit("Fixture bandit camp-supply transform needs an exact site_id")
+    dimension_text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = dimension_text.partition("\n")
+    if not sep:
+        raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    try:
+        sites = payload["overmapbuffer"]["bandit_live_world"]["sites"]
+    except (KeyError, TypeError) as exc:
+        raise SystemExit("Fixture bandit camp-supply transform could not read owned sites") from exc
+    if not isinstance(sites, list):
+        raise SystemExit("Fixture bandit camp-supply transform owned sites are not a list")
+    site = next((candidate for candidate in sites if isinstance(candidate, dict) and
+                 str(candidate.get("site_id", "")) == site_id), None)
+    if site is None:
+        raise SystemExit(f"Fixture bandit camp-supply transform found no site {site_id}")
+
+    old_supply_units = site.get("supply_units")
+    old_supply_last_update_minutes = site.get("supply_last_update_minutes")
+    old_supply_accounted_living_total = site.get("supply_accounted_living_total")
+    old_supply_member_minute_remainder = site.get("supply_member_minute_remainder")
+    site["supply_units"] = int(transform["supply_units"])
+    site["supply_last_update_minutes"] = int(transform["supply_last_update_minutes"])
+    site["supply_accounted_living_total"] = int(transform["supply_accounted_living_total"])
+    site["supply_member_minute_remainder"] = int(transform["supply_member_minute_remainder"])
+    dimension_path.write_text(
+        version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return {
+        "kind": "bandit_camp_supply",
+        "site_id": site_id,
+        "source_key": str(transform.get("source_key", "") or ""),
+        "source_summary": str(transform.get("source_summary", "") or ""),
+        "old_supply_units": old_supply_units,
+        "old_supply_last_update_minutes": old_supply_last_update_minutes,
+        "old_supply_accounted_living_total": old_supply_accounted_living_total,
+        "old_supply_member_minute_remainder": old_supply_member_minute_remainder,
+        "supply_units": site["supply_units"],
+        "supply_last_update_minutes": site["supply_last_update_minutes"],
+        "supply_accounted_living_total": site["supply_accounted_living_total"],
+        "supply_member_minute_remainder": site["supply_member_minute_remainder"],
+    }
+
+
 def apply_bandit_clear_site_evidence_transform(
     world_dir: Path,
     transform: Dict[str, Any],
@@ -22623,6 +23733,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
         if kind == "bandit_camp_map_lead":
             reports.append(apply_bandit_camp_map_lead_transform(world_dir, transform))
             continue
+        if kind == "bandit_camp_supply":
+            reports.append(apply_bandit_camp_supply_transform(world_dir, transform))
+            continue
         if kind == "bandit_clear_site_evidence":
             reports.append(apply_bandit_clear_site_evidence_transform(world_dir, transform))
             continue
@@ -22884,6 +23997,7 @@ def normalize_post_relaunch_contract(
 def run_probe_post_relaunch(
     *,
     initial_pid: int,
+    initial_process_command: str,
     profile: str,
     config_profile: str,
     world: str,
@@ -22901,17 +24015,67 @@ def run_probe_post_relaunch(
     certification_recheck_inputs: str = "",
 ) -> Dict[str, Any]:
     """Cross one terminal saved-world process boundary through the canonical startup owner."""
-    exit_observed = wait_for_pid_exit(initial_pid, terminal_exit_timeout_seconds)
+    terminal_receipt: Dict[str, Any] = {}
+    process_observation: Dict[str, Any] = {}
+    if artifact_run_dir is not None:
+        # The per-run copied trace is finalized after this boundary.  At the
+        # boundary itself the authoritative live source is the profile debug
+        # log; the run id prevents older process receipts from matching.
+        feature_trace = semantic_step_source_trace(profile)
+        terminal_receipt = native_save_quit_receipt(
+            feature_trace, 0, run_id=transition_event_run_id
+        )
+        if terminal_receipt.get("status") != "matched":
+            return {
+                "initial_pid": initial_pid,
+                "terminal_exit_timeout_seconds": terminal_exit_timeout_seconds,
+                "original_process_exited": False,
+                "status": "terminal_save_quit_receipt_missing",
+                "terminal_save_quit_receipt": terminal_receipt,
+            }
+        process_observation = observe_bound_process_exit(
+            initial_pid,
+            terminal_exit_timeout_seconds,
+            expected_command=initial_process_command,
+        )
+        process_observation["terminal_exit_observation_window"] = \
+            derive_terminal_exit_observation_window(
+                [process_observation["elapsed_seconds"]]
+                if process_observation.get("status") == "native_exit" else [],
+                scheduling_uncertainty_seconds=process_observation.get(
+                    "scheduling_uncertainty_seconds", 0.0
+                ),
+                # This ceiling is independent of the measured window: cleanup
+                # begins only after it and never supplies native-exit credit.
+                safety_ceiling_seconds=terminal_exit_timeout_seconds,
+            )
+        exit_observed = process_observation.get("status") == "native_exit"
+    else:
+        # Keep the small unit-test seam usable without manufacturing a process
+        # identity.  Real probe runs always provide an owned artifact directory
+        # and therefore take the bound observer above.
+        exit_observed = wait_for_pid_exit(initial_pid, terminal_exit_timeout_seconds)
     result: Dict[str, Any] = {
         "initial_pid": initial_pid,
         "terminal_exit_timeout_seconds": terminal_exit_timeout_seconds,
         "original_process_exited": exit_observed,
     }
+    if terminal_receipt:
+        result["terminal_save_quit_receipt"] = terminal_receipt
+    if process_observation:
+        result["process_observation"] = process_observation
     if not world:
         result.update({"status": "saved_world_missing", "pid": initial_pid})
         return result
     if not exit_observed:
-        result.update({"status": "terminal_process_exit_missing", "pid": initial_pid})
+        result.update({
+            "status": (
+                "terminal_process_exit_missing"
+                if process_observation.get("status") in {"", "timeout"}
+                else "terminal_process_identity_invalid"
+            ),
+            "pid": initial_pid,
+        })
         return result
 
     start_cmd = [
@@ -23068,9 +24232,24 @@ def recover_declared_startup_action_menu_overlay(
     action_menu_events = STARTUP_ACTION_MENU_TRACE_PATTERN.findall(trace_text)
     action_menu_active = bool(action_menu_events and action_menu_events[-1] == "open")
     main_menu_active = startup_main_menu_overlay_is_active(trace_text)
-    # The launched profile declares Escape as its startup boundary.  Trace
-    # silence does not authorize suppressing that input: the boundary itself
-    # is what causes the native semantic producer to re-enter player input.
+    if not action_menu_active and not main_menu_active:
+        # A declared recovery is conditional on a run-bound native overlay.
+        # Dispatching Escape at a clean gameplay HUD opens the main menu and
+        # creates the very interruption the recovery is meant to remove.
+        recovery_artifact_path.write_text(trace_text, encoding="utf-8")
+        return {
+            "status": "declared_overlay_not_present",
+            "native_action_menu_active_before": False,
+            "native_action_menu_active_after": False,
+            "native_main_menu_active_before": False,
+            "native_main_menu_active_after": False,
+            "profile_owned_input": normalized_input,
+            "input_dispatch_count": 0,
+            "native_trace_artifact": str(recovery_artifact_path),
+            "trace_start_offset": trace_start_offset,
+        }
+    # An observed overlay gives the profile-owned Escape its native owner and
+    # makes the following transport receipt meaningful.
     focus = peekaboo_focus_pid(pid)
     if not focus.get("ok"):
         return {
@@ -23438,7 +24617,7 @@ def execute_probe_steps(
                 transition_timeout_seconds=float( step.get( "transition_timeout_seconds", 10.0 ) ),
                 observe_interval_seconds=float( step.get( "observe_interval_seconds", 0.1 ) ),
                 live_session=True,
-                cleanup_on_finish=False,
+                cleanup_on_finish=step.get("cleanup_on_finish") is True,
                 proof_step_label=label,
                 proof_step_index=index,
                 r019_timed_entry=step.get("r019_timed_entry") if isinstance(
@@ -23449,7 +24628,13 @@ def execute_probe_steps(
                 ) else None,
                 witness_charter=witness_charter,
                 witness_identity=witness_identity,
-                witness_evidence_ceiling="focused" if grants_gameplay_proof else "diagnostic",
+                # Evidence authority is fixed by the selected witness charter;
+                # gameplay-credit policy is a separate, zero-credit firewall.
+                witness_evidence_ceiling=(
+                    str(witness_charter.get("requested_evidence_ceiling", "focused"))
+                    if isinstance(witness_charter, Mapping) else
+                    ("focused" if grants_gameplay_proof else "diagnostic")
+                ),
                 causal_boundary_precondition=causal_boundary_precondition,
                 allowed_live_operations=allowed_live_operations,
             )
@@ -23472,8 +24657,9 @@ def execute_probe_steps(
                 "operations": ["game.observe", "game.look", "run.continue",
                                "game.act", "run.controlled_binding_drift", "run.status",
                                *(sorted(allowed_live_operations) if allowed_live_operations is not None else
-                                 ["game.qualify_r019_timed_entry", "game.raw_wait", "game.keep_watch",
-                                  "game.raw_move_relative", "game.guarded_move_relative"]),
+                                 ["game.qualify_r019_timed_entry", "game.wait", "game.raw_wait",
+                                  "game.keep_watch", "game.move_relative", "game.raw_move_relative",
+                                  "game.guarded_move_relative"]),
                                *( ["run.witness"] if witness_charter is not None else [] ),
                                "run.finish"],
                 **({"witness": {
@@ -23543,6 +24729,9 @@ def execute_probe_steps(
                     "reason": "the worker-controlled live session ended without an immutable final report",
                 }
                 report["stop_after_step"] = True
+                reports.append( report )
+                return reports
+            if step.get("stop_after_live_session") is True:
                 reports.append( report )
                 return reports
         elif kind == "cockpit_act":
@@ -24711,6 +25900,38 @@ def execute_probe_steps(
                 }
                 reports.append(report)
                 return reports
+        elif kind == "audit_structured_transition_event":
+            predicate = step.get("predicate", {})
+            if not isinstance(predicate, Mapping) or not predicate:
+                raise SystemExit(f"Scenario step '{label}' needs a non-empty structured-event predicate")
+            if structured_event_reader is not None:
+                polled = structured_event_reader.poll()
+                if polled.get("discard_prior_events") and structured_events is not None:
+                    structured_events.clear()
+                if structured_events is not None:
+                    structured_events.extend(polled["events"])
+                if structured_event_diagnostics is not None:
+                    structured_event_diagnostics.extend(polled["diagnostics"])
+            metadata = audit_structured_transition_event(
+                structured_events or [], run_id=semantic_run_id, predicate=predicate,
+                require_exactly_one=bool(step.get("require_exactly_one", False)),
+            )
+            metadata["artifact_path"] = str(run_dir / f"{label}.metadata.json")
+            write_json(run_dir / f"{label}.metadata.json", metadata)
+            report["metadata"] = metadata
+            if metadata["status"] != "required_state_present" and bool(
+                    step.get("abort_on_metadata_failure", False)):
+                report["abort"] = {
+                    "guard": "metadata",
+                    "status": "aborted_by_metadata_guard",
+                    "verdict": str(step.get(
+                        "abort_verdict", "red_step_required_structured_transition_missing")),
+                    "reason": str(step.get(
+                        "abort_reason", "required structured transition was missing or duplicated")),
+                    "missing_required_items": metadata["missing_required_items"],
+                }
+                reports.append(report)
+                return reports
         elif kind == "audit_log_not_contains":
             patterns = normalize_screen_text_patterns(
                 step.get("forbidden_patterns", step.get("patterns", step.get("forbidden_items", [])))
@@ -25761,6 +26982,12 @@ def execute_probe_steps(
                     "required_player_abs_omt": required_player_abs_omt,
                 }
             metadata["artifact_path"] = str(metadata_artifact)
+            metadata["artifact_kind"] = kind
+            player_save_path = Path(str(metadata.get("player_save_path", "") or ""))
+            try:
+                metadata["artifact_sha256"] = path_sha256(player_save_path)
+            except OSError:
+                metadata["artifact_sha256"] = ""
             metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
             report.update({
                 "world_dir": str(world_dir),
@@ -26614,6 +27841,9 @@ def execute_probe_steps(
                     f"Scenario step '{label}' native_travel_stabilization has no supported mode"
                 )
             try:
+                danger_handling = normalize_playtest_danger_handling(
+                    native_travel_stabilization.get("danger_handling")
+                )
                 expected_destination = native_travel_stabilization.get("expected_destination_omt")
                 require_completed_destination_cleared = bool(
                     native_travel_stabilization.get("require_completed_destination_cleared", False)
@@ -26629,6 +27859,7 @@ def execute_probe_steps(
                     delay_ms=delay_ms,
                     timeout_seconds=settle_seconds,
                     structured_event_reader=structured_event_reader,
+                    danger_handling=danger_handling,
                     native_travel_boundary_reader=(
                         lambda: evaluate_native_travel_completion_boundary(
                             profile=profile,
@@ -26636,18 +27867,71 @@ def execute_probe_steps(
                             run_id=(structured_event_reader.run_id if structured_event_reader is not None else ""),
                             trace_start_offset=semantic_step_trace_start_offset,
                             expected_destination=expected_destination,
+                            allow_handled_hostile_boundaries=(
+                                danger_handling == "ignore_danger_and_interruptions"
+                            ),
                         )
                     ) if require_completed_destination_cleared else None,
                 )
             except ValueError as exc:
                 raise SystemExit(f"Scenario step '{label}' {exc}") from exc
             report["native_travel_stabilization"] = stabilization
+            hostile_boundary_receipt = persist_native_travel_hostile_boundary_receipt(
+                stabilization,
+                run_dir=run_dir,
+                label=label,
+                run_id=(structured_event_reader.run_id if structured_event_reader is not None else ""),
+            )
+            if hostile_boundary_receipt.get("status") == "required_state_present":
+                report["native_travel_hostile_boundary_receipt"] = hostile_boundary_receipt
             if not str(stabilization.get("verdict", "")).startswith("green_"):
                 report["abort"] = {
                     "guard": "native_travel_stabilization",
                     "status": str(stabilization.get("status", "blocked_native_travel_stabilization")),
                     "verdict": str(stabilization.get("verdict", "blocked_native_travel_stabilization")),
                     "reason": str(stabilization.get("reason", "native route travel did not stabilize")),
+                }
+                reports.append(report)
+                if bool(native_travel_stabilization.get("diagnostic_continue_after_blocked", False)):
+                    remaining_steps = steps[index + 1:]
+                    non_audit_steps = [
+                        str(candidate.get("kind", ""))
+                        for candidate in remaining_steps
+                        if str(candidate.get("kind", "")) not in {
+                            "audit_saved_bandit_live_world_state",
+                            "audit_saved_game_turn",
+                        }
+                    ]
+                    if non_audit_steps:
+                        raise SystemExit(
+                            f"Scenario step '{label}' diagnostic continuation permits only saved-state audits"
+                        )
+                    report["diagnostic_continuation"] = {
+                        "status": "blocked_boundary_preserved_for_read_only_audit",
+                        "permitted_follow_up": [
+                            "audit_saved_bandit_live_world_state",
+                            "audit_saved_game_turn",
+                        ],
+                    }
+                    continue
+                return reports
+            terminal_receipt = persist_native_travel_terminal_receipt(
+                stabilization,
+                run_dir=run_dir,
+                label=label,
+                run_id=(structured_event_reader.run_id if structured_event_reader is not None else ""),
+            )
+            report["native_travel_terminal_receipt"] = terminal_receipt
+            # Proof gates consume saved artifacts from step metadata.  Keep the
+            # durable native terminal receipt in that same owner channel rather
+            # than leaving an otherwise valid arrival invisible to its gate.
+            report["metadata"] = terminal_receipt
+            if terminal_receipt.get("status") != "required_state_present":
+                report["abort"] = {
+                    "guard": "native_travel_terminal_receipt",
+                    "status": "aborted_native_travel_terminal_receipt",
+                    "verdict": "blocked_native_travel_terminal_receipt",
+                    "reason": str(terminal_receipt.get("reason", "native travel terminal receipt was not sealed")),
                 }
                 reports.append(report)
                 return reports
@@ -26786,11 +28070,7 @@ def execute_probe_steps(
                 registry_authority=registry_authority,
                 scenario_source_sha256=scenario_source_sha256,
                 expected_process_pid=pid,
-        previous_process_pid=previous_process_pid,
-        grants_gameplay_proof=(
-            scenario.get("runtime_contract", {}).get("grants_gameplay_proof") is not False
-            if isinstance(scenario.get("runtime_contract", {}), Mapping) else True
-        ),
+                previous_process_pid=previous_process_pid,
             )
             report["startup_semantic_hud_expectation"] = startup_hud
             if startup_hud["status"] != "green":
@@ -30259,6 +31539,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                     setup_contract=declared_setup,
                     fixture_install=fixture_install,
                 )
+            elif declared_setup.get("kind") == "r005_source_bound_visibility_fixture":
+                scenario_setup = r005_source_bound_visibility_setup_receipts_from_installed_save(
+                    save_dir_for_profile(profile) / world,
+                    setup_contract=declared_setup,
+                    fixture_install=fixture_install,
+                )
             else:
                 scenario_setup = scenario_setup_receipts_from_installed_save(
                     save_dir_for_profile(profile) / world,
@@ -30614,6 +31900,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 runtime_binary = Path(str(plan_payload.get("executable", ""))).name
         except (OSError, UnicodeError, json.JSONDecodeError):
             runtime_binary = ""
+    # Bind the live command while the original process is still resident.
+    # Resolving it after the native quit would erase the identity needed to
+    # distinguish a true terminal exit from an unbound disappearance.
+    initial_process_command = pid_command(pid)
     step_reports = execute_probe_steps(
         pid,
         run_dir,
@@ -30674,6 +31964,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         else:
             relaunch = run_probe_post_relaunch(
                 initial_pid=pid,
+                initial_process_command=initial_process_command,
                 profile=profile,
                 config_profile=config_profile,
                 world=world,

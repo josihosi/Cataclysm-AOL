@@ -47,6 +47,111 @@ from startup_harness import finalize_probe_report  # noqa: E402
 
 
 class ScenarioRegistryCliTest(unittest.TestCase):
+    def test_query_readiness_routes_stale_product_build_before_repair_authority(self) -> None:
+        repair = {
+            "kind": "repair_current_contradiction",
+            "command": {"cli": ["registry-repair-bootstrap", "--query-id", "query-a"]},
+        }
+        stale = {
+            "status": "build_required",
+            "reason": "product_binary_source_is_stale_or_unproved",
+            "next_action": "build or select a source-matching executable, then repeat the same registry query",
+            "evidence_ceiling": "none until source-matching executable revalidation",
+        }
+        routed = scenario_registry_cli._apply_source_readiness_to_query(
+            {"token_id": None, "next_action": repair}, stale,
+        )
+
+        self.assertEqual(routed["next_action"]["kind"], "build_or_select_source_matching_executable")
+        self.assertEqual(routed["next_action"]["after_readiness"], repair)
+        self.assertNotIn("registry-repair-bootstrap", routed["next_action"]["action"])
+
+        provisional = scenario_registry_cli._apply_source_readiness_to_query(
+            {"token_id": None, "next_action": repair},
+            {
+                **stale,
+                "status": "provisional_diagnosis_allowed",
+                "evidence_ceiling": "provisional harness diagnosis only",
+            },
+        )
+        self.assertEqual(provisional["next_action"]["kind"], "isolated_harness_diagnosis")
+        self.assertEqual(
+            provisional["next_action"]["evidence_ceiling"],
+            "provisional harness diagnosis only",
+        )
+
+    def test_repair_bootstrap_stops_before_token_issue_when_executable_is_stale(self) -> None:
+        connection = mock.MagicMock()
+        stale = {
+            "status": "build_required",
+            "reason": "product_binary_source_is_stale_or_unproved",
+            "next_action": "build or select a source-matching executable, then repeat the same registry query",
+        }
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                mock.patch.object(scenario_registry_cli, "open_registry", return_value=connection), \
+                mock.patch.object(
+                    scenario_registry_cli, "_current_source_executable_readiness", return_value=stale,
+                ), \
+                mock.patch.object(scenario_registry_cli, "issue_registry_repair_token") as issue, \
+                mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
+            exit_code = scenario_registry_cli.main([
+                "--registry", str(Path(temp_dir) / "registry.sqlite3"),
+                "registry-repair-bootstrap", "--query-id", "query-a",
+            ])
+
+        self.assertEqual(exit_code, 0)
+        issue.assert_not_called()
+        result = write_result.call_args.args[0]["result"]
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["reason"], "source_matching_executable_required")
+        connection.close.assert_called_once()
+
+    def test_brief_requested_playtest_uses_validated_charter_and_bound_token_without_human_gate(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            args = argparse.Namespace(
+                command="registry-detached-launch",
+                selection_token="selected-token",
+                session_dir=str(root / "session"),
+                witness_charter=str(HARNESS_DIR / "charters" / "r009-macos-witness-rev2.json"),
+            )
+            selection = scenario_registry_cli.RegistryLaunchToken(
+                "selected-token", True, "current", "r009-m095", "scenario.json",
+            )
+            bridge_result = subprocess.CompletedProcess(
+                args=[], returncode=0,
+                stdout=json.dumps({"ok": True, "session_id": "session-a"}), stderr="",
+            )
+            connection = mock.MagicMock()
+            with mock.patch.object(scenario_registry_cli, "open_registry", return_value=connection), \
+                    mock.patch.object(scenario_registry_cli, "reload_selection_token_for_launch",
+                                      return_value=selection), \
+                    mock.patch.object(scenario_registry_cli, "_scenario_requires_bound_live_bridge",
+                                      return_value=True), \
+                    mock.patch.object(scenario_registry_cli, "_declared_pre_descriptor_prefix",
+                                      return_value=[]), \
+                    mock.patch.object(scenario_registry_cli.subprocess, "run",
+                                      return_value=bridge_result) as run, \
+                    mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
+                result = scenario_registry_cli._launch_selection_file_bridge(
+                    args, root / "registry.sqlite3",
+                )
+
+            self.assertEqual(result, 0)
+            command = run.call_args.args[0]
+            self.assertIn("registry-launch", command)
+            self.assertIn("selected-token", command)
+            self.assertNotIn("Josef", command)
+            receipt = write_result.call_args.args[0]
+            self.assertTrue(receipt["ok"])
+            self.assertEqual(
+                receipt["authority"],
+                "technical run token remains unclaimed until the canonical child launch",
+            )
+            launched_environment = run.call_args.kwargs["env"]
+            self.assertIn("OPENCLAW_PLAYTEST_WITNESS_CHARTER", launched_environment)
+            connection.close.assert_called_once()
+
     def test_detached_live_namespaces_force_bounded_terminal_stdout(self) -> None:
         scenario = "bandit.r008_natural_safe_watch_validation_mcw"
         source_path = str(startup_harness.scenario_path(scenario))
@@ -631,11 +736,16 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 connection.close()
 
             query = self.bootstrap_request()
-            queried = self.run_cli(
-                "--registry", str(registry_path), "registry-query", "--query-json", json.dumps(query),
-            )
-            self.assertEqual(queried.returncode, 0, queried.stderr)
-            query_result = json.loads(queried.stdout)["result"]
+            with mock.patch.object(
+                    scenario_registry_cli, "_current_source_executable_readiness",
+                    return_value={"status": "ready"}), \
+                    mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
+                query_exit = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-query",
+                    "--query-json", json.dumps(query),
+                ])
+            self.assertEqual(query_exit, 0)
+            query_result = write_result.call_args.args[0]["result"]
             self.assertIsNone(query_result["token_id"])
             self.assertTrue(Path(query_result["draft_path"]).is_file())
             action = query_result["next_action"]
@@ -664,6 +774,10 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 },
             }
             with mock.patch.object(scenario_registry_cli, "_current_repair_binding", return_value=binding), \
+                    mock.patch.object(
+                        scenario_registry_cli, "_current_source_executable_readiness",
+                        return_value={"status": "ready"},
+                    ), \
                     mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
                 exit_code = scenario_registry_cli.main([
                     "--registry", str(registry_path), "registry-repair-bootstrap",
@@ -881,10 +995,13 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                              "repair token remains unclaimed until the canonical child launch")
             connection.close.assert_called_once()
 
-    def test_registry_launch_adapts_exact_probe_namespace_and_honors_registry_override(self) -> None:
+    def test_bound_token_launch_revalidates_runtime_without_a_human_permission_parameter(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
             registry_path, scenarios, token_id = self.issue_selection_token(root)
+            self.assertEqual(self.token_events(registry_path, token_id), [
+                ("issued", "query_selection"),
+            ])
             other_registry = root / "other.sqlite3"
             other_connection = open_registry(str(other_registry))
             try:
@@ -906,6 +1023,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertTrue(callable(post_finalize_hook))
             self.assertEqual(receipt["registry_path"], str(registry_path.resolve()))
             self.assertEqual(receipt["token_id"], token_id)
+            self.assertNotIn("human_permission", receipt)
             self.assertEqual(receipt["source_path"], str((scenarios / "cli.json").resolve()))
             self.assertEqual(receipt["runtime_binding"]["schema"], 1)
             self.assertEqual(receipt["wec_authority"]["evidence_class"], "setup support")

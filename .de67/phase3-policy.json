@@ -1,20 +1,18 @@
 {
-  "format": "de67.phase3.policy",
-  "version": 2,
   "fallback": {
     "action": "inspect_state",
+    "obligations": [
+      "derive_missing_facts"
+    ],
     "reads": [
       "ledger",
       "clock"
-    ],
-    "obligations": [
-      "derive_missing_facts"
     ]
   },
+  "format": "de67.phase3.policy",
   "rules": [
     {
-      "id": "Q1",
-      "priority": 101,
+      "action": "wait_for_mutation_quiescence",
       "all": [
         "live_task"
       ],
@@ -26,256 +24,261 @@
         "universal_review_due",
         "pending_suggestions"
       ],
-      "action": "wait_for_mutation_quiescence",
-      "reads": [
-        "clock"
-      ],
+      "id": "Q1",
+      "none": [],
       "obligations": [
         "dispatch_no_new_worker",
         "perform_no_mutation",
         "wait_for_all_live_workers_to_terminalize"
+      ],
+      "priority": 101,
+      "reads": [
+        "clock"
       ]
     },
     {
-      "id": "I1",
-      "priority": 100,
+      "action": "retire_for_mutation_review",
       "all": [
         "integrity_incident"
       ],
+      "any": [],
+      "id": "I1",
       "none": [
         "live_task"
-      ],
-      "action": "retire_for_mutation_review",
-      "reads": [
-        "clock"
       ],
       "obligations": [
         "perform_no_mutation",
         "dispatch_no_worker",
         "exit_to_external_supervisor"
+      ],
+      "priority": 100,
+      "reads": [
+        "clock"
       ]
     },
     {
-      "id": "D1",
-      "priority": 99,
+      "action": "retire_for_mutation_review",
       "all": [
         "deadline_incident"
       ],
+      "any": [],
+      "id": "D1",
       "none": [
         "live_task"
-      ],
-      "action": "retire_for_mutation_review",
-      "reads": [
-        "clock"
       ],
       "obligations": [
         "perform_no_mutation",
         "dispatch_no_worker",
         "exit_to_external_supervisor"
+      ],
+      "priority": 99,
+      "reads": [
+        "clock"
       ]
     },
     {
-      "id": "X1",
-      "priority": 98,
+      "action": "acknowledge_restart",
       "all": [
         "restart_requested"
       ],
-      "action": "acknowledge_restart",
-      "reads": [
-        "clock"
-      ],
+      "any": [],
+      "id": "X1",
+      "none": [],
       "obligations": [
         "acknowledge_exact_generation_before_dispatch",
         "set_fresh_post_mutation_clock_without_inheritance",
         "estimate_from_current_ledger_with_uncertainty_margin"
+      ],
+      "priority": 98,
+      "reads": [
+        "clock"
       ]
     },
     {
-      "id": "M1",
-      "priority": 95,
+      "action": "retire_for_mutation_review",
+      "all": [],
       "any": [
         "random_mutation_due",
         "dfs_review_due",
         "universal_review_due",
         "pending_suggestions"
       ],
+      "id": "M1",
       "none": [
         "live_task"
-      ],
-      "action": "retire_for_mutation_review",
-      "reads": [
-        "clock"
       ],
       "obligations": [
         "perform_no_mutation",
         "dispatch_no_worker",
         "exit_to_external_supervisor"
+      ],
+      "priority": 95,
+      "reads": [
+        "clock"
       ]
     },
     {
-      "id": "A1",
-      "priority": 90,
+      "action": "review_dfs_acceptance",
       "all": [
         "accepted_evidence"
       ],
+      "any": [],
+      "id": "A1",
       "none": [
         "deadline_incident",
         "integrity_incident"
-      ],
-      "action": "review_dfs_acceptance",
-      "reads": [
-        "clock",
-        "dfs"
       ],
       "obligations": [
         "accept_only_direct_gap_covering_evidence",
         "guard_and_apply_exact_dfs_completion",
         "direct_coordinator_acceptance_without_independent_reviewer"
+      ],
+      "priority": 90,
+      "reads": [
+        "clock",
+        "dfs"
       ]
     },
     {
-      "id": "R1",
-      "priority": 85,
+      "action": "receive_worker_result",
+      "all": [],
       "any": [
         "worker_completed",
         "worker_finding",
         "worker_abandoned"
       ],
+      "id": "R1",
       "none": [
         "deadline_incident",
         "integrity_incident"
       ],
-      "action": "receive_worker_result",
+      "obligations": [
+        "record_worker_result_exactly_once",
+        "preserve_valid_evidence_and_evidence_class",
+        "continue_recoverable_work_inside_outcome",
+        "terminalize_only_at_real_route_exit",
+        "coordinator_owns_causal_judgment"
+      ],
+      "priority": 85,
       "reads": [
         "clock",
         "ledger",
         "dfs_slice"
-      ],
-      "obligations": [
-        "terminalize_attempt_exactly_once",
-        "coordinator_exclusively_commits_terminal_worker_result",
-        "preserve_evidence_class",
-        "continue_same_coordinator",
-        "keep_named_in_scope_repair_or_rerun_as_nonterminal_checkpoint",
-        "keep_same_task_and_worker_across_checkpoint",
-        "terminal_finding_requires_named_route_exit",
-        "evaluate_convergence_after_every_worker",
-        "transition_to_named_independently_provable_closure_gaps_when_finite",
-        "record_specific_uncertainty_before_more_exploration"
       ]
     },
     {
-      "id": "O1",
-      "priority": 80,
+      "action": "consume_owner_reply",
       "all": [
         "owner_reply",
         "blocked_ledger"
       ],
-      "action": "consume_owner_reply",
+      "any": [],
+      "id": "O1",
+      "none": [],
+      "obligations": [
+        "preserve_exact_owner_authority"
+      ],
+      "priority": 80,
       "reads": [
         "ledger",
         "owner_reply"
-      ],
-      "obligations": [
-        "preserve_exact_owner_authority"
       ]
     },
     {
-      "id": "B1",
-      "priority": 75,
+      "action": "audit_blocker",
       "all": [
         "blocked_ledger"
       ],
+      "any": [],
+      "id": "B1",
       "none": [
         "owner_reply"
       ],
-      "action": "audit_blocker",
+      "obligations": [
+        "restore_recoverable_work_or_preserve_material_blocker",
+        "require_attempted_operation_and_runtime_rejection_before_external_authority_finding",
+        "keep_missing_charter_and_binding_revalidation_as_agent_owned_repair"
+      ],
+      "priority": 75,
       "reads": [
         "ledger",
         "clock"
-      ],
-      "obligations": [
-        "restore_recoverable_work_or_preserve_material_blocker"
       ]
     },
     {
-      "id": "U1",
-      "priority": 71,
+      "action": "spawn_worker",
       "all": [
         "unbound_task"
       ],
+      "any": [],
+      "id": "U1",
       "none": [
         "deadline_incident",
         "integrity_incident"
       ],
-      "action": "spawn_worker",
+      "obligations": [
+        "use_existing_deadline_task",
+        "spawn_bound_worker",
+        "brief_outcome_context_constraints_and_tools",
+        "worker_owns_strategy",
+        "preserve_binding_evidence_ceiling_contradictions_and_cleanup"
+      ],
+      "priority": 71,
       "reads": [
         "clock",
         "ledger",
         "dfs_slice"
-      ],
-      "obligations": [
-        "use_existing_deadline_task",
-        "call_spawn_agent_before_wait",
-        "do_not_merely_announce_assignment",
-        "spawn_worker_with_outcome_and_visible_subtasks",
-        "preserve_parallel_independent_dispatch"
       ]
     },
     {
-      "id": "W1",
-      "priority": 70,
+      "action": "wait_for_worker_event",
       "all": [
         "live_task"
       ],
+      "any": [],
+      "id": "W1",
       "none": [
         "deadline_incident",
         "integrity_incident"
-      ],
-      "action": "wait_for_worker_event",
-      "reads": [
-        "clock"
       ],
       "obligations": [
         "wake_no_later_than_item_deadline",
         "do_not_poll_faster_without_new_event",
         "preserve_live_outcome_across_subtask_checkpoints"
+      ],
+      "priority": 70,
+      "reads": [
+        "clock"
       ]
     },
     {
-      "id": "C1",
-      "priority": 60,
+      "action": "dispatch_closure_worker",
       "all": [
         "closure_ready",
         "open_gap",
         "executable_route"
       ],
+      "any": [],
+      "id": "C1",
       "none": [
         "live_task"
       ],
-      "action": "dispatch_closure_worker",
+      "obligations": [
+        "start_unique_worker_window",
+        "set_honest_whole_outcome_deadline",
+        "brief_outcome_context_constraints_and_tools",
+        "worker_owns_strategy",
+        "preserve_binding_evidence_ceiling_contradictions_and_cleanup"
+      ],
+      "priority": 60,
       "reads": [
         "ledger",
         "dfs_slice",
         "clock"
-      ],
-      "obligations": [
-        "admit_full_downstream_route_to_clock",
-        "start_unique_worker_window",
-        "use_ordinary_worker_profile",
-        "delegate_executable_work_to_roster_worker",
-        "dispatch_outcome_sized_task_with_visible_subtasks",
-        "route_marked_live_playtest_to_witness_contract",
-        "derive_claim_deadline_from_outcome_spokes_single_use_authority_and_repair",
-        "size_one_generous_claim_deadline_for_full_route",
-        "reject_attempt_estimate_shrunk_to_remaining_claim_clock",
-        "include_worker_lifecycle_and_uncertainty_margin",
-        "delegate_evidence_sized_worker_retrieval"
       ]
     },
     {
-      "id": "E1",
-      "priority": 59,
+      "action": "dispatch_exploration_worker",
       "all": [
         "executable_route"
       ],
@@ -283,172 +286,208 @@
         "open_claim",
         "ledger_work"
       ],
+      "id": "E1",
       "none": [
         "closure_ready",
         "live_task"
       ],
-      "action": "dispatch_exploration_worker",
+      "obligations": [
+        "start_unique_worker_window",
+        "set_honest_whole_outcome_deadline",
+        "brief_outcome_context_constraints_and_tools",
+        "worker_owns_strategy",
+        "preserve_binding_evidence_ceiling_contradictions_and_cleanup"
+      ],
+      "priority": 59,
       "reads": [
         "ledger",
         "dfs_slice",
         "clock"
-      ],
-      "obligations": [
-        "start_unique_worker_window",
-        "use_ordinary_worker_profile",
-        "delegate_executable_work_to_roster_worker",
-        "dispatch_outcome_sized_task_with_visible_subtasks",
-        "route_marked_live_playtest_to_witness_contract",
-        "derive_claim_deadline_from_outcome_spokes_single_use_authority_and_repair",
-        "size_one_generous_claim_deadline_for_full_route",
-        "reject_attempt_estimate_shrunk_to_remaining_claim_clock",
-        "include_worker_lifecycle_and_uncertainty_margin",
-        "delegate_evidence_sized_worker_retrieval"
       ]
     },
     {
-      "id": "L1",
-      "priority": 50,
+      "action": "refill_ledger",
       "all": [
         "red_dfs_work"
       ],
+      "any": [],
+      "id": "L1",
       "none": [
         "ledger_work",
         "live_task"
       ],
-      "action": "refill_ledger",
+      "obligations": [
+        "project_first_actionable_red_claim"
+      ],
+      "priority": 50,
       "reads": [
         "dfs",
         "clock"
-      ],
-      "obligations": [
-        "project_first_actionable_red_claim"
       ]
     },
     {
-      "id": "S1",
-      "priority": 10,
+      "action": "stop",
       "all": [
         "dfs_complete"
       ],
+      "any": [],
+      "id": "S1",
       "none": [
         "live_task",
         "red_dfs_work"
       ],
-      "action": "stop",
-      "reads": [
-        "clock"
-      ],
       "obligations": [
         "leave_no_live_attempt"
+      ],
+      "priority": 10,
+      "reads": [
+        "clock"
       ]
     }
   ],
   "trace": {
     "events": {
+      "affected_projection_rebased": {
+        "clear": [
+          "projection_rebase_pending"
+        ],
+        "forbids": [],
+        "requires": [
+          "mutation_open",
+          "projection_rebase_pending"
+        ],
+        "set": []
+      },
+      "claim_accepted": {
+        "clear": [],
+        "forbids": [
+          "deadline_open"
+        ],
+        "requires": [],
+        "set": []
+      },
       "deadline_expired": {
+        "clear": [],
+        "forbids": [],
+        "requires": [],
         "set": [
           "deadline_open"
         ]
       },
       "deadline_incident_reviewed": {
+        "clear": [
+          "deadline_open"
+        ],
+        "forbids": [],
         "requires": [
           "deadline_open"
         ],
-        "clear": [
-          "deadline_open"
-        ]
-      },
-      "claim_accepted": {
-        "forbids": [
-          "deadline_open"
-        ]
-      },
-      "suggestion_added": {
-        "set": [
-          "suggestions_pending"
-        ]
-      },
-      "mutation_started": {
-        "forbids": [
-          "mutation_open"
-        ],
-        "set": [
-          "mutation_open"
-        ]
-      },
-      "proof_owner_replaced": {
-        "requires": [
-          "mutation_open"
-        ],
-        "set": [
-          "projection_rebase_pending"
-        ]
-      },
-      "affected_projection_rebased": {
-        "requires": [
-          "mutation_open",
-          "projection_rebase_pending"
-        ],
-        "clear": [
-          "projection_rebase_pending"
-        ]
-      },
-      "suggestions_dispositioned": {
-        "requires": [
-          "mutation_open"
-        ],
-        "clear": [
-          "suggestions_pending"
-        ]
+        "set": []
       },
       "mutation_resolved": {
-        "requires": [
+        "clear": [
           "mutation_open"
         ],
         "forbids": [
           "suggestions_pending",
           "projection_rebase_pending"
         ],
-        "clear": [
+        "requires": [
+          "mutation_open"
+        ],
+        "set": []
+      },
+      "mutation_started": {
+        "clear": [],
+        "forbids": [
+          "mutation_open"
+        ],
+        "requires": [],
+        "set": [
           "mutation_open"
         ]
       },
-      "task_started": {
+      "proof_owner_replaced": {
+        "clear": [],
+        "forbids": [],
+        "requires": [
+          "mutation_open"
+        ],
+        "set": [
+          "projection_rebase_pending"
+        ]
+      },
+      "suggestion_added": {
+        "clear": [],
+        "forbids": [],
+        "requires": [],
+        "set": [
+          "suggestions_pending"
+        ]
+      },
+      "suggestions_dispositioned": {
+        "clear": [
+          "suggestions_pending"
+        ],
+        "forbids": [],
+        "requires": [
+          "mutation_open"
+        ],
+        "set": []
+      },
+      "task_abandoned": {
+        "clear": [],
+        "forbids": [],
         "keyed": {
           "field": "task_id",
+          "from": "live",
+          "namespace": "task",
+          "operation": "finish",
+          "state": "abandoned"
+        },
+        "requires": [],
+        "set": []
+      },
+      "task_completed": {
+        "clear": [],
+        "forbids": [],
+        "keyed": {
+          "field": "task_id",
+          "from": "live",
+          "namespace": "task",
+          "operation": "finish",
+          "state": "completed"
+        },
+        "requires": [],
+        "set": []
+      },
+      "task_finding": {
+        "clear": [],
+        "forbids": [],
+        "keyed": {
+          "field": "task_id",
+          "from": "live",
+          "namespace": "task",
+          "operation": "finish",
+          "state": "finding"
+        },
+        "requires": [],
+        "set": []
+      },
+      "task_started": {
+        "clear": [],
+        "forbids": [],
+        "keyed": {
+          "field": "task_id",
+          "from": "live",
           "namespace": "task",
           "operation": "start",
           "state": "live"
-        }
-      },
-      "task_completed": {
-        "keyed": {
-          "field": "task_id",
-          "namespace": "task",
-          "operation": "finish",
-          "from": "live",
-          "state": "completed"
-        }
-      },
-      "task_finding": {
-        "keyed": {
-          "field": "task_id",
-          "namespace": "task",
-          "operation": "finish",
-          "from": "live",
-          "state": "finding"
-        }
-      },
-      "task_abandoned": {
-        "keyed": {
-          "field": "task_id",
-          "namespace": "task",
-          "operation": "finish",
-          "from": "live",
-          "state": "abandoned"
-        }
+        },
+        "requires": [],
+        "set": []
       }
     }
-  }
+  },
+  "version": 2
 }

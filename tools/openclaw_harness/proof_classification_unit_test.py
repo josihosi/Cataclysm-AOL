@@ -49,6 +49,7 @@ from startup_harness import (  # noqa: E402
     declared_startup_overlay_action_is_satisfied,
     extract_window_build_info,
     execute_long_wait_action,
+    executable_source_readiness,
     debug_map_editor_select_feature_and_apply,
     execute_probe_steps,
     evaluate_structured_proof_gates,
@@ -60,6 +61,7 @@ from startup_harness import (  # noqa: E402
     peekaboo_physical_hotkey_for_key,
     peekaboo_command,
     peekaboo_focus_pid,
+    populate_runtime_version_comparison,
     portal_storm_policy_from_scenario,
     portal_storm_step_ledger_rows,
     probe_proof_classification,
@@ -313,6 +315,7 @@ class AdvanceTurnInputContractTest(unittest.TestCase):
         }, "", "")
         result = run_probe_post_relaunch(
             initial_pid=17,
+            initial_process_command="/tmp/cataclysm-tiles --world McWilliams",
             profile="test-profile",
             config_profile="test-profile",
             world="McWilliams",
@@ -614,6 +617,37 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
         self.assertEqual(info["captured_head"], "1987e94ba13")
         self.assertTrue(info["captured_dirty"])
 
+    def test_stale_executable_requires_build_but_isolated_harness_diagnosis_is_provisional(self) -> None:
+        version = subprocess.CompletedProcess(
+            args=[], returncode=0,
+            stdout="Cataclysm Dark Days Ahead: 7f740f8fc7-dirty+SDL3\n", stderr="",
+        )
+        with (
+            patch("startup_harness.subprocess.run", return_value=version),
+            patch("startup_harness.current_head_short", return_value="adb27ff46d"),
+            patch(
+                "startup_harness.runtime_relevant_changes_since",
+                return_value=(["src/bandit_live_world.h", "src/game.h"], ""),
+            ),
+            patch("startup_harness.runtime_relevant_worktree_changes", return_value=([], "")),
+        ):
+            required = executable_source_readiness(Path("cataclysm-tiles"))
+            provisional = executable_source_readiness(
+                Path("cataclysm-tiles"), isolated_harness_diagnosis=True,
+            )
+
+        self.assertEqual(required["status"], "build_required")
+        self.assertEqual(required["captured_head"], "7f740f8fc7")
+        self.assertEqual(required["repository_head"], "adb27ff46d")
+        self.assertEqual(
+            required["binary_relevant_committed_changes"],
+            ["src/bandit_live_world.h", "src/game.h"],
+        )
+        self.assertIn("repeat the same registry query", required["next_action"])
+        self.assertEqual(provisional["status"], "provisional_diagnosis_allowed")
+        self.assertEqual(provisional["evidence_ceiling"], "provisional harness diagnosis only")
+        self.assertIn("revalidate", provisional["next_action"])
+
     def test_matching_dirty_build_is_blocked_when_runtime_worktree_is_dirty(self) -> None:
         payload = {
             "success": True,
@@ -641,6 +675,44 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
         self.assertTrue(summary["captured_dirty"])
         self.assertFalse(summary["version_matches_runtime_paths"])
         self.assertEqual(summary["runtime_relevant_worktree_diff"], ["src/savegame.cpp"])
+
+    def test_bound_old_product_baseline_is_accepted_when_only_harness_is_ahead(self) -> None:
+        payload = {
+            "success": True,
+            "data": {
+                "files": [{
+                    "window_title": "Cataclysm: Dark Days Ahead - 1987e94ba13-dirty+SDL3",
+                    "window_id": 8138,
+                }],
+            },
+        }
+        binding = {
+            "schema": 1,
+            "captured_head": "adb27ff46d",
+            "executable_path": "cataclysm-tiles",
+            "executable_sha256": "bound-executable",
+            "runtime_source_sha256": "bound-runtime",
+        }
+        with (
+            patch("startup_harness.current_head_short", return_value="c441448ceca2"),
+            patch("startup_harness.runtime_relevant_changes_since", return_value=([], "")),
+            patch("startup_harness.runtime_relevant_worktree_changes", return_value=(
+                ["tools/openclaw_harness/startup_harness.py"], "",
+            )),
+            patch("startup_harness.compare_runtime_binding", return_value={
+                "status": "matched", "error": "",
+            }),
+            patch("startup_harness.executable_source_readiness", return_value={
+                "status": "ready",
+            }),
+        ):
+            summary = summarize_peekaboo_image_capture(
+                json.dumps(payload), Path("success.png"), Path("success.peekaboo.json"),
+            )
+            populate_runtime_version_comparison(summary, runtime_binding=binding)
+
+        self.assertFalse(summary["version_matches_repo_head"])
+        self.assertTrue(summary["version_matches_runtime_paths"])
 
     def test_dirty_llm_runner_is_a_runtime_relevant_worktree_change(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

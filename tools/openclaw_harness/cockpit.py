@@ -38,7 +38,13 @@ from playtest_witness import (
 )
 
 _FORBIDDEN = {"token", "tokens", "token_id", "query_sha256", "offset", "offsets", "candidate_offsets", "pid", "pids", "ocr", "logs", "raw_logs", "physical_key", "physical_keys", "source_path", "draft_path", "manual", "full_manual", "executable", "executables", "executable_path", "manifest_sha256", "hash", "hashes", "sha256", "path", "paths", "key", "subprocess"}
-_ALLOWED = {"action", "frontier", "capability", "scenario", "requirements", "preferences", "id", "name", "detail", "declaration", "world", "required_typeid", "candidate_offsets", "player_save", "handle", "observation_id", "action_id", "recovery", "run_id", "scenario_id", "selection_id", "binding_id", "blocked_intent", "missing_kind", "evidence", "reusable_outcome", "affected_scenarios", "expected_signal", "bound", "stop_reason", "unused_authority", "keep_watch", "raw_wait", "raw_move_relative", "guarded_move_relative", "r019_acceptance_matrix", "witness"}
+_ALLOWED = {"action", "frontier", "capability", "scenario", "requirements", "preferences", "id", "name", "detail", "declaration", "world", "required_typeid", "candidate_offsets", "player_save", "handle", "observation_id", "action_id", "recovery", "run_id", "scenario_id", "selection_id", "binding_id", "blocked_intent", "missing_kind", "evidence", "reusable_outcome", "affected_scenarios", "expected_signal", "bound", "stop_reason", "unused_authority", "wait", "keep_watch", "raw_wait", "move_relative", "raw_move_relative", "guarded_move_relative", "r019_acceptance_matrix", "witness"}
+
+_DANGER_HANDLING_MODES = {
+    "stop_on_interruption",
+    "handle_classified_non_dangerous",
+    "ignore_danger_and_interruptions",
+}
 
 _BOUND_BASES = {
     "game_mechanic", "scheduler_boundary", "path_progress", "measured_rate",
@@ -362,6 +368,7 @@ class CockpitRunChannel:
             "persistence": evidence.get("persistence", "unavailable"),
             "evidence_refs": list(evidence.get("evidence_refs", [])),
             "scheduler_trace": list(evidence.get("scheduler_trace", [])),
+            "child_resources": evidence.get("child_resources", {}),
             "unsafe": evidence.get("unsafe") is True,
         }
         result = {
@@ -614,6 +621,13 @@ class CockpitRunChannel:
             self._transcript.append({"kind": "keep_watch_off", "switch": "enabled",
                                      "result": result})
             return result
+        danger_handling = str(request.get(
+            "danger_handling", "handle_classified_non_dangerous",
+        ))
+        if danger_handling not in _DANGER_HANDLING_MODES:
+            return {"ok": False, "error": "invalid_danger_handling"}
+        if danger_handling == "stop_on_interruption":
+            return self.raw_wait(request)
         target = request.get("target_game_minutes")
         bound = request.get("bound")
         recipe = request.get("recipe")
@@ -636,6 +650,7 @@ class CockpitRunChannel:
         recipe_index = 0
         tool_round_trips = 0
         safety_frames = 0
+        handled_interruptions: list[Dict[str, Any]] = []
         while True:
             if self._state != "active":
                 return {"ok": False, "error": "live_session_finished", "final": self._final_report}
@@ -648,6 +663,8 @@ class CockpitRunChannel:
                     "model_round_trips": 1,
                     "tool_round_trips": tool_round_trips,
                     "safety_frame_count": safety_frames,
+                    "danger_handling": danger_handling,
+                    "handled_interruptions": handled_interruptions,
                 }
                 self._transcript.append({"kind": "keep_watch", "result": result})
                 return {"ok": True, "result": result}
@@ -681,10 +698,17 @@ class CockpitRunChannel:
             classification = str(safety.get("classification", ""))
             if safety.get("monster") is True or safety.get("danger") is True or \
                     safety.get("damage") is True:
-                return self._fail_closed("keep_watch_unsafe_condition", {
+                if danger_handling != "ignore_danger_and_interruptions":
+                    return self._fail_closed("keep_watch_unsafe_condition", {
+                        "classification": classification,
+                        "unused_authority": "revoked",
+                    })
+                handled_interruptions.append({
                     "classification": classification,
-                    "unused_authority": "revoked",
+                    "decision": "continue_wait",
+                    "observation_id": observed.get("observation_id", ""),
                 })
+                classification = "clear"
             safety_frames += 1
             if classification == "clear":
                 if current is None:
@@ -864,6 +888,8 @@ class CockpitRunChannel:
                     "partial_progress": current - start,
                     "derived_bound": dict(bound),
                     "guarded_handling_count": 0,
+                    "danger_handling": "stop_on_interruption",
+                    "handled_interruptions": [],
                 }
                 self._transcript.append({"kind": "raw_wait", "result": result})
                 return {"ok": True, "result": result}
@@ -1035,6 +1061,13 @@ class CockpitRunChannel:
             return rejected
         assert offset is not None and bound is not None
         route = "guarded_move_relative" if guarded else "raw_move_relative"
+        danger_handling = str(request.get(
+            "danger_handling",
+            "handle_classified_non_dangerous" if guarded else "stop_on_interruption",
+        ))
+        if danger_handling not in _DANGER_HANDLING_MODES:
+            return {"ok": False, "error": "invalid_danger_handling"}
+        ignore_danger = danger_handling == "ignore_danger_and_interruptions"
         try:
             observed = self.observe()
         except ValueError as exc:
@@ -1045,6 +1078,7 @@ class CockpitRunChannel:
         plan = self._relative_action_plan(offset)
         target = [origin[0] + offset[0], origin[1] + offset[1], origin[2]]
         receipts: list[Mapping[str, Any]] = []
+        handled_interruptions: list[Dict[str, Any]] = []
 
         def stop(reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
             current = self._relative_position(observed)
@@ -1054,17 +1088,85 @@ class CockpitRunChannel:
                 "target_absolute_ms": target, "terminal_absolute_ms": current,
                 "partial_progress": completed, "planned_steps": len(plan),
                 "native_receipts": [dict(receipt) for receipt in receipts],
-                "derived_bound": dict(bound), "guarded_handling_count": 0 if not guarded else completed,
+                "handled_interruptions": list(handled_interruptions),
+                "derived_bound": dict(bound),
+                "guarded_handling_count": len(handled_interruptions),
                 "unused_authority": "revoked",
             })
 
         for index, action_id in enumerate(plan):
-            record = self._observations.get(str(observed.get("observation_id", "")))
-            raw = record.get("issuing_frame") if isinstance(record, Mapping) else None
-            if not isinstance(raw, Mapping):
-                return stop(f"{route}_stale_frame", {})
+            while True:
+                record = self._observations.get(str(observed.get("observation_id", "")))
+                raw = record.get("issuing_frame") if isinstance(record, Mapping) else None
+                if not isinstance(raw, Mapping):
+                    return stop(f"{route}_stale_frame", {})
+                if not guarded or str(raw.get("state", "")) == "world":
+                    break
+                safety = raw.get("keep_watch_safety")
+                classification = str(safety.get("classification", "")) \
+                    if isinstance(safety, Mapping) else ""
+                fictional_danger = isinstance(safety, Mapping) and any(
+                    safety.get(key) is True for key in ("monster", "danger", "damage")
+                )
+                may_handle = classification in _KEEP_WATCH_SAFE_CLASSIFICATIONS or (
+                    ignore_danger and fictional_danger
+                )
+                recovery = safety.get("recovery") if isinstance(safety, Mapping) else None
+                recovery_action = str(safety.get("action_id", "")).strip() \
+                    if isinstance(safety, Mapping) else ""
+                if not may_handle or not recovery_action or not isinstance(recovery, Mapping):
+                    return stop("guarded_move_relative_prompt_or_unknown_event", {
+                        "step_index": index,
+                        "classification": classification,
+                    })
+                self._relative_recipe_active = True
+                try:
+                    outcome = self.act(
+                        observation_id=str(observed["observation_id"]),
+                        action_id=recovery_action,
+                        recovery=recovery,
+                    )
+                finally:
+                    self._relative_recipe_active = False
+                if outcome.get("ok") is not True:
+                    return outcome
+                recovery_receipt = outcome.get("receipt")
+                handled_interruptions.append({
+                    "classification": classification,
+                    "decision": "continue_auto_walk",
+                    "observation_id": observed.get("observation_id", ""),
+                    "action_id": recovery_action,
+                    "receipt": dict(recovery_receipt)
+                    if isinstance(recovery_receipt, Mapping) else {},
+                })
+                next_observation = outcome.get("observation")
+                if not isinstance(next_observation, Mapping):
+                    try:
+                        next_observation = self.observe()
+                    except ValueError as exc:
+                        return stop("guarded_move_relative_fresh_frame_missing", {
+                            "step_index": index,
+                            "detail": str(exc),
+                        })
+                observed = dict(next_observation)
             if guarded:
                 guard_reason = self._relative_guard_reason(observed, raw, action_id)
+                if ignore_danger and guard_reason in {
+                    "guarded_move_relative_creature_or_danger",
+                    "guarded_move_relative_damage",
+                    "guarded_move_relative_creature",
+                }:
+                    handled_interruptions.append({
+                        "classification": str(
+                            raw.get("keep_watch_safety", {}).get(
+                                "classification", guard_reason,
+                            )
+                        ),
+                        "decision": "continue_auto_walk",
+                        "observation_id": observed.get("observation_id", ""),
+                        "guard_reason": guard_reason,
+                    })
+                    guard_reason = None
                 if guard_reason is not None:
                     return stop(guard_reason, {"step_index": index})
             elif str(raw.get("state", "")) != "world" or raw.get("provenance") not in {
@@ -1126,7 +1228,9 @@ class CockpitRunChannel:
             "terminal_absolute_ms": terminal,
             "terminal_observation": observed, "native_receipts": [dict(receipt) for receipt in receipts],
             "partial_progress": len(receipts), "planned_steps": len(plan), "derived_bound": dict(bound),
-            "guarded_handling_count": 0 if not guarded else len(receipts),
+            "guarded_handling_count": len(handled_interruptions),
+            "danger_handling": danger_handling,
+            "handled_interruptions": handled_interruptions,
         }
         self._transcript.append({"kind": route, "result": result})
         return {"ok": True, "result": result}
@@ -1136,6 +1240,18 @@ class CockpitRunChannel:
 
     def guarded_move_relative(self, request: Mapping[str, Any]) -> Dict[str, Any]:
         return self._move_relative(request, guarded=True)
+
+    def wait_with_danger_handling(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        mode = str(request.get("danger_handling", "stop_on_interruption"))
+        if mode not in _DANGER_HANDLING_MODES:
+            return {"ok": False, "error": "invalid_danger_handling"}
+        return self.raw_wait(request) if mode == "stop_on_interruption" else self.keep_watch(request)
+
+    def move_relative_with_danger_handling(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        mode = str(request.get("danger_handling", "stop_on_interruption"))
+        if mode not in _DANGER_HANDLING_MODES:
+            return {"ok": False, "error": "invalid_danger_handling"}
+        return self._move_relative(request, guarded=mode != "stop_on_interruption")
 
     def look(self, handle: str) -> Dict[str, Any]:
         requested = str(handle)
@@ -1877,6 +1993,13 @@ class CockpitService:
             if not isinstance(keep_watch, Mapping):
                 return {"ok": False, "error": "keep_watch needs a structured recipe"}
             return self.run_channel.keep_watch(keep_watch)
+        if action == "game.wait":
+            if self.run_channel is None:
+                return {"ok": False, "error": "no active run"}
+            wait = request.get("wait")
+            if not isinstance(wait, Mapping):
+                return {"ok": False, "error": "wait needs a structured request"}
+            return self.run_channel.wait_with_danger_handling(wait)
         if action == "game.raw_wait":
             if self.run_channel is None:
                 return {"ok": False, "error": "native live session is unavailable"}
@@ -1898,6 +2021,13 @@ class CockpitService:
             if not isinstance(guarded_move_relative, Mapping):
                 return {"ok": False, "error": "guarded_move_relative needs a structured request"}
             return self.run_channel.guarded_move_relative(guarded_move_relative)
+        if action == "game.move_relative":
+            if self.run_channel is None:
+                return {"ok": False, "error": "no active run"}
+            move_relative = request.get("move_relative")
+            if not isinstance(move_relative, Mapping):
+                return {"ok": False, "error": "move_relative needs a structured request"}
+            return self.run_channel.move_relative_with_danger_handling(move_relative)
         if action == "game.observe":
             if self.run_channel is None:
                 return {"ok": False, "error": "native game observation is unavailable"}

@@ -31,6 +31,17 @@
       "mark_cleared_active_members_unready": false
     },
     {
+      "kind": "bandit_camp_supply",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "supply_units": 40,
+      "supply_last_update_minutes": 8100,
+      "supply_accounted_living_total": 14,
+      "supply_member_minute_remainder": 0,
+      "source_key": "fixture_r005_natural_hostile_ecology_supply_bootstrap",
+      "source_summary": "Zero-credit source-bound bootstrap: preserve a real two-to-three-day camp supply need so the first unchanged scheduler hour can score the remembered structural bounty before frontier recurrence."
+    },
+    {
       "kind": "player_mutations",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "mutations": [

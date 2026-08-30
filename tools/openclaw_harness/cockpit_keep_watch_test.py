@@ -103,6 +103,32 @@ class KeepWatchTest(unittest.TestCase):
         self.assertEqual(primitive_actions, guarded_actions)
         self.assertEqual(observed["game_minutes"], result["result"]["terminal_observation"]["game_minutes"])
 
+    def test_explicit_danger_modes_keep_cautious_default_and_receipt_permissive_choice(self) -> None:
+        danger = frame(1, 100, {
+            "classification": "monster_spotted", "monster": True,
+            "danger": True, "damage": False,
+        })
+        clean = frame(2, 101, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        cautious, cautious_actions = self.service([danger])
+        stopped = cautious.call({"action": "game.wait", "wait": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait"], "danger_handling": "handle_classified_non_dangerous",
+        }})
+        self.assertEqual(stopped["error"], "keep_watch_unsafe_condition")
+        self.assertEqual(cautious_actions, [])
+
+        permissive, permissive_actions = self.service([danger, clean])
+        continued = permissive.call({"action": "game.wait", "wait": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait"], "danger_handling": "ignore_danger_and_interruptions",
+        }})
+        self.assertTrue(continued["ok"])
+        self.assertEqual(permissive_actions, ["world.wait"])
+        self.assertEqual(continued["result"]["danger_handling"], "ignore_danger_and_interruptions")
+        self.assertEqual(continued["result"]["handled_interruptions"][0]["decision"], "continue_wait")
+
     def test_finish_generates_bound_role_and_measured_cost_receipts(self) -> None:
         clean = [
             frame(1, 100, {"classification": "clear", "monster": False, "danger": False, "damage": False}),

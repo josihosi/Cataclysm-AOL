@@ -2101,7 +2101,7 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             self.assertFalse(retired.token_eligible)
             connection.close()
 
-    def test_windows_feel_handoff_is_pending_until_josef_records_an_immutable_result(self) -> None:
+    def test_windows_feel_handoff_preserves_external_result_without_forging_a_machine_gate(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             connection, _scenarios, manifest_path, report_path = self.setup_registry(Path(temp_dir))
             source_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
@@ -2146,7 +2146,7 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             self.assertEqual(handoff["state"], "pending")
             self.assertNotIn("debug", json.dumps(handoff["ordinary_play"]).lower())
             self.assertFalse(final_gate_eligibility(connection)["overall_acceptance"])
-            with self.assertRaisesRegex(Exception, "only Josef"):
+            with self.assertRaisesRegex(Exception, "does not authenticate callers"):
                 record_windows_feel_judgment(
                     connection, handoff_id=handoff["handoff_id"], outcome="pass", author="automation",
                 )
@@ -2154,6 +2154,7 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
                 connection, handoff_id=handoff["handoff_id"], outcome="fail", author="Josef", notes="not coherent",
             )["handoffs"][0]
             self.assertEqual(recorded["state"], "fail")
+            self.assertFalse(recorded["judgment"]["machine_verified"])
             self.assertFalse(final_gate_eligibility(connection)["windows_feel"])
             with self.assertRaisesRegex(Exception, "immutable"):
                 record_windows_feel_judgment(
@@ -2189,7 +2190,14 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             record_windows_feel_judgment(
                 connection, handoff_id=passed_handoff["handoff_id"], outcome="pass", author="Josef",
             )
-            self.assertTrue(final_gate_eligibility(connection)["overall_acceptance"])
+            final_gates = final_gate_eligibility(connection)
+            self.assertFalse(final_gates["windows_feel"])
+            self.assertFalse(final_gates["overall_acceptance"])
+            self.assertEqual(final_gates["windows_feel_authority"], "external-non-machine-verifiable")
+            self.assertEqual(final_gates["overall_acceptance_state"], "external-owner-judgment-required")
+            self.assertIn(
+                "pass", {item["outcome"] for item in final_gates["external_windows_feel_attestations"]},
+            )
             self.assertEqual(windows_feel_handoff_status(connection)["handoffs"][0]["judgment"]["author"], "Josef")
             connection.close()
 

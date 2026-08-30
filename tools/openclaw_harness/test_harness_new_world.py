@@ -83,7 +83,7 @@ class HarnessNewWorldTest(unittest.TestCase):
                 "structural_scan_sites_considered": 1,
                 "structural_scan_candidates_sampled": 4,
                 "structural_scan_notes": ["bounded"],
-                "candidate_prefix_limit": 2,
+                "candidate_prefix_limit": 3,
                 "candidate_rows": [
                     {
                         "lead_id": f"lead-{index}",
@@ -105,7 +105,7 @@ class HarnessNewWorldTest(unittest.TestCase):
                             "watch_shared_route": [],
                         },
                     }
-                    for index in range(2)
+                    for index in range(3)
                 ],
                 "route_watch_budget_before": 8,
                 "route_watch_budget_after": 8,

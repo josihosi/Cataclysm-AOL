@@ -24,6 +24,9 @@ from startup_harness import (  # noqa: E402
     audit_structured_transition_event,
     apply_bandit_camp_supply_transform,
     apply_fixture_save_transforms,
+    derive_terminal_exit_observation_window,
+    native_save_quit_receipt,
+    observe_bound_process_exit,
     normalize_fixture_save_transforms,
     r005_source_bound_visibility_setup_receipts_from_installed_save,
     wait_for_pid_exit,
@@ -46,7 +49,10 @@ class R005NativeWaitQualificationTest(unittest.TestCase):
         scenario = self.load()
         validation = validate_manifest(scenario, path=SCENARIO_PATH)
         self.assertEqual(validation["validation"]["status"], "valid")
-        self.assertEqual(scenario["runtime_contract"]["permitted_input"], ["long_wait:1h", "press:S", "press:Y"])
+        self.assertEqual(
+            scenario["runtime_contract"]["permitted_input"],
+            ["long_wait:1h", "press:S", "press:Y", "press:q", "press:left", "press:enter"],
+        )
         self.assertIn("ordinary-overmap-route", scenario["runtime_contract"]["forbidden_input"])
         self.assertFalse(scenario["runtime_contract"]["grants_gameplay_proof"])
         self.assertEqual(scenario["fixture"], "bandit_r005_native_wait_visibility_bootstrap_v0")
@@ -71,7 +77,20 @@ class R005NativeWaitQualificationTest(unittest.TestCase):
         self.assertLess(labels.index("audit_local_crossing_and_actor_outcomes"), labels.index("wait_1_hour_for_return_report_and_camp_decision"))
         self.assertLess(labels.index("wait_1_hour_for_return_report_and_camp_decision"), labels.index("audit_return_and_camp_decision"))
         self.assertLess(labels.index("audit_return_and_camp_decision"), labels.index("open_native_save_quit_after_wait_lifecycle"))
-        self.assertEqual(scenario["post_relaunch"]["terminal_save_step_label"], "confirm_native_save_quit_after_wait_lifecycle")
+        quit_step = next(
+            step for step in scenario["steps"]
+            if step["label"] == "open_native_main_menu_quit_confirmation_after_wait_lifecycle"
+        )
+        self.assertEqual(quit_step["keys"], ["q"])
+        self.assertEqual(
+            quit_step["semantic_ui_expectation"],
+            {"intent": "main_menu_quit_confirmation", "valid_actions": ["left", "enter"]},
+        )
+        self.assertTrue(quit_step["abort_on_semantic_ui_failure"])
+        self.assertEqual(
+            scenario["post_relaunch"]["terminal_save_step_label"],
+            "confirm_native_process_exit_after_wait_lifecycle",
+        )
         self.assertTrue(all(step.get("abort_on_metadata_failure") for step in scenario["steps"] if step["kind"].startswith("audit_")))
         self.assertIn("player travel", json.dumps(scenario["evidence_contract"]).lower())
         self.assertIn("missing owner transition", scenario["evidence_contract"]["failure_rule"])
@@ -111,6 +130,57 @@ class R005NativeWaitQualificationTest(unittest.TestCase):
         process = subprocess.Popen([sys.executable, "-c", "pass"])
         self.assertTrue(wait_for_pid_exit(process.pid, 5.0))
         self.assertIsNotNone(process.poll())
+
+    def test_terminal_window_is_measured_plus_poll_uncertainty_and_ceiling_is_separate(self) -> None:
+        result = derive_terminal_exit_observation_window(
+            [60.2, 120.4, 180.7],
+            scheduling_uncertainty_seconds=0.1,
+            safety_ceiling_seconds=240.0,
+        )
+        self.assertEqual(result["status"], "within_safety_ceiling")
+        self.assertAlmostEqual(result["derived_observation_window_seconds"], 180.8)
+        exceeded = derive_terminal_exit_observation_window(
+            [180.7], scheduling_uncertainty_seconds=0.1, safety_ceiling_seconds=180.0
+        )
+        self.assertEqual(exceeded["status"], "exceeds_safety_ceiling")
+
+    @unittest.skipUnless(os.name == "posix", "POSIX process identity controls are platform-specific")
+    def test_bound_observer_rejects_wrong_command_and_never_calls_cleanup(self) -> None:
+        process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(0.2)"])
+        command = " ".join(process.args)
+        observed = observe_bound_process_exit(
+            process.pid, 2.0, expected_command="definitely-not-the-child"
+        )
+        self.assertEqual(observed["status"], "wrong_process_identity")
+        process.terminate()
+        process.wait()
+
+    def test_native_save_quit_receipt_requires_one_same_run_open_return_pair(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary_directory:
+            trace = Path(temporary_directory) / "debug.log"
+            trace.write_text(
+                "07:48:00.000 INFO : openclaw_harness_ui_trace: component=semantic_ui "
+                "event=open instance_id=\"save-quit-1\" run_id=\"run-1\" "
+                "intent=\"save_quit_confirmation\" valid_actions=[\"Y\"] "
+                "postcondition=\"save_quit_confirmation_resolved\"\n"
+                "07:48:01.000 INFO : openclaw_harness_ui_trace: component=semantic_ui "
+                "event=return instance_id=\"save-quit-1\" run_id=\"run-1\" "
+                "intent=\"save_quit_confirmation\" valid_actions=[\"Y\"] "
+                "postcondition=\"save_quit_confirmation_resolved\"\n",
+                encoding="utf-8",
+            )
+            receipt = native_save_quit_receipt(trace, 0, run_id="run-1")
+        self.assertEqual(receipt["status"], "matched")
+        self.assertEqual(receipt["pair"]["return"]["timestamp"], "07:48:01.000")
+        self.assertEqual(native_save_quit_receipt(trace, 0, run_id="wrong" )["status"], "missing_or_ambiguous")
+
+    def test_terminal_observer_captures_the_initial_command_before_any_steps(self) -> None:
+        source = (HARNESS_DIR / "startup_harness.py").read_text(encoding="utf-8")
+        capture = source.index("initial_process_command = pid_command(pid)")
+        steps = source.index("step_reports = execute_probe_steps(", capture)
+        relaunch = source.index("initial_process_command=initial_process_command", steps)
+        self.assertLess(capture, steps)
+        self.assertLess(steps, relaunch)
 
     def test_source_bound_supply_bootstrap_is_exact_and_fail_closed(self) -> None:
         fixture = json.loads(FIXTURE_PATH.read_text(encoding="utf-8"))

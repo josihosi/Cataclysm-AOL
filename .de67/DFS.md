@@ -46,6 +46,14 @@ A permitted save, quit, and relaunch is an event inside the same continuous cert
 does not create a replacement round. A binding change, replacement world or identity, diagnostic
 replay, checkpoint rollback, or segment splice cannot contribute final-certification credit.
 
+For an ordinary agent-operated playtest, a coordinator brief that selects the outcome and supplies
+or authorizes its matching validated witness charter is the execution request. A typed query is
+inspection only. The registry selection token or cockpit run receipt is separate, single-use
+technical authority bound to current source, executable, scenario, world, owner, and evidence
+ceiling. The worker may select, claim, launch, repair, and retry after revalidation without another
+human request. Human authority remains reserved only where this DFS assigns the outcome to a human,
+including Josef's Windows feel judgment.
+
 ## Project language and terminology
 
 Use the WEC terms exactly:
@@ -294,17 +302,17 @@ Implementation status:
 <!-- DE67:DFS-SLICE:BEGIN id=R-005-S001 claim=R-005 -->
 - [ ] 🔴 R-005 — No natural run has yet proved the entire required lifecycle through the
   fail-closed certification route in one bound uninterrupted round.
-  - Current gap: zero-credit runs proved route construction and native travel progress, but did not
-    establish a repeatable precondition-compatible path to the certification destination. The best
-    run reached the penultimate overmap tile; the next fresh counterexample stopped earlier on an
-    undeclared zombie attack. The proposed final-handoff defect was therefore not reproduced and
-    remains unproved.
-  - Required mechanism: first qualify a materially different natural route or geography with zero
-    credit while preserving the same world, player, ecology actors, scheduler inputs, destination,
-    lifecycle gates, and fail-closed threat handling. Only after that route reaches the destination
-    may a worker diagnose and repair a reproduced final-handoff divergence. Then start one independent
-    certification round and let its first causal divergence, rather than a prior replay hypothesis,
-    determine any further repair.
+  - Current gap: a source-bound intervention-free wait-only run now proves production dispatch,
+    shared-route advance, both ownership crossings, actor outcomes, physical return, and the
+    downstream camp decision. Its exact same-run Save and Quit receipt returns to the main menu; the
+    bound process then remains resident. No native-shutdown timestamp exists, and later cleanup has
+    zero exit credit. The superseded longer-window route therefore proves only non-exit.
+  - Required mechanism: preserve the exact receipt/PID instrumentation and every green gate through
+    camp decision. From the authoritative current-run main-menu state, issue native Quit and its
+    confirmation through the bound semantic input route, verify that the same process exits before
+    cleanup, launch a new process with the same world, player, and ecology actor identities, and audit
+    normalized persistence. After focused qualification succeeds, run one separate continuous
+    certification round; repair only a divergence that fresh evidence reproduces.
   - Proof: one natural production execution covers the complete hostile-ecology vertical slice—including departure, overmap advance, both bubble crossings, actor-level outcomes, save/quit/relaunch, return/report, and downstream camp decision—while rollback, segment splicing, diagnostic replay, fixture/scenario mutation, and replacement identities each produce a failed or invalidated certification result.
 <!-- DE67:DFS-SLICE:END id=R-005-S001 claim=R-005 -->
 
@@ -316,13 +324,15 @@ Mechanism:
   product automation owns Josef's judgment.
 - Entry point: after an automated certification pass, create a Windows ordinary-play handoff.
 - Inputs: certified build/binding reference, concise ordinary-start instructions, expected world,
-  and Josef's eventual pass/fail judgment with optional notes.
+  and Josef's eventual external pass/fail judgment with optional notes.
 - Preconditions: the automated result is visible but cannot pre-answer the feel gate. Exploratory
   Windows play may exist separately and is labeled non-final.
 - Transition: launch or package an ordinary play state without scripted proof instructions or debug
-  overlays; record Josef's explicit judgment as Windows feel evidence.
-- Postconditions: the two final gates are displayed independently; overall acceptance requires both
-  and preserves who decided each.
+  overlays; preserve an externally supplied Josef judgment as an immutable note. The local registry
+  does not authenticate its caller.
+- Postconditions: automated certification and the external Windows feel outcome are displayed
+  independently. A local author label cannot make the machine-derived `windows_feel` or
+  `overall_acceptance` result green; final owner acceptance remains an external decision.
 - Failure behavior: absent judgment remains pending; automated green cannot turn it green, and feel
   approval cannot repair automated failure.
 - Persistence/compatibility: record build/binding and platform with the judgment, while treating it
@@ -330,10 +340,19 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-006 — The Windows feel gate has no separate ordinary-play handoff and owner-authored evidence state.
-  - Code gap: current handoff mode is a scenario/probe continuation and the registry has no dedicated Josef-owned Windows feel result linked independently to certification.
-  - Required mechanism: adapt the existing handoff/report and registry surfaces to prepare ordinary Windows play and record Josef's explicit outcome without turning it into another scripted automated checklist.
-  - Proof: a certified build produces an ordinary Windows handoff; pending, pass, and fail judgments are recorded only by Josef, remain separate from automation, and overall acceptance is green only when both independent gates pass.
+<!-- DE67:DFS-SLICE:BEGIN id=R-006-S001 claim=R-006 -->
+- [ ] 🔴 R-006 — Automated certification and Josef's external Windows feel judgment are not both complete.
+  - Code gap: the ordinary certified handoff and immutable result row exist, but the store treats the
+    caller-supplied author label `Josef` as authentication and can mechanically turn combined
+    acceptance green.
+  - Required mechanism: keep the certified ordinary-play handoff and immutable external result note,
+    label the judgment as external and non-machine-verifiable, and prohibit the local row from
+    promoting either machine gate. Do not add a new identity authority without owner choice.
+  - Proof: correct-build handoff remains pending until an external result is recorded; wrong builds,
+    replay, and mutation fail; locally submitted pass and fail notes remain immutable and visible but
+    cannot make `windows_feel` or `overall_acceptance` green. Automated certification stays separate,
+    and Josef alone supplies the external product judgment.
+<!-- DE67:DFS-SLICE:END id=R-006-S001 claim=R-006 -->
 
 ### 7. Semantic harness observation and intent-aware recovery
 
@@ -372,10 +391,10 @@ Mechanism:
   gap, or causal harness defect remains fail-closed. Fixed input may reset or stage a deterministic
   footing; live play proceeds as `observe -> bound -> choose -> act -> receipt + next state`.
 - Experience: the scenario fixes authority, invariants, proof targets, and native capabilities; the
-  worker owns continuation and explicit finish. A progressing observation remains live. Every
-  continuation names its expected causal signal and a maximum derived from the mechanic, scheduler,
-  path, or measured rate. Proof, no progress, unsafe divergence, authority or binding drift, missing
-  receipts, and bound exhaustion terminate; an arbitrary observation or transport timeout does not.
+  worker owns continuation and explicit finish. A progressing observation remains live. The worker
+  may inspect, repair, change tactics, rerun, or finish after a divergence. Mechanically invalid
+  authority, binding, receipts, identity, contradictions, evidence promotion, or cleanup remain
+  fail-closed; fictional danger alone does not terminalize the task.
   The final immutable report preserves the action/observation sequence, bound, stop reason, cleanup,
   unused authority, first divergence, and contradictory evidence. A reviewed handler still requires
   deterministic recovery and inverse stale/invalid replays, replacing rather than adding key guesses.
@@ -434,30 +453,29 @@ Implementation status:
     and replacement-identity controls fail closed.
 <!-- DE67:DFS-SLICE:END id=R-008-S001 claim=R-008 -->
 <!-- DE67:DFS-SLICE:BEGIN id=R-009-S001 claim=R-009 -->
-- [ ] 🔴 R-009 — Integrated waits, performance and memory observation, and the supported-platform
-  technical witness set remain unqualified on the improved harness.
-  - Required mechanism: observe complete integrated waits at existing semantic boundaries, including
-    product game-time progress, latest transition, child-process CPU and resident memory when the host
-    exposes them, and explicit unavailable fields otherwise. Run proportionate technical witnesses
-    on macOS, Linux/WSL, and Windows against source-bound executables and the same semantic contracts.
+- [ ] 🔴 R-009 — Integrated waits, performance and memory observation, and the ordered
+  supported-platform technical witness set remain unqualified on the improved harness.
+  - Required mechanism: first exercise the shared semantic route on macOS while the related gameplay
+    and harness outcomes remain repairable. Observe product game-time progress, latest transition,
+    child-process CPU and resident memory when the host exposes them, and explicit unavailable fields
+    otherwise. After those shared outcomes settle and the source plus executable-binding inputs are
+    frozen for review, revalidate the preserved provisional build findings and run final
+    source-bound Linux/WSL and Windows compile, preflight, and runtime witnesses against the same
+    semantic contracts. A platform compile needed to diagnose shared implementation may run earlier,
+    but remains a checkpoint and must be revalidated after the freeze.
   - Proof: advancing and stalled waits are distinguishable without incidental UI text; repeated
     events remain bounded and causally readable; missing resource fields are `unavailable`, never
-    invented zero; and each platform witness records the build/runtime binding, exercised route,
-    direct result, and platform-specific limitation. Every artifact remains setup or focused
-    qualification evidence with zero continuous-final-certification credit.
+    invented zero; and each final platform witness records the frozen source/runtime binding,
+    exercised route, direct result, and platform-specific limitation. A provisional pre-freeze
+    compiler or preflight result cannot receive final platform credit. Every artifact remains setup
+    or focused qualification evidence with zero continuous-final-certification credit.
 <!-- DE67:DFS-SLICE:END id=R-009-S001 claim=R-009 -->
 <!-- DE67:DFS-SLICE:BEGIN id=R-015-S001 claim=R-015 -->
-- [ ] 🔴 R-015 — Focused lifecycle scenarios can advance past the owner boundary they intend to
-  persist before evaluating it.
-  - Code gap: scenario progression and proof-gate evaluation are independently ordered, so a valid
-    transition can occur while later time-driving actions remain queued and invalidate the owner
-    state expected by the eventual persistence audit.
-  - Required mechanism: make the declared causal boundary an incremental execution precondition and
-    stop the row at its first matching transition as specified above.
-  - Proof: a counterexample row whose target matches before a remaining wait is rejected or stops
-    before that wait; the corresponding positive row persists immediately. Wrong-run, wrong-actor,
-    and wrong-owner events do not match, while a row explicitly targeting the later owner state may
-    continue to that separately declared boundary.
+- [x] ✅ R-015 — Focused lifecycle scenarios now stop at the exact owner boundary they intend to
+  persist.
+  - Accepted evidence: `R-015-closure-001` stops a row at its first matching same-run actor and owner
+    transition before later queued work can change the state. Wrong-run, wrong-actor, and wrong-owner
+    events do not match. A separately declared later boundary can still continue to its own target.
 <!-- DE67:DFS-SLICE:END id=R-015-S001 claim=R-015 -->
 
 ### 9. One progressive cockpit interface
@@ -471,7 +489,8 @@ Mechanism:
 - Entry point: one worker call names a cockpit operation and structured arguments. Approximate WEC
   operation names may be mapped to stable implementation names without exposing transport details.
   After scenario selection, `run.open` starts a tracked playtest without requiring prior proof
-  eligibility.
+  eligibility. When the coordinator brief names a live outcome and matching validated charter, the
+  worker may obtain this technical authority and execute without human reapproval.
 - Parameters: operation, cockpit schema version, run/session identity when a game is active, and
   operation-specific arguments.
 - Inputs: the compact frontier supplied by the caller; current SQLite scenario, capability,
@@ -615,6 +634,7 @@ Implementation status:
 - [x] The game already owns every required state fact, and the LLM-intent snapshot proves that
   visibility and a compact local map can be derived from game-native reads. The wait prototype has
   fresh frame identities.
+<!-- DE67:DFS-SLICE:BEGIN id=R-012-S001 claim=R-012 -->
 - [ ] 🔴 R-012 — The cockpit has no avatar-centred, game-native observation or stable handle owner.
   - Code gap: `llm_intent.cpp` is NPC-centred and protected; current semantic frames contain only
     state/action IDs; screen/OCR, saved audits, and debug ecology views are competing partial readers
@@ -627,6 +647,7 @@ Implementation status:
     with a fresh observation. OCR/log/debug/global contradictions cannot change the frame.
     `tests/llm_intent_test.cpp` and direct NPC request/action regression checks produce unchanged
     observable output and behavior.
+<!-- DE67:DFS-SLICE:END id=R-012-S001 claim=R-012 -->
 
 ### 12. Player-intent transactions and native recovery
 
@@ -808,6 +829,10 @@ Shared mechanism and dependencies:
   or terminal worker windows. One spoke cannot color another.
 - A live playtest uses a coordinator charter, worker-controlled native play, compact immutable
   evidence journal, cited witness, mechanical validation, and separate coordinator judgment.
+  The routed coordinator brief is its execution request. Query-only inspection stays inert; a
+  current selection supplies technical run authority; missing charter bytes are coordinator or
+  repository repair; and binding drift requires fresh revalidation rather than a human permission
+  request.
   Mechanical owners retain identity, action correlation, receipts, cleanup, append-only artifacts,
   citations, contradictions, and evidence ceilings. The witness judges causal sufficiency and
   semantic equivalence; it cannot invent facts, hide contradictions, change bindings, or promote
@@ -817,35 +842,32 @@ Shared mechanism and dependencies:
 Implementation status — exactly seven gadget spokes:
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-018-S001 claim=R-018 -->
-- [ ] 🔴 R-018 — Raw bounded time passage without interruption handling has no toggleable receipt-bearing route.
-  - Proof: from compatible clean starts, a cited witness shows raw time passage reaches its declared
-    target through semantically equivalent advertised native waits and the same terminal world state
-    as primitive calls while preserving receipts, identity, cleanup, contradictions, and evidence
-    ceiling. A prompt, activity requiring interpretation, monster, stale frame, no progress, or bound
-    exhaustion stops immediately with partial progress and no guarded handling; off is primitive-only.
+- [x] ✅ R-018 — Raw bounded time passage now has a toggleable receipt-bearing route.
+  - Accepted evidence: `R-018-closure-012` preserves focused raw and primitive witnesses plus two
+    separately bound off controls. Both routes reached minute 8905 through the same native actions,
+    preserved receipts and cleanup, and failed closed when raw waiting was disabled.
 <!-- DE67:DFS-SLICE:END id=R-018-S001 claim=R-018 -->
 <!-- DE67:DFS-SLICE:BEGIN id=R-019-S001 claim=R-019 -->
-- [ ] 🔴 R-019 — Guarded time passage and the first `Keep watch` slice have no classified-safe local loop.
-  - Proof: cited witnesses from separately bound safe and unsafe starts show a toggleable `Keep
-    watch` recipe handles only declared-safe flavour/prompt interruptions and stops at its target or
-    first meaningful event, with semantically equivalent native transitions and terminal state to
-    the primitive reference and fewer measured model/tool round trips. Monsters, danger, damage,
-    unknown prompts, target crossing, stale/binding drift, no progress, exhausted derived bounds,
-    and either off switch fail closed. This slice does not wait for or prove the other spokes.
+- [x] ✅ R-019 — Guarded time passage and the first `Keep watch` slice now have a classified-safe
+  local loop.
+  - Accepted evidence: `R-019-closure-122` preserves separately bound guarded and primitive journals.
+    Both reached minute 8905 with the same five native actions and accepted cleanup. Controls reject
+    hostile starts, positive-progress misuse, binding drift, and disabled safety routes before they
+    can claim safe-interruption or gameplay credit.
 <!-- DE67:DFS-SLICE:END id=R-019-S001 claim=R-019 -->
 <!-- DE67:DFS-SLICE:BEGIN id=R-020-S001 claim=R-020 -->
-- [ ] 🔴 R-020 — Controlled camp setup lacks exact mutation, invariant, provenance, and cleanup receipts.
-  - Proof: a disposable scenario creates the declared camp composition at exact coordinates through
-    the existing setup owner, records every before/after identity and mutation, verifies resulting
-    invariants, and cleans up under the named owner. Occupied/unsafe placement, identity drift,
-    partial setup, undeclared mutation, or attempted gameplay/economy proof fails without promotion.
+- [x] ✅ R-020 — Controlled camp setup now records exact mutation, invariant, provenance, and cleanup
+  receipts.
+  - Accepted evidence: `R-020-closure-002` creates the exact disposable camp composition, records both
+    owners and declared mutations, verifies the resulting invariants, restores its own state, and
+    cleans up. Manufactured setup grants no gameplay or economy credit.
 <!-- DE67:DFS-SLICE:END id=R-020-S001 claim=R-020 -->
 <!-- DE67:DFS-SLICE:BEGIN id=R-021-S001 claim=R-021 -->
-- [ ] 🔴 R-021 — Exact-identity debug creature HP-to-zero lacks a non-ambiguous zero-credit transaction.
-  - Proof: a disposable scenario selects one exact creature handle/identity and coordinate, records
-    before/after HP and cause, sets that identity to zero, and records caller authority and cleanup.
-    Nearby/name-only ambiguity, stale identity, avatar or operation-owned ecology target, incidental
-    death, partial mutation, and any combat/survival/ecology/natural credit fail.
+- [x] ✅ R-021 — Exact-identity debug creature HP-to-zero now has a non-ambiguous zero-credit
+  transaction.
+  - Accepted evidence: `R-021-closure-009` binds one tagged zombie at `[3904,876,0]`, records its
+    change from 80 HP to 0 through `monster::set_hp`, preserves the declared cause and cleanup, and
+    awards no combat, survival, ecology, or natural-gameplay credit.
 <!-- DE67:DFS-SLICE:END id=R-021-S001 claim=R-021 -->
 <!-- DE67:DFS-SLICE:BEGIN id=R-022-S001 claim=R-022 -->
 - [x] R-022 — Exact item spawning has deterministic identity, destination, provenance, and cleanup receipts.
@@ -866,17 +888,15 @@ Implementation status — exactly seven gadget spokes:
     progress, derived-bound exhaustion, and off switches return exact partial progress.
 <!-- DE67:DFS-SLICE:END id=R-023-S001 claim=R-023 -->
 <!-- DE67:DFS-SLICE:BEGIN id=R-024-S001 claim=R-024 -->
-- [ ] 🔴 R-024 — A compact LLM-first cockpit TUI with structured local/overmap awareness has no real route.
-  - Proof: deterministic state renders stable command/field IDs, current binding/frame, toggles,
-    legal raw/guarded operations, safety gates, mission/target/progress, exact stop reason, receipt
-    drill-down, a bounded avatar-centred semantic local map, and a bounded provenance/recency-labelled
-    overmap. `KEEP WATCH`, `MAKE CAMP`, `STOCK UP`, `ZAP`, `MOVE OUT`, `EYES UP`, and `BIG MAP` are
-    aliases only; every action has an exact non-interactive equivalent and contract view. Tests cover
-    keyboard/command parity, clipping/coordinates/unknown cells, stale/error state, large-observation
-    bounds derived from measured mission needs, and structured/visual parity. A controlled recipe
-    matches direct cockpit receipts and terminal state; real roster-worker comparisons preserve
-    model/effort and derive any efficiency gate from the primitive reference. Screenshots, ANSI,
-    glyphs, prose, hidden coaching, or knowledge outside authoritative observation cannot decide.
+- [x] ✅ R-024 — The compact LLM-first cockpit TUI now has a real structured route.
+  - What changed: commits `5dba85d19c`, `1c125029e4`, `e43551556e`, `7ca261f86f`, and `f032bb48e0`
+    add deterministic projection, bounded local and overmap views, provenance, exact control
+    contracts, full semantic state, and controlled recipe parity.
+  - Accepted evidence: `R-024-closure-005` preserves matched model and effort. Two Terra/low workers
+    reached the same authoritative receipt and terminal state using structured cockpit data only.
+  - Measured result: the primitive route used three public round trips and the TUI used six. This
+    proves parity but not positive efficiency. Token cost remains unavailable. Screenshots, ANSI,
+    glyphs, prose, and hidden knowledge received no decision credit.
 <!-- DE67:DFS-SLICE:END id=R-024-S001 claim=R-024 -->
 
 ### 15. Reviewable integration and checkpoint boundary
@@ -901,20 +921,15 @@ Mechanism:
 Implementation status:
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-025-S001 claim=R-025 -->
-- [ ] 🔴 R-025 — The preserved Phase-3 frontier lacks a reviewable source-control checkpoint and
+- [x] ✅ R-025 — The preserved Phase-3 frontier now has a reviewable source-control checkpoint and
   artifact-retention boundary.
-  - Current evidence: the dev worktree contains 56 tracked status entries spanning source, tests,
-    harness, scenarios, guidance, and ledgers, with approximately 17,984 added and 878 removed lines;
-    it also exposes 906 untracked status entries, 1,684 build-log files, and 688 runtime run
-    directories. Several durable claim acceptances exist only inside this combined frontier.
-  - Required mechanism: partition completed valid work into the smallest coherent checkpoints the
-    existing diff supports, retain active work without rewriting bystanders, and record where
-    authentic run evidence remains. Do not delete evidence, manufacture a clean tree, or replay a
-    settled claim solely to improve packaging.
-  - Proof: each checkpoint maps its files and existing validation to accepted or active claims;
-    accepted source/tests and immutable evidence references remain intact; generated artifacts have
-    an explicit retain, superseded, reproducible, or active-run disposition; and every remaining
-    dirty entry is attributable to named unfinished work rather than an unbounded mixed frontier.
+  - What changed: five linear commits separate ecology behavior, native cockpit setup, the shared
+    semantic harness, retention guidance, and the recorded validation finding.
+  - Accepted evidence: `R-025-closure-001` independently matched every checkpoint to the retention
+    index, preserved accepted source and evidence references, found no tracked dirt, attributed all
+    1,563 untracked entries, and passed the narrow checkpoint preflight 4 of 4.
+  - Remaining finding: the broad harness suite still has 11 failures and 2 errors. They remain
+    explicit shared harness-owner work and provide no gameplay or acceptance credit.
 <!-- DE67:DFS-SLICE:END id=R-025-S001 claim=R-025 -->
 
 ## Competing systems and override direction
@@ -930,7 +945,7 @@ Implementation status:
 | Process/world ownership | Startup/cleanup and game process | Other probes, manual play, certification | An exclusive round lease wins for its exact PID/executable/world; unrelated processes are not killed. Conflict fails closed. |
 | Cockpit call/result | Worker and cockpit clients | Separate registry CLI, startup CLI, semantic helpers, subprocess output | `CockpitService` is the single public façade and owns only request validation/result composition. Existing component functions retain state authority. Internal tokens, offsets, keys, OCR, logs, and subprocess output never become public success facts. |
 | Scenario source and searchable facts | Cockpit scenario calls, canonical launcher, reports | Scenario JSON files, registry rebuild/reconcile, caller prose | Canonical validated scenario bytes remain source declarations. SQLite is the searchable current projection and history owner. Selection revalidates both. Caller prose cannot add facts. |
-| Scenario selection and run opening | Worker strategy and selected brief | Pure query evaluator, proof-token issuer, cockpit run authority, canonical launcher | The worker owns fit judgment and may open a tracked run from one current valid selection. The run receipt is single-use and source/executable/ownership-bound; its derived evidence ceiling is separate from proof-token eligibility and registry promotion. |
+| Scenario selection and run opening | Worker strategy and selected brief | Pure query evaluator, proof-token issuer, cockpit run authority, canonical launcher | A coordinator playtest brief plus matching validated charter requests execution. The worker owns fit judgment and may select, claim, launch, and binding-safely retry. Query alone stays inert. The run receipt is single-use and source/executable/ownership-bound; its technical authority and derived evidence ceiling are separate from human permission and registry promotion. |
 | Setup state and interventions | Scenario brief, observation adapter, report classifier | Fixture install/transforms, native debug setup, incidental world state, scenario macros | Loaded-save state or a confirmed explicit intervention wins. Required preconditions never come from incidental entities. Every intervention and macro constituent is recorded and receives no manufactured-state or behavior credit. |
 | Avatar-visible world | Cockpit observation/look and player UI | `map`, avatar/Creature visibility, creature tracker, fields/items/light/weather/time; LLM NPC snapshot; debug ecology view; OCR/screens/logs | Native game state and avatar perception alone supply cockpit visible facts. The cockpit adapter is a read-only projection. LLM-intent remains a separate protected consumer. Debug/offscreen projections and visual/log reconstruction cannot write cockpit perception. |
 | LLM-intent request and NPC behavior | NPC LLM manager, NPC state, tests | Cockpit adapter or shared-helper refactor | Keep `llm_intent` as sole owner. Cockpit code must yield completely. A neutral shared primitive is admissible only after direct unchanged-output and unchanged-behavior proof; otherwise use the harness-only adapter. |
@@ -982,7 +997,7 @@ preconditions -> authoritative owner -> transition -> observable outcome -> arti
 | `R-006` | Hand a certified Windows build to ordinary play and record Josef's judgment. | Separate certified reference and Josef-owned Windows feel record. | Automated pass cannot supply feel; exploratory play cannot supply final feel; feel pass cannot repair automation. |
 | `R-007` | Vary or remove every incidental visual/OCR input while replaying semantic completion and interruption traces. | Bound semantic events, broker decisions, postconditions, handler-registry entries, inverse replays, and zero-artifact ordinary-play evidence. | OCR, screen phrases, guessed keys, stale UI identity, unrelated transient facts, escaped paths, unbounded output, or progress-free recovery cannot affect a machine verdict. |
 | `R-008` | Qualify natural bandit and cannibal lifecycles and save/relaunch at each authoritative-owner boundary. | Independently classed focused reports with actor/owner continuity, crossing receipts, and saved-state normalization. | Synthetic ecology edits, behavior-changing stabilizers, aggregate populations, replacement identities, rollback, resume, or segment union receive no lifecycle or certification credit. |
-| `R-009` | Observe integrated waits and run source-bound semantic-harness witnesses on macOS, Linux/WSL, and Windows. | Game-time/transition/resource samples plus per-platform build/runtime bindings and direct route results. | Wall time alone, invented zero metrics, repeated-event floods, incidental HUD/OCR text, or one platform standing in for another cannot pass. |
+| `R-009` | Observe integrated waits on macOS, settle shared playtest/harness outcomes, freeze their reviewable source and binding inputs, then run final Linux/WSL and Windows compile, preflight, and semantic-harness witnesses. | Game-time/transition/resource samples plus per-platform build/runtime bindings and direct route results; preserved provisional compiler findings are revalidated after the freeze. | Wall time alone, invented zero metrics, repeated-event floods, incidental HUD/OCR text, one platform standing in for another, or a pre-freeze checkpoint receiving final platform credit cannot pass. |
 | `R-010` | Use one compact frontier to search and describe only the needed capability/scenario through one cockpit. | Public call/result transcripts and schema tests. | Public token, PID, offset, key, OCR, log, subprocess text, full manual, raw history, or unsupported caller field fails or is absent. |
 | `R-011` | Search/select an existing scenario, create/validate a no-fit scenario, and deterministically prepare its required dog. | SQLite scenario/selection/validation history, exact source/binding, and intervention receipts marked zero-credit. | Incidental dog waiting, occupied/stale placement, unrecorded macro, scenario validation as gameplay proof, or manufactured behavior credit fails. |
 | `R-012` | Observe and look from the avatar while moving one visible entity, hiding another, invalidating a stale handle, and relaunching. | Native observation frames, visibility facts, handle lifecycle, deltas, and LLM-intent regression artifacts. | Offscreen/debug truth, OCR/log/registry facts, name/marker/coordinate retargeting, or changed LLM prompt/snapshot/target/action/timing behavior fails. |
@@ -1042,6 +1057,23 @@ preconditions -> authoritative owner -> transition -> observable outcome -> arti
   precondition instead of a disproved final-handoff repair, R-022 reflects its durable zero-credit
   acceptance, and R-025 makes the already-required source-control and artifact-retention boundary an
   explicit delivery outcome without treating cleanliness, deletion, or replay as proof.
+- Owner-authorized proof-preserving trajectory: shared harness and playtest outcomes, including the
+  macOS R-009 witness, now precede reviewable source/binding freeze and final Linux/WSL plus Windows
+  certification work. Earlier compiler evidence remains an honest provisional checkpoint and must
+  be revalidated against the frozen inputs before final platform credit.
+- Owner-authorized authority reconciliation: coordinator-selected playtest briefs and validated
+  charters request ordinary agent execution; registry tokens remain technical single-use bindings,
+  not human permission. Query-only inspection is inert, charter repair and binding-safe retry remain
+  agent-owned, and only expressly human outcomes remain human. R-006 uses an external,
+  non-machine-verifiable Josef judgment because the repository has no authenticated identity owner;
+  local result rows cannot promote the final machine gates.
+- Owner-authorized strategy and R-005 reconciliation: briefs, charters, and tools now supply outcomes,
+  truthful context, useful controls, and the binding/receipt/contradiction/credit/cleanup kernel while
+  leaving diagnosis, repair, action order, and rerun strategy to the assigned agent. First divergence
+  is diagnostic, not terminal. R-005 separately records cautious, classified, or permissive handling
+  of fictional player interruptions; an exact-identity zap remains zero-credit, and only a separate
+  intervention-free natural run may qualify production bandit behavior. Prior player-coordinate
+  prompt runs remain honest zero-credit evidence but no longer drive the active route.
 - Remaining design uncertainty: the current cockpit observation/setup surfaces do not yet expose
   every safe-start fact or exact setup receipt. Each affected gadget spoke stays red until those
   authoritative surfaces exist and the named counterexamples pass.

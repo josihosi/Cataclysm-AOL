@@ -15,7 +15,7 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 
 Use `scenario_registry_cli.py` for typed scenario requests, not this control lookup. Refresh declaration projection with `rebuild` and report bindings with `reconcile` when those owners need it, then submit `registry-query` with `requirements` and `preferences` predicates. Explain the returned hard rejection or selection from its evidence, lifecycle, freshness, and proof-route fields. An unselectable result is an inert draft with `executable: false`; stop there.
 
-Only an explicit request to run the selected scenario authorizes `registry-launch <selection-token>`. That owner revalidates the token, source, route, and runtime and runs the canonical probe. Its canonical finalizer ingests the completed `probe.report.json` after accepted cleanup. Report startup and feature verdicts separately, with the report cleanup result. Use `registry-status` for registry lifecycle, verification, and history continuity; no history subcommand exists.
+A coordinator playtest brief with its matching validated charter requests execution. The query stays non-launching; `registry-launch <selection-token>` supplies single-use technical authority and revalidates the token, source, route, and runtime before the canonical probe. Its finalizer ingests `probe.report.json` only after accepted cleanup. Report startup and feature verdicts separately, with cleanup. Use `registry-status` for lifecycle, verification, and history continuity; no history subcommand exists.
 
 ## Startup / main menu
 

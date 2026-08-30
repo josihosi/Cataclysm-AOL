@@ -1,118 +1,80 @@
 ---
 name: caol-harness
-description: Query, explain, explicitly launch, and audit C-AOL harness scenarios through the authoritative registry CLI.
+description: Query, explain, launch, operate, and audit C-AOL playtests through the authoritative registry and cockpit.
 ---
 
-# C-AOL Harness Registry
+# C-AOL harness
 
-Use this project-scoped skill for a registry-backed harness scenario. The
-registry CLI is the sole owner of scenario projection, typed selection, launch
-authorization, report ingestion, and lifecycle/history inspection.
+Use the registry for scenario projection, typed selection, technical launch authority, report
+ingestion, and lifecycle history. Use the cockpit/TUI for live observation, native action, receipts,
+witness, and finish. The coordinator supplies the outcome and compact charter; the worker owns how
+to make the proof work.
 
-## Mandatory playtest mutations
+## Setup and interventions
 
-Apply the harness mutation policy to every playtest. This is durable harness
-infrastructure, not claim-specific ledger work:
+Scenario setup exists to remove irrelevant friction, not to prove gameplay. Choose mutations,
+fixtures, debug tools, or repairs that help the assigned outcome. Record every applied transform or
+intervention and give manufactured state zero feature credit. Non-combat or observer runs may
+benefit from the debug needs, temperature, stamina, cardio, clairvoyance, nightvision, cloak, or
+invisibility controls, but no blanket set is required. Verify only the setup facts the selected run
+actually depends on.
 
-- every playtest requires `DEBUG_LS` and `DEBUG_NOTEMP`;
-- a non-combat playtest additionally requires `DEBUG_STAMINA` and
-  `DEBUG_CARDIO`;
-- an observer-character playtest additionally requires `DEBUG_CLAIRVOYANCE`
-  and `DEBUG_NIGHTVISION`.
+Fictional spotting, injury, or death is gameplay evidence rather than external safety. Wait and
+movement operations expose three choices:
 
-Derive the exact set from the scenario's declared `run_class` and
-`observer_character`; do not infer it from the current ledger or from what the
-source save happens to contain. A scenario fixture must apply the derived set
-with a `player_mutations` save transform. Before launch, inspect the installed
-save and require every derived mutation to be present. A legacy scenario that
-does not declare enough information to derive and verify its set must be
-repaired before it is selected for a playtest; legacy status is not an
-exemption.
+- `stop_on_interruption` — cautious default;
+- `handle_classified_non_dangerous` — recover known flavour or harmless prompts;
+- `ignore_danger_and_interruptions` — continue through danger/interruption prompts and receipt
+  what was handled.
 
-These mutations prevent irrelevant player needs, temperature, stamina, or
-perception limits from interrupting the route under test. They are setup
-support, not feature evidence. Existing hunger, thirst, sleepiness, or
-temperature state does not invalidate external-world gameplay proof and must
-not reopen, erase, or downgrade an otherwise valid run. Do not turn those
-player-needs values into proof gates unless a scenario explicitly tests the
-player condition itself.
+The permissive choice requires no cloak, scenario permission, or supervisor approval. Cloaking may
+still be useful. Exact-identity creature zapping is allowed as a zero-credit diagnostic/setup
+intervention; it cannot prove natural route, ecology, combat, lifecycle, qualification, or
+certification behavior.
 
-## Query before launch
+## Select and launch
 
-Run the CLI from the repository root. When the scenario declarations need to
-be projected, use `rebuild`; when existing report bindings need their current
-owners recomputed, use `reconcile`:
+Translate the proof question into typed requirements, then query with:
 
 ```sh
-python3 tools/openclaw_harness/scenario_registry_cli.py rebuild
-python3 tools/openclaw_harness/scenario_registry_cli.py reconcile
+python3 tools/openclaw_harness/scenario_registry_cli.py registry-query --query-json '<request>'
 ```
 
-Before search, translate the test into observable requirements. Use existing
-capability keys when they describe the requirement. Use `declared` for fixture
-or setup facts. Use `run-verified` only when the query requires behavior that a
-previous run already proved. Submit the typed query with `registry-query`:
+Explain the candidate fit, evidence ceiling, lifecycle, binding, and readiness. Querying never
+launches. If no executable selection exists, use the returned facts to choose whether to build,
+repair, create, rebind, or deliberately run an isolated zero-credit diagnosis. Do not weaken the
+question or combine incompatible footing. A stale executable may support an explicitly isolated
+harness diagnosis only; current-product conclusions require a source-matching executable.
 
-```sh
-python3 tools/openclaw_harness/scenario_registry_cli.py registry-query --query-json '{"requirements":[{"key":"player.injured","op":"eq","value":false,"minimum_evidence":"declared"}],"preferences":[]}'
-```
-
-The query vocabulary is deliberately small: the top-level object has
-`requirements` and `preferences`; each predicate has a capability `key`, an
-operator (`eq`, `contains`, `present`, `absent`, or `range`), and an optional
-evidence floor (`declared`, `inspected`, or `run-verified`). `eq` and
-`contains` use `value`; `range` uses `minimum` and/or `maximum`.
-
-Explain the returned candidate hard results, evidence states, lifecycle and
-route evidence before proceeding. A successful selection returns a
-`selection_token`.
-
-If no executable selection exists, follow the query result's `next_action`
-when present. A current contradiction routes to one query-bound command:
-`registry-repair-bootstrap --query-id <query_id>`. The registry re-derives the
-manifest, route, red verification, original typed request, and current binding;
-do not scrape or combine those identifiers manually. This authority is not an
-ordinary selection token and the contradiction remains fail-closed until a
-repair run supersedes it. Otherwise open the inert draft, read its one
-`closest_candidate` or `create_scenario` action plus satisfied and missing
-requirements, repair one scenario declaration, then rebuild, reconcile, and
-repeat the same query. Never combine footing or weaken the query.
-
-Keep this loop concrete enough for a Luna worker: requirement, observed value,
-missing value, file to change, rebuild, and repeated query. Do not launch a
-draft. Do not describe setup-only evidence as gameplay proof.
-
-## Explicit selected launch and report
-
-For a ledger item marked `Playtest witness: required`, first read the coordinator-authored charter
-named in the live brief. Pass that JSON to the selected or detached launch with
-`--witness-charter`. The worker owns observation, native action choice, repair, rerun, and finish;
-the descriptor supplies authority plus the generic `WITNESS / FINISH` boundary only. Do not turn
-the charter into a gameplay script or load a scenario-specific proof matrix.
-
-At the honest stop condition, seal the cockpit journal with `run.witness`, then submit the smallest
-cited witness with `run.finish`. Preserve contradictions and unknowns. The finalized report binds
-the charter, scenario/source/executable/run authority, native observations/actions/receipts/deltas,
-interruptions, cleanup, ceiling, journal digest, and witness validation. Record it with
-`registry-record-witness`; coordinator judgment is a separate `registry-review-witness` event.
-Neither operation may invent absent facts or promote evidence.
-
-Do not launch from a query or from a draft. Only after an explicit request to
-run the selected scenario, invoke the returned token:
+For a selected playtest, the coordinator brief and matching validated charter are the execution
+request. The registry token is single-use technical authority, not human permission:
 
 ```sh
 python3 tools/openclaw_harness/scenario_registry_cli.py registry-launch <selection-token>
 ```
 
-`registry-launch` owns the token, source, route, and runtime revalidation and
-the canonical probe route. Its finalizer ingests the resulting
-`probe.report.json` only after accepted cleanup. Read the finalized report as
-separate startup and feature verdicts, and report its cleanup outcome.
+Launch revalidates source, executable, scenario, world, ownership, and runtime. Missing charter,
+stale binding, fixture defects, or tool defects are agent-owned repair when the outcome remains in
+scope. The worker may change strategy, repair, obtain fresh authority, and rerun without another
+human request.
 
-Inspect continuity through the existing status owner; it includes lifecycle,
-relation, verification, evidence, and retirement history. There is no separate
-history subcommand:
+## Operate and finish
+
+Observe current native state, choose actions, and preserve receipts and contradictions. A first
+divergence is a diagnostic anchor, not an automatic stop: inspect it, repair, improvise, rerun, or
+finish according to the outcome. Stop only when the claim is settled or continuation requires a
+real external decision, unavailable capability, irreversible user-data risk, binding change, or
+materially different owner outcome.
+
+At the honest boundary, seal `run.witness` and call `run.finish`. State the smallest conclusion
+supported by cited immutable evidence; do not invent facts or promote the evidence ceiling.
+`registry-record-witness` persists the witness and `registry-review-witness` records the
+coordinator's separate causal judgment.
+
+Inspect continuity with:
 
 ```sh
 python3 tools/openclaw_harness/scenario_registry_cli.py registry-status
 ```
+
+Report startup, feature outcome, contradictions, evidence ceiling, and cleanup separately.

@@ -18,11 +18,12 @@ class CockpitCaller(Protocol):
 
 
 _ALIASES = {
+    "WAIT": "game.wait",
     "KEEP WATCH": "game.keep_watch",
     "MAKE CAMP": "scenario.prepare",
     "STOCK UP": "scenario.prepare",
     "ZAP": "scenario.prepare",
-    "MOVE OUT": "game.guarded_move_relative",
+    "MOVE OUT": "game.move_relative",
     "EYES UP": "game.observe",
     "BIG MAP": "game.observe",
 }
@@ -36,6 +37,29 @@ _CONTRACTS = {
             "action": {"const": "game.act"},
             "observation_id": {"type": "string", "source": "field.frame_id"},
             "action_id": {"type": "string", "source": "advertised_actions"},
+        },
+    },
+    "game.wait": {
+        "id": "contract.game.wait.v1",
+        "required": ["action", "wait"],
+        "properties": {
+            "action": {"const": "game.wait"},
+            "wait": {"type": "object",
+                     "required": ["enabled", "target_game_minutes", "bound", "recipe",
+                                  "danger_handling"],
+                     "properties": {
+                         "master_enabled": {"type": "boolean", "default": True},
+                         "enabled": {"const": True},
+                         "target_game_minutes": {"type": "number"},
+                         "bound": {"type": "object", "required": ["maximum"]},
+                         "recipe": {"type": "array", "items": {"type": "string"}, "minItems": 1},
+                         "danger_handling": {
+                             "type": "string", "default": "stop_on_interruption",
+                             "enum": ["stop_on_interruption", "handle_classified_non_dangerous",
+                                      "ignore_danger_and_interruptions"],
+                             "hint": "Cloaking can reduce observer interruptions, but is not required.",
+                         },
+                     }},
         },
     },
     "game.keep_watch": {
@@ -69,6 +93,31 @@ _CONTRACTS = {
                                             "bound": {"type": "object", "required": ["maximum", "basis", "source", "unit"],
                                                       "properties": {"unit": {"const": "steps"}}},
                                         }},
+        },
+    },
+    "game.move_relative": {
+        "id": "contract.game.move_relative.v1",
+        "required": ["action", "move_relative"],
+        "properties": {
+            "action": {"const": "game.move_relative"},
+            "move_relative": {"type": "object",
+                              "required": ["enabled", "offset_ms", "bound", "danger_handling"],
+                              "properties": {
+                                  "master_enabled": {"type": "boolean", "default": True},
+                                  "enabled": {"const": True},
+                                  "offset_ms": {"type": "array", "items": {"type": "integer"},
+                                                "length": 2, "nonzero": True},
+                                  "bound": {"type": "object",
+                                            "required": ["maximum", "basis", "source", "unit"],
+                                            "properties": {"unit": {"const": "steps"}}},
+                                  "danger_handling": {
+                                      "type": "string", "default": "stop_on_interruption",
+                                      "enum": ["stop_on_interruption",
+                                               "handle_classified_non_dangerous",
+                                               "ignore_danger_and_interruptions"],
+                                      "hint": "Cloaking can reduce observer interruptions, but is not required.",
+                                  },
+                              }},
         },
     },
     "scenario.prepare": {
@@ -272,7 +321,8 @@ def render_state(observation: Mapping[str, Any], status: Mapping[str, Any], last
     }
     final = status.get("final") if isinstance(status.get("final"), Mapping) else {}
     stop_reason = str(final.get("stop_reason", ""))
-    terminal = str(status.get("state", "active")) != "active" or bool(stop_reason)
+    status_state = str(status.get("state", "unavailable"))
+    terminal = None if status_state == "unavailable" else status_state != "active" or bool(stop_reason)
     mission = status.get("continuation") if isinstance(status.get("continuation"), Mapping) else \
               observation.get("continuation")
     target = {
@@ -281,12 +331,14 @@ def render_state(observation: Mapping[str, Any], status: Mapping[str, Any], last
     }
     result = dict(last_result or {})
     fields = [
-        {"id": "field.binding_id", "value": str(status.get("binding_id", ""))},
+        {"id": "field.binding_id", "value": (
+            str(status["binding_id"]) if status.get("binding_id") else {"state": "unavailable"}
+        )},
         {"id": "field.frame_id", "value": str(observation.get("observation_id", ""))},
         {"id": "field.run_id", "value": str(observation.get("run_id", status.get("run_id", "")))},
         {"id": "field.toggles", "value": _value_or_unavailable(observation.get("toggles"))},
         {"id": "field.safety", "value": safety},
-        {"id": "field.terminal", "value": {"terminal": terminal, "state": str(status.get("state", "active"))}},
+        {"id": "field.terminal", "value": {"terminal": terminal, "state": status_state}},
         {"id": "field.stop_reason", "value": {"state": "available" if stop_reason else "unavailable", "reason": stop_reason}},
         {"id": "field.progress", "value": _value_or_unavailable(observation.get("delta"))},
         {"id": "field.receipt", "value": _receipt_drilldown(compact_log)},
@@ -313,6 +365,14 @@ class CockpitTui:
     observation: Dict[str, Any] | None = None
     last_result: Dict[str, Any] | None = None
 
+    def _render_with_status(self, status: Mapping[str, Any]) -> Dict[str, Any]:
+        if status.get("ok") is True and isinstance(status.get("result"), Mapping):
+            return render_state(self.observation or {}, status["result"], self.last_result)
+        self.last_result = dict(status)
+        return render_state(
+            self.observation or {}, {"state": "unavailable"}, self.last_result,
+        )
+
     def refresh(self) -> Dict[str, Any]:
         observed = self.service.call({"action": "game.observe"})
         status = self.service.call({"action": "run.status"})
@@ -321,8 +381,7 @@ class CockpitTui:
             self.state = _render_error(self.last_result)
             return self.state
         self.observation = dict(observed["result"])
-        status_result = status.get("result", {}) if status.get("ok") is True else {}
-        self.state = render_state(self.observation, status_result, self.last_result)
+        self.state = self._render_with_status(status)
         return self.state
 
     def dispatch(self, command_id: str) -> Dict[str, Any]:
@@ -347,10 +406,10 @@ class CockpitTui:
             if isinstance(next_observation, Mapping):
                 self.observation = dict(next_observation)
                 status = self.service.call({"action": "run.status"})
-                self.state = render_state(self.observation, status.get("result", {}), self.last_result)
+                self.state = self._render_with_status(status)
             else:
                 status = self.service.call({"action": "run.status"})
-                self.state = render_state(self.observation, status.get("result", {}), self.last_result)
+                self.state = self._render_with_status(status)
             return self.last_result
         self.last_result = {"ok": False, "error": "unknown_command", "command_id": command_id}
         if self.observation is not None:
@@ -381,5 +440,5 @@ class CockpitTui:
         }
         self.last_result = self.service.call(request)
         status = self.service.call({"action": "run.status"})
-        self.state = render_state(self.observation, status.get("result", {}), self.last_result)
+        self.state = self._render_with_status(status)
         return self.last_result

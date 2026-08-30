@@ -34,6 +34,49 @@ class QuitConfirmationSemanticTest(unittest.TestCase):
             "confirm_native_process_exit_after_route_arrival",
         )
 
+    def test_r005_moves_persistence_audit_behind_bound_main_menu_exit(self) -> None:
+        scenario_path = Path(__file__).resolve().parent / "scenarios" / (
+            "bandit.r005_continuous_hostile_ecology_certification.json"
+        )
+        scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
+        self.assertEqual(
+            scenario["runtime_contract"]["permitted_input"][-3:],
+            ["press:q", "press:left", "press:enter"],
+        )
+        initial_steps = {str(step["label"]): step for step in scenario["steps"]}
+        self.assertEqual(
+            initial_steps["open_native_main_menu_quit_confirmation"]["keys"],
+            ["q"],
+        )
+        self.assertEqual(
+            initial_steps["open_native_main_menu_quit_confirmation"]["semantic_ui_expectation"],
+            {"intent": "main_menu_quit_confirmation", "valid_actions": ["left", "enter"]},
+        )
+        self.assertEqual(
+            initial_steps["open_native_main_menu_quit_confirmation"]["checkpoint_evidence"],
+            {"classification": "incidental_lifecycle_observation", "authoritative_owner": "bound_semantic_ui"},
+        )
+        self.assertTrue(initial_steps["open_native_main_menu_quit_confirmation"]["abort_on_semantic_ui_failure"])
+        self.assertEqual(
+            initial_steps["confirm_native_process_exit_after_camp_decision"]["keys"],
+            ["left", "enter"],
+        )
+        self.assertEqual(
+            initial_steps["confirm_native_process_exit_after_camp_decision"]["checkpoint_evidence"],
+            {"classification": "incidental_lifecycle_observation", "authoritative_owner": "post_relaunch_lifecycle"},
+        )
+        self.assertEqual(
+            scenario["post_relaunch"]["terminal_save_step_label"],
+            "confirm_native_process_exit_after_camp_decision",
+        )
+        post_labels = [str(step["label"]) for step in scenario["post_relaunch"]["steps"]]
+        self.assertEqual(post_labels[0], "post_relaunch_gameplay_hud")
+        for label in ("relaunch_and_bubble_crossing_in", "return_report", "camp_decision"):
+            self.assertIn(label, post_labels)
+        self.assertNotIn("relaunch_and_bubble_crossing_in", initial_steps)
+        self.assertNotIn("return_report", initial_steps)
+        self.assertNotIn("camp_decision", initial_steps)
+
     def write_trace(self, root: Path, body: str) -> Path:
         path = root / "feature.debug.log"
         path.write_text(body, encoding="utf-8")

@@ -44,7 +44,7 @@ from playtest_witness import (
 )
 
 
-SCHEMA_VERSION = 20
+SCHEMA_VERSION = 21
 Migration = Tuple[int, str, Callable[[sqlite3.Connection], None]]
 
 
@@ -206,7 +206,7 @@ class RegistryStoredQueryEvaluation:
 
 @dataclass(frozen=True)
 class RegistryQueryExecution:
-    """The append-only audit result of a non-executing registry query."""
+    """A non-executing query result that may include one bound technical run token."""
 
     query_id: str
     query_sha256: str
@@ -1101,6 +1101,9 @@ def build_registry_query_candidate_snapshot(
         certification_retry = (
             declaration.get("name") in {
                 "bandit.r005_continuous_hostile_ecology_certification",
+                "bandit.r005_natural_route_qualification",
+                "bandit.r005_native_waypoint_observation",
+                "bandit.r005_native_wait_qualification",
                 "r018.raw_wait_acceptance_mcw",
                 "r019.keep_watch_meaningful_event_bootstrap_mcw",
                 "r019.keep_watch_acceptance_mcw",
@@ -1299,9 +1302,15 @@ def _first_run_certification_route(
             facts.get("capabilities.bandit.r005", {}).get("value") == "continuous_hostile_ecology_lifecycle"
             and facts.get("capabilities.bandit.r005.prerequisites", {}).get("value") == ["R-001", "R-002", "R-004"]
         )
+    elif name == "bandit.r005_natural_route_qualification":
+        valid = facts.get("capabilities.bandit.r005.route_qualification", {}).get("value") == \
+                "observed_x144_y29_source_bound_zero_credit_destination_arrival"
     elif name == "bandit.r005_safe_wait_observation":
         valid = facts.get("capabilities.bandit.r005.safe_wait_observation", {}).get("value") == \
                 "zero_credit_preserved_native_safe_mode_off_route_and_wait"
+    elif name == "bandit.r005_native_wait_qualification":
+        valid = facts.get("capabilities.bandit.r005.native_wait_qualification", {}).get("value") == \
+                "source_bound_native_wait_only_structural_outing_lifecycle"
     elif name == "r013.cockpit_transaction_bootstrap_mcw":
         valid = facts.get("capabilities.r013.cockpit_transaction_bootstrap", {}).get("value") == \
                 "public_native_wait_and_advertised_activity_ignore_recovery"
@@ -2519,7 +2528,7 @@ def execute_registry_query(
     include_lifecycle_states: Sequence[str] = (),
     drafts_root: Optional[Path] = None,
 ) -> RegistryQueryExecution:
-    """Audit a fixed query and issue one bound token or a deterministic inert draft."""
+    """Audit a fixed query and issue one technical token or a deterministic inert draft."""
     request_json = _query_request_json(request)
     query_sha256 = hashlib.sha256(request_json.encode("utf-8")).hexdigest()
     query_id = _identity("caol-scenario-query-v1", query_sha256)
@@ -2539,6 +2548,7 @@ def execute_registry_query(
     if selected is not None and (route is None or selected_name in {
             "bandit.r005_continuous_hostile_ecology_certification",
             "bandit.r005_safe_wait_observation",
+            "bandit.r005_native_wait_qualification",
             "r018.raw_wait_acceptance_mcw",
             "r019.keep_watch_meaningful_event_bootstrap_mcw",
             "r019.keep_watch_off_interruption_closure057_bootstrap_mcw",
@@ -9065,9 +9075,10 @@ def issue_wec_authority(
 ) -> Dict[str, str]:
     """Persist non-final WEC authority before execution.
 
-    Final authority is intentionally absent from this public API.  It is issued
-    only by ``create_certification_round`` after that owner has reloaded a
-    current registry selection token and canonical launch facts.
+    Automated certification authority is intentionally absent from this public
+    API.  It is issued only by ``create_certification_round`` after that owner
+    has reloaded a current registry selection token and canonical launch facts.
+    Windows feel remains an external, non-machine-verifiable attestation.
     """
     from wec_evidence import WEC_CLASS_SET
     if evidence_class not in WEC_CLASS_SET or not run_id.strip() or not binding_id.strip():
@@ -9075,7 +9086,7 @@ def issue_wec_authority(
     if evidence_class == "diagnostic replay":
         raise ScenarioRegistryStoreError("diagnostic replay cannot create registry authority")
     if evidence_class in {"automated continuous-round certification", "Windows feel evidence"}:
-        raise ScenarioRegistryStoreError("final-gate authority is registry-owned and cannot be caller-issued")
+        raise ScenarioRegistryStoreError("final-gate authority cannot be caller-issued")
     if len(source_sha256) != 64 or any(char not in "0123456789abcdef" for char in source_sha256.lower()):
         raise ScenarioRegistryStoreError("WEC source SHA-256 must be a hexadecimal digest")
     existing = connection.execute(
@@ -9238,7 +9249,7 @@ def prepare_windows_feel_handoff(
 def windows_feel_handoff_status(
     connection: sqlite3.Connection, handoff_id: Optional[str] = None,
 ) -> Dict[str, Any]:
-    """Display pending/pass/fail human evidence without exposing probe instructions."""
+    """Display the immutable external owner note without claiming caller authentication."""
     where, arguments = ("", ()) if handoff_id is None else (" WHERE handoff.handoff_id = ?", (str(handoff_id),))
     rows = connection.execute(
         "SELECT handoff.*, judgment.outcome, judgment.author, judgment.notes, judgment.recorded_at AS judged_at "
@@ -9260,6 +9271,8 @@ def windows_feel_handoff_status(
             "judgment": None if outcome == "pending" else {
                 "author": str(row["author"]), "outcome": outcome, "notes": str(row["notes"]),
                 "recorded_at": str(row["judged_at"]),
+                "authority": "external-owner-attestation",
+                "machine_verified": False,
             },
         })
     if handoff_id is not None and not handoffs:
@@ -9270,10 +9283,12 @@ def windows_feel_handoff_status(
 def record_windows_feel_judgment(
     connection: sqlite3.Connection, *, handoff_id: str, outcome: str, author: str, notes: str = "",
 ) -> Dict[str, Any]:
-    """Append Josef's one-way feel judgment; no automation can alter or repair it."""
+    """Append one immutable external Josef-labelled note without authenticating its caller."""
     normalized_outcome = str(outcome).strip().lower()
     if normalized_outcome not in {"pass", "fail"} or str(author).strip() != "Josef":
-        raise ScenarioRegistryStoreError("only Josef may record a Windows feel pass or fail judgment")
+        raise ScenarioRegistryStoreError(
+            "Windows feel notes use the Josef owner label; the local registry does not authenticate callers"
+        )
     with immediate_transaction(connection):
         handoff = connection.execute(
             "SELECT certification_verification_id FROM windows_feel_handoff WHERE handoff_id = ?", (str(handoff_id),)
@@ -9297,12 +9312,15 @@ def record_windows_feel_judgment(
 
 
 def final_gate_eligibility(connection: sqlite3.Connection) -> Dict[str, Any]:
-    """Derive the two final gates from immutable verification details only."""
+    """Derive machine gates without authenticating the external Windows feel decision."""
     result = {
         "automated_certification": False,
         "windows_feel": False,
+        "windows_feel_authority": "external-non-machine-verifiable",
+        "external_windows_feel_attestations": [],
         "authoritative_verification_ids": [],
         "overall_acceptance": False,
+        "overall_acceptance_state": "automated-certification-required",
     }
     rows = connection.execute(
         "SELECT verification.verification_id, verification.proof_status, verification.details_json, "
@@ -9319,13 +9337,18 @@ def final_gate_eligibility(connection: sqlite3.Connection) -> Dict[str, Any]:
     for row in connection.execute(
             "SELECT handoff.handoff_id, handoff.certification_verification_id, judgment.outcome "
             "FROM windows_feel_handoff AS handoff JOIN windows_feel_judgment AS judgment "
-            "ON judgment.handoff_id = handoff.handoff_id WHERE judgment.outcome = 'pass'"):
+            "ON judgment.handoff_id = handoff.handoff_id ORDER BY judgment.recorded_at, handoff.handoff_id"):
         try:
             _eligible_certification_verification(connection, str(row["certification_verification_id"]))
         except ScenarioRegistryStoreError:
             continue
-        result["windows_feel"] = True
-    result["overall_acceptance"] = result["automated_certification"] and result["windows_feel"]
+        result["external_windows_feel_attestations"].append({
+            "handoff_id": str(row["handoff_id"]),
+            "outcome": str(row["outcome"]),
+            "machine_verified": False,
+        })
+    if result["automated_certification"]:
+        result["overall_acceptance_state"] = "external-owner-judgment-required"
     return result
 
 

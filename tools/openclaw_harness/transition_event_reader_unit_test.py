@@ -410,6 +410,74 @@ class TransitionEventReaderTest(unittest.TestCase):
         self.assertEqual(result["status"], "green")
         self.assertEqual(result["gates"][0]["expectations"][0]["event_references"][0]["sequence"], 2)
 
+    def test_artifact_only_gate_does_not_consume_later_local_handoff(self):
+        dispatch = event(
+            1, domain="bandit_live_world", transition="active_sortie_dispatch",
+            simulation_owner="abstract", actor_ids=[4, 5], handoff_epoch=0,
+        )
+        local_handoff = event(
+            2, domain="bandit_live_world", transition="local_pair_handoff",
+            simulation_owner="local", actor_ids=[4, 5], handoff_epoch=1,
+        )
+        gates = [
+            {
+                "id": "dispatch", "boundary_step": "dispatch", "predecessors": [],
+                "expectations": [{"kind": "structured_event", "predicate": {
+                    "domain": "bandit_live_world", "transition": "active_sortie_dispatch",
+                    "outcome": "committed", "simulation_owner": "abstract",
+                    "handoff_epoch": 0,
+                    "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids"],
+                }}],
+            },
+            {
+                "id": "shared_route", "boundary_step": "shared_route", "predecessors": ["dispatch"],
+                "expectations": [{"kind": "saved_artifact", "predicate": {
+                    "same_run": True, "artifact_kind": "route_audit",
+                }}],
+            },
+            {
+                # The audit which verifies the abstract route already observed
+                # the local receipt; this gate must own the same boundary's
+                # event delta, not wait for a later duplicate observation.
+                "id": "local_handoff", "boundary_step": "shared_route", "predecessors": ["shared_route"],
+                "expectations": [{"kind": "structured_event", "predicate": {
+                    "domain": "bandit_live_world", "transition": "local_pair_handoff",
+                    "outcome": "committed", "simulation_owner": "local",
+                    "handoff_epoch": 1,
+                    "continuity_fields": ["site_id", "operation_id", "generation", "actor_ids"],
+                }}],
+            },
+        ]
+        watermarks = {
+            "dispatch": {"last_sequence": 1, "byte_offset": 100, "run_id": "run-a", "step_index": 1},
+            # The local receipt is already present by the later artifact audit.
+            "shared_route": {"last_sequence": 2, "byte_offset": 200, "run_id": "run-a", "step_index": 2},
+        }
+        artifact = {
+            "artifact_kind": "route_audit", "run_id": "run-a", "producer_step_index": 2,
+        }
+        result = evaluate_structured_proof_gates(
+            gates, events=[dispatch, local_handoff], watermarks=watermarks,
+            saved_artifacts=[artifact], run_id="run-a",
+        )
+
+        self.assertEqual(result["status"], "green")
+        self.assertEqual(result["gates"][1]["event_range"], {
+            "sequence_start_exclusive": 1, "sequence_end_inclusive": 1,
+            "byte_start": 100, "byte_end_exclusive": 100,
+        })
+        handoff_refs = result["gates"][2]["expectations"][0]["event_references"]
+        self.assertEqual(handoff_refs, [{"sequence": 2, "byte_start": None, "byte_end": None}])
+
+        stale_handoff = {**local_handoff, "sequence": 1}
+        delayed_dispatch = {**dispatch, "sequence": 2}
+        stale = evaluate_structured_proof_gates(
+            gates, events=[stale_handoff, delayed_dispatch], watermarks=watermarks,
+            saved_artifacts=[artifact], run_id="run-a",
+        )
+        self.assertEqual(stale["gates"][2]["status"], "red")
+        self.assertEqual(stale["gates"][2]["expectations"][0]["event_references"], [])
+
     def test_cross_gate_continuity_carries_stable_actor_identity_to_saved_return(self):
         handoff = event(
             1,

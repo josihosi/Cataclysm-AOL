@@ -1,0 +1,33 @@
+{
+  "claim": "A fresh, disposable, zero-credit R-005 qualification can reach [140,31,0] through the selected direct native [140,41,0] to [140,31,0] corridor in the unchanged McWilliams world, without undeclared hostile handling or drift of the player, ecology actors, scheduler inputs, lifecycle gates, or destination.",
+  "material_proof": "One separately selected run binds the preserved bandit_r005_natural_hostile_ecology_v0 world, player, ecology actors, scheduler inputs, lifecycle gates, source, executable, and destination before ordinary native overmap travel on the selected corridor. It records the native constructed corridor, a bound terminal arrival receipt at [140,31,0], the saved-world arrival artifact, report ingestion, contradictions, and accepted cleanup. This run has zero certification credit.",
+  "material_contradiction": [
+    "a preserved-binding preflight finds a changed world, player, ecology actor, scheduler input, destination, or lifecycle gate",
+    "the selected direct native corridor cannot be constructed or completed by ordinary native overmap routing",
+    "an undeclared hostile prompt, combat action, replacement identity, scheduler change, destination change, or lifecycle drift occurs before arrival",
+    "the run cannot reach [140,31,0] with a bound native arrival receipt and saved-world artifact",
+    "ingestion or cleanup is not accepted"
+  ],
+  "already_accepted_evidence": [
+    "Current-bound failed-corridor reports 2833345f…9295, 8c0429c5…6beec, and 13591bbd…48f82 each preserve a no-response hostile boundary and accepted cleanup under c150f60a…03ec3.",
+    "Observation report 40b7e2fa…8903b, bound to c150f60a…03ec3, records the direct [140,41,0] to [140,31,0] native planned corridor. Structured comparison found no prohibited overlap with all three preserved failures."
+  ],
+  "current_uncertainty": "The selected corridor has only been previewed. Real travel must independently settle destination arrival or its first causal divergence.",
+  "forbidden_shortcuts": [
+    "diagnostic replay",
+    "checkpoint rollback",
+    "segment splicing",
+    "raw-save rewriting",
+    "debug ecology edits",
+    "combat handling",
+    "undeclared hostile response",
+    "treating preview evidence as travel or certification proof",
+    "starting certification from this authority"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch when fresh selection or source-matching executable binding is absent",
+    "after selection, stop at the first binding drift, route-construction failure, undeclared hostile prompt, unsafe interaction, missing arrival receipt, ingestion failure, or cleanup failure",
+    "after qualified arrival, return the bound result to the coordinator; certification requires separate fresh authority"
+  ],
+  "requested_evidence_ceiling": "zero-credit"
+}

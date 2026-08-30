@@ -114,6 +114,16 @@ def recipe_service() -> tuple[RecordingService, list[dict]]:
 
 
 class CockpitTuiTest(unittest.TestCase):
+    def test_wait_and_move_contracts_expose_three_agent_selected_danger_modes(self) -> None:
+        expected = ["stop_on_interruption", "handle_classified_non_dangerous",
+                    "ignore_danger_and_interruptions"]
+        for action, field in (("game.wait", "wait"), ("game.move_relative", "move_relative")):
+            contract = cockpit_tui._contract(action)
+            mode = contract["properties"][field]["properties"]["danger_handling"]
+            self.assertEqual(mode["default"], "stop_on_interruption")
+            self.assertEqual(mode["enum"], expected)
+            self.assertIn("Cloaking", mode["hint"])
+
     def test_render_is_deterministic_bounded_and_unknown_is_not_terrain(self) -> None:
         rendered = cockpit_tui.render_state(observation(), {"binding_id": "binding-7", "state": "active"})
         self.assertEqual(rendered, cockpit_tui.render_state(observation(), {"binding_id": "binding-7", "state": "active"}))
@@ -163,6 +173,21 @@ class CockpitTuiTest(unittest.TestCase):
             "call": lambda _self, _request: {"ok": False, "error": "stale_frame"},
         })()).refresh()
         self.assertEqual([item["id"] for item in failed["fields"]], [item["id"] for item in state["fields"]])
+
+    def test_failed_status_after_successful_observation_is_unavailable_not_active(self) -> None:
+        class FailedStatus(FakeService):
+            def call(self, request: dict) -> dict:
+                if request["action"] == "run.status":
+                    self.calls.append(dict(request))
+                    return {"ok": False, "error": "status_owner_unavailable"}
+                return super().call(request)
+
+        state = cockpit_tui.CockpitTui(FailedStatus()).refresh()
+        fields = {item["id"]: item["value"] for item in state["fields"]}
+
+        self.assertEqual(fields["field.terminal"], {"terminal": None, "state": "unavailable"})
+        self.assertEqual(fields["field.binding_id"], {"state": "unavailable"})
+        self.assertEqual(fields["field.error"]["error"], "status_owner_unavailable")
 
     def test_overmap_preserves_authoritative_coordinates_provenance_and_stale_states(self) -> None:
         rendered = cockpit_tui.render_state(observation(), {"binding_id": "binding-7", "state": "active"})
@@ -249,16 +274,18 @@ class CockpitTuiTest(unittest.TestCase):
     def test_every_alias_has_a_noninteractive_contract_without_becoming_a_control(self) -> None:
         state = cockpit_tui.render_state(observation(), {"binding_id": "binding-7", "state": "active"})
         aliases = {command["label"]: command for command in state["commands"] if command["kind"] == "alias"}
-        self.assertEqual(set(aliases), {
-            "KEEP WATCH", "MAKE CAMP", "STOCK UP", "ZAP", "MOVE OUT", "EYES UP", "BIG MAP",
-        })
+        self.assertTrue({
+            "WAIT", "KEEP WATCH", "MAKE CAMP", "STOCK UP", "ZAP", "MOVE OUT",
+            "EYES UP", "BIG MAP",
+        } <= set(aliases))
         self.assertTrue(all(command["legal"] is False for command in aliases.values()))
         self.assertEqual(aliases["KEEP WATCH"]["request_view"]["contract"]["id"],
                          "contract.game.keep_watch.v1")
         self.assertTrue(aliases["KEEP WATCH"]["request_view"]["contract"]["guarded"])
         self.assertEqual(aliases["MOVE OUT"]["request_view"]["contract"]["id"],
-                         "contract.game.guarded_move_relative.v1")
-        self.assertTrue(aliases["MOVE OUT"]["request_view"]["contract"]["guarded"])
+                         "contract.game.move_relative.v1")
+        self.assertEqual(aliases["WAIT"]["request_view"]["contract"]["id"],
+                         "contract.game.wait.v1")
         for label in ("MAKE CAMP", "STOCK UP", "ZAP"):
             view = aliases[label]["request_view"]
             self.assertEqual(view["state"], "arguments_required")

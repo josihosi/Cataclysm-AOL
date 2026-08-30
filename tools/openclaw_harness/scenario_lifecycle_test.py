@@ -143,8 +143,11 @@ class ScenarioLifecycleTest(unittest.TestCase):
                 self.assertEqual(final_gate_eligibility(connection), {
                     "automated_certification": False,
                     "windows_feel": False,
+                    "windows_feel_authority": "external-non-machine-verifiable",
+                    "external_windows_feel_attestations": [],
                     "authoritative_verification_ids": [],
                     "overall_acceptance": False,
+                    "overall_acceptance_state": "automated-certification-required",
                 })
             finally:
                 connection.close()

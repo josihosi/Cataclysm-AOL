@@ -386,6 +386,56 @@ def _current_repair_binding(declaration: Mapping[str, Any]) -> Mapping[str, Any]
     return _current_bootstrap_revalidation_facts(declaration)
 
 
+def _current_source_executable_readiness(
+    *,
+    isolated_harness_diagnosis: bool = False,
+) -> Mapping[str, Any]:
+    """Observe one actionable source/executable status without launching gameplay."""
+    try:
+        executable = startup_harness.detect_executable()
+    except SystemExit as exc:
+        return {
+            "status": "build_required",
+            "reason": "runnable_executable_absent",
+            "next_action": (
+                "build or select a source-matching executable, then repeat the same registry query"
+            ),
+            "evidence_ceiling": "none until source-matching executable revalidation",
+            "comparison_error": str(exc),
+        }
+    return startup_harness.executable_source_readiness(
+        executable,
+        isolated_harness_diagnosis=isolated_harness_diagnosis,
+    )
+
+
+def _apply_source_readiness_to_query(
+    result: Mapping[str, Any],
+    readiness: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Put the cheap prerequisite ahead of a query-bound repair authority."""
+    routed = dict(result)
+    action = routed.get("next_action")
+    if not isinstance(action, Mapping) or action.get("kind") != "repair_current_contradiction":
+        return routed
+    routed["source_executable_readiness"] = dict(readiness)
+    status = str(readiness.get("status", ""))
+    if status == "ready":
+        return routed
+    routed["next_action"] = {
+        "kind": (
+            "isolated_harness_diagnosis"
+            if status == "provisional_diagnosis_allowed"
+            else "build_or_select_source_matching_executable"
+        ),
+        "reason": str(readiness.get("reason", "source_executable_readiness_unproved")),
+        "action": str(readiness.get("next_action", "")),
+        "evidence_ceiling": str(readiness.get("evidence_ceiling", "none")),
+        "after_readiness": dict(action),
+    }
+    return routed
+
+
 def _default_scenarios_root() -> Path:
     return repository_root() / "tools" / "openclaw_harness" / "scenarios"
 
@@ -1064,12 +1114,12 @@ def build_parser() -> argparse.ArgumentParser:
     )
     windows_status = commands.add_parser(
         "windows-feel-status",
-        help="display pending, pass, or fail Josef-owned Windows feel results",
+        help="display pending or externally attested Windows feel results",
     )
     windows_status.add_argument("handoff_id", nargs="?")
     windows_judgment = commands.add_parser(
         "record-windows-feel",
-        help="record Josef's explicit Windows ordinary-play pass or fail judgment",
+        help="store an external Josef-labelled result; local caller identity is not authenticated",
     )
     windows_judgment.add_argument("handoff_id")
     windows_judgment.add_argument("--outcome", required=True, choices=("pass", "fail"))
@@ -1099,6 +1149,14 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("quarantined", "retired"),
         default=[],
         help="include inspect-only lifecycle state; repeated values are accepted",
+    )
+    query.add_argument(
+        "--isolated-harness-diagnosis",
+        action="store_true",
+        help=(
+            "route a stale current contradiction only to a provisional harness-only "
+            "diagnosis; no playtest outcome authority is issued"
+        ),
     )
     status = commands.add_parser("registry-status", help="inspect registry lifecycle, relation, and retirement history")
     status.add_argument(
@@ -1432,7 +1490,7 @@ def _witness_launch_environment(args: argparse.Namespace) -> Dict[str, str]:
 
 
 def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path) -> int:
-    """Start an unclaimed selected live session with stdin owned by the bridge."""
+    """Start a brief-requested session while the bridge preserves the technical claim."""
     session_dir = Path(args.session_dir).resolve()
     if session_dir.exists():
         _write_result({"ok": False, "command": args.command,
@@ -1490,7 +1548,7 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
         "ok": True, "command": args.command, "registry": str(registry_path),
         "selection_token": selection.token_id, "session_dir": str(session_dir),
         "binding_id": bridge_binding_id, "bridge": bridge_receipt,
-        "authority": "selection token remains unclaimed until the canonical child launch",
+        "authority": "technical run token remains unclaimed until the canonical child launch",
     })
     return 0
 
@@ -1856,11 +1914,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 }
             elif args.command == "registry-query":
                 request = parse_registry_query_request(_load_query_request(args))
-                result = asdict(execute_registry_query(
+                result = _apply_source_readiness_to_query(asdict(execute_registry_query(
                     connection,
                     request,
                     include_lifecycle_states=tuple(args.include_state),
                     drafts_root=registry_path.parent / "drafts",
+                )), _current_source_executable_readiness(
+                    isolated_harness_diagnosis=bool(args.isolated_harness_diagnosis),
                 ))
             elif args.command == "registry-bootstrap":
                 runtime_binding = startup_harness.build_runtime_binding(
@@ -1877,6 +1937,21 @@ def main(argv: Sequence[str] | None = None) -> int:
                     runtime_binding=runtime_binding,
                 ))
             elif args.command == "registry-repair-bootstrap":
+                readiness = _current_source_executable_readiness()
+                if readiness.get("status") != "ready":
+                    result = {
+                        "accepted": False,
+                        "reason": "source_matching_executable_required",
+                        "source_executable_readiness": dict(readiness),
+                        "next_action": str(readiness.get("next_action", "")),
+                    }
+                    _write_result({
+                        "ok": True,
+                        "command": args.command,
+                        "registry": str(registry_path),
+                        "result": result,
+                    })
+                    return 0
                 if args.query_id:
                     action = registry_query_repair_action(connection, args.query_id)
                     identifiers = action["required_identifiers"]

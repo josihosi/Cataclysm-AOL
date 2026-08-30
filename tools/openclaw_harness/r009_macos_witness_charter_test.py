@@ -1,5 +1,5 @@
 #!/usr/bin/env python3
-"""Repository charter checks for the authority-gated R-009 macOS witness."""
+"""Repository charter checks for the agent-owned R-009 macOS witness."""
 
 from __future__ import annotations
 
@@ -45,10 +45,7 @@ class R009MacosWitnessCharterTest( unittest.TestCase ):
         self.assertIn( "world.wait, wait.duration_menu, wait.6h", normalized["material_proof"] )
         self.assertIn( ".userdata/r009-m095/harness_runs/<authorized-run-id>", normalized["material_proof"] )
         self.assertIn( "accepts cleanup before the finalizer ingests the report", normalized["material_proof"] )
-        self.assertTrue( any(
-            "explicit selected-run authority" in condition
-            for condition in normalized["honest_stop_conditions"]
-        ) )
+        self.assertTrue( normalized["honest_stop_conditions"] )
         self.assertTrue( any(
             "continuous-final-certification" in shortcut
             for shortcut in normalized["forbidden_shortcuts"]

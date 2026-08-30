@@ -22,8 +22,12 @@ ACTIONS = {
 
 def frame(number: int, position: list[int], *, state: str = "world",
           entities: list[dict[str, object]] | None = None,
-          damage: bool = False) -> dict[str, object]:
-    return {
+          damage: bool = False, safety_classification: str = "clear",
+          recovery_action: str = "") -> dict[str, object]:
+    actions = dict(ACTIONS)
+    if recovery_action:
+        actions[recovery_action] = "semantic-recovery"
+    result = {
         "run_id": "r023-relative-proof", "frame_id": f"r023-relative-proof:{number}",
         "state": state, "observed_turn": number, "provenance": "native_semantic_step_trace",
         "observation": {
@@ -36,11 +40,23 @@ def frame(number: int, position: list[int], *, state: str = "world",
             ],
             "visible_entities": entities or [],
         },
-        "valid_actions": list(ACTIONS), "action_inputs": ACTIONS,
+        "valid_actions": list(actions), "action_inputs": actions,
         "keep_watch_safety": {
-            "classification": "clear", "monster": False, "danger": False, "damage": damage,
+            "classification": safety_classification,
+            "monster": False, "danger": False, "damage": damage,
         },
     }
+    if recovery_action:
+        recovery = {"modal_id": f"modal-{number}"}
+        result["keep_watch_safety"].update({
+            "action_id": recovery_action,
+            "recovery": recovery,
+        })
+        result["safe_recovery"] = {
+            "modal_id": recovery["modal_id"],
+            "actions": [recovery_action],
+        }
+    return result
 
 
 def bound(maximum: int) -> dict[str, object]:
@@ -59,6 +75,12 @@ class RelativeMovementTest(unittest.TestCase):
 
         def dispatch(issuing: dict[str, object], action_id: str) -> dict[str, object]:
             dispatched.append(action_id)
+            if action_id not in ACTIONS:
+                index[0] += 1
+                return {"native_receipt": {
+                    "frame_id": issuing["frame_id"], "action_id": action_id,
+                    "accepted": True, "outcome": "recovered_interruption",
+                }, "_next_frame": frames[index[0]]}
             before = issuing["observation"]["avatar"]["absolute_ms"]
             delta = {
                 "world.move.north": [0, -1, 0], "world.move.south": [0, 1, 0],
@@ -142,6 +164,58 @@ class RelativeMovementTest(unittest.TestCase):
         }})
         self.assertEqual(result["error"], "guarded_move_relative_no_progress")
         self.assertEqual(actions, ["world.move.east"])
+
+    def test_explicit_movement_modes_allow_agent_selected_fictional_danger(self) -> None:
+        visible = [{"kind": "monster", "handle": "visible-1"}]
+        cautious, actions, _ = self.service([frame(1, [1, 1, 0], entities=visible)])
+        stopped = cautious.call({"action": "game.move_relative", "move_relative": {
+            "enabled": True, "offset_ms": [1, 0], "bound": bound(1),
+            "danger_handling": "handle_classified_non_dangerous",
+        }})
+        self.assertEqual(stopped["error"], "guarded_move_relative_creature")
+        self.assertEqual(actions, [])
+
+        permissive, actions, _ = self.service([
+            frame(1, [1, 1, 0], entities=visible), frame(2, [2, 1, 0], entities=visible),
+        ])
+        moved = permissive.call({"action": "game.move_relative", "move_relative": {
+            "enabled": True, "offset_ms": [1, 0], "bound": bound(1),
+            "danger_handling": "ignore_danger_and_interruptions",
+        }})
+        self.assertTrue(moved["ok"])
+        self.assertEqual(actions, ["world.move.east"])
+        self.assertEqual(moved["result"]["danger_handling"], "ignore_danger_and_interruptions")
+        self.assertEqual(moved["result"]["handled_interruptions"][0]["decision"],
+                         "continue_auto_walk")
+
+    def test_classified_auto_walk_recovers_safe_prompt_but_stop_mode_does_not(self) -> None:
+        prompt = frame(
+            1, [1, 1, 0], state="semantic_ui",
+            safety_classification="safe_prompt", recovery_action="ui.dismiss",
+        )
+        stopped, actions, _ = self.service([prompt])
+        stop_result = stopped.call({"action": "game.move_relative", "move_relative": {
+            "enabled": True, "offset_ms": [1, 0], "bound": bound(1),
+            "danger_handling": "stop_on_interruption",
+        }})
+        self.assertEqual(stop_result["error"], "raw_move_relative_interrupted")
+        self.assertEqual(actions, [])
+
+        classified, actions, _ = self.service([
+            prompt,
+            frame(2, [1, 1, 0]),
+            frame(3, [2, 1, 0]),
+        ], outcomes=["moved", "moved"])
+        handled = classified.call({"action": "game.move_relative", "move_relative": {
+            "enabled": True, "offset_ms": [1, 0], "bound": bound(1),
+            "danger_handling": "handle_classified_non_dangerous",
+        }})
+        self.assertTrue(handled["ok"])
+        self.assertEqual(actions, ["ui.dismiss", "world.move.east"])
+        self.assertEqual(
+            handled["result"]["handled_interruptions"][0]["classification"],
+            "safe_prompt",
+        )
 
     def test_rejects_receipt_and_frame_coordinates_that_cannot_be_reconciled(self) -> None:
         packet = {

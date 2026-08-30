@@ -32,45 +32,107 @@ Focused, bootstrap, and diagnostic evidence never becomes final certification or
   `b338f94c…487d60`. The transaction created exactly three separately tagged apples with ordinals
   0–2 at offset `[4,0,0]` for owner `your_followers`, preserved declared state and provenance,
   removed exactly its own three items, and completed bound ingestion with green structured gates.
+- R-025 is accepted through checkpoint audit `R-025-closure-001`. Five linear commits separate
+  ecology behavior, native cockpit setup, the shared semantic harness, retention guidance, and the
+  recorded validation finding. The tracked tree was clean at audit time. All 1,563 untracked entries
+  had an explicit retained-evidence or reproducible-registry disposition. The narrow checkpoint
+  preflight passed 4 of 4. The broader harness failures remain a separate non-green finding.
+- R-024 is accepted through `R-024-closure-005`. The deterministic TUI renders authoritative local
+  and overmap state, exact request contracts, safety and mission state, receipt details, terminal
+  reasons, and errors. A controlled recipe matches direct cockpit receipts and terminal state. Two
+  matched Terra/low workers reached the same result. The TUI used six public round trips versus
+  three for the primitive route, so no positive efficiency claim is made.
 
 ## Active work
 
-- [ ] R-005 — Qualify a materially different natural route or geography that reaches the existing
-  certification destination without undeclared dynamic attacks while preserving the same world,
-  player, ecology actors, scheduler inputs, destination, lifecycle gates, and fail-closed threat
-  handling. The latest run stopped before the final-handoff boundary, so that proposed defect remains
-  unproved and must not be changed from replay evidence.
+- [ ] R-005 causal qualification — Complete the proved wait-only lifecycle across a real process boundary and persistence audit.
   - DFS slices: `R-005-S001`
-  - Prove the replacement route and destination arrival in a disposable zero-credit run.
-  - If the qualified route reproduces a final-handoff divergence, localize and repair only that fact.
-  - Start one independent certification round and execute the natural lifecycle without segment reuse.
-  - Ingest and judge bindings, actors, gates, cleanup, contradictions, and evidence class separately.
+  - Playtest witness: required. Use `r005-native-wait-qualification-rev1.json` or a source-bound successor.
+  - Preserved evidence: exact same-run receipts now cover production dispatch, shared-route advance,
+    both ownership crossings, actor outcomes, physical return, and camp decision. Save and Quit
+    returns to the main menu.
+  - Closure-075 proves the next native Quit action and advertised confirmation. The current-run
+    `main-menu-quit-1` receipt was accepted. PID `72384` exited through the native route before
+    cleanup. This closes the process-exit gap at focused authority.
+  - The new process started as PID `73603`, then rejected the saved local projection ownership state.
+    The exact error was `bandit_live_world rejected loaded local projection claims`. Normalized
+    persistence and immutable report ingestion remain unproved and receive no credit.
+  - Preserve closure-074's save/quit evidence and closure-075's native-exit evidence. Repair or
+    correctly reconcile the loaded projection ownership conflict. Rerun the same source-bound route
+    and audit the same world, player, camp, outing generation, and actor identities after relaunch.
+    Preserve fail-closed identity checks, contradictions, and cleanup.
+  - Prior coordinate and interruption runs remain zero-credit history. Do not reopen them or the
+    green production gates unless a fresh bound run directly contradicts their receipts.
+- [ ] R-005 certification — Run one separate certification lifecycle after qualification succeeds.
+  - DFS slices: `R-005-S001`
+  - Obtain separate fresh certification authority. Prove departure, both crossings, actor outcomes,
+    save, quit, relaunch, return, report, and the downstream camp decision in one uninterrupted
+    round.
+  - Reject rollback, replacement identities, replay, and segment splicing. Do not repair the
+    proposed final handoff unless the independent run reproduces it.
 
-- [ ] R-009 — Prove integrated waits, performance and memory observation, and supported-platform
-  parity at the existing semantic boundaries while preserving its focused evidence ceiling.
+- [ ] R-008 — Run the accepted source-bound natural-return manifest through its native crossing,
+  save, new-process relaunch, and persistence audit.
+  - DFS slices: `R-008-S001`
+  - Owner-authorized review accepted manifest `de2e214a…6914`, revision 3, source SHA-256
+    `fa75dcb3…d64ec` after 21 focused source/review controls and 44 registry/observation controls
+    passed. The registry now reports `review_status=accepted`, `executable=true`, and
+    `token_eligible=true`.
+  - Preserve zero credit for the manufactured safe-watch footing, dispatch, and local-contact setup.
+    Proof begins at the same-pair native local-to-abstract crossing and must survive native save,
+    process exit, relaunch, normalized owner audit, binding, contradictions, and cleanup.
+
+- [ ] R-009 — The current-source macOS semantic-wait witness is complete. Final Linux/WSL and
+  Windows validation still waits for the shared source and executable inputs to freeze.
   - DFS slices: `R-009-S001`
+  - Run `a11fc503d5fa4cbab54510846a5cf211` used fresh single-use authority and matched the current
+    source and executable binding. It proved native wait receipts, a stalled sample at game time
+    `7560`, bounded progress from `7560` to `7920`, explicit transition state, child CPU and resident
+    memory samples, no contradictions, accepted cleanup, and canonical ingestion
+    `d7ef01e2…404f`.
+  - This closes only `R-009-macos-witness` at focused evidence scope. The separate structural-scout
+    gate remains red. The macOS result gives no final Linux/WSL, Windows, continuous-certification,
+    or human-judgment credit.
 
-- [ ] R-024 — Build the compact LLM-first cockpit TUI with structured local and overmap awareness,
-  evidence provenance and recency, progressive detail, controlled recipes, and visual/structured parity.
-  - DFS slices: `R-024-S001`
+- [ ] R-012 — Use the existing valid zero-credit bootstrap, then perform the separate live
+  avatar-observation and stale-handle validation.
+  - DFS slices: `R-012-S001`
+  - Review of draft `63cde4b1…fae6` found no independent decision to make: it names existing valid
+    scenario `r012.live_avatar_visible_bootstrap_mcw`, reports zero missing requirements, and the
+    scenario declares `review_required=false`. The former pending-review state is complete.
+  - Bootstrap may only call native `game.observe`; the staged zombie dog stays outside the native
+    observation payload and receives zero gameplay credit. A later independent run must prove the
+    visible handle, movement-stable identity, stale rejection, fresh observation, contradiction
+    omission, unchanged LLM-intent behavior, binding, and cleanup.
 
-- [ ] R-025 — Partition the preserved Phase-3 frontier into reviewable implementation and evidence
-  checkpoints before adding more behavior. Preserve authentic evidence and active work; cleanliness
-  and deletion are not proof.
-  - DFS slices: `R-025-S001`
-  - Inventory tracked changes by accepted or active claim and identify shared owners.
-  - Separate durable source, tests, fixtures, scenarios, and guidance from generated artifacts.
-  - Create coherent behavior, probe, and ledger/document checkpoints with their existing narrow gates.
-  - Attribute every retained dirty entry to active work or an explicit evidence-retention disposition.
+- [ ] R-023 — Replace the missing guarded-movement charter from the current DFS and source-bound
+  scenario, then run guarded relative movement before the separate destination route.
+  - DFS slices: `R-023-S001`
+  - Playtest witness: required. The absent historical bytes for
+    `a90a95745f8b49d0f643100f93092af2e5e89fc8cb81e5fdb3aee205e4f886ac` remain provenance, not a
+    human-permission gate. The coordinator owns a current replacement charter and fresh selection.
+  - Preserve the proved absolute-coordinate receipt repair, zero-credit ceiling, exact partial
+    progress, fail-closed safety, binding, ingestion, and cleanup before the destination route.
+
+## Dependency-gated work
+
+- Dependency wait: R-009 final Linux/WSL and Windows compile, preflight, and runtime witnesses wait until
+  R-005, R-008, R-012, R-023, and the macOS R-009 route settle their shared gameplay/harness effects
+  and establish reviewable source plus executable-binding inputs.
+  - Bound DFS route: `R-009-S001`
+  - Linux/WSL checkpoint `R-009-closure-013` preserves the successful SDL2 build, no-launch
+    preflight, and SDL-gated helper repair. Windows finding `R-009-closure-012` preserves the next
+    known declaration repair. Neither has final platform credit.
+  - After the freeze, revalidate both findings against the frozen inputs, create or repair the
+    matching charters, and run each final source-bound runtime witness with fresh single-use
+    authority. An earlier platform compile is lawful only when it is causally needed to diagnose
+    shared implementation; its result remains provisional and is revalidated after the freeze.
 
 ## Waiting on external authority
 
-- R-023 waits for restoration of the exact charter bytes whose SHA-256 is
-  `a90a95745f8b49d0f643100f93092af2e5e89fc8cb81e5fdb3aee205e4f886ac`. Native movement receipts
-  now use declared absolute coordinates, and focused regression tests plus the macOS runtime link
-  pass. The available local charter hashes `ed4a1f…`, so it cannot authorize the required fresh
-  guarded run. After the exact charter returns, obtain fresh guarded authority and rerun guarded
-  movement before starting the separate declared-destination route. DFS slice: `R-023-S001`.
-- R-008 waits for exclusive review of manifest `de2e214a120509316d358938cd8d594b2df42955018a79453f0a49f138876914`, revision 3.
-- R-012 waits for exclusive review of draft `63cde4b108e07b7d6795269e1b89dc1efd2467c9817b63c94d1989044d80fae6`.
-- R-006 waits for an R-005 automated certification pass and Josef's separate Windows feel result.
+- R-006 final acceptance waits for an R-005 automated certification pass and Josef's separate
+  Windows feel result. Repository checkpoints `534ae9ee08` and `483c772211` implement the ordinary
+  pending handoff, immutable external result storage, separate gates, and certified executable
+  binding. The repository has no authenticated Josef identity owner, so a local result row is
+  explicitly non-machine-verifiable and cannot make `overall_acceptance` green. DFS slice:
+  `R-006-S001`.

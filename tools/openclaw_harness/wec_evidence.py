@@ -75,7 +75,9 @@ def derive_final_gate_eligibility(
             return result
         result["automated_certification"] = True
         result["reason"] = "sealed_certification"
-    if fact["evidence_class"] == FINAL_GATE_CLASSES["windows_feel"] and fact["authority"] == "windows-josef" and fact["owner"] == "Josef":
-        result["windows_feel"] = True
-        result["reason"] = "sealed_josef_feel"
+    if fact["evidence_class"] == FINAL_GATE_CLASSES["windows_feel"]:
+        # The local registry can preserve a labelled external attestation, but
+        # it cannot authenticate the human who supplied it.  Keep that record
+        # visible without converting metadata labels into a machine gate.
+        result["reason"] = "external_windows_feel_not_machine_verifiable"
     return result

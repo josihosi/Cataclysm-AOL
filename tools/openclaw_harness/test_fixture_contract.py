@@ -719,6 +719,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                         "settle_seconds": 1.0,
                         "native_travel_stabilization": {
                             "mode": "continue_exact_hostile_auto_move_until_hud",
+                            "danger_handling": "ignore_danger_and_interruptions",
                         },
                     }],
                     profile="dev-harness",
@@ -761,6 +762,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                     "settle_seconds": 1.0,
                     "native_travel_stabilization": {
                         "mode": "continue_exact_hostile_auto_move_until_hud",
+                        "danger_handling": "ignore_danger_and_interruptions",
                     },
                 }],
                 profile="dev-harness",
@@ -791,6 +793,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                     "settle_seconds": 1.0,
                     "native_travel_stabilization": {
                         "mode": "continue_exact_hostile_auto_move_until_hud",
+                        "danger_handling": "ignore_danger_and_interruptions",
                     },
                 }],
                 profile="dev-harness",
@@ -806,28 +809,28 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertEqual(stabilization["response_keys"], [])
         self.assertEqual([entry.args[1] for entry in type_text.call_args_list], ["Y"])
 
-    def test_r005_route_uses_repeated_hostile_auto_move_stabilization(self) -> None:
+    def test_r005_route_declares_permissive_handling_without_hiding_receipt_boundary(self) -> None:
         scenario_path = HARNESS_DIR / "scenarios" / \
             "bandit.r005_continuous_hostile_ecology_certification.json"
         scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
-        for label, destination in (
-                ("accept_departure_route", [139, 40, 0]),
-                ("accept_west_flank_northbound_route", [139, 31, 0]),
-                ("accept_west_flank_destination_route", [140, 31, 0]),
-        ):
-            accept = next(
-                step for step in scenario["steps"]
-                if step.get("label") == label
-            )
+        travel_accepts = [
+            step for step in scenario["steps"]
+            if "native_travel_stabilization" in step
+        ]
+        self.assertTrue(travel_accepts)
+        for accept in travel_accepts:
             self.assertEqual(accept.get("text"), "Y")
+            stabilization = accept.get("native_travel_stabilization")
             self.assertEqual(
-                accept.get("native_travel_stabilization"),
-                {
-                    "mode": "continue_exact_hostile_auto_move_until_hud",
-                    "require_completed_destination_cleared": True,
-                    "expected_destination_omt": destination,
-                },
+                stabilization.get("mode"),
+                "continue_exact_hostile_auto_move_until_hud",
             )
+            self.assertEqual(
+                stabilization.get("danger_handling"),
+                "ignore_danger_and_interruptions",
+            )
+            self.assertTrue(stabilization.get("require_completed_destination_cleared"))
+            self.assertEqual(len(stabilization.get("expected_destination_omt", [])), 3)
         self.assertFalse(any(
             step.get("label") == "continue_harmless_auto_move"
             for step in scenario["steps"]
@@ -912,6 +915,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                     "settle_seconds": 1.0,
                     "native_travel_stabilization": {
                         "mode": "continue_exact_hostile_auto_move_until_hud",
+                        "danger_handling": "ignore_danger_and_interruptions",
                     },
                 }],
                 profile="dev-harness",
@@ -958,6 +962,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                     "settle_seconds": 1.0,
                     "native_travel_stabilization": {
                         "mode": "continue_exact_hostile_auto_move_until_hud",
+                        "danger_handling": "ignore_danger_and_interruptions",
                     },
                 }],
                 profile="dev-harness",
@@ -1003,6 +1008,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                     "settle_seconds": 1.0,
                     "native_travel_stabilization": {
                         "mode": "continue_exact_hostile_auto_move_until_hud",
+                        "danger_handling": "ignore_danger_and_interruptions",
                     },
                 }],
                 profile="dev-harness",
@@ -1056,6 +1062,7 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
                         "settle_seconds": 1.0,
                         "native_travel_stabilization": {
                             "mode": "continue_exact_hostile_auto_move_until_hud",
+                            "danger_handling": "ignore_danger_and_interruptions",
                         },
                     }],
                     profile="dev-harness",
