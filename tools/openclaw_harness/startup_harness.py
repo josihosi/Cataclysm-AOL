@@ -6725,6 +6725,169 @@ def validate_native_wait_mode_semantic_frame(
     }
 
 
+def validate_native_wait_duration_selection(
+    *,
+    profile: str,
+    run_dir: Path,
+    run_id: str,
+    start_offset: int,
+    selection_trace_log: Optional[Path],
+    selection_trace_start_offset: int,
+    binding_id: str,
+    expected_action: str,
+    expected_binding: str,
+    wait_dispatch: Optional[Mapping[str, Any]],
+    require_native_selection: bool,
+) -> Dict[str, Any]:
+    """Bind one advertised duration to its exact native selection receipt.
+
+    The duration row is a native semantic frame, not a screenshot/OCR fact.
+    Before input this validates the current chooser and advertised binding; after
+    input it additionally requires exactly one same-run semantic receipt and
+    exactly one same-run native wait-menu selection receipt.  The transition
+    binding is hashed both before and after selection so a run cannot borrow a
+    duration result across bindings.
+    """
+    selected_run_id = str(run_id).strip()
+    selected_action = str(expected_action).strip()
+    selected_action_binding = str(expected_binding)
+    current_binding_id, binding_error = sha256_file(
+        Path(run_dir) / TRANSITION_EVENT_BINDING_FILENAME
+    )
+    result: Dict[str, Any] = {
+        "guard": "native_wait_duration_selection",
+        "status": "blocked",
+        "run_id": selected_run_id,
+        "binding_id": str(binding_id),
+        "current_binding_id": current_binding_id,
+        "expected_action": selected_action,
+        "expected_action_binding": selected_action_binding,
+        "require_native_selection": require_native_selection,
+        "ocr_diagnostic_only": True,
+        "provenance": "native_semantic_step_trace + native_wait_menu_selection",
+    }
+    if not selected_run_id:
+        result["reason"] = "missing_run"
+        return result
+    if not selected_action or not binding_id or not selected_action_binding:
+        result["reason"] = "missing_expected_action_or_binding"
+        return result
+    if binding_error or current_binding_id != binding_id:
+        result["reason"] = "binding_changed_or_missing"
+        result["binding_error"] = binding_error
+        return result
+    if str((wait_dispatch or {}).get("status", "")) != "wait_dispatched":
+        result["reason"] = "missing_wait_dispatch"
+        return result
+    try:
+        _, owned = refresh_semantic_step_trace(
+            profile=profile, run_dir=Path(run_dir), run_id=selected_run_id,
+            start_offset=start_offset,
+        )
+        events, trace_status = read_semantic_step_trace(
+            owned, Path(run_dir), selected_run_id,
+        )
+    except (OSError, ValueError):
+        events, trace_status = [], "missing_or_unreadable"
+    result["semantic_trace_status"] = trace_status
+    if trace_status != "ok":
+        result["reason"] = "semantic_trace_" + trace_status
+        return result
+    duration_frames = [
+        event for event in events
+        if event.get("event") == "frame" and
+        event.get("state") == "wait_duration_choice"
+    ]
+    result["duration_frame_count"] = len(duration_frames)
+    if len(duration_frames) != 1:
+        result["reason"] = "missing_or_duplicate_duration_menu"
+        return result
+    duration_frame = duration_frames[0]
+    actions = duration_frame.get("valid_actions", [])
+    bindings = duration_frame.get("action_inputs", {})
+    result["semantic_duration_frame"] = {
+        "frame_id": str(duration_frame.get("frame_id", "")),
+        "state": str(duration_frame.get("state", "")),
+        "advertised_actions": list(actions) if isinstance(actions, list) else [],
+        "action_binding": str(bindings.get(selected_action, ""))
+        if isinstance(bindings, Mapping) else "",
+    }
+    if selected_action not in actions or not isinstance(bindings, Mapping) or \
+            str(bindings.get(selected_action, "")) != selected_action_binding:
+        result["reason"] = "wrong_duration_or_binding"
+        return result
+    if not require_native_selection:
+        result["status"] = "matched"
+        result["reason"] = "advertised_same_run_duration"
+        return result
+    frame_id = str(duration_frame.get("frame_id", ""))
+    semantic_receipts = [
+        event for event in events
+        if event.get("event") == "receipt" and
+        str(event.get("frame_id", "")) == frame_id
+    ]
+    result["semantic_receipt_count"] = len(semantic_receipts)
+    if len(semantic_receipts) != 1:
+        result["reason"] = "missing_or_duplicate_semantic_selection_receipt"
+        return result
+    semantic_receipt = semantic_receipts[0]
+    result["semantic_receipt"] = {
+        "frame_id": str(semantic_receipt.get("frame_id", "")),
+        "action_id": str(semantic_receipt.get("action_id", "")),
+        "accepted": semantic_receipt.get("accepted"),
+    }
+    if str(semantic_receipt.get("action_id", "")) != selected_action or \
+            semantic_receipt.get("accepted") is not True:
+        result["reason"] = "semantic_selection_rejected_or_wrong_duration"
+        return result
+    if selection_trace_log is None:
+        result["reason"] = "native_selection_trace_missing"
+        return result
+    try:
+        with Path(selection_trace_log).open("r", encoding="utf-8", errors="replace") as handle:
+            handle.seek(max(0, selection_trace_start_offset))
+            lines = handle.readlines()
+    except OSError:
+        lines = []
+    selections = [
+        line.rstrip("\n") for line in lines
+        if "openclaw_harness_wait_input_trace: component=wait_menu event=selection" in line
+    ]
+    matching_selections = [
+        line for line in selections if f'run_id="{selected_run_id}"' in line
+    ]
+    foreign_selections = [line for line in selections if line not in matching_selections]
+    result["native_selection_count"] = len(matching_selections)
+    if foreign_selections:
+        result["reason"] = "mixed_native_selection_run"
+        return result
+    if len(matching_selections) != 1:
+        result["reason"] = "missing_or_duplicate_native_selection_receipt"
+        return result
+    native_selection = matching_selections[0]
+    selection_match = re.search(
+        r'action_id="([^"]*)"\s+accepted=(yes|no)', native_selection,
+    )
+    result["native_selection_receipt"] = native_selection
+    if selection_match is None:
+        result["reason"] = "malformed_native_selection_receipt"
+        return result
+    if selection_match.group(1) != selected_action or selection_match.group(2) != "yes":
+        result["reason"] = "native_selection_rejected_or_wrong_duration"
+        return result
+    final_binding_id, final_binding_error = sha256_file(
+        Path(run_dir) / TRANSITION_EVENT_BINDING_FILENAME
+    )
+    result["final_binding_id"] = final_binding_id
+    if final_binding_error or final_binding_id != binding_id:
+        result["reason"] = "binding_changed_during_native_selection"
+        result["binding_error"] = final_binding_error
+        return result
+    result["status"] = "matched"
+    result["reason"] = "same_run_semantic_and_native_duration_selection_matched"
+    return result
+
+
 def extract_clock_or_turn_evidence( screen_text_report: Dict[str, Any] ) -> Dict[str, Any]:
     text = screen_text_body( screen_text_report )
     clock_matches: List[Dict[str, Any]] = []
@@ -8398,6 +8561,14 @@ def execute_long_wait_action(
             "ocr_guard_bypassed": True,
         }
 
+    duration_selection_trace_start_offset = -1
+    if pre_menu_choice_key and semantic_profile and semantic_run_id:
+        try:
+            duration_selection_trace_start_offset = semantic_step_source_trace(
+                semantic_profile
+            ).stat().st_size
+        except OSError:
+            duration_selection_trace_start_offset = -1
     if pre_menu_choice_key:
         peekaboo_press_sequence(pid, [pre_menu_choice_key], delay_ms=delay_ms)
         if pre_menu_settle_seconds > 0:
@@ -8407,6 +8578,35 @@ def execute_long_wait_action(
     report["screen_wait_menu"] = menu_capture.get("screen_summary", {})
     menu_text = capture_screen_text_artifact(run_dir, f"{label}.wait_menu", menu_capture, tail_lines=tail_lines)
     report["screen_wait_menu_text"] = menu_text
+
+    semantic_binding_path = run_dir / TRANSITION_EVENT_BINDING_FILENAME
+    semantic_binding_id, semantic_binding_error = sha256_file( semantic_binding_path )
+    if pre_menu_choice_key and require_native_wait_menu_guards and \
+            semantic_profile and semantic_run_id:
+        duration_semantic_guard = validate_native_wait_duration_selection(
+            profile=semantic_profile, run_dir=run_dir, run_id=semantic_run_id,
+            start_offset=duration_selection_trace_start_offset,
+            selection_trace_log=action_trace_log,
+            selection_trace_start_offset=duration_selection_trace_start_offset,
+            binding_id=semantic_binding_id, expected_action=f"wait.{expected_duration}",
+            expected_binding=choice_key,
+            wait_dispatch=report.get("input_resolution_trace"),
+            require_native_selection=False,
+        )
+        report["duration_wait_semantic_guard"] = duration_semantic_guard
+        if duration_semantic_guard["status"] != "matched":
+            report["abort"] = {
+                "guard": "native_wait_duration_semantic_frame",
+                "status": "blocked_native_wait_duration_semantic_frame",
+                "verdict": "red_wait_duration_chooser_unproven",
+                "reason": (
+                    "the current run did not advertise the requested duration from "
+                    "a bound native wait-duration chooser"
+                ),
+                "duration_semantic_guard": duration_semantic_guard,
+            }
+            report["stop_after_step"] = True
+            return report
 
     if pre_menu_choice_key and require_native_wait_menu_guards:
         duration_patterns = duration_menu_patterns or wait_menu_expected_duration_patterns(
@@ -8418,17 +8618,11 @@ def execute_long_wait_action(
             surface="duration_wait_chooser",
             require_all=False,
         )
-        report["duration_wait_menu_guard"] = duration_guard
-        if duration_guard["status"] != "matched":
-            report["abort"] = {
-                "guard": "native_wait_duration_menu",
-                "status": "blocked_native_wait_duration_menu",
-                "verdict": "red_wait_duration_chooser_unproven",
-                "reason": "the native duration chooser was not active and unobstructed before duration input",
-                "missing_patterns": duration_guard["missing_patterns"],
-            }
-            report["stop_after_step"] = True
-            return report
+        report["duration_wait_menu_guard"] = {
+            **duration_guard,
+            "status": "diagnostic_only",
+            "decision": "OCR cannot grant or deny duration-selection credit",
+        }
 
     completion_start_size = (
         artifact_log.stat().st_size
@@ -8448,8 +8642,6 @@ def execute_long_wait_action(
     )
     report["completion_artifact_baseline_now_minutes"] = baseline_now_minutes
     semantic_wait_trace_start_offset = -1
-    semantic_binding_path = run_dir / TRANSITION_EVENT_BINDING_FILENAME
-    semantic_binding_id, semantic_binding_error = sha256_file( semantic_binding_path )
     if semantic_run_id and semantic_profile:
         try:
             semantic_wait_trace_start_offset = semantic_step_source_trace(
@@ -8460,6 +8652,32 @@ def execute_long_wait_action(
     peekaboo_press_sequence(pid, [choice_key], delay_ms=delay_ms)
     if after_choice_settle_seconds > 0:
         time.sleep(after_choice_settle_seconds)
+    if pre_menu_choice_key and require_native_wait_menu_guards and \
+            semantic_profile and semantic_run_id:
+        duration_selection = validate_native_wait_duration_selection(
+            profile=semantic_profile, run_dir=run_dir, run_id=semantic_run_id,
+            start_offset=duration_selection_trace_start_offset,
+            selection_trace_log=action_trace_log,
+            selection_trace_start_offset=duration_selection_trace_start_offset,
+            binding_id=semantic_binding_id, expected_action=f"wait.{expected_duration}",
+            expected_binding=choice_key,
+            wait_dispatch=report.get("input_resolution_trace"),
+            require_native_selection=True,
+        )
+        report["duration_selection_receipt"] = duration_selection
+        if duration_selection["status"] != "matched":
+            report["abort"] = {
+                "guard": "native_wait_duration_selection",
+                "status": "blocked_native_wait_duration_selection",
+                "verdict": "red_wait_duration_selection_unproved",
+                "reason": (
+                    "the requested duration lacks one same-run, same-binding semantic "
+                    "advertisement and accepted native selection receipt"
+                ),
+                "duration_selection": duration_selection,
+            }
+            report["stop_after_step"] = True
+            return report
     native_wait_continuation: Dict[str, Any] = {}
     if structured_event_reader is not None and isinstance(
             native_wait_continuation_declaration, Mapping

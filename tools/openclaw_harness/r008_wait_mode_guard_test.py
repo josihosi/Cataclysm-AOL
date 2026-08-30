@@ -58,23 +58,27 @@ class R008WaitModeGuardTest(unittest.TestCase):
             with self.subTest(reason=reason):
                 self.assertEqual(self.check(frame)["reason"], reason)
 
-    def test_long_wait_uses_valid_semantic_parent_frame_before_ocr_guard(self):
+    def test_long_wait_uses_semantic_duration_receipts_when_ocr_is_wrong(self):
         semantic_guard = {
             "status": "matched",
             "reason": "matched",
             "frame_id": "frame-new",
         }
 
-        def no_parent_ocr_guard(_screen_text, *, surface, **_kwargs):
+        def diagnostic_only_ocr_guard(_screen_text, *, surface, **_kwargs):
             if surface == "parent_wait_chooser":
                 self.fail("the old OCR-only parent-menu guard ran after a valid semantic frame")
             return {"status": "blocked", "missing_patterns": ["6 hours"]}
 
         with patch.object(startup_harness, "current_semantic_step_frame", return_value={"frame_id": "frame-old"}), \
                 patch.object(startup_harness, "validate_native_wait_mode_semantic_frame", return_value=semantic_guard), \
+                patch.object(startup_harness, "validate_native_wait_duration_selection", side_effect=[
+                    {"status": "matched", "reason": "advertised_same_run_duration"},
+                    {"status": "matched", "reason": "same_run_semantic_and_native_duration_selection_matched"},
+                ]) as duration_selection, \
                 patch.object(startup_harness, "capture_screenshot", return_value={"screen_summary": {}}), \
                 patch.object(startup_harness, "capture_screen_text_artifact", return_value={"ok": True, "text": ""}), \
-                patch.object(startup_harness, "validate_native_wait_menu_surface", side_effect=no_parent_ocr_guard), \
+                patch.object(startup_harness, "validate_native_wait_menu_surface", side_effect=diagnostic_only_ocr_guard), \
                 patch.object(startup_harness, "peekaboo_press_sequence") as press:
             result = startup_harness.execute_long_wait_action(
                 42, Path("run"), "semantic_parent", {
@@ -83,14 +87,20 @@ class R008WaitModeGuardTest(unittest.TestCase):
                     "require_native_wait_menu_guards": True,
                     "menu_settle_seconds": -1,
                     "pre_menu_settle_seconds": -1,
+                    "after_choice_settle_seconds": -1,
+                    "completion_wait_seconds": -1,
+                    "require_run_bound_wait_classification": False,
+                    "auto_acknowledge_interruptions": False,
                 },
                 semantic_profile="profile", semantic_run_id=self.run_id,
             )
 
         self.assertEqual(result["parent_wait_menu_guard"]["status"], "matched")
         self.assertTrue(result["parent_wait_menu_guard"]["ocr_guard_bypassed"])
-        self.assertEqual(result["abort"]["verdict"], "red_wait_duration_chooser_unproven")
-        self.assertEqual([call.args[1] for call in press.call_args_list], [["|"], ["w"]])
+        self.assertEqual(result["duration_wait_menu_guard"]["status"], "diagnostic_only")
+        self.assertNotIn("abort", result)
+        self.assertEqual(duration_selection.call_count, 2)
+        self.assertEqual([call.args[1] for call in press.call_args_list], [["|"], ["w"], ["3"]])
 
 
 if __name__ == "__main__":
