@@ -116,7 +116,6 @@ constexpr int routine_scheduler_urgent_signal_cap = 8;
 constexpr int routine_scheduler_full_route_solve_cap = 8;
 constexpr int routine_scheduler_start_cap = 2;
 constexpr int routine_frontier_recurrence_minutes = 72 * 60;
-constexpr int routine_candidate_full_route_solve_cap = 2;
 constexpr int routine_remembered_ground_candidate_cap = 6;
 constexpr std::size_t max_structural_route_rejection_summary_length = 160;
 constexpr int routine_acquire_score = 300;
@@ -14491,16 +14490,11 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site, c
     const std::vector<structural_outing_plan> cheap_candidates =
         cheap_structural_outing_candidates( site, now_minutes );
     structural_outing_plan best;
-    int route_solves = 0;
     for( const structural_outing_plan &cheap : cheap_candidates ) {
-        if( route_solves >= routine_candidate_full_route_solve_cap ) {
-            break;
-        }
         const camp_map_lead *lead = site.intelligence_map.find_lead( cheap.lead_id );
         if( lead == nullptr ) {
             continue;
         }
-        route_solves++;
         structural_outing_plan candidate = plan_structural_bounty_outing_impl(
                 site, *lead, now_minutes, true );
         const structural_route_read read{ candidate.route_solved, candidate.full_route_cost,
@@ -16360,8 +16354,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         structural_outing_plan best_routed;
         int site_route_solves = 0;
         for( const structural_outing_plan &cheap : candidate.cheap_plans ) {
-            if( site_route_solves >= routine_candidate_full_route_solve_cap ||
-                result.full_route_solves >= result.full_route_solve_cap ) {
+            if( result.full_route_solves >= result.full_route_solve_cap ) {
                 break;
             }
             site_route_solves++;
@@ -16432,8 +16425,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         if( !best_routed.valid ) {
             const bool global_budget_truncated_site =
                 result.full_route_solves >= result.full_route_solve_cap &&
-                site_route_solves < std::min( routine_candidate_full_route_solve_cap,
-                                              static_cast<int>( candidate.cheap_plans.size() ) );
+                site_route_solves < static_cast<int>( candidate.cheap_plans.size() );
             if( global_budget_truncated_site ) {
                 scheduler_exit_diagnostic( &site, "full_route_solve_cap_reached",
                                            "full_route_solves=" + std::to_string(

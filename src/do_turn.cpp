@@ -8139,15 +8139,9 @@ bool write_harness_new_world_feasibility_artifact()
         analyzed_site == nullptr ? std::vector<bandit_live_world::structural_outing_plan>() :
         bandit_live_world::plan_structural_bounty_outing_candidates( *analyzed_site, now_minutes,
                 false );
-    // routine_candidate_full_route_solve_cap owns this production per-site prefix.
-    constexpr std::size_t production_site_route_solve_cap = 2;
-    const std::size_t candidate_count = std::min( production_site_route_solve_cap,
-                                        all_candidates.size() );
-    std::vector<bandit_live_world::structural_outing_plan> candidates;
-    candidates.reserve( candidate_count );
-    for( std::size_t index = 0; index < candidate_count; ++index ) {
-        candidates.push_back( all_candidates[index] );
-    }
+    // The production planner has already applied its bounded remembered-ground inventory.
+    // Preserve every measured candidate in this diagnostic instead of recreating a shorter prefix.
+    const std::vector<bandit_live_world::structural_outing_plan> &candidates = all_candidates;
     const int watch_budget_before = live_bandit_structural_watch_path_budget;
     int watch_budget_after = watch_budget_before;
     std::vector<bandit_live_world::structural_route_read> reads;
@@ -8192,7 +8186,7 @@ bool write_harness_new_world_feasibility_artifact()
     json.member( "structural_scan_sites_considered", scan.sites_considered );
     json.member( "structural_scan_candidates_sampled", scan.candidates_sampled );
     json.member( "structural_scan_notes", scan.notes );
-    json.member( "candidate_prefix_limit", production_site_route_solve_cap );
+    json.member( "candidate_prefix_limit", candidates.size() );
     json.member( "candidate_rows" );
     json.start_array();
     for( std::size_t index = 0; index < candidates.size(); ++index ) {
