@@ -173,6 +173,7 @@ RUNTIME_BINDING_FILENAME = "runtime.binding.json"
 CONTRACT_PREFLIGHT_FILENAME = "contract.preflight.json"
 TRANSITION_EVENT_FILENAME = "transition.events.jsonl"
 TRANSITION_EVENT_BINDING_FILENAME = "transition.events.binding.json"
+LOCAL_PAIR_HANDOFF_SNAPSHOT_FILENAME = "local_pair_handoff.snapshot.json"
 TRANSITION_EVENT_SCHEMA_VERSION = 1
 TRANSITION_EVENT_REQUIRED_FIELDS = {
     "schema_version", "sequence", "run_id", "game_minutes", "domain", "transition", "outcome",
@@ -30202,6 +30203,17 @@ def run_startup(args: argparse.Namespace) -> int:
             raise SystemExit(f"certification startup lease rejected: {exc}") from exc
 
     child_environment = game_child_environment(profile)
+    # The native producer accepts this explicit, run-local sidecar target only.
+    # It is an observation artifact; its existence grants no lifecycle credit.
+    child_environment["OPENCLAW_HARNESS_LOCAL_PAIR_SNAPSHOT_PATH"] = str(
+        (run_dir / LOCAL_PAIR_HANDOFF_SNAPSHOT_FILENAME).resolve()
+    )
+    child_environment["OPENCLAW_HARNESS_RUNTIME_SOURCE_SHA256"] = str(
+        runtime_binding["runtime_source_sha256"]
+    )
+    child_environment["OPENCLAW_HARNESS_EXECUTABLE_SHA256"] = str(
+        runtime_binding["executable_sha256"]
+    )
     # The lifecycle recorder is diagnostic-only and must never inherit a tag
     # from a prior launch.  A scenario may opt in to exactly one fixture actor.
     child_environment.pop("OPENCLAW_HARNESS_R019_LIFECYCLE_ACTOR_ID", None)
