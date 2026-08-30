@@ -15757,29 +15757,9 @@ def recover_harmless_wilderness_flavor_wait(
     action_trace_log: Optional[Path],
     action_trace_start_offset: int,
 ) -> Dict[str, Any]:
-    """Recover exactly the owner-approved flavor popup then continue-wait query."""
-    popup = acknowledge_blocking_interruptions(
-        pid, run_dir, f"{label}.flavor_popup", max_acknowledgements=1,
-        delay_ms=delay_ms, stop_on_unknown=True,
-        structured_popup_trace_log=action_trace_log,
-        structured_popup_trace_start_offset=action_trace_start_offset,
-        semantic_ui_trace_log=action_trace_log,
-        semantic_ui_trace_start_offset=action_trace_start_offset,
-        semantic_ui_expectation={"intent": "eoc_popup", "action": "space"},
-        allowed_classifications={"shadow_warning_wilderness_flavor_popup"},
-        response_key_overrides={"shadow_warning_wilderness_flavor_popup": "space"},
-    )
-    if popup.get("status") == "clear":
-        return {"status": "clear", "acknowledgement_count": 0, "acknowledgements": []}
-    popup_acks = popup.get("acknowledgements", [])
-    if popup.get("status") not in {"clear", "semantic_recovered", "blocked_acknowledgement_limit", "blocked_unknown_prompt"} or len(popup_acks) != 1 or \
-            popup_acks[0].get("response_key") != "space" or \
-            popup_acks[0].get("classification", {}).get("provenance") not in {
-                "structured_eoc_popup_trace", "semantic_ui_trace"
-            }:
-        return {**popup, "status": "blocked_harmless_flavor_popup_sequence"}
-    activity = acknowledge_blocking_interruptions(
-        pid, run_dir, f"{label}.continue_wait", max_acknowledgements=1,
+    """Recover one verified flavor/continue pair in either native UI order."""
+    first = acknowledge_blocking_interruptions(
+        pid, run_dir, f"{label}.first", max_acknowledgements=1,
         delay_ms=delay_ms, stop_on_unknown=True,
         structured_popup_trace_log=action_trace_log,
         structured_popup_trace_start_offset=action_trace_start_offset,
@@ -15787,21 +15767,86 @@ def recover_harmless_wilderness_flavor_wait(
         semantic_ui_trace_start_offset=action_trace_start_offset,
         semantic_ui_expectation={"intent": "eoc_popup", "action": "space"},
         allowed_classifications={
+            "shadow_warning_wilderness_flavor_popup",
             "activity_distraction_prompt",
             "tired_wait_continue_prompt",
         },
+        response_key_overrides={"shadow_warning_wilderness_flavor_popup": "space"},
     )
-    activity_acks = activity.get("acknowledgements", [])
-    activity_trace = activity_acks[0].get("classification", {}).get("structured_activity_query_trace", {}) \
-        if len(activity_acks) == 1 else {}
-    if activity.get("status") != "clear" or len(activity_acks) != 1 or \
-            activity_acks[0].get("response_key") != "I" or activity_trace.get("type") != "eoc":
-        return {**activity, "status": "blocked_harmless_flavor_continue_sequence"}
+    if first.get("status") == "clear" and not first.get("acknowledgements", []):
+        return {"status": "clear", "acknowledgement_count": 0, "acknowledgements": []}
+    first_acks = first.get("acknowledgements", [])
+    if first.get("status") not in {"clear", "semantic_recovered", "blocked_acknowledgement_limit", "blocked_unknown_prompt"} or len(first_acks) != 1:
+        return {**first, "status": "blocked_harmless_flavor_popup_sequence"}
+    first_ack = first_acks[0]
+    first_classification = str(
+        first_ack.get("classification", {}).get("classification", "")
+    )
+    first_activity_trace = first_ack.get(
+        "classification", {}
+    ).get("structured_activity_query_trace", {})
+    first_is_flavor = (
+        first_classification == "shadow_warning_wilderness_flavor_popup" and
+        first_ack.get("response_key") == "space" and
+        first_ack.get("classification", {}).get("provenance") in {
+            "structured_eoc_popup_trace", "semantic_ui_trace"
+        }
+    )
+    first_is_continue = (
+        first_classification in {
+            "activity_distraction_prompt", "tired_wait_continue_prompt",
+        } and first_ack.get("response_key") == "I" and
+        first_activity_trace.get("type") == "eoc"
+    )
+    if not first_is_flavor and not first_is_continue:
+        return {**first, "status": "blocked_harmless_flavor_popup_sequence"}
+    second = acknowledge_blocking_interruptions(
+        pid, run_dir, f"{label}.second", max_acknowledgements=1,
+        delay_ms=delay_ms, stop_on_unknown=True,
+        structured_popup_trace_log=action_trace_log,
+        structured_popup_trace_start_offset=action_trace_start_offset,
+        semantic_ui_trace_log=action_trace_log,
+        semantic_ui_trace_start_offset=action_trace_start_offset,
+        semantic_ui_expectation={"intent": "eoc_popup", "action": "space"},
+        allowed_classifications=(
+            {"activity_distraction_prompt", "tired_wait_continue_prompt"}
+            if first_is_flavor else {"shadow_warning_wilderness_flavor_popup"}
+        ),
+        response_key_overrides=(
+            {} if first_is_flavor else
+            {"shadow_warning_wilderness_flavor_popup": "space"}
+        ),
+    )
+    second_acks = second.get("acknowledgements", [])
+    second_ack = second_acks[0] if len(second_acks) == 1 else {}
+    second_activity_trace = second_ack.get(
+        "classification", {}
+    ).get("structured_activity_query_trace", {})
+    second_is_flavor = (
+        second.get("status") in {"clear", "semantic_recovered", "blocked_acknowledgement_limit"} and
+        len(second_acks) == 1 and
+        second_ack.get("classification", {}).get("classification") ==
+        "shadow_warning_wilderness_flavor_popup" and
+        second_ack.get("response_key") == "space" and
+        second_ack.get("classification", {}).get("provenance") in {
+            "structured_eoc_popup_trace", "semantic_ui_trace"
+        }
+    )
+    second_is_continue = (
+        second.get("status") == "clear" and len(second_acks) == 1 and
+        second_ack.get("classification", {}).get("classification") in {
+            "activity_distraction_prompt", "tired_wait_continue_prompt",
+        } and second_ack.get("response_key") == "I" and
+        second_activity_trace.get("type") == "eoc"
+    )
+    if not ((first_is_flavor and second_is_continue) or
+            (first_is_continue and second_is_flavor)):
+        return {**second, "status": "blocked_harmless_flavor_continue_sequence"}
     return {
         "status": "recovered_harmless_flavor_wait_sequence",
         "acknowledgement_count": 2,
-        "response_keys": ["space", "I"],
-        "acknowledgements": popup_acks + activity_acks,
+        "response_keys": [first_ack.get("response_key"), second_ack.get("response_key")],
+        "acknowledgements": first_acks + second_acks,
         "wait_continues_proof": "pending_authoritative_post_input_artifact",
     }
 
