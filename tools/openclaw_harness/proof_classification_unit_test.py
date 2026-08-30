@@ -92,6 +92,7 @@ class RunBoundNativeWaitClassificationTest(unittest.TestCase):
     def receipt() -> Dict[str, Any]:
         return {
             "run_id": "run-084",
+            "binding_id": "binding-084",
             "receipt_id": "wait-084",
             "start_seconds_since_midnight": 8 * 60 * 60,
             "end_seconds_since_midnight": 14 * 60 * 60,
@@ -101,14 +102,16 @@ class RunBoundNativeWaitClassificationTest(unittest.TestCase):
     def evidence(self, kind: str = "native_wait_completed") -> Dict[str, Any]:
         return {
             "run_id": "run-084",
+            "binding_id": "binding-084",
             "receipt_id": "wait-084",
-            "source": "native_wait_ui",
+            "source": "native_semantic_wait_activity_complete",
             "kind": kind,
         }
 
     def test_accepts_current_receipt_bound_native_completion(self) -> None:
         result = classify_run_bound_native_wait(
             self.receipt(), self.evidence(), current_run_id="run-084",
+            current_binding_id="binding-084",
         )
 
         self.assertEqual(result["status"], "completed")
@@ -117,6 +120,7 @@ class RunBoundNativeWaitClassificationTest(unittest.TestCase):
     def test_accepts_current_receipt_bound_native_interruption(self) -> None:
         result = classify_run_bound_native_wait(
             self.receipt(), self.evidence("native_wait_interrupted"), current_run_id="run-084",
+            current_binding_id="binding-084",
         )
 
         self.assertEqual(result["status"], "interrupted_or_prompt_visible")
@@ -127,7 +131,9 @@ class RunBoundNativeWaitClassificationTest(unittest.TestCase):
         evidence = self.evidence("")
         evidence["run_id"] = "stale-run"
         evidence["receipt_id"] = "other-wait"
-        result = classify_run_bound_native_wait(receipt, evidence, current_run_id="run-084")
+        result = classify_run_bound_native_wait(
+            receipt, evidence, current_run_id="run-084", current_binding_id="binding-084"
+        )
 
         self.assertEqual(result["status"], "unproved")
         self.assertIn("wrong_or_missing_current_run", result["failures"])

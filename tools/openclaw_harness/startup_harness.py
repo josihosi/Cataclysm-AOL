@@ -5758,13 +5758,17 @@ def classify_run_bound_native_wait(
     native_terminal_evidence: Mapping[str, Any],
     *,
     current_run_id: str,
+    current_binding_id: str = "",
 ) -> Dict[str, Any]:
-    """Accept only a terminal native wait fact tied to this exact wait receipt."""
+    """Accept only one bound native completion fact for this exact wait."""
     current_run_id = str( current_run_id ).strip()
+    current_binding_id = str( current_binding_id ).strip()
     receipt_run_id = str( receipt.get( "run_id", "" ) ).strip()
     receipt_id = str( receipt.get( "receipt_id", "" ) ).strip()
+    receipt_binding_id = str( receipt.get( "binding_id", "" ) ).strip()
     evidence_run_id = str( native_terminal_evidence.get( "run_id", "" ) ).strip()
     evidence_receipt_id = str( native_terminal_evidence.get( "receipt_id", "" ) ).strip()
+    evidence_binding_id = str( native_terminal_evidence.get( "binding_id", "" ) ).strip()
     start_seconds = receipt.get( "start_seconds_since_midnight" )
     end_seconds = receipt.get( "end_seconds_since_midnight" )
     expected_seconds = receipt.get( "expected_seconds" )
@@ -5773,6 +5777,9 @@ def classify_run_bound_native_wait(
     failures: List[str] = []
     if not current_run_id or receipt_run_id != current_run_id or evidence_run_id != current_run_id:
         failures.append( "wrong_or_missing_current_run" )
+    if not current_binding_id or receipt_binding_id != current_binding_id or \
+            evidence_binding_id != current_binding_id:
+        failures.append( "wrong_or_missing_current_binding" )
     if not receipt_id or evidence_receipt_id != receipt_id:
         failures.append( "missing_or_mismatched_wait_receipt" )
     if not all( isinstance( value, int ) and not isinstance( value, bool ) for value in
@@ -5785,7 +5792,7 @@ def classify_run_bound_native_wait(
             failures.append( "wait_duration_mismatch" )
     if terminal_kind not in {"native_wait_completed", "native_wait_interrupted"}:
         failures.append( "native_wait_termination_unproved" )
-    elif terminal_source != "native_wait_ui":
+    elif terminal_source != "native_semantic_wait_activity_complete":
         failures.append( "native_wait_termination_unproved" )
     if failures:
         return {
@@ -5793,6 +5800,7 @@ def classify_run_bound_native_wait(
             "verdict": "yellow_run_bound_native_wait_unproved",
             "failures": failures,
             "current_run_id": current_run_id,
+            "current_binding_id": current_binding_id,
             "receipt_id": receipt_id,
             "observed_seconds": observed_seconds,
             "expected_seconds": expected_seconds,
@@ -5803,11 +5811,116 @@ def classify_run_bound_native_wait(
         else "yellow_run_bound_native_wait_interrupted",
         "failures": [],
         "current_run_id": current_run_id,
+        "current_binding_id": current_binding_id,
         "receipt_id": receipt_id,
         "observed_seconds": observed_seconds,
         "expected_seconds": expected_seconds,
         "native_terminal_kind": terminal_kind,
     }
+
+
+def classify_native_wait_activity_completion(
+    events: Sequence[Mapping[str, Any]],
+    *,
+    run_id: str,
+    binding_id: str,
+    expected_action: str,
+    receipt_id: str,
+) -> Dict[str, Any]:
+    """Bind one native completion frame to this wait's post-choice trace slice."""
+    selected_run_id = str( run_id ).strip()
+    selected_binding_id = str( binding_id ).strip()
+    selected_action = str( expected_action ).strip()
+    selected_receipt_id = str( receipt_id ).strip()
+    failures: List[str] = []
+    if not selected_run_id:
+        failures.append( "missing_current_run" )
+    if not selected_binding_id:
+        failures.append( "missing_current_binding" )
+    if not selected_action or not selected_receipt_id:
+        failures.append( "missing_wait_identity" )
+    normalized = [dict( event ) for event in events if isinstance( event, Mapping )]
+    if len( normalized ) != len( events ) or any(
+            str( event.get( "run_id", "" ) ).strip() != selected_run_id
+            for event in normalized ):
+        failures.append( "mixed_or_stale_run_events" )
+    selections = [
+        event for event in normalized
+        if event.get( "event" ) == "receipt" and event.get( "accepted" ) is True and
+        str( event.get( "action_id", "" ) ) == selected_action
+    ]
+    selection_index = normalized.index( selections[0] ) if len( selections ) == 1 else -1
+    if selection_index < 0:
+        failures.append( "missing_or_ambiguous_wait_selection" )
+    activity_index = -1
+    completion_indices: List[int] = []
+    interruption_indices: List[int] = []
+    if selection_index >= 0:
+        for index, event in enumerate( normalized[selection_index + 1:], selection_index + 1 ):
+            if event.get( "event" ) != "frame":
+                continue
+            state = str( event.get( "state", "" ) )
+            if state == "wait_activity" and activity_index < 0:
+                activity_index = index
+            elif state == "activity_distraction":
+                interruption_indices.append( index )
+            elif state == "wait_activity_complete":
+                completion_indices.append( index )
+    if activity_index < 0:
+        failures.append( "wait_activity_not_observed" )
+    if len( completion_indices ) != 1:
+        failures.append( "missing_or_ambiguous_wait_activity_complete" )
+    elif activity_index >= completion_indices[0]:
+        failures.append( "wait_activity_completion_order_invalid" )
+    if interruption_indices:
+        failures.append( "wait_interrupted_before_native_completion" )
+    completion = normalized[completion_indices[0]] if len( completion_indices ) == 1 else {}
+    return {
+        "run_id": selected_run_id,
+        "binding_id": selected_binding_id,
+        "receipt_id": selected_receipt_id,
+        "source": "native_semantic_wait_activity_complete",
+        "kind": "native_wait_completed" if not failures else "native_wait_interrupted"
+        if interruption_indices else "",
+        "status": "matched" if not failures else "unproved",
+        "failures": failures,
+        "expected_action": selected_action,
+        "selection_frame_id": str( selections[0].get( "frame_id", "" ) ) if selections else "",
+        "completion_frame_id": str( completion.get( "frame_id", "" ) ),
+        "completion_observed_turn": completion.get( "observed_turn" ),
+        "interruption_frame_ids": [
+            str( normalized[index].get( "frame_id", "" ) ) for index in interruption_indices
+        ],
+    }
+
+
+def observe_bound_native_wait_activity_completion(
+    *,
+    profile: str,
+    run_dir: Path,
+    run_id: str,
+    trace_start_offset: int,
+    binding_id: str,
+    expected_action: str,
+    receipt_id: str,
+) -> Dict[str, Any]:
+    """Read only semantic events emitted after this wait's duration key."""
+    try:
+        _, owned = refresh_semantic_step_trace(
+            profile=profile, run_dir=run_dir, run_id=run_id,
+            start_offset=trace_start_offset,
+        )
+        events, read_status = read_semantic_step_trace( owned, run_dir, run_id )
+    except ( OSError, ValueError ) as exc:
+        return {
+            "status": "unproved", "failures": ["native_wait_trace_unavailable"],
+            "error": str( exc ), "events": [],
+        }
+    evidence = classify_native_wait_activity_completion(
+        events, run_id=run_id, binding_id=binding_id,
+        expected_action=expected_action, receipt_id=receipt_id,
+    )
+    return {**evidence, "read_status": read_status, "events": events}
 
 
 def evaluate_native_wait_return_continuation(
@@ -8059,6 +8172,9 @@ def execute_long_wait_action(
     allow_harmless_flavor_popup_wait_recovery = bool(
         step.get("allow_harmless_flavor_popup_wait_recovery", False)
     )
+    require_run_bound_wait_classification = bool(
+        step.get( "require_run_bound_wait_classification", bool( semantic_run_id ) )
+    )
     report: Dict[str, Any] = {
         "wait_key": wait_key,
         "choice_key": choice_key,
@@ -8318,6 +8434,16 @@ def execute_long_wait_action(
         else None
     )
     report["completion_artifact_baseline_now_minutes"] = baseline_now_minutes
+    semantic_wait_trace_start_offset = -1
+    semantic_binding_path = run_dir / TRANSITION_EVENT_BINDING_FILENAME
+    semantic_binding_id, semantic_binding_error = sha256_file( semantic_binding_path )
+    if semantic_run_id and semantic_profile:
+        try:
+            semantic_wait_trace_start_offset = semantic_step_source_trace(
+                semantic_profile
+            ).stat().st_size
+        except OSError:
+            semantic_wait_trace_start_offset = -1
     peekaboo_press_sequence(pid, [choice_key], delay_ms=delay_ms)
     if after_choice_settle_seconds > 0:
         time.sleep(after_choice_settle_seconds)
@@ -8339,9 +8465,38 @@ def execute_long_wait_action(
     continuation_proved = native_wait_continuation.get("status") == "matched"
     if completion_wait_seconds > 0 and not continuation_proved:
         time.sleep(completion_wait_seconds)
+    receipt_id = hashlib.sha256(
+        f"{semantic_run_id}\0{label}\0{wait_start_size}".encode( "utf-8" )
+    ).hexdigest()
+    native_terminal_evidence: Dict[str, Any] = {}
+    if require_run_bound_wait_classification and semantic_wait_trace_start_offset >= 0 and \
+            semantic_binding_id:
+        native_terminal_evidence = observe_bound_native_wait_activity_completion(
+            profile=semantic_profile, run_dir=run_dir, run_id=semantic_run_id,
+            trace_start_offset=semantic_wait_trace_start_offset,
+            binding_id=semantic_binding_id,
+            expected_action=f"wait.{expected_duration}", receipt_id=receipt_id,
+        )
+        report["native_wait_activity_completion"] = {
+            key: value for key, value in native_terminal_evidence.items() if key != "events"
+        }
+    elif require_run_bound_wait_classification:
+        native_terminal_evidence = {
+            "run_id": semantic_run_id,
+            "binding_id": semantic_binding_id,
+            "receipt_id": receipt_id,
+            "source": "native_semantic_wait_activity_complete",
+            "kind": "",
+            "status": "unproved",
+            "failures": ["native_wait_trace_or_binding_unavailable"],
+            "binding_error": semantic_binding_error,
+        }
+        report["native_wait_activity_completion"] = native_terminal_evidence
+    native_completion_proved = native_terminal_evidence.get( "status" ) == "matched"
     completion_poll_timed_out = False
     completion_poll_aborted = False
-    if not continuation_proved and completion_artifact_timeout_seconds > 0 and \
+    if not continuation_proved and not native_completion_proved and \
+            completion_artifact_timeout_seconds > 0 and \
             (state_patterns or minimum_artifact_elapsed_minutes > 0) and \
             artifact_log is not None:
         poll_acknowledgement_count = 0
@@ -8462,6 +8617,32 @@ def execute_long_wait_action(
                 "reports": [],
             },
         }
+    elif native_completion_proved:
+        report["completion_artifact_poll"] = {
+            "status": "not_required_bound_native_wait_completion",
+            "aborted": False,
+            "abort_reason": "",
+            "attempts": 0,
+            "elapsed_seconds": 0.0,
+            "timeout_seconds": 0.0,
+            "poll_seconds": 0.0,
+            "start_size": completion_start_size,
+            "match": {
+                "matched": False,
+                "patterns": state_patterns,
+                "matched_patterns": [],
+                "missing_patterns": list( state_patterns ),
+                "source": "not_required_bound_native_wait_completion",
+            },
+            "interruption_handling": {
+                "status": "clear",
+                "acknowledgement_count": 0,
+                "response_keys": [],
+                "release_blocking": False,
+                "contaminating": False,
+                "reports": [],
+            },
+        }
     after_capture = capture_screenshot(pid, run_dir, f"{label}.after")
     report["screen_after"] = after_capture.get("screen_summary", {})
     after_text = capture_screen_text_artifact(run_dir, f"{label}.after", after_capture, tail_lines=tail_lines)
@@ -8487,19 +8668,14 @@ def execute_long_wait_action(
             "screen_status": report["wait_classification"].get("status", ""),
             "completion_signal": "same_run_native_return_receipts_and_postcondition",
         }
-    require_run_bound_wait_classification = bool(
-        step.get( "require_run_bound_wait_classification", bool( semantic_run_id ) )
-    )
     if require_run_bound_wait_classification:
         before_clock_matches = extract_clock_or_turn_evidence( before_text ).get( "clock_matches", [] )
         after_clock_matches = extract_clock_or_turn_evidence( classification_text ).get( "clock_matches", [] )
         expected_seconds = wait_duration_seconds( expected_duration )
-        receipt_id = hashlib.sha256(
-            f"{semantic_run_id}\0{label}\0{wait_start_size}".encode( "utf-8" )
-        ).hexdigest()
         wait_receipt = {
             "run_id": semantic_run_id,
             "receipt_id": receipt_id,
+            "binding_id": semantic_binding_id,
             "start_seconds_since_midnight": (
                 before_clock_matches[0].get( "seconds_since_midnight" )
                 if before_clock_matches else None
@@ -8511,19 +8687,10 @@ def execute_long_wait_action(
             "expected_seconds": expected_seconds,
         }
         screen_status = str( report["wait_classification"].get( "status", "" ) )
-        native_terminal_evidence = {
-            "run_id": semantic_run_id,
-            "receipt_id": receipt_id,
-            "source": "native_wait_ui",
-            "kind": (
-                "native_wait_completed" if screen_status == "completed" else
-                "native_wait_interrupted" if screen_status == "interrupted_or_prompt_visible" else
-                ""
-            ),
-        }
         report["wait_receipt"] = wait_receipt
         report["run_bound_wait_classification"] = classify_run_bound_native_wait(
             wait_receipt, native_terminal_evidence, current_run_id=semantic_run_id,
+            current_binding_id=semantic_binding_id,
         )
         report["wait_classification"] = {
             **report["wait_classification"],
@@ -8730,19 +8897,18 @@ def execute_long_wait_action(
             if final_clock_matches else None
         )
         screen_status = str( report["wait_classification"].get( "status", "" ) )
-        native_terminal_evidence = {
-            "run_id": semantic_run_id,
-            "receipt_id": wait_receipt["receipt_id"],
-            "source": "native_wait_ui",
-            "kind": (
-                "native_wait_completed" if screen_status == "completed" else
-                "native_wait_interrupted" if screen_status == "interrupted_or_prompt_visible" else
-                ""
-            ),
-        }
+        if screen_status == "interrupted_or_prompt_visible" or int(
+                report.get( "interruption_handling", {} ).get( "acknowledgement_count", 0 ) or 0
+        ) > 0:
+            native_terminal_evidence = {
+                **native_terminal_evidence,
+                "kind": "native_wait_interrupted",
+                "screen_or_handler_interruption": True,
+            }
         report["wait_receipt"] = wait_receipt
         report["run_bound_wait_classification"] = classify_run_bound_native_wait(
             wait_receipt, native_terminal_evidence, current_run_id=semantic_run_id,
+            current_binding_id=semantic_binding_id,
         )
         report["wait_classification"] = {
             **report["wait_classification"],
