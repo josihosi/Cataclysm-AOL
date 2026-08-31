@@ -34,7 +34,8 @@ receipt from the exact frame that consumed or rejected it.
 native input owner becomes active
 -> CDDA publishes the top semantic surface and surface stack
 -> cockpit presents only that surface and its valid actions
--> caller submits exact frame ID plus namespaced semantic action and stable target ID
+-> caller submits exact frame ID plus a namespaced semantic action and any stable target ID or
+   structured parameters that the advertised action schema requires
 -> the same native input owner consumes or rejects it
 -> CDDA publishes an exact receipt and a fresh top frame
 ```
@@ -59,6 +60,12 @@ Actions are namespaced by the owning surface, for example `world.wait`, `overmap
 `inventory.apply`, `dialogue.choose`, and `menu.cancel`. A native keybinding, menu letter, list
 index, pixel position, and rendered coordinate are not stable IDs. “Current screen,” “OCR mode,”
 and “key fallback” are not synonyms for semantic surface support.
+
+Action IDs listed in this document are representative native bindings, not exhaustive whitelists.
+A supported semantic surface must expose every semantic operation that its adapter supports and the
+current native owner permits. The valid actions must let automation navigate, complete, or yield
+from every state that the adapter can reach. If a missing binding can trap automation in the native
+owner, that owner is unsupported and must expose no executable actions until the binding exists.
 
 ## Current code map
 
@@ -85,6 +92,8 @@ and the repository contained the relevant owners and precedent. No external clai
 ## Mechanistic requirements
 
 ### 1. Semantic surface stack and frame identity
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-001-S001 claim=R-SURFACE-001 -->
 
 Mechanism:
 
@@ -115,7 +124,7 @@ Implementation status:
 
 - [x] The focused wait prototype already emits run-bound frame IDs and exact receipts. This evidence
   proves the narrow identity precedent only.
-- [ ] 🔴 R-001 — CDDA lacks one renderer-neutral semantic surface stack with top-owner exclusivity,
+- [ ] 🔴 R-SURFACE-001 — CDDA lacks one renderer-neutral semantic surface stack with top-owner exclusivity,
   fresh frame identity, breadcrumbs, and fail-closed unsupported ownership.
   - Code gap: `src/handle_action.cpp` emits selected frames, while
     `input_context::get_active_context` is Tiles/Android-only and `game::draw` creates a temporary
@@ -126,15 +135,21 @@ Implementation status:
     fresh push/pop frame IDs, no parent actions in children, and no executable action for unsupported
     ownership in Tiles and curses builds.
 
+<!-- DE67:DFS-SLICE:END id=R-SURFACE-001-S001 claim=R-SURFACE-001 -->
+
 ### 2. Native semantic request and receipt path
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-002-S001 claim=R-SURFACE-002 -->
 
 Mechanism:
 
 - Files and symbols: extend `src/semantic_surface.h/.cpp`; integrate request delivery with
-  `src/input_context.cpp :: input_context::handle_input`; replace the physical-dispatch branch in
-  `tools/openclaw_harness/semantic_broker.py :: SemanticStepChannel` and
-  `startup_harness.py :: dispatch_semantic_input`; keep `CockpitRunChannel` as the public
-  transaction guard.
+  `src/input_context.cpp :: input_context::handle_input` and
+  `src/input.h :: input_manager::get_input_event`; provide wake-only support in
+  `src/sdltiles.cpp`, `src/wincurse.cpp`, and `src/ncurses_def.cpp`; replace the physical-dispatch
+  branch in `tools/openclaw_harness/semantic_broker.py :: SemanticStepChannel` and
+  `startup_harness.py :: dispatch_semantic_input`; keep `CockpitRunChannel` as the public transaction
+  guard.
 - Entry point: the cockpit submits `semantic_action_request { run_id, surface_id, frame_id,
   request_id, action_id, stable_id?, parameters? }` to the live CDDA process.
 - Inputs: only fields advertised by the current descriptor are accepted. Private key sequences are
@@ -144,9 +159,18 @@ Mechanism:
 - Transition: the top native owner resolves the semantic action through its registered native
   binding and invokes the same native behavior used by local input. It emits one accepted or
   rejected receipt before publishing the resulting fresh frame.
-- Postconditions: the receipt contains request ID, run ID, consuming or rejecting surface ID and
-  frame ID, action ID, accepted state, rejection reason when present, and resulting frame ID when a
-  fresh frame exists.
+- Concurrency and ordering: `semantic_surface_manager::submit_request` validates the transport
+  envelope and queues the request. Only the game-thread top scope validates or rejects the semantic
+  action. Request arrival makes the queue observable to a blocking
+  `input_manager::get_input_event` implementation but does not manufacture an `input_event`, action
+  descriptor, key, mouse event, or timeout. The game thread asks the current top scope to consume the
+  queued request before it processes another physical event. CDDA serializes request consumption,
+  native state mutation, receipt emission, and successor frame publication in that order.
+- Postconditions: the receipt contains request ID, run ID, requested surface ID and frame ID,
+  consuming or rejecting surface ID and frame ID, action ID, accepted state, rejection reason when
+  present, and resulting frame ID when a fresh frame exists. For an accepted action, requested and
+  consuming identities are equal. For a stale or wrong-surface rejection, the receipt preserves the
+  requested identities and identifies the current frame that rejected the request.
 - Failure behavior: transport loss does not synthesize acceptance. Duplicate request IDs return the
   recorded result without applying the action twice. No path translates the request to a keyboard
   event, Escape, menu letter, mouse coordinate, or screenshot-guided control.
@@ -158,7 +182,7 @@ Implementation status:
 
 - [x] `CockpitRunChannel.act` already rejects unknown, used, unadvertised, stale, and receipt-mismatched
   actions and requires a fresh next frame.
-- [ ] 🔴 R-002 — The production route still resolves semantic actions to physical keys outside CDDA
+- [ ] 🔴 R-SURFACE-002 — The production route still resolves semantic actions to physical keys outside CDDA
   instead of letting the exact native input owner consume them.
   - Code gap: `SemanticStepFrame.action_inputs`, `SemanticStepChannel.act_observed`, and
     `startup_harness.dispatch_semantic_input` make Python and foreground key injection the binding
@@ -171,7 +195,11 @@ Implementation status:
     wrong-surface, and transport-interrupted requests without game-state change. The route contains
     no OS key injection.
 
+<!-- DE67:DFS-SLICE:END id=R-SURFACE-002-S001 claim=R-SURFACE-002 -->
+
 ### 3. Shared generic menu and prompt instrumentation
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-003-S001 claim=R-SURFACE-003 -->
 
 Mechanism:
 
@@ -189,10 +217,13 @@ Mechanism:
 - Preconditions: only actions that the native control can execute in its current state are
   advertised. A callback-defined operation without an explicit semantic binding is visible but not
   executable.
-- Transition: `menu.select`, `menu.choose`, `menu.cancel`, and prompt actions change native control
-  state through the control's existing decision path. `menu.cancel` exists only when that owner
-  supports cancellation. A text prompt accepts structured text through `prompt.submit`, subject to
-  its native constraints.
+- Transition: `menu.select`, `menu.choose`, `menu.filter`, `menu.clear_filter`, `menu.cancel`, and
+  prompt actions change native control state through the control's existing decision path. Direct
+  selection by stable ID replaces row-by-row screen navigation when both reach the same native
+  selection state. The adapter exposes a distinct semantic action when the native owner assigns
+  behavior to selection movement itself. `menu.cancel` exists only when that owner supports
+  cancellation. A text prompt accepts structured text through `prompt.submit`, subject to its native
+  constraints.
 - Postconditions: the next frame reflects selection, filtering, validation, or parent restoration.
   The exact child frame receipts the action.
 - Failure behavior: disabled, missing, duplicate, stale, or constraint-invalid stable IDs are
@@ -202,17 +233,23 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-003 — The ordinary `uilist`, confirmation/query popup, and string-input families do not
+- [ ] 🔴 R-SURFACE-003 — The ordinary `uilist`, confirmation/query popup, and string-input families do not
   publish one shared semantic shape or consume stable-ID semantic actions.
   - Code gap: current controls resolve hotkeys, indexes, and input events locally and expose no
     common descriptor or receipt.
   - Required mechanism: instrument the shared native controls as above so ordinary menu coverage
     grows through the common family rather than one OCR adapter per menu.
-  - Proof: native tests cover enabled and disabled entries, duplicate labels, filter/reorder/redraw,
-    confirmation, cancellation availability, text validation, nested prompts, and a real ordinary
-    debug menu. Stable IDs survive presentation changes; parent actions remain absent.
+  - Proof: native tests cover enabled and disabled entries, duplicate labels, selection navigation,
+    filter/reset, reorder/redraw, confirmation, cancellation availability, text validation, nested
+    prompts, and a real ordinary debug menu. Stable IDs survive presentation changes; parent actions
+    remain absent. A surface with an omitted action that prevents completion or safe yield fails the
+    test as unsupported.
+
+<!-- DE67:DFS-SLICE:END id=R-SURFACE-003-S001 claim=R-SURFACE-003 -->
 
 ### 4. World semantic surface
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-004-S001 claim=R-SURFACE-004 -->
 
 Mechanism:
 
@@ -222,8 +259,9 @@ Mechanism:
   minimap, overmap-cell, entity, and zone builders in `src/handle_action.cpp`; read structured
   messages from `src/messages.h/.cpp`.
 - Entry point: world input becomes top owner after load or after a child scope returns.
-- Inputs: avatar state, local map, visible creatures, terrain, zones, messages available to the
-  player, current world mode, and currently valid native world actions.
+- Inputs: avatar state, local map, visible creatures, terrain, zones, the full retained player
+  message history from `Messages::recent_messages( Messages::size() )`, current world mode, and
+  currently valid native world actions.
 - Preconditions: world is the exact top owner; no activity prompt, inventory, dialogue, targeting,
   direction, overmap, or other child owns input.
 - Transition: namespaced world actions invoke the matching logical game action. A native action that
@@ -231,7 +269,8 @@ Mechanism:
 - Postconditions: the cockpit receives the local map and current world facts only while world owns
   input. Returning from a child produces a fresh world frame.
 - Failure behavior: if world state cannot be built consistently, the owner publishes no executable
-  actions. Messages are selected by the native displayed/history boundary, not an invented count.
+  actions. The existing `MESSAGE_LIMIT` option bounds the native retained message history. Cockpit
+  code does not add a message count or change the semantic payload based on renderer viewport size.
 - Persistence/compatibility: world observation does not mutate or persist state. It is renderer
   independent.
 
@@ -239,7 +278,7 @@ Implementation status:
 
 - [x] The current focused frame already serializes avatar, visible local cells, entities, zones,
   minimap, overmap cells, and a small set of world actions.
-- [ ] 🔴 R-004 — The world frame is not owned by the actual renderer-neutral world input loop and
+- [ ] 🔴 R-SURFACE-004 — The world frame is not owned by the actual renderer-neutral world input loop and
   does not yet satisfy the full active-surface payload and native action rules.
   - Code gap: publishing is partly driven from `game::draw` with a constructed `DEFAULTMODE` scope;
     current actions expose private key inputs and current payload omits authoritative messages.
@@ -249,7 +288,11 @@ Implementation status:
     show correct world facts/actions only before and after the child, with fresh frame IDs and exact
     receipts.
 
+<!-- DE67:DFS-SLICE:END id=R-SURFACE-004-S001 claim=R-SURFACE-004 -->
+
 ### 5. Overmap semantic surface
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-005-S001 claim=R-SURFACE-005 -->
 
 Mechanism:
 
@@ -273,7 +316,7 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-005 — The active overmap input owner has no focused semantic adapter.
+- [ ] 🔴 R-SURFACE-005 — The active overmap input owner has no focused semantic adapter.
   - Code gap: the current world observation's overmap cells are a world HUD preview and omit active
     overmap cursor, selected location, route state, actions, and receipts.
   - Required mechanism: add the focused scope and native bindings at `overmap_ui::display`.
@@ -281,7 +324,11 @@ Implementation status:
     stateful overmap action, and closes; every action is frame-bound and no world action is exposed.
     An undiscovered-location control reveals no hidden terrain.
 
+<!-- DE67:DFS-SLICE:END id=R-SURFACE-005-S001 claim=R-SURFACE-005 -->
+
 ### 6. Inventory semantic surfaces
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-006-S001 claim=R-SURFACE-006 -->
 
 Mechanism:
 
@@ -293,9 +340,13 @@ Mechanism:
   selected quantity/count, selector mode, and the exact inventory actions that mode accepts.
 - Preconditions: item-backed entries resolve to the same live item UID and location under the
   selector's native validity rules. Non-item entries have explicit scope-local stable IDs.
-- Transition: `inventory.select`, `inventory.set_quantity`, `inventory.apply`, and
-  `inventory.cancel` call the selector's native selection and commit paths. The stable target ID,
-  never an invlet or row, selects the entry.
+- Transition: the adapter maps namespaced semantic actions to the current selector's existing
+  `process_input`, `on_input`, or derived `execute` branch. The action set includes selection,
+  filter/reset, examine/details, contents, quantity, the selector's mode-specific commit operation,
+  and cancellation when the native selector permits each operation. Derived selectors also expose
+  their permitted operations, including wield, wear, pickup, drop, insert, or trade behavior when
+  that selector registers and handles the corresponding native action. The stable target ID, never
+  an invlet or row, selects the entry.
 - Postconditions: selection/detail state or the resulting child/parent surface appears in a fresh
   frame. The exact selector frame receipts the action.
 - Failure behavior: moved, destroyed, merged, inaccessible, disabled, stale, or wrong-selector items
@@ -306,15 +357,23 @@ Mechanism:
 Implementation status:
 
 - [x] Persistent item UIDs and UID lookup already provide the authoritative identity primitive.
-- [ ] 🔴 R-006 — Inventory selectors do not publish item details/selection or consume stable-UID
+- [ ] 🔴 R-SURFACE-006 — Inventory selectors do not publish item details/selection or consume stable-UID
   inventory actions.
   - Code gap: `inventory_selector` accepts local input and display positions; the cockpit has no
     inventory surface or receipt route.
-  - Required mechanism: add the focused selector adapter and bind item entries to `item_uid`.
-  - Proof: a real inventory route selects and applies one item by UID through nested prompts; reorder,
-    duplicate-name, moved-item, destroyed-item, and stale-frame controls never retarget another item.
+  - Required mechanism: add the focused selector adapter, bind item entries to `item_uid`, and expose
+    the complete mode-valid action set for the active base or derived selector.
+  - Proof: production routes exercise selection by UID, filter/reset, examine details, mode-specific
+    commit, and permitted cancellation for every inventory selector family that the coverage
+    inventory classifies as supported. A nested-prompt route proves child ownership. Reorder,
+    duplicate-name, moved-item, destroyed-item, stale-frame, and incomplete-action-set controls never
+    retarget another item or misclassify a trapped selector as supported.
+
+<!-- DE67:DFS-SLICE:END id=R-SURFACE-006-S001 claim=R-SURFACE-006 -->
 
 ### 7. Dialogue semantic surface
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-007-S001 claim=R-SURFACE-007 -->
 
 Mechanism:
 
@@ -339,7 +398,7 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-007 — Dialogue responses lack stable IDs and the dialogue input owner lacks a semantic
+- [ ] 🔴 R-SURFACE-007 — Dialogue responses lack stable IDs and the dialogue input owner lacks a semantic
   surface and native receipt route.
   - Code gap: `dialogue::opt` generates a vector, renders hotkeys, and applies the selected index.
   - Required mechanism: assign response-owned stable IDs and add the focused dialogue adapter.
@@ -347,7 +406,11 @@ Implementation status:
     enters a nested confirmation when applicable, and returns exact receipts. Regeneration,
     wrong-speaker, disabled-condition, index, and hotkey controls fail closed.
 
+<!-- DE67:DFS-SLICE:END id=R-SURFACE-007-S001 claim=R-SURFACE-007 -->
+
 ### 8. Direction and targeting semantic surfaces
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-008-S001 claim=R-SURFACE-008 -->
 
 Mechanism:
 
@@ -373,7 +436,7 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-008 — Direction and targeting custom owners are semantically invisible and can be
+- [ ] 🔴 R-SURFACE-008 — Direction and targeting custom owners are semantically invisible and can be
   misclassified as world or controlled only through raw input.
   - Code gap: `choose_direction` uses `DEFAULTMODE`; `target_ui::run` owns rich state but exposes no
     semantic descriptor or receipt.
@@ -382,7 +445,11 @@ Implementation status:
   - Proof: production use-item direction and ranged-target routes expose only their child actions,
     choose valid targets, and reject hidden, moved, out-of-range, stale, and parent-world actions.
 
+<!-- DE67:DFS-SLICE:END id=R-SURFACE-008-S001 claim=R-SURFACE-008 -->
+
 ### 9. Broad input-owner coverage and hard stop
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-009-S001 claim=R-SURFACE-009 -->
 
 Mechanism:
 
@@ -397,10 +464,15 @@ Mechanism:
 - Inputs: the actual source-level owner inventory and live owner transitions, not screenshots or an
   arbitrary menu list.
 - Preconditions: ordinary controls use the shared adapter; custom interfaces use focused adapters
-  only when their state/action model cannot be represented by the ordinary family.
-- Transition: a supported owner publishes its semantic surface. An unimplemented owner publishes
-  `unsupported` with breadcrumbs, diagnostics identifying the owner, and no valid actions.
-- Postconditions: automated play either has exact semantic actions for the top owner or is stopped.
+  only when their state/action model cannot be represented by the ordinary family. Every discovered
+  input owner whose absence would leave the agent blind is required coverage, not an optional
+  unsupported classification.
+- Transition: a required discovered owner publishes its supported semantic surface. An input owner
+  that has not yet reached required coverage publishes `unsupported` with breadcrumbs, diagnostics
+  identifying the owner, and no valid actions while its adapter remains incomplete.
+- Postconditions: every required discovered owner has sufficient semantic actions to navigate,
+  complete, or yield from its reachable states. Any newly discovered or still incomplete owner stops
+  automated play instead of inheriting executable behavior.
 - Failure behavior: absence of an adapter never falls through to parent actions, raw input, OCR, or
   guessed cancellation.
 - Persistence/compatibility: coverage is renderer neutral and includes useful debug and map-editor
@@ -408,18 +480,23 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-009 — The repository has no enforceable coverage boundary for all discovered
-  input-owning interfaces, including custom debug and map-editor owners.
+- [ ] 🔴 R-SURFACE-009 — The repository has no enforceable coverage boundary or complete semantic support
+  for every discovered input-owning interface whose absence would leave the agent blind, including
+  custom debug and map-editor owners.
   - Code gap: current traces and focused wait instrumentation cover selected interfaces; many direct
     input loops neither publish a supported surface nor force an unsupported hard stop.
   - Required mechanism: add the source coverage inventory/test, apply shared instrumentation to the
-    ordinary family, add necessary focused adapters, and make every remaining owner actionless and
-    unsupported.
-  - Proof: source inventory and live traversal of discovered menu families show that every reached
-    owner is supported or hard-stopped; injected unsupported-owner and nested-parent controls expose
-    zero executable actions. No arbitrary interface count is an acceptance gate.
+    ordinary family, add focused adapters for every required discovered owner, and make every newly
+    discovered or incomplete owner actionless and unsupported until its adapter is complete.
+  - Proof: source inventory and live traversal show complete semantic operation of every required
+    discovered owner. A deliberate unsupported-owner control and nested-parent controls expose zero
+    executable actions and stop automation. No arbitrary interface count is an acceptance gate.
+
+<!-- DE67:DFS-SLICE:END id=R-SURFACE-009-S001 claim=R-SURFACE-009 -->
 
 ### 10. Cockpit active-surface projection and end-to-end proof
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-010-S001 claim=R-SURFACE-010 -->
 
 Mechanism:
 
@@ -449,7 +526,7 @@ Implementation status:
 - [x] The current cockpit enforces observation use, frame freshness, advertised-action membership,
   exact receipt matching, and a fresh next frame. The terminal cockpit is a structured projection of
   the same `CockpitService` route.
-- [ ] 🔴 R-010 — The cockpit does not yet replace its active presentation across the required
+- [ ] 🔴 R-SURFACE-010 — The cockpit does not yet replace its active presentation across the required
   semantic surface families using a CDDA-native request route.
   - Code gap: current observation schema is world-centric, while modal handling still uses separate
     logs, OCR, or physical dispatch paths.
@@ -461,12 +538,14 @@ Implementation status:
     and proves exact presentation replacement, breadcrumbs, stable IDs, valid-action isolation,
     accepted/rejected receipts, renderer parity, and unsupported hard stop.
 
+<!-- DE67:DFS-SLICE:END id=R-SURFACE-010-S001 claim=R-SURFACE-010 -->
+
 ## Competing systems and override direction
 
 | State or action | Readers | Writers / competing owners | Authoritative decision |
 |---|---|---|---|
 | Active semantic surface | cockpit readers; terminal projection | native world loop, `uilist`, popup, inventory, dialogue, overmap, direction, target, editors | The top `semantic_surface_scope` alone owns truth. Push transfers authority to child; pop invalidates child and republishes parent with a fresh frame. Rendering and `input_context` category do not override it. |
-| Frame and receipt identity | `CockpitRunChannel`, broker, evidence readers | semantic manager versus legacy debug-log parser | CDDA creates frame IDs and receipts. Consumers validate but never mint or repair them. Duplicate request IDs are idempotent; stale frames reject. |
+| Frame and receipt identity | `CockpitRunChannel`, broker, evidence readers | semantic manager versus legacy debug-log parser | CDDA creates frame IDs and receipts. Consumers validate but never mint or repair them. A receipt records the requested frame identity and the identity of the frame that consumed or rejected the request. Duplicate request IDs are idempotent; stale frames reject. |
 | Semantic action binding | cockpit caller; native owner | Python `action_inputs`, OS key injection, local physical input | The exact top native owner is authoritative. Physical local input may still operate the game for a human but cannot count as or fabricate a semantic receipt. Python key translation yields and is removed from the executable cockpit route. |
 | Menu choice identity | cockpit menu projection | `uilist` index/hotkey, callback, semantic stable ID | The entry-owned stable ID selects. Index, hotkey, screen position, and label may render but never bind an action. Unsupported callbacks are visible and disabled semantically. |
 | Inventory item identity | inventory projection and action resolver | item UID, invlet, item name, item location hints | Existing `item_uid` is authoritative. Location is revalidated; no fallback retargets by invlet, name, row, or coordinate. |
@@ -495,16 +574,16 @@ source-bound binary and fixture
 
 | Red ID | Outcome test | Required evidence | False-green controls |
 |---|---|---|---|
-| `R-001` | Nested owners push/pop one exclusive renderer-neutral stack. | Native unit/integration results and Tiles/curses descriptors with fresh IDs. | Draw-created world scope, cached parent actions, unsupported owner with any action, or reused frame ID fails. |
-| `R-002` | Exact top owner consumes a semantic request without OS input. | Native request/receipt transcript bound to binary and run. | Key injection, changed keymap dependency, focus dependency, duplicate state change, or synthetic receipt fails. |
-| `R-003` | Ordinary menus/prompts operate by stable entry ID across presentation changes. | Native menu-family test and real ordinary menu transcript. | Index, hotkey, label, disabled entry, or universal Escape success fails. |
-| `R-004` | World publishes complete facts/actions only while world owns input. | Bound world/child/world transcript on Tiles and curses. | Draw-only publication, missing messages, parent action in child, or private key binding fails. |
-| `R-005` | Active overmap cursor/selection/action/close route is semantic. | Native overmap transcript with discovered-state assertions. | World preview credited as overmap, hidden terrain leak, coordinate guess, or world action in overmap fails. |
-| `R-006` | Inventory item is selected/applied by UID through nesting. | Native inventory transcript and item-state result. | Invlet, row, duplicate label, moved/destroyed UID retarget, or stale frame success fails. |
-| `R-007` | Dialogue response is chosen by stable response ID and condition recheck. | Native dialogue transcript with topic/effect result. | Index/hotkey, regenerated token, wrong speaker, or disabled response success fails. |
-| `R-008` | Direction and target owners expose their own candidates and consume valid choices. | Native use-item and ranged-target transcripts. | `DEFAULTMODE` treated as world, hidden/moved target retarget, screen coordinate, or parent action succeeds fails. |
-| `R-009` | Every discovered/reached input owner is supported or actionless unsupported. | Source coverage inventory plus bound live traversal results. | Arbitrary menu quota, OCR adapter, parent fallback, raw key, or unclassified owner fails. |
-| `R-010` | Cockpit replaces views through nested, overmap, inventory, dialogue, target, and unsupported transitions. | One source-bound end-to-end structured artifact plus renderer-equivalence assertions. | Merged parent data/actions, screenshot evidence alone, synthetic/mocked surface, or legacy dispatcher credit fails. |
+| `R-SURFACE-001` | Nested owners push/pop one exclusive renderer-neutral stack. | Native unit/integration results and Tiles/curses descriptors with fresh IDs. | Draw-created world scope, cached parent actions, unsupported owner with any action, or reused frame ID fails. |
+| `R-SURFACE-002` | Exact top owner consumes a semantic request without OS input. | Native request/receipt transcript bound to binary and run. | Key injection, changed keymap dependency, focus dependency, duplicate state change, missing requested-frame identity, missing actual receipt-frame identity, or synthetic receipt fails. |
+| `R-SURFACE-003` | Ordinary menus/prompts operate by stable entry ID across presentation changes. | Native menu-family test and real ordinary menu transcript. | Index, hotkey, label, disabled entry, incomplete action set, trapped partial support, or universal Escape success fails. |
+| `R-SURFACE-004` | World publishes complete facts/actions only while world owns input. | Bound world/child/world transcript on Tiles and curses. | Draw-only publication, missing messages, parent action in child, or private key binding fails. |
+| `R-SURFACE-005` | Active overmap cursor/selection/action/close route is semantic. | Native overmap transcript with discovered-state assertions. | World preview credited as overmap, hidden terrain leak, coordinate guess, or world action in overmap fails. |
+| `R-SURFACE-006` | Inventory items and selector operations use stable IDs through base and derived selector routes. | Native inventory transcripts and item-state results for selection, details/filtering, mode commit, nesting, and permitted cancellation. | Invlet, row, duplicate label, incomplete mode actions, trapped partial support, moved/destroyed UID retarget, or stale frame success fails. |
+| `R-SURFACE-007` | Dialogue response is chosen by stable response ID and condition recheck. | Native dialogue transcript with topic/effect result. | Index/hotkey, regenerated token, wrong speaker, or disabled response success fails. |
+| `R-SURFACE-008` | Direction and target owners expose their own candidates and consume valid choices. | Native use-item and ranged-target transcripts. | `DEFAULTMODE` treated as world, hidden/moved target retarget, screen coordinate, or parent action succeeds fails. |
+| `R-SURFACE-009` | Every required discovered input owner operates semantically; any newly discovered or incomplete owner hard-stops. | Source coverage inventory plus bound live traversal results for required owners and an unsupported control. | Treating required coverage as unsupported, arbitrary menu quota, OCR adapter, parent fallback, raw key, or unclassified owner fails. |
+| `R-SURFACE-010` | Cockpit replaces views through nested, overmap, inventory, dialogue, target, and unsupported transitions. | One source-bound end-to-end structured artifact plus renderer-equivalence assertions. | Merged parent data/actions, screenshot evidence alone, synthetic/mocked surface, or legacy dispatcher credit fails. |
 
 The existing run `20260826_135902` is retained as focused evidence that the old wait prototype can
 emit separate frames and exact receipts. It cannot close any broad red item because its action was
@@ -525,8 +604,12 @@ renderer-neutrality, broad surface coverage, or unsupported hard stop.
   and screenshot fallback are prohibited; Tiles and curses share the same surfaces.
 - Evidence-implied refinements: the existing wait route is narrow precedent only; `item_uid` is the
   inventory identity primitive; current draw-time `DEFAULTMODE` activation cannot own semantic
-  truth; current cockpit transaction guards remain useful; `llm_intent` is a separate protected
-  policy owner.
+  truth; blocking graphical and curses input backends require a wake-only semantic notification;
+  action examples cannot limit a supported owner's mode-valid actions; the existing `MESSAGE_LIMIT`
+  owns world-message retention; current cockpit transaction guards remain useful; `llm_intent` is a
+  separate protected policy owner; the `R-SURFACE-*` namespace and its canonical DFS slices keep
+  this contract distinct from earlier durable claims and give each active claim one dispatchable
+  mechanistic route.
 
 After freeze, automation may close an existing red item only after its named proof passes and must
 remove its red marker. It may make an evidence-implied nonmaterial clarification, or append only a

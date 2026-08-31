@@ -26,58 +26,82 @@ the same semantic surfaces. Raw-key and screenshot-guided fallback cannot close 
 - [x] Structured terminal projection — The terminal cockpit uses the same `CockpitService` data
   route as the primitive caller. This foundation does not prove the new surface families.
 
-## Active frontier
+## Current delivery frontier
 
-- [ ] R-001 — Implement the renderer-neutral semantic surface stack, exact top-owner exclusivity,
+- [ ] R-SURFACE-001 — Implement the renderer-neutral semantic surface stack, exact top-owner exclusivity,
   fresh frame IDs, breadcrumbs, and actionless unsupported hard stop.
+  - DFS slices: `R-SURFACE-001-S001`
   - Earliest proof: world pushes a child menu and an unsupported child; parent actions disappear;
     pop restores a fresh world frame in Tiles and curses.
-- [ ] R-002 — Replace Python/OS key translation with an exact native semantic request and receipt
+
+- [ ] R-SURFACE-002 — Replace Python/OS key translation with an exact native semantic request and receipt
   route owned by the current CDDA input owner.
+  - DFS slices: `R-SURFACE-002-S001`
   - Earliest proof: the native wait vertical slice succeeds under a changed keymap and without
     foreground focus; stale, duplicate, wrong-surface, and interrupted requests fail without state
     change.
-- [ ] R-003 — Instrument `uilist`, query/confirmation popups, and string-input prompts through the
+
+- [ ] R-SURFACE-003 — Instrument `uilist`, query/confirmation popups, and string-input prompts through the
   shared semantic protocol and stable choice identities.
+  - DFS slices: `R-SURFACE-003-S001`
   - Earliest proof: duplicate labels survive filtering, reordering, redraw, selection, confirmation,
     cancellation availability, and text validation without index or hotkey targeting.
-- [ ] R-004 — Move the world semantic surface to the real renderer-neutral world input owner and
+
+- [ ] R-SURFACE-004 — Move the world semantic surface to the real renderer-neutral world input owner and
   complete local map, creatures, terrain, zones, messages, and native world actions.
+  - DFS slices: `R-SURFACE-004-S001`
   - Earliest proof: world/child/world transitions show complete world facts only when world owns
     input and return with a fresh frame.
-- [ ] R-005 — Add the focused overmap adapter for discovered terrain, player/cursor positions,
+
+- [ ] R-SURFACE-005 — Add the focused overmap adapter for discovered terrain, player/cursor positions,
   selected location, route state, and overmap actions.
+  - DFS slices: `R-SURFACE-005-S001`
   - Earliest proof: cursor, selection, one stateful overmap action, and close all receive exact
     receipts; hidden terrain and world-action controls fail.
-- [ ] R-006 — Add inventory-selector surfaces using item UID stable identities, item details,
+
+- [ ] R-SURFACE-006 — Add inventory-selector surfaces using item UID stable identities, item details,
   selection state, and mode-valid inventory actions.
-  - Earliest proof: a nested apply route selects the same UID across reorder/duplicate labels;
-    moved, destroyed, and stale targets never retarget.
-- [ ] R-007 — Add stable response identities and a focused dialogue surface with speaker, history,
+  - DFS slices: `R-SURFACE-006-S001`
+  - Earliest proof: production routes exercise the complete mode-valid action set for supported base
+    and derived selector families, including selection by UID, details/filtering, mode-specific
+    commit, nesting, and permitted cancellation; moved, destroyed, and stale targets never retarget.
+
+- [ ] R-SURFACE-007 — Add stable response identities and a focused dialogue surface with speaker, history,
   responses, enabled state, and dialogue actions.
+  - DFS slices: `R-SURFACE-007-S001`
   - Earliest proof: a duplicate-label response advances the correct topic after condition recheck;
     regenerated, wrong-speaker, disabled, index, and hotkey controls fail.
-- [ ] R-008 — Add explicit direction and targeting surfaces with coordinates, candidates, stable
+
+- [ ] R-SURFACE-008 — Add explicit direction and targeting surfaces with coordinates, candidates, stable
   targets, and focused actions.
+  - DFS slices: `R-SURFACE-008-S001`
   - Earliest proof: use-item direction and ranged targeting expose no world actions and reject
     hidden, moved, out-of-range, stale, and rendered-coordinate targets.
-- [ ] R-009 — Enforce broad input-owner coverage: shared ordinary-menu instrumentation, focused
-  custom adapters including useful debug/map editors, and actionless unsupported classification for
-  every remaining discovered owner.
-  - Earliest proof: source inventory plus live traversal classifies every reached owner as supported
-    or hard-stopped. No arbitrary interface count is a gate.
-- [ ] R-010 — Replace the cockpit's active presentation from the top descriptor across World,
+
+- [ ] R-SURFACE-009 — Enforce broad input-owner coverage: shared ordinary-menu instrumentation and
+  focused custom adapters, including useful debug/map editors, for every discovered input owner
+  whose absence would leave the agent blind. Newly discovered or incomplete owners hard-stop as
+  actionless unsupported until their required adapter is complete.
+  - DFS slices: `R-SURFACE-009-S001`
+  - Earliest proof: source inventory plus live traversal shows complete semantic operation of every
+    required discovered owner; a deliberate unsupported control hard-stops with no executable
+    actions. Required coverage cannot close through unsupported classification, and no arbitrary
+    interface count is a gate.
+
+- [ ] R-SURFACE-010 — Replace the cockpit's active presentation from the top descriptor across World,
   Overmap, Inventory, Dialogue, Menu/Prompt, Direction, Target, and Unsupported surfaces.
+  - DFS slices: `R-SURFACE-010-S001`
   - Earliest proof: one source-bound run traverses
     `world › inventory › use item › choose target › confirmation › world`, plus overmap and dialogue,
     with exact breadcrumbs, isolated valid actions, receipts, renderer parity, and unsupported stop.
 
 ## Causal order
 
-R-001 owns common surface identity and top-owner safety. R-002 owns the native action boundary.
-R-003 proves the shared ordinary family on that boundary. R-004 through R-008 add the required
-focused surfaces. R-009 proves that uncovered native owners fail closed and extends coverage without
-an arbitrary menu quota. R-010 proves the integrated caller experience. Work may overlap only when
+R-SURFACE-001 owns common surface identity and top-owner safety. R-SURFACE-002 owns the native action
+boundary. R-SURFACE-003 proves the shared ordinary family on that boundary. R-SURFACE-004 through
+R-SURFACE-008 add the required focused surfaces. R-SURFACE-009 proves complete semantic operation of
+required discovered owners and fail-closed behavior for newly discovered or incomplete owners,
+without an arbitrary menu quota. R-SURFACE-010 proves the integrated caller experience. Work may overlap only when
 it preserves those ownership boundaries and does not claim an integrated result before its
 prerequisites are proved.
 
