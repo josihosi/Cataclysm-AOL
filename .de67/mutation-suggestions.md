@@ -10,7 +10,8 @@ one top-level `- Owner-authorized [trigger]: ...` or `- Owner-authorized [defer]
 encode a lesser-authority reviewer proposal as `- [defer] Reviewer-authored proposal: ...`. Indent
 every continuation. A trigger requests review at the next durable quiet junction; a defer does not.
 Accumulate a batch under one deferred entry and promote that entry once when ready. Any other
-top-level syntax retains legacy trigger behavior.
+top-level syntax retains legacy trigger behavior. Only the pending section uses a top-level hyphen;
+consumed history uses an asterisk so a section-blind queue reader cannot reactivate old entries.
 
 For a miss, keep immediate recovery distinct from the smallest repeatable method correction and
 state the counterexample that could falsify it. For random or universal review, preserve the
@@ -19,11 +20,487 @@ more than its inputs.
 
 ## Pending suggestions
 
-None.
+No pending suggestions.
 
 ## Consumed suggestions
 
-- Owner-authorized [trigger]: Loosen the active playtesting and worker instruction system so it
+* Owner-authorized [defer]: Reshape de67 3 delivery around a current-source **CAOL feature playtest
+  package** which will exercise the implemented systems together in a living world, instead of
+  preserving a cabinet of isolated old demos. This is a non-forcing suggestion for the next ordinary
+  mutation review. Do not interrupt current work merely because this entry exists.
+
+  This is a planning and steering mutation, not a package-implementation mutation. The mutation
+  reviewer must research the current repository, then change, expand, and refreeze `.de67/DFS.md` and
+  rewrite/refill `.de67/work-ledger.md` so ordinary de67 3 coordinators and workers can build and run
+  the package afterward. Apart from the required mutation-ledger disposition, the reviewer must not
+  write product or harness code, create scenarios or fixtures, change tests or other documentation,
+  build the game, or conduct the playtests itself. Its deliverable is the clear map de67 3 will use,
+  not the runnable package. Before editing that map, compare CAOL `dev` with the configured
+  `upstream/master`, inspect the actual implementation, existing fixtures, prior playtest reports,
+  current red claims, and active harness capabilities. Preserve useful prior evidence with its
+  original provenance, but do not mistake an old green report or a deterministic test for
+  current-product live qualification.
+
+  The package scope is the CAOL runtime surface that is absent from, or materially extends, upstream:
+  follower-NPC free-text LLM speech and actions with the NPC/world snapshot; ambient non-follower LLM
+  speech; named-NPC/background and basecamp-request context where it reaches live behavior; Smart Zone
+  Manager; the Basecamp Locker and its real downtime service; the local Basecamp Patrol zone, shifts,
+  alarms, restraint, and persistence; hostile-ecology observation; overmap-relevant light, smoke, and
+  significant-sound evidence; the persistent bandit scout/contact/shakedown/return lifecycle; the
+  distinct cannibal night-attack lifecycle; and flesh-raptor circling/skirmisher behavior. Explicitly
+  exclude writhing stalkers and zombie riders from this package because the owner wants another design
+  pass over them first. Fixtures used for acceptance must contain neither excluded actor, and mixed
+  historical rider/stalker scenarios must not supply package credit. Release plumbing, platform matrix
+  work, and broad balance passes are also outside this playtest package.
+
+  Start from what is honestly known. R-005 round `73ddab45b9af474dbf1485d1fcc53248`
+  is the strongest current natural bandit lifecycle baseline, but it does not prove fire causation,
+  camp-zone interaction, or LLM behavior. Historical follower chat proved basic speech plus several
+  parsed actions, while the ambient scenario produced no credible ambient response and needs a real
+  current run. Historical Locker runs proved persistent zone creation and an actual equipment change;
+  Patrol connected/disconnected runs exposed rosters but left visible runtime conduct yellow. The
+  historical significant-sound matrix was strong but lacks current source/executable binding. Older
+  smoke/light and cannibal reports provide useful footing, not a substitute for a current causal
+  lifecycle. The active R-008 roof/indoor family is still the natural place to prove player-created
+  fire, channel attribution, response, camp interaction, return, and persistence. Reuse or deliberately
+  reopen those claims where a combined current run gives materially better evidence; do not erase the
+  old receipts or rerun them by ritual.
+
+  Make the rewritten explanations useful to the agents who will actually do the work. Each relevant
+  DFS acceptance branch and ledger task should explain the intended player-visible outcome, the CAOL
+  production mechanism being exercised, why the proposed scenario can cause it naturally, what is
+  already proved and what remains uncertain, which existing saves/tools are likely reusable, what
+  setup receives zero feature credit, which independent claims can survive a mixed result, and what
+  evidence would honestly settle the outcome. State genuine ordering or dependencies and the explicit
+  rider/stalker exclusion. Do not prescribe one key sequence, fixed wait, or implementation tactic:
+  give the coordinator enough context to select goal-oriented workers and give those workers room to
+  inspect, combine, repair, restart, or improve the route. Focus the plan on producing a playable,
+  causally credible package and learning from it—not on satisfying scenario paperwork.
+
+  Build the smallest coherent family of branchable scenarios needed to cover materially different
+  behavior. Prefer several outcomes from one credible world state, while keeping independent claim
+  verdicts so a broken locker does not invalidate a valid bandit dispatch. The family should include:
+
+  - A living-base day/night route in which known followers, assigned camp residents, and at least one
+    eligible ambient NPC coexist. Let the worker converse naturally, issue several goal-oriented
+    follower requests, observe speech and real actions, provoke an ambient speech-only response, inspect
+    the snapshot/context actually sent to the backend, exercise a basecamp request or board handoff,
+    observe Locker service and reservations during downtime, observe Patrol shift/route behavior, and
+    save/reload. Include backend timeout/error visibility as an inverse path, without turning the run
+    into an API test suite. Do not credit prompt text alone when the claim is downstream NPC behavior.
+
+  - A bandit pressure route branching from the same established base. Use a production-owned camp
+    outside the reality bubble and a true in-world signal, then observe evidence acquisition, dispatch,
+    approach, local stalking/contact, and a genuine shakedown. Branch or clone at the meaningful choice
+    so Pay and Fight can both be judged without replaying irrelevant setup. Patrol NPCs may watch, warn,
+    or ready themselves during a shakedown, but must not start shooting until the encounter becomes a
+    real fight or other hostile-combat state. In the fight branch, followers, patrol, Locker-supplied
+    equipment, ambient reactions, departure/return, aftermath, and reload persistence may all provide
+    separate evidence from the same session.
+
+  - A materially distinct cannibal route using a production-owned cannibal camp and true darkness.
+    Exercise signal-to-investigation/attack, direct hostile policy rather than extortion, camp defense,
+    follower and ambient response, Locker/Patrol continuity, survivor return, aftermath, and reload.
+    Daylight rally/hold may serve as a negative control when it answers the policy claim; do not make a
+    cannibal behave like a bandit merely to share a scenario template.
+
+  - A signal-control route that can isolate causation rather than treating any arrival as fire proof.
+    Compare quiet/no-signal state, player-deployed and player-lit roof fire at night, and a matched
+    ground-floor indoor pair with the relevant curtains/windows/openings genuinely closed versus open.
+    Keep the owner-specified fire preparation available: ample spawned logs, a `SOURCE_FIREWOOD` zone
+    across fuel-bearing tiles, normally deployed brazier, normally activated charged lighter, then the
+    player two ordinary tiles away. Distinguish light, smoke, significant sound, scent, prior knowledge,
+    and an already-dispatched party. Add a normal-player significant-sound stimulus such as audited
+    gunfire, alarm, or explosion so the current sound path can be tested live; ordinary noise should be
+    available as a negative comparison where the source contract predicts no significant event.
+
+  - A flesh-raptor perimeter encounter in a base or field state where its circling, spacing,
+    opportunistic attack, and response to multiple defenders can be watched alongside follower or
+    Patrol behavior. Spawning the raptor is acceptable zero-credit setup when no natural lifecycle is
+    being claimed; the observed production combat behavior, not the spawn, is the subject.
+
+  Prefer one canonical established-base fixture with cheap derived branches over unrelated saves that
+  silently disagree about factions, NPCs, zones, backend profiles, or hostile sites. Audit
+  `bandit_basecamp_prepared_base_v1_2026-04-22` with the matching
+  `mcwilliams_live_debug_2026-04-07` profile first. The saved state already contains the real
+  `Bugchaser central` camp and bulletin position, player camp registration, `CAMP_FOOD`,
+  `CAMP_LOCKER`, `CAMP_STORAGE`, two `CAMP_PATROL` zones, sixteen overmap NPCs, and known follower camp
+  residents Katharina and Robbie. Its `your_followers.fac_food_supply` is zero, but that is not a
+  defect, blocker, or reason to reject the fixture: only specific camp actions currently consume
+  calories. Keep the food state visible as context and provision calories as receipted zero-credit
+  setup only if a selected scenario actually uses an action whose production contract consumes them.
+  Do not create a food transform, demand a stocked replacement save, or gate the general base preflight
+  on a nonzero number merely to make the camp look administratively complete. Derive or recapture a
+  composite only where the package needs materially different state, such as verified camp
+  membership/assignment, suitable locker stock, patrol priorities, one stable ambient NPC,
+  uncontaminated signal state, usable roof/interior openings, or the required production-owned
+  bandit/cannibal sites. Ask the owner to create a new base save only if repository inspection proves
+  that the current footing cannot support a necessary scenario; food supply alone cannot establish
+  that need. `basecamp_dev_manual_2026-04-02` remains an alternative source of useful state, not a
+  mandatory stocked fallback.
+
+  Reuse existing capability instead of rebuilding it: `debug_spawn_follower_npc`, saved NPC audit,
+  camp-assignment dialogue and repair transforms, basecamp/NPC/item/furniture/field/site transforms,
+  fixture/profile install and capture, scenario registry, cockpit movement/wait/fire controls, and the
+  claim-scoped witness/debug-finding route. Prefer stable existing named NPC identities over adding a
+  deterministic NPC generator unless the scenario cannot otherwise exist. Add only gaps that the
+  package proves necessary: a base-readiness preflight which checks camp registration and bulletin,
+  required zones, assigned actors, production hostile origins, excluded-actor absence, and food only
+  when the selected route actually requires it; a normal-player significant-sound bridge; and any
+  missing LLM-facing action/observation needed to select an NPC, speak/yell, see the response, and bind
+  the prompt/snapshot/action result. Keep credentials out of fixtures and receipts. Restore or build
+  the current executable before transform validation if `zzip` is absent; that is readiness, not a new
+  product lane. These are downstream work-ledger targets for ordinary workers, not changes the mutation
+  reviewer should implement.
+
+  Treat fixture mutations, spawned resources, clairvoyance, debug observation, NPC repair, and hostile
+  site seeding as receipted zero-credit setup. Credit only production behavior reached through ordinary
+  game actions after setup. The worker is the pragmatic witness and owns tactics, ordering, waiting
+  horizon, branch choice, repair, and restart decisions. A divergence is a finding and a reason to keep
+  learning when the remaining world state is still useful, not an automatic end to the playthrough.
+  One session may prove the same claim in more than one way and may prove several systems at once;
+  stable actor/item/site identity and causal attribution matter more than paperwork. Tests should
+  protect fixture invariants, truthful bindings, forbidden-actor absence, evidence ceilings, independent
+  mixed-result claims, and save/reload continuity—not one exact key sequence, one arbitrary wait, or one
+  prescribed competent strategy.
+
+  Route defects discovered during these combined playtests through the existing
+  `.de67/debug-findings.md` queue instead of letting the playtest worker silently absorb every surprise
+  into opportunistic code repair. The worker should report the observed defect, bound evidence,
+  affected claims, and any observations that remain valid; the coordinator deduplicates and records it.
+  By default, continue gathering unaffected evidence and let the coordinator decide afterward whether
+  to schedule a repair, revalidation, or clean rerun through the work ledger. An immediate narrow repair
+  is still allowed when the finding genuinely blocks the selected outcome and retaining the current
+  context is the smallest useful route, but record the finding first and keep it open until the repair
+  has been rechecked. Do not fix unrelated findings merely because their code is nearby, and do not let
+  the existence of a finding invalidate independent green observations. Keep reusable missing
+  observation/action/setup interfaces in the existing capability-gap route, as the findings-list
+  contract already requires. The mutation reviewer should encode this routing in the DFS and work
+  ledger; it should not prepopulate the queue or repair any finding itself.
+
+  After the read-only research, thaw and expand the DFS so it names the integrated package outcome,
+  in-scope feature surface, exclusions, causal scenario families, fixture/tooling boundaries,
+  claim-scoped evidence semantics, and honest final acceptance. Then refreeze it against the inspected
+  source baseline. Rewrite the active work ledger around outcome-sized downstream work rather than one
+  task per primitive: preparation/readiness where genuinely necessary, implementation of missing
+  package capabilities, creation of the combined scenario family, live playtesting, claim-preserving
+  finding intake and coordinator-scheduled repair/revalidation, and a short current-source package guide
+  with named load/handoff entries and staged-versus-natural caveats.
+  Retain the useful spirit of the May `caol-josef-playtest-save-pack-*` cards without inheriting their
+  stale binaries or evidence ceilings. Merge, retire, or reorder contradictory microscopic ledger work
+  so the coordinator can see what matters next; preserve unrelated valid work and existing receipts.
+
+  The mutation review is complete when the refrozen DFS describes the right package and proof boundary,
+  and the work ledger gives the next coordinator a clear, sufficiently explained, outcome-sized route
+  for delegating its implementation and playtests. Do not hold the mutation open until the package is
+  coded or green. Those are subsequent de67 3 worker outcomes. A gameplay bug later discovered by the
+  package may remain open as a routed finding; missing or dishonest package setup may not receive final
+  package credit.
+
+  - Non-forcing suggestion: Rework hostile-camp signal discovery around a genuine ecology finding,
+  then align the DFS and active work ledger rather than reflexively patching one scenario. Staffed
+  bandit and cannibal camps should act as stationary scouts: when smoke, elevated nighttime light,
+  or another supported signal is genuinely observable from a camp under production distance,
+  terrain/LOS, elevation, weather, and observer-capability rules, that camp should record its own
+  signal lead. Requiring an unrelated roaming scout to encounter the signal, return, and report it
+  before the camp can know about something visible from its own position creates a circular and
+  implausible discovery path. This must not become omniscience or injected knowledge; mechanical
+  evidence must identify the real camp observer, channel, source location, visibility calculation,
+  and resulting durable memory.
+
+  Make observation periodic, bounded, and deduplicated. Do not scan every camp against every field
+  every turn or emit a new notice every millisecond while one fire burns. Research the existing
+  production scheduler and signal collection path, reuse its coarsest responsive cadence and spatial
+  indexing where practical, evaluate only eligible staffed camps and nearby/relevant signals, and
+  update one stable lead identity for the same source/channel rather than appending duplicates.
+  Re-observation should refresh confidence, last-seen time, or strength only when materially useful;
+  unchanged observations should be cheap and quiet. Add performance-sensitive behavioral tests for
+  a persistent fire across many turns, multiple fires and camps, duplicate suppression, cadence,
+  bounded work, save/reload identity, extinguishing, and a genuinely out-of-range or occluded signal.
+  Derive any exact cadence or bound from existing production clocks and measured responsiveness,
+  rather than inventing a test-owned number.
+
+  Separate discovery, memory, and response. Once credibly observed, the location should remain known
+  after the fire disappears; signal freshness may reduce confidence and urgency, but should not erase
+  the remembered place or make later reconnaissance inexplicable. Normal camp drive should still
+  decide whether and when to investigate. Source inspection of run
+  `7f9260c775d64822a059e450f6128f0d` shows the brazier was lit at minute 8221 and the witness stopped
+  at minute 8280 after drive 357 missed the normal threshold 500. The relevant deterministic
+  force-due path implies roughly a twelve-hour observation horizon, which is plausibly good gameplay
+  rather than a defect. Close or reframe `R008-BANDIT-DRIVE-THRESHOLD-001`: the one-hour negative was
+  premature, while missing camp-side observation and durable location memory are the actual findings.
+  Do not lower dispatch thresholds merely to satisfy the harness.
+
+  Review and coherently update the DFS, active work ledger, coordinator playtest contract, worker
+  harness guidance, witness/finding lifecycle, and enforcing tests. Playtests must inspect the
+  production variables and clocks on which behavior depends, expose enough state for the worker to
+  choose a meaningful horizon, and allow the coordinator and worker to refine, extend, repair, or
+  redesign proof. Every gameplay claim needs both mechanical proof of the authentic causal path and
+  a pragmatic feel test of whether timing, feedback, choices, and player experience are good.
+  Preserve mixed outcomes, accept multiple valid action/proof strategies, and treat an early
+  `not yet` as such unless the governing mechanics make the outcome unreachable or unreasonable.
+
+  - Non-forcing suggestion: Add a hostile-ecology performance qualification suite beside the large
+  functional playtest package. A feature that is causally correct but tanks frame rate when bandits
+  enter sight or begin stalking is not accepted gameplay. Research the observed slowdown and reshape
+  the DFS and active work ledger around both deterministic performance measurements and live rendered
+  feel tests; do not bury performance as one checkbox inside the functional witness or optimize from
+  speculation before capturing a reproducible workload.
+
+  Reuse and extend the existing `tools/hostile_camp_benchmark.py` machinery and its A/B ordering,
+  source/fixture bindings, update-latency summaries, scheduler counters, CPU/wall time, and RSS
+  sampling rather than creating an unrelated benchmark format. Inspect its current matrix and child
+  workloads to identify what it already covers and what the sighted-stalking incident does not. Add a
+  small representative family spanning: quiet established-world baseline; staffed camps observing a
+  persistent nearby fire without duplicate-event churn; abstract scouts and routine dispatch; bubble
+  materialization and approach; bandits visible to the player while stalking/pathing; multiple
+  simultaneous hostile groups/signals/camps; and an intentionally extreme but valid stress state.
+  Make the important local workloads explicit and independently comparable: a bandit shakedown while
+  negotiation/watch behavior is active; the transition from shakedown into a hostile fight; a direct
+  bandit hostile-fight scenario with patrol/follower defenders where applicable; a bandit fire/burning
+  scenario covering ignition, ongoing fire damage and reactions, path reconsideration, death or
+  retreat, and aftermath cleanup; and a signal-driven fire approach before any actor is burning.
+  Capture the transition boundaries as well as steady states so a one-time materialization, hostility,
+  target-list, path-cache, or aftermath spike cannot hide inside an average. Include cannibal
+  stalking/attack, hostile fight, and burning equivalents where its scheduler or local policy is
+  materially distinct. Prefer shared bound fixtures and controlled variants so differences are
+  attributable rather than comparing unrelated saves.
+
+  Measure distributions of frame time/frame pacing during rendered live scenarios, simulation turn
+  or update latency, relevant scheduler/LOS/pathfinding/event counts, CPU time, and resident memory.
+  FPS alone can hide stalls, and wall time alone can hide which subsystem exploded. When a regression
+  reproduces, capture a focused profiler trace or equivalent call-stack evidence before changing
+  architecture. Keep diagnostic instrumentation bounded and outside the hot path when inactive.
+  Preserve raw measurements and machine/build identity, and compare paired current/baseline variants
+  where possible. Derive regression judgments from measured baselines, intended supported hardware,
+  and visible gameplay impact; do not invent a universal FPS number, fixed entity cap, or benchmark
+  threshold merely to make the suite green.
+
+  Treat performance acceptance like other playtesting: require mechanical evidence that work remains
+  bounded and no repeated scan/event/path request grows accidentally, plus a pragmatic feel test that
+  ordinary stalking and camp activity remain smooth enough to play. Extreme scenarios should reveal
+  scaling shape and failure modes without becoming the ordinary balance target. Tests should catch
+  duplicate signal refresh floods, every-turn camp-by-signal scans, repeated LOS/path recomputation,
+  local/abstract ownership ping-pong, unbounded lead/event growth, and cleanup or save/reload leaks,
+  while allowing equivalent efficient implementations. Give coordinators and workers the metrics,
+  profiler artifacts, and production context needed to choose the repair; do not prescribe one
+  optimization or let the suite become another administrative prison.
+
+  Disposition (2026-08-31): accepted and projected as refrozen DFS claims R-026 through R-028 and
+  outcome-sized active ledger work. Immediate recovery preserves prior focused evidence while naming
+  one canonical current-source package, authentic signal ownership, and paired performance proof.
+  Repeatable method correction is causal and claim-scoped: branch from one audited fixture, separate
+  setup from behavior, preserve mixed verdicts, route defects independently, and bind mechanical
+  evidence to pragmatic feel rather than one scripted ceremony.
+
+  Incident reconstruction: isolated historical demos persisted because the prior DFS and ledger were
+  organized around individual proof primitives, not a current-source integrated product outcome.
+  The counterexample is a combined run where one branch fails but independent living-base or combat
+  observations remain attributable and valid; R-026 now requires those separate verdicts and forbids
+  old-card or mixed excluded-actor promotion.
+
+  Signal reconstruction: production required an active outing observer and returned report before a
+  camp could gain structural signal knowledge, so a stationary staffed camp could not remember what
+  it could itself perceive. The one-hour `7f9260c7…8f0d` result was then framed as a drive-threshold
+  defect even though drive had not reached its normal policy horizon. R-027 separates observation,
+  memory, and response. Its falsifying controls are occluded/out-of-range camps, persistent and
+  extinguished signals, multiple camps/sources, duplicate growth, save/reload identity, and ordinary
+  drive remaining below threshold without being called broken.
+
+  Performance reconstruction: the existing A/B owner measures abstract latency, CPU, RSS, counters,
+  and equivalence, while the reported risk appears at rendered local transitions. R-028 preserves
+  those baselines and adds paired materialization, stalking, shakedown/fight, defender, burning, and
+  aftermath windows. A transient spike hidden by an acceptable average or an extreme workload that
+  scales poorly without harming ordinary play is the required counterexample to simplistic verdicts.
+
+  Gate reconstruction: the installed queue reader starts after `## Pending suggestions` but does not
+  stop at the next heading, so hyphen bullets in consumed history re-entered the active queue. Before
+  this disposition it returned seven entries and four historical triggers, producing stale gate
+  `7714d3b50242`. Immediate recovery consumed the real deferred batch. The repeatable ledger method
+  now reserves top-level hyphens for pending entries and uses asterisks for consumed history, keeping
+  that history readable but parser-inert without exceeding this batch's three-artifact mutation
+  authority. The original counterexample now returns zero pending entries and no mutation gate.
+
+## Previously consumed suggestions
+
+* Owner-authorized [trigger]: Reshape the active R-008 playtest trajectory around a reusable,
+  long-horizon roof-fire ecology experiment instead of continuing to prove brazier, fuel, ignition,
+  waiting, and each hostile response as isolated administrative fragments. This is a forcing
+  mutation: inspect and align the DFS, active work ledger, scenario registry/declarations, CAOL
+  harness guidance, LLM-facing cockpit/TUI capabilities, witness expectations, and tests that
+  currently steer this work. Preserve valid prior evidence, but rewrite or retire active tasks and
+  scenarios that keep the coordinator decomposing this natural lifecycle into one-fact runs.
+
+  The canonical setup is ordinary playtest preparation and earns no ecology credit by itself. Choose
+  a safely generated building with a usable roof near relevant production-owned ecology; shelters
+  are one option, not a mandatory map template. Prefer natural roof access, while allowing a
+  receipted player-only teleport to a valid roof tile as a zero-credit setup fallback or useful
+  comparison. Do not teleport the hostile actors. At night, spawn enough logs that fuel spills
+  across several nearby roof tiles; place a `SOURCE_FIREWOOD` zone across one or more log-bearing
+  tiles; spawn a brazier item and deploy it through the normal player action; spawn or equip a
+  charged lighter and use it through the normal player action to create a genuinely burning brazier.
+  After ignition, move the player exactly two ordinary map tiles away from the brazier before the
+  observation wait begins. Record setup honestly without requiring the worker to repeatedly re-prove
+  already established harness primitives.
+
+  Keep the relevant camp or other production-owned origin outside the reality bubble. The fire and
+  smoke on an elevated roof at night are the stimulus. Let several in-game days pass when needed so
+  the worker can observe a complete natural lifecycle: an abstract actor or group detects the
+  signal, dispatches or approaches, enters the reality bubble, stalks/investigates/acts locally,
+  disengages, leaves the bubble, and returns to durable abstract ecology state. Include save/reload
+  or unload/reload observation when it helps prove persistence. Do not impose a short fixed wait as
+  the definition of failure; expose good time, log, minimap/overmap, actor-identity, bubble-boundary,
+  smoke/light, and durable-state information, then trust the worker to decide whether to keep
+  waiting, intervene diagnostically, change terrain, restart, or improve the harness. One live
+  session may contain several observations and prove several related claims.
+
+  Treat this as a scenario family and causal laboratory, not a single overfitted bandit script. Use
+  appropriate naturally generated buildings, roofs, surrounding terrain, distance, weather, season,
+  and hostile origins to exercise whichever DFS claims fit: bandits, cannibals, writhing stalkers,
+  zombie riders, smoke and light perception, dispatch timing, stalking, local/abstract conversion,
+  departure, return, and persistence. The worker owns scenario fit and may vary one or more of these
+  conditions creatively. A single playthrough may support multiple claims when the same observed
+  lifecycle genuinely bears on them; keep actor identity and causal attribution clear rather than
+  demanding duplicate ceremonies. Manufactured actors or ecology-changing debug interventions may
+  diagnose tools or mechanics but receive zero natural-ecology credit; final natural claims must be
+  witnessed from production-owned actors responding without actor teleportation or behavior
+  fabrication.
+
+  Add a paired indoor ground-floor control for the same causal family. In a naturally generated
+  building, place and light the brazier through the same player-owned setup, close every relevant
+  curtain, window, and exterior opening, step the player two tiles away, and observe for a
+  lifecycle-appropriate duration. This route tests whether opaque walls and closed curtains really
+  prevent the indoor fire's light from becoming an exterior detection signal. Compare it with a
+  matched positive route in the same or equivalent building with curtains/openings exposed, rather
+  than interpreting an uneventful indoor wait in isolation. Observe and distinguish light, smoke,
+  sound, scent, pre-existing knowledge, and incidental encounters so a dispatch caused by another
+  channel does not falsely disprove light blocking. Preserve honest inconclusive outcomes when the
+  comparison cannot isolate the signal. Vary window layout, curtain state, building footprint,
+  terrain, weather, and hostile ecology when useful, but let the worker choose the smallest matched
+  comparison that answers the current claim. This indoor control is an important first-class member
+  of the scenario family, not a later optional polish item.
+
+  The mutation reviewer's concrete job is to inspect the unresolved acceptance claims and active
+  red lamps first, then design, create, and validate a compact set of fire-signal scenarios that can
+  answer those claims. Rework `.de67/work-ledger.md` substantially so the active spokes name these
+  outcome-sized experiments and the connected claims each can settle. Thaw, rewrite, and refreeze
+  `.de67/DFS.md` where its current decomposition, scenario requirements, or acceptance language does
+  not represent this route; do not merely append the idea to historical prose. Create or revise the
+  scenario declarations, fixtures, charters, witness surfaces, and behavioral tests needed to make
+  the selected set runnable. Validate that each setup can genuinely produce its stated signal and
+  target ecology before returning it to ordinary workers. Remove, merge, or demote superseded active
+  ledger fragments so the old one-primitive trajectory does not continue alongside the rewrite.
+
+  Work out a scenario matrix from the tests actually still required, without manufacturing a
+  Cartesian-product bureaucracy. It should cover the materially distinct causal branches needed for
+  bandit stalking, cannibal stalking, hostile attacks or raids, approach/localization, and aftermath.
+  Each arrival must have a true in-world trigger—such as exposed light, visible smoke, or another
+  source-backed signal the production ecology really consumes—not a fixture that silently places the
+  attackers at the camp or grants them unexplained target knowledge. Include matched blocked-signal
+  controls where they answer a real claim. One strong run may validate several branches, while a
+  materially different hostility policy, signal channel, occlusion condition, or lifecycle boundary
+  deserves a separate variant. Inspect the production signal, dispatch, hostility, and camp-defense
+  code while choosing the variants so every declared causal route is mechanically possible.
+
+  Integrate real basecamp zone behavior into suitable variants rather than postponing it to isolated
+  tests. Set up and exercise the production `Basecamp: Locker` (`CAMP_LOCKER`) and camp patrol
+  (`CAMP_PATROL`) zones while the signal-driven ecology unfolds. Observe whether locker workers,
+  reservations, equipment access, and ordinary camp activity remain coherent before, during, and
+  after contact. Patrolling NPCs should recognize genuinely hostile stalking, cannibal attacks,
+  bandit attacks, or raids and defend the camp appropriately. They should not shoot or otherwise
+  escalate a bandit shakedown merely because the shakedown party is present: the expected behavior is
+  alarm/watch/readiness until the encounter becomes a fight or another real hostile-combat state.
+  Test that distinction in live scenarios as well as retaining focused deterministic coverage. The
+  existing production contract in `tests/faction_camp_test.cpp`, including camp-local locker/patrol
+  zones and `camp_patrol_alarm_watches_active_shakedown_contact_without_combat_escalation`, is an
+  anchor to validate in gameplay rather than a substitute for the playtest.
+
+  Allow previously green or closed claims to be deliberately reopened when the improved cockpit and
+  these combined scenarios can provide stronger, more natural, or cross-feature evidence. Reopening
+  does not erase the earlier proof or imply it was false: retain its provenance, state why the new
+  route is materially better, and distinguish regression revalidation from a genuinely new claim.
+  Favor combined playtests when one coherent world state can exercise several interacting features,
+  but never promote one observation beyond what it actually supports.
+
+  A divergence in one feature must not automatically abort the playthrough or discard evidence for
+  the other features. For example, a broken locker-zone interaction discovered during a valid
+  signal-driven bandit approach is a locker finding; it does not by itself cancel the bandit
+  detection, dispatch, stalking, or patrol observations. Continue the session when its remaining
+  state can still answer other claims honestly. Record which claims the divergence affects, which
+  remain observable, and whether an immediate repair, later rerun, or separate clean comparison is
+  needed. Abort or restart only when the world state can no longer answer the intended claims, the
+  causal attribution is contaminated, or the worker judges a clean experiment more useful—not
+  merely because the first bug appeared.
+
+  Give the coordinator one lightweight durable place to collect product and harness defects found
+  during these multi-feature runs. Reuse an existing active defect surface if repository inspection
+  finds one with the required semantics; the append-only SQLite capability-gap history is only for
+  reusable missing observation/action/setup interfaces and must not be overloaded with ordinary
+  gameplay bugs. Otherwise create `.de67/debug-findings.md` as a concise coordinator-owned queue.
+  Each finding needs only a stable identity, short observed defect, bound run/evidence reference,
+  affected claims, explicitly unaffected observations when useful, current disposition, and the
+  next repair or revalidation action. It must not become a second DFS, a proof checklist, or an
+  automatic mutation trigger. Workers report findings in their ordinary result; the coordinator
+  deduplicates, records, schedules fixes alongside the outcome-sized work, and closes a finding only
+  after an appropriate repair and recheck. Tests should demonstrate that one mixed run can emit a
+  locker defect, retain valid bandit evidence, continue into patrol observation, and route the defect
+  for repair without terminating the entire scenario.
+
+  Repository anchors to reconcile rather than blindly preserve include `.de67/DFS.md` under the
+  current scenario setup/intervention contract; `.de67/WEC.md` under deterministic setup and
+  observation; `TechnicalTome.md`'s corrected fire-knot/source-zone description;
+  `tools/openclaw_harness/startup_harness.py`'s `source_firewood_zone_near_player` and map item/
+  furniture transforms; `tests/firestarter_activity_test.cpp`'s production brazier + wood + lighter
+  ignition path; `tools/openclaw_harness/CONTROL_LOOKUP.md`'s historical brazier deployment notes;
+  the existing `bandit.roof_fire_horde_*`, `bandit.player_lit_fire_signal_wait_mcw`, source-zone,
+  visible-brazier, and real-fire scenario declarations and their backing fixtures. In particular,
+  include the bandit/cannibal signal, pursuit, hostile-operation, patrol, shakedown, and camp-locker
+  production paths and their focused tests when deriving the scenario matrix. Review short
+  bounded-wait and one-primitive gates that made sense while repairing the harness but
+  now obstruct the whole-life-cycle experiment. Keep tests for truthful bindings, real ignition,
+  receipts, evidence ceilings, and persistence; replace tests that constitutionalize one exact key
+  sequence, terrain, short duration, or one-fact-per-run decomposition with behavioral tests that
+  admit several competent strategies and scenario variants.
+
+  The resulting active DFS and ledger should contain outcome-sized spokes: where applicable, one
+  selected task should cover several connected subtasks such as setup, exposed-roof response,
+  closed-curtain indoor control, signal-channel comparison, dispatch, bubble entry, local behavior,
+  locker/patrol interaction, issue collection, exit/return, and persistence rather than opening a
+  new task for each clerical checkpoint. Consume this trigger only when the coordinator receives a
+  clear reusable fire-signal lifecycle goal, the worker has the controls and observations needed to
+  pursue it for several in-game days, mixed outcomes preserve claim-specific evidence and route
+  defects without aborting unrelated work, obsolete contradictory active entries are removed or
+  rewritten, and the loop can resume without treating setup paperwork, the first divergence, or a
+  short uneventful wait as terminal proof.
+
+  - Disposition: Consumed by exclusive mutation review for gate `3a0356194db2`. The incident began
+    before worker execution: R-008's active ledger and scenario contracts split one natural ecology
+    lifecycle into exact-input setup gates and short, terminal observations, so coordinators were
+    rewarded for accumulating local green facts instead of preserving a causal experiment. Immediate
+    recovery replaced that active decomposition with one outcome-sized fire-signal laboratory and a
+    four-member roof/indoor scenario family; the old short-wait declarations remain blocked only as
+    provenance. The repeatable correction makes each scenario own preparation, causal boundaries,
+    and evidence ceilings while the worker owns horizon, tactics, and diagnosis. A claim-scoped
+    witness bundle now keeps unaffected proof alive, routes ordinary defects through
+    `.de67/debug-findings.md`, and rejects overlapping affected/unaffected claim sets; capability-gap
+    history remains reserved for missing reusable interfaces.
+  - Counterexample and proof: the mixed-run witness tests prove a locker contradiction can coexist
+    with valid bandit and patrol observations, and reject a finding that tries to affect and preserve
+    the same claim. Fixture tests apply the transforms to a real source save and verify night roof
+    placement, three fuel-bearing tiles, `SOURCE_FIREWOOD`, no injected fire or hostile actors, exact
+    two-tile movement requirements, and a closed/open pair differing only at the openings. Registry
+    rebuild and query select the new executable roof route. The focused firestarter test passes four
+    assertions. The shakedown/patrol test first reproduced the original stale-state failure, then
+    passed all twelve assertions after its fixture was corrected to construct the authoritative
+    committed `active_hostile_operation` instead of the retired generic outing surface.
+  - Preserved uncertainty: no fresh playtest has yet proved that production ecology completes the
+    new multi-day family. Fire/smoke may redirect or inform an already dispatched structural sortie,
+    but current production code does not justify crediting fire as the initial bandit dispatch cause
+    without a separately observed event. The refrozen DFS, charter, and ledger preserve that red
+    claim and require claim-specific causal evidence; this ordinary playtest uncertainty does not
+    preserve the mutation gate because the requested executable route and evidence method now exist.
+
+* Owner-authorized [trigger]: Loosen the active playtesting and worker instruction system so it
   supplies goals, truthful context, capable tools, and a few real integrity boundaries without
   prescribing the agent's tactics. Perform a structural alignment pass across the installed de67 3
   coordinator prompts and policy obligations, `.de67/orchestrator-guidelines.md`,
@@ -139,7 +616,7 @@ None.
   permits source/tool repair and the proposal supplied no failure that survived the corrected
   instruction path.
 
-- Owner-authorized [trigger]: Stop routing R-005 around every monster the player happens to notice.
+* Owner-authorized [trigger]: Stop routing R-005 around every monster the player happens to notice.
   Reassess the active R-005 causal model before continuing: distinguish the player/observer's
   auto-walk and wait path from the bandits' production-owned path calculation, and inspect current
   monster positions only to determine which actor and route they actually influence. The current
@@ -207,7 +684,7 @@ None.
 
 ## Earlier consumed suggestions
 
-- Owner-authorized [defer]: Put cheap source/executable readiness before costly playtest authority
+* Owner-authorized [defer]: Put cheap source/executable readiness before costly playtest authority
   or repair runs, without turning build order into a rigid ritual. In `R-009-closure-014`, the
   Terra/high worker correctly received “revalidate the current binding” and the macOS-first route,
   but `.agents/skills/caol-harness/SKILL.md` routes query contradictions directly into
@@ -244,7 +721,7 @@ None.
   launch; the isolated control remains unblocked without gaining playtest credit. Sixty focused
   readiness, registry, charter, and capture-owner tests passed.
 
-- Owner-authorized [defer]: Give mutation review an honest `no change justified` outcome and apply
+* Owner-authorized [defer]: Give mutation review an honest `no change justified` outcome and apply
   the alignment manifest to the active de67 3 instruction system. A scheduled, random, universal,
   reviewer-authored, or general guideline review currently pressures the reviewer to edit something
   merely because a review was opened. That manufactures method churn and lets tests accumulate as
@@ -355,7 +832,7 @@ None.
   prompt tests now retain only operational invariants. The autodrive allegation was rejected after
   caller tracing confirmed that live cockpit play remains worker-owned.
 
-- Owner-authorized [trigger]: Reorder the remaining CAOL proof trajectory around its actual
+* Owner-authorized [trigger]: Reorder the remaining CAOL proof trajectory around its actual
   dependency chain and restore every unfinished playtest claim to a visible lawful route. The
   current active ledger bundles R-009 macOS gameplay evidence with Linux/WSL and Windows compiler
   work, so the coordinator selected provisional cross-platform repairs while shared harness and

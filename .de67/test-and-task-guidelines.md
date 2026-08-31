@@ -44,7 +44,9 @@ must show what it continued through. Debug setup or exact-identity creature zapp
 useful and remains zero-credit for natural route, ecology, combat, lifecycle, or certification.
 
 Finish with the smallest supported conclusion, its causal evidence, contradictions, and remaining
-unknowns. The witness may use any clear wording. Never invent facts, cite absent values, conceal
+unknowns. Use independent claim verdicts when a combined run has mixed outcomes; route an ordinary
+defect without erasing unaffected evidence, and reserve capability gaps for missing reusable
+interfaces. The witness may use any clear wording. Never invent facts, cite absent values, conceal
 evidence, change identity, or promote its own evidence class.
 
 ## Return results

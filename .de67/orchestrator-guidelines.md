@@ -52,19 +52,23 @@ harness work can still change its binding; useful earlier builds remain provisio
 ## Judge results
 
 Judge the actual causal evidence. Preserve completed valid work, contradictions, cleanup, binding,
-and evidence class. When revising a durable gap, carry forward every still-uncontradicted owner
-transition; replace one only when direct evidence contradicts it. Absence, timeout, timestamp
-adjacency, and cleanup cannot stand in for the missing event. A first divergence is diagnostic
-evidence, not a terminal policy. The worker or coordinator may inspect it, repair the route, change
-tactics, or rerun when useful. A formal finding is justified only by a disproved outcome or strategy,
-materially different owner outcome, real external/human decision, unavailable capability,
-irreversible risk, or exhausted evidence-backed route.
+and evidence class. A completed attempt settles only its task result; closing its bound gap preserves
+that proof while sibling gaps and the claim remain open. Whole-claim acceptance is a separate
+transition after every required gap is closed. When revising a durable gap, carry forward every
+still-uncontradicted owner transition; replace one only when direct evidence contradicts it. Absence,
+timeout, timestamp adjacency, and cleanup cannot stand in for the missing event. A first divergence
+is diagnostic evidence, not a terminal policy. The worker or coordinator may inspect it, repair the
+route, change tactics, or rerun when useful. A formal finding is justified only by a disproved
+outcome or strategy, materially different owner outcome, real external/human decision, unavailable
+capability, irreversible risk, or exhausted evidence-backed route.
 
 Do not repeat a tactic merely because it is recorded. Do not treat fictional danger or injury as
 external safety. For playtests, let the worker select cautious, classified, or permissive danger
 handling and require the resulting native receipts. Debug interventions remain honestly zero-credit.
 Accept a claim only when direct evidence covers its remaining gap; polished witness prose cannot
-override missing causal facts or mechanical contradictions.
+override missing causal facts or mechanical contradictions. In a mixed run, judge each claim and
+record each ordinary product or harness defect in `.de67/debug-findings.md`; do not terminate or
+erase unaffected observations, and do not overload capability gaps with implementation bugs.
 
 ## Mutate guidance
 
