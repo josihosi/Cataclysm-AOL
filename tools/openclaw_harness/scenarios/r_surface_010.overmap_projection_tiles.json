@@ -1,0 +1,40 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_010.overmap_projection_tiles",
+  "description": "Current source-bound Tiles cockpit proof that World is replaced by the native Overmap descriptor, a discovered cursor action uses its advertised stable ID, and native close restores World.",
+  "profile": "r-surface-004-world-children-tiles",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r_surface_001_inventory_prompt_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "capabilities.r_surface_010.overmap_projection_tiles": "current_source_tiles_native_overmap_descriptor_replacement",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.overmap", "semantic:overmap.move_cursor", "semantic:overmap.select", "semantic:overmap.close"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-surface-004-world-children-tiles",
+    "config_profile": "dev-harness",
+    "fixture": "r_surface_001_inventory_prompt_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r-surface-004-world-children-tiles", "fixture": "r_surface_001_inventory_prompt_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_001_inventory_prompt_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/dev-harness.json"},
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "emit_r_surface_010_overmap_world", "native_semantic_checkpoint": {"required_actions": ["world.overmap"], "required_state": "world"}},
+    {"kind": "cockpit_live_session", "label": "r_surface_010_overmap_projection", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Enter native Overmap through the advertised world.overmap target, use only current frame-owned stable targets, and return to World.", "proof_targets": ["fresh native Overmap descriptor replacing World without parent-field merge", "only advertised current-frame action IDs and stable targets are dispatched", "exact native receipts and fresh successors for an Overmap action and close", "fresh World descriptor after native close; fixture startup receives zero feature credit"], "authority": ["currently advertised native semantic actions", "run.witness", "run.finish"], "invariants": ["resolve every action from the current descriptor; do not use labels, hotkeys, indices, raw keys, screenshots, fallback, or direct mutation as identity", "stop on binding drift, missing receipt, retargeting, unsupported child action, or cleanup failure"], "live_operations": ["game.act"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_gates": [{"id": "r_surface_010_overmap_projection", "label": "current-bound Tiles Overmap presentation replacement", "boundary_step": "r_surface_010_overmap_projection", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_cockpit_transaction", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
+  "proof_route": {"gates": ["r_surface_010_overmap_projection"], "terminal": ["r_surface_010_overmap_projection"]}
+}

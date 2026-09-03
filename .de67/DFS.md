@@ -1,16 +1,18 @@
-# Semantic-Surface Cockpit DE-67 Functional Specification
+# Semantic-Surface Cockpit and CAOL Feature Package DE-67 Functional Specification
 
 Status: Refrozen
 WEC: `.de67/WEC.md`
-Source baseline: `Cataclysm-AOL-hostile-ecology-dev | dev | 050cff8c31274ea8dbf3d625baed10892a3e4395 | relevant inspected-source manifest SHA-256 55a4f6e8670241b3bfffad6ed52566c37358b86b8e70cfc903b3618c62122db1 | inspected 2026-08-31`
+Source baseline: `Cataclysm-AOL-hostile-ecology-dev | dev | c6616640a768625ce2673de56f336ae387ee0fc9 | upstream/master d40cebf345cf5f042e847570d3a12ab014e6ce11 | relevant semantic/package worktree manifest SHA-256 0a51ebb4559948eba1e4ff9bd3b0175caaff5935dbbabebc4e319f6723364810 | hostile-ecology refinement manifest SHA-256 615d2333a71afb2cc8b5231638fde666c7b72864638fd750d0ee0da2d4517a38 | re-inspected 2026-09-03`
 
 ## Document authority
 
-This document is the mechanistic product contract derived from the user-owned WEC and the inspected
-production code. It replaces the prior hostile-ecology DFS while preserving only compatible,
-code-grounded cockpit requirements and evidence. It is not a task-dispatch plan. If this document
-conflicts with current code about what code does, re-inspect the code. If it conflicts with the WEC
-about what the product should do, the WEC and the user win.
+This document is the mechanistic product contract derived from the user-owned WEC, the durable
+owner-suggestion ledger, and the inspected production code. It composes the accepted semantic
+cockpit with the compatible unfinished CAOL feature package: an enabling refreeze may compact
+accepted footing, but it does not become a delivery ceiling or erase an owner-authorized product
+outcome that remains unproved. It is not a task-dispatch plan. If this document conflicts with
+current code about what code does, re-inspect the code. If it conflicts with the WEC or a scoped
+owner mutation about what the product should do, the user wins.
 
 Status markers:
 
@@ -18,10 +20,11 @@ Status markers:
 - `[ ] 🔴 R-...` means the behavior is missing, wrong, or unproved. The stable red item is
   implementation work.
 
-The source baseline includes pre-existing modifications to `src/handle_action.cpp`,
-`tools/openclaw_harness/cockpit.py`, `tools/openclaw_harness/semantic_step_test.py`, and
-`tools/openclaw_harness/startup_harness.py`. Their inspected worktree bytes, not only `HEAD`, are
-bound by the manifest digest above. Unrelated dirty and untracked paths are outside this DFS.
+The source baseline includes the inspected worktree bytes for the semantic-surface core, LLM-intent
+and hostile-camp sources, cockpit and registry tools, hostile-camp benchmark, the named package
+scenarios, and the canonical established-base fixture manifests. Their worktree bytes, not only
+`HEAD`, are bound by the manifest digest above. Unrelated dirty and untracked paths are outside this
+DFS.
 
 ## Functional contract
 
@@ -50,6 +53,20 @@ exposing stable duration choices, a duration action being consumed by that exact
 the cockpit returning to a fresh world frame. This route proves the common stack, action, receipt,
 and projection rules. It does not limit delivery to the wait menu or overmap.
 
+The downstream product slice uses that accepted operation layer in the audited established-base
+world: one current-source package exercises living NPC/camp behavior and hostile-ecology causation,
+keeps independent verdicts for each behavior, and leaves reusable mechanical and gameplay-feel
+evidence. The cockpit may operate and observe the route, but semantic transport success cannot stand
+in for the gameplay transition being claimed.
+
+Within that package, bandit and cannibal camps share one production route from physical signal to
+staffed observation, camp memory, scout investigation and report, authorized response, and physical
+travel. The report may choose distinct policies. A cannibal night raid waits at the rally until
+night and remains committed after departure. A normal bandit contact reserves a shakedown before
+generic hostility can attack; payment reserves a safe departure, while refusal, incomplete payment,
+or player attack releases the group to combat. A favorable rolling-travel ambush remains a separate
+accepted direct-combat branch.
+
 ## Project language and terminology
 
 The canonical terms are **semantic surface**, **input owner**, **surface stack**, **frame ID**,
@@ -67,6 +84,12 @@ current native owner permits. The valid actions must let automation navigate, co
 from every state that the adapter can reach. If a missing binding can trap automation in the native
 owner, that owner is unsupported and must expose no executable actions until the binding exists.
 
+For the hostile-ecology refinement, use **physical signal**, **staffed observer**, **camp memory**,
+**scout report**, **night raid**, **shakedown**, **payment**, **refusal**, and **rolling-travel
+ambush**. “Leaves at night” means departure from the rally is night-gated; it does not impose an
+arrival-time night check. “Kills only after refusal” applies to normal shakedown contact and does
+not prohibit the accepted rolling-travel ambush.
+
 ## Current code map
 
 | Concern | Files and symbols | Current production behavior | Evidence |
@@ -83,6 +106,10 @@ owner, that owner is unsupported and must expose no executable actions until the
 | Debug and map editors | `src/debug_menu.cpp`; `src/editmap.cpp`; `src/overmap_ui.cpp` | Ordinary debug menus use `uilist`; custom editors have additional input owners. No complete semantic coverage exists. | Construction and input call sites. |
 | World messages | `src/messages.h/.cpp :: Messages::recent_messages` | CDDA owns structured recent messages. The current world semantic frame does not make this source a general active-surface field. | Declaration and implementation. |
 | NPC LLM intent | `src/llm_intent.cpp` and its callers | Owns NPC request, parsing, target, and timing behavior. It is not the cockpit input owner. | Production call path and existing regression tests. |
+| Shared hostile-camp signal route | `src/do_turn.cpp :: live_bandit_staffed_camp_signal_reads`, `overmap_npc_move`; `src/bandit_live_world.cpp :: record_staffed_camp_signal_observations`, `advance_structural_bounty_maintenance`, `plan_hostile_operation_with_authorized_response` | A staffed observer can convert a physical signal into stable camp memory; ordinary maintenance can send a scout, accept a policy-bearing report, authorize a bandit shakedown or cannibal night raid, and dispatch physical travel. The route is profile-neutral until report policy is applied. | Current dirty source inspection plus accepted R-027 signal-memory and ordinary-response evidence. |
+| Cannibal signal shortcut | `src/do_turn.cpp :: dispatch_live_cannibal_signal_contacts`, `overmap_npc_move` | On dispatch cadence, a nearby signal can directly plan and apply a cannibal site dispatch without staffed observation, camp memory, scout travel, or report acceptance. | Direct production call path at `overmap_npc_move`; this conflicts with the additive WEC. |
+| Night-raid departure | `src/do_turn.cpp :: advance_live_bandit_hostile_approaches` | A cannibal raid in `rallying` waits until night before route assignment and transition to `approaching`. The later approach/contact path has no second night gate, so daylight after departure does not cancel the operation. | Source inspection and existing rally-at-night tests; dawn-before-contact remains unproved. |
+| Shakedown and generic hostility | `src/do_turn.cpp :: open_live_bandit_shakedown_surface`, `live_bandit_prepare_paid_return`, `live_bandit_commit_paid_return`, `live_bandit_choose_fight`, `game::do_turn`; `src/bandit_live_world.cpp :: is_active_shakedown_parley_member`; `src/npc.cpp :: npc::guaranteed_hostile`; `src/npcmove.cpp :: npc::regen_ai_cache`, `npc::move` | Pay uses the native trade interface and atomically starts `returning_home`; Fight starts combat. However `game::do_turn` runs NPC movement before the periodic aftermath path opens the demand, and generic faction hostility can populate the player as hostile or set `NPCATT_KILL`. The current parley exception protects an allied patrol's view of a shakedown member, not the member's relationship to the player, and it ends before paid departure completes. | Source ordering and hostility predicates; focused existing demand/payment scenarios begin from prepared contact and do not prove natural first-contact or paid-departure safety. |
 
 ## External research sweep
 
@@ -122,19 +149,57 @@ Mechanism:
 
 Implementation status:
 
-- [x] The focused wait prototype already emits run-bound frame IDs and exact receipts. This evidence
-  proves the narrow identity precedent only.
-- [ ] 🔴 R-SURFACE-001 — CDDA lacks one renderer-neutral semantic surface stack with top-owner exclusivity,
-  fresh frame identity, breadcrumbs, and fail-closed unsupported ownership.
-  - Code gap: `src/handle_action.cpp` emits selected frames, while
-    `input_context::get_active_context` is Tiles/Android-only and `game::draw` creates a temporary
-    `DEFAULTMODE` activation. Parent and unsupported-owner safety is not a common invariant.
-  - Required mechanism: implement the manager and RAII scope above; require explicit scopes at
-    supported native loops; publish an actionless unsupported scope for every other input owner.
-  - Proof: nested world, inventory, prompt, and unsupported-owner tests show the exact surface stack,
-    fresh push/pop frame IDs, no parent actions in children, and no executable action for unsupported
-    ownership in Tiles and curses builds.
-
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-001 -->
+- [x] R-SURFACE-001 — The live Tiles and curses routes prove the renderer-neutral semantic surface stack, exact top-owner
+  exclusivity, fresh frame IDs, breadcrumbs, and actionless unsupported hard stop through the live
+  Tiles and curses routes.
+  - DFS slices: `R-SURFACE-001-S001`
+  - Preserved implementation: commit `c6616640a7` contains the stack core. The shared worktree adds
+    the game/run-scoped world lifetime, real wait/alarm child scopes, actionless unsupported scopes,
+    native descriptor-bound requests and receipts, game-thread consumers, native wait bindings,
+    wake-only delivery, and a curses PTY. Focused semantic, transport, and changed-object checks
+    passed in the producing attempts; none of that evidence is promoted to live renderer proof.
+  - Recovered footing: production `surface_descriptor` records are authoritative over later legacy
+    frames, and source-bound fixture `r_surface_001_world_start_v1` has no persisted activity,
+    auto-move route, active local monsters, or active-outside bandit owner. The completed 38
+    semantic-step tests, three fixture contracts, install receipts, saved-state audit, and
+    zero-credit ceiling remain preserved despite the deadline miss.
+  - Current uncertainty: World and wait already work in both renderers. Source-bound Tiles run
+    `20260901_013056_58fa9f4976d947428603007ca3e76c88` additionally proves Inventory, wet-flashlight
+    Activate, the native YESNO child, safe YES, and restored item-menu ownership. The distinct curses
+    build and terminal-native startup prove source, process, runtime, and World identity without GUI
+    focus, but a matching `world.inventory` request still receives no native receipt because curses
+    remains inside its blocking input wait. Signal, stdin-only polling, blocking `getch()`, FIFO,
+    Unix-datagram, and loopback-TCP wake strategies are retired by fresh source-bound counterexamples.
+    Closure-031 preserves three listeners published after `listen()`, three refused connections,
+    the isolated rebuild, and 39 passing focused tests. Closure-032 replaced that failed network
+    route with an anonymous pipe created before process launch. The new route passed 40 semantic-step
+    tests, 6 launch-binding tests, and compilation of the changed curses object. The source-bound
+    curses executable then failed to link because its existing object set referenced `play_music`,
+    `TranslationManager`, and `sounds::sound_enabled` inconsistently. This recoverable build failure
+    prevented the first live receipt, so it earns no parity credit. The next worker must rebuild a
+    coherent source-bound curses executable, obtain one exact semantic receipt as a zero-credit
+    bootstrap, and independently rerun the complete nested curses route against the preserved Tiles
+    report. Physical keys, screenshot-guided input, and the non-prompt brazier-drop route remain
+    outside proof.
+  - Evidence locations: retained Tiles and curses footing is under
+    `build_logs/r_surface_001_closure_010/`, `build_logs/r_surface_001_closure_011/`,
+    `build_logs/r_surface_001_closure017/`, and the bound harness-run directories named in durable
+    gap revisions. Closure-031 evidence is in its three `20260901_0418*` through `20260901_0420*`
+    harness runs and the immutable worker finding.
+  - Subtasks:
+    - [done] preserve-common-surface-proof :: Keep the shared stack, matching World/wait/unsupported proof, native Inventory and prompt owners, stable item identity, exact receipts, and restored-parent behavior.
+    - [done] preserve-tiles-nested-proof :: Keep the fresh source-bound Tiles Inventory, wet-flashlight, YESNO, safe-YES, and restored-menu transcript.
+    - [done] preserve-curses-runtime-footing :: Keep the distinct curses build, terminal-native source/process/runtime/World identity, matching request, focused checks, and zero-credit ceiling.
+    - [finding] retire-failed-wake-strategies :: Preserve the source-bound signal, stdin, blocking-getch, FIFO, Unix-datagram, and loopback-TCP counterexamples without treating any one failed strategy as an outcome exit.
+    - [done] establish-curses-semantic-wake :: Keep the anonymous-pipe implementation and its 40 semantic-step tests, 6 launch-binding tests, and changed-object compile.
+    - [done] repair-source-bound-curses-build :: Keep the coherent source-bound curses executable produced by closure-033.
+    - [done] bootstrap-anonymous-pipe-receipt :: The rebuilt executable produced an accepted native world.inventory receipt through the inherited pipe.
+    - [done] validate-and-judge-renderer-parity :: The fresh nested curses transcript matches the preserved Tiles evidence after excluding run-specific identities.
+  - Acceptance: durable acceptance 1 uses closure-033 after every required gap in closure sequence 6 closed.
+  - Final proof: `.userdata/r-surface-001-inventory-prompt-curses/harness_runs/20260901_050125_2b12535db356419b8761e63b5e18fb79/probe.report.json` is feature-path proof and 46 focused harness tests passed.
+  - Durable acceptance: #1 via `R-SURFACE-001-closure-033`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-001-S001 claim=R-SURFACE-001 -->
 
 ### 2. Native semantic request and receipt path
@@ -180,21 +245,24 @@ Mechanism:
 
 Implementation status:
 
-- [x] `CockpitRunChannel.act` already rejects unknown, used, unadvertised, stale, and receipt-mismatched
-  actions and requires a fresh next frame.
-- [ ] 🔴 R-SURFACE-002 — The production route still resolves semantic actions to physical keys outside CDDA
-  instead of letting the exact native input owner consume them.
-  - Code gap: `SemanticStepFrame.action_inputs`, `SemanticStepChannel.act_observed`, and
-    `startup_harness.dispatch_semantic_input` make Python and foreground key injection the binding
-    authority.
-  - Required mechanism: deliver semantic requests to `semantic_surface_manager`; let only the top
-    owner execute its registered binding; remove `action_inputs` from the public and executable
-    route; preserve the cockpit transaction guards and exact receipts.
-  - Proof: a native integration test changes a nondefault local keybinding, successfully performs
-    the same semantic action without foreground focus, and rejects stale, duplicate, unadvertised,
-    wrong-surface, and transport-interrupted requests without game-state change. The route contains
-    no OS key injection.
-
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-002 -->
+- [x] R-SURFACE-002 — The source-current native route proves that only the active input owner consumes semantic requests and returns exact receipts without keyboard, mouse, focus, or screenshot control.
+  - DFS slices: `R-SURFACE-002-S001`
+  - Known foundation: R-SURFACE-001 now provides the shared surface manager, live renderer parity, native descriptor-bound requests, exact receipts, and the anonymous-pipe wake route for curses.
+  - Current uncertainty: a fresh source-current curses binary proves remapped no-focus execution, stale, unadvertised, wrong-surface, and interrupted transport without state change. Duplicate replay writes the repeated request and wake durably but does not emit the second identical receipt after Inventory opens. Timeout-zero polling, cached delivery, owner activation, and pre-block ingestion are disproved as complete fixes. The next strategy must instrument the actual ncurses `select` and wake branch during Inventory blocking read before choosing another repair.
+  - Proof route: use the production cockpit request path with a nondefault local keybinding. Prove accepted native execution without foreground focus. Then prove stale, duplicate, unadvertised, wrong-surface, and transport-interrupted requests do not change game state and return the exact required result. The route must contain no OS key injection.
+  - Subtasks:
+    - [done] audit-native-request-route :: The audit identified backend-side request consumption and an executable physical-input fallback as the first divergences.
+    - [done] restore-native-owner-consumption :: Renderer backends now ingest and wake only, while `input_context::handle_input()` lets the active top owner consume pending requests.
+    - [done] remove-physical-dispatch-fallback :: Semantic frames no longer expose `action_inputs`, and legacy non-descriptor frames fail closed instead of invoking Peekaboo.
+    - [done] prove-remapped-binding :: The source-current curses run accepted semantic Inventory after its physical binding changed to `z`, without foreground or physical input.
+    - [done] prove-rejection-matrix :: The source-current matrix proves stale, duplicate, unadvertised, wrong-surface, and interrupted transport without unintended state change.
+    - [done] verify-native-only-transport :: The descriptor route now uses only request JSONL and the inherited wake pipe, and focused Python and native tests pass.
+    - [done] judge-r-surface-002 :: Closure tasks 001 through 003 independently closed every gap, and durable acceptance 1 settled the claim.
+  - Acceptance: durable acceptance 1 uses closure-003 after all three gaps in closure sequence 2 closed.
+  - Final proof: run `20260901_062147_6936ef4aad934189826b83b042bfb41a` is source-current feature-path proof and 40 focused semantic-step tests pass.
+  - Durable acceptance: #1 via `R-SURFACE-002-closure-003`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-002-S001 claim=R-SURFACE-002 -->
 
 ### 3. Shared generic menu and prompt instrumentation
@@ -233,18 +301,21 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-SURFACE-003 — The ordinary `uilist`, confirmation/query popup, and string-input families do not
-  publish one shared semantic shape or consume stable-ID semantic actions.
-  - Code gap: current controls resolve hotkeys, indexes, and input events locally and expose no
-    common descriptor or receipt.
-  - Required mechanism: instrument the shared native controls as above so ordinary menu coverage
-    grows through the common family rather than one OCR adapter per menu.
-  - Proof: native tests cover enabled and disabled entries, duplicate labels, selection navigation,
-    filter/reset, reorder/redraw, confirmation, cancellation availability, text validation, nested
-    prompts, and a real ordinary debug menu. Stable IDs survive presentation changes; parent actions
-    remain absent. A surface with an omitted action that prevents completion or safe yield fails the
-    test as unsupported.
-
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-003 -->
+- [x] R-SURFACE-003 — The shared native menu and prompt family is proven on the accepted semantic request boundary.
+  - DFS slices: `R-SURFACE-003-S001`
+  - Known foundation: R-SURFACE-001 and R-SURFACE-002 now prove renderer-neutral ownership, native-only request delivery, exact receipts, and live Tiles and curses operation.
+  - Current uncertainty: the rebuilt native suite passes 14 cases and 96 assertions. Fresh source-bound run `20260901_074656_d9d04d0153e74d93a643fee9d0bee4d5` proves World to Debug Functions to Game to Show debug message through stable IDs and exact native receipts. The final feature guard remains red only because the required native action deliberately logs `ERROR: Test debugmsg`, which the generic guard does not yet classify as an expected scenario outcome.
+  - Subtasks:
+    - [done] read-r-surface-003-contract :: The authorized slice defines uilist, query popup, string input, stable identity, failure behavior, nested ownership, and a real ordinary debug-menu proof.
+    - [done] audit-menu-prompt-coverage :: The audit found partial popup work and no uilist or string-input semantic family.
+    - [done] implement-missing-common-family :: Shared semantic wiring now exists for uilist, query popup, string input, and native debug-menu entry.
+    - [done] prove-live-common-family :: The authoritative detached run proves the ordinary debug-menu chain through three exact native stable-ID receipts.
+    - [done] judge-r-surface-003 :: Closure tasks 001 through 003 closed the native-family, live-menu, and fail-closed gaps before durable acceptance 1.
+  - Acceptance: durable acceptance 1 uses closure-002 after all three gaps in closure sequence 2 closed.
+  - Final proof: run `20260901_080338_00e8f9d5a1d847a8bbd15e9d55d3c8c4` is source-current feature proof, and the native suite passes 15 cases with 102 assertions.
+  - Durable acceptance: #1 via `R-SURFACE-003-closure-002`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-003-S001 claim=R-SURFACE-003 -->
 
 ### 4. World semantic surface
@@ -276,18 +347,21 @@ Mechanism:
 
 Implementation status:
 
-- [x] The current focused frame already serializes avatar, visible local cells, entities, zones,
-  minimap, overmap cells, and a small set of world actions.
-- [ ] 🔴 R-SURFACE-004 — The world frame is not owned by the actual renderer-neutral world input loop and
-  does not yet satisfy the full active-surface payload and native action rules.
-  - Code gap: publishing is partly driven from `game::draw` with a constructed `DEFAULTMODE` scope;
-    current actions expose private key inputs and current payload omits authoritative messages.
-  - Required mechanism: bind publication and action consumption to the actual world owner, complete
-    the payload from native sources, and yield entirely to every child scope.
-  - Proof: Tiles and curses integration tests enter world, open and close multiple child owners, and
-    show correct world facts/actions only before and after the child, with fresh frame IDs and exact
-    receipts.
-
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-004 -->
+- [x] R-SURFACE-004 — The live Tiles and curses routes prove the renderer-neutral World owner, complete native payload, child exclusivity, and exact child-return receipts.
+  - DFS slices: `R-SURFACE-004-S001`
+  - Known foundation: R-SURFACE-001 through R-SURFACE-003 now prove renderer-neutral ownership, native-only request delivery, exact receipts, and the common native menu and prompt family.
+  - Final proof: closure-001 settles the World source contract. Closure-002 settles the Tiles child-return gap with source-bound run `20260901_084803_c48c48ab407b4bb2b4aae7a32ad3b867`. Closure-003 settles the matching curses child-return gap with source-bound run `20260901_085008_8c8797aa81674128abe4b32aae7b66ff`. Each renderer proves World, Inventory, fresh World, Debug menu, and fresh World through four exact receipts. Durable acceptance 1 settles the whole claim after all three gaps closed.
+  - Subtasks:
+    - [done] read-r-surface-004-contract :: The authorized slice defines the renderer-neutral World owner, complete native payload, logical actions, child yielding, and full retained messages.
+    - [done] audit-focused-owner :: The audit found empty real-owner payload, four actions, a draw-time synthetic owner, and missing authoritative messages.
+    - [done] implement-focused-surface :: The real owner now publishes the complete World payload and eight native logical actions, and the draw-time publisher is removed.
+    - [done] prove-live-focused-surface :: The bounded trace is repaired, 40 tests pass, and source-bound Tiles and curses runs each prove the full child-return chain.
+    - [done] close-tiles-child-return :: Keep the source-bound Tiles child-return transcript, four exact receipts, fresh World frames, complete retained messages, and no-overflow proof.
+    - [done] close-curses-child-return :: Keep the source-bound curses child-return transcript, four exact receipts, fresh World frames, child exclusivity, and green feature-path proof.
+    - [done] judge-r-surface-004 :: Durable acceptance 1 preserves all three closed gaps and settles the whole claim.
+  - Durable acceptance: #1 via `R-SURFACE-004-closure-003`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-004-S001 claim=R-SURFACE-004 -->
 
 ### 5. Overmap semantic surface
@@ -316,14 +390,23 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-SURFACE-005 — The active overmap input owner has no focused semantic adapter.
-  - Code gap: the current world observation's overmap cells are a world HUD preview and omit active
-    overmap cursor, selected location, route state, actions, and receipts.
-  - Required mechanism: add the focused scope and native bindings at `overmap_ui::display`.
-  - Proof: a production overmap route moves its cursor, selects a discovered location, exercises one
-    stateful overmap action, and closes; every action is frame-bound and no world action is exposed.
-    An undiscovered-location control reveals no hidden terrain.
-
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-005 -->
+- [x] R-SURFACE-005 — The live Tiles and curses routes prove the renderer-neutral Overmap owner, discovered-only payload, stable targets, exact native receipts, and fail-closed hidden terrain.
+  - DFS slices: `R-SURFACE-005-S001`
+  - Known foundation: R-SURFACE-001 through R-SURFACE-004 prove renderer-neutral ownership, native-only requests, exact receipts, the common menu family, and live World child-return behavior.
+  - Final proof: The source contract, Tiles route, and curses route are independently closed. Tiles run `20260901_092728_1c7efc46c4904460a53759d6ec17f664` and curses run `20260901_094019_a6462e09cd8f4481abc4400634209a9c` prove matching native Overmap behavior, exact receipts, hidden-terrain omission, and fresh World restoration. Durable acceptance 1 settles the whole claim after all three gaps closed.
+  - Subtasks:
+    - [done] read-r-surface-005-contract :: The frozen slice names `overmap_ui::display`, discovered-only state, stable targets, current native actions, exact receipts, child exclusivity, and fail-closed controls.
+    - [finding] retire-worker-route-decision :: Exploration-001 stopped after an ordinary worker ran the coordinator policy. Preserve this process-boundary finding without treating it as a product outcome.
+    - [done] audit-focused-owner :: The audit found no semantic scope at `overmap_ui::display` and no native World-to-Overmap entry binding.
+    - [done] implement-focused-surface :: The active owner now publishes discovered-only state and stable targets and consumes native overmap actions with fail-closed validation.
+    - [done] prove-live-tiles-surface :: The fresh Tiles route proves native entry, cursor and destination behavior, hidden-terrain omission, exact receipts, close, and restored World.
+    - [done] close-overmap-source-contract :: The active loop owns publication and consumption, exposes discovered stable targets, hides World actions, and rejects invalid requests before movement.
+    - [done] close-tiles-overmap-route :: The source-bound Tiles transcript proves the native route, exact receipts, hidden-terrain omission, and fresh World restoration.
+    - [done] prove-curses-overmap-route :: The isolated source-bound curses run proves matching native behavior, child exclusivity, hidden-terrain omission, and fresh World restoration.
+    - [done] judge-r-surface-005 :: Durable acceptance 1 preserves all three closed gaps and settles the whole claim.
+  - Durable acceptance: #1 via `R-SURFACE-005-closure-003`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-005-S001 claim=R-SURFACE-005 -->
 
 ### 6. Inventory semantic surfaces
@@ -356,19 +439,45 @@ Mechanism:
 
 Implementation status:
 
-- [x] Persistent item UIDs and UID lookup already provide the authoritative identity primitive.
-- [ ] 🔴 R-SURFACE-006 — Inventory selectors do not publish item details/selection or consume stable-UID
-  inventory actions.
-  - Code gap: `inventory_selector` accepts local input and display positions; the cockpit has no
-    inventory surface or receipt route.
-  - Required mechanism: add the focused selector adapter, bind item entries to `item_uid`, and expose
-    the complete mode-valid action set for the active base or derived selector.
-  - Proof: production routes exercise selection by UID, filter/reset, examine details, mode-specific
-    commit, and permitted cancellation for every inventory selector family that the coverage
-    inventory classifies as supported. A nested-prompt route proves child ownership. Reorder,
-    duplicate-name, moved-item, destroyed-item, stale-frame, and incomplete-action-set controls never
-    retarget another item or misclassify a trapped selector as supported.
-
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-006 -->
+- [x] R-SURFACE-006 — The live Tiles and curses routes prove the renderer-neutral inventory-selector family, stable UID targeting, nested ownership, exact receipts, and fail-closed invalid identities.
+  - DFS slices: `R-SURFACE-006-S001`
+  - Known foundation: R-SURFACE-001 through R-SURFACE-005 prove renderer-neutral ownership, native-only requests, exact receipts, common prompts, World, and Overmap. Persistent item UIDs already provide the authoritative item identity primitive.
+  - Final proof: All four closure gaps are independently closed. Current-source tests prove exact UID behavior, collated same-purpose entries, disabled actions, wrong identity rejection, nested restoration, and successor receipts. The curses and Tiles routes canonically ingest with mechanically valid witness evidence and accepted cleanup. Durable acceptance 1 settles the whole claim.
+  - Subtasks:
+    - [done] read-r-surface-006-contract :: The contract requires stable UID selection, complete mode-valid actions, nested ownership, exact receipts, and fail-closed stale or moved controls.
+    - [done] audit-inventory-selectors :: The audit classified pick, container, unload, ammo, multiselect, compare, drop, insert, pickup, wield, wear, examiner, and trade families.
+    - [done] harden-pick-uid-selection :: Pick selection now uses authoritative UID lookup and rejects a target that no longer equals the current selector entry.
+    - [finding] retire-partial-selector-strategy :: Exploration-001 stopped after one safety repair. Preserve its evidence without treating missing repository work as a product finding.
+    - [done] implement-shared-inventory-adapter :: Pick, ammo, and base multiselect now share UID-backed common and mode-specific actions with exact current-entry validation.
+    - [finding] retire-base-selector-strategy :: Exploration-002 stopped before derived-loop integration and live proof. Preserve its implementation without treating the remaining work as a product finding.
+    - [done] implement-derived-inventory-surfaces :: Compare, drop, insert, pickup, wield, wear, examiner, unload, contain, and trade now use the shared UID-backed semantic adapter.
+    - [finding] retire-derived-selector-strategy :: Exploration-003 stopped after derived integration and before executable proof. Preserve its implementation and successful object build.
+    - [done] add-uid-selector-test :: The focused native test covers UID action advertisement, native selection mapping, item removal, and stale-UID rejection without native input.
+    - [finding] retire-broad-test-build-strategy :: Exploration-004 stopped during an unrelated broad stale-object rebuild before the focused test executed.
+    - [done] execute-uid-selector-test :: The isolated current-source selector test passes 10 assertions for UID advertisement, native selection, removal, and stale rejection.
+    - [finding] retire-aggregated-duplicate-fixture :: Two planks merge into one native selector entry, so that fixture cannot prove duplicate-entry identity.
+    - [done] prove-distinct-nested-selector-controls :: Two non-aggregated child items prove UID controls, details, contents, filter, reset, cancel, and removed-item rejection in 39 assertions.
+    - [done] create-inventory-proof-fixture :: The zero-credit inventory fixture and active Tiles scenario are admitted by the registry.
+    - [finding] retire-missing-charter-strategy :: Exploration-006 stopped when the admitted scenario lacked a validated witness charter and launch token.
+    - [done] establish-inventory-launch-authority :: The validated charter, first-run binding, structured parameters, and source-bound Tiles build now produce an executable route.
+    - [done] prove-live-filter-reset :: The live Tiles selector accepts filter and reset with exact same-selector receipts.
+    - [finding] expose-details-receipt-defect :: The UID details action reaches the native route but produces no receipt when the nested item-info child opens.
+    - [done] repair-details-child-receipts :: Details now receipts into an exclusive item-info child whose semantic close restores Inventory with exact succession.
+    - [done] prove-live-nested-inventory-route :: Live Tiles evidence covers filter, reset, details, contents, invalid UID rejection, and derived item-menu entry.
+    - [finding] expose-reader-event-cap :: The repaired live route reached the separate 64-event reader cap before final report sealing.
+    - [done] seal-bounded-live-report :: The fresh bounded route exercises the suffix reader and preserves the successful Inventory and child transitions with accepted cleanup.
+    - [finding] expose-derived-menu-owner-divergence :: The advertised derived menu frame is stale while a different native surface owns input, so close fails safely as wrong-surface.
+    - [done] repair-derived-menu-owner-divergence :: The item-aware scope remains the native owner while its uilist renders without publishing a competing generic menu scope.
+    - [done] prove-live-inventory-family :: Live Tiles evidence covers common actions, nested children, invalid UID rejection, derived item-menu entry and cancel, and exact restoration receipts.
+    - [done] close-inventory-source-family :: Shared and derived modes use authoritative live UID validation, native enabled state, and active-owner-only publication.
+    - [done] close-inventory-stable-controls :: Current-source tests prove distinct collated UIDs, exact targeting, invalid identity rejection, disabled actions, nested restoration, and successor receipts.
+    - [finding] retire-unbound-tiles-run :: The claimed Tiles repair run has empty transition events and cannot bind targets or receipts to its run and steps.
+    - [done] close-tiles-inventory-family :: The fresh source-bound Tiles route proves the supported selector family with exact run and step-bound evidence and accepted cleanup.
+    - [done] close-curses-inventory-family :: The isolated source-bound curses route proves native UID actions, canonical ingestion, mechanically valid witness evidence, and accepted cleanup.
+    - [done] judge-r-surface-006 :: Durable acceptance 1 preserves all four closed gaps and settles the whole claim.
+  - Durable acceptance: #1 via `R-SURFACE-006-closure-009`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-006-S001 claim=R-SURFACE-006 -->
 
 ### 7. Dialogue semantic surface
@@ -398,14 +507,38 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-SURFACE-007 — Dialogue responses lack stable IDs and the dialogue input owner lacks a semantic
-  surface and native receipt route.
-  - Code gap: `dialogue::opt` generates a vector, renders hotkeys, and applies the selected index.
-  - Required mechanism: assign response-owned stable IDs and add the focused dialogue adapter.
-  - Proof: a production conversation chooses a response among duplicate labels, advances topics,
-    enters a nested confirmation when applicable, and returns exact receipts. Regeneration,
-    wrong-speaker, disabled-condition, index, and hotkey controls fail closed.
-
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-007 -->
+- [x] R-SURFACE-007 — The focused dialogue-response surface is proven on the accepted native ownership and stable-target foundations.
+  - DFS slices: `R-SURFACE-007-S001`
+  - Known foundation: R-SURFACE-001 through R-SURFACE-006 prove renderer-neutral ownership, native-only requests, exact receipts, shared prompt families, World, Overmap, and stable-UID inventory selectors.
+  - Final proof: Source controls, the Tiles route, and the curses route are independently closed. Durable acceptance 1 uses closure-003 after all three sequence-2 gaps closed.
+  - Subtasks:
+    - [done] read-r-surface-007-contract :: The contract requires response-owned runtime IDs, native dialogue ownership, condition rechecks, exact receipts, and fail-closed stale or wrong-speaker choices.
+    - [done] audit-dialogue-owner :: The audit found hotkey and index selection with no semantic scope or stable response identity.
+    - [done] implement-dialogue-surface :: Generated responses now own stable IDs and the native dialogue loop publishes and consumes stable-ID actions with condition and speaker validation.
+    - [finding] retire-implementation-only-strategy :: Exploration-001 stopped after object compilation and before executable tests or production transcripts.
+    - [done] establish-dialogue-proof-bootstrap :: Current Tiles, automatic-dialogue fixture, scenario, charter, first-run binding, and detached live-session launch are ready.
+    - [finding] retire-pre-stabilizer-route :: Exploration-002 stopped after adding the required stabilizer transform and before rerunning the repaired fixture.
+    - [finding] retire-time-only-dialogue-trigger :: Exploration-003 proved that twelve in-game hours of native waiting does not open the required dialogue surface.
+    - [done] bind-native-dialogue-trigger :: The source-owned follower route reliably opens a real dialogue frame through exact native menu receipts.
+    - [finding] isolate-dialogue-consumption-defect :: Exploration-004 proved that an advertised stable-ID response request reaches the bridge but receives no native receipt.
+    - [finding] retire-input-context-hypothesis :: Exploration-005 proved that leaving wake behavior to the dialogue loop does not restore the missing receipt.
+    - [done] repair-dialogue-consumption :: The focused owner consumes the advertised stable-ID request and emits an exact accepted receipt before synchronous native modal effects.
+    - [done] implement-nested-dialogue-modal :: The `npc_rules_menu` child now publishes and consumes native cancel ownership and exits through the native path.
+    - [finding] isolate-talker-selector-divergence :: Exploration-007 received an exact accepted Talk to receipt but restored the world instead of opening the expected selector or dialogue.
+    - [finding] retire-child-successor-flag-strategy :: Exploration-008 received an exact accepted selector receipt and then repeated the same selector in frame 12. Its child-successor flag repair built successfully but did not change the live result.
+    - [done] stabilize-talker-selection :: Fresh Tiles run `ef67ed60e62e46c799fecaab7da2fd32` advances an exact accepted talker selector receipt from frame 11 to distinct dialogue frame 13.
+    - [done] repair-control-request-retry :: Request IDs now include stable targets and parameters, and a rejected native request releases the unchanged observation for a different advertised choice. The focused suites pass 40 and 46 cases.
+    - [done] build-native-control-fixture :: The native fixture now supplies duplicate response labels, a disabled response, and a named speaker without synthetic state mutation.
+    - [done] repair-dialogue-receipt-and-journal :: Immediate accepted dialogue receipts bind the first fresh child frame, and pre-dispatch rejections are retained in the witness journal.
+    - [done] prove-dialogue-controls :: Fresh sealed witnesses prove duplicate IDs, disabled, missing, wrong-speaker, index, and hotkey rejection while valid stable IDs advance dialogue.
+    - [done] prove-dialogue-renderers :: Independent source-bound Tiles and curses runs prove exact receipts, nested rules ownership, restoration, and accepted cleanup.
+    - [done] close-dialogue-source-controls :: Current source, a forced compile, 73 focused tests, and both production journals prove stable IDs and fail-closed controls.
+    - [done] close-tiles-dialogue-route :: Sealed Tiles run `10b85ef421c740a08caebced5fe4cec7` proves stable selection, all controls, nested ownership, restoration, and cleanup.
+    - [done] close-curses-dialogue-route :: Sealed curses witness `f751...4689` proves equivalent native-only behavior, exact receipts, restoration, and accepted cleanup.
+    - [done] judge-r-surface-007 :: Durable acceptance 1 preserves all three closed gaps and settles the whole claim.
+  - Durable acceptance: #1 via `R-SURFACE-007-closure-003`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-007-S001 claim=R-SURFACE-007 -->
 
 ### 8. Direction and targeting semantic surfaces
@@ -436,15 +569,42 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-SURFACE-008 — Direction and targeting custom owners are semantically invisible and can be
-  misclassified as world or controlled only through raw input.
-  - Code gap: `choose_direction` uses `DEFAULTMODE`; `target_ui::run` owns rich state but exposes no
-    semantic descriptor or receipt.
-  - Required mechanism: add explicit focused scopes and stable direction/coordinate/candidate
-    bindings at the native loops.
-  - Proof: production use-item direction and ranged-target routes expose only their child actions,
-    choose valid targets, and reject hidden, moved, out-of-range, stale, and parent-world actions.
-
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-008 -->
+- [x] R-SURFACE-008 — Direction and targeting screens expose and consume their own stable native choices.
+  - DFS slices: `R-SURFACE-008-S001`
+  - Known foundation: R-SURFACE-001 through R-SURFACE-007 prove exclusive native ownership, exact requests and receipts, stable menu, item, and dialogue identities, and equivalent Tiles and curses routes.
+  - Final proof: Source controls, both Tiles routes, and both curses routes are independently closed. Durable acceptance 1 uses closure-010 after all three sequence-2 gaps closed.
+  - Subtasks:
+    - [done] audit-direction-target-owners :: The audit traced both native loops, their candidate sources, and the absence of a dedicated R-SURFACE-008 harness route.
+    - [done] implement-direction-surface :: The direction child publishes horizontal and allowed vertical choices and rejects semantic controls without falling through to raw input.
+    - [done] implement-target-surface :: The target child publishes visible state and frame-local coordinate and opaque candidate bindings with current native actions.
+    - [done] prove-fail-closed-targeting :: Source validation rejects hidden, moved, stale, out-of-range, invalid, screen-coordinate, and parent-World controls before cursor mutation.
+    - [finding] retire-implementation-only-route :: Exploration-001 stopped after Tiles and curses object builds because no dedicated live scenario existed. Preserve the implementation and compile logs without treating the missing repository route as external authority.
+    - [done] create-direction-target-routes :: Native Fire entry, zero-credit fixtures, and four source-bound Tiles/curses manifests now exist, and the Tiles build passes.
+    - [finding] isolate-target-session-startup-stall :: Run `2e343d188e634121bbd864f8ed923e5c` reached the startup HUD but never opened a cockpit session or published the first target descriptor.
+    - [done] prove-tiles-target-basics :: The live Tiles route proves target ownership, cursor movement, parent-action rejection, native cancel, and fresh World restoration.
+    - [finding] isolate-candidate-observation-handoff :: Exploration-003 exposed an unknown-or-stale response because the client acted on an unregistered handed-off observation.
+    - [done] close-tiles-target-route :: Sealed run `b4d13c8e8bb245cdb63b44f294f7a8bd` proves registered opaque candidate selection, parent-action rejection, native cancel, fresh successors, and cleanup.
+    - [done] close-tiles-direction-route :: Sealed witness `7a320f...` proves direction-only ownership, parent-action rejection, accepted east choice, fresh World restoration, and cleanup.
+    - [done] repair-curses-executable-selection :: Registry launch now honors the scenario-declared executable instead of forcing the Tiles binary.
+    - [finding] retire-root-curses-rebuild-strategy :: Two root rebuilds failed during SDL linking and left no usable current root curses executable.
+    - [done] repair-inventory-first-frame :: Inventory semantic ownership now begins after the first redraw so live stable item bindings are not immediately stale.
+    - [done] prove-direction-target-renderers :: Current-source Tiles and curses witnesses prove direction and target ownership with exact receipts, fresh successors, and cleanup.
+    - [done] close-direction-target-source-controls :: Closure-001 confirms the current source contract and matching live fail-closed behavior.
+    - [finding] retire-unbound-route-review-attempts :: Closure-002 and closure-003 were abandoned because reused workers were not recognized as roster-bound. Preserve the existing Tiles and curses evidence and keep both gaps open.
+    - [done] close-tiles-direction-target-routes :: Closure-004 independently confirms the sealed Tiles direction and target witnesses.
+    - [finding] expose-curses-evidence-binding-gap :: Closure-005 found source identity mismatch, yellow reports, skipped native cleanup, and missing registry ingestion in the prior curses artifacts.
+    - [finding] retire-post-exit-cleanup-strategy :: Closure-006 matched the new build and repaired bare-process recognition, but the direction process exited before positive cleanup and no witness was ingested.
+    - [done] establish-immutable-curses-proof-lane :: Closure-007 built and bound a private isolated source, executable, registry, and ready direction selection without shared mutation.
+    - [finding] retire-bootstrap-only-isolated-lane :: Closure-007 returned after creating the immutable proof prerequisite but before consuming it for independent direction or target validation.
+    - [done] ingest-isolated-curses-witnesses :: Closure-008 canonically ingested proved direction and target witnesses from the immutable lane.
+    - [finding] expose-isolated-cleanup-credit-gap :: Both isolated probe reports record `already_exited` and no native exit credit, so the ingested witnesses cannot close revision 2.
+    - [done] close-curses-direction-proof :: Closure-009 ingested witness `d2ccf7...` with exact direction receipts and positive cleanup of the live native process.
+    - [finding] retire-target-handoff-midrun :: Closure-009 returned after launching target bridge `19d1ce...` but before observing, acting, terminalizing, or ingesting the target route.
+    - [done] close-curses-direction-target-routes :: Closure-010 preserves direction witness `d2ccf7...` and adds target witness `9fa8e3...` with matched identities, exact receipts, positive cleanup, and canonical ingestion.
+    - [done] judge-r-surface-008 :: Durable acceptance 1 preserves all three closed gaps and settles the whole claim.
+  - Durable acceptance: #1 via `R-SURFACE-008-closure-010`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-008-S001 claim=R-SURFACE-008 -->
 
 ### 9. Broad input-owner coverage and hard stop
@@ -480,18 +640,30 @@ Mechanism:
 
 Implementation status:
 
-- [ ] 🔴 R-SURFACE-009 — The repository has no enforceable coverage boundary or complete semantic support
-  for every discovered input-owning interface whose absence would leave the agent blind, including
-  custom debug and map-editor owners.
-  - Code gap: current traces and focused wait instrumentation cover selected interfaces; many direct
-    input loops neither publish a supported surface nor force an unsupported hard stop.
-  - Required mechanism: add the source coverage inventory/test, apply shared instrumentation to the
-    ordinary family, add focused adapters for every required discovered owner, and make every newly
-    discovered or incomplete owner actionless and unsupported until its adapter is complete.
-  - Proof: source inventory and live traversal show complete semantic operation of every required
-    discovered owner. A deliberate unsupported-owner control and nested-parent controls expose zero
-    executable actions and stop automation. No arbitrary interface count is an acceptance gate.
-
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-009 -->
+- [x] R-SURFACE-009 — Every required discovered input owner operates semantically, and every new or incomplete owner stops automation without fallback.
+  - DFS slices: `R-SURFACE-009-S001`
+  - Known foundation: R-SURFACE-001 through R-SURFACE-008 prove exclusive native ownership, native-only requests, stable identities, common and focused owner families, exact receipts, and Tiles/curses parity.
+  - Final proof: Four independent revision-1 gaps are closed. The source gate classifies all 73 discovered direct-input sources. Fresh source-bound Tiles debug-spell and map-editor routes prove stable native actions, exact receipts, restoration, and cleanup. The curses map-editor route proves renderer parity. Fresh ingested unsupported run `20260901_203737_669628fd73db436ca5d51d9e6f09509d` proves stable DEBUG_CONSOLE ownership, zero actions, zero submitted requests, no parent fallback, and accepted cleanup.
+  - Subtasks:
+    - [done] inventory-native-input-owners :: The source inventory classifies 73 direct input files as supported, backend or transport, or incomplete.
+    - [done] enforce-owner-coverage-boundary :: The executable inventory test fails on newly discovered unclassified direct-input files and passes its three focused cases.
+    - [done] implement-required-owner-routes :: Focused map-editor and debug-spell scopes now map stable semantic choices to their existing native actions.
+    - [done] hard-stop-incomplete-owners :: Input context publishes an actionless unsupported scope with owner breadcrumbs and reason instead of inheriting parent or raw-input behavior.
+    - [finding] retire-inventory-only-strategy :: Exploration-001 stopped after inventory and hard-stop implementation while required debug and map-editor operation remained unimplemented.
+    - [done] repair-spell-registry-bootstrap :: A fresh Tiles run loads Magiclysm, publishes the debug-spell owner, and accepts stable spell selection with an exact receipt.
+    - [done] repair-debug-spell-second-action :: Run `20260901_201638_13d5fab102444959aaa45c490d4b9924` proves stable Magiclysm selection, increment, close, exact receipts, and restored World.
+    - [done] prove-curses-map-editor :: The source-bound curses route proves native movement, close receipts, structured gates, and confirmed process cleanup.
+    - [done] stabilize-unsupported-owner-lifetime :: A direct probe shows DEBUG_CONSOLE remains the top owner with zero actions and no inherited parent actions.
+    - [done] repair-and-prove-unsupported-contract :: Green report `20260901_202344_40d4b402d2ff4affb3452e52dbf9b9b5` proves stable DEBUG_CONSOLE ownership, zero actions, zero submitted requests, and no parent fallback.
+    - [done] close-source-owner-coverage :: Closure-001 proves every discovered direct-input source is classified and the executable gate rejects new unclassified owners.
+    - [done] close-required-owner-operation :: Closure-002 proves fresh Tiles debug-spell and map-editor operation with exact receipts, restoration, and cleanup.
+    - [done] close-renderer-owner-parity :: Closure-003 proves the equivalent source-bound curses map-editor route with exact receipts and cleanup.
+    - [done] close-unsupported-owner-hard-stop :: Closure-004 proves stable actionless unsupported ownership with zero requests and no forbidden fallback.
+    - [done] judge-r-surface-009 :: Durable acceptance 1 preserves all four closed gaps and settles the whole claim.
+  - Acceptance: durable acceptance 1 uses closure-004 after all four revision-1 gaps closed.
+  - Durable acceptance: #1 via `R-SURFACE-009-closure-004`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-009-S001 claim=R-SURFACE-009 -->
 
 ### 10. Cockpit active-surface projection and end-to-end proof
@@ -523,22 +695,302 @@ Mechanism:
 
 Implementation status:
 
-- [x] The current cockpit enforces observation use, frame freshness, advertised-action membership,
-  exact receipt matching, and a fresh next frame. The terminal cockpit is a structured projection of
-  the same `CockpitService` route.
-- [ ] 🔴 R-SURFACE-010 — The cockpit does not yet replace its active presentation across the required
-  semantic surface families using a CDDA-native request route.
-  - Code gap: current observation schema is world-centric, while modal handling still uses separate
-    logs, OCR, or physical dispatch paths.
-  - Required mechanism: project the common top descriptor without parent merging, remove executable
-    raw-key fallback, render all supported families and unsupported stop state, and preserve exact
-    transaction guards.
-  - Proof: one bound native run traverses
-    `world › inventory › use item › choose target › confirmation › world`, plus overmap and dialogue,
-    and proves exact presentation replacement, breadcrumbs, stable IDs, valid-action isolation,
-    accepted/rejected receipts, renderer parity, and unsupported hard stop.
-
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-010 -->
+- [x] R-SURFACE-010 — The cockpit replaces its active presentation from the exact top descriptor across World, Overmap, Inventory, Dialogue, Menu/Prompt, Direction, Target, and Unsupported surfaces.
+  - DFS slices: `R-SURFACE-010-S001`
+  - Known foundation: R-SURFACE-001 through R-SURFACE-008 prove the renderer-neutral ownership, native request, stable identity, receipt, and focused projection primitives needed by the integrated route.
+  - Wake condition: R-SURFACE-009 is durably accepted and the resulting source, executable, scenario, and renderer bindings are current. Until then this outcome remains visible but does not outrank the active coverage work.
+  - Final outcome: Current source and focused tests enforce exact descriptor-only projection. Fresh source-bound Tiles, Overmap, Dialogue, curses, and Unsupported witnesses prove stable identities, isolated actions, exact receipts, complete breadcrumbs, restored ownership, renderer parity, and hard-stop behavior.
+  - Subtasks:
+    - [done] preserve-transaction-foundation :: Keep the accepted observation-use, frame-freshness, advertised-action, exact-receipt, and structured terminal-projection foundations.
+    - [done] project-complete-top-surface-family :: Observation v2 and the terminal cockpit replace the active view from the exact descriptor without cached parent facts or actions.
+    - [finding] retire-implementation-only-strategy :: Exploration-001 completed the projection and focused tests but returned before creating or running the integrated proof route.
+    - [finding] retire-stale-parent-chain-strategy :: Exploration-002 proved the nested route through Direction, then correctly failed when it reused the pre-child parent descriptor after the UI recreated that surface.
+    - [finding] expose-transient-world-publication :: Exploration-003 re-observed before every action and proved that a transient World descriptor becomes externally visible before native parent restoration completes.
+    - [done] repair-durable-top-owner-publication :: Transient restoration states remain private, and only the actual recreated owner restores authority.
+    - [finding] retire-blanket-direction-suppression :: Exploration-004 proved that generic suppression prevents every successor instead of handing authority to the recreated item-menu owner.
+    - [finding] retire-implementation-without-rerun :: Exploration-005 implemented the item-use-specific handoff and compiled changed objects but returned before source-bound feature proof.
+    - [finding] expose-post-direction-owner-gap :: Exploration-006 proved the recreated item-menu receipt but found that its next native owner is still missing or replaced by an early World frame.
+    - [done] repair-post-direction-confirmation-handoff :: Direction now hands authority to the actual confirmation or recreated owner with exact successor receipts.
+    - [finding] expose-post-direction-publication-stall :: Exploration-007 proves native North consumption, then no true successor publishes after `choose_direction` returns.
+    - [finding] isolate-manager-recreated-push-stall :: Exploration-008 proves item-use return and scope reset, then the recreated manager push blocks before descriptor emission.
+    - [done] repair-manager-withheld-lifecycle :: Private unwind no longer owns a descriptor, and only the recreated menu restores authority.
+    - [done] prove-nested-integrated-route :: Run `20260901_225228_47a528cca9de472e9ae0fee068a47f8d` proves the 12-transaction nested Tiles route with exact receipts and restoration.
+    - [done] prove-overmap-and-dialogue-branches :: Closure-003 proves current-product source-bound Overmap and Dialogue replacement, stable targets, exact receipts, restoration, and cleanup.
+    - [done] prove-renderer-and-unsupported-boundaries :: Closure-005 proves current-source curses projection parity and stable actionless Unsupported with zero submissions and no fallback.
+    - [finding] retire-curses-build-only-attempt :: Closure-004 returned while the repaired ordinary curses build was still running, before executable proof.
+    - [done] judge-r-surface-010 :: Durable acceptance 1 preserves all four closed gaps and settles the whole claim.
+  - Acceptance: durable acceptance 1 uses closure-005 after all four revision-1 gaps closed.
+  - Durable acceptance: #1 via `R-SURFACE-010-closure-005`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-010-S001 claim=R-SURFACE-010 -->
+
+### 11. Current-source CAOL feature playtest package
+
+The accepted semantic cockpit is the native operation and observation layer for this package. Its
+acceptance does not prove the gameplay below. Package verdicts remain independent: a combined living
+world may prove one behavior, contradict another, and leave a third unobserved without collapsing
+those results into one pass/fail label.
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-026-S001 claim=R-026 -->
+
+Mechanism:
+
+- Files and symbols: current `llm_intent`, follower and ambient NPC behavior, faction-camp request
+  and zone code, Locker and Patrol behavior, hostile-camp signal and lifecycle code, flesh-raptor
+  behavior, cockpit/registry tooling, and claim-scoped package scenarios and witnesses.
+- Canonical footing: use the audited
+  `bandit_basecamp_prepared_base_v1_2026-04-22` save/profile pair while its current-source audit
+  remains true. It contains the Bugchaser base, bulletin board, `CAMP_FOOD`, `LOCKER`, `STORAGE`, two
+  `PATROL` zones, and the staffed NPC population needed by the living-base routes. Repair or replace
+  repository-owned fixture, scenario, registry, executable, or observation bindings when current
+  evidence disproves them.
+- Living-base branch: exercise follower free-text and ambient LLM NPC behavior with snapshots,
+  basecamp request context, Smart Zone Manager, Locker and Patrol behavior, and save/reload
+  continuity through current native semantic owners. Add a package-specific action or observation
+  bridge only after a current route proves the accepted semantic surfaces cannot express the
+  required product interaction or receipt.
+- Threat-and-causality branch: exercise overmap light, smoke, and significant-sound causation;
+  bandit and cannibal discovery, stalking, contact, attack, and return lifecycles; and flesh-raptor
+  behavior. Use positive and negative controls that distinguish signal-driven behavior from ordinary
+  drive, proximity, elapsed time, or debug setup. The integrated package must incorporate the
+  coherent shared-route and contact-lifecycle proof in R-029 without merging its verdict with other
+  package claims.
+- Package result: retain mechanical receipts, gameplay-feel observations, source/executable/world/
+  actor binding, cleanup, contradictions, and independent claim verdicts in reusable witness
+  artifacts. Route ordinary product or harness defects through a durable claim-scoped findings
+  intake and keep unaffected observations.
+- Scope boundary: writhing stalkers and zombie riders remain excluded pending another owner design
+  pass. Debug interventions and fixture preparation are allowed as zero-credit setup; they do not
+  prove natural discovery, causation, ecology, combat, lifecycle, or gameplay feel.
+- Package guide: describe the current fixture, bindings, launch/repair route, claim questions,
+  credit boundaries, expected artifacts, independent verdicts, and known limitations. It must not
+  present the semantic cockpit itself as final gameplay proof.
+
+Implementation status:
+
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-026 -->
+- [ ] 🔴 R-026 — No current-source integrated CAOL feature package yet binds the living-base,
+  bandit, cannibal, signal-control, and flesh-raptor families through one audited established-base
+  footing with independent mechanical, causality, feel, persistence, and cleanup evidence plus a
+  usable package guide.
+  - DFS slices: `R-026-S001`
+  - Accepted footing: R-SURFACE-001 through R-SURFACE-010 remain durably accepted and provide native
+    World, Overmap, Inventory, Dialogue, Menu/Prompt, Direction, Target, and Unsupported operation.
+    They do not close this gameplay claim.
+  - Preserved evidence: the established-base audit and older standalone follower, ambient, Locker,
+    Patrol, significant-sound, light/smoke, bandit, cannibal, and flesh-raptor reports remain useful
+    route evidence at their recorded source and evidence ceilings. The earlier bandit lifecycle run
+    `73ddab45` is baseline behavior, not current fire causation, camp behavior, or LLM proof.
+  - Current uncertainty: the canonical fixture aliases still resolve, but the present registry has
+    no integrated package witness. Several older hostile-camp scenarios are stale, quarantined, or
+    contradicted; current standalone scenario eligibility cannot substitute for combined,
+    claim-bound current-source qualification. Existing prepared-contact shakedown and cannibal
+    signal scenarios remain route evidence only: they do not prove the natural shared response path,
+    first-demand ordering, safe paid departure, or dawn-after-departure commitment required by
+    R-029. The ordinary worker may repair those routes or invent a materially different package
+    route.
+<!-- DE67:DELIVERY-STATUS:END -->
+<!-- DE67:DFS-SLICE:END id=R-026-S001 claim=R-026 -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-027-S001 claim=R-027 -->
+
+Mechanism:
+
+- Files and symbols: `src/bandit_live_world.cpp :: record_staffed_camp_signal_observations`, the
+  camp signal-lead memory and normal hostile-camp drive/response path, current significant-sound and
+  overmap signal sources, and claim-bound observation/control scenarios.
+- Entry point: production cadence samples an eligible at-home staffed-camp observer; no harness
+  callback may fabricate the observation.
+- Transition: current source applies real observer range, line of sight, elevation, weather, source,
+  and channel rules, records a stable `camp-signal:` lead, deduplicates unchanged observations,
+  ages memory, and leaves the ordinary drive owner responsible for any response.
+- Proof split: a zero-credit observation/bootstrap may create a physical source and validate the
+  route once. Independent validation must then begin from the saved source and prove the camp-owned
+  observation, bounded no-signal/out-of-range/blocked/dedup/aging controls, and an ordinary
+  non-scripted response without querying the unchanged bootstrap as its own proof.
+- Failure behavior: timestamp adjacency, debug setup, player knowledge, direct state mutation,
+  ordinary proximity, or a lead without a bound observer/source/channel cannot prove signal
+  causation. A valid observation does not by itself prove a normal response.
+
+Implementation status:
+
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-027 -->
+- [x] R-027 — Independently validate the current staffed-camp structural-signal observation and
+  memory path from a saved physical source through bounded controls and an ordinary response.
+  - DFS slices: `R-027-S001`
+  - Preserved implementation: `record_staffed_camp_signal_observations` uses eligible at-home
+    observers, real sight/hearing/weather/elevation constraints, stable `camp-signal:` source and
+    channel identity, deduplication, aging, location memory, and unchanged normal drive ownership.
+    Closure-013 repaired the isolated runtime and retained focused source evidence.
+  - Preserved bootstrap: exploration-013 saved a source-bound physical `fd_fire` west of the audited
+    camp. It did not execute the scheduler or observe a lead, so it earns no feature credit and must
+    not be queried again unchanged as its own validation.
+  - Current evidence: current-source runs prove that the staffed camp records real smoke and light
+    from a saved fire. Separate saved-world runs prove that opaque terrain and an absent source add
+    no lead. Run `76bc9842…1f2481c` proves that a source at range 12, beyond the range cap 5 and
+    without line of sight, leaves the named lead and ordinary drive unchanged. Run
+    `68e24…3e4e0` proves that repeated in-range observations keep the same smoke and light lead IDs
+    and keep the total lead count at three. Run `63371e2b…f309c` proves that two unsupported leads
+    become stale at age 415 while preserving `last_seen=9245` through native save. The remaining
+    product uncertainty is whether a material change to the same visible source updates the same
+    lead without duplication and whether the ordinary camp drive produces a response. The retired
+    wait-menu strategy and its broker repairs remain diagnostic evidence. The next route starts
+    from `r027_in_range_saved_lead_v001_20260902`, binds the actual source offset `[0,11,0]`, changes
+    the fire intensity from 3 to 2, and uses a direct production cadence. The first replacement
+    attempt validated the manifest and setup-only capture contract, then proved that the saved fire
+    was still intensity 3. A second run removed the fire and proved the tile was empty. It then
+    exposed a semantic-owner defect: the outer map editor stays advertised while the native field
+    and intensity menus own input. The next worker must factor the editor scope construction into a
+    reusable factory, yield before `brush.select_field()`, and recreate the editor scope after the
+    nested menus return. That repair now works. A clean run saved and independently audited the fire
+    at intensity 2, and a separate native-pause run refreshed the same two lead IDs from minute 9245
+    to 9250 without increasing the lead count. The lifecycle stream is monotonic. Canonical capture
+    now uses one prepared certification binding across the bridge, child, native sidecar, and report.
+    Canonical run `7bfe4de5…b65d4` is internally green. It proves the same smoke lead at source
+    `(140,50,0)` refreshed at minute 9250 with lead count three, persisted fire intensity 2,
+    monotonic lifecycle, feature proof, and accepted cleanup. Only the ordinary camp response to a
+    valid retained lead remains. Live run `3fd920fc…0a100` proves the ordinary camp drive selected
+    the retained light lead and committed a structural sortie with actors 4 and 18. Independent
+    native test `bandit_live_world_retained_signal_dispatch_survives_save_round_trip` passes 23
+    assertions and proves the operation, target lead revision 2, active lead, and outbound actors
+    persist through production save/load. Combined report SHA `17058a17…328dfb` keeps live behavior
+    and independent persistence evidence separate.
+  - Subtasks:
+    - [done] implement-camp-owned-signal-memory :: Preserve eligible observer selection, physical constraints, stable source/channel leads, deduplication, aging, location memory, and normal drive ownership.
+    - [done] bootstrap-saved-physical-source :: Preserve the zero-credit fire placement/save artifact and its exact source/world/executable ceiling.
+    - [done] rebind-independent-validation :: The preserved source now installs into a disposable profile and runs through a source-current executable with native semantic control.
+    - [done] prove-production-observation :: Production cadence recorded new smoke and light leads for the named camp, observer, physical source, location, and real environmental checks.
+    - [done] repair-independent-runtime :: One run identity now binds registry authority, native startup, cockpit, bridge, and controller; stable wait-menu choices and atomic prompt handling pass focused tests.
+    - [done] audit-clean-safe-footing-save :: Run 38b5bb20…05b517 moved only the avatar within the same overmap tile; authoritative snapshots preserve the fixed fire and protected camp state at SHA c7424906…f300.
+    - [done] isolate-validation-damage :: The replacement fixture and direct cadence route avoid the unrelated attacked interruption without crediting setup as behavior.
+    - [done] prove-bounded-causal-controls :: Canonical green proof preserves absent, blocked, out-of-range, unchanged deduplication, aging, and changed-source update controls with exact identities and cleanup.
+    - [done] prove-normal-response :: Ordinary drive selected the retained light lead, dispatched actors 4 and 18, and independent production save/load preserved the active operation and outbound state.
+    - [done] format-claim-witness :: Green changed-observation and combined ordinary-response reports preserve exact evidence classes, bindings, controls, persistence, and cleanup.
+  - Durable acceptance: #1 via `R-027-closure-008`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
+<!-- DE67:DFS-SLICE:END id=R-027-S001 claim=R-027 -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-028-S001 claim=R-028 -->
+
+Mechanism:
+
+- Files and symbols: `tools/hostile_camp_benchmark.py`, the package's current-source build and
+  scenarios, native timing/counter sources, process CPU/RSS observation, and profiler artifacts only
+  after a reproducible regression or gameplay-feel concern identifies a useful question.
+- Comparison: run paired baseline/feature workloads from equivalent fixture state. Include combined
+  established-base and hostile-ecology work plus rendered local transitions; do not extrapolate from
+  an isolated synthetic loop.
+- Measurements: preserve frame pacing, relevant update latency and native counters, process CPU and
+  RSS, source/executable/scenario identity, repeated observations sufficient to expose variability,
+  and the associated feel result. Derive any threshold from a named product requirement or measured
+  baseline; do not invent one.
+- Failure behavior: a benchmark that omits rendering, uses unmatched worlds/builds, hides variance,
+  reports only an average, or profiles before reproducing the workload cannot qualify the package.
+
+Implementation status:
+
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-028 -->
+- [ ] 🔴 R-028 — The package lacks a current bound performance qualification for combined
+  established-base and hostile-ecology workloads, including rendered local transitions and the
+  mechanical and gameplay-feel context needed to interpret the measurements.
+  - DFS slices: `R-028-S001`
+  - Preserved footing: `tools/hostile_camp_benchmark.py` and earlier timing artifacts may seed the
+    paired route, but no existing artifact binds the completed semantic cockpit, current package
+    workload, rendered transitions, and current executable strongly enough to close this claim.
+<!-- DE67:DELIVERY-STATUS:END -->
+<!-- DE67:DFS-SLICE:END id=R-028-S001 claim=R-028 -->
+
+### 12. Coherent bandit and cannibal signal response and contact lifecycle
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-029-S001 claim=R-029 -->
+
+Mechanism:
+
+- Files and symbols: `src/do_turn.cpp :: overmap_npc_move`,
+  `live_bandit_staffed_camp_signal_reads`, `dispatch_live_cannibal_signal_contacts`,
+  `advance_live_bandit_hostile_approaches`, `open_live_bandit_shakedown_surface`,
+  `live_bandit_commit_paid_return`, and `live_bandit_choose_fight`;
+  `src/bandit_live_world.cpp/.h :: record_staffed_camp_signal_observations`,
+  `advance_structural_bounty_maintenance`, `plan_hostile_operation_with_authorized_response`,
+  `choose_local_gate_posture`, and the operation-scoped relationship query;
+  `src/npc.cpp :: npc::attitude_to`, `npc::guaranteed_hostile`;
+  `src/npcmove.cpp :: npc::regen_ai_cache`,
+  `npc::move`; focused native tests and claim-bound natural package witnesses.
+- Shared discovery owner: remove the `dispatch_live_cannibal_signal_contacts` production call and
+  retire the cannibal-only distance shortcut. Both camp profiles must enter through a physical
+  signal read by an eligible staffed observer, stable camp memory, ordinary scout assignment and
+  physical investigation, a returned scout report, response authorization, rally, and physical
+  response travel. Profile policy may select `bandit_shakedown` or `cannibal_night_raid` only after
+  the same report boundary. Direct report, knowledge, dispatch, actor, or contact fabrication is not
+  an alternate production route.
+- Night-raid commitment: a cannibal operation in `rallying` may assign its target route and become
+  `approaching` only while it is night. That departure transition is the sole night gate. Once the
+  operation has left the rally, dawn does not cancel, return, or stall it and contact does not
+  re-check night.
+- Operation-scoped player relationship: the hostile-operation owner must classify each exact member
+  as shakedown parley, combat-released, or paid departure from persisted operation ID, generation,
+  membership, phase, and outcome. That relationship is authoritative before faction dislike,
+  `attitude_to`, `guaranteed_hostile`, AI-cache classification, `NPCATT_KILL`, targeting, movement,
+  or another offensive action. It does not make the faction globally friendly and it does not mask
+  unrelated hostiles.
+- Normal shakedown ordering: on first normal committed contact, every operation member remains in
+  parley and takes no offensive action until the demand surface is presented. Choosing Fight,
+  cancelling or failing to complete the required payment, or attacking a member records the fight
+  outcome and atomically releases the exact operation group to combat. No time gap may leave one
+  member in generic hostility while the contact still claims parley.
+- Payment and departure: choosing Pay continues to use the existing forced native trade interface;
+  no automatic theft is required. Only completed payment records the paid outcome and atomically
+  transitions the exact operation group to `returning_home`. The paid-departure relationship
+  suppresses renewed player targeting and offensive action through later NPC turns and save/reload
+  until the members are home or the operation is otherwise normally completed. It does not erase
+  unrelated combat or create a faction-wide truce.
+- Rolling-travel branch: preserve `choose_local_gate_posture` behavior that may select immediate
+  combat for a favorable rolling-travel scene. This branch is not normal shakedown contact and need
+  not present Pay or Fight.
+- Natural proof: extend, rather than overwrite, the existing package. From a source-bound current
+  binary and save, create a physical player signal through ordinary product input and observe the
+  staffed observer, camp memory, outbound scout, physical investigation, returned report, authorized
+  profile response, and physical response travel. Claim credit begins only at production behavior;
+  setup helpers may establish footing but cannot create the report, response, contact, or verdict.
+  Preserve exact source, signal, camp, observer, lead, scout, report, operation, actor, turn, and
+  receipt identities across artifacts and native save/reload boundaries.
+- Required branches and controls: the normal-bandit branch must show the demand before every
+  offensive event, completed payment, safe paid departure over subsequent ordinary NPC turns and a
+  native save/reload, plus separate refusal or incomplete-payment and player-attack routes that enter
+  combat. A control preserves a favorable rolling-travel direct ambush. The cannibal branch must
+  show daylight rally hold, night departure, a deliberate transition to daylight before contact,
+  continued approach, and attack. A matching no-signal or unstaffed/blocked observation control must
+  not create the route.
+- Failure behavior: a direct cannibal dispatch, helper-created report, direct state edit, prepared
+  local contact alone, startup/load proof, dialogue screenshot without turn ordering, paid log line
+  without subsequent safe NPC turns, night contact without daylight crossing, or aggregate package
+  verdict cannot close the claim. Preserve earlier scenarios and evidence at their existing ceilings.
+
+Implementation status:
+
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-029 -->
+- [ ] 🔴 R-029 — Bandit and cannibal camps do not yet have a proved coherent natural
+  signal-to-response route with correct night-raid commitment and operation-scoped shakedown,
+  combat, and paid-departure ordering.
+  - DFS slices: `R-029-S001`
+  - Accepted footing retained: R-027 remains accepted because its evidence proves the shared staffed
+    observation, stable camp memory, controls, and ordinary response mechanics it claims. This
+    refinement does not invalidate that narrower result. Existing night-rally, Pay/Fight, trade,
+    persistence, and rolling-travel scenarios remain focused route evidence at their recorded
+    setup and source ceilings.
+  - Current divergence: `overmap_npc_move` still calls the cannibal-only direct dispatcher before
+    the shared staffed-observer route. In normal local contact, `game::do_turn` runs `monmove()`
+    before the periodic aftermath path can open the shakedown, while generic faction hostility can
+    classify the player as hostile or set `NPCATT_KILL`. The existing parley query protects an
+    allied patrol from escalating against a shakedown member, but does not reserve that member's
+    relationship to the player and does not cover paid departure.
+  - Unproved edges: existing tests establish daylight rally hold and night departure but not
+    daylight-before-contact persistence. Prepared-contact scenarios demonstrate a visible demand,
+    native trade payment, fight selection, and saved outcome, but do not prove natural first-contact
+    ordering or safe paid departure over later NPC turns and reload.
+<!-- DE67:DELIVERY-STATUS:END -->
+<!-- DE67:DFS-SLICE:END id=R-029-S001 claim=R-029 -->
 
 ## Competing systems and override direction
 
@@ -554,6 +1006,12 @@ Implementation status:
 | Parent versus child actions | cockpit action list | cached world frame, child frame, legacy fallback | Child always wins while topmost. The parent remains breadcrumb context only and exposes no action or executable payload. |
 | Unsupported owner | cockpit stop state | parent cache, raw key, OCR, guessed Escape | Unsupported is authoritative and actionless. It stops automation until a supported adapter exists. |
 | NPC LLM intent | NPC behavior code and tests | `llm_intent`, cockpit semantic manager | `llm_intent` remains authoritative for NPC policy. It neither consumes cockpit actions nor changes semantic surface ownership. |
+| Package claim verdict | coordinator, owner, reusable finding intake | combined-run summary, semantic-surface acceptance, stale standalone report | Each gameplay claim owns its mechanical, causality, feel, persistence, and cleanup verdict. Mixed outcomes remain independent; cockpit acceptance is enabling footing only. |
+| Staffed-camp signal memory | hostile-camp drive and response | camp observer, player observation, debug setup, ordinary proximity | The eligible production camp observer and stable source/channel lead own observation truth. The ordinary drive remains authoritative for response; setup and adjacency receive no causality credit. |
+| Hostile-camp discovery route | camp drive, scout/report response, package evidence | shared staffed-observer route, cannibal distance shortcut, helper-created report | The shared physical signal → staffed observer → camp memory → scout investigation → scout report route alone owns bandit and cannibal discovery. Profile policy begins after report acceptance; the cannibal shortcut is retired. |
+| Night-raid commitment | cannibal hostile operation and travel | rally night gate, contact-time clock, generic drive | Night controls the atomic `rallying` → `approaching` departure only. The persisted operation owns commitment afterward; dawn before contact cannot override it. |
+| Shakedown member versus player | NPC AI, dialogue/trade, hostile-operation travel | exact operation relationship, faction dislike, NPC attitude/cache, local gate | The persisted operation-scoped relationship wins before generic hostility: parley blocks offensive action until demand outcome; Fight/incomplete payment/player attack releases combat; paid departure blocks renewed aggression until normal return completion. Rolling-travel ambush is an explicit separate posture. |
+| Package performance | product qualification and feel review | isolated microbenchmark, unmatched build/world, profiler | A paired current-source workload with rendered transitions owns comparison. Profiling follows a reproducible question and does not replace it. |
 
 Ownership transfer is atomic at scope push and pop. The manager publishes the transferred owner and
 frame before accepting its first semantic request. One request may be consumed once. A request never
@@ -584,6 +1042,10 @@ source-bound binary and fixture
 | `R-SURFACE-008` | Direction and target owners expose their own candidates and consume valid choices. | Native use-item and ranged-target transcripts. | `DEFAULTMODE` treated as world, hidden/moved target retarget, screen coordinate, or parent action succeeds fails. |
 | `R-SURFACE-009` | Every required discovered input owner operates semantically; any newly discovered or incomplete owner hard-stops. | Source coverage inventory plus bound live traversal results for required owners and an unsupported control. | Treating required coverage as unsupported, arbitrary menu quota, OCR adapter, parent fallback, raw key, or unclassified owner fails. |
 | `R-SURFACE-010` | Cockpit replaces views through nested, overmap, inventory, dialogue, target, and unsupported transitions. | One source-bound end-to-end structured artifact plus renderer-equivalence assertions. | Merged parent data/actions, screenshot evidence alone, synthetic/mocked surface, or legacy dispatcher credit fails. |
+| `R-026` | One current-source established-base package exercises living-base, signal, bandit, cannibal, and flesh-raptor behaviors with independent verdicts and a reusable guide. | Bound current fixture/build/scenarios; native semantic receipts; claim-scoped mechanical, causality, feel, persistence, contradiction, and cleanup artifacts. | Standalone stale runs, cockpit acceptance alone, debug setup, one aggregate verdict, excluded creatures, or unbound prose fails. |
+| `R-027` | A staffed camp independently observes a saved structural signal, retains a valid lead, passes bounded causal controls, and reaches an ordinary response. | Production-cadence observer/source/channel receipts, saved-source validation, controls, memory evidence, and normal-drive response. | Reusing the unchanged bootstrap, direct mutation, timestamp adjacency, ordinary proximity, player-only observation, or observation without response fails. |
+| `R-028` | Paired current-source workloads qualify combined package cost including rendered local transitions and gameplay feel. | Matched build/world/scenario identity, frame pacing/update latency/native counters, CPU/RSS, variability, and feel; profiler only after reproduction. | Unmatched runs, isolated synthetic loop, no rendering, average-only summary, invented threshold, or profiler-only evidence fails. |
+| `R-029` | Both camp profiles use the natural shared signal/scout/report route; cannibals wait to depart at night and continue through dawn; normal bandits demand before attacking, leave safely after payment, and fight only after release, while rolling-travel ambush remains direct. | One current-source, identity-bound natural route per profile plus branch/control artifacts: physical signal and staffed observation, camp memory, physical scout/report/response travel, night departure then daylight contact for cannibals, and bandit first-demand ordering, native payment, later safe turns and reload, refusal/incomplete-payment and player-attack combat, rolling-travel ambush, persistence, and cleanup. | Direct cannibal dispatch, fabricated report/state/contact, startup/load, prepared-contact-only proof, screenshot-only ordering, paid writeback without later safe turns, night-only contact, loss of rolling ambush, or aggregate verdict fails. |
 
 The existing run `20260826_135902` is retained as focused evidence that the old wait prototype can
 emit separate frames and exact receipts. It cannot close any broad red item because its action was
@@ -593,10 +1055,18 @@ renderer-neutrality, broad surface coverage, or unsupported hard stop.
 ## Freeze record
 
 - Status: Refrozen
-- Frozen source baseline: `dev` at `050cff8c31274ea8dbf3d625baed10892a3e4395`, plus the
-  inspected relevant-source worktree manifest SHA-256
-  `55a4f6e8670241b3bfffad6ed52566c37358b86b8e70cfc903b3618c62122db1`, cross-checked
-  2026-08-31.
+- Frozen source baseline: `dev` at `c6616640a768625ce2673de56f336ae387ee0fc9`,
+  `upstream/master` at `d40cebf345cf5f042e847570d3a12ab014e6ce11`, plus the inspected
+  semantic/package worktree manifest SHA-256
+  `0a51ebb4559948eba1e4ff9bd3b0175caaff5935dbbabebc4e319f6723364810`, cross-checked
+  2026-09-02. The additive hostile-ecology reinspection binds current dirty worktree bytes for
+  `src/do_turn.cpp`, `src/bandit_live_world.cpp`, `src/bandit_live_world.h`, `src/npc.cpp`,
+  `src/npcmove.cpp`, `tests/bandit_live_world_test.cpp`, and
+  `bandit.r027_ordinary_response_v003_mcw`, `cannibal.r008_fire_signal_roof_lifecycle_mcw`,
+  `bandit.extortion_first_demand_pay_success_save_mcw`,
+  `bandit.extortion_first_demand_fight_mcw`, and
+  `tmp.bandit_rolling_travel_attack_gate_probe_1860` through manifest SHA-256
+  `615d2333a71afb2cc8b5231638fde666c7b72864638fd750d0ee0da2d4517a38`, inspected 2026-09-03.
 - User-owned choices: CDDA is semantic authority; active presentation follows the input owner;
   child actions hide parent actions; actions and receipts bind exact frames; stable identities
   replace screen positions and menu letters; shared generic instrumentation and focused adapters use
@@ -610,6 +1080,34 @@ renderer-neutrality, broad surface coverage, or unsupported hard stop.
   separate protected policy owner; the `R-SURFACE-*` namespace and its canonical DFS slices keep
   this contract distinct from earlier durable claims and give each active claim one dispatchable
   mechanistic route.
+- Owner-authorized package choices: the accepted semantic cockpit is enabling footing rather than a
+  final gameplay outcome; use the established-base fixture while current; combine living-base and
+  hostile-ecology work where useful but judge claims independently; require causal signal controls,
+  current bindings, mechanical and feel evidence, reusable findings, and a package guide; include
+  follower/ambient LLM behavior, request context, Smart Zone Manager, Locker, Patrol, light, smoke,
+  significant sound, bandit/cannibal lifecycles, and flesh raptors; exclude writhing stalkers and
+  zombie riders pending another design pass.
+- Owner-authorized hostile-ecology refinement: preserve the complete package and its history;
+  bandits and cannibals use the same physical signal, staffed observer, camp memory, scout/report,
+  and travel route; profile policy may diverge only after the report; retire the cannibal-only
+  distance shortcut; night gates cannibal departure rather than contact; preserve the
+  rolling-travel ambush and forced Pay/Fight trade surface; normal shakedown members cannot attack
+  before demand or after accepted payment while returning home. Shared player-light work, writhing
+  stalkers, zombie riders, automatic theft, and arrival-time night checks remain outside this change.
+- Evidence-implied package refinements: current source already implements staffed-camp signal
+  observation and memory, so R-027 now asks for independent validation rather than a new bridge; its
+  surviving selectable scenario has an older executable binding; several earlier threat scenarios
+  are stale or contradicted; current semantic Dialogue/Menu/Prompt/World/Overmap owners should be
+  tried before adding a package-specific interaction bridge; zero-credit bootstrap must be followed
+  by independent validation.
+- Evidence-implied hostile-ecology refinements: accepted R-027 remains green because its narrower
+  physical observation, memory, control, and ordinary-response evidence is not causally invalidated.
+  Current source still calls a parallel cannibal dispatcher, although the shared route can authorize
+  both report policies. Rally departure is night-gated and later approach is not, but the dawn edge
+  lacks proof. The normal turn runs NPC movement before the shakedown aftermath gate, generic
+  hostility can independently target the player, and the existing parley exception neither owns the
+  participant-to-player relationship nor persists through paid departure. Existing focused
+  shakedown scenarios therefore retain route value without closing R-029.
 
 After freeze, automation may close an existing red item only after its named proof passes and must
 remove its red marker. It may make an evidence-implied nonmaterial clarification, or append only a

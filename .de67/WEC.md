@@ -96,3 +96,84 @@ The owner reports that the wait menu already emits separate semantic frames and 
 Phase 2 must inspect the actual input-owner families and existing cockpit protocol. It must preserve broad menu coverage and the hard-stop behavior for unsupported interfaces.
 
 The view study is available at `/Users/josefhorvath/.codex/visualizations/semantic-surface-cockpit.html`.
+
+## Additive owner refinement: coherent bandit and cannibal hostile ecology
+
+This refinement is additive. Every compatible semantic-cockpit and playtest-package clause above
+remains binding; the clauses below do not replace the existing WEC, scenarios, reports, evidence,
+or history.
+
+### User outcome
+
+Preserve the existing hostile-ecology playtest package while making cannibal and bandit responses
+feel like one coherent system. Cannibals and bandits must discover and investigate player-created
+signals through the same physical route. Their behavior may differ after the camp receives the
+scout report.
+
+### Intended experience
+
+- A bandit camp and a cannibal camp use the same physical signal observation, camp memory, scout
+  investigation, report, and travel model.
+- A cannibal response waits at its rally until night. After the cannibals depart, the response
+  remains committed even if dawn arrives before contact.
+- A normal bandit contact presents the shakedown before the bandits attack. Payment ends the threat
+  and lets the bandits depart safely. Refusal, incomplete payment, or a player attack starts combat.
+- A favorable rolling-travel encounter may remain a direct bandit ambush without a shakedown.
+- The current forced payment interface is acceptable. The feature does not need literal automatic
+  item theft.
+- A paid bandit group must not attack again because generic faction hostility runs before or after
+  the shakedown lifecycle.
+
+### Project language and terminology
+
+- Use `physical signal`, `staffed observer`, `camp memory`, `scout report`, `night raid`,
+  `shakedown`, `payment`, `refusal`, and `rolling-travel ambush` for the relevant states.
+- `Leaves at night` means that the night check controls departure from the rally. It does not
+  require another night check at contact.
+- `Kills only after refusal` applies to normal shakedown contact. It does not prohibit the accepted
+  rolling-travel ambush.
+
+### Boundaries
+
+- Preserve the complete existing playtest package, scenario manifests, reports, and evidence. Do
+  not overwrite or delete earlier evidence.
+- Reopen an existing claim only if the new implementation or proof requirement invalidates that
+  claim's accepted evidence. Preserve the earlier status and evidence as history.
+- Keep the Writhing Stalker, Zombie Rider, and shared player-light package outside this bandit and
+  cannibal change.
+- Do not redesign the payment interface.
+- Do not add an arrival-time night check or make cannibals abandon a raid because daylight begins
+  after departure.
+- Do not remove the rolling-travel bandit ambush.
+- Do not treat helper-created reports, direct state fabrication, or startup-only scenarios as
+  natural gameplay proof.
+
+### Decisions
+
+- Cannibals must use the shared signal route only. Remove or retire the cannibal-only distance
+  shortcut instead of repairing it as a second response model.
+- Cannibals wait for night before leaving the rally, then remain committed.
+- The rolling-travel bandit ambush is intentional.
+- The forced Pay or Fight interface is intentional.
+- The remaining concern is normal shakedown turn ordering. A bandit must not become hostile before
+  the demand opens or after accepted payment while the group departs.
+
+### Research outcome
+
+No online research was required. The owner decisions and the current code observations define the
+intended experience.
+
+### Prototype or reaction questions
+
+None. DE67-2 can specify the natural gameplay proof for the turn-order concern.
+
+### Handoff to DE-67-2
+
+- Target the Mac Mini hostile-ecology `dev` worktree. Verify its current path, branch, HEAD, and
+  dirty state before authoring the specification.
+- Import this WEC without replacing the existing `.de67` package.
+- Inspect the shared signal route, the cannibal-only direct dispatcher, hostile-operation handoff,
+  normal shakedown dialogue ordering, generic NPC hostility, paid departure, and the existing proof
+  package.
+- Keep existing proof artifacts. Extend the package with the smallest natural route that
+  distinguishes a safe demand and safe paid departure from premature aggression.

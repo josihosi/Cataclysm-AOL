@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Setup only: a disposable native run moves the avatar north from the accepted one-tile R-027 footing, preserves the physical fire and protected camp state, and native-saves a safer same-overmap footing.",
+  "material_proof": "Read-only before and after runtime snapshots show the source remains at (3648,1187,0) at intensity 3, the avatar moved north in native world actions while remaining in the same OMT, and the full protected bandit state is structurally identical.",
+  "current_uncertainty": "This is zero-credit fixture preparation; a separate validation profile must independently observe all R-027 behavior.",
+  "material_contradiction": ["source moves or changes intensity", "protected camp state changes", "avatar remains on or adjacent to a spreading fire", "direct save edit, callback, or state mutation is used"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["direct save edit", "callback injection", "direct lead mutation", "physical input"],
+  "honest_stop_conditions": ["finish after ten native north actions, quicksave, and read-only state audit"],
+  "requested_evidence_ceiling": "zero-credit"
+}
