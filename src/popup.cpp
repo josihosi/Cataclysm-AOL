@@ -385,6 +385,12 @@ query_popup::result query_popup::query_once()
 
     std::optional<std::string> semantic_action;
     std::optional<semantic_surface_scope> semantic_scope;
+    // A confirmed native main-menu quit has no successor frame: the process
+    // leaves the game as soon as query_yn returns.  Its accepted selection
+    // must therefore be receipted before that return, not deferred to a frame
+    // that cannot exist.
+    const bool receipt_before_native_exit =
+        is_openclaw_harness_main_menu_quit_confirmation( category, text );
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
         std::vector<semantic_action_descriptor> semantic_actions;
         for( const query_popup::query_option &option : options ) {
@@ -402,7 +408,7 @@ query_popup::result query_popup::query_once()
             { "text", text },
             { "title", category }
         }, std::move( semantic_actions ),
-        [this, &semantic_action]( const semantic_action_request &request ) {
+        [this, &semantic_action, receipt_before_native_exit]( const semantic_action_request &request ) {
             if( request.action_id == "prompt.cancel" && cancel ) {
                 semantic_action = "QUIT";
                 return semantic_action_dispatch_result{ true, "", "" };
@@ -427,7 +433,8 @@ query_popup::result query_popup::query_once()
             }
             if( matches == 1 ) {
                 semantic_action = selected_option->action;
-                return semantic_action_dispatch_result{ true, "", "" };
+                return semantic_action_dispatch_result{ true, "", "", false,
+                                                        !receipt_before_native_exit };
             }
             if( matches > 1 ) {
                 return semantic_action_dispatch_result{ false, "duplicate_stable_id", "" };

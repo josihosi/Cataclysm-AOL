@@ -35,6 +35,13 @@ class QuitConfirmationSemanticTest(unittest.TestCase):
         post_wait = source.index('semantic_action_consumed = !semantic_action.empty();', action)
         self.assertIn('action = std::move( semantic_action );', source[post_wait:])
 
+    def test_terminal_quit_prompt_receipts_before_process_exit(self) -> None:
+        source = (Path(__file__).resolve().parents[2] / "src" / "popup.cpp").read_text(
+            encoding="utf-8"
+        )
+        self.assertIn('const bool receipt_before_native_exit =', source)
+        self.assertIn('!receipt_before_native_exit', source)
+
     def test_m095_uses_semantic_quit_gate_and_keeps_normal_relaunch_route(self) -> None:
         scenario_path = Path(__file__).resolve().parent / "scenarios" / (
             "bandit.r009_m095_current_route_safe_watch_mcw.json"
