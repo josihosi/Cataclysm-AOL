@@ -3,15 +3,18 @@
 from __future__ import annotations
 
 import json
+import io
+import hashlib
 import sys
 import tempfile
 import threading
 import time
 import unittest
+from contextlib import redirect_stdout
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from cockpit_file_bridge import FileBackedCockpitBridge, FileBackedCockpitClient, FreshObservationSequence
+from cockpit_file_bridge import FileBackedCockpitBridge, FileBackedCockpitClient, FreshObservationSequence, main
 
 
 CHILD = (
@@ -97,13 +100,67 @@ class CockpitFileBridgeTest(unittest.TestCase):
             self.assertTrue(status["ok"])
             artifact = directory / status["receipt"]["response_artifact"]
             self.assertGreater(artifact.stat().st_size, 1000000)
+            self.assertNotIn("observation", json.dumps(status))
+            recovered = bridge.response_artifact(
+                directory, "observe-1", status["receipt"]["response_sha256"],
+            )
+            self.assertTrue(recovered["ok"])
+            self.assertEqual(recovered["response"]["result"]["sequence"], 1)
+            self.assertGreater(len(recovered["response"]["result"]["observation"]), 1000000)
+            self.assertEqual(
+                bridge.response_artifact(directory, "observe-1", "0" * 64),
+                {"ok": False, "error": "response_artifact_digest_mismatch"},
+            )
             self.assertEqual(bridge.response_slice(directory, "observe-1", "result.sequence")["slice"], 1)
+            artifact.write_text("{}\n", encoding="utf-8")
+            self.assertEqual(
+                bridge.response_artifact(directory, "observe-1", status["receipt"]["response_sha256"]),
+                {"ok": False, "error": "response_artifact_hash_mismatch"},
+            )
             self.assertEqual(json.loads((directory / "status.json").read_text())["last_response"]["request_id"], "observe-1")
             receipt = json.loads((directory / "responses" / "observe-1.receipt.json").read_text())
             self.assertEqual(receipt["request_identity"], {"action": "game.observe"})
             self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
             thread.join(2)
             self.assertFalse(thread.is_alive())
+
+    def test_response_artifact_cli_recovers_only_the_receipt_bound_payload(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            responses = directory / "responses"
+            responses.mkdir(parents=True)
+            raw = b'{"ok":true,"result":{"witness":{"verdict":"proved"}}}\n'
+            digest = hashlib.sha256(raw).hexdigest()
+            (responses / "witness-1.json").write_bytes(raw)
+            (responses / "witness-1.receipt.json").write_text(json.dumps({
+                "request_id": "witness-1", "binding_id": "bound-a",
+                "response_sha256": digest, "response_artifact": "responses/witness-1.json",
+            }), encoding="utf-8")
+            output = io.StringIO()
+            with redirect_stdout(output):
+                self.assertEqual(main([
+                    "response-artifact", "--session-dir", str(directory),
+                    "--request-id", "witness-1", "--sha256", digest,
+                ]), 0)
+            recovered = json.loads(output.getvalue())
+            self.assertEqual(recovered["response"]["result"]["witness"]["verdict"], "proved")
+            rejected_output = io.StringIO()
+            with redirect_stdout(rejected_output):
+                self.assertEqual(main([
+                    "response-artifact", "--session-dir", str(directory),
+                    "--request-id", "witness-1", "--sha256", "0" * 64,
+                ]), 0)
+            self.assertEqual(json.loads(rejected_output.getvalue()), {
+                "ok": False, "error": "response_artifact_digest_mismatch",
+            })
+            (responses / "witness-1.receipt.json").write_text(json.dumps({
+                "request_id": "witness-1", "response_sha256": digest,
+                "response_artifact": "../outside.json",
+            }), encoding="utf-8")
+            self.assertEqual(
+                FileBackedCockpitBridge.response_artifact(directory, "witness-1", digest),
+                {"ok": False, "error": "response_artifact_path_invalid"},
+            )
 
     def test_request_identity_order_stale_rejection_and_complete_artifacts(self):
         with tempfile.TemporaryDirectory() as temp:

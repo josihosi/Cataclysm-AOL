@@ -401,24 +401,50 @@ def _current_repair_binding(declaration: Mapping[str, Any]) -> Mapping[str, Any]
 def _current_source_executable_readiness(
     *,
     isolated_harness_diagnosis: bool = False,
+    executable: str = "",
 ) -> Mapping[str, Any]:
     """Observe one actionable source/executable status without launching gameplay."""
-    try:
-        executable = startup_harness.detect_executable()
-    except SystemExit as exc:
-        return {
-            "status": "build_required",
-            "reason": "runnable_executable_absent",
-            "next_action": (
-                "build or select a source-matching executable, then repeat the same registry query"
-            ),
-            "evidence_ceiling": "none until source-matching executable revalidation",
-            "comparison_error": str(exc),
-        }
+    executable_text = str(executable).strip()
+    if executable_text:
+        candidate = Path(executable_text).expanduser()
+    else:
+        try:
+            candidate = startup_harness.detect_executable()
+        except SystemExit as exc:
+            return {
+                "status": "build_required",
+                "reason": "runnable_executable_absent",
+                "next_action": (
+                    "build or select a source-matching executable, then repeat the same registry query"
+                ),
+                "evidence_ceiling": "none until source-matching executable revalidation",
+                "comparison_error": str(exc),
+            }
     return startup_harness.executable_source_readiness(
-        executable,
+        candidate,
         isolated_harness_diagnosis=isolated_harness_diagnosis,
     )
+
+
+def _runtime_status(*, executable: str, isolated_harness_diagnosis: bool) -> Mapping[str, Any]:
+    """Return one exact build/runtime binding observation without launching gameplay."""
+    readiness = dict(_current_source_executable_readiness(
+        executable=executable,
+        isolated_harness_diagnosis=isolated_harness_diagnosis,
+    ))
+    executable_path = str(readiness.get("executable_path", "")).strip()
+    executable_sha256, executable_error = (
+        sha256_file(Path(executable_path)) if executable_path else ("", "executable path unavailable")
+    )
+    return {
+        "build_runtime_status": readiness,
+        "runtime_binding": {
+            "runtime_source": runtime_source_binding(),
+            "executable_path": executable_path,
+            "executable_sha256": executable_sha256,
+            "executable_error": executable_error,
+        },
+    }
 
 
 def _apply_source_readiness_to_query(
@@ -1186,6 +1212,29 @@ def build_parser() -> argparse.ArgumentParser:
         choices=("quarantined", "retired"),
         default=[],
         help="include non-active lifecycle rows; repeated values are accepted",
+    )
+    runtime_status = commands.add_parser(
+        "runtime-status",
+        help="inspect one build/runtime binding without launching gameplay",
+    )
+    runtime_status.add_argument(
+        "--executable", default="",
+        help="exact executable binding to inspect; defaults to the detected executable",
+    )
+    runtime_status.add_argument(
+        "--isolated-harness-diagnosis", action="store_true",
+        help="allow only the explicitly provisional isolated-harness readiness route",
+    )
+    runtime_status.add_argument(
+        "--full", action="store_true",
+        help="explicitly print the complete runtime-status payload instead of its artifact receipt",
+    )
+    runtime_artifact = commands.add_parser(
+        "runtime-status-artifact",
+        help="retrieve one digest-bound runtime-status payload",
+    )
+    runtime_artifact.add_argument(
+        "--sha256", required=True, help="exact SHA-256 from a runtime-status receipt",
     )
     commands.add_parser("retirement-candidates", help="inspect review-only retirement candidates")
     artifact = commands.add_parser("registry-artifact", help="retrieve one digest-bound registry-status payload")
@@ -2115,6 +2164,16 @@ def main(argv: Sequence[str] | None = None) -> int:
                     artifact_root=registry_path.parent / "command-artifacts",
                     command="registry-status", sha256=args.sha256,
                 )
+            elif args.command == "runtime-status":
+                result = _runtime_status(
+                    executable=args.executable,
+                    isolated_harness_diagnosis=bool(args.isolated_harness_diagnosis),
+                )
+            elif args.command == "runtime-status-artifact":
+                result = read_command_artifact(
+                    artifact_root=registry_path.parent / "command-artifacts",
+                    command="runtime-status", sha256=args.sha256,
+                )
             elif args.command == "retirement-candidates":
                 result = {"candidates": retirement_candidates(connection)}
             elif args.command == "approve-retirement":
@@ -2590,16 +2649,29 @@ def main(argv: Sequence[str] | None = None) -> int:
         "registry": str(registry_path),
         "result": result,
     }
-    if args.command == "registry-status" and not bool(args.full):
+    if args.command in {"registry-status", "runtime-status"} and not bool(args.full):
         receipt = write_command_artifact(
             artifact_root=registry_path.parent / "command-artifacts",
-            command="registry-status", payload=response,
+            command=args.command, payload=response,
         )
-        receipt["selector"] = {
-            "manifest_ids": list(args.manifest_id),
-            "include_states": list(args.include_state),
-        }
-        receipt["result_summary"] = {"entry_count": len(result["entries"])}
+        if args.command == "registry-status":
+            receipt["selector"] = {
+                "manifest_ids": list(args.manifest_id),
+                "include_states": list(args.include_state),
+            }
+            receipt["result_summary"] = {"entry_count": len(result["entries"])}
+        else:
+            runtime_binding = result["runtime_binding"]
+            receipt["selector"] = {
+                "executable_path": runtime_binding["executable_path"],
+                "executable_sha256": runtime_binding["executable_sha256"],
+                "runtime_source_sha256": runtime_binding["runtime_source"].get("sha256", ""),
+                "isolated_harness_diagnosis": bool(args.isolated_harness_diagnosis),
+            }
+            receipt["result_summary"] = {
+                "status": result["build_runtime_status"].get("status", ""),
+                "evidence_ceiling": result["build_runtime_status"].get("evidence_ceiling", ""),
+            }
         _write_result({"ok": True, "command": args.command, "registry": str(registry_path),
                        "result": receipt})
     else:

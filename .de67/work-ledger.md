@@ -41,22 +41,29 @@ the package pending another owner design pass.
     queries compact projections by exact continuation/evidence identities, and generates successor
     packets from the current frontier plus a reasoned read plan. Backfilled receipts preserve R-026
     and R-029 without replaying their accepted work.
-  - Current evidence: `registry-status` is now quiet by default and keeps its complete result in a
-    digest-bound artifact. A real registry with 323 entries returned a 1,638-byte receipt, and an
-    exact manifest query returned one entry with every history class. Full recovery and digest-drift
-    rejection pass, the registry store and ingestion suites pass 50 tests, and receipt
-    `5a925a45…5cb7` preserves the worker result. The earlier 4,236,128-character output remains the
-    counterexample that this route fixes.
-  - Current uncertainty: build and runtime status, cockpit, witness, and diagnostic commands have not
-    yet proved the same quiet, lossless, indexed contract. Cross-surface selectors, the CAOL skill
-    contract, and a fresh successor continuation also remain unproved. Two unrelated full CLI startup
-    tests still fail because the canonical `cli.json` file is absent.
-  - Latest result: the registry slice is complete. Default compact output, explicit `--full`
-    retrieval, exact `--manifest-id` selection, and `registry-artifact --sha256` verification are
-    working and tested. This settles only task `R-030-exploration-002`, not claim R-030.
-  - First open boundary: inspect the build and runtime status output owner, then implement and test
-    one compact digest-bound default receipt with exact retrieval. Preserve the registry proof and do
-    not replay it.
+  - Current evidence: `registry-status` is quiet by default and keeps its complete result in a
+    digest-bound artifact. `runtime-status` now does the same and supports exact executable binding
+    selection, explicit full output, and exact artifact retrieval. A live missing-executable check
+    returned receipt `6bdf85e5…2202`, and exact retrieval recovered `build_required`. Two focused
+    tests, Python compilation, and diff validation passed. Receipt `5e3ed2b8…eae9` preserves this
+    worker result. The earlier 4,236,128-character output remains the counterexample that this route
+    fixes.
+  - Current uncertainty: exact cross-surface selectors, the remaining CAOL skill contract, and a
+    fresh successor continuation remain unproved. Two unrelated full CLI startup tests still fail
+    because the canonical `cli.json` file is absent. The full cockpit bridge suite also has existing
+    intermittent asynchronous ready and cleanup races outside the focused receipt proof.
+  - Latest result: the remaining CAOL surface gap is closed by task `R-030-closure-001`. The shared
+    cockpit bridge keeps compact status and exact slices, recovers full cockpit, witness, and
+    diagnostic responses only through the receipt digest, and rejects digest mismatch, tampering,
+    and response-namespace path escape. Tasks `R-030-closure-002` and `R-030-closure-003` then reached
+    the same W1 clock-only wait before selector work began. Task `R-030-closure-004` used the separate
+    skill-and-contract gap but received the same stale selector-oriented wait. Receipts
+    `348c4a23…bed0`, `060a5671…4f86`, and `a7a8f19c…def0` preserve these no-evidence attempts without
+    turning them into findings.
+  - First open boundary: the policy or dispatch projection must provide a worker-authorized
+    repository route instead of the repeated W1 clock-only wait. Exact selectors, skill and contract
+    alignment, and fresh successor continuation remain open. Preserve the registry, runtime, and
+    shared cockpit response proof and do not replay it.
   - Subtasks:
     - [done] measure-existing-context-path :: Preserve the 4,236,128-character/223-entry registry counterexample and the 151/6 checkpoint continuity evidence as diagnostics, not limits.
     - [done] generate-progressive-worker-packet :: Phase-3 worker packets now carry the outcome, current frontier, compact receipt, exact bindings/entrypoints, and a reasoned progressive read plan.

@@ -1642,6 +1642,57 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 ]), 1)
             self.assertIn("artifact digest drift", failed_stderr.getvalue())
 
+    def test_runtime_status_default_is_lossless_compact_receipt_with_exact_binding_selector(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path = root / "registry.sqlite3"
+            observed = {
+                "build_runtime_status": {
+                    "status": "ready",
+                    "evidence_ceiling": "requested run ceiling",
+                    "large_diagnostic": "full-only-payload",
+                },
+                "runtime_binding": {
+                    "runtime_source": {"sha256": "a" * 64},
+                    "executable_path": "/exact/cataclysm-tiles",
+                    "executable_sha256": "b" * 64,
+                    "executable_error": "",
+                },
+            }
+            compact_stdout = io.StringIO()
+            with mock.patch.object(scenario_registry_cli, "_runtime_status", return_value=observed) as status, \
+                    redirect_stdout(compact_stdout):
+                self.assertEqual(scenario_registry_cli.main([
+                    "--registry", str(registry_path), "runtime-status",
+                    "--executable", "/exact/cataclysm-tiles",
+                ]), 0)
+            compact_payload = json.loads(compact_stdout.getvalue())
+            receipt = compact_payload["result"]
+            self.assertEqual(receipt["schema"], "caol-command-receipt-v1")
+            self.assertEqual(receipt["command"], "runtime-status")
+            self.assertEqual(receipt["selector"], {
+                "executable_path": "/exact/cataclysm-tiles",
+                "executable_sha256": "b" * 64,
+                "runtime_source_sha256": "a" * 64,
+                "isolated_harness_diagnosis": False,
+            })
+            self.assertNotIn("full-only-payload", compact_stdout.getvalue())
+            status.assert_called_once_with(
+                executable="/exact/cataclysm-tiles", isolated_harness_diagnosis=False,
+            )
+
+            full_stdout = io.StringIO()
+            with redirect_stdout(full_stdout):
+                self.assertEqual(scenario_registry_cli.main([
+                    "--registry", str(registry_path), "runtime-status-artifact", "--sha256",
+                    receipt["artifact"]["sha256"],
+                ]), 0)
+            recovered = json.loads(full_stdout.getvalue())
+            self.assertEqual(
+                recovered["result"]["result"]["build_runtime_status"]["large_diagnostic"],
+                "full-only-payload",
+            )
+
     def test_registry_migrate_all_uses_canonical_probe_and_reconciles_finalized_report(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

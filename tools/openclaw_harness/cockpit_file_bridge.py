@@ -577,6 +577,36 @@ class FileBackedCockpitBridge:
         return {"ok": True, "receipt": receipt}
 
     @staticmethod
+    def response_artifact(session_dir: Path, request_id: str, sha256: str) -> dict[str, Any]:
+        """Recover one complete retained response only through its exact receipt digest."""
+        expected = str(sha256).strip().lower()
+        if len(expected) != 64 or any(char not in "0123456789abcdef" for char in expected):
+            return {"ok": False, "error": "response SHA-256 must be a lowercase hexadecimal digest"}
+        receipt_result = FileBackedCockpitBridge.response_status(session_dir, request_id)
+        if not receipt_result.get("ok"):
+            return receipt_result
+        receipt = receipt_result["receipt"]
+        if receipt.get("response_sha256") != expected:
+            return {"ok": False, "error": "response_artifact_digest_mismatch"}
+        artifact = (Path(session_dir) / str(receipt.get("response_artifact", ""))).resolve()
+        expected_parent = (Path(session_dir) / "responses").resolve()
+        if artifact.parent != expected_parent:
+            return {"ok": False, "error": "response_artifact_path_invalid"}
+        try:
+            raw = artifact.read_bytes()
+        except OSError:
+            return {"ok": False, "error": "response_artifact_unavailable"}
+        if _digest(raw) != expected:
+            return {"ok": False, "error": "response_artifact_hash_mismatch"}
+        try:
+            value = json.loads(raw)
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {"ok": False, "error": "response_artifact_is_not_json"}
+        if not isinstance(value, Mapping):
+            return {"ok": False, "error": "response_artifact_is_not_an_object"}
+        return {"ok": True, "request_id": request_id, "response": value}
+
+    @staticmethod
     def cleanup(session_dir: Path, binding_id: str) -> dict[str, Any]:
         status = json.loads((Path(session_dir) / "status.json").read_text(encoding="utf-8"))
         if status.get("binding_id") != binding_id:
@@ -722,6 +752,10 @@ def main(argv: Sequence[str] | None = None) -> int:
     response.add_argument("--session-dir", required=True)
     response.add_argument("--request-id", required=True)
     response.add_argument("--selector", required=True)
+    artifact = commands.add_parser("response-artifact")
+    artifact.add_argument("--session-dir", required=True)
+    artifact.add_argument("--request-id", required=True)
+    artifact.add_argument("--sha256", required=True)
     cleanup = commands.add_parser("cleanup")
     cleanup.add_argument("--session-dir", required=True)
     cleanup.add_argument("--binding-id", required=True)
@@ -784,6 +818,11 @@ def main(argv: Sequence[str] | None = None) -> int:
         return 0
     if args.command == "cleanup":
         print(json.dumps(FileBackedCockpitBridge.cleanup(Path(args.session_dir), args.binding_id)))
+        return 0
+    if args.command == "response-artifact":
+        print(json.dumps(FileBackedCockpitBridge.response_artifact(
+            Path(args.session_dir), args.request_id, args.sha256,
+        )))
         return 0
     print(json.dumps(FileBackedCockpitBridge.response_slice(Path(args.session_dir), args.request_id, args.selector)))
     return 0

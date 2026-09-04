@@ -83,4 +83,17 @@ Inspect continuity with:
 python3 tools/openclaw_harness/scenario_registry_cli.py registry-status
 ```
 
+For a file-backed live cockpit, request collection is compact by default:
+
+```sh
+python3 tools/openclaw_harness/cockpit_file_bridge.py response-status \
+  --session-dir <session-dir> --request-id <request-id>
+```
+
+The receipt binds the request identity, binding, response artifact, and SHA-256. Use
+`response-slice --selector <exact.dot.path>` for a known field, or explicitly recover the full
+response only with `response-artifact --request-id <request-id> --sha256 <receipt-digest>`.
+Both retrievals verify the retained artifact; do not reopen a whole response merely to locate an
+already-known identity.
+
 Report startup, feature outcome, contradictions, evidence ceiling, and cleanup separately.
