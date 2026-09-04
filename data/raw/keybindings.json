@@ -1416,20 +1416,14 @@
     "id": "ECOLOGY_FACTION_FILTER",
     "category": "OVERMAP",
     "name": "Cycle ecology faction filter",
-    "bindings": [
-      { "input_method": "keyboard_char", "key": "F" },
-      { "input_method": "keyboard_code", "key": "f", "mod": [ "shift" ] }
-    ]
+    "bindings": [ { "input_method": "keyboard_char", "key": "F" }, { "input_method": "keyboard_code", "key": "f", "mod": [ "shift" ] } ]
   },
   {
     "type": "keybinding",
     "id": "ECOLOGY_LOADED_FILTER",
     "category": "OVERMAP",
     "name": "Toggle ecology loaded-only filter",
-    "bindings": [
-      { "input_method": "keyboard_char", "key": "U" },
-      { "input_method": "keyboard_code", "key": "u", "mod": [ "shift" ] }
-    ]
+    "bindings": [ { "input_method": "keyboard_char", "key": "U" }, { "input_method": "keyboard_code", "key": "u", "mod": [ "shift" ] } ]
   },
   {
     "type": "keybinding",
@@ -1443,10 +1437,7 @@
     "id": "ECOLOGY_EDIT",
     "category": "OVERMAP",
     "name": "Inspect or edit selected ecology entity",
-    "bindings": [
-      { "input_method": "keyboard_char", "key": "I" },
-      { "input_method": "keyboard_code", "key": "i", "mod": [ "shift" ] }
-    ]
+    "bindings": [ { "input_method": "keyboard_char", "key": "I" }, { "input_method": "keyboard_code", "key": "i", "mod": [ "shift" ] } ]
   },
   {
     "type": "keybinding",

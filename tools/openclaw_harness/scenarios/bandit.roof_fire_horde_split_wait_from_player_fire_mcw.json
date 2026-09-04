@@ -1,5 +1,7 @@
 {
   "name": "bandit.roof_fire_horde_split_wait_from_player_fire_mcw",
+  "status": "blocked",
+  "blocked_reason": "Superseded as an active route by the R-008 fire-signal lifecycle family; retained only as historical short-wait evidence.",
   "description": "Split-run roof-fire horde detection proof: start from the saved world captured after run 20260429_172847 proved normal player-created roof/elevated f_brazier + fd_fire. Re-load that world into gameplay, re-audit the saved roof-fire state, perform bounded in-game wait, require same-run live horde light-signal artifacts, then save and inspect elapsed turn delta plus roof-fire and horde response metadata.",
   "profile": "dev-harness",
   "world": "McWilliams",

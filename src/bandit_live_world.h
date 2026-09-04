@@ -1147,6 +1147,10 @@ struct world_state {
 
     void clear();
     void serialize( JsonOut &json ) const;
+    // A canonical read-only representation for harness audits.  It deliberately
+    // shares the persistent serializer so an audit cannot normalize or repair
+    // the live state it is meant to inspect.
+    std::string canonical_snapshot() const;
     void deserialize( const JsonObject &jo );
     std::vector<crossing_receipt_identity> acknowledge_persisted_crossings();
     void rollback_persisted_crossings( const std::vector<crossing_receipt_identity> &tokens );
@@ -1465,6 +1469,14 @@ struct structural_signal_read {
     int confidence = 0;
     int uncertainty_radius_omt = 1;
     bool local_reality = false;
+    // The producer carries the evaluated observation basis through to the
+    // receipt; these are not inferred later from aggregate counters.
+    int observer_sight_points = -1;
+    bool line_of_sight = false;
+    // A rejected physical candidate reaches the recorder solely for its
+    // run-bound bounded-read receipt.  It is never eligible for lead update.
+    bool rejected = false;
+    std::string rejection_reason;
     std::string summary;
 };
 
@@ -1474,6 +1486,20 @@ struct structural_signal_record_result {
     int callbacks_invoked = 0;
     int sites_recorded = 0;
     int facts_recorded = 0;
+};
+
+struct camp_signal_observer_request {
+    character_id observer_id;
+    tripoint_abs_omt camp_omt;
+};
+
+struct camp_signal_observation_result {
+    int sites_considered = 0;
+    int eligible_camps = 0;
+    int callbacks_invoked = 0;
+    int leads_created = 0;
+    int leads_refreshed = 0;
+    int unchanged_reads = 0;
 };
 
 enum class abstract_threat_resolution_kind {
@@ -1820,6 +1846,10 @@ structural_signal_record_result record_structural_signal_observations( world_sta
         const std::function<std::vector<structural_signal_read>( const site_record &,
                 const active_outing_state &,
                 const structural_threat_observer_request & )> &signal_lookup );
+camp_signal_observation_result record_staffed_camp_signal_observations( world_state &state,
+        int now_minutes,
+        const std::function<std::vector<structural_signal_read>( const site_record &,
+                const camp_signal_observer_request & )> &signal_lookup );
 sortie_observation_effect record_physically_observed_player_opportunity(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const character_id &observer_id, const std::string &target_id,
@@ -2050,6 +2080,15 @@ void begin_shakedown_basecamp_defender_observation( site_record &site, int live_
 shakedown_aftermath_effect apply_shakedown_basecamp_defender_observation( site_record &site,
         int live_defenders );
 bool mark_shakedown_reopen_used( site_record &site );
+enum class hostile_operation_player_relationship {
+    none,
+    shakedown_parley,
+    combat_released,
+    paid_departure,
+};
+hostile_operation_player_relationship hostile_operation_player_relationship_for(
+    const world_state &state, character_id npc_id );
+bool release_shakedown_combat_on_player_attack( world_state &state, character_id npc_id );
 bool is_active_shakedown_parley_member( const world_state &state, character_id npc_id );
 struct covert_scout_relationship_read {
     scout_phase phase = scout_phase::assembling;

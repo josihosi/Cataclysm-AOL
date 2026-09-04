@@ -1,0 +1,37 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_004.world_children_tiles",
+  "description": "Source-bound Tiles proof that the native World owner yields to real action-menu, inventory, and debug-menu children, then restores a fresh complete World descriptor after every return.",
+  "profile": "r-surface-004-world-children-tiles",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r_surface_001_inventory_prompt_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {"capabilities.r_surface_004.world_children_tiles": "source_bound_tiles_world_child_yield_and_fresh_return"},
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.inventory", "semantic:world.debug_menu", "semantic:menu.cancel", "semantic:inventory.cancel"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-surface-004-world-children-tiles",
+    "config_profile": "dev-harness",
+    "fixture": "r_surface_001_inventory_prompt_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r-surface-004-world-children-tiles", "fixture": "r_surface_001_inventory_prompt_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_001_inventory_prompt_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/dev-harness.json"},
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "emit_r_surface_004_tiles_world_descriptor", "native_semantic_checkpoint": {"required_actions": ["world.inventory", "world.debug_menu", "world.wait", "world.move.north", "world.move.south", "world.move.west", "world.move.east"], "required_state": "world"}},
+    {"kind": "cockpit_act", "label": "r_surface_004_tiles_world_child_returns", "gameplay_credit": false, "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1, "action_chain": ["world.inventory", "inventory.cancel", "world.debug_menu", "menu.cancel"], "expected_final_action": "world.wait", "expected_visible_fact": "Tiles enters two supported native child owners, exposes no inherited World action while each child owns input, and returns after each close to a fresh complete World descriptor."}
+  ],
+  "proof_gates": [{"id": "r_surface_004_tiles_world_child_returns", "label": "source-bound Tiles World child yield and fresh return chain", "boundary_step": "r_surface_004_tiles_world_child_returns", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_cockpit_transaction", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
+  "proof_route": {"gates": ["r_surface_004_tiles_world_child_returns"], "terminal": ["r_surface_004_tiles_world_child_returns"]}
+}

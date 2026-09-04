@@ -8,13 +8,20 @@ the selected outcome needs. The compiled policy owns routing and durable lifecyc
 Use the brief's desired outcome, known evidence, real constraints, and available tools as context,
 not as a prescribed tactic. Inspect broadly or narrowly, repair tools or scenarios, change strategy,
 use honestly labelled interventions, rerun, or abandon an unproductive approach when that advances
-the same outcome. Keep reversible in-scope recovery in the current task. A surprising result is an
-observation to understand, not an automatic success, failure, or terminal finding.
+the same outcome. A surprising result is an observation to understand, not an automatic success,
+failure, or terminal finding. When evidence or a fuse ends one strategy, retire that strategy and
+continue through a materially different evidence-backed route while recoverable work remains.
 
-Stop the task when its outcome is settled, evidence contradicts the strategy or claim, or progress
-requires a materially different owner outcome, real external decision, unavailable capability,
-irreversible user-data risk, or binding/authority change. Preserve the exact uncertainty when it is
-not settled. Do not invent retry counts, observation windows, read quotas, or other limits.
+Repository-owned implementation, registry or manifest binding, scenario, fixture, harness, build,
+observation path, and executable proof route are reversible in-scope recovery. Repair or replace
+them, revalidate any single-use technical authority, and preserve completed valid evidence. Split a
+bootstrap that depends on its own output from fresh independent validation; the bootstrap earns no
+proof credit and is not queried again unchanged.
+
+Stop the task only when its outcome is settled as proved or contradicted, or continuation requires a
+materially different owner outcome, a real external decision, a capability unavailable through any
+authorized repository route, or irreversible user-data risk. Preserve the exact uncertainty when it
+is not settled. Do not invent retry counts, observation windows, read quotas, or other limits.
 
 ## Preserve truth
 
@@ -23,11 +30,14 @@ actor, and ownership binding wherever the claim depends on them. Preserve contra
 and the evidence ceiling. Setup, debug intervention, diagnostic replay, focused proof, continuous
 certification, and Windows feel remain distinct classes; prose cannot promote one into another.
 
-Choose evidence that can decide the current question. Keep verbose output in artifacts when useful.
-A first divergence is valuable diagnostic evidence, but the worker decides whether to inspect,
-repair, change tactics, rerun, or finish. Mechanical failures such as stale authority, missing
-receipts, false binding, fabricated observations, hidden contradictions, and unowned cleanup remain
-hard failures.
+Choose evidence that can decide the current question. Keep verbose output in digest-bound artifacts
+and return stable journal identities and narrow query keys instead of copying bulk output into the
+result. Compact output must preserve enough metadata to find the full evidence losslessly; metrics
+such as bytes, entries, elapsed time, and checkpoint count diagnose context shape but never become
+quotas. A first divergence is valuable diagnostic evidence, but the worker decides whether to
+inspect, repair, change tactics, rerun, or finish. Mechanical failures such as stale authority,
+missing receipts, false binding, fabricated observations, hidden contradictions, and unowned cleanup
+remain hard failures.
 
 ## Live playtests
 
@@ -51,6 +61,11 @@ evidence, change identity, or promote its own evidence class.
 
 ## Return results
 
-Return the outcome, material changes, direct evidence, and unresolved uncertainty. The coordinator
-alone records durable Phase-3 state. A formal finding must name the real route exit; ordinary code,
-test, harness, fixture, and strategy failures remain recoverable work while the outcome is in scope.
+Return a compact, schema-shaped result naming the outcome or first divergence, material changes,
+tests and live actions, evidence ceiling, exact bindings, indexed journal identities, digest-bound
+artifact references, accepted no-replay work, active work, first open boundary, useful narrow
+queries, and entrypoints. When the execution context cannot carry the next necessary act, this
+receipt ends only the worker attempt and is the successor's continuation footing. The coordinator
+alone validates and records it before durable terminal state. A formal finding must name the real
+route exit; ordinary code, test, harness, fixture, strategy, and context-boundary failures remain
+recoverable work while the outcome is in scope.

@@ -154,6 +154,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                                       return_value=True), \
                     mock.patch.object(scenario_registry_cli, "_declared_pre_descriptor_prefix",
                                       return_value=[]), \
+                    mock.patch.object(scenario_registry_cli, "_declared_live_session_reentries",
+                                      return_value=0), \
                     mock.patch.object(scenario_registry_cli.subprocess, "run",
                                       return_value=bridge_result) as run, \
                     mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
@@ -166,6 +168,10 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertIn("registry-launch", command)
             self.assertIn("selected-token", command)
             self.assertNotIn("Josef", command)
+            registry_index = command.index("--registry")
+            charter_index = command.index("--witness-charter")
+            self.assertEqual(command[registry_index + 1], str((root / "registry.sqlite3").resolve()))
+            self.assertEqual(command[charter_index + 1], str(Path(args.witness_charter).resolve()))
             receipt = write_result.call_args.args[0]
             self.assertTrue(receipt["ok"])
             self.assertEqual(
@@ -703,6 +709,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertIn(bootstrap.token_id, command)
             self.assertIn("--cockpit-live-session", command)
             self.assertIn("--adaptive-semantic-autodrive", command)
+            self.assertIn("--session-reentries", command)
             result = write_result.call_args.args[0]
             self.assertTrue(result["ok"])
             self.assertEqual(result["bootstrap_token"], bootstrap.token_id)
@@ -1581,13 +1588,59 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertTrue(prepared["approved"])
             self.assertTrue(subject_path.exists())
             status_result = self.run_cli(
-                "--registry", str(registry_path), "registry-status", "--include-state", "quarantined",
+                "--registry", str(registry_path), "registry-status", "--full", "--include-state", "quarantined",
             )
             self.assertEqual(status_result.returncode, 0, status_result.stderr)
             entries = json.loads(status_result.stdout)["result"]["entries"]
             subject = next(entry for entry in entries if entry["manifest"]["manifest_id"] == "subject")
             self.assertEqual(subject["lifecycle"]["state"], "quarantined")
             self.assertEqual(subject["history"]["actions"][0]["action_id"], prepared["action_id"])
+
+    def test_registry_status_default_is_lossless_compact_receipt_with_exact_retrieval(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path = root / "registry.sqlite3"
+            calls = []
+
+            def status(connection, *, include_lifecycle_states=(), manifest_ids=()):
+                calls.append((tuple(include_lifecycle_states), tuple(manifest_ids)))
+                return ({"manifest": {"manifest_id": "only-this"}, "history": {"large": "payload"}},)
+
+            compact_stdout = io.StringIO()
+            with mock.patch.object(scenario_registry_cli, "registry_status", side_effect=status), \
+                    redirect_stdout(compact_stdout):
+                self.assertEqual(scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-status", "--manifest-id", "only-this",
+                ]), 0)
+            compact_payload = json.loads(compact_stdout.getvalue())
+            receipt = compact_payload["result"]
+            self.assertEqual(receipt["schema"], "caol-command-receipt-v1")
+            self.assertEqual(receipt["selector"], {
+                "manifest_ids": ["only-this"],
+                "include_states": [],
+            })
+            self.assertNotIn("entries", compact_stdout.getvalue())
+            self.assertEqual(calls, [((), ("only-this",))])
+
+            full_stdout = io.StringIO()
+            with redirect_stdout(full_stdout):
+                self.assertEqual(scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-artifact", "--sha256",
+                    receipt["artifact"]["sha256"],
+                ]), 0)
+            recovered = json.loads(full_stdout.getvalue())
+            self.assertEqual(recovered["result"]["result"]["entries"][0]["manifest"]["manifest_id"], "only-this")
+            self.assertEqual(recovered["result"]["result"]["entries"][0]["history"]["large"], "payload")
+
+            artifact_path = Path(receipt["artifact"]["path"])
+            artifact_path.write_text("{}\n", encoding="utf-8")
+            failed_stderr = io.StringIO()
+            with redirect_stderr(failed_stderr):
+                self.assertEqual(scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-artifact", "--sha256",
+                    receipt["artifact"]["sha256"],
+                ]), 1)
+            self.assertIn("artifact digest drift", failed_stderr.getvalue())
 
     def test_registry_migrate_all_uses_canonical_probe_and_reconciles_finalized_report(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

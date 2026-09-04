@@ -1,0 +1,49 @@
+{
+  "name": "r_surface_008_target_v1",
+  "claim": "R-SURFACE-008",
+  "description": "Disposable zero-credit targeting fixture. It equips a loaded revolver and stages one visible hostile east of the avatar; the current target descriptor remains the only authority for its opaque candidate token.",
+  "source_fixture": "r_surface_001_world_start_v1",
+  "source_profile": "live-debug",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [
+        {
+          "typeid": "model_10_revolver",
+          "count": 1,
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 1,
+                "contents": [
+                  {
+                    "typeid": "38_special",
+                    "charges": 6,
+                    "bday": 0,
+                    "last_temp_check": 0,
+                    "template_traits": []
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        }
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        { "typeid": "mon_zombie", "offset_ms": [0, -1, 0], "hp": 1, "friendly": 0, "faction": "zombie", "aggro_character": true, "anger": 100, "morale": 1 },
+        { "typeid": "mon_zombie", "offset_ms": [-1, 0, 0], "hp": 1, "friendly": 0, "faction": "zombie", "aggro_character": true, "anger": 100, "morale": 1 }
+      ]
+    }
+  ]
+}

@@ -2,6 +2,7 @@ import hashlib
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
@@ -11,6 +12,9 @@ from scenario_registry_store import (
     ScenarioRegistryStoreError,
     append_certification_lease_event,
     append_certification_lifecycle_event,
+    _certification_round_check,
+    certification_round_authority_facts,
+    certification_round_facts,
     invalidate_certification_round,
     _issue_registry_certification_authority,
     open_registry,
@@ -77,6 +81,34 @@ class CertificationRoundRegistryTest(unittest.TestCase):
         self.assertFalse(invalidate_certification_round(self.db, round_id="round-1", reason="drift", component_name="world")["preserved"])
         first = invalidate_certification_round(self.db, round_id="round-1", reason="later", component_name="player")
         self.assertEqual((first["first_reason"], first["first_component"]), ("drift", "world"))
+
+    def test_successful_recheck_is_current_lifecycle_evidence_for_final_gate(self):
+        append_certification_lifecycle_event(self.db, round_id="round-1", event_sequence=1, event_kind="started")
+        append_certification_lifecycle_event(
+            self.db, round_id="round-1", event_sequence=2, event_kind="segment_rechecked",
+            details={"segment": "post_relaunch_evidence_segment", "recheck": {"ok": True}},
+        )
+        report_facts = {
+            "manifest": {"source_sha256": "a" * 64},
+            "runtime": {"runtime_binding_observed": {"executable_sha256": "b" * 64}},
+            "certification_lifecycle": {},
+        }
+        with mock.patch("scenario_registry_store.evaluate_continuous_certification", return_value={"status": "green"}):
+            accepted = _certification_round_check(
+                self.db, authority=certification_round_authority_facts(self.db, "round-1"),
+                round_facts=certification_round_facts(self.db, "round-1"), report_facts=report_facts,
+            )
+        self.assertTrue(accepted["eligible"], accepted)
+
+        append_certification_lifecycle_event(
+            self.db, round_id="round-1", event_sequence=3, event_kind="segment_rechecked",
+            details={"segment": "later_evidence_segment", "recheck": {"ok": False}},
+        )
+        rejected = _certification_round_check(
+            self.db, authority=certification_round_authority_facts(self.db, "round-1"),
+            round_facts=certification_round_facts(self.db, "round-1"), report_facts=report_facts,
+        )
+        self.assertEqual(rejected["reason"], "certification_round_lifecycle_not_active")
 
     def test_lease_history_is_append_only_and_ordered(self):
         append_certification_lease_event(self.db, round_id="round-1", lease_id="lease", event_sequence=1, event_kind="declared", process_identity="pid", world_identity="world")

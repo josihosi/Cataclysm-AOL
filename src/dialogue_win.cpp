@@ -155,6 +155,18 @@ void dialogue_window::add_history_separator()
     add_to_history( "", default_color() );
 }
 
+std::string dialogue_window::history_text() const
+{
+    std::string result;
+    for( const history_message &message : history ) {
+        if( !result.empty() ) {
+            result += '\n';
+        }
+        result += message.text;
+    }
+    return result;
+}
+
 void dialogue_window::clear_history_highlights()
 {
     num_lines_highlighted = 0;

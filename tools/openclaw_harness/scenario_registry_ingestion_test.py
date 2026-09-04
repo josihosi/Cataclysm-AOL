@@ -65,6 +65,42 @@ OPAQUE_PROSE = "opaque report prose must never be copied into sqlite"
 
 
 class ScenarioRegistryIngestionTest(unittest.TestCase):
+    def test_focused_authority_ingests_when_cockpit_report_retains_runtime_binding(self) -> None:
+        """The terminal cockpit report must retain its selected executable binding."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            connection, _scenarios, manifest_path, report_path = self.setup_registry(Path(temp_dir))
+            executable_sha256 = "e" * 64
+            source_sha256 = hashlib.sha256(manifest_path.read_bytes()).hexdigest()
+            authority = issue_wec_authority(
+                connection, evidence_class="focused feature proof", authority="registry",
+                run_id="curses-focused-run", binding_id=executable_sha256,
+                source_sha256=source_sha256,
+            )
+            report = self.report(manifest_path)
+            report.update({
+                "run_id": "curses-focused-run",
+                "binding_id": executable_sha256,
+                "wec_authority": authority,
+            })
+            report["startup"]["screen"]["runtime_binding_status"] = "matched"
+            report["startup"]["screen"]["runtime_binding_observed"].update({
+                "status": "matched",
+                "executable_sha256": executable_sha256,
+                "runtime_source_sha256": startup_harness.runtime_source_binding()["sha256"],
+            })
+            self.write_json(report_path, report)
+            adapters = BindingAdapters(
+                runtime=lambda _expected: {"status": "compatible", "facts": {
+                    "executable_sha256": executable_sha256,
+                    "source_sha256": startup_harness.runtime_source_binding()["sha256"],
+                }},
+                fixture=lambda _expected: {"status": "compatible", "facts": {"source_sha256": "f" * 64}},
+                profile=lambda _expected: {"status": "compatible", "facts": {"source_sha256": "1" * 64}},
+            )
+            result = ingest_report_reference(connection, report_path, adapters=adapters)
+            self.assertEqual(result["status"], "ingested", result)
+            connection.close()
+
     def test_empty_scenario_setup_is_not_a_manufactured_state_claim(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -391,9 +427,9 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
                     {"kind": kind, "round_id": "round-1", "binding_id": "binding-1",
                      "world_id": "world-1", "player_id": "player-1", "actor_ids": ["actor-1"],
                      "owner": "abstract"}
-                    for kind in ("declared_world", "departure", "overmap_advance", "bubble_crossing_out",
-                                 "actor_outcomes", "save", "quit", "relaunch", "bubble_crossing_in",
-                                 "return_report", "camp_decision")
+                    for kind in ("declared_world", "departure", "shared_route_advance", "bubble_crossing_out",
+                                 "actor_outcomes", "bubble_crossing_in", "return_report", "camp_decision",
+                                 "save", "quit", "relaunch", "normalized_persistence")
                 ],
             },
             "opaque_report_payload": {"prose": OPAQUE_PROSE, "nested": [OPAQUE_PROSE]},

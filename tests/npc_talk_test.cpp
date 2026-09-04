@@ -138,6 +138,23 @@ static std::string gen_dynamic_line( dialogue &d )
     return challenge;
 }
 
+static npc &prep_test( dialogue &d, bool shopkeep = false );
+
+TEST_CASE( "generated dialogue responses own runtime semantic identities", "[npc_talk]" )
+{
+    dialogue d;
+    prep_test( d );
+    d.add_topic( "TALK_TEST_EFFECT" );
+    gen_response_lines( d, 1 );
+
+    const std::string first_id = d.responses.front().semantic_stable_id;
+    REQUIRE_FALSE( first_id.empty() );
+    gen_response_lines( d, 1 );
+
+    CHECK_FALSE( d.responses.front().semantic_stable_id.empty() );
+    CHECK( d.responses.front().semantic_stable_id != first_id );
+}
+
 static void change_om_type( const std::string &new_type )
 {
     const tripoint_abs_omt omt_pos( coords::project_to<coords::omt>( get_map().get_abs(
@@ -145,7 +162,7 @@ static void change_om_type( const std::string &new_type )
     overmap_buffer.ter_set( omt_pos, oter_id( new_type ) );
 }
 
-static npc &prep_test( dialogue &d, bool shopkeep = false )
+static npc &prep_test( dialogue &d, bool shopkeep )
 {
     map &here = get_map();
     clear_avatar();

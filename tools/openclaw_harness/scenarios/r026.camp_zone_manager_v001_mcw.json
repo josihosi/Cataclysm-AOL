@@ -1,0 +1,46 @@
+{
+  "manifest_version": 1,
+  "name": "r026.camp_zone_manager_v001_mcw",
+  "description": "Current-source R-026 McWilliams Zone Manager operation through World and the native Zone Manager semantic owner, installed into an isolated disposable profile from the audited snapshot.",
+  "profile": "r026-zone-manager-isolated-20260903",
+  "world": "McWilliams",
+  "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "runtime.world": "McWilliams",
+    "capabilities.r026.zone_manager": "native_zone_enable_disable_with_persistence"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["physical-key", "guessed-key", "direct-state-mutation", "direct-save-edit", "fixture-restage"],
+    "platform": ["macos"],
+    "profile": "r026-zone-manager-isolated-20260903",
+    "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r026-zone-manager-isolated-20260903", "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22", "helper": "native-semantic-broker", "peekaboo": false, "ocr": false, "input": ["frame-bound semantic requests"], "cleanup": true},
+    "grants_gameplay_proof": false,
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"]
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json",
+    "build_receipt": ".userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1.json",
+    "copy_provenance": {"credit": "zero", "source_fixture": "bandit_basecamp_prepared_base_v1_2026-04-22", "source_profile": "live-debug", "destination_profile": "r026-zone-manager-isolated-20260903", "destination_world": "McWilliams"}
+  },
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "bind_zone_manager_world", "native_semantic_checkpoint": {"required_actions": ["world.zone_manager", "world.quicksave", "world.save_quit"], "required_state": "world", "require_initial_hud_world_ready_frame": false}},
+    {"kind": "cockpit_live_session", "label": "operate_zone_manager", "cleanup_on_finish": true, "objective": "Enter native Zone Manager through world.zone_manager; observe stable zone identity, faction, enabled state, and revision; make one advertised enable or disable mutation, then prove a stale or unavailable control cannot mutate it.", "proof_targets": ["bound owner receipts", "zone pre/post identity and revision", "negative control", "gameplay-feel observation"], "authority": ["currently advertised native semantic actions", "game.act", "run.witness", "run.finish"], "invariants": ["fixture setup is zero credit", "do not use physical input or direct zone/save mutation", "record exact selected zone identity"], "live_operations": ["game.act"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1},
+    {"kind": "audit_saved_game_turn", "label": "confirm_zone_manager_save_boundary", "record_baseline": true, "abort_on_metadata_failure": true}
+  ],
+  "post_relaunch": {"terminal_save_step_label": "confirm_zone_manager_save_boundary", "terminal_exit_timeout_seconds": 30.0, "steps": [{"kind": "press", "label": "resolve_declared_native_action_menu_overlay", "keys": ["escape"]}, {"kind": "wait", "label": "bind_relaunched_zone_manager_world", "seconds": 2.0, "capture_after": true}, {"kind": "cockpit_live_session", "label": "observe_persisted_zone_manager_state", "cleanup_on_finish": true, "objective": "Observe the exact saved Zone Manager state after native process replacement.", "proof_targets": ["same saved world", "same zone identity, enabled state, and revision"], "authority": ["currently advertised native semantic actions", "game.act", "run.witness", "run.finish"], "live_operations": ["game.act"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}]},
+  "proof_route": {"precondition": ["bind_zone_manager_world"], "production_behavior": ["operate_zone_manager"], "failure_control": ["operate_zone_manager"], "terminal_persistence": ["confirm_zone_manager_save_boundary", "observe_persisted_zone_manager_state"], "artifact_verdict": ["operate_zone_manager", "observe_persisted_zone_manager_state"], "disallowed_shortcuts": ["bind_zone_manager_world"]}
+}

@@ -1388,6 +1388,33 @@
   },
   {
     "type": "talk_topic",
+    "id": "TALK_R_SURFACE_007_CONTROLS",
+    "dynamic_line": "This source-owned dialogue fixture exercises response-object identity.",
+    "responses": [
+      { "text": "Continue", "effect": "follow", "topic": "TALK_FRIEND" },
+      { "text": "Same visible label", "topic": "TALK_DONE" },
+      { "text": "Same visible label", "topic": "TALK_DONE" },
+      {
+        "condition": { "math": [ "0 > 1" ] },
+        "text": "Visible disabled response",
+        "show_always": true,
+        "show_reason": "This condition is deliberately false.",
+        "topic": "TALK_DONE"
+      }
+    ]
+  },
+  {
+    "type": "npc",
+    "id": "r_surface_007_talker",
+    "name_suffix": "Surface Control Witness",
+    "class": "NC_DOCTOR",
+    "attitude": 1,
+    "mission": "NULL",
+    "chat": "TALK_R_SURFACE_007_CONTROLS",
+    "faction": "tacoma_commune"
+  },
+  {
+    "type": "talk_topic",
     "id": "TALK_TEST_RANDOM",
     "dynamic_line": "This is a test conversation that shouldn't appear in the game.",
     "responses": [

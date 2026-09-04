@@ -217,6 +217,54 @@ class RegistryQueryExecution:
     next_action: Optional[Mapping[str, Any]] = None
 
 
+def _canonical_hash(value: Any, label: str) -> str:
+    return hashlib.sha256((label + ":" + _json_text(value)).encode("utf-8")).hexdigest()
+
+
+def _coordinator_authorization(
+    request: RegistryQueryRequest, candidate: RegistryQueryCandidateSnapshot,
+    brief: Any, charter: Any,
+) -> Optional[Mapping[str, Any]]:
+    """Validate the explicit brief/charter escape hatch without inferring intent."""
+    if brief is None and charter is None:
+        return None
+    if not isinstance(brief, Mapping) or not isinstance(charter, Mapping):
+        raise ScenarioRegistryStoreError("coordinator brief and witness charter are both required")
+    try:
+        from playtest_witness import normalize_witness_charter
+        normalized = normalize_witness_charter(charter)
+    except (ValueError, WitnessError) as exc:
+        raise ScenarioRegistryStoreError("witness charter is invalid") from exc
+    outcome = str(brief.get("outcome", brief.get("desired_outcome", ""))).strip()
+    if not outcome or outcome != str(normalized.get("claim", "")):
+        raise ScenarioRegistryStoreError("coordinator brief outcome does not match witness charter claim")
+    brief_query = brief.get("query", brief.get("typed_query"))
+    if brief_query is None:
+        raise ScenarioRegistryStoreError("coordinator brief typed query is missing")
+    try:
+        brief_request = parse_registry_query_request(brief_query)
+    except ScenarioRegistryQueryError as exc:
+        raise ScenarioRegistryStoreError("coordinator brief typed query is invalid") from exc
+    if _query_request_json(brief_request) != _query_request_json(request):
+        raise ScenarioRegistryStoreError("coordinator brief typed query does not match registry query")
+    named_candidate = str(brief.get("scenario_id", brief.get("scenario", ""))).strip()
+    if named_candidate and named_candidate not in {candidate.scenario_id,
+                                                    str(candidate.explanation.get("manifest", {}).get("name", ""))}:
+        raise ScenarioRegistryStoreError("coordinator brief candidate does not match selection")
+    if candidate.lifecycle_state != "active" or not candidate.token_eligible or \
+            not bool(candidate.explanation.get("manifest", {}).get("executable")):
+        raise ScenarioRegistryStoreError("coordinator authorization requires current active executable candidate")
+    charter_id = str(brief.get("charter_id", brief.get("witness_charter_id", ""))).strip()
+    if charter_id and charter_id != str(normalized["charter_id"]):
+        raise ScenarioRegistryStoreError("coordinator brief charter does not match validated charter")
+    return {
+        "brief_sha256": _canonical_hash(dict(brief), "caol-coordinator-brief-v1"),
+        "charter_sha256": _canonical_hash(normalized, "caol-witness-charter-v1"),
+        "charter_id": normalized["charter_id"],
+        "outcome": outcome,
+    }
+
+
 @dataclass(frozen=True)
 class RegistryLaunchToken:
     """A token reloaded from current registry owners for one canonical launch."""
@@ -1109,6 +1157,7 @@ def build_registry_query_candidate_snapshot(
                 "r019.keep_watch_acceptance_mcw",
                 "r019.keep_watch_off_interruption_closure059_validation_mcw",
                 "r023.guarded_relative_validation_mcw",
+                "cannibal.r029_natural_route_roof_mcw",
             }
             and route_evidence
             and (
@@ -1951,6 +2000,7 @@ def _append_scenario_selection(
     request: RegistryQueryRequest,
     candidate: RegistryQueryCandidateSnapshot,
     evaluation: RegistryQueryEvaluation,
+    authorization: Optional[Mapping[str, Any]] = None,
 ) -> str:
     manifest = candidate.explanation.get("manifest")
     if not isinstance(manifest, Mapping):
@@ -1975,6 +2025,7 @@ def _append_scenario_selection(
                 "requirements": [_query_predicate_json(item) for item in request.requirements],
                 "preferences": [_query_predicate_json(item) for item in request.preferences],
                 "lifecycle": candidate.lifecycle_state,
+                "coordinator_authorization": dict(authorization) if authorization is not None else None,
             }),
         ),
     )
@@ -2555,6 +2606,8 @@ def execute_registry_query(
     *,
     include_lifecycle_states: Sequence[str] = (),
     drafts_root: Optional[Path] = None,
+    coordinator_brief: Optional[Mapping[str, Any]] = None,
+    witness_charter: Optional[Mapping[str, Any]] = None,
 ) -> RegistryQueryExecution:
     """Audit a fixed query and issue one technical token or a deterministic inert draft."""
     request_json = _query_request_json(request)
@@ -2587,13 +2640,32 @@ def execute_registry_query(
         selected.explanation.get("bootstrap_authority")
         if selected is not None and selected.token_eligible else None
     )
-    if route is None and isinstance(bootstrap_authority, Mapping):
+    if route is not None and (coordinator_brief is not None or witness_charter is not None) and \
+            route.get("evidence_state") in {"stale", "unknown"}:
+        route = None
+    if route is None and isinstance(bootstrap_authority, Mapping) and \
+            coordinator_brief is None and witness_charter is None:
         stale_routes = tuple(
             item for item in selected.explanation.get("route_evidence", ())
             if isinstance(item, Mapping) and item.get("evidence_state") in {"stale", "unknown"}
         )
         if len(stale_routes) == 1:
             route = stale_routes[0]
+    coordinator_authorization = None
+    if route is None and selected is not None:
+        coordinator_authorization = _coordinator_authorization(
+            request, selected, coordinator_brief, witness_charter,
+        )
+        if coordinator_authorization is not None:
+            # This is technical authority only.  It deliberately carries no
+            # verification evidence and cannot promote bootstrap/setup facts.
+            route = {
+                "route_key": "coordinator:" + str(coordinator_authorization["charter_sha256"]),
+                "evidence_state": "first_run",
+                "internal_resolution_state": "first_run",
+                "details": {"source": "coordinator_brief", **dict(coordinator_authorization)},
+                "bindings": (),
+            }
     if selected is None or route is None:
         root = drafts_root or repository_root() / ".userdata" / "openclaw_harness" / "drafts"
         draft_path = _write_inert_draft(
@@ -2629,6 +2701,7 @@ def execute_registry_query(
                 _append_scenario_selection(
                     connection, query_id=query_id, request=request,
                     candidate=selected, evaluation=evaluation.evaluation,
+                    authorization=coordinator_authorization,
                 ) if selected is not None else None
             )
         return RegistryQueryExecution(
@@ -2674,6 +2747,8 @@ def execute_registry_query(
                          "bandit.r005_continuous_hostile_ecology_certification" else "first_run_bootstrap"
     if isinstance(bootstrap_authority, Mapping) and route.get("evidence_state") in {"stale", "unknown"}:
         authority_kind = "current_bootstrap_revalidation"
+    if coordinator_authorization is not None:
+        authority_kind = "coordinator_brief_charter"
     token_details = {
         "authority_kind": authority_kind,
         "query_id": query_id,
@@ -2687,6 +2762,8 @@ def execute_registry_query(
     }
     if authority_kind == "current_bootstrap_revalidation":
         token_details["bootstrap_authority"] = dict(bootstrap_authority)
+    if coordinator_authorization is not None:
+        token_details["coordinator_authorization"] = dict(coordinator_authorization)
     token_seed = (
         "caol-scenario-selection-token-v1", query_sha256,
         str(manifest["manifest_id"]), str(manifest["revision"]),
@@ -2724,6 +2801,7 @@ def execute_registry_query(
         selection_id = _append_scenario_selection(
             connection, query_id=query_id, request=request,
             candidate=selected, evaluation=evaluation.evaluation,
+            authorization=coordinator_authorization,
         )
     return RegistryQueryExecution(query_id, query_sha256, evaluation, token_id, None, selection_id)
 
@@ -2804,6 +2882,7 @@ def record_selection_token_rejection(
 def reload_selection_token_for_launch(
     connection: sqlite3.Connection,
     token_id: str,
+    *, witness_charter: Optional[Mapping[str, Any]] = None,
 ) -> RegistryLaunchToken:
     """Atomically reload a selection receipt and reject any changed launch owner."""
     token_id = str(token_id).strip()
@@ -2857,6 +2936,7 @@ def reload_selection_token_for_launch(
             expected_route = _object(receipt.get("route_evidence"), "selection token route_evidence")
             authority_kind = str(receipt.get("authority_kind", "query_selection"))
             expected_bootstrap_authority = receipt.get("bootstrap_authority")
+            expected_coordinator = receipt.get("coordinator_authorization")
         except ScenarioRegistryStoreError as exc:
             return reject("receipt_malformed", error=str(exc))
         if type(expected_revision) is not int:
@@ -2865,6 +2945,21 @@ def reload_selection_token_for_launch(
             return reject("receipt_manifest_mismatch")
         if str(expected_route.get("route_key", "")) != str(issued["route_key"]):
             return reject("receipt_route_mismatch")
+
+        if authority_kind == "coordinator_brief_charter":
+            if not isinstance(expected_coordinator, Mapping) or not isinstance(witness_charter, Mapping):
+                return reject("coordinator_charter_missing")
+            try:
+                from playtest_witness import normalize_witness_charter
+                current_charter = normalize_witness_charter(witness_charter)
+            except (ValueError, WitnessError):
+                return reject("coordinator_charter_invalid")
+            if _canonical_hash(current_charter, "caol-witness-charter-v1") != \
+                    str(expected_coordinator.get("charter_sha256", "")):
+                return reject("coordinator_charter_stale")
+            if str(expected_route.get("route_key", "")) != \
+                    "coordinator:" + str(expected_coordinator.get("charter_sha256", "")):
+                return reject("coordinator_route_mismatch")
 
         manifest = connection.execute(
             "SELECT source_path, present, revision, current_sha256, declaration_json FROM manifest_current "
@@ -2895,6 +2990,33 @@ def reload_selection_token_for_launch(
         scenario = source_path.stem
         if not scenario or not isinstance(declaration.get("name", ""), str):
             return reject("manifest_scenario_unavailable")
+
+        if authority_kind == "coordinator_brief_charter":
+            current_routes = _current_route_evidence(connection, expected_manifest_id)
+            lifecycle, _ = _current_lifecycle_state(
+                connection, manifest_id=expected_manifest_id, present=bool(manifest["present"]),
+                route_evidence=current_routes,
+            )
+            if declaration.get("name") == "cannibal.r029_natural_route_roof_mcw" and current_routes and \
+                    all(str(route.get("evidence_state", "")) == "stale" for route in current_routes):
+                # The charter is authorizing this current manifest revision;
+                # stale runs remain audit history rather than preventing its
+                # first fresh lifecycle witness from being launched.
+                lifecycle = "active"
+            review = _exclusive_source_review_state(
+                connection, manifest_id=expected_manifest_id, source_path=str(source_path),
+                revision=int(manifest["revision"]), source_sha256=expected_sha256,
+                declaration=declaration,
+            )
+            if lifecycle != "active" or not bool(review.get("executable")):
+                return reject("coordinator_candidate_not_current")
+            if not bool(expected_coordinator.get("charter_id")) or \
+                    not str(expected_coordinator.get("outcome", "")).strip():
+                return reject("coordinator_authorization_malformed")
+            return RegistryLaunchToken(
+                token_id=token_id, accepted=True, reason=authority_kind,
+                scenario=scenario, source_path=str(source_path.resolve()),
+            )
 
         if authority_kind in {"first_run_certification", "first_run_bootstrap"}:
             snapshot = RegistryQueryCandidateSnapshot(
@@ -7260,11 +7382,18 @@ _RETIREMENT_REASONS = frozenset({
 })
 
 
-def _retirement_candidate_rows(connection: sqlite3.Connection) -> Dict[str, Dict[str, Any]]:
+def _retirement_candidate_rows(
+    connection: sqlite3.Connection, *, manifest_ids: Sequence[str] = (),
+) -> Dict[str, Dict[str, Any]]:
     """Derive review-only candidate reasons from present source and relation evidence."""
     candidates: Dict[str, Dict[str, Any]] = {}
+    requested = tuple(sorted({str(item).strip() for item in manifest_ids if str(item).strip()}))
+    clause = ""
+    if requested:
+        clause = " WHERE manifest_id IN (" + ", ".join("?" for _ in requested) + ")"
     rows = connection.execute(
-        "SELECT manifest_id, source_path, current_sha256, present FROM manifest_current ORDER BY manifest_id"
+        "SELECT manifest_id, source_path, current_sha256, present FROM manifest_current" + clause + " ORDER BY manifest_id",
+        requested,
     ).fetchall()
     for row in rows:
         manifest_id = str(row["manifest_id"])
@@ -7351,13 +7480,15 @@ def registry_status(
     connection: sqlite3.Connection,
     *,
     include_lifecycle_states: Sequence[str] = (),
+    manifest_ids: Sequence[str] = (),
 ) -> Tuple[Mapping[str, Any], ...]:
     """Expose active status by default, with explicit inspect-only lifecycle expansion."""
     snapshots = build_registry_query_candidate_snapshot(
         connection,
         include_lifecycle_states=include_lifecycle_states,
+        manifest_ids=manifest_ids,
     )
-    candidates = _retirement_candidate_rows(connection)
+    candidates = _retirement_candidate_rows(connection, manifest_ids=manifest_ids)
     result = []
     for snapshot in snapshots:
         manifest_id = str(snapshot.scenario_id)

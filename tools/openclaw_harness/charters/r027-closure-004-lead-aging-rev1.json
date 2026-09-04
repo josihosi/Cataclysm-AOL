@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Zero-credit prerequisite for R-027 lead aging: start from the retained in-range production lead, use the controller-bound native Map editor to remove only fd_fire at source OMT [140,50,0], native-save, and preserve a reloadable source-absent fixture.",
+  "material_proof": "The live receipt proves the advertised fd_fire removal was consumed by the native Map editor at its current source target; the native quicksave is followed by an independent saved-map audit that finds neither fd_fire nor fd_smoke at that target while the saved camp lead identities remain intact.",
+  "current_uncertainty": "This only produces source-absent footing. A later independent validation must reload this fixture and advance ordinary production time without refreshing the retained leads to establish channel-specific aging or expiry.",
+  "material_contradiction": ["the immutable input lacks the retained leads or source field", "the editor target is not the saved source", "any camp, observer, drive, or lead state is directly mutated", "a field other than fd_fire or fd_smoke is edited", "the persisted save still contains fd_fire or fd_smoke at the source"],
+  "already_accepted_evidence": ["The retained fixture r027_in_range_saved_lead_v001_20260902 is zero-credit input only.", "The sealed r027-closure-007-tiles executable has a controller-bound fd_fire removal action."],
+  "forbidden_shortcuts": ["callback injection", "direct lead mutation", "direct save edit", "physical key input", "shared profile", "replay of the failed dedicated aging bootstrap"],
+  "honest_stop_conditions": ["finish after native removal, native quicksave, independent source-absence and retained-lead audits, fixture capture, and exact-process cleanup", "finish inconclusive if a required advertised native action cannot complete"],
+  "requested_evidence_ceiling": "zero-credit"
+}

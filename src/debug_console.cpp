@@ -68,6 +68,7 @@
 #include "input_context.h"
 #include "input_enums.h"
 #include "item.h"
+#include "semantic_surface.h"
 #include "item_category.h"
 #include "item_location.h"
 #include "item_wakeup.h"
@@ -1238,6 +1239,19 @@ void debug_console::execute()
             io.ConfigFlags |= ImGuiConfigFlags_NavEnableKeyboard;
         }
     } };
+
+    // The console is intentionally not semantically operable yet.  Its
+    // actionless scope must live for the complete native owner lifetime,
+    // rather than for one five-millisecond input timeout, so automation never
+    // observes a World fallback until this owner actually yields.
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *const semantic_manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *semantic_manager, "unsupported",
+                                "Unsupported input owner: DEBUG_CONSOLE", std::map<std::string, std::string> {
+            { "owner", "DEBUG_CONSOLE" },
+            { "reason", "unclassified_native_input_owner" }
+        } );
+    }
 
     while( is_open ) {
         // Force a full viewport repaint each frame: otherwise ImGui tooltips

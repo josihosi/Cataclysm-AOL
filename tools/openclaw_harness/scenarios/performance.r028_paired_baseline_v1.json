@@ -1,0 +1,51 @@
+{
+  "manifest_version": 1,
+  "name": "performance.r028_paired_baseline_v1",
+  "description": "R-028 paired baseline observation.  From the audited established-base source fixture, execute the same native east-west local transitions and five one-minute waits as the feature case while opt-in renderer telemetry records presented-frame cost and pacing.  Fixture installation is setup only.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r028_paired_baseline_base_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "r028_render_trace": true,
+  "adaptive_semantic_autodrive": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["openclaw_harness_ui_trace: component=gameplay_hud event=rendered"],
+  "capabilities": {
+    "runtime.entry_mode": "native_semantic_paired_performance",
+    "runtime.fixture": "r028_paired_baseline_base_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r028.variant": "baseline_established_base"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.move.east", "semantic:world.move.west", "semantic:world.wait", "semantic:wait.duration_menu", "semantic:wait.1m"],
+    "forbidden_input": ["physical-key", "ocr-control", "direct-state-mutation", "direct-save-edit", "fixture-restage"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r028_paired_baseline_base_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r028_paired_baseline_base_v1", "helper": "native-semantic-broker", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "bind_baseline_native_world", "native_semantic_checkpoint": {"required_actions": ["world.move.east", "world.move.west", "world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": false}},
+    {"kind": "adaptive_semantic_window", "label": "rendered_baseline_local_transitions", "objective": "Use only current advertised east and west world actions.  The ten receipts must redraw the local world without physical input.", "minimum_elapsed_minutes": 1, "observation_timeout_seconds": 30.0, "observation_interval_seconds": 0.1, "required_action_chain": ["world.move.east", "world.move.west", "world.move.east", "world.move.west", "world.move.east", "world.move.west", "world.move.east", "world.move.west", "world.move.east", "world.move.west"], "adaptive_interrupt_actions": []},
+    {"kind": "adaptive_semantic_window", "label": "baseline_wait_one", "objective": "Advance one ordinary minute through the advertised semantic wait owner.", "minimum_elapsed_minutes": 1, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.1, "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1m"], "adaptive_interrupt_actions": []},
+    {"kind": "adaptive_semantic_window", "label": "baseline_wait_two", "objective": "Continue the matched ordinary semantic wait window.", "minimum_elapsed_minutes": 1, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.1, "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1m"], "adaptive_interrupt_actions": []},
+    {"kind": "adaptive_semantic_window", "label": "baseline_wait_three", "objective": "Continue the matched ordinary semantic wait window.", "minimum_elapsed_minutes": 1, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.1, "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1m"], "adaptive_interrupt_actions": []},
+    {"kind": "adaptive_semantic_window", "label": "baseline_wait_four", "objective": "Continue the matched ordinary semantic wait window.", "minimum_elapsed_minutes": 1, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.1, "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1m"], "adaptive_interrupt_actions": []},
+    {"kind": "adaptive_semantic_window", "label": "baseline_wait_five", "objective": "Complete the matched five-minute semantic wait window.", "minimum_elapsed_minutes": 1, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.1, "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1m"], "adaptive_interrupt_actions": []},
+    {"kind": "semantic_terminal_action_chain", "label": "semantic_save_baseline", "objective": "Use the advertised native semantic world and confirmation owners to save the measured world before native main-menu quit.", "observation_timeout_seconds": 30.0, "observation_interval_seconds": 0.1, "required_action_chain": ["world.save_quit", "prompt.yes"]},
+    {"kind": "press", "label": "open_native_main_menu_quit_baseline", "keys": ["q"], "settle_seconds": 1.0, "capture_after": true, "semantic_ui_expectation": {"intent": "main_menu_quit_confirmation", "valid_actions": ["left", "enter"]}, "checkpoint_evidence": {"classification": "incidental_lifecycle_observation", "authoritative_owner": "bound_semantic_ui"}, "abort_on_semantic_ui_failure": true, "abort_verdict": "blocked_r028_baseline_main_menu_quit_missing"},
+    {"kind": "press", "label": "confirm_native_process_exit_baseline", "keys": ["left", "enter"], "settle_seconds": 2.0, "checkpoint_evidence": {"classification": "incidental_lifecycle_observation", "authoritative_owner": "post_relaunch_lifecycle"}, "expected_visible_fact": "the same bound native process exits after the main-menu quit confirmation", "proof_deferred_to_label": "baseline_relaunch_hud"}
+  ],
+  "post_relaunch": {"terminal_save_step_label": "confirm_native_process_exit_baseline", "terminal_exit_timeout_seconds": 30.0, "steps": [{"kind": "wait", "label": "baseline_relaunch_hud", "seconds": 2.0, "capture_after": true, "startup_semantic_hud_expectation": {"classification": "green_gameplay_hud_present"}, "checkpoint_evidence": {"classification": "required_feature_evidence", "authoritative_owner": "bound_startup_semantic_hud"}, "abort_on_screen_text_expectation_failure": true, "abort_verdict": "blocked_r028_baseline_relaunch_hud_missing", "abort_reason": "the native save-and-quit did not relaunch the paired baseline world"}]},
+  "proof_route": {"precondition": ["bind_baseline_native_world"], "production_behavior": ["rendered_baseline_local_transitions", "baseline_wait_one", "baseline_wait_two", "baseline_wait_three", "baseline_wait_four", "baseline_wait_five"], "terminal_persistence": ["semantic_save_baseline", "confirm_native_process_exit_baseline", "baseline_relaunch_hud"], "artifact_verdict": ["rendered_baseline_local_transitions", "baseline_wait_five", "semantic_save_baseline", "confirm_native_process_exit_baseline", "baseline_relaunch_hud"], "disallowed_shortcuts": ["bind_baseline_native_world"]}
+}

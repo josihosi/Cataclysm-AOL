@@ -108,6 +108,7 @@ void openclaw_harness_semantic_wait_activity_complete();
 #include "output.h"
 #include "overmap.h"
 #include "overmap_ui.h"
+#include "semantic_surface.h"
 #include "overmapbuffer.h"
 #include "pickup.h"
 #include "pimpl.h"
@@ -537,6 +538,11 @@ bool aim_activity_actor::check_gun_ability_to_shoot( Character &who, item &it )
 
 void aim_activity_actor::do_turn( player_activity &act, Character &who )
 {
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
+
     map &here = get_map();
 
     if( !who.is_avatar() ) {

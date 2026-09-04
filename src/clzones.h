@@ -414,9 +414,12 @@ class zone_data
         tripoint_abs_ms cached_shift;
         shared_ptr_fast<zone_options> options;
         bool is_displayed;
+        std::string identity;
+        std::optional<int64_t> semantic_revision;
 
     public:
         zone_data() {
+            identity = zone_data::new_identity();
             type = zone_type_id( "" );
             invert = false;
             enabled = false;
@@ -436,6 +439,7 @@ class zone_data
                    bool _invert, const bool _enabled,
                    const shared_ptr_fast<zone_options> &_options = nullptr,
                    bool _is_displayed = false ) {
+            identity = zone_data::new_identity();
             name = _name;
             type = _type;
             faction = _faction;
@@ -477,8 +481,10 @@ class zone_data
 
         // returns true if name is changed
         bool set_name();
+        bool set_name( const std::string &new_name );
         // returns true if type is changed
         bool set_type();
+        bool set_type( const zone_type_id &new_type, const shared_ptr_fast<zone_options> &new_options );
         // We need to be able to suppress the display of zones when the movement is part of a map rotation, as the underlying
         // field is automatically rotated by the map rotation itself.
         // One version for personal zones and one for the rest
@@ -494,6 +500,10 @@ class zone_data
         void refresh_display() const;
         void toggle_display();
         void set_is_vehicle( bool is_vehicle_arg );
+
+        static std::string new_identity();
+        const std::string &get_identity() const { return identity; }
+        std::optional<int64_t> get_semantic_revision() const { return semantic_revision; }
 
         static std::string make_type_hash( const zone_type_id &_type, const faction_id &_fac ) {
             return _type.c_str() + type_fac_hash_str + _fac.c_str();
@@ -583,6 +593,9 @@ class zone_data
         }
         void serialize( JsonOut &json ) const;
         void deserialize( const JsonObject &data );
+
+    private:
+        void note_semantic_mutation();
 };
 
 class zone_manager

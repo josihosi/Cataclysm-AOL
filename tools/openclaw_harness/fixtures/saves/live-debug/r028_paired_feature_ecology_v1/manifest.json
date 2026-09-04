@@ -1,0 +1,88 @@
+{
+  "name": "r028_paired_feature_ecology_v1",
+  "source_fixture": "tmp_bandit_live_world_local_contact_raw_2026-04-23",
+  "source_profile": "live-debug",
+  "description": "R-028 zero-credit paired feature footing.  It starts from the same captured established-base save as the baseline, then stages two independent bandit hostile jobs, a nearby overmap horde, and distant fire/smoke.  Native semantic movement and time passage—not these transforms—supply the measured route.",
+  "save_transforms": [
+    {
+      "kind": "repair_basecamp_npc_assignments",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_ids": [2, 3],
+      "assigned_camp_omt": [140, 41, 0]
+    },
+    {
+      "kind": "clear_avatar_auto_move",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip"
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": []
+    },
+    {
+      "kind": "map_terrain_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "terrain": [
+        { "id": "t_forestfloor", "offset_ms": [1, 0, 0] },
+        { "id": "t_forestfloor", "offset_ms": [-1, 0, 0] }
+      ]
+    },
+    {
+      "kind": "map_furniture_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "furniture": [
+        { "id": "f_null", "offset_ms": [1, 0, 0] },
+        { "id": "f_null", "offset_ms": [-1, 0, 0] }
+      ]
+    },
+    {
+      "kind": "bandit_clone_site",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "source_site_id": "overmap_special:bandit_camp@140,51,0",
+      "new_site_id": "overmap_special:bandit_camp@150,39,0",
+      "new_source_id": "bandit_camp",
+      "new_site_kind": "bandit_camp",
+      "new_anchor": [150, 39, 0],
+      "new_footprint": [[150, 39, 0], [151, 39, 0], [150, 40, 0], [151, 40, 0]]
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 4,
+      "member_start_index": 1,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 4
+    },
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@150,39,0",
+      "living_member_count": 2,
+      "member_start_index": 5,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 2
+    },
+    {
+      "kind": "horde_entity_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "monster_id": "mon_zombie",
+      "offset_ms": [0, -240, 0],
+      "destination_offset_ms": [0, -120, 0],
+      "tracking_intensity": 10,
+      "last_processed": 0,
+      "moves": 0
+    },
+    {
+      "kind": "map_fields_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "fields": [
+        { "field_id": "fd_fire", "offset_ms": [34, 0, 0], "intensity": 2, "age_turns": 0 },
+        { "field_id": "fd_smoke", "offset_ms": [34, 1, 0], "intensity": 2, "age_turns": 0 }
+      ]
+    }
+  ]
+}

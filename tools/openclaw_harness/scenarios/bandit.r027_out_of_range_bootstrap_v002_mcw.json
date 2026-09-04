@@ -1,0 +1,42 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_out_of_range_bootstrap_v002_mcw",
+  "description": "Zero-credit native setup: remove the original physical fire, deliberately move the avatar thirteen OMT east through advertised World movement, then create one fire at the new native Map Editor target.",
+  "status": "active",
+  "profile": "r027-out-of-range-bootstrap-002",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_preserved_physical_fire_20260902",
+  "fixture_profile": "r027-closure-015",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r027.out_of_range_bootstrap": "zero_credit_native_field_relocation_with_avatar_footing",
+    "runtime.r027.source_binding": "r027-closure-007-tiles:r027-out-of-range-bootstrap-002"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.debug_menu", "semantic:world.move.east", "semantic:world.quicksave", "semantic:menu.choose", "semantic:menu.filter", "semantic:editmap.move_target", "semantic:editmap.remove_field", "semantic:editmap.select_field", "semantic:editmap.confirm", "semantic:editmap.close", "run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "callback-injection", "direct-state-mutation", "direct-save-edit", "direct-lead-mutation", "shared-profile"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "r027-out-of-range-bootstrap-002",
+    "fixture": "r027_preserved_physical_fire_20260902",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "build/r027-closure-007-tiles", "profile": "r027-out-of-range-bootstrap-002", "fixture": "r027_preserved_physical_fire_20260902", "helper": "native-semantic-broker", "peekaboo": false, "ocr": false, "input": ["frame-bound semantic requests"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/r027-closure-015/r027_preserved_physical_fire_20260902/manifest.json", "profile": "tools/openclaw_harness/profiles/r027-out-of-range-bootstrap-002.json", "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "r027_isolated_launch": {"name": "r027-closure-007-tiles", "path": "build/r027-closure-007-tiles", "sha256": "328180e438ec8bde81fdb73221772108cec1426eba121ff9e8fc30bb39ebefc8", "profile": "r027-out-of-range-bootstrap-002", "world": "McWilliams", "fixture": "r027_preserved_physical_fire_20260902", "run_identity": "r027-out-of-range-bootstrap-002", "control_endpoint": "native-semantic-broker", "receipt_sidecar": "r027.staffed-camp-signal.receipts.jsonl", "cleanup_token": "r027-out-of-range-bootstrap-002-cleanup", "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "steps": [
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_original_fire", "offsets": [[-1,0,0]], "required_fields": ["fd_fire"], "abort_on_metadata_failure": true},
+    {"kind": "native_semantic_bootstrap", "label": "bind_out_of_range_editor", "native_semantic_checkpoint": {"required_actions": ["world.debug_menu", "world.quicksave", "world.move.east"], "required_state": "world", "require_initial_hud_world_ready_frame": false}},
+    {"kind": "cockpit_live_session", "label": "native_out_of_range_source_setup", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Remove the original fire, use advertised native World movement to establish distant avatar footing, create one native Map Editor fire, quicksave, and finish.", "proof_targets": ["zero-credit out-of-range source fixture"], "authority": ["currently advertised native semantic actions", "run.finish"], "invariants": ["setup only", "no callback", "no direct save edit"], "live_operations": ["game.act"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_route": {"precondition": ["audit_original_fire", "bind_out_of_range_editor"], "production_behavior": ["native_out_of_range_source_setup"], "terminal_persistence": ["native_out_of_range_source_setup"], "artifact_verdict": ["native_out_of_range_source_setup"], "disallowed_shortcuts": ["native_out_of_range_source_setup"]}
+}

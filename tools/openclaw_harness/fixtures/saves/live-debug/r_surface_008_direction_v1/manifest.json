@@ -1,0 +1,33 @@
+{
+  "name": "r_surface_008_direction_v1",
+  "claim": "R-SURFACE-008",
+  "description": "Disposable zero-credit direction fixture. A fueled lighter is added to an accessible worn pocket; the live route must rediscover its UID and enter its ordinary use action before it can claim the native direction owner.",
+  "source_fixture": "r_surface_001_world_start_v1",
+  "source_profile": "live-debug",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        {
+          "typeid": "lighter",
+          "count": 1,
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 1,
+                "contents": [
+                  { "typeid": "butane", "charges": 100, "bday": 0, "last_temp_check": 0, "template_traits": [] }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        }
+      ]
+    }
+  ]
+}

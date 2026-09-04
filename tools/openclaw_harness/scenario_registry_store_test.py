@@ -40,6 +40,7 @@ from scenario_registry_store import (  # noqa: E402
     resolve_registry_path,
     snapshot_migration_run,
     _first_run_certification_route,
+    _coordinator_authorization,
 )
 import scenario_registry_store as registry_store  # noqa: E402
 
@@ -74,6 +75,27 @@ class ScenarioRegistryStoreTest(unittest.TestCase):
         "certification_round_lease_history",
         "certification_save_capability",
     }
+
+    def test_coordinator_authorization_requires_exact_outcome_and_typed_query(self) -> None:
+        request = parse_registry_query_request({"requirements": [], "preferences": []})
+        candidate = RegistryQueryCandidateSnapshot(
+            scenario_id="scenario-a", lifecycle_state="active", token_eligible=True,
+            facts={}, explanation={"manifest": {"name": "scenario-a", "executable": True}},
+        )
+        charter = {
+            "claim": "prove the selected route", "material_proof": "native receipt",
+            "current_uncertainty": "unknown", "requested_evidence_ceiling": "focused",
+        }
+        brief = {"outcome": charter["claim"], "query": {"requirements": [], "preferences": []},
+                 "scenario_id": "scenario-a"}
+        authorization = _coordinator_authorization(request, candidate, brief, charter)
+        self.assertEqual(len(str(authorization["brief_sha256"])), 64)
+        with self.assertRaisesRegex(ScenarioRegistryStoreError, "outcome"):
+            _coordinator_authorization(request, candidate, {**brief, "outcome": "different"}, charter)
+        with self.assertRaisesRegex(ScenarioRegistryStoreError, "typed query"):
+            _coordinator_authorization(request, candidate, {
+                **brief, "query": {"requirements": [{"key": "x", "op": "present"}], "preferences": []},
+            }, charter)
 
     def test_r013_declared_bootstrap_route_is_exact_and_fail_closed(self) -> None:
         manifest = {

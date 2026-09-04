@@ -1,6 +1,7 @@
 #include "clzones.h"
 
 #include <algorithm>
+#include <atomic>
 #include <climits>
 #include <functional>
 #include <iosfwd>
@@ -50,6 +51,17 @@
 #include "study_zone_ui.h"
 
 static const faction_id faction_your_followers( "your_followers" );
+
+std::string zone_data::new_identity()
+{
+    static std::atomic<uint64_t> next_identity { 0 };
+    return string_format( "zone-%llu", static_cast<unsigned long long>( next_identity.fetch_add( 1 ) + 1 ) );
+}
+
+void zone_data::note_semantic_mutation()
+{
+    semantic_revision = semantic_revision.value_or( 0 ) + 1;
+}
 
 static const flag_id json_flag_FIREWOOD( "FIREWOOD" );
 
@@ -754,17 +766,21 @@ bool zone_data::set_name()
 {
     const auto maybe_name = zone_manager::get_manager().query_name( name );
     if( maybe_name.has_value() ) {
-        auto new_name = maybe_name.value();
-        if( new_name.empty() ) {
-            new_name = _( "<no name>" );
-        }
-        if( name != new_name ) {
-            zone_manager::get_manager().zone_edited( *this );
-            name = new_name;
-            return true;
-        }
+        return set_name( *maybe_name );
     }
     return false;
+}
+
+bool zone_data::set_name( const std::string &new_name_arg )
+{
+    const std::string new_name = new_name_arg.empty() ? _( "<no name>" ) : new_name_arg;
+    if( name == new_name ) {
+        return false;
+    }
+    zone_manager::get_manager().zone_edited( *this );
+    name = new_name;
+    note_semantic_mutation();
+    return true;
 }
 
 bool zone_data::set_type()
@@ -773,16 +789,25 @@ bool zone_data::set_type()
     if( maybe_type.has_value() && maybe_type.value() != type ) {
         shared_ptr_fast<zone_options> new_options = zone_options::create( maybe_type.value() );
         if( new_options->query_at_creation() ) {
-            zone_manager::get_manager().zone_edited( *this );
-            type = maybe_type.value();
-            options = new_options;
-            zone_manager::get_manager().cache_data();
-            return true;
+            return set_type( *maybe_type, new_options );
         }
     }
     // False positive from memory leak detection on shared_ptr_fast
     // NOLINTNEXTLINE(clang-analyzer-cplusplus.NewDeleteLeaks)
     return false;
+}
+
+bool zone_data::set_type( const zone_type_id &new_type, const shared_ptr_fast<zone_options> &new_options )
+{
+    if( new_type == type || !new_options ) {
+        return false;
+    }
+    zone_manager::get_manager().zone_edited( *this );
+    type = new_type;
+    options = new_options;
+    note_semantic_mutation();
+    zone_manager::get_manager().cache_data();
+    return true;
 }
 
 void zone_data::set_position( const std::pair<tripoint_abs_ms, tripoint_abs_ms> &position,
@@ -804,8 +829,11 @@ void zone_data::set_position( const std::pair<tripoint_abs_ms, tripoint_abs_ms> 
         toggle_display();
     }
 
-    start = position.first;
-    end = position.second;
+    if( start != position.first || end != position.second ) {
+        start = position.first;
+        end = position.second;
+        note_semantic_mutation();
+    }
 
     if( adjust_display ) {
         toggle_display();
@@ -835,8 +863,11 @@ void zone_data::set_position( const std::pair<tripoint_rel_ms, tripoint_rel_ms> 
         toggle_display();
     }
 
-    personal_start = position.first;
-    personal_end = position.second;
+    if( personal_start != position.first || personal_end != position.second ) {
+        personal_start = position.first;
+        personal_end = position.second;
+        note_semantic_mutation();
+    }
 
     if( adjust_display ) {
         toggle_display();
@@ -849,8 +880,11 @@ void zone_data::set_position( const std::pair<tripoint_rel_ms, tripoint_rel_ms> 
 
 void zone_data::set_enabled( const bool enabled_arg )
 {
-    zone_manager::get_manager().zone_edited( *this );
-    enabled = enabled_arg;
+    if( enabled != enabled_arg ) {
+        zone_manager::get_manager().zone_edited( *this );
+        enabled = enabled_arg;
+        note_semantic_mutation();
+    }
 }
 
 void zone_data::set_temporary_disabled( const bool enabled_arg )
@@ -1829,6 +1863,10 @@ void zone_data::serialize( JsonOut &json ) const
         json.member( "end", end );
     }
     json.member( "is_displayed", is_displayed );
+    json.member( "identity", identity );
+    if( semantic_revision.has_value() ) {
+        json.member( "semantic_revision", *semantic_revision );
+    }
     options->serialize( json );
     json.end_object();
 }
@@ -1836,6 +1874,18 @@ void zone_data::serialize( JsonOut &json ) const
 void zone_data::deserialize( const JsonObject &data )
 {
     data.allow_omitted_members();
+    if( data.has_member( "identity" ) ) {
+        data.read( "identity", identity );
+    } else {
+        identity = zone_data::new_identity();
+    }
+    if( data.has_member( "semantic_revision" ) ) {
+        int64_t revision = 0;
+        data.read( "semantic_revision", revision );
+        semantic_revision = revision;
+    } else {
+        semantic_revision.reset();
+    }
     data.read( "name", name );
     // handle legacy zone types
     zone_type_id temp_type;

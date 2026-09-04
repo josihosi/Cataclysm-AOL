@@ -1,0 +1,35 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_008.target_tiles",
+  "description": "Source-bound Tiles route for native ranged targeting. Fixture manufacture is zero-credit; the staged hostile must be selected only by its current opaque target token.",
+  "profile": "r-surface-004-world-children-tiles",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r_surface_008_target_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": { "capabilities.r_surface_008.target_tiles": "source_bound_tiles_native_ranged_target", "runtime.entry_mode": "cockpit_live_session" },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.fire", "semantic:target.move_cursor", "semantic:target.select_candidate", "semantic:target.choose", "semantic:target.cancel"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [], "permissions": [], "platform": ["macos"],
+    "profile": "r-surface-004-world-children-tiles", "config_profile": "dev-harness", "fixture": "r_surface_008_target_v1",
+    "requirements": { "os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r-surface-004-world-children-tiles", "fixture": "r_surface_008_target_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": { "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_008_target_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/dev-harness.json" },
+  "steps": [
+    { "kind": "native_semantic_bootstrap", "label": "emit_r_surface_008_target_tiles_world", "native_semantic_checkpoint": { "required_actions": ["world.fire"], "required_state": "world" } },
+    { "kind": "cockpit_act", "label": "r_surface_008_target_tiles_enter", "gameplay_credit": false, "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1, "action_chain": ["world.fire"], "expected_final_action": "target.move_cursor" },
+    { "kind": "semantic_surface_assertion", "label": "r_surface_008_target_tiles_owns_actions", "expected_kind": "target", "actions_absent": ["world.fire", "world.wait"], "expected_visible_fact": "The native target owner, rather than World, owns the fresh target actions." },
+    { "kind": "cockpit_live_session", "label": "r_surface_008_target_tiles_witness", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Settle native Tiles ranged targeting using only live target coordinates and opaque candidate tokens.", "proof_targets": ["a target child publishes origin, cursor, destination, range, trajectory, and live candidates", "an advertised cursor move or candidate token yields an exact receipt and fresh target frame", "the current opaque candidate token selects the same visible native candidate without address exposure", "invalid, stale, hidden, out-of-range, coordinate, or parent-World controls reject without retargeting", "target.cancel restores fresh World and cleanup succeeds"], "authority": ["currently advertised native semantic actions", "run.witness", "run.finish"], "invariants": ["resolve every token from the current target frame", "do not use keys, labels, screen coordinates, OCR, screenshots, raw input, or direct mutation", "fixture and target entry are zero-credit", "stop on binding drift, missing receipt, retargeting, or cleanup failure"], "live_operations": ["game.act"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1 }
+  ],
+  "proof_gates": [{ "id": "r_surface_008_target_tiles_observation", "label": "source-bound Tiles ranged-target observation", "boundary_step": "r_surface_008_target_tiles_witness", "predecessors": [], "expectations": [{ "kind": "saved_artifact", "predicate": { "artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true }}], "checkpoint_safe_ui": { "screen_text_contains": ["Move:"] } }],
+  "proof_route": { "gates": ["r_surface_008_target_tiles_observation"], "terminal": ["r_surface_008_target_tiles_observation"] }
+}

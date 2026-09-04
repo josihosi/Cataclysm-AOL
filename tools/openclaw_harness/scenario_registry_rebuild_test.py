@@ -189,6 +189,65 @@ class ScenarioRegistryRebuildTest(unittest.TestCase):
             finally:
                 connection.close()
 
+    def test_r027_current_validation_retries_stale_prior_route_but_setup_only_does_not(self) -> None:
+        """A re-bound independent R-027 validation may replace only stale route history."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            r027 = self.strict_manifest()
+            r027["name"] = "bandit.r027_out_of_range_validation_v012_mcw"
+            r027["runtime_contract"]["setup_only_debug"] = False
+            r027["capabilities"] = {
+                "capabilities.r027.out_of_range_validation": "production_out_of_range",
+                "runtime.r027.source_binding": "r027-closure-007-tiles:r027-out-of-range-validation-012",
+            }
+            setup_only = self.strict_manifest()
+            setup_only["name"] = "setup.only.stale.fixture"
+            self.write_manifest(scenarios, "r027", r027)
+            self.write_manifest(scenarios, "setup_only", setup_only)
+            connection = open_registry(str(root / "registry.sqlite3"))
+            try:
+                rebuild_manifest_projection(connection, scenarios)
+                stale_route = ({"route_key": "stale-route", "evidence_state": "stale"},)
+                with mock.patch.object(
+                    scenario_registry_store, "_current_route_evidence", return_value=stale_route,
+                ):
+                    snapshots = build_registry_query_candidate_snapshot(
+                        connection, include_lifecycle_states=("quarantined",),
+                    )
+                by_name = {
+                    snapshot.explanation["manifest"]["name"]: snapshot
+                    for snapshot in snapshots
+                }
+                self.assertEqual(
+                    by_name["bandit.r027_out_of_range_validation_v012_mcw"].lifecycle_state,
+                    "active",
+                )
+                self.assertTrue(
+                    by_name["bandit.r027_out_of_range_validation_v012_mcw"].token_eligible)
+                self.assertEqual(by_name["setup.only.stale.fixture"].lifecycle_state, "quarantined")
+                self.assertFalse(by_name["setup.only.stale.fixture"].token_eligible)
+                request = parse_registry_query_request({
+                    "requirements": [
+                        {
+                            "key": "capabilities.r027.out_of_range_validation",
+                            "op": "eq", "value": "production_out_of_range",
+                            "minimum_evidence": "declared",
+                        },
+                        {
+                            "key": "runtime.r027.source_binding",
+                            "op": "eq", "value": "r027-closure-007-tiles:r027-out-of-range-validation-012",
+                            "minimum_evidence": "declared",
+                        },
+                    ],
+                    "preferences": [],
+                })
+                issued = execute_registry_query(connection, request, drafts_root=root / "drafts")
+                self.assertIsNotNone(issued.token_id)
+            finally:
+                connection.close()
+
     def test_rebuild_is_idempotent_revises_content_and_retains_absent_source(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)

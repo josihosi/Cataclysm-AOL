@@ -1,0 +1,158 @@
+{
+  "manifest_version": 1,
+  "name": "r026.living_npc_package_v001_mcw",
+  "description": "Current-source R-026 living-base package route: start from the audited established-base fixture and use only current native semantic owners to bind free-text recipient selection, ambient LLM handling, snapshots, and basecamp request context.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "runtime.world": "McWilliams",
+    "capabilities.r026.living_npc_package": "follower_ambient_snapshot_basecamp_context"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "physical-key",
+      "guessed-key",
+      "ocr-control",
+      "screen-coordinate",
+      "callback-injection",
+      "direct-state-mutation",
+      "direct-save-edit",
+      "fixture-restage"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": ["frame-bound semantic requests"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": true
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_living_base_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.wait"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_living_npc_package",
+      "cleanup_on_finish": true,
+      "objective": "Use only advertised native semantic actions to submit one bounded follower free-text utterance, observe the actual recipient and response/snapshot record, then exercise one ambient route and one basecamp request-context route when their current recipients are independently observable.",
+      "proof_targets": [
+        "bound native receipts for every player operation",
+        "actual follower and ambient recipient identity",
+        "LLM request snapshots and response records",
+        "basecamp request-context record when the established-base actor routes there",
+        "save/reload evidence only if the observed route changes persisted state",
+        "gameplay-feel observation and accepted cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture installation and startup receive zero feature credit",
+        "recipient identity is read from the same-run native log or snapshot, never inferred from a label",
+        "ambient and follower results keep independent verdicts",
+        "basecamp routing requires a current camp-routing record",
+        "do not synthesize LLM responses or mutate NPC/camp/save state directly",
+        "stop the affected claim at first missing native receipt, source-binding drift, or cleanup failure while retaining independent observations"
+      ],
+      "live_operations": ["game.act"],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "confirm_addressed_craft_save_boundary",
+      "record_baseline": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r026_addressed_craft_save_boundary_missing",
+      "abort_reason": "the native addressed-craft lifecycle did not leave a readable saved McWilliams world for the declared relaunch owner"
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "confirm_addressed_craft_save_boundary",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "bind_relaunched_living_base_world",
+        "seconds": 2.0,
+        "capture_after": true,
+        "startup_semantic_hud_expectation": {
+          "classification": "green_gameplay_hud_present"
+        },
+        "abort_on_screen_text_expectation_failure": true,
+        "abort_verdict": "blocked_r026_living_base_relaunch_hud_missing",
+        "abort_reason": "the declared native lifecycle owner did not relaunch the saved McWilliams world into ordinary gameplay"
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "observe_persisted_addressed_craft_and_unaddressed_control",
+        "cleanup_on_finish": true,
+        "objective": "Observe the same saved addressed craft-request state after process replacement, then issue one independently receipted unaddressed craft-text control.  Do not restage the fixture or create the addressed request again.",
+        "proof_targets": [
+          "same saved McWilliams world after native process replacement",
+          "exact addressed craft-request state remains observable",
+          "unaddressed control does not queue the addressed camp-craft request",
+          "bound cleanup and gameplay-feel observation"
+        ],
+        "authority": ["currently advertised native semantic actions", "game.act", "run.witness", "run.finish"],
+        "invariants": [
+          "relaunch and startup are lifecycle evidence, not request-behavior credit",
+          "do not mutate fixture, save, NPC, or camp state directly",
+          "retain addressed and unaddressed verdicts independently"
+        ],
+        "live_operations": ["game.act"],
+        "transition_timeout_seconds": 15.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
+  "proof_route": {
+    "precondition": ["bind_living_base_native_world"],
+    "production_behavior": ["operate_living_npc_package"],
+    "terminal_persistence": ["confirm_addressed_craft_save_boundary", "observe_persisted_addressed_craft_and_unaddressed_control"],
+    "artifact_verdict": ["operate_living_npc_package", "observe_persisted_addressed_craft_and_unaddressed_control"],
+    "disallowed_shortcuts": ["bind_living_base_native_world"]
+  }
+}

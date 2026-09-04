@@ -49,14 +49,11 @@ class input_context;
 
 input_context get_default_mode_input_context();
 
-// Emit the harness's initial semantic world frame only at the production HUD
-// render boundary.  The active native input context must be the main world
-// owner before the ordinary world-input surface may be published.
-void openclaw_harness_semantic_initial_world_frame_if_ready( const input_context *active_input_context,
-        bool no_activity_owns_turn,
-        bool no_auto_move_owns_turn, bool no_dead_watch_owns_turn );
 void openclaw_harness_semantic_wait_activity_complete();
+void openclaw_harness_semantic_initial_world_frame_if_ready( const input_context *active_input_context,
+        bool no_activity_owns_turn, bool no_auto_move_owns_turn, bool no_dead_watch_owns_turn );
 void openclaw_harness_semantic_activity_distraction();
+void openclaw_harness_semantic_world_after_activity_distraction();
 // Native distant-travel facts are emitted only for a harness-bound run.  The
 // travel owner reports the accepted destination, every native handoff, and
 // the terminal outcome so harness code never treats a rendered HUD as proof
@@ -286,6 +283,8 @@ class game
 
         /** Returns false if saving failed. */
         bool save();
+        /** Returns the outcome of the most recent ordinary save attempt. */
+        const std::string &last_save_result() const;
 
         /** Returns a list of currently active character saves. */
         std::vector<std::string> list_active_saves();
@@ -1127,7 +1126,7 @@ class game
         //  int autosave_timeout();  // If autosave enabled, how long we should wait for user inaction before saving.
         void autosave();         // automatic quicksaves - Performs some checks before calling quicksave()
     public:
-        void quicksave();        // Saves the game without quitting
+        bool quicksave();        // Saves the game without quitting
         void quickload();        // Loads the previously saved game if it exists
         void disp_NPCs();        // Currently for debug use.  Lists global NPCs.
 
@@ -1302,6 +1301,9 @@ class game
         std::chrono::time_point<std::chrono::steady_clock> time_of_last_load;
         int moves_since_last_save = 0; // NOLINT(cata-serialize)
         std::time_t last_save_timestamp = 0; // NOLINT(cata-serialize)
+        // Runtime-only receipt for native semantic callers.  It intentionally
+        // distinguishes an untouched world from a failed persistence attempt.
+        std::string last_save_result_ = "unattempted"; // NOLINT(cata-serialize)
 
         mutable std::array<float, OVERMAP_LAYERS> latest_lightlevels; // NOLINT(cata-serialize)
         // remoteveh() cache

@@ -1,0 +1,27 @@
+{
+  "name": "r008_fire_signal_indoor_closed_v1",
+  "source_fixture": "r008_fire_signal_common_v1",
+  "source_profile": "live-debug",
+  "description": "Matched indoor blocked-signal control in the generated concrete basecamp building. The inherited exterior doors and domestic windows are closed. Several interior log tiles and SOURCE_FIREWOOD are zero-credit setup; normal brazier deployment, ignition, two-tile retreat, channel isolation, and ecology observations remain live behavior.",
+  "save_transforms": [
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        { "typeid": "log", "count": 12, "offset_ms": [1, -1, 0] },
+        { "typeid": "log", "count": 12, "offset_ms": [1, 0, 0] },
+        { "typeid": "log", "count": 12, "offset_ms": [1, 1, 0] }
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "name": "R-008 indoor firewood control",
+      "zone_type": "SOURCE_FIREWOOD",
+      "faction": "your_followers",
+      "start_offset_ms": [1, -1, 0],
+      "end_offset_ms": [1, 1, 0],
+      "write_temp": true
+    }
+  ]
+}

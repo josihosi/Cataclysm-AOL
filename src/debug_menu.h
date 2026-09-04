@@ -95,6 +95,7 @@ void wishskill( Character *you, bool change_theory = false );
 void wishproficiency( Character *you );
 
 void debug();
+std::optional<debug_menu_index> choose_action();
 void execute_action( debug_menu_index action );
 void open_console();
 

@@ -1082,8 +1082,14 @@ local_field_signal_projection adapt_local_field_signal_reading(
     light.observed_range_omt = reading.observed_range_omt;
     light.source_strength = std::clamp( strongest_light_intensity, 1, 3 );
     light.persistence = strongest_light_intensity >= 2 ? 1 : 0;
-    const bool exposed_to_sky = reading.outside || reading.elevated_roof_exposed;
-    light.side_leakage = exposed_to_sky ? 1 : std::clamp( reading.side_leakage, 0, 2 );
+    const bool exposed_to_sky = reading.outside || reading.elevated_roof_exposed ||
+                                reading.side_leakage >= 2;
+    // Preserve a direct indoor-to-exterior sightline as stronger than an
+    // outdoor source's ordinary ambient exposure.  The caller uses level two
+    // only after a transparent path reaches a real exterior tile.
+    light.side_leakage = reading.side_leakage > 0 ?
+                         std::clamp( reading.side_leakage, 0, 2 ) :
+                         ( exposed_to_sky ? 1 : 0 );
     light.time = reading.light_time;
     light.weather = reading.light_weather;
     light.exposure = exposed_to_sky ? light_exposure_band::exposed :

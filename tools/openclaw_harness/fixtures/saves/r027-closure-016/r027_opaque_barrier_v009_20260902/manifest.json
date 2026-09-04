@@ -1,0 +1,29 @@
+{
+  "schema": "r027-opaque-barrier-fixture-v1",
+  "fixture": "r027_opaque_barrier_v009_20260902",
+  "world": "McWilliams",
+  "profile": "r027-opaque-barrier-bootstrap-008",
+  "source_fixture": "r027_preserved_physical_fire_20260902",
+  "source_executable": {
+    "path": "build/r027-closure-007-tiles",
+    "sha256": "82016e075be1855de5da78e0c3d38d31f36c8b9e5e7890903f6ed09f6eb43c94"
+  },
+  "setup_run": {
+    "run_id": "07dff0fd860243f38f060b401e1f41fc",
+    "bridge_binding_id": "be43c1cda7a278b0b1d9f1889335a7538ee9a7b2fd00724db6274dfa1abbd1c2",
+    "stop_reason": "zero_credit_native_rock_border_setup_saved"
+  },
+  "credit": "zero_credit_setup_only",
+  "audit": {
+    "artifact": "build_logs/r027_exploration_001_v009_saved_barrier_audit.json",
+    "source_omt": [138, 49, 0],
+    "source_field": "fd_fire",
+    "source_intensity": 3,
+    "camp_omt": [140, 51, 0],
+    "barrier_omt": [139, 50, 0],
+    "barrier_terrain": "rock_border",
+    "barrier_see_cost": "opaque",
+    "barrier_travel_cost_type": "impassable"
+  },
+  "world_tree_sha256": "94ac07e081aac638b494efdca43ed6e8ea2a197952bded5b55007d2621ab9d67"
+}

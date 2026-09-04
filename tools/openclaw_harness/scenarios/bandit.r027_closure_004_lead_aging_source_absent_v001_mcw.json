@@ -1,0 +1,110 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_closure_004_lead_aging_source_absent_v001_mcw",
+  "description": "Zero-credit R-027 closure-004 setup: remove only the saved physical source from an existing retained in-range lead by controller-bound native Map editor, native-save, then independently audit source absence.",
+  "status": "active",
+  "profile": "r027-closure-004-lead-aging",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_in_range_saved_lead_v001_20260902",
+  "fixture_profile": "r027-unchanged-dedup-bootstrap-001",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r027.lead_aging_source_absent_bootstrap": "zero_credit_native_editor_source_removal",
+    "runtime.r027.source_binding": "r027-closure-007-tiles:r027-closure-004-lead-aging"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.debug_menu", "semantic:world.quicksave", "semantic:menu.choose", "semantic:editmap.move_target", "semantic:editmap.remove_field", "semantic:editmap.close", "cockpit:run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "callback-injection", "direct-state-mutation", "direct-save-edit", "direct-lead-mutation", "shared-profile"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "r027-closure-004-lead-aging",
+    "fixture": "r027_in_range_saved_lead_v001_20260902",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r027-closure-007-tiles",
+      "profile": "r027-closure-004-lead-aging",
+      "fixture": "r027_in_range_saved_lead_v001_20260902",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "ocr": false,
+      "input": ["frame-bound semantic requests"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/r027-unchanged-dedup-bootstrap-001/r027_in_range_saved_lead_v001_20260902/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/r027-closure-004-lead-aging.json",
+    "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"
+  },
+  "r027_isolated_launch": {
+    "name": "r027-closure-007-tiles",
+    "path": "build/r027-closure-007-tiles",
+    "sha256": "9f0b289e51087cbbf78e3ddfe452bdef7255b5dba48b985d76bd99c038e627b3",
+    "profile": "r027-closure-004-lead-aging",
+    "world": "McWilliams",
+    "fixture": "r027_in_range_saved_lead_v001_20260902",
+    "run_identity": "r027-closure-004-lead-aging",
+    "control_endpoint": "native-semantic-broker",
+    "receipt_sidecar": "r027.staffed-camp-signal.receipts.jsonl",
+    "cleanup_token": "r027-closure-004-lead-aging-cleanup",
+    "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"
+  },
+  "steps": [
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_retained_source_before_editor",
+      "offsets": [[0, 11, 0]],
+      "required_fields": ["fd_fire"],
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_retained_leads_before_editor",
+      "required_site_id_contains": "bandit_camp",
+      "required_min_ready_at_home_count": 5,
+      "required_active_outside_count": 0,
+      "required_min_leads": 2,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_source_removal_controls",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.debug_menu", "world.quicksave"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "remove_saved_source_natively",
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "objective": "From the immutable retained-lead input, select the advertised native Map editor, move its target to the audited source at [140,50,0], invoke only editmap.remove_field(fd_fire), return to World, native-quicksave, then finish for an independent reload audit.",
+      "proof_targets": ["existing retained lead identities", "exact native editor fd_fire removal receipt", "native quicksave receipt", "source-absent reload audit"],
+      "authority": ["advertised frame-bound semantic actions", "run.finish"],
+      "invariants": ["zero gameplay credit", "no cadence or lead refresh", "no direct mutation", "no physical input", "no edit beyond fd_fire or its immediate fd_smoke residue"],
+      "live_operations": ["game.act", "run.continue"],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": ["audit_retained_source_before_editor", "audit_retained_leads_before_editor", "bind_source_removal_controls"],
+    "production_behavior": ["remove_saved_source_natively"],
+    "terminal_persistence": ["remove_saved_source_natively"],
+    "artifact_verdict": ["remove_saved_source_natively"],
+    "disallowed_shortcuts": ["remove_saved_source_natively"]
+  }
+}

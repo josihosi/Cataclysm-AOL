@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Zero-credit prerequisite for R-027 changed observation: create and save one production-created, in-range smoke lead from the preserved physical field.",
+  "material_proof": "The run starts from the saved fd_fire at OMT 138,49; a production-cadence receipt creates the smoke lead for camp 140,51, and a native quicksave preserves it without changing the source.",
+  "current_uncertainty": "This only creates the retained lead. A distinct fixture mutation and validation must prove the same lead refreshes after its physical source payload changes.",
+  "material_contradiction": ["source is not in range", "lead is injected or directly mutated", "source changes during this run", "save is not native"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["callback injection", "direct lead mutation", "direct save edit", "physical key"],
+  "honest_stop_conditions": ["finish after one in-range created receipt, native quicksave, and cleanup", "finish inconclusive on a bound lifecycle defect"],
+  "requested_evidence_ceiling": "zero-credit"
+}

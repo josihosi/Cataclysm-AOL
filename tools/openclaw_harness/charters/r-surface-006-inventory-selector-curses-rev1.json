@@ -1,0 +1,27 @@
+{
+  "claim": "On macOS, the current source- and executable-bound R-SURFACE-006 curses route operates the real inventory selector by advertised item UID, preserving exact selector receipts, nested ownership, fail-closed invalid stable targets, and parent restoration.",
+  "material_proof": "One selected current-bound r_surface_006.inventory_selector_curses run observes the native inventory descriptor, resolves the distinct live rock and plastic-bottle UIDs from advertised actions, performs filter/reset and details or contents through those UIDs, exercises one permitted derived selector operation, observes the resulting nested owner and return, records exact accepted receipts, rejects an invalid or stale UID without retargeting, and accepts cleanup. Fixture manufacture has zero feature credit.",
+  "material_contradiction": [
+    "an item action is delivered by invlet, row, label, coordinate, physical input, OCR, or direct state mutation instead of its advertised UID",
+    "the selector accepts an invalid, stale, moved, destroyed, inaccessible, or wrong-selector UID by retargeting another item",
+    "a child owner exposes inherited inventory or world actions, an unsupported child exposes executable actions, or a return fails to restore the parent selector",
+    "an accepted receipt names a different consuming selector frame, source/runtime binding drifts, or cleanup fails"
+  ],
+  "already_accepted_evidence": [
+    "The current focused selector tests cover the shared UID adapter, distinct non-aggregated child items, controls, and stale-target rejection.",
+    "The r_surface_006 fixture is a disposable zero-credit bootstrap whose items must be rediscovered from the live native descriptor.",
+    "The corresponding Tiles route is separate evidence and does not establish curses execution."
+  ],
+  "current_uncertainty": "No selected source-bound curses witness has yet independently exercised the live selector route, its derived operation and nested ownership, its exact receipts, invalid-target control, and restoration together.",
+  "forbidden_shortcuts": [
+    "raw keys, invlets, rows, labels as identity, physical keyboard or mouse, focus, OCR, screen coordinates, or direct state mutation",
+    "treating the charter, fixture installation, startup, screenshots, source tests, or a prior Tiles report as curses production proof",
+    "claiming coverage for unobserved selector families or gameplay credit from this zero-credit route"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch if the registry cannot select the current curses executable, scenario, fixture, and chartered route",
+    "after launch, stop and report a missing/stale receipt, binding drift, forbidden dispatch, retargeting, invalid child action set, failed restoration, or cleanup contradiction",
+    "seal and finish when the live curses route has settled the advertised UID operations, nested ownership, exact receipt, invalid-target control, restoration, and cleanup"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

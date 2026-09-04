@@ -11,6 +11,7 @@ from pathlib import Path
 sys.path.insert( 0, str( Path( __file__ ).resolve().parent ) )
 
 from playtest_witness import normalize_witness_charter  # noqa: E402
+from scenario_registry import validate_manifest  # noqa: E402
 from startup_harness import build_probe_step_ledger  # noqa: E402
 
 
@@ -19,6 +20,7 @@ CHARTER_PATH = HARNESS_DIR / "charters" / "r005-natural-route-qualification-rev1
 SCENARIO_PATH = HARNESS_DIR / "scenarios" / "bandit.r005_continuous_hostile_ecology_certification.json"
 QUALIFICATION_SCENARIO_PATH = HARNESS_DIR / "scenarios" / "bandit.r005_natural_route_qualification.json"
 OBSERVATION_SCENARIO_PATH = HARNESS_DIR / "scenarios" / "bandit.r005_natural_route_observation.json"
+WEST_FLANK_SCENARIO_PATH = HARNESS_DIR / "scenarios" / "bandit.r005_west_flank_corridor_qualification.json"
 
 
 class R005NaturalRouteCharterTest( unittest.TestCase ):
@@ -45,7 +47,7 @@ class R005NaturalRouteCharterTest( unittest.TestCase ):
             for contradiction in charter["material_contradiction"]
         ) )
         self.assertEqual( scenario["world"], "McWilliams" )
-        self.assertEqual( scenario["fixture"], "bandit_r005_natural_hostile_ecology_v0" )
+        self.assertEqual( scenario["fixture"], "bandit_r005_native_wait_visibility_bootstrap_v0" )
         self.assertTrue( scenario["replace_existing_worlds"] )
         self.assertEqual( scenario["installed_save_player"], "#Wm9yYWlkYSBWaWNr.sav.zzip" )
         route_step = next(
@@ -87,7 +89,7 @@ class R005NaturalRouteCharterTest( unittest.TestCase ):
         self.assertEqual( farther_east_destination["cursor_keys"], ["down"] * 2 )
         self.assertFalse( scenario["runtime_contract"]["grants_gameplay_proof"] )
         self.assertEqual( qualification["world"], scenario["world"] )
-        self.assertEqual( qualification["fixture"], scenario["fixture"] )
+        self.assertNotEqual( qualification["fixture"], scenario["fixture"] )
         self.assertEqual(
             qualification["capabilities"]["capabilities.bandit.r005.route_qualification"],
             "observed_x144_y29_source_bound_zero_credit_destination_arrival",
@@ -196,6 +198,16 @@ class R005NaturalRouteCharterTest( unittest.TestCase ):
 
         self.assertEqual( positive[0]["verdict"], "green_step_required_bound_semantic_hud" )
         self.assertEqual( missing_owner[0]["verdict"], "red_step_required_semantic_hud_missing" )
+
+    def test_west_flank_bootstrap_is_valid_and_remains_zero_credit( self ) -> None:
+        scenario = json.loads( WEST_FLANK_SCENARIO_PATH.read_text( encoding="utf-8" ) )
+
+        validate_manifest( scenario, path=WEST_FLANK_SCENARIO_PATH )
+        self.assertFalse( scenario["runtime_contract"]["grants_gameplay_proof"] )
+        self.assertEqual(
+            [gate["checkpoint_safe_ui"] for gate in scenario["proof_gates"]],
+            [{"semantic_state": {"required": True}}] * 3,
+        )
 
 if __name__ == "__main__":
     unittest.main()

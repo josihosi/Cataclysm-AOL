@@ -1,0 +1,96 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_unchanged_dedup_bootstrap_v001_mcw",
+  "description": "Zero-credit R-027 preparation: install the persisted-clean far-footing save with one fixture-owned in-range fd_fire, record the first real production lead, native-save, and capture the result for separate unchanged-read validation.",
+  "status": "active",
+  "profile": "r027-unchanged-dedup-bootstrap-001",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_in_range_signal_prep_v001_20260902",
+  "fixture_profile": "r027-unchanged-dedup-bootstrap-001",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "capabilities.r027.unchanged_dedup_bootstrap": "zero_credit_in_range_source_then_created_lead",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r027.source_binding": "r027-closure-007-tiles:r027-unchanged-dedup-bootstrap-001"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.wait", "semantic:menu.choose", "semantic:world.quicksave", "cockpit:game.raw_wait", "cockpit:run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "callback-injection", "direct-lead-mutation", "shared-profile"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "r027-unchanged-dedup-bootstrap-001",
+    "fixture": "r027_in_range_signal_prep_v001_20260902",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r027-closure-007-tiles",
+      "profile": "r027-unchanged-dedup-bootstrap-001",
+      "fixture": "r027_in_range_signal_prep_v001_20260902",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "ocr": false,
+      "input": ["frame-bound semantic requests"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "r027_isolated_launch": {
+    "name": "r027-closure-007-tiles",
+    "path": "build/r027-closure-007-tiles",
+    "sha256": "9f0b289e51087cbbf78e3ddfe452bdef7255b5dba48b985d76bd99c038e627b3",
+    "profile": "r027-unchanged-dedup-bootstrap-001",
+    "world": "McWilliams",
+    "fixture": "r027_in_range_signal_prep_v001_20260902",
+    "run_identity": "r027-unchanged-dedup-bootstrap-001",
+    "control_endpoint": "native-semantic-broker",
+    "receipt_sidecar": "r027.staffed-camp-signal.receipts.jsonl",
+    "cleanup_token": "r027-unchanged-dedup-bootstrap-001-cleanup",
+    "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"
+  },
+  "steps": [
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_in_range_physical_source",
+      "offsets": [[0, 11, 0]],
+      "required_fields": ["fd_fire"],
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_created_lead_cadence",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.wait", "world.quicksave"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "create_and_save_in_range_lead",
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "objective": "Advance only native semantic cadence until a run-bound created staffed-camp signal receipt appears, then native-quicksave and finish. The fixture source is setup-only; the created lead is retained only as the next run's footing.",
+      "proof_targets": ["in-range source audit", "created smoke or light lead receipt", "native quicksave", "reloadable retained lead"],
+      "authority": ["game.raw_wait with observed game-minute bound", "currently advertised world.quicksave", "run.finish"],
+      "invariants": ["no callback", "no direct lead mutation", "no camp or observer mutation", "no feature credit for bootstrap"],
+      "live_operations": ["game.act", "game.raw_wait"],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": ["audit_in_range_physical_source", "bind_created_lead_cadence"],
+    "production_behavior": ["create_and_save_in_range_lead"],
+    "terminal_persistence": ["create_and_save_in_range_lead"],
+    "artifact_verdict": ["create_and_save_in_range_lead"],
+    "disallowed_shortcuts": ["create_and_save_in_range_lead"]
+  }
+}

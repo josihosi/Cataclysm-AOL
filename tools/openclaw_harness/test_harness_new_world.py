@@ -131,6 +131,7 @@ class HarnessNewWorldTest(unittest.TestCase):
             "/game/Cataclysm-AOL.exe --userdir .userdata/p/",
             "/game/cataclysm-tiles --userdir .userdata/p/",
             "/game/cataclysm-tlg-tiles.exe --userdir .userdata/p/",
+            "/game/r027-closure-007-tiles --userdir .userdata/r027/",
         ):
             with self.subTest(command=command), patch.object(harness, "pid_command", return_value=command), patch.object(
                 harness, "pid_is_alive", return_value=False

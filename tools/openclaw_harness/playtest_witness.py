@@ -15,6 +15,7 @@ from typing import Any, Mapping, Sequence
 
 VERDICTS = frozenset({"proved", "contradicted", "inconclusive"})
 DISPOSITIONS = frozenset({"accept", "continue", "repair", "change-strategy"})
+FINDING_DISPOSITIONS = frozenset({"open", "repair", "revalidate", "closed"})
 EVIDENCE_CEILINGS = {
     "zero-credit": 0,
     "setup-only": 1,
@@ -127,6 +128,13 @@ def _compact_observation(value: Mapping[str, Any]) -> dict[str, Any]:
         "actor_owners": log.get("actor_owners", []),
         "persistence": log.get("persistence", "unavailable"),
         "contradictory_evidence": log.get("contradictory_evidence", []),
+        "production_channel_observation": log.get(
+            "production_channel_observation", {
+                "status": "unavailable", "eligible": False,
+                "records": [], "channels": [],
+                "issues": ["channel_observation_unavailable"],
+            }
+        ),
         "child_resources": log.get("child_resources", {}),
     }
     return result
@@ -430,6 +438,106 @@ def validate_witness_statement(
         "cited_entry_count": len(cited),
         "contradiction_count": len(contradictions),
         "causal_sufficiency_owner": "coordinator_llm",
+        "proof_promotion_authority": False,
+    }
+
+
+def validate_witness_bundle(
+    *, charter: Mapping[str, Any], journal: Mapping[str, Any],
+    bundle: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Validate independent claim conclusions and routed defects from one run.
+
+    A feature defect may contradict one claim without erasing facts that still
+    answer another. Findings remain coordinator input; this validator only
+    binds them to the immutable journal and identifies their affected scope.
+    """
+    if not isinstance(bundle, Mapping) or bundle.get("schema") != \
+            "caol-playtest-witness-bundle-v1":
+        raise WitnessError("witness_bundle_schema_missing_or_unknown")
+    claims = bundle.get("claims")
+    if isinstance(claims, (str, bytes)) or not isinstance(claims, list) or not claims:
+        raise WitnessError("witness_bundle_requires_claims")
+    normalized_claims: list[dict[str, Any]] = []
+    claim_ids: set[str] = set()
+    for claim in claims:
+        if not isinstance(claim, Mapping):
+            raise WitnessError("witness_bundle_claim_must_be_an_object")
+        claim_id = str(claim.get("claim_id", "")).strip()
+        statement = claim.get("statement")
+        if not claim_id or claim_id in claim_ids or not isinstance(statement, Mapping):
+            raise WitnessError("witness_bundle_claim_identity_missing_or_duplicate")
+        claim_ids.add(claim_id)
+        normalized_claims.append({
+            "claim_id": claim_id,
+            "validation": validate_witness_statement(
+                charter=charter, journal=journal, statement=statement,
+            ),
+        })
+
+    entries = journal.get("entries")
+    if not isinstance(entries, list):
+        raise WitnessError("witness_journal_entries_missing")
+    citation_ids = {
+        str(entry.get("citation_id", ""))
+        for entry in entries if isinstance(entry, Mapping)
+    }
+    findings = bundle.get("findings", [])
+    if isinstance(findings, (str, bytes)) or not isinstance(findings, list):
+        raise WitnessError("witness_bundle_findings_must_be_a_list")
+    normalized_findings: list[dict[str, Any]] = []
+    finding_ids: set[str] = set()
+    for finding in findings:
+        if not isinstance(finding, Mapping):
+            raise WitnessError("witness_bundle_finding_must_be_an_object")
+        finding_id = str(finding.get("finding_id", "")).strip()
+        observed_defect = str(finding.get("observed_defect", "")).strip()
+        disposition = str(finding.get("disposition", "")).strip()
+        next_action = str(finding.get("next_action", "")).strip()
+        citations = finding.get("citations")
+        affected = finding.get("affected_claims")
+        unaffected = finding.get("unaffected_claims", [])
+        lists = (citations, affected, unaffected)
+        if not finding_id or finding_id in finding_ids or not observed_defect or \
+                disposition not in FINDING_DISPOSITIONS or not next_action:
+            raise WitnessError("witness_bundle_finding_incomplete_or_duplicate")
+        if any(isinstance(items, (str, bytes)) or not isinstance(items, list) or
+               any(not isinstance(item, str) or not item.strip() for item in items)
+               for items in lists) or not citations or not affected:
+            raise WitnessError("witness_bundle_finding_scope_or_citations_invalid")
+        if any(citation not in citation_ids for citation in citations):
+            raise WitnessError("witness_bundle_finding_citation_unknown")
+        affected_set = set(affected)
+        unaffected_set = set(unaffected)
+        if not affected_set.issubset(claim_ids) or not unaffected_set.issubset(claim_ids) or \
+                affected_set & unaffected_set:
+            raise WitnessError("witness_bundle_finding_claim_scope_invalid")
+        finding_ids.add(finding_id)
+        normalized_findings.append({
+            "finding_id": finding_id,
+            "observed_defect": observed_defect,
+            "citations": list(citations),
+            "affected_claims": list(affected),
+            "unaffected_claims": list(unaffected),
+            "disposition": disposition,
+            "next_action": next_action,
+            "run_id": str(journal.get("identity", {}).get("run_id", "")),
+            "journal_sha256": str(journal.get("journal_sha256", "")),
+        })
+    normalized = {
+        "schema": "caol-playtest-witness-bundle-v1",
+        "claims": normalized_claims,
+        "findings": normalized_findings,
+    }
+    normalized["bundle_sha256"] = _digest("caol-playtest-witness-bundle-v1", normalized)
+    return {
+        "status": "mechanically_valid_bundle",
+        "journal_sha256": journal["journal_sha256"],
+        "claim_count": len(normalized_claims),
+        "finding_count": len(normalized_findings),
+        "bundle": normalized,
+        "causal_sufficiency_owner": "coordinator_llm",
+        "finding_record_owner": "coordinator_llm",
         "proof_promotion_authority": False,
     }
 

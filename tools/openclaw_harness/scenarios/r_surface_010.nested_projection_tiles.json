@@ -1,0 +1,45 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_010.nested_projection_tiles",
+  "description": "Source-bound Tiles route for the active cockpit projection. It follows current native descriptors through World, Inventory, native item use, Direction, a real confirmation prompt, and restored World. Fixture state is setup-only.",
+  "profile": "r-surface-004-world-children-tiles",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r_surface_010_nested_projection_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "capabilities.r_surface_010.nested_projection_tiles": "source_bound_tiles_world_inventory_direction_prompt_world_v2",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.inventory", "semantic:inventory.select", "semantic:inventory.item_menu.choose", "semantic:direction.choose", "semantic:prompt.choose", "semantic:inventory.item_menu.cancel", "semantic:inventory.cancel"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-surface-004-world-children-tiles",
+    "config_profile": "dev-harness",
+    "fixture": "r_surface_010_nested_projection_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r-surface-004-world-children-tiles", "fixture": "r_surface_010_nested_projection_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_010_nested_projection_v1/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json"
+  },
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "emit_r_surface_010_nested_tiles_world", "native_semantic_checkpoint": {"required_actions": ["world.inventory"], "required_state": "world"}},
+    {"kind": "cockpit_act", "label": "r_surface_010_tiles_nested_projection", "gameplay_credit": false, "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1, "action_chain": ["world.inventory", {"action_id": "inventory.select", "stable_id_label_contains": "lighter"}, {"action_id": "inventory.item_menu.choose", "stable_id_label_equals": "activate"}, {"action_id": "direction.choose", "stable_id_label_equals": "north"}, "inventory.item_menu.cancel", "inventory.cancel", "world.inventory", {"action_id": "inventory.select", "stable_id_label_contains": "flashlight"}, {"action_id": "inventory.item_menu.choose", "stable_id_label_equals": "activate"}, {"action_id": "prompt.choose", "stable_id_label_equals": "no"}, "inventory.item_menu.cancel", "inventory.cancel"], "expected_final_action": "world.wait", "expected_visible_fact": "The cockpit replaces its view from each current native descriptor: World yields to Inventory, native use yields Direction, and every returned parent is re-observed as the current native descriptor before its exact advertised action is dispatched."}
+  ],
+  "proof_gates": [
+    {"id": "r_surface_010_tiles_nested_projection", "label": "source-bound Tiles World Inventory Direction Prompt World v2 transaction", "boundary_step": "r_surface_010_tiles_nested_projection", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_cockpit_transaction", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}
+  ],
+  "proof_route": {"gates": ["r_surface_010_tiles_nested_projection"], "terminal": ["r_surface_010_tiles_nested_projection"]}
+}

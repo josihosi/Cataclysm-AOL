@@ -68,9 +68,10 @@ class CardinalNativeMovementTest(unittest.TestCase):
             self.assertIn(f'"{outcome}"', source)
         self.assertIn('"post_step"', source)
         self.assertIn('\\"after_terrain\\"', source)
-        self.assertIn('const tripoint_abs_ms before_abs = here.get_abs( before );', source)
-        self.assertIn('const tripoint_abs_ms expected_abs = here.get_abs( expected );', source)
-        self.assertIn('const tripoint_abs_ms after_abs = here.get_abs( after );', source)
+        self.assertIn('const tripoint_abs_ms pos_before_abs = player_character.pos_abs();', source)
+        self.assertIn('const tripoint_abs_ms expected_abs = pos_before_abs +', source)
+        self.assertIn('const tripoint_abs_ms pos_after_abs = player_character.pos_abs();', source)
+        self.assertIn('const tripoint_bub_ms &after_bub', source)
         self.assertIn('\\"coordinate_space\\":\\"absolute_ms\\"', source)
 
 

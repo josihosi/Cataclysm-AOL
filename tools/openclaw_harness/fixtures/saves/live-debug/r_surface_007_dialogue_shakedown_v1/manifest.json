@@ -1,0 +1,13 @@
+{
+  "name": "r_surface_007_dialogue_shakedown_v1",
+  "claim": "R-SURFACE-007",
+  "description": "Disposable zero-credit dialogue bootstrap.  The inherited local-contact save produces the native bandit shakedown only after ordinary semantic time advances; neither fixture construction nor arrival at the dialogue receives response-surface credit.",
+  "source_fixture": "bandit_pay_trade_pool_markers_v0_2026-05-03",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"]
+    }
+  ]
+}

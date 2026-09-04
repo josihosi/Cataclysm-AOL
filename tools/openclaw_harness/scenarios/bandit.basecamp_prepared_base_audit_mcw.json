@@ -1,4 +1,5 @@
 {
+  "manifest_version": 1,
   "name": "bandit.basecamp_prepared_base_audit_mcw",
   "description": "Prepared-base v1 load audit on the named management-ready pack: reinstall the richer McWilliams camp footing and capture immediate local/base state without any hostile restage.",
   "profile": "dev-harness",
@@ -8,6 +9,40 @@
   "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
   "profile_snapshot_profile": "live-debug",
   "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "prepared_base_load_audit",
+    "runtime.fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "runtime.world": "McWilliams",
+    "capabilities.r026.prepared_base_audit": "startup_load_only"
+  },
+  "runtime_contract": {
+    "permitted_input": ["harness:startup", "harness:capture", "harness:cleanup"],
+    "forbidden_input": ["physical-key", "semantic-action", "direct-state-mutation", "hostile-restage"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "input": ["no gameplay input"],
+      "ocr": true,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
   "artifact_source": "debug.log",
   "artifact_patterns": [
     "game::load: Finalizing end"
@@ -48,5 +83,12 @@
       "extract_text": true,
       "extract_text_tail_lines": 28
     }
-  ]
+  ],
+  "proof_route": {
+    "precondition": ["wait_for_gameplay_settle"],
+    "production_behavior": ["wait_for_gameplay_settle"],
+    "terminal_persistence": ["wait_for_gameplay_settle"],
+    "artifact_verdict": ["prepared_base_full_view", "prepared_base_local_view", "prepared_base_right_panel"],
+    "disallowed_shortcuts": ["wait_for_gameplay_settle"]
+  }
 }

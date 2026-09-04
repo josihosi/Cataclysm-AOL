@@ -121,6 +121,7 @@
 #include "recipe_dictionary.h"
 #include "relic.h"
 #include "requirements.h"
+#include "semantic_surface.h"
 #include "skill.h"
 #include "sounds.h"
 #include "stomach.h"
@@ -1215,7 +1216,15 @@ static int map_uilist()
         { uilist_entry( debug_menu_index::PRINT_REGION_LAYOUT, true, 'r', _( "Print region layout" ) ) }
     };
 
-    return uilist( _( "Map…" ), uilist_initializer );
+    // Map editor actions replace this menu with another native surface.  Keep
+    // the semantic receipt pending until that child publishes rather than
+    // letting the parent redraw (or return) win the handoff.
+    uilist map;
+    map.text = _( "Map…" );
+    map.entries = uilist_initializer;
+    map.semantic_await_child_successor = true;
+    map.query();
+    return map.ret;
 }
 
 static int quick_setup_uilist()
@@ -1255,7 +1264,7 @@ static int dialogue_uilist()
  * Create the debug menu UI list.
  * @returns The chosen action.
  */
-static std::optional<debug_menu_index> debug_menu_uilist()
+std::optional<debug_menu_index> choose_action()
 {
     enum {
         D_CONSOLE, D_INFO, D_GAME, D_SPAWNING, D_PLAYER, D_MONSTER, D_FACTION, D_VEHICLE, D_TELEPORT, D_MAP, D_DIALOGUE, D_QUICK_SETUP
@@ -1283,6 +1292,10 @@ static std::optional<debug_menu_index> debug_menu_uilist()
         uilist debug = uilist();
         debug.text = _( "Debug Functions" );
         debug.entries = debug_menu;
+        // A category selection synchronously opens a second native uilist.
+        // Its descriptor is the semantic successor of this menu, so retain
+        // the request until that child has become the active owner.
+        debug.semantic_await_child_successor = true;
         debug.query();
         const int group = debug.ret;
 
@@ -1828,12 +1841,97 @@ static void change_spells( Character &character )
 
     bool force_update_description = false;
     dialogue d( get_talker_for( character ), nullptr );
+    std::optional<std::string> semantic_native_action;
+    semantic_surface_manager *const semantic_manager = active_semantic_surface_manager();
+    const auto semantic_payload = [&]() {
+        return std::map<std::string, std::string> {
+            { "filter", filterstring },
+            { "showing_only_learned", showing_only_learned ? "true" : "false" },
+            { "selected_stable_id", std::get<0>( *spells_relative[spell_selected] ).id.str() },
+            { "selected_level", std::to_string( std::get<1>( *spells_relative[spell_selected] ) ) }
+        };
+    };
+    const auto semantic_actions = [&]() {
+        std::vector<semantic_action_descriptor> actions = {
+            { "debug_spells.close", "", "Close spell editor", true },
+            { "debug_spells.filter", "", "Filter spells", true },
+            { "debug_spells.clear_filter", "", "Clear spell filter", !filterstring.empty() },
+            { "debug_spells.decrement_level", "", "Decrease selected spell level", true },
+            { "debug_spells.increment_level", "", "Increase selected spell level", true },
+            { "debug_spells.set_level", "", "Set selected spell level", true },
+            { "debug_spells.unlearn", "", "Unlearn selected spell", true },
+            { "debug_spells.toggle_all", "", "Cycle all spell levels", true },
+            { "debug_spells.toggle_learned", "", "Show only learned spells", true }
+        };
+        for( const spell_tuple *spell : spells_relative ) {
+            const spell_type &spell_type = std::get<0>( *spell );
+            actions.emplace_back( semantic_action_descriptor{
+                "debug_spells.select", spell_type.id.str(), spell_type.name.translated(), true
+            } );
+        }
+        return actions;
+    };
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_manager != nullptr ) {
+        semantic_scope.emplace( *semantic_manager, "debug_spells", "Debug spell editor", semantic_payload(),
+        semantic_actions(), [&spells_relative, &spell_selected, &semantic_native_action]
+        ( const semantic_action_request &request ) {
+            static const std::map<std::string, std::string> action_map = {
+                { "debug_spells.close", "QUIT" },
+                { "debug_spells.filter", "FILTER" },
+                { "debug_spells.clear_filter", "RESET_FILTER" },
+                { "debug_spells.decrement_level", "LEFT" },
+                { "debug_spells.increment_level", "RIGHT" },
+                { "debug_spells.set_level", "CONFIRM" },
+                { "debug_spells.unlearn", "UNLEARN_SPELL" },
+                { "debug_spells.toggle_all", "TOGGLE_ALL_SPELL" },
+                { "debug_spells.toggle_learned", "SHOW_ONLY_LEARNED" }
+            };
+            if( request.action_id == "debug_spells.select" ) {
+                const std::string stable_id = request.stable_id.value_or( "" );
+                const auto selected = std::find_if( spells_relative.begin(), spells_relative.end(),
+                [&stable_id]( const spell_tuple *spell ) {
+                    return std::get<0>( *spell ).id.str() == stable_id;
+                } );
+                if( selected == spells_relative.end() ) {
+                    return semantic_action_dispatch_result{ false, "invalid_target", "" };
+                }
+                spell_selected = std::distance( spells_relative.begin(), selected );
+                semantic_native_action = "SEMANTIC_SELECT";
+            } else if( request.stable_id.value_or( "" ).empty() ) {
+                const auto action = action_map.find( request.action_id );
+                if( action == action_map.end() ) {
+                    return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                }
+                semantic_native_action = action->second;
+            } else {
+                return semantic_action_dispatch_result{ false, "invalid_target", "" };
+            }
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
     while( true ) {
         update_description( force_update_description );
         force_update_description = false;
 
+        if( semantic_scope ) {
+            semantic_scope->publish( semantic_payload(), semantic_actions() );
+            semantic_scope->consume_request();
+        }
         ui_manager::redraw();
-        const std::string action = ctxt.handle_input();
+        std::string action;
+        if( semantic_native_action ) {
+            action = std::move( *semantic_native_action );
+        } else {
+            action = ctxt.handle_input();
+            // A semantic transport wake can consume the top scope while this
+            // native context is blocked.  Its callback stages the native
+            // action, so prefer that exact action over the wake placeholder.
+            if( semantic_native_action ) {
+                action = std::move( *semantic_native_action );
+            }
+        }
+        semantic_native_action.reset();
 
         if( action == "QUIT" ) {
             last_selected_spellid = std::get<0>( *spells_relative[spell_selected] ).id;
@@ -5076,7 +5174,7 @@ void execute_action( debug_menu_index action )
 
 void debug()
 {
-    std::optional<debug_menu_index> action = debug_menu_uilist();
+    std::optional<debug_menu_index> action = choose_action();
     if( !action ) {
         return;
     }

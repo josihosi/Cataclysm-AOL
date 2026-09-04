@@ -1,0 +1,32 @@
+{
+  "claim": "The R-008 fire-signal family can distinguish exposed and occluded player-created fire signals while preserving production-owned hostile identity through approach, local behavior, departure, abstract return, camp interaction, and useful mixed outcomes.",
+  "material_proof": "Bound family runs create a real brazier fire through ordinary player actions, receipt an exact two-tile retreat, and cite the smallest production events that identify signal channel, observer or responder, origin, dispatch or approach cause, bubble crossings, local policy, departure, durable return, and any save/reload boundary actually claimed. The indoor conclusion compares matched closed and exposed openings and separates light from smoke, sound, scent, pre-existing knowledge, and incidental contact. Camp conclusions separately cite locker, patrol, shakedown, and combat-escalation observations. Independent claims may have different verdicts in one run.",
+  "material_contradiction": [
+    "a hostile actor, signal, target knowledge, dispatch, or lifecycle transition used for natural credit was manufactured or teleported",
+    "a claimed initial bandit dispatch is attributed to fire when the cited production event only shows an already-dispatched structural observer detecting it",
+    "the indoor control lacks a matched exposed-opening comparison or cannot isolate the claimed channel",
+    "actor identity or simulation ownership is lost across a claimed bubble, save, reload, departure, or return boundary",
+    "one feature defect silently erases or promotes evidence belonging to another claim"
+  ],
+  "already_accepted_evidence": [
+    "Earlier roof-fire scenarios proved the generated flat roof, normal brazier deployment, charged-lighter ignition, SOURCE_FIREWOOD handling, and saved f_brazier/fd_fire result state; those setup primitives remain zero-credit context.",
+    "Focused camp tests already cover CAMP_LOCKER/CAMP_PATROL behavior and non-escalating shakedown watch versus hostile-combat escalation; live family runs revalidate interaction and feel rather than replacing those tests.",
+    "Earlier natural R-008 reports retain their exact focused dispatch, local-handoff, and return provenance; this family does not retroactively promote them."
+  ],
+  "current_uncertainty": "No fresh bound family run yet connects a player-created exposed or occluded fire signal to the complete production-owned hostile and camp lifecycle with claim-scoped mixed-outcome evidence.",
+  "forbidden_shortcuts": [
+    "fixture fire or smoke as gameplay proof",
+    "hostile teleportation, fabricated target knowledge, injected dispatch, or staged local contact as natural ecology proof",
+    "setup receipts as signal-response proof",
+    "absence during a short or invented wait as a negative result",
+    "one channel standing in for an unisolated channel comparison",
+    "one claim verdict standing in for every feature observed in the run"
+  ],
+  "honest_stop_conditions": [
+    "the selected claim or comparison is proved, contradicted, or remains explicitly inconclusive after the worker has exhausted a useful evidence-backed route",
+    "binding or actor identity drift makes the remaining causal question unanswerable",
+    "the world is contaminated for the remaining claims and a clean rerun is more informative",
+    "a required reusable observation or action interface is unavailable and has been routed as a capability gap"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

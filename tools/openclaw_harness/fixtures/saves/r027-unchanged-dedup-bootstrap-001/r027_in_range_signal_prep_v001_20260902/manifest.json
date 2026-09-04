@@ -1,0 +1,43 @@
+{
+  "fixture_id": "r027_in_range_signal_prep_v001_20260902",
+  "claim": "R-027",
+  "evidence_ceiling": "zero-credit",
+  "source_fixture": "r027_safe_footing_far_onfire_clean_v002_20260902",
+  "source_profile": "r027-avatar-onfire-reload-audit-003",
+  "world": "McWilliams",
+  "setup_only": true,
+  "setup_contract": {
+    "purpose": "Move the disposable observer avatar to safe footing near the existing staffed camp and place one physical fire inside the camp's actual smoke range.",
+    "forbidden": ["lead mutation", "camp mutation", "observer mutation", "drive mutation", "scheduler credit"]
+  },
+  "save_transforms": [
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [-288, 24, 0]
+    },
+    {
+      "kind": "map_fields_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "fields": [
+        {
+          "field_id": "fd_fire",
+          "intensity": 3,
+          "age_turns": 0,
+          "offset_ms": [0, 11, 0]
+        }
+      ]
+    }
+  ],
+  "expected_setup": {
+    "avatar_abs_omt": [140, 50, 0],
+    "source_abs_omt": [140, 50, 0],
+    "source_offset_ms": [0, 11, 0],
+    "source_field": "fd_fire",
+    "source_intensity": 3,
+    "camp_abs_omt": [140, 51, 0],
+    "camp_range_omt": 1,
+    "baseline_lead_count": 1,
+    "baseline_drive_state": "idle"
+  }
+}

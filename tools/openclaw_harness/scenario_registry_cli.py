@@ -74,6 +74,7 @@ from scenario_registry_store import (
 )
 import startup_harness
 import production_capture
+from command_receipts import read_command_artifact, write_command_artifact
 from startup_harness import (
     CLEANUP_ACCEPTED_STATUSES,
     fixture_source_binding,
@@ -93,8 +94,9 @@ class _ArgumentParser(argparse.ArgumentParser):
         raise SystemExit(2)
 
 
-def _write_result(value: Mapping[str, Any], *, stream: Any = sys.stdout) -> None:
-    print(json.dumps(value, ensure_ascii=False, sort_keys=True), file=stream)
+def _write_result(value: Mapping[str, Any], *, stream: Optional[Any] = None) -> None:
+    """Write JSON to the caller's current stdout unless an explicit stream is supplied."""
+    print(json.dumps(value, ensure_ascii=False, sort_keys=True), file=sys.stdout if stream is None else stream)
 
 
 def _identity_sha256(label: str) -> str:
@@ -997,7 +999,8 @@ def _load_query_request(args: argparse.Namespace) -> Mapping[str, Any]:
     return value
 
 
-def _registry_launch_probe_namespace(selection: RegistryLaunchToken) -> argparse.Namespace:
+def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
+        *, post_relaunch_continuation: bool = False) -> argparse.Namespace:
     """Adapt one validated registry selection into the ordinary probe parser."""
     source_path = Path(selection.source_path).resolve()
     canonical_path = startup_harness.scenario_path(selection.scenario).resolve()
@@ -1007,6 +1010,8 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken) -> argparse
             f"{source_path}"
         )
     command = ["probe", selection.scenario]
+    if post_relaunch_continuation:
+        command.extend(["--fixture", "", "--post-relaunch-continuation"])
     scenario = startup_harness.load_scenario(selection.scenario)
     if bool(scenario.get("replace_existing_worlds", False)):
         command.append("--replace-existing-worlds")
@@ -1168,7 +1173,13 @@ def build_parser() -> argparse.ArgumentParser:
             "diagnosis; no playtest outcome authority is issued"
         ),
     )
+    query.add_argument("--coordinator-brief", help="coordinator brief JSON for explicit playtest authority")
+    query.add_argument("--witness-charter", help="validated witness charter JSON for explicit playtest authority")
     status = commands.add_parser("registry-status", help="inspect registry lifecycle, relation, and retirement history")
+    status.add_argument("--manifest-id", action="append", default=[],
+                        help="exact manifest identity; repeat to retrieve only named current entries")
+    status.add_argument("--full", action="store_true",
+                        help="explicitly print the complete status payload instead of its artifact receipt")
     status.add_argument(
         "--include-state",
         action="append",
@@ -1177,6 +1188,8 @@ def build_parser() -> argparse.ArgumentParser:
         help="include non-active lifecycle rows; repeated values are accepted",
     )
     commands.add_parser("retirement-candidates", help="inspect review-only retirement candidates")
+    artifact = commands.add_parser("registry-artifact", help="retrieve one digest-bound registry-status payload")
+    artifact.add_argument("--sha256", required=True, help="exact SHA-256 from a registry-status receipt")
     approve = commands.add_parser("approve-retirement", help="prepare one reviewer-approved SHA-bound retirement")
     approve.add_argument("--manifest-id", required=True)
     approve.add_argument("--successor-manifest-id", required=True)
@@ -1191,6 +1204,15 @@ def build_parser() -> argparse.ArgumentParser:
         help="reload one selection token and run its canonical probe route",
     )
     launch.add_argument("selection_token", help="selection token returned by registry-query")
+    launch.add_argument(
+        "--witness-charter",
+        help="coordinator-authored compact playtest witness charter JSON",
+    )
+    launch.add_argument(
+        "--cockpit-bridge-binding-id",
+        help="file-bridge identity forwarded to the canonical selected launch",
+    )
+    launch.add_argument("--post-relaunch-continuation", action="store_true", help=argparse.SUPPRESS)
     launch.add_argument(
         "--certification-inputs",
         help="authoritative installed-input JSON for a registry-owned certification launch",
@@ -1208,6 +1230,8 @@ def build_parser() -> argparse.ArgumentParser:
         "--witness-charter", required=True,
         help="coordinator-authored compact playtest witness charter JSON",
     )
+    detached_launch.add_argument("--post-relaunch-continuation", action="store_true",
+                                 help="continue only declared post-relaunch steps from the saved world")
     witness = commands.add_parser(
         "registry-record-witness",
         help="validate and append one cited witness over immutable reports",
@@ -1475,6 +1499,28 @@ def _scenario_requires_bound_live_bridge(scenario_name: str) -> bool:
     )
 
 
+def _declared_live_session_reentries(selection: Any) -> int:
+    """Count only declared post-relaunch cockpit sessions for a bound bridge."""
+    try:
+        scenario = json.loads(Path(selection.source_path).read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError) as exc:
+        raise ScenarioRegistryStoreError("live bridge scenario declaration is unavailable") from exc
+    if not isinstance(scenario, Mapping):
+        raise ScenarioRegistryStoreError("live bridge scenario declaration is malformed")
+    post_relaunch = scenario.get("post_relaunch")
+    if post_relaunch is None:
+        return 0
+    if not isinstance(post_relaunch, Mapping):
+        raise ScenarioRegistryStoreError("post_relaunch declaration is malformed")
+    steps = post_relaunch.get("steps")
+    if not isinstance(steps, list):
+        raise ScenarioRegistryStoreError("post_relaunch steps are malformed")
+    return sum(
+        1 for step in steps
+        if isinstance(step, Mapping) and step.get("kind") == "cockpit_live_session"
+    )
+
+
 def _witness_launch_environment(args: argparse.Namespace) -> Dict[str, str]:
     """Validate the coordinator charter before any launch authority is claimed."""
     environment = dict(os.environ)
@@ -1498,9 +1544,34 @@ def _witness_launch_environment(args: argparse.Namespace) -> Dict[str, str]:
     return environment
 
 
+def _load_json_object_file(path_value: str, label: str) -> Mapping[str, Any]:
+    try:
+        value = json.loads(Path(path_value).read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
+        raise ScenarioRegistryStoreError(label + " is unreadable") from exc
+    if not isinstance(value, Mapping):
+        raise ScenarioRegistryStoreError(label + " must be a JSON object")
+    return value
+
+
+def _witness_charter_from_environment() -> Mapping[str, Any] | None:
+    raw = os.environ.get("OPENCLAW_PLAYTEST_WITNESS_CHARTER", "").strip()
+    if not raw:
+        return None
+    try:
+        value = json.loads(raw)
+    except json.JSONDecodeError as exc:
+        raise ScenarioRegistryStoreError("witness charter environment is malformed") from exc
+    if not isinstance(value, Mapping):
+        raise ScenarioRegistryStoreError("witness charter environment must be a JSON object")
+    return value
+
+
 def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path) -> int:
     """Start a brief-requested session while the bridge preserves the technical claim."""
     session_dir = Path(args.session_dir).resolve()
+    registry_path = registry_path.resolve()
+    witness_charter_path = Path(args.witness_charter).resolve()
     if session_dir.exists():
         _write_result({"ok": False, "command": args.command,
                        "error": "bridge session directory already exists",
@@ -1508,7 +1579,10 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
         return 1
     connection = open_registry(str(registry_path))
     try:
-        selection = reload_selection_token_for_launch(connection, args.selection_token)
+        charter = _load_json_object_file(str(witness_charter_path), "witness charter")
+        selection = reload_selection_token_for_launch(
+            connection, args.selection_token, witness_charter=charter,
+        )
         if not selection.accepted:
             _write_result({"ok": False, "command": args.command, "registry": str(registry_path),
                            "result": asdict(selection)}, stream=sys.stderr)
@@ -1521,6 +1595,7 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
         connection.close()
     try:
         pre_descriptor_prefix = _declared_pre_descriptor_prefix(selection)
+        session_reentries = _declared_live_session_reentries(selection)
     except (OSError, SystemExit, ScenarioRegistryStoreError) as exc:
         _write_result({"ok": False, "command": args.command, "error": str(exc),
                        "session_dir": str(session_dir)}, stream=sys.stderr)
@@ -1532,10 +1607,14 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
         sys.executable, str(Path(__file__).with_name("cockpit_file_bridge.py")), "start",
         "--session-dir", str(session_dir), "--binding-id", bridge_binding_id,
         "--require-session-ready",
+        "--session-reentries", str(session_reentries),
         "--pre-descriptor-prefix-json", json.dumps(pre_descriptor_prefix, separators=(",", ":")),
         "--", sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
-        "registry-launch", selection.token_id,
+        "registry-launch", selection.token_id, "--witness-charter", str(witness_charter_path),
+        "--cockpit-bridge-binding-id", bridge_binding_id,
     ]
+    if bool(getattr(args, "post_relaunch_continuation", False)):
+        bridge_command.append("--post-relaunch-continuation")
     started = subprocess.run(bridge_command, cwd=str(repository_root()), check=False,
                              env=_witness_launch_environment(args),
                              capture_output=True, text=True)
@@ -1613,6 +1692,7 @@ def _launch_bootstrap_file_bridge(args: argparse.Namespace, registry_path: Path)
 
     try:
         pre_descriptor_prefix = _declared_pre_descriptor_prefix(selection)
+        session_reentries = _declared_live_session_reentries(selection)
     except (OSError, SystemExit, ScenarioRegistryStoreError) as exc:
         _write_result({
             "ok": False,
@@ -1631,6 +1711,7 @@ def _launch_bootstrap_file_bridge(args: argparse.Namespace, registry_path: Path)
         sys.executable, str(Path(__file__).with_name("cockpit_file_bridge.py")), "start",
         "--session-dir", str(session_dir), "--binding-id", bridge_binding_id,
         "--require-session-ready",
+        "--session-reentries", str(session_reentries),
         "--pre-descriptor-prefix-json", json.dumps(pre_descriptor_prefix, separators=(",", ":")),
         "--", *cockpit_command,
     ]
@@ -1923,11 +2004,17 @@ def main(argv: Sequence[str] | None = None) -> int:
                 }
             elif args.command == "registry-query":
                 request = parse_registry_query_request(_load_query_request(args))
+                brief = _load_json_object_file(args.coordinator_brief, "coordinator brief") \
+                    if str(args.coordinator_brief or "").strip() else None
+                charter = _load_json_object_file(args.witness_charter, "witness charter") \
+                    if str(args.witness_charter or "").strip() else None
                 result = _apply_source_readiness_to_query(asdict(execute_registry_query(
                     connection,
                     request,
                     include_lifecycle_states=tuple(args.include_state),
                     drafts_root=registry_path.parent / "drafts",
+                    coordinator_brief=brief,
+                    witness_charter=charter,
                 )), _current_source_executable_readiness(
                     isolated_harness_diagnosis=bool(args.isolated_harness_diagnosis),
                 ))
@@ -2021,7 +2108,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 result = {"entries": registry_status(
                     connection,
                     include_lifecycle_states=tuple(args.include_state),
+                    manifest_ids=tuple(args.manifest_id),
                 )}
+            elif args.command == "registry-artifact":
+                result = read_command_artifact(
+                    artifact_root=registry_path.parent / "command-artifacts",
+                    command="registry-status", sha256=args.sha256,
+                )
             elif args.command == "retirement-candidates":
                 result = {"candidates": retirement_candidates(connection)}
             elif args.command == "approve-retirement":
@@ -2037,11 +2130,26 @@ def main(argv: Sequence[str] | None = None) -> int:
             elif args.command == "retirement-action":
                 result = execute_retirement_action(connection, args.action_id)
             elif args.command in {"registry-launch", "certification-launch"}:
-                selection = reload_selection_token_for_launch(connection, args.selection_token)
+                bridge_binding_id = str(
+                    getattr(args, "cockpit_bridge_binding_id", "") or ""
+                ).strip()
+                if bridge_binding_id:
+                    os.environ["OPENCLAW_COCKPIT_BRIDGE_BINDING_ID"] = bridge_binding_id
+                witness_charter = (
+                    _load_json_object_file(args.witness_charter, "witness charter")
+                    if str(getattr(args, "witness_charter", "") or "").strip()
+                    else _witness_charter_from_environment()
+                )
+                selection = reload_selection_token_for_launch(
+                    connection, args.selection_token,
+                    witness_charter=witness_charter,
+                )
                 if not selection.accepted:
                     result = asdict(selection)
                 elif _scenario_requires_bound_live_bridge(selection.scenario) and not \
-                        str(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")).strip():
+                        bridge_binding_id and not str(
+                            os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")
+                        ).strip():
                     result = asdict(RegistryLaunchToken(
                         token_id=selection.token_id,
                         accepted=False,
@@ -2049,7 +2157,12 @@ def main(argv: Sequence[str] | None = None) -> int:
                     ))
                 else:
                     try:
-                        probe_namespace = _registry_launch_probe_namespace(selection)
+                        probe_namespace = _registry_launch_probe_namespace(
+                            selection,
+                            post_relaunch_continuation=bool(
+                                getattr(args, "post_relaunch_continuation", False)
+                            ),
+                        )
                         # A registry-owned launch is the canonical executor for
                         # an adaptive semantic window.  Leaving this disabled
                         # makes the run wait for an external caller after the
@@ -2191,6 +2304,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 "runtime_binding": runtime_binding,
                                 "wec_authority": wec_authority,
                                 "diagnostic_replay": diagnostic_replay,
+                                "witness_charter": _witness_charter_from_environment(),
                             }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
                             probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
                                 probe_namespace.registry_launch_receipt
@@ -2470,12 +2584,26 @@ def main(argv: Sequence[str] | None = None) -> int:
                     os.environ.pop("OPENCLAW_CERTIFICATION_SAVE_CAPABILITY", None)
                 else:
                     os.environ["OPENCLAW_CERTIFICATION_SAVE_CAPABILITY"] = prior_capability
-    _write_result({
+    response = {
         "ok": True,
         "command": args.command,
         "registry": str(registry_path),
         "result": result,
-    })
+    }
+    if args.command == "registry-status" and not bool(args.full):
+        receipt = write_command_artifact(
+            artifact_root=registry_path.parent / "command-artifacts",
+            command="registry-status", payload=response,
+        )
+        receipt["selector"] = {
+            "manifest_ids": list(args.manifest_id),
+            "include_states": list(args.include_state),
+        }
+        receipt["result_summary"] = {"entry_count": len(result["entries"])}
+        _write_result({"ok": True, "command": args.command, "registry": str(registry_path),
+                       "result": receipt})
+    else:
+        _write_result(response)
     return 0
 
 

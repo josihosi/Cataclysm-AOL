@@ -18,8 +18,10 @@ from __future__ import annotations
 
 import argparse
 import copy
+import contextlib
 import hashlib
 import hmac
+import io
 import json
 import math
 import os
@@ -30,6 +32,7 @@ import sqlite3
 import subprocess
 import sys
 import tempfile
+import threading
 import time
 import uuid
 from datetime import datetime, timezone
@@ -66,6 +69,7 @@ from certification_route import (
     capture_and_finalize_certification,
     continuous_capture_proof_classification,
 )
+from curses_terminal_transport import CursesTerminalTransport, should_use_curses_terminal
 from identity_binding import (
     authoritative_identity_binding,
     canonical_digest,
@@ -78,6 +82,7 @@ from wec_evidence import WEC_CLASS_SET, authority_commitment
 from r005_corridor_observation import parse_native_planned_corridor
 from semantic_broker import SemanticInterruptionBroker, SemanticStepChannel
 from semantic_state import (
+    MAX_EVENTS as SEMANTIC_STEP_MAX_EVENTS,
     MAX_EVENT_BYTES as SEMANTIC_STEP_MAX_BYTES,
     SEMANTIC_STEP_PREFIX,
     decide_native_travel_boundary,
@@ -95,6 +100,7 @@ from r009_technical_witness import (
     sample_child_resources,
     technical_witness as r009_technical_witness,
 )
+from r027_camp_signal_receipt import validate_changed_observation_capture
 
 
 IGNORABLE_DEBUG_LOG_PATTERNS: List[Pattern[str]] = [
@@ -157,6 +163,7 @@ RUNTIME_RELEVANT_PATHS: Tuple[str, ...] = (
     "tools/openclaw_harness/r021_direct_hp_setter_adapter.py",
     "tools/openclaw_harness/r021_direct_hp_transaction.py",
     "tools/openclaw_harness/r022_item_spawn_adapter.py",
+    "tools/openclaw_harness/r027_camp_signal_receipt.py",
     "tools/openclaw_harness/scenario_registry_cli.py",
     "tools/openclaw_harness/scenario_registry_store.py",
 )
@@ -174,13 +181,15 @@ CONTRACT_PREFLIGHT_FILENAME = "contract.preflight.json"
 TRANSITION_EVENT_FILENAME = "transition.events.jsonl"
 TRANSITION_EVENT_BINDING_FILENAME = "transition.events.binding.json"
 LOCAL_PAIR_HANDOFF_SNAPSHOT_FILENAME = "local_pair_handoff.snapshot.json"
+R008_CHANNEL_RECORD_FILENAME = "r008.production.channels.jsonl"
 TRANSITION_EVENT_SCHEMA_VERSION = 1
 TRANSITION_EVENT_REQUIRED_FIELDS = {
     "schema_version", "sequence", "run_id", "game_minutes", "domain", "transition", "outcome",
 }
 TRANSITION_EVENT_OPTIONAL_FIELDS = {
     "site_id", "operation_id", "generation", "handoff_epoch", "previous_state", "new_state",
-    "reason", "actor_ids",
+    "reason", "actor_ids", "request_id", "action_id", "stable_id", "surface_id", "frame_id",
+    "resulting_frame_id", "proof_step_label", "proof_step_index", "native_receipt",
 }
 
 PATROL_CACHE_RE = re.compile(
@@ -551,6 +560,48 @@ def read_transition_event_stream(path: Path, run_id: str, state: Optional[Transi
     """One-shot convenience API used by focused tests and small integrations."""
     reader = StructuredTransitionEventReader(path, run_id, state)
     return reader.poll()
+
+
+def append_semantic_surface_transition_event(
+    run_dir: Path, run_id: str, request: Mapping[str, Any], receipt: Mapping[str, Any],
+    *, proof_step_label: str = "", proof_step_index: Optional[int] = None,
+) -> Dict[str, Any]:
+    """Ingest one native semantic receipt into the run-owned event stream.
+
+    The native log remains the receipt authority.  This adapter adds only the
+    registry run and scenario-step provenance which native code cannot know.
+    """
+    path = Path(run_dir) / TRANSITION_EVENT_FILENAME
+    sequence = 0
+    for existing in _read_jsonl_objects(path):
+        if existing.get("run_id") == run_id and isinstance(existing.get("sequence"), int):
+            sequence = max(sequence, int(existing["sequence"]))
+    accepted = receipt.get("accepted") is True
+    event: Dict[str, Any] = {
+        "schema_version": TRANSITION_EVENT_SCHEMA_VERSION,
+        "sequence": sequence + 1,
+        "run_id": run_id,
+        "game_minutes": receipt.get("game_minutes", 0),
+        "domain": "semantic_surface",
+        "transition": "native_surface_receipt",
+        "outcome": "accepted" if accepted else "rejected",
+        "request_id": request.get("request_id", ""),
+        "action_id": request.get("action_id", ""),
+        "stable_id": request.get("stable_id", ""),
+        "surface_id": request.get("surface_id", ""),
+        "frame_id": request.get("frame_id", ""),
+        "resulting_frame_id": receipt.get("resulting_frame_id", ""),
+        "proof_step_label": proof_step_label,
+        "proof_step_index": proof_step_index,
+        "native_receipt": dict(receipt),
+    }
+    if not accepted:
+        event["reason"] = str(receipt.get("rejection_reason", "native_rejected"))
+    with path.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(event, ensure_ascii=False, separators=(",", ":")) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    return event
 
 
 def _transition_event_value(event: Mapping[str, Any], key: str) -> Any:
@@ -1181,7 +1232,9 @@ def evaluate_structured_proof_gates(
         event_boundaries[gate_id] = current_event_watermark
         artifact_boundaries[gate_id] = current_artifact_watermark
     return {
-        "status": "green" if all_green and evidence else "red", "run_id": run_id,
+        "status": "green" if all_green and evidence else (
+            "not_applicable" if not proof_gates else "red"
+        ), "run_id": run_id,
         "binding_id": binding_id,
         "gates": evidence, "diagnostics": list(diagnostics or []),
         "diagnostic_summary": summarize_transition_diagnostics(diagnostics or []),
@@ -1669,6 +1722,86 @@ def _product_binary_path(relative: str) -> bool:
     )
 
 
+PRODUCT_BUILD_RECEIPT_SCHEMA = "caol-product-build-receipt-v1"
+
+
+def product_source_binding() -> Dict[str, Any]:
+    """Bind only dirty inputs that can alter the compiled game executable.
+
+    Harness Python and fixture files remain part of a live-run binding, but do
+    not make a compiled executable stale.  This narrower digest is used only
+    by a receipt emitted after a real product build.
+    """
+    root = repo_root()
+    diff_proc = subprocess.run(
+        ["git", "-C", str(root), "diff", "--binary", "HEAD", "--", *PRODUCT_BINARY_RELEVANT_PATHS],
+        capture_output=True,
+        check=False,
+    )
+    if diff_proc.returncode != 0:
+        detail = (diff_proc.stderr or diff_proc.stdout).decode("utf-8", errors="replace").strip()
+        return {"ok": False, "error": detail or "git product-source diff failed"}
+
+    untracked_proc = subprocess.run(
+        [
+            "git", "-C", str(root), "ls-files", "--others", "--exclude-standard", "-z", "--",
+            *PRODUCT_BINARY_RELEVANT_PATHS,
+        ],
+        capture_output=True,
+        check=False,
+    )
+    if untracked_proc.returncode != 0:
+        detail = (untracked_proc.stderr or untracked_proc.stdout).decode("utf-8", errors="replace").strip()
+        return {"ok": False, "error": detail or "git product-source listing failed"}
+
+    source = bytearray(b"caol-product-source-binding-v1\0")
+    source.extend(diff_proc.stdout)
+    untracked_paths = [
+        entry.decode("utf-8", errors="surrogateescape")
+        for entry in untracked_proc.stdout.split(b"\0") if entry
+    ]
+    for relative in sorted(untracked_paths):
+        path = root / relative
+        try:
+            source.extend(relative.encode("utf-8", errors="surrogateescape"))
+            source.extend(b"\0")
+            source.extend(path.read_bytes())
+            source.extend(b"\0")
+        except OSError as exc:
+            return {"ok": False, "error": f"unreadable product-source input {relative}: {exc}"}
+    return {
+        "ok": True,
+        "sha256": hashlib.sha256(source).hexdigest(),
+        "untracked_paths": untracked_paths,
+    }
+
+
+def product_build_receipt_path(executable: Path) -> Path:
+    """Return the local, disposable receipt for an explicitly built binary."""
+    executable_path = Path(executable).resolve()
+    # The basename alone is not an executable identity: isolated curses builds
+    # commonly all produce ``cataclysm``.  Keep established named products
+    # readable, while making their receipt namespace path-specific.
+    path_identity = hashlib.sha256(str(executable_path).encode("utf-8")).hexdigest()[:16]
+    return repo_root() / ".userdata" / "openclaw_harness" / "source_bindings" / (
+               f"{executable_path.name}-{path_identity}.json"
+           )
+
+
+def _current_product_build_receipt(executable: Path) -> Tuple[Dict[str, Any], str]:
+    """Load and validate the build receipt without granting it any inference."""
+    receipt_path = product_build_receipt_path(executable)
+    try:
+        payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+    except OSError as exc:
+        return {}, f"product build receipt is unavailable: {exc}"
+    except json.JSONDecodeError as exc:
+        return {}, f"product build receipt is malformed: {exc}"
+    if not isinstance(payload, dict) or payload.get("schema") != PRODUCT_BUILD_RECEIPT_SCHEMA:
+        return {}, "product build receipt has an unsupported schema"
+    return payload, ""
+
+
 def executable_source_readiness(
     executable: Path,
     *,
@@ -1719,13 +1852,25 @@ def executable_source_readiness(
     elif not comparison_error:
         comparison_error = "compiled source identity is absent from executable --version output"
 
-    ready = bool(
+    baseline_ready = bool(
         captured_head and not comparison_error and
         not committed_changes and not worktree_changes
     )
+    receipt, receipt_error = _current_product_build_receipt(executable_path)
+    product_binding = product_source_binding()
+    executable_sha256, executable_error = sha256_file(executable_path)
+    receipt_ready = bool(
+        captured_head and not comparison_error and not committed_changes and worktree_changes and
+        not receipt_error and product_binding.get("ok") and not executable_error and
+        receipt.get("executable_path") == str(executable_path) and
+        receipt.get("executable_sha256") == executable_sha256 and
+        receipt.get("captured_head") == captured_head and
+        receipt.get("product_source_sha256") == product_binding.get("sha256")
+    )
+    ready = baseline_ready or receipt_ready
     if ready:
         status = "ready"
-        reason = "source_matching_executable"
+        reason = "source_matching_executable" if baseline_ready else "receipt_bound_dirty_product_build"
         next_action = "continue with the current registry query"
         evidence_ceiling = "requested run ceiling"
     elif isolated_harness_diagnosis:
@@ -1754,6 +1899,11 @@ def executable_source_readiness(
         "binary_relevant_committed_changes": committed_changes,
         "binary_relevant_worktree_changes": worktree_changes,
         "comparison_error": comparison_error,
+        "product_build_receipt": {
+            "path": str(product_build_receipt_path(executable_path)),
+            "status": "matched" if receipt_ready else "not_used" if baseline_ready else "unmatched",
+            "error": receipt_error or str(product_binding.get("error", "")) or executable_error,
+        },
     }
 
 
@@ -1799,6 +1949,20 @@ def build_runtime_binding(executable: Path) -> Dict[str, Any]:
         "runtime_relevant_worktree_diff": list(source.get("worktree_changes", [])),
         "untracked_runtime_paths": list(source.get("untracked_paths", [])),
     }
+
+
+def live_witness_source_identity(runtime_binding: Any) -> str:
+    """Return the frozen worktree source identity for a live evidence journal.
+
+    Scenario bytes remain independently sealed by the registry authority and
+    ``scenario_id``.  A paired journal instead needs the source that produced
+    both live runs, which is the runtime binding's worktree digest rather than
+    either scenario manifest's necessarily different digest.
+    """
+    if not isinstance(runtime_binding, Mapping):
+        return ""
+    source_identity = str(runtime_binding.get("runtime_source_sha256", "")).strip().lower()
+    return source_identity if re.fullmatch(r"[0-9a-f]{64}", source_identity) else ""
 
 
 def compare_runtime_binding(binding: Any) -> Dict[str, Any]:
@@ -1984,7 +2148,11 @@ def validate_registry_launch_receipt_before_launch(
                 "source_path": selection.source_path,
                 "runtime_binding": comparison,
             }
-        selection = reload_selection_token_for_launch(connection, token_id)
+        witness_charter = receipt.get("witness_charter")
+        selection = reload_selection_token_for_launch(
+            connection, token_id,
+            witness_charter=witness_charter if isinstance(witness_charter, Mapping) else None,
+        )
         if not selection.accepted:
             return {
                 "status": "rejected",
@@ -2008,6 +2176,19 @@ def validate_registry_launch_receipt_before_launch(
                 current_source_path=selection.source_path,
             )
         expected_executable = str(runtime_binding.get("executable_path", "")).strip()
+        # R-027 has an intentionally stronger launch boundary.  A receipt for
+        # its scenario must retain the registered name/path/digest controls;
+        # an otherwise valid token cannot substitute the shared executable.
+        scenario = load_scenario(selection.scenario)
+        if "r027_isolated_launch" in scenario:
+            from r027_isolated_launch import R027IsolatedLaunchError, select_r027_isolated_executable
+            try:
+                isolated = select_r027_isolated_executable(scenario, repository=repo_root())
+            except R027IsolatedLaunchError as exc:
+                return reject("r027_named_runtime_rejected", error=str(exc))
+            if receipt.get("isolated_runtime") != isolated or \
+                    expected_executable != isolated["executable_path"]:
+                return reject("r027_named_runtime_receipt_mismatch")
         if not expected_executable or Path(expected_executable).resolve() != executable.resolve():
             return reject(
                 "runtime_executable_changed",
@@ -2930,6 +3111,7 @@ def build_plan(
     harness_new_world: str = "",
     harness_raw_seed: str = "",
     harness_bandit_feasibility: bool = False,
+    explicit_executable: str = "",
 ) -> StartupPlan:
     plan_harness_world = ""
     plan_harness_seed = ""
@@ -2958,7 +3140,7 @@ def build_plan(
     plan = StartupPlan(
         profile=profile,
         userdir=str(userdir_for_profile(profile)),
-        executable=str(detect_executable()),
+        executable=str(Path(explicit_executable).resolve()) if explicit_executable else str(detect_executable()),
         strategy=strategy,
         reason=reason,
         target_world=target_world,
@@ -2985,6 +3167,96 @@ def asdict_world(world: WorldInfo) -> Dict[str, Any]:
 def write_json(path: Path, data: Dict[str, Any]) -> None:
     ensure_dir(path.parent)
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+
+
+def seal_r027_signal_cleanup_sidecar(run_dir: Path, cleanup: Mapping[str, Any]) -> None:
+    """Persist only an exact certification cleanup binding for R-027 reads.
+
+    The producer may emit observations during a live process, but the receipt
+    consumer remains fail-closed until the same process/lease records cleanup.
+    Ordinary legacy cleanup has no lease and intentionally receives no sidecar.
+    """
+    process_path = Path(run_dir) / "process.json"
+    try:
+        process = json.loads(process_path.read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return
+    if not isinstance(process, dict):
+        return
+    lease = process.get("certification_lease")
+    pid = process.get("pid")
+    cleanup_pid = cleanup.get("pid")
+    cleanup_token = str(lease.get("cleanup_token", "")).strip() if isinstance(lease, Mapping) else ""
+    if not isinstance(lease, Mapping) or not str(lease.get("lease_id", "")).strip() or not cleanup_token or \
+            isinstance(pid, bool) or not isinstance(pid, int) or \
+            isinstance(cleanup_pid, bool) or cleanup_pid != pid:
+        return
+    process["cleanup"] = {
+        "lease_id": str(lease["lease_id"]), "pid": pid,
+        "status": str(cleanup.get("status", "")),
+        "owner": "certification_process_lease",
+        "cleanup_token": cleanup_token,
+    }
+    write_json(process_path, process)
+
+
+def finalize_failed_certification_start(
+    certification_lease: Optional[Dict[str, Any]], run_dir: Path,
+) -> Dict[str, Any]:
+    """Close a failed start only through its persisted exact lease receipt.
+
+    There is no PID/name fallback.  Repeating this is safe because the lease
+    owner records an already-exited process without signalling it.
+    """
+    if certification_lease is None:
+        return {"status": "not_certification"}
+    cleanup = release_certification_lease_handle(
+        certification_lease["connection"], manifest=certification_lease["manifest"],
+        lease=certification_lease["lease"], inspector=certification_lease["inspector"],
+    )
+    seal_r027_signal_cleanup_sidecar(run_dir, cleanup)
+    certification_lease["connection"].close()
+    certification_lease["finalized"] = True
+    return cleanup
+
+
+def finalize_bound_certification_process(
+    run_dir: Path,
+    pid: int,
+    *,
+    registry_path: str,
+    manifest_path: str,
+) -> Dict[str, Any]:
+    """Request cleanup only through the exact persisted certification lease.
+
+    A deliberately renamed isolated game executable must not fall through to
+    legacy filename classification.  The lease binds its PID, executable bytes,
+    birth identity, world, and cleanup token, and records ``exit_unobserved``
+    until its exact process is actually gone.
+    """
+    try:
+        process = json.loads((run_dir / "process.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError) as exc:
+        return {"status": "rejected_missing_process_receipt", "pid": pid, "error": str(exc)}
+    lease = process.get("certification_lease") if isinstance(process, Mapping) else None
+    stored_pid = process.get("pid") if isinstance(process, Mapping) else None
+    if not isinstance(lease, Mapping) or isinstance(stored_pid, bool) or stored_pid != pid:
+        return {"status": "rejected_unbound_cleanup_pid", "pid": pid}
+    try:
+        manifest = load_certification_manifest(manifest_path)
+        connection = open_registry(registry_path)
+    except (CertificationLeaseError, OSError, ValueError) as exc:
+        return {"status": "rejected_cleanup_lease_unavailable", "pid": pid, "error": str(exc)}
+    try:
+        cleanup = release_certification_lease_handle(
+            connection, manifest=manifest, lease=lease, inspector=SystemProcessInspector(),
+        )
+    finally:
+        connection.close()
+    cleanup = dict(cleanup)
+    cleanup["pid"] = pid
+    seal_r027_signal_cleanup_sidecar(run_dir, cleanup)
+    return cleanup
 
 
 def missing_peekaboo_capabilities(payload: Dict[str, Any], required_names: Sequence[str]) -> List[Dict[str, Any]]:
@@ -3232,11 +3504,20 @@ def is_printable_text_key(key: str) -> bool:
 
 def peekaboo_hotkey(
     pid: int, keys: str, hold_ms: int = 50, *, focus_pid: bool = True,
+    transport: str = "input",
 ) -> None:
     args = ["hotkey", "--keys", keys, "--pid", str(pid), "--hold-duration", str(hold_ms)]
     if not focus_pid:
         args.append("--no-auto-focus")
-    cmd = peekaboo_command(args, channel="input")
+    if transport == "input":
+        cmd = peekaboo_command(args, channel="input")
+    elif transport == "bridge":
+        cmd = [peekaboo_binary(), *args]
+        bridge_socket = os.environ.get(PEEKABOO_BRIDGE_SOCKET_ENV, "").strip()
+        if bridge_socket:
+            cmd.extend(["--bridge-socket", bridge_socket])
+    else:
+        raise ValueError(f"Unsupported Peekaboo hotkey transport: {transport}")
     run_peekaboo_interaction(pid, cmd, focus_pid=focus_pid)
 
 
@@ -3773,9 +4054,10 @@ def activity_query_effective_trace_start_offset(
 
 
 def recover_adaptive_activity_distraction(
-    *, pid: int, action_trace_log: Path, trace_start_offset: int, delay_ms: int,
+    *, pid: int, run_dir: Path, profile: str, run_id: str, session_id: str,
+    action_trace_log: Path, trace_start_offset: int, delay_ms: int,
 ) -> Dict[str, Any]:
-    """Resume one native-traced activity distraction only with its bound return."""
+    """Resume one traced activity distraction through its active semantic prompt."""
     effective_trace_start = activity_query_effective_trace_start_offset(
         action_trace_log, trace_start_offset,
     )
@@ -3794,7 +4076,38 @@ def recover_adaptive_activity_distraction(
     issuing_open_offset = int(active.get("event_offset", -1))
     if issuing_open_offset < effective_trace_start:
         return {"status": "blocked_activity_distraction_unbound", "active": active}
-    peekaboo_press_sequence(pid, ["I"], delay_ms=delay_ms)
+
+    try:
+        _, owned_trace = refresh_semantic_step_trace(
+            profile=profile, run_dir=run_dir, run_id=run_id,
+            start_offset=trace_start_offset,
+        )
+        events, status = read_semantic_step_trace( owned_trace, run_dir, run_id )
+        frame = next(( event for event in reversed( events )
+                       if event.get( "event" ) == "surface_descriptor" ), None)
+    except ValueError:
+        return {"status": "blocked_activity_distraction_semantic_frame_missing", "active": active}
+    if not isinstance( frame, Mapping ) or frame.get("kind") != "prompt":
+        return {"status": "blocked_activity_distraction_semantic_owner_missing", "active": active,
+                "frame": frame}
+    ignore_stable_id = next((
+        str(action.get("stable_id", "")) for action in frame.get("valid_actions", [])
+        if isinstance(action, Mapping) and action.get("id") == "prompt.choose" and
+        str(action.get("label", "")) == "IGNORE"
+    ), "")
+    if not ignore_stable_id:
+        return {"status": "blocked_activity_distraction_ignore_unadvertised", "active": active,
+                "frame": frame}
+    semantic_receipt = execute_semantic_act(
+        run_dir=run_dir, profile=profile, run_id=run_id,
+        trace_start_offset=trace_start_offset, pid=pid, session_id=session_id,
+        frame_id=str(frame.get("frame_id", "")), action_id="prompt.choose",
+        stable_id=ignore_stable_id, transition_timeout_seconds=10.0,
+        observe_interval_seconds=max(delay_ms / 1000.0, 0.05), observed_frame=frame,
+    )
+    if semantic_receipt.get("accepted") is not True:
+        return {"status": "blocked_activity_distraction_semantic_rejected", "active": active,
+                "semantic_receipt": semantic_receipt}
     receipt = read_latest_activity_query_trace(
         action_trace_log, effective_trace_start, issuing_open_offset,
     )
@@ -3809,9 +4122,10 @@ def recover_adaptive_activity_distraction(
     return {
         "status": "recovered",
         "action_id": "activity.ignore",
-        "provenance": "native_activity_distraction_query_trace",
+        "provenance": "native_semantic_activity_prompt_and_query_trace",
         "active": active,
         "receipt": receipt,
+        "semantic_receipt": semantic_receipt,
     }
 
 
@@ -4027,8 +4341,23 @@ def read_latest_activity_query_trace(
     return latest
 
 
-def semantic_step_source_trace(profile: str) -> Path:
+def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> Path:
+    if run_dir is not None:
+        native_trace = Path(run_dir) / "semantic.native.events.jsonl"
+        if native_trace.exists():
+            return native_trace
     return config_dir_for_profile(resolve_profile_name(profile)) / "debug.log"
+
+
+def decode_semantic_step_event(payload: bytes) -> Mapping[str, Any]:
+    """Decode one native event before DebugLog's following record, if any."""
+    text = payload.decode("utf-8")
+    event, end = json.JSONDecoder().raw_decode(text)
+    if text[end:].strip():
+        raise ValueError("semantic trace event has unexpected trailing data")
+    if not isinstance(event, Mapping):
+        raise ValueError("semantic trace event is not an object")
+    return event
 
 
 def compact_semantic_step_channel_event(event: Mapping[str, Any]) -> Dict[str, Any]:
@@ -4057,13 +4386,77 @@ def compact_semantic_step_channel_event(event: Mapping[str, Any]) -> Dict[str, A
     return compact
 
 
+def compact_historical_world_render_payload(event: Mapping[str, Any]) -> Dict[str, Any]:
+    """Remove only superseded render maps from an already-observed World frame.
+
+    A focused World/child/World transcript needs the complete latest World
+    descriptor for the next native request.  Earlier World descriptors remain
+    useful as ownership, message, local-visibility, and receipt evidence, but
+    their minimap and overmap strings are renderer payload duplicated by the
+    current World descriptor.  Keeping every duplicate can exceed the bounded
+    run channel after a successful child-return chain.  This compacts the
+    harness-owned copy only; the native debug trace and the per-transaction
+    observation artifact retain the original complete descriptors.
+    """
+    compact = dict(event)
+    if str(event.get("event", "")) != "surface_descriptor" or \
+            str(event.get("kind", "")) != "world":
+        return compact
+    payload = event.get("payload")
+    if not isinstance(payload, Mapping):
+        return compact
+    compact_payload = dict(payload)
+    for key in ("messages", "minimap", "overmap", "visible_local", "visible_entities", "visible_zones"):
+        compact_payload.pop(key, None)
+    compact["payload"] = compact_payload
+    return compact
+
+
+def compact_historical_surface_descriptor(event: Mapping[str, Any]) -> Dict[str, Any]:
+    """Keep ownership history while dropping superseded action inventories.
+
+    A surface descriptor is authoritative only while it is the latest native
+    frame.  Earlier descriptors still establish the receipt succession and
+    owner stack, while their full action lists remain available in each
+    immutable game-act artifact and in the native debug trace.  Retaining
+    those repeated lists can exhaust the bounded channel before a derived
+    child can be safely closed.
+    """
+    if str(event.get("event", "")) != "surface_descriptor":
+        return dict(event)
+    compact = dict(event)
+    compact["valid_actions"] = []
+    return compact
+
+
+def compact_current_surface_descriptor_payload(event: Mapping[str, Any]) -> Dict[str, Any]:
+    """Preserve the active owner and actions when native render payload is oversized.
+
+    The bounded live channel dispatches only from the descriptor's run, owner,
+    frame, and advertised actions.  World render payload belongs to the
+    immutable native trace and transaction artifact; retaining it here can
+    prevent an otherwise actionless incomplete owner from publishing its stop.
+    """
+    if str(event.get("event", "")) != "surface_descriptor":
+        return dict(event)
+    compact = dict(event)
+    payload = event.get("payload")
+    if not isinstance(payload, Mapping):
+        return compact
+    compact_payload = dict(payload)
+    for key in ("messages", "minimap", "overmap", "visible_local", "visible_entities", "visible_zones"):
+        compact_payload.pop(key, None)
+    compact["payload"] = compact_payload
+    return compact
+
+
 def refresh_semantic_step_trace(
     *, profile: str, run_dir: Path, run_id: str, start_offset: int,
     event_filter: Optional[Set[str]] = None,
 ) -> tuple[Path, Path]:
     """Copy only the current run's bounded native trace into its owned artifact."""
     run_dir = Path(run_dir).resolve()
-    source = semantic_step_source_trace(profile).resolve()
+    source = semantic_step_source_trace(profile, run_dir).resolve()
     size = source.stat().st_size
     if start_offset < 0 or start_offset > size:
         # The game can truncate debug.log after the startup readiness sample,
@@ -4075,7 +4468,7 @@ def refresh_semantic_step_trace(
                 raise ValueError("semantic trace start offset is stale")
         start_offset = 0
     marker = SEMANTIC_STEP_PREFIX.encode("utf-8")
-    selected = bytearray()
+    selected_events: list[Dict[str, Any]] = []
     with source.open("rb") as handle:
         handle.seek(start_offset)
         # ``debug.log`` remains hot while the game renders its HUD.  Iterating
@@ -4089,20 +4482,72 @@ def refresh_semantic_step_trace(
                 continue
             payload = raw_line[marker_offset + len(marker):].strip()
             try:
-                event = json.loads(payload)
+                event = decode_semantic_step_event(payload)
             except (TypeError, ValueError, json.JSONDecodeError):
                 continue
             if not isinstance(event, Mapping) or str(event.get("run_id", "")) != str(run_id):
                 continue
             if event_filter is not None and str(event.get("event", "")) not in event_filter:
                 continue
-            compact_event = compact_semantic_step_channel_event(event)
-            compact_line = (
-                SEMANTIC_STEP_PREFIX + json.dumps(compact_event, separators=(",", ":")) + "\n"
-            ).encode("utf-8")
-            selected.extend(compact_line)
-            if len(selected) > SEMANTIC_STEP_MAX_BYTES:
-                raise ValueError("semantic events exceed the bounded run channel")
+            selected_events.append(compact_semantic_step_channel_event(event))
+
+    def encode(events: Sequence[Mapping[str, Any]]) -> bytes:
+        return b"".join(
+                   (
+                       SEMANTIC_STEP_PREFIX + json.dumps(event, separators=(",", ":")) + "\n"
+                   ).encode("utf-8") for event in events
+               )
+
+    # The immutable native trace retains the complete current-run history.
+    # The file bridge needs only a bounded suffix ending in the active owner;
+    # apply that event bound before byte compaction so a sequence of ordinary
+    # native moves cannot make its next descriptor undispatchable.
+    if len(selected_events) > SEMANTIC_STEP_MAX_EVENTS:
+        selected_events = selected_events[-SEMANTIC_STEP_MAX_EVENTS:]
+
+    selected = encode(selected_events)
+    if len(selected) > SEMANTIC_STEP_MAX_BYTES:
+        # Preserve the newest complete World descriptor—the only one that can
+        # receive the next native request—and compact render-only data from
+        # older World observations.  Their full native records remain in
+        # debug.log and in their immutable game-act transaction artifact.
+        latest_world_index = max(
+            (index for index, event in enumerate(selected_events)
+             if event.get("event") == "surface_descriptor" and event.get("kind") == "world"),
+            default=-1,
+        )
+        selected_events = [
+            compact_historical_world_render_payload(event)
+            if index != latest_world_index else event
+            for index, event in enumerate(selected_events)
+        ]
+        selected = encode(selected_events)
+    if len(selected) > SEMANTIC_STEP_MAX_BYTES:
+        latest_descriptor_index = max(
+            (index for index, event in enumerate(selected_events)
+             if event.get("event") == "surface_descriptor"),
+            default=-1,
+        )
+        selected_events = [
+            compact_historical_surface_descriptor(event)
+            if index != latest_descriptor_index else event
+            for index, event in enumerate(selected_events)
+        ]
+        selected = encode(selected_events)
+    if len(selected) > SEMANTIC_STEP_MAX_BYTES:
+        latest_descriptor_index = max(
+            (index for index, event in enumerate(selected_events)
+             if event.get("event") == "surface_descriptor"),
+            default=-1,
+        )
+        selected_events = [
+            compact_current_surface_descriptor_payload(event)
+            if index == latest_descriptor_index else event
+            for index, event in enumerate(selected_events)
+        ]
+        selected = encode(selected_events)
+    if len(selected) > SEMANTIC_STEP_MAX_BYTES:
+        raise ValueError("semantic events exceed the bounded run channel")
     owned = run_dir / "semantic.native.log"
     owned.write_bytes(selected)
     return source, owned
@@ -4165,7 +4610,7 @@ def semantic_step_frame_source_offset(
                 if marker_offset >= 0:
                     payload = raw_line[marker_offset + len(marker):].strip()
                     try:
-                        event = json.loads(payload)
+                        event = decode_semantic_step_event(payload)
                     except (TypeError, ValueError, json.JSONDecodeError):
                         event = None
                     if isinstance(event, Mapping) and event.get("frame_id") == frame_id:
@@ -4202,6 +4647,94 @@ def current_semantic_step_frame(
             # system: the filtered run-owned copy omits intervening native
             # output and therefore cannot prove a fresh activity return.
             native["_event_offset"] = source_offset
+    if native is not None and native.get("event") == "surface_descriptor":
+        # A duration dispatch can publish a World descriptor immediately after
+        # its raw activity frame.  The descriptor remains the sole action
+        # owner, but the adjacent raw frame still owns whether that action is
+        # blocked pending completion.  Retain only a directly adjacent,
+        # same-run raw frame; an older activity must never be borrowed.
+        _, complete_owned = refresh_semantic_step_trace(
+            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
+        )
+        complete_events, complete_status = read_semantic_step_trace(
+            complete_owned, Path(run_dir), run_id)
+        if complete_status == "ok":
+            descriptor_frame_id = str(native.get("frame_id", "")).strip()
+            for index, candidate in enumerate(complete_events):
+                if str(candidate.get("event", "")) != "surface_descriptor" or \
+                        str(candidate.get("frame_id", "")).strip() != descriptor_frame_id:
+                    continue
+                if index + 1 < len(complete_events):
+                    successor = complete_events[index + 1]
+                    if str(successor.get("event", "")) == "frame" and \
+                            str(successor.get("run_id", "")).strip() == run_id and \
+                            successor.get("state") == "world" and native.get("kind") == "world":
+                        successor_frame_id = str(successor.get("frame_id", ""))
+                        successor_offset = semantic_step_frame_source_offset(
+                            source, start_offset=0, frame_id=successor_frame_id,
+                        )
+                        native.update({
+                            "dispatch_descriptor_event_offset": native.get("_event_offset", -1),
+                            "game_minutes": successor.get("game_minutes"),
+                            "observed_turn": successor.get("observed_turn"),
+                            "observation": dict(successor.get("observation", {})),
+                            "keep_watch_safety": dict(successor.get("keep_watch_safety", {})),
+                            "paired_raw_frame_id": successor_frame_id,
+                            "paired_raw_state": "world",
+                            "paired_raw_event_offset": successor_offset,
+                            "_event_offset": successor_offset,
+                        })
+                        break
+                if index > 0:
+                    predecessor = complete_events[index - 1]
+                    if str(predecessor.get("event", "")) == "frame" and \
+                            str(predecessor.get("run_id", "")).strip() == run_id and \
+                            str(predecessor.get("state", "")) in {
+                                "wait_activity", "wait_activity_complete", "activity_resumed",
+                            }:
+                        native.update({
+                            "paired_raw_frame_id": str(predecessor.get("frame_id", "")),
+                            "paired_raw_state": str(predecessor.get("state", "")),
+                            "paired_raw_event_offset": predecessor.get("_event_offset", -1),
+                        })
+                break
+    if native is not None and native.get("event") == "frame" and \
+            native.get("state") == "world":
+        # A cursor can legitimately resume after a World descriptor and land
+        # on its same-cycle compatibility frame.  Re-read the immutable
+        # current-run trace only to recover that immediately preceding owner;
+        # never infer a parent from an earlier cycle or a different run.
+        _, complete_owned = refresh_semantic_step_trace(
+            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
+        )
+        complete_events, complete_status = read_semantic_step_trace(
+            complete_owned, Path(run_dir), run_id)
+        if complete_status == "ok":
+            raw_frame_id = str(native.get("frame_id", "")).strip()
+            for index, candidate in enumerate(complete_events):
+                if str(candidate.get("event", "")) != "frame" or \
+                        str(candidate.get("frame_id", "")).strip() != raw_frame_id:
+                    continue
+                if index == 0:
+                    break
+                descriptor = complete_events[index - 1]
+                if str(descriptor.get("event", "")) != "surface_descriptor" or \
+                        str(descriptor.get("run_id", "")).strip() != run_id or \
+                        descriptor.get("kind") != "world":
+                    break
+                paired = dict(descriptor)
+                paired.update({
+                    "game_minutes": native.get("game_minutes"),
+                    "observed_turn": native.get("observed_turn"),
+                    "observation": dict(native.get("observation", {})),
+                    "keep_watch_safety": dict(native.get("keep_watch_safety", {})),
+                    "state": "world",
+                    "_event_offset": native.get("_event_offset", -1),
+                    "paired_raw_frame_id": raw_frame_id,
+                    "paired_raw_event_offset": native.get("_event_offset", -1),
+                })
+                native = paired
+                break
     latest_activity = read_latest_activity_query_trace(source, start_offset)
     active_activity = read_active_activity_query_trace(source, start_offset)
     if native is not None and active_activity is not None and \
@@ -4245,6 +4778,20 @@ def current_semantic_step_frame(
     if latest_activity is not None and latest_activity.get("event") == "return" and \
             activity_offset > native_offset and \
             (native is None or native.get("state") != "world"):
+        # A generic activity prompt can leave its last production descriptor
+        # behind after the game has already emitted the resumed World frame.
+        # The descriptor is no longer an active owner after the return, so do
+        # not turn that newer native World frame into an actionless marker.
+        resumed_world = next(( dict( event ) for event in reversed( events )
+                               if event.get("event") == "frame" and
+                               event.get("state") == "world" ), None)
+        if resumed_world is not None:
+            resumed_offset = semantic_step_frame_source_offset(
+                                 source, start_offset=start_offset,
+                                 frame_id=str( resumed_world.get("frame_id", "") ) )
+            if resumed_offset > activity_offset:
+                resumed_world["_event_offset"] = resumed_offset
+                return resumed_world
         return {
             "run_id": run_id,
             "frame_id": f"{run_id}:activity-return:{activity_offset}",
@@ -4298,6 +4845,26 @@ def current_semantic_step_frame(
         }
     if native is None:
         raise ValueError("the current run has not emitted a semantic frame")
+    if native.get( "game_minutes" ) is None:
+        # Surface descriptors deliberately carry only their owner payload.
+        # The adjacent run-bound native frame is the established authoritative
+        # clock source for a bounded cadence transaction.
+        game_minutes = latest_semantic_game_minutes( events )
+        if game_minutes is None:
+            # The live service advances its cursor after an observed surface.
+            # A descriptor published after its companion frame therefore has
+            # no clock in the unconsumed suffix.  Re-read the owned run from
+            # its origin; ``read_semantic_step_trace`` still filters by the
+            # bound run ID, so another run can never supply this authority.
+            _, complete_owned = refresh_semantic_step_trace(
+                                    profile=profile, run_dir=run_dir,
+                                    run_id=run_id, start_offset=0 )
+            complete_events, complete_status = read_semantic_step_trace(
+                                                complete_owned, Path( run_dir ), run_id )
+            if complete_status == "ok":
+                game_minutes = latest_semantic_game_minutes( complete_events )
+        if game_minutes is not None:
+            native["game_minutes"] = game_minutes
     native["provenance"] = "native_semantic_step_trace"
     native["_kind"] = "semantic_step"
     return native
@@ -4342,7 +4909,7 @@ def open_cockpit_game_service(
     latest_frame: Dict[str, Mapping[str, Any]] = {}
 
     def read_frame() -> Mapping[str, Any]:
-        source = semantic_step_source_trace(profile)
+        source = semantic_step_source_trace(profile, run_dir)
         cursor = semantic_step_effective_source_offset(
             source, int(semantic_cursor["offset"]),
         )
@@ -4360,6 +4927,13 @@ def open_cockpit_game_service(
             if str(exc) == "the current run has not emitted a semantic frame" and latest_frame:
                 return dict(latest_frame["value"])
             raise
+        # A stale activity trace may be more recent in debug.log than the
+        # descriptor that already authorized the last finite world action.
+        # It is useful as observation context, but it must not erase that
+        # current native owner and strand a valid follow-up action behind a
+        # synthetic descriptor-required error.
+        if frame.get("event") != "surface_descriptor" and latest_frame:
+            return dict(latest_frame["value"])
         frame_offset = frame.get("_event_offset")
         if isinstance(frame_offset, int) and frame_offset >= 0:
             # ``current_semantic_step_frame`` locates a frame at the byte that
@@ -4382,26 +4956,72 @@ def open_cockpit_game_service(
         deadline = time.monotonic() + transition_timeout_seconds
         while time.monotonic() <= deadline:
             frame = read_frame()
-            if str(frame.get("frame_id", "")) != activity_frame_id:
+            if str(frame.get("paired_raw_frame_id", frame.get("frame_id", ""))) != activity_frame_id:
                 return
             time.sleep(observe_interval_seconds)
         raise ValueError("native wait completion did not emit a successor frame")
 
     dispatch = None
     if pid is not None and pid > 0 and session_id:
-        def dispatch(frame: Mapping[str, Any], action_id: str) -> Mapping[str, Any]:
-            return execute_semantic_act(
+        def dispatch(
+            frame: Mapping[str, Any], action_id: str, stable_id: Optional[str] = None,
+            parameters: Optional[Mapping[str, str]] = None,
+        ) -> Mapping[str, Any]:
+            outcome = execute_semantic_act(
                 run_dir=run_dir, profile=profile, run_id=run_id,
-                trace_start_offset=int(semantic_cursor["offset"]), pid=pid, session_id=session_id,
+                trace_start_offset=int(frame.get(
+                    "dispatch_descriptor_event_offset", semantic_cursor["offset"]
+                )), pid=pid, session_id=session_id,
                 frame_id=str(frame.get("frame_id", "")), action_id=action_id,
                 transition_timeout_seconds=transition_timeout_seconds,
                 observe_interval_seconds=observe_interval_seconds, observed_frame=frame,
+                stable_id=stable_id, parameters=parameters,
+                proof_step_label=proof_step_label, proof_step_index=proof_step_index,
+            )
+            successor = outcome.get("next_frame") if isinstance(outcome, Mapping) else None
+            if outcome.get("accepted") is True and isinstance(successor, Mapping):
+                # The native receipt already bound this exact successor to the
+                # consumed frame.  Retain it as the next observer state, so a
+                # later empty trace window cannot fall back to the consumed
+                # parent descriptor.
+                latest_frame["value"] = dict(successor)
+                successor_offset = successor.get("_event_offset")
+                if isinstance(successor_offset, int) and successor_offset >= 0:
+                    source = semantic_step_source_trace(profile, run_dir)
+                    try:
+                        with source.open("rb") as source_file:
+                            source_file.seek(successor_offset)
+                            semantic_cursor["offset"] = successor_offset + len(source_file.readline())
+                    except OSError:
+                        semantic_cursor["offset"] = successor_offset + 1
+            return outcome
+
+    player_fire_setup = None
+    if pid is not None and pid > 0 and session_id:
+        def player_fire_setup(frame: Mapping[str, Any]) -> Mapping[str, Any]:
+            return execute_r008_normal_player_fire_setup(
+                run_dir=run_dir, profile=profile, run_id=run_id,
+                trace_start_offset=int(semantic_cursor["offset"]), pid=pid,
+                issuing_frame=frame,
             )
 
     binding_path = Path( run_dir ) / RUNTIME_BINDING_FILENAME
-    binding_id = sha256_file( binding_path )[0] if binding_path.is_file() else ""
+    runtime_binding_id = sha256_file( binding_path )[0] if binding_path.is_file() else ""
+    bridge_binding_id = os.environ.get( "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "" ).strip()
+
+    # A file-backed live cockpit has one registry-issued bridge identity.  The
+    # runtime-binding file remains evidence, but using its content hash as the
+    # controller identity splits a descriptor from the request envelope and
+    # makes every otherwise-current frame stale before native dispatch.
+    binding_id = cockpit_controller_binding_id(
+        live_session=live_session,
+        bridge_binding_id=bridge_binding_id,
+        runtime_binding_id=runtime_binding_id,
+    )
 
     def read_binding_id() -> str:
+        if live_session and bridge_binding_id:
+            return bridge_binding_id
         return sha256_file( binding_path )[0] if binding_path.is_file() else ""
 
     def mutate_binding_for_control() -> Mapping[str, Any]:
@@ -4442,10 +5062,12 @@ def open_cockpit_game_service(
     if live_session:
         if pid is None or pid <= 0:
             raise ValueError( "a live cockpit session requires its owned game pid" )
+        final_path = cockpit_live_final_path( Path( run_dir ), proof_step_label )
 
         def finalizer(report: Mapping[str, Any]) -> Mapping[str, Any]:
             return finalize_cockpit_live_session(
                 Path( run_dir ), pid, report, cleanup_process=cleanup_on_finish,
+                final_path=final_path,
             )
 
     channel = CockpitRunChannel(
@@ -4465,10 +5087,33 @@ def open_cockpit_game_service(
         witness_identity=witness_identity,
         witness_evidence_ceiling=witness_evidence_ceiling,
         causal_boundary_precondition=causal_boundary_precondition,
+        dispatch_player_fire_setup=player_fire_setup,
     )
     service = CockpitService( run_channel=channel, allowed_live_operations=allowed_live_operations )
     service.live_channel = channel
     return service
+
+
+def cockpit_controller_binding_id(
+    *, live_session: bool, bridge_binding_id: str, runtime_binding_id: str,
+) -> str:
+    """Choose the one authority that may own a live cockpit frame."""
+    if live_session and bridge_binding_id:
+        return bridge_binding_id
+    return runtime_binding_id
+
+
+def native_child_binding_id( *, live_session: bool, bridge_binding_id: str,
+                             runtime_binding_id: str ) -> str:
+    """Keep native R-027 receipts on the live controller's exact binding."""
+    binding = cockpit_controller_binding_id(
+        live_session=live_session,
+        bridge_binding_id=bridge_binding_id,
+        runtime_binding_id=runtime_binding_id,
+    )
+    if live_session and bridge_binding_id and binding != bridge_binding_id:
+        raise ValueError( "live native binding does not match bridge binding" )
+    return binding
 
 
 def _read_jsonl_objects(path: Path) -> List[Dict[str, Any]]:
@@ -4489,6 +5134,24 @@ def compact_cockpit_live_evidence(
     run_dir: Path, run_id: str, *, profile: str = "", pid: int = 0,
 ) -> Dict[str, Any]:
     """Return bounded semantic facts, never raw logs, for one live decision."""
+    from r008_indoor_channel_observation import read_r008_indoor_channel_observation
+
+    runtime_binding: Dict[str, Any] = {}
+    try:
+        candidate_binding = json.loads(
+            (Path( run_dir ) / RUNTIME_BINDING_FILENAME).read_text(encoding="utf-8")
+        )
+        if isinstance(candidate_binding, Mapping):
+            runtime_binding = dict(candidate_binding)
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        pass
+    channel_observation = read_r008_indoor_channel_observation(
+        Path( run_dir ), run_id=run_id,
+        source_sha256=str(runtime_binding.get("runtime_source_sha256", "")),
+        executable_sha256=str(runtime_binding.get("executable_sha256", "")),
+        binding_id=(sha256_file(Path( run_dir ) / RUNTIME_BINDING_FILENAME)[0]
+                    if (Path( run_dir ) / RUNTIME_BINDING_FILENAME).is_file() else ""),
+    )
     receipts = [
         item for item in _read_jsonl_objects( run_dir / "semantic.steps.jsonl" )
         if str( item.get( "run_id", "" ) ) == str( run_id )
@@ -4563,15 +5226,25 @@ def compact_cockpit_live_evidence(
                if compact_transition is not None else [] ),
         ],
         "scheduler_trace": scheduler_trace,
+        "production_channel_observation": channel_observation,
         "child_resources": child_resources,
     }
 
 
+def cockpit_live_final_path( run_dir: Path, proof_step_label: str = "" ) -> Path:
+    """Return the immutable terminal artifact owned by one declared cockpit step."""
+    label = str( proof_step_label ).strip()
+    if not label:
+        return run_dir / "cockpit.live.final.json"
+    return run_dir / f"{label}.cockpit.live.final.json"
+
+
 def finalize_cockpit_live_session(
     run_dir: Path, pid: int, report: Mapping[str, Any], *, cleanup_process: bool = True,
+    final_path: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Persist one immutable terminal report and clean only the bound process."""
-    final_path = run_dir / "cockpit.live.final.json"
+    final_path = final_path or cockpit_live_final_path( run_dir )
     if final_path.exists():
         return {"cleanup": {"status": "rejected_existing_final_report"}}
     cleanup = cleanup_game_process( pid ) if cleanup_process else {
@@ -4680,27 +5353,6 @@ def await_cockpit_advertised_action(
     }
 
 
-def dispatch_semantic_input(
-    pid: int, binding: str, *, delay_ms: int = 200, focus_once: bool = False,
-) -> None:
-    """Deliver one native semantic binding after its focused text mode is live."""
-    # A text-bound action such as the default wait key arrives as an SDL
-    # keydown followed by SDL_TEXTINPUT.  Let the focused game process its
-    # focus event before the text event, otherwise the keydown can be
-    # interpreted by a stale keycode context (for example main menu) and
-    # the advertised character reaches the wrong native UI.
-    if len(binding) == 1 and is_printable_text_key(binding) and not binding.isalpha():
-        focus = peekaboo_focus_pid(pid)
-        if not focus.get("ok"):
-            raise RuntimeError("Peekaboo semantic text focus failed: " + json.dumps(
-                focus, ensure_ascii=False
-            ))
-        time.sleep(delay_ms / 1000.0)
-        peekaboo_type_text(pid, binding, delay_ms=delay_ms, focus_pid=False)
-        return
-    peekaboo_press_sequence(pid, [binding], delay_ms=delay_ms, focus_once=focus_once)
-
-
 def run_semantic_observe(args: argparse.Namespace) -> int:
     frame = current_semantic_step_frame(
         profile=args.profile, run_dir=Path(args.run_dir), run_id=args.run_id,
@@ -4716,7 +5368,13 @@ def execute_semantic_act(
     pid: int, session_id: str, frame_id: str, action_id: str,
     transition_timeout_seconds: float, observe_interval_seconds: float,
     observed_frame: Optional[Mapping[str, Any]] = None,
+    stable_id: Optional[str] = None,
+    parameters: Optional[Mapping[str, str]] = None,
     delay_ms: int = 200,
+    proof_step_label: str = "",
+    proof_step_index: Optional[int] = None,
+    declared_action_id: Optional[str] = None,
+    allow_terminal_exit: bool = False,
 ) -> Dict[str, Any]:
     """Apply one advertised action from its issuing run-bound frame."""
     run_dir = Path(run_dir).resolve()
@@ -4745,14 +5403,378 @@ def execute_semantic_act(
                 "wait_diagnostic_before_input": diagnostic_before_input,
             }
 
+    latest_frame: Dict[str, Mapping[str, Any]] = {}
+
     def read_frame() -> Mapping[str, Any]:
-        return current_semantic_step_frame(
-            profile=profile, run_dir=run_dir, run_id=run_id,
-            start_offset=trace_start_offset,
-        )
+        try:
+            frame = current_semantic_step_frame(
+                profile=profile, run_dir=run_dir, run_id=run_id,
+                start_offset=trace_start_offset,
+            )
+        except ValueError as exc:
+            # Native input can be accepted before the trace writer publishes
+            # its successor.  Preserve the already observed native frame
+            # while await_transition polls for that fresh successor; do not
+            # tear down the live bridge on this transient trace gap.
+            if str(exc) == "the current run has not emitted a semantic frame" and latest_frame:
+                return dict(latest_frame["value"])
+            raise
+        latest_frame["value"] = dict(frame)
+        return frame
 
     before = dict(observed_frame) if observed_frame is not None else dict(read_frame())
+    # Legacy trace frames carry their private binding directly.  They are not
+    # semantic-surface descriptors and must not require a live semantic trace
+    # merely to take their pre-existing dispatch route.
+    if not before.get("surface_id") and before.get("frame_id") and not before.get("action_inputs"):
+        _, owned = refresh_semantic_step_trace(
+            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
+        )
+        events, trace_status = read_semantic_step_trace(owned, run_dir, run_id)
+        descriptor = next((event for event in reversed(events)
+                           if event.get("event") == "surface_descriptor" and
+                           event.get("frame_id") == before.get("frame_id")), None)
+        if descriptor is not None and trace_status == "ok":
+            before = {**before, **dict(descriptor)}
+    # Cockpit observations intentionally expose a public projection, which
+    # omits the trace-only event tag.  Surface ID plus structured action
+    # descriptors remains the native semantic boundary in both projections.
+    is_surface_descriptor = before.get("event") == "surface_descriptor" or (
+        bool(before.get("surface_id")) and
+        isinstance(before.get("advertised_action_details"), list)
+    )
+    if is_surface_descriptor:
+        descriptor_actions = before.get("valid_actions", [])
+        if not any(isinstance(candidate, Mapping) for candidate in descriptor_actions):
+            descriptor_actions = before.get("advertised_action_details", [])
+        advertised_actions = [candidate for candidate in descriptor_actions if
+                              isinstance(candidate, Mapping) and candidate.get("id") == action_id and
+                              candidate.get("enabled") is True]
+        advertised = bool(advertised_actions)
+        expects_stable_id = any(
+            str(candidate.get("stable_id", "")) and
+            str(candidate.get("stable_id", "")) != action_id
+            for candidate in advertised_actions
+        )
+        stable_id_matches = any(
+            str(candidate.get("stable_id", "")) == str(stable_id)
+            for candidate in advertised_actions
+        ) if stable_id is not None else not expects_stable_id
+        # A frame can legitimately reject one request and remain active for a
+        # different semantic choice.  Keep an exact replay idempotent, but do
+        # not collapse a different stable target or speaker parameter into the
+        # first request for this action.
+        request_identity = json.dumps(
+            {
+                "stable_id": None if stable_id is None else str(stable_id),
+                "parameters": {} if not parameters else
+                {str(key): str(value) for key, value in parameters.items()},
+            }, sort_keys=True, separators=( ",", ":" )
+        )
+        request_id = (
+            f"cockpit:{session_id}:{before.get('frame_id', '')}:{action_id}:"
+            f"{hashlib.sha256( request_identity.encode( 'utf-8' ) ).hexdigest()[:16]}"
+        )
+        request = {
+            "run_id": run_id,
+            "surface_id": str(before.get("surface_id", "")),
+            "frame_id": str(before.get("frame_id", "")),
+            "request_id": request_id,
+            "action_id": action_id,
+        }
+        if stable_id is not None:
+            request["stable_id"] = str(stable_id)
+        if parameters:
+            request["parameters"] = {str(key): str(value) for key, value in parameters.items()}
+        if not advertised:
+            return {"accepted": False, "reason": "unadvertised_action", "surface_request": request}
+        if not stable_id_matches:
+            return {"accepted": False,
+                    "reason": "missing_stable_id" if expects_stable_id and stable_id is None else
+                    "unadvertised_stable_id",
+                    "surface_request": request}
+        request_path = run_dir / "semantic.requests.jsonl"
+        try:
+            with request_path.open("a", encoding="utf-8") as stream:
+                stream.write(json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n")
+                stream.flush()
+                os.fsync(stream.fileno())
+            if os.name != "nt":
+                pipe_contract = semantic_wake_pipe_contract(run_dir, run_id)
+                if pipe_contract["status"] != "bound":
+                    raise OSError("launch-bound anonymous semantic wake pipe is unavailable")
+                bytes_written = write_semantic_wake_pipe(run_dir, run_id)
+                append_semantic_wake_observation(run_dir, {
+                    "schema": "caol-semantic-wake-observation-v1",
+                    "event": "writer_result",
+                    "run_id": run_id,
+                    "request_id": request["request_id"],
+                    "contract": pipe_contract["path"],
+                    "transport": "named_fifo",
+                    "bytes_written": bytes_written if isinstance(bytes_written, int) else None,
+                    "semantic_request_path": str(request_path.resolve()),
+                    "run_dir": str(run_dir.resolve()),
+                    "writer_pid": os.getpid(),
+                })
+        except OSError as exc:
+            append_semantic_wake_observation(run_dir, {
+                "schema": "caol-semantic-wake-observation-v1",
+                "event": "writer_failed",
+                "run_id": run_id,
+                "request_id": request["request_id"],
+                "contract": str(semantic_wake_pipe_contract_path(run_dir)),
+                "transport": "named_fifo",
+                "semantic_request_path": str(request_path.resolve()),
+                "run_dir": str(run_dir.resolve()),
+                "writer_pid": os.getpid(),
+                "error": str(exc),
+            })
+            return {"accepted": False, "reason": "native_surface_transport_failed",
+                    "surface_request": request, "detail": str(exc)}
+
+        deadline = time.monotonic() + transition_timeout_seconds
+        while time.monotonic() <= deadline:
+            try:
+                source, owned = refresh_semantic_step_trace(
+                    profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
+                )
+            except OSError:
+                time.sleep(observe_interval_seconds)
+                continue
+            events, status = read_semantic_step_trace(owned, run_dir, run_id)
+            if status == "ok":
+                native_receipt = next((event for event in events if
+                                       event.get("event") == "surface_receipt" and
+                                       event.get("request_id") == request_id), None)
+                if native_receipt is not None:
+                    # A matching request id is necessary but not sufficient:
+                    # the native owner must also attest to the exact run,
+                    # surface, frame, and action the client submitted.  This
+                    # keeps a malformed or stale post-launch receipt from
+                    # being promoted into the adaptive-session transcript.
+                    receipt_binding = {
+                        "requested_run_id": run_id,
+                        "requested_surface_id": request["surface_id"],
+                        "requested_frame_id": request["frame_id"],
+                        "consuming_surface_id": request["surface_id"],
+                        "consuming_frame_id": request["frame_id"],
+                        "action_id": action_id,
+                    }
+                    mismatched = {
+                        key: {"expected": expected, "actual": native_receipt.get(key)}
+                        for key, expected in receipt_binding.items()
+                        if native_receipt.get(key) != expected
+                    }
+                    if mismatched:
+                        return {
+                            "accepted": False,
+                            "reason": "native_surface_receipt_correlation_mismatch",
+                            "surface_request": request,
+                            "native_receipt": native_receipt,
+                            "mismatched_fields": mismatched,
+                            "next_frame": None,
+                        }
+                    transition_event = append_semantic_surface_transition_event(
+                        run_dir, run_id, request, native_receipt,
+                        proof_step_label=proof_step_label, proof_step_index=proof_step_index,
+                    )
+                    if native_receipt.get("accepted") is not True:
+                        return {"accepted": False,
+                                "reason": str(native_receipt.get("rejection_reason", "native_rejected")),
+                                "surface_request": request, "native_receipt": native_receipt,
+                                "transition_event": transition_event,
+                                "next_frame": None}
+                    resulting_frame_id = str(native_receipt.get("resulting_frame_id", ""))
+                    # A native scope publishes its resumed parent before it
+                    # writes a deferred receipt.  Bind that receipt to its
+                    # named frame in this trace, rather than reading the
+                    # newest descriptor after another native redraw.  Dialogue
+                    # can instead receipt synchronously before opening a native
+                    # child modal; its first later fresh descriptor is the
+                    # authoritative successor.
+                    if resulting_frame_id:
+                        next_frame = next((dict(event) for event in events if
+                                           event.get("event") == "surface_descriptor" and
+                                           str(event.get("frame_id", "")) == resulting_frame_id), None)
+                        wait_mode_owner_handoff = action_id == "menu.choose" and \
+                            str(stable_id or "").startswith("wait-mode:")
+                        # A native wait chooser can resume its parent world
+                        # descriptor before publishing the semantic duration
+                        # owner.  A fresh frame ID alone is insufficient in
+                        # that case: the parent retains its surface ID and
+                        # cannot authorize the following recipe action.
+                        if next_frame is not None and str(next_frame.get(
+                                "surface_id", "")) == str(before.get("surface_id", "")):
+                            receipt_index = events.index(native_receipt)
+                            has_fresh_owner = any(
+                                event.get("event") == "surface_descriptor" and
+                                str(event.get("surface_id", "")) != str(before.get("surface_id", ""))
+                                for event in events[receipt_index + 1:]
+                            )
+                            if wait_mode_owner_handoff or has_fresh_owner:
+                                next_frame = None
+                        if next_frame is None:
+                            # A native wait selection first publishes its
+                            # compact step frame, then opens the real uilist
+                            # owner.  The receipt names that step frame while
+                            # the next actionable descriptor has its own UI
+                            # frame identity.  Retain the first descriptor
+                            # after the accepted receipt instead of treating
+                            # this known owner handoff as a missing successor.
+                            receipt_index = events.index(native_receipt)
+                            next_frame = next((dict(event) for event in events[receipt_index + 1:]
+                                               if event.get("event") == "surface_descriptor" and
+                                               str(event.get("surface_id", "")) != str(before.get("surface_id", ""))), None)
+                    else:
+                        receipt_index = events.index(native_receipt)
+                        next_frame = next((dict(event) for event in events[receipt_index + 1:]
+                                           if event.get("event") == "surface_descriptor" and
+                                           str(event.get("frame_id", "")) != str(before.get("frame_id", ""))), None)
+                    if next_frame is None and not (
+                            resulting_frame_id and action_id == "menu.choose" and
+                            str(stable_id or "").startswith("wait-mode:")):
+                        try:
+                            next_frame = dict(read_frame())
+                        except ValueError:
+                            next_frame = None
+                    if next_frame is None and allow_terminal_exit:
+                        durable_receipt = {
+                            "schema": "caol-semantic-step-receipt-v1",
+                            "run_id": run_id,
+                            "session_id": session_id,
+                            "frame_id": str(before.get("frame_id", "")),
+                            "action_id": action_id,
+                            "declared_action_id": declared_action_id or action_id,
+                            "accepted": True,
+                            "reason": "native_surface_terminal_transition_accepted",
+                            "current_frame": {
+                                key: value for key, value in before.items()
+                                if not str(key).startswith("_")
+                            },
+                            "next_frame": None,
+                            "native_receipt": native_receipt,
+                        }
+                        SemanticStepChannel(
+                            run_id=run_id,
+                            session_id=session_id,
+                            receipt_path=run_dir / "semantic.steps.jsonl",
+                            read_frame=read_frame,
+                        )._persist(durable_receipt)
+                        return {"accepted": True, "surface_request": request,
+                                "native_receipt": native_receipt,
+                                "transition_event": transition_event, "next_frame": None}
+                    if isinstance(next_frame, Mapping) and (
+                            str(next_frame.get("frame_id", "")) == resulting_frame_id or
+                            str(next_frame.get("frame_id", "")) != str(before.get("frame_id", ""))):
+                        bound_surface_receipt = {
+                            **native_receipt,
+                            "frame_id": str(before.get("frame_id", "")),
+                            "action_id": action_id,
+                        }
+                        # World movement has two native facts: the semantic
+                        # owner receipt proves which frame consumed the
+                        # request, while the post-move receipt proves the
+                        # coordinate-bound outcome.  Preserve both instead of
+                        # replacing the latter with the former in the durable
+                        # cockpit transcript.
+                        # The native movement callback uses its own transient
+                        # world-frame ID, whereas the semantic request uses
+                        # the published surface frame ID.  Both facts are
+                        # bound by action and the current run; retain either
+                        # log order and wait until native completion exists.
+                        movement_receipt = next((dict(event) for event in reversed(events)
+                                                 if event.get("event") == "receipt" and
+                                                 event.get("action_id") == action_id and
+                                                 event.get("coordinate_space") == "absolute_ms"), None)
+                        # Do not publish a successful world movement before
+                        # its coordinate-bearing native completion arrives.
+                        # The successor world frame can be drawn between the
+                        # semantic acknowledgement and this receipt.
+                        if action_id.startswith("world.move.") and movement_receipt is None:
+                            time.sleep(observe_interval_seconds)
+                            continue
+                        durable_native_receipt = movement_receipt or bound_surface_receipt
+                        if movement_receipt is not None:
+                            durable_native_receipt["surface_receipt"] = bound_surface_receipt
+                            for key in (
+                                "requested_frame_id", "requested_surface_id",
+                                "consuming_surface_id", "consuming_frame_id",
+                            ):
+                                durable_native_receipt[key] = bound_surface_receipt[key]
+                        durable_receipt = {
+                            "schema": "caol-semantic-step-receipt-v1",
+                            "run_id": run_id,
+                            "session_id": session_id,
+                            "frame_id": str(before.get("frame_id", "")),
+                            "action_id": action_id,
+                            "declared_action_id": declared_action_id or action_id,
+                            "accepted": True,
+                            "reason": "native_surface_transition_accepted",
+                            "current_frame": {
+                                key: value for key, value in before.items()
+                                if not str(key).startswith("_")
+                            },
+                            "next_frame": {
+                                key: value for key, value in next_frame.items()
+                                if not str(key).startswith("_")
+                            },
+                            "native_receipt": durable_native_receipt,
+                            "semantic_response": bound_surface_receipt,
+                        }
+                        SemanticStepChannel(
+                            run_id=run_id,
+                            session_id=session_id,
+                            receipt_path=run_dir / "semantic.steps.jsonl",
+                            read_frame=read_frame,
+                        )._persist(durable_receipt)
+                        return {"accepted": True, "surface_request": request,
+                                "native_receipt": durable_native_receipt, "transition_event": transition_event,
+                                "next_frame": next_frame}
+            time.sleep(observe_interval_seconds)
+        return {"accepted": False, "reason": "native_surface_receipt_timeout",
+                "surface_request": request, "native_receipt": None, "next_frame": None}
+
+    # Pre-surface traces used to expose ``action_inputs`` and let this harness
+    # turn an action identity into foreground OS input.  They are no longer an
+    # executable cockpit protocol: an owner that has not published a native
+    # descriptor is unsupported and must stop automation here.
+    return {
+        "accepted": False,
+        "reason": "native_surface_descriptor_required",
+        "next_frame": None,
+    }
+
+    latest_frame["value"] = dict(before)
     before_offset = int(before.get("_event_offset", -1))
+    # A long native wait can publish its semantic activity frame after the
+    # query-open trace has already fallen behind the semantic cursor.  The
+    # frame still names the native query producer, but lacks the private
+    # activity metadata needed to bind its eventual return receipt.  Recover
+    # that metadata only from the current active query when its observed
+    # minute and source position agree with this exact native frame.
+    if before.get("state") == "activity_distraction" and \
+            before.get("producer") == "activity_distraction_query" and \
+            before.get("_kind") != "activity":
+        active_query = read_active_activity_query_trace(
+            semantic_step_source_trace(profile), 0,
+        )
+        query_minutes = active_query.get("game_minutes") \
+            if isinstance(active_query, Mapping) else None
+        observed_minutes = before.get("game_minutes")
+        query_offset = active_query.get("event_offset") \
+            if isinstance(active_query, Mapping) else None
+        if not isinstance(query_offset, int) or query_offset < 0 or \
+                (isinstance(observed_minutes, int) and
+                 query_minutes != observed_minutes) or \
+                (before_offset >= 0 and query_offset > before_offset):
+            return {
+                "accepted": False,
+                "reason": "native_activity_query_binding_missing",
+                "native_receipt": None,
+                "next_frame": None,
+            }
+        before["_kind"] = "activity"
+        before["activity_query_offset"] = query_offset
     activity_open_offset = int(before.get("activity_query_offset", before_offset))
     activity_receipt_start_offset = min(trace_start_offset, activity_open_offset)
     expected_activity_actions = {
@@ -4771,10 +5793,7 @@ def execute_semantic_act(
         # The activity prompt has a short native lifetime.  Its issuing frame
         # remains the sole authority, so deliver its advertised physical input
         # through one focus handoff rather than a second focus/dispatch round.
-        dispatch_semantic_input(
-            pid, binding, delay_ms=delay_ms,
-            focus_once=before.get("_kind") == "activity",
-        )
+        raise RuntimeError( "legacy semantic traces cannot dispatch physical input" )
 
     def await_transition(frame_id: str, action_id: str) -> Mapping[str, Any]:
         deadline = time.monotonic() + transition_timeout_seconds
@@ -4906,15 +5925,257 @@ def execute_semantic_act(
 
 
 def run_semantic_act(args: argparse.Namespace) -> int:
+    parameters: Dict[str, str] = {}
+    for parameter in args.parameter:
+        key, separator, value = parameter.partition("=")
+        if not separator or not key:
+            raise ValueError("semantic-act parameters must use key=value")
+        if key in parameters:
+            raise ValueError(f"semantic-act parameter {key!r} was provided more than once")
+        parameters[key] = value
     receipt = execute_semantic_act(
         run_dir=Path(args.run_dir), profile=args.profile, run_id=args.run_id,
         trace_start_offset=args.trace_start_offset, pid=args.pid,
         session_id=args.session_id, frame_id=args.frame_id, action_id=args.action_id,
         transition_timeout_seconds=args.transition_timeout_seconds,
-        observe_interval_seconds=args.observe_interval_seconds, delay_ms=args.delay_ms,
+        observe_interval_seconds=args.observe_interval_seconds, stable_id=args.stable_id,
+        parameters=parameters or None,
+        delay_ms=args.delay_ms,
     )
     print(json.dumps(receipt, indent=2, ensure_ascii=False))
     return 0 if receipt.get("accepted") else 2
+
+
+def r008_native_fire_result(frame: Mapping[str, Any]) -> bool:
+    """Accept only the player-adjacent production map result for R-008.
+
+    The family fixture deliberately begins with no fire.  The native frame is
+    consequently the authority for the result; fixture transforms, UI text,
+    and the private input path never stand in for its furniture/field facts.
+    """
+    observation = frame.get("observation")
+    if not isinstance(observation, Mapping):
+        return False
+    local = observation.get("visible_local")
+    if isinstance(local, (str, bytes)) or not isinstance(local, list):
+        return False
+    for fact in local:
+        if not isinstance(fact, Mapping) or fact.get("dx") != 1 or fact.get("dy") != 0:
+            continue
+        fields = fact.get("fields", [])
+        return fact.get("furniture") == "f_brazier" and isinstance(fields, list) and \
+               "fd_fire" in fields
+    return False
+
+
+def r008_latest_native_fire_result(
+    *, profile: str, run_dir: Path, run_id: str, start_offset: int,
+) -> Dict[str, Any]:
+    """Return the newest run-owned native map frame that proves the fire.
+
+    The current World surface descriptor deliberately contains only public
+    surface facts and valid actions.  Its paired native ``frame`` event owns
+    the map observation, so this lookup keeps the physical-result proof on
+    that event rather than treating a descriptor payload as map evidence.
+    """
+    _source, owned = refresh_semantic_step_trace(
+        profile=profile, run_dir=run_dir, run_id=run_id, start_offset=start_offset,
+    )
+    events, status = read_semantic_step_trace(owned, Path(run_dir), run_id)
+    if status != "ok":
+        raise ValueError(f"semantic step trace is unavailable: {status}")
+    for event in reversed(events):
+        if event.get("event") == "frame" and r008_native_fire_result(event):
+            return dict(event)
+    return {}
+
+
+def r008_charged_lighter_rows(screen_text: Mapping[str, Any]) -> List[str]:
+    """Return live selector rows that show the fixture lighter fully charged.
+
+    The save transform deliberately uses the engine's canonical nested
+    magazine-pocket charge representation.  This gate observes that the running game
+    agrees before the player commits the firestarter transaction; it is setup
+    validation, not evidence of a fire result.
+    """
+    rows = screen_text.get("tail_lines", [])
+    if isinstance(rows, (str, bytes)) or not isinstance(rows, list):
+        return []
+    charged = re.compile(r"\blighter\b.*\b100\s*/\s*100\s+butane\b", re.IGNORECASE)
+    return [str(row).strip() for row in rows if charged.search(str(row))]
+
+
+def r008_runtime_charged_lighter_preflight(pid: int, run_dir: Path) -> Dict[str, Any]:
+    """Fail closed unless normal player UI visibly exposes the charged lighter."""
+    capture = capture_screenshot(pid, run_dir, "r008_player_fire_setup.charged_lighter")
+    screen_text = capture_screen_text_artifact(
+        run_dir, "r008_player_fire_setup.charged_lighter", capture, tail_lines=48,
+    )
+    rows = r008_charged_lighter_rows(screen_text)
+    return {
+        "accepted": bool(rows),
+        "method": "normal_player_use_item_selector",
+        "visible_charge": "100/100 butane" if rows else "",
+        "screen_text_ok": bool(screen_text.get("ok")),
+    }
+
+
+def r008_firestarter_boundary_snapshot(pid: int, run_dir: Path, label: str) -> Dict[str, Any]:
+    """Persist the visible UI boundary before a normal firestarter confirmation.
+
+    This is diagnostic evidence for the player transaction only.  It neither
+    supplies a target nor authorizes a modal choice: the next input remains the
+    ordinary physical confirmation below.
+    """
+    capture = capture_screenshot(pid, run_dir, label)
+    screen_text = capture_screen_text_artifact(run_dir, label, capture, tail_lines=48)
+    tail_lines = list(screen_text.get("tail_lines", []))
+    body = "\n".join(str(line) for line in tail_lines).lower()
+    # The UI itself is authoritative; OCR is merely its accessibility bridge.
+    # Require the modal's combined prompt, action, target-kind, and confirmation
+    # signatures.  This remains fail-closed for an ordinary fire screen while
+    # accepting observed OCR variants such as "tirewooo" and "sensitıve".
+    source_confirmation = (
+        "do you" in body and "want" in body and "burn" in body and
+        "source" in body and "sensit" in body
+    )
+    return {
+        "screen_text_ok": bool(screen_text.get("ok")),
+        "tail_lines": tail_lines,
+        "confirmable": source_confirmation,
+    }
+
+
+def execute_r008_normal_player_fire_setup(
+    *, run_dir: Path, profile: str, run_id: str, trace_start_offset: int,
+    pid: int, issuing_frame: Mapping[str, Any], activity_turns: int = 180,
+) -> Dict[str, Any]:
+    """Use the validated normal UI workflow while keeping bindings private.
+
+    ``activity_turns`` is the existing 180-turn firestarter midpoint from the
+    formerly focused player-action workflow.  It is not an outcome horizon:
+    this transaction stops as soon as the native map reports its actual result
+    and otherwise rejects the action for a fresh worker decision.
+    """
+    if r008_native_fire_result(issuing_frame):
+        return {"accepted": False, "reason": "fixture_fire_contaminates_player_action"}
+    advertised_wait = next((
+        action for action in issuing_frame.get("valid_actions", [])
+        if isinstance(action, Mapping) and action.get("id") == "world.wait"
+    ), None)
+    if not isinstance(advertised_wait, Mapping) or advertised_wait.get("enabled") is not True:
+        return {"accepted": False, "reason": "advertised_world_wait_unavailable"}
+    phase = ""
+    try:
+        phase = "deploy_brazier"
+        peekaboo_press_sequence(pid, ["A", "right"], delay_ms=200)
+        time.sleep(0.6)
+        # The fixture's ordinary SOURCE_FIREWOOD logs are already on the target
+        # tile.  Deployment puts the real brazier over that ground fuel; moving
+        # onto it to pick up and re-drop a log would be an unrelated interaction.
+        phase = "activate_pocket_lighter"
+        peekaboo_press_sequence(pid, ["a"], delay_ms=200)
+        time.sleep(0.8)
+        peekaboo_press_sequence(pid, ["/"], delay_ms=200)
+        time.sleep(0.5)
+        peekaboo_type_text(pid, "lighter", delay_ms=120)
+        time.sleep(0.8)
+        peekaboo_press_sequence(pid, ["enter"], delay_ms=200)
+        time.sleep(0.8)
+        phase = "verify_charged_lighter"
+        charged_lighter = r008_runtime_charged_lighter_preflight(pid, run_dir)
+        if not charged_lighter.get("accepted"):
+            return {
+                "accepted": False,
+                "reason": "runtime_charged_lighter_not_observed",
+                "phase": phase,
+                "charged_lighter_preflight": charged_lighter,
+            }
+        peekaboo_press_sequence(pid, ["enter"], delay_ms=200)
+        time.sleep(1.0)
+        phase = "ignite_brazier"
+        # The normal target prompt consumes a direction directly.  Sending an
+        # additional confirmation after it reaches the newly started activity
+        # instead of confirming the target, so it is deliberately absent.
+        peekaboo_press_sequence(pid, ["right"], delay_ms=200)
+        # The production confirmation is modal and arrives after the target
+        # picker has returned; wait for that UI boundary before confirming it.
+        time.sleep(1.0)
+        phase = "confirm_firewood_source"
+        source_confirmation = r008_firestarter_boundary_snapshot(
+            pid, run_dir, "r008_player_fire_setup.source_firewood_confirmation",
+        )
+        if not source_confirmation.get("confirmable"):
+            return {
+                "accepted": False,
+                "reason": "source_firewood_confirmation_not_observed",
+                "phase": phase,
+                "source_confirmation": source_confirmation,
+            }
+        # The source zone is a setup-only reservation, so the production UI
+        # asks the player to explicitly consume its ordinary ground firewood.
+        # This case-sensitive confirmation is part of the normal firestarter
+        # transaction, so it needs the literal uppercase production response.
+        peekaboo_hotkey(pid, "shift,y", hold_ms=100, transport="bridge")
+        time.sleep(0.8)
+        confirmed_source = r008_firestarter_boundary_snapshot(
+            pid, run_dir, "r008_player_fire_setup.source_firewood_confirmation_resolved",
+        )
+        if confirmed_source.get("confirmable"):
+            return {
+                "accepted": False,
+                "reason": "source_firewood_confirmation_not_resolved",
+                "phase": phase,
+                "source_confirmation": source_confirmation,
+                "post_confirmation": confirmed_source,
+            }
+        phase = "complete_firestarter_activity"
+        # The advertised ``world.wait`` action is retained as a precondition for
+        # the subsequent observation-wait route.  The firestarter itself is a
+        # native activity, however, and advances through the engine's ordinary
+        # turn processing rather than repeatedly opening the long-wait menu.
+        for completed in range(0, activity_turns, 20):
+            # This is an active firestarter transaction, not a worker-owned
+            # observation wait.  Keep its native pause batches small and skip
+            # the generic end-of-wait OCR recovery so a benign post-activity
+            # action menu cannot consume the fresh map observation.
+            activity = advance_turns(
+                pid, min(20, activity_turns - completed),
+                label="r008_player_fire_activity", auto_acknowledge_interruptions=False,
+            )
+            if activity.get("status") != "completed":
+                return {
+                    "accepted": False,
+                    "reason": "firestarter_activity_not_completed",
+                    "phase": phase,
+                    "activity_status": str(activity.get("status", "")),
+                }
+            time.sleep(0.2)
+            result = r008_latest_native_fire_result(
+                profile=profile, run_dir=run_dir, run_id=run_id,
+                start_offset=trace_start_offset,
+            )
+            if result:
+                return {
+                    "native_receipt": {
+                        "schema": "caol-normal-player-fire-transaction-v1",
+                        "frame_id": str(issuing_frame.get("frame_id", "")),
+                        "action_id": "player.fire.setup",
+                        "accepted": True,
+                        "source": "normal_player_ui_then_native_map_result",
+                        "advertised_world_wait": True,
+                        "runtime_charged_lighter_preflight": charged_lighter,
+                        "source_confirmation": source_confirmation,
+                        "post_confirmation": confirmed_source,
+                        "result_frame_id": str(result.get("frame_id", "")),
+                        "result": {"furniture": "f_brazier", "field": "fd_fire"},
+                    },
+                    "next_frame": result,
+                }
+    except (OSError, RuntimeError, ValueError) as exc:
+        return {"accepted": False, "reason": "normal_player_ui_dispatch_failed", "phase": phase,
+                "detail": str(exc)}
+    return {"accepted": False, "reason": "native_fire_result_not_observed", "phase": phase}
 
 
 def advance_turns(
@@ -4927,6 +6188,7 @@ def advance_turns(
     auto_acknowledge_interruptions: bool = True,
     max_acknowledgements: int = DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS,
     portal_storm_allowed: bool = False,
+    expected_interruption_screen_text_contains: Sequence[str] = (),
 ) -> Dict[str, Any]:
     timing: Dict[str, Any] = {
         "count": max(count, 0),
@@ -4942,6 +6204,7 @@ def advance_turns(
         "release_blocking": False,
         "contaminating": False,
         "portal_storm_allowed": portal_storm_allowed,
+        "expected_interruption_screen_text_contains": list(expected_interruption_screen_text_contains),
     }
     if count <= 0:
         return timing
@@ -5027,6 +6290,18 @@ def advance_turns(
                 interruption.get("contaminating", False)
             )
             interruption_status = str(interruption.get("status", "unobservable"))
+            interruption_text = str(interruption.get("final_classification", {}).get("text", ""))
+            expected_interruption_reached = bool(expected_interruption_screen_text_contains) and all(
+                fragment in interruption_text for fragment in expected_interruption_screen_text_contains
+            )
+            if expected_interruption_reached:
+                interruption["expected_semantic_owner"] = True
+                timing["expected_semantic_owner"] = {
+                    "fragments": list(expected_interruption_screen_text_contains),
+                    "artifact_paths": list(interruption.get("final_artifacts", [])),
+                }
+                timing["status"] = "completed"
+                break
             if timing["release_blocking"]:
                 timing["status"] = "blocked_release_blocking_interruption"
                 break
@@ -5087,6 +6362,17 @@ def advance_turns(
                 boundary_interruption.get("contaminating", False)
             )
             boundary_status = str(boundary_interruption.get("status", "unobservable"))
+            boundary_text = str(boundary_interruption.get("final_classification", {}).get("text", ""))
+            expected_boundary_reached = bool(expected_interruption_screen_text_contains) and all(
+                fragment in boundary_text for fragment in expected_interruption_screen_text_contains
+            )
+            if expected_boundary_reached:
+                boundary_interruption["expected_semantic_owner"] = True
+                timing["expected_semantic_owner"] = {
+                    "fragments": list(expected_interruption_screen_text_contains),
+                    "artifact_paths": list(boundary_interruption.get("final_artifacts", [])),
+                }
+                timing["status"] = "completed"
             if timing["status"] == "blocked_recovery_key_reached_gameplay":
                 pass
             elif timing["release_blocking"]:
@@ -5116,6 +6402,8 @@ def advance_turns(
                 "accepted_pause_dispatch_count": accepted_count,
                 "requested_pause_dispatch_count": batch_count,
             }
+            break
+        if "expected_semantic_owner" in timing:
             break
         if start + batch_size < count:
             time.sleep(0.05)
@@ -6901,6 +8189,10 @@ def extract_clock_or_turn_evidence( screen_text_report: Dict[str, Any] ) -> Dict
         minute = int( match.group( 2 ) )
         second = int( match.group( 3 ) or 0 )
         meridiem = str( match.group( 4 ) or "" ).lower()
+        # Tesseract commonly reads the final M in the fixed HUD clock as N.
+        # PN/AN are not game values; normalize only these one-character OCR
+        # substitutions before comparing the run-bound clock receipt.
+        meridiem = {"an": "am", "pn": "pm"}.get( meridiem, meridiem )
         if not meridiem and 1 <= hour <= 12:
             calendar_label = (
                 r"(?:monday|tuesday|wednesday|thursday|friday|saturday|sunday|"
@@ -13528,6 +14820,35 @@ def debug_spawn_follower_npc(
         )
 
 
+def debug_spawn_named_npc(
+    pid: int,
+    *,
+    template_id: str,
+    delay_ms: int = 200,
+    type_delay_ms: int = 20,
+    menu_settle_seconds: float = 0.35,
+) -> None:
+    """Spawn one source-defined NPC template through the native debug selector."""
+    query = str( template_id or "" ).strip()
+    if not query:
+        raise SystemExit("Named NPC spawn needs a non-empty template_id")
+    run_debug_menu_shortcut_path(
+        pid,
+        ["s", "p"],
+        delay_ms=delay_ms,
+        menu_settle_seconds=menu_settle_seconds,
+    )
+    apply_uilist_filter(
+        pid,
+        query,
+        delay_ms=delay_ms,
+        type_delay_ms=type_delay_ms,
+        settle_seconds=menu_settle_seconds,
+    )
+    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
+    time.sleep(menu_settle_seconds)
+
+
 def debug_force_temperature(
     pid: int,
     *,
@@ -14527,10 +15848,42 @@ def list_windows_for_pid(pid: int) -> List[Dict[str, Any]]:
     return [window for window in windows if isinstance(window, dict)]
 
 
-def choose_capture_window(pid: int) -> Dict[str, Any]:
+def bound_surface_identity(run_dir: Path, pid: int) -> Dict[str, Any]:
+    """Load the one persisted PID/digest surface contract, if this run has one."""
+    try:
+        process = json.loads((run_dir / "process.json").read_text(encoding="utf-8"))
+    except (OSError, ValueError):
+        return {}
+    surface = process.get("surface_identity") if isinstance(process, Mapping) else None
+    if not isinstance(surface, Mapping) or int(surface.get("pid", 0) or 0) != pid:
+        return {}
+    title = str(surface.get("window_title", "")).strip()
+    digest = str(surface.get("executable_sha256", "")).strip().lower()
+    if not title or len(digest) != 64:
+        return {"rejected": "missing_or_invalid_persisted_surface_identity"}
+    return dict(surface)
+
+
+def choose_capture_window(pid: int, surface: Optional[Mapping[str, Any]] = None) -> Dict[str, Any]:
     windows = list_windows_for_pid(pid)
     if not windows:
         return {}
+
+    expected_title = str((surface or {}).get("window_title", "")).strip()
+    if expected_title:
+        # SDL retains its compiled product title and appends the explicit
+        # certification title.  The suffix is still PID-local and unique to
+        # this lease; accepting any other title would weaken the surface
+        # binding, so require either the exact title or this delimiter-bound
+        # native composition.
+        windows = [
+            window for window in windows
+            if (title := str(window.get("title", "")).strip()) == expected_title
+            or title.endswith(" - " + expected_title)
+        ]
+        if len(windows) != 1:
+            return {"rejected": "missing_or_ambiguous_bound_surface", "expected_title": expected_title,
+                    "candidate_count": len(windows)}
 
     def capture_rank(window: Dict[str, Any]) -> Tuple[int, int, int, int, int]:
         title = str(window.get("title", "")).strip()
@@ -14801,7 +16154,19 @@ def capture_screenshot(
 ) -> Dict[str, Any]:
     png_path = run_dir / f"{label}.png"
     json_path = run_dir / f"{label}.peekaboo.json"
-    capture_target = choose_capture_window(pid)
+    surface = bound_surface_identity(run_dir, pid)
+    capture_target = choose_capture_window(pid, surface)
+    if capture_target.get("rejected"):
+        return {
+            "label": label,
+            "capture_target": capture_target,
+            "screen_summary": {
+                "capture_success": False,
+                "capture_process_pid": pid,
+                "surface_identity_status": str(capture_target["rejected"]),
+                "expected_surface_title": str(capture_target.get("expected_title", "")),
+            },
+        }
     cmd_args = ["image", "--json", "--path", str(png_path)]
     if capture_target.get("window_id"):
         cmd_args.extend(["--window-id", str(capture_target["window_id"])])
@@ -14861,6 +16226,9 @@ def capture_screenshot(
     # The semantic HUD verdict is attached to this exact capture target, never
     # merely to a same-run image that could have been taken before relaunch.
     screen_summary["capture_process_pid"] = pid
+    if surface:
+        screen_summary["surface_identity_status"] = "matched"
+        screen_summary["surface_identity"] = surface
     screen_summary["peekaboo_command"] = list(cmd)
     screen_summary["peekaboo_returncode"] = proc.returncode
     screen_summary["peekaboo_stderr"] = proc.stderr
@@ -15784,9 +17152,6 @@ def recover_harmless_wilderness_flavor_wait(
     first_classification = str(
         first_ack.get("classification", {}).get("classification", "")
     )
-    first_activity_trace = first_ack.get(
-        "classification", {}
-    ).get("structured_activity_query_trace", {})
     first_is_flavor = (
         first_classification in {
             "shadow_warning_wilderness_flavor_popup", "semantic_ui_recovered",
@@ -15799,8 +17164,7 @@ def recover_harmless_wilderness_flavor_wait(
     first_is_continue = (
         first_classification in {
             "activity_distraction_prompt", "tired_wait_continue_prompt",
-        } and first_ack.get("response_key") == "I" and
-        first_activity_trace.get("type") == "eoc"
+        } and first_ack.get("response_key") == "I"
     )
     if not first_is_flavor and not first_is_continue:
         return {**first, "status": "blocked_harmless_flavor_popup_sequence"}
@@ -15823,9 +17187,6 @@ def recover_harmless_wilderness_flavor_wait(
     )
     second_acks = second.get("acknowledgements", [])
     second_ack = second_acks[0] if len(second_acks) == 1 else {}
-    second_activity_trace = second_ack.get(
-        "classification", {}
-    ).get("structured_activity_query_trace", {})
     second_is_flavor = (
         second.get("status") in {"clear", "semantic_recovered", "blocked_acknowledgement_limit"} and
         len(second_acks) == 1 and
@@ -15840,12 +17201,13 @@ def recover_harmless_wilderness_flavor_wait(
         second.get("status") == "clear" and len(second_acks) == 1 and
         second_ack.get("classification", {}).get("classification") in {
             "activity_distraction_prompt", "tired_wait_continue_prompt",
-        } and second_ack.get("response_key") == "I" and
-        second_activity_trace.get("type") == "eoc"
+        } and second_ack.get("response_key") == "I"
     )
     second_is_clear = second.get("status") == "clear" and not second_acks
+    # A known native continuation prompt may be the only interruption.  Its
+    # post-input clear state is the receipt that the original wait resumed.
     if not ((first_is_flavor and (second_is_continue or second_is_clear)) or
-            (first_is_continue and second_is_flavor)):
+            (first_is_continue and (second_is_flavor or second_is_clear))):
         return {**second, "status": "blocked_harmless_flavor_continue_sequence"}
     return {
         "status": "recovered_harmless_flavor_wait_sequence",
@@ -16269,17 +17631,28 @@ def r014_native_semantic_bootstrap_metadata(
         except (OSError, ValueError) as exc:
             return {**metadata, "status": "scanned", "reason": "native_frame_unavailable", "error": str(exc)}
     frame_id = str(frame.get("frame_id", "")).strip()
-    frame_offset = int(frame.get("_event_offset", -1) or -1)
+    raw_frame_offset = frame.get("_event_offset", -1)
+    frame_offset = int(-1 if raw_frame_offset is None else raw_frame_offset)
+    frame_event = str(frame.get("event", ""))
+    is_surface_descriptor = frame_event == "surface_descriptor"
     actions = frame.get("valid_actions", [])
     if not isinstance(actions, list):
         actions = []
+    if is_surface_descriptor:
+        actions = [
+            str(action.get("id", "")) for action in actions
+            if isinstance(action, Mapping) and action.get("enabled") is True
+        ]
+    frame_state = str(frame.get("kind" if is_surface_descriptor else "state", ""))
+    frame_producer = str(frame.get("producer", ""))
     metadata.update({
         "frame_id": frame_id,
         "frame_run_id": str(frame.get("run_id", "")),
-        "frame_state": str(frame.get("state", "")),
+        "frame_event": frame_event,
+        "frame_state": frame_state,
         "frame_trace_offset": frame_offset,
         "advertised_actions": list(actions),
-        "frame_producer": str(frame.get("producer", "")),
+        "frame_producer": frame_producer,
         "initial_world_ready": frame.get("initial_world_ready"),
     })
     if not frame_id or metadata["frame_run_id"] != str(run_id):
@@ -16288,8 +17661,8 @@ def r014_native_semantic_bootstrap_metadata(
         return {**metadata, "status": "scanned", "reason": "stale_frame"}
     if metadata["frame_state"] != str(required_state):
         return {**metadata, "status": "scanned", "reason": "wrong_state"}
-    if metadata["frame_producer"] != "hud_world_ready" or \
-            metadata["initial_world_ready"] is not True:
+    if not is_surface_descriptor and (metadata["frame_producer"] != "hud_world_ready" or \
+                                      metadata["initial_world_ready"] is not True):
         return {**metadata, "status": "scanned", "reason": "not_initial_hud_world_ready_frame"}
     missing_actions = [action for action in required_actions if action not in actions]
     if missing_actions:
@@ -16298,13 +17671,13 @@ def r014_native_semantic_bootstrap_metadata(
 
 
 def initial_hud_world_frame_counts(
-    *, profile: str, trace_offset: int, run_id: str,
+    *, profile: str, trace_offset: int, run_id: str, run_dir: Optional[Path] = None,
 ) -> tuple[int, int]:
     """Count only explicit initial HUD/world frames in the current log slice."""
     if trace_offset < 0:
         return 0, 0
     try:
-        source = semantic_step_source_trace(profile)
+        source = semantic_step_source_trace(profile, run_dir)
         effective_offset = semantic_step_effective_source_offset(source, trace_offset)
         with source.open("rb") as handle:
             handle.seek(effective_offset)
@@ -16320,7 +17693,7 @@ def initial_hud_world_frame_counts(
         if marker < 0:
             continue
         try:
-            event = json.loads(raw_line[marker + len(SEMANTIC_STEP_PREFIX):])
+            event = decode_semantic_step_event(raw_line[marker + len(SEMANTIC_STEP_PREFIX):])
         except (TypeError, ValueError, json.JSONDecodeError):
             return 0, 1
         if not isinstance(event, Mapping) or event.get("event") != "frame" or \
@@ -16337,12 +17710,13 @@ def initial_hud_world_frame_counts(
 def first_initial_hud_world_frame_after_boundary(
     *, profile: str, trace_offset: int, run_id: str, required_state: str,
     required_actions: Sequence[str],
+    run_dir: Optional[Path] = None,
 ) -> Dict[str, Any]:
     """Retain the first eligible one-shot HUD frame in this launch's trace slice."""
     if trace_offset < 0:
         raise ValueError("initial HUD frame trace boundary is invalid")
     try:
-        source = semantic_step_source_trace(profile)
+        source = semantic_step_source_trace(profile, run_dir)
         effective_offset = semantic_step_effective_source_offset(source, trace_offset)
         with source.open("rb") as handle:
             handle.seek(effective_offset)
@@ -16361,7 +17735,7 @@ def first_initial_hud_world_frame_after_boundary(
         marker = raw_line.find(SEMANTIC_STEP_PREFIX.encode("utf-8"))
         if marker >= 0:
             try:
-                event = json.loads(raw_line[marker + len(SEMANTIC_STEP_PREFIX):])
+                event = decode_semantic_step_event(raw_line[marker + len(SEMANTIC_STEP_PREFIX):])
             except (TypeError, ValueError, json.JSONDecodeError) as exc:
                 raise ValueError("initial HUD frame trace is malformed") from exc
             if isinstance(event, Mapping) and event.get("event") == "frame" and \
@@ -16410,11 +17784,12 @@ def await_r014_native_semantic_bootstrap(
         attempts += 1
         try:
             effective_trace_offset = semantic_step_effective_source_offset(
-                semantic_step_source_trace(profile), trace_start_offset
+                semantic_step_source_trace(profile, run_dir), trace_start_offset
             )
             frame = first_initial_hud_world_frame_after_boundary(
                 profile=profile, trace_offset=trace_start_offset, run_id=run_id,
                 required_state=required_state, required_actions=required_actions,
+                run_dir=run_dir,
             ) if require_initial_hud_world_ready_frame else current_semantic_step_frame(
                 profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
             )
@@ -16725,7 +18100,7 @@ def adaptive_semantic_receipt_chain_status(report: Mapping[str, Any]) -> Dict[st
         if str(receipt.get("run_id", "")).strip() != run_id or str(receipt.get("session_id", "")).strip() != session_id or not action_id or not frame_id or not isinstance(native, Mapping) or not isinstance(response, Mapping) or not isinstance(receipt.get("next_frame"), Mapping):
             continue
         if native.get("accepted") is True and response.get("accepted") is True and str(native.get("frame_id", "")).strip() == frame_id and str(native.get("action_id", "")).strip() == action_id and str(response.get("frame_id", "")).strip() == frame_id and str(response.get("action_id", "")).strip() == action_id:
-            accepted_actions.add(action_id)
+            accepted_actions.add(str(receipt.get("declared_action_id", action_id)).strip())
             accepted_receipts.append(receipt)
     missing = [action for action in required_actions + required_interruptions + recovery_actions if action not in accepted_actions]
     if missing:
@@ -16760,7 +18135,8 @@ def adaptive_semantic_receipt_chain_status(report: Mapping[str, Any]) -> Dict[st
                     current.get("provenance") != modal_owner or \
                     action not in current.get("valid_actions", []):
                 return {"proved": False, "reason": "native_recovery_receipt_unbound"}
-    if not isinstance(next_frame, Mapping) or next_frame.get("state") != "world":
+    if not isinstance(next_frame, Mapping) or \
+            str(next_frame.get("state", next_frame.get("kind", ""))) != "world":
         return {"proved": False, "reason": "fresh_world_postcondition_missing"}
     return {
         "proved": True,
@@ -16784,6 +18160,42 @@ def adaptive_semantic_interrupt_contract(
     return adaptive_actions, required_actions
 
 
+def semantic_frame_action_ids( frame: Mapping[str, Any] ) -> List[str]:
+    """Read advertised action ids from legacy frames and raw surface descriptors."""
+    advertised = frame.get( "valid_actions", [] )
+    if not isinstance( advertised, list ):
+        return []
+    return [
+               str( action.get( "id", "" ) ).strip()
+               if isinstance( action, Mapping ) else str( action ).strip()
+               for action in advertised
+               if ( isinstance( action, Mapping ) and str( action.get( "id", "" ) ).strip() ) or
+               ( not isinstance( action, Mapping ) and str( action ).strip() )
+           ]
+
+
+def semantic_frame_dispatch( frame: Mapping[str, Any], declared_action: str ) -> tuple[str, str] | None:
+    """Bind the declared wait route to one advertised native menu entry."""
+    if declared_action in semantic_frame_action_ids( frame ):
+        return declared_action, ""
+    labels = {
+        "wait.duration_menu": "Wait a while",
+        "wait.1m": "1 minute",
+        "wait.5m": "5 minutes",
+        "prompt.yes": "YES",
+    }
+    wanted_label = labels.get( declared_action )
+    if not wanted_label:
+        return None
+    for action in frame.get( "valid_actions", [] ):
+        if isinstance( action, Mapping ) and action.get( "id" ) in {"menu.choose", "prompt.choose"} and \
+                action.get( "label" ) == wanted_label and action.get( "enabled" ) is True:
+            stable_id = str( action.get( "stable_id", "" ) ).strip()
+            if stable_id:
+                return str( action.get( "id" ) ), stable_id
+    return None
+
+
 def adaptive_semantic_materiality_waivers(report: Mapping[str, Any]) -> List[Dict[str, Any]]:
     """Record only proved non-occurrence of an optional recovery branch.
 
@@ -16801,7 +18213,7 @@ def adaptive_semantic_materiality_waivers(report: Mapping[str, Any]) -> List[Dic
     if progress.get("action_chain_proved") is not True or \
             progress.get("interruption_receipts_proved") is not True or \
             progress.get("optional_interrupt_scan_complete") is not True or \
-            next_frame.get("state") != "world":
+            str(next_frame.get("state", next_frame.get("kind", ""))) != "world":
         return []
 
     optional_actions = [
@@ -17151,7 +18563,7 @@ def cockpit_live_session_step_verdict(
         metadata.get( "artifact_kind" ) == "worker_controlled_live_cockpit_session" and \
         str( metadata.get( "descriptor_ref", "" ) ).strip() and str(
             metadata.get( "final_report_ref", "" ) ).strip()
-    expected_gameplay_credit = False if terminal_control else True
+    expected_gameplay_credit = False if terminal_control else descriptor.get( "gameplay_credit", True ) is True
     if not metadata_is_bound_live_artifact or metadata.get( "gameplay_credit" ) is not expected_gameplay_credit:
         failures.append( "cockpit_final_artifacts_unavailable" )
     if wec_authority.get( "authority" ) != "registry" or not str(
@@ -17213,6 +18625,17 @@ def build_probe_step_ledger(
         elif interruption_flags["contaminating"]:
             verdict = "yellow_step_acknowledged_contaminating_popup"
             issues.append("contaminating_popup_acknowledged")
+        elif kind == "semantic_terminal_action_chain":
+            required_actions = [str(item).strip() for item in report.get(
+                                    "semantic_terminal_session", {}
+                                ).get("required_action_chain", []) if str(item).strip()]
+            receipts = report.get("semantic_receipts", [])
+            if required_actions and isinstance(receipts, list) and len(receipts) == len(required_actions) and \
+                    all(isinstance(receipt, Mapping) and receipt.get("accepted") is True for receipt in receipts):
+                verdict = "green_step_semantic_native_save_proven"
+            else:
+                verdict = "red_step_semantic_native_save_unproved"
+                issues.append("semantic_terminal_receipts_missing_or_rejected")
         elif kind in {"long_wait", "wait_action"} and isinstance(report.get("wait_step_ledger"), dict):
             wait_verdict = str(report["wait_step_ledger"].get("verdict", ""))
             if wait_verdict.startswith("green"):
@@ -17673,6 +19096,17 @@ def certification_startup_lease_context(
         if hasattr(args, "harness_run_id") and supplied_event_stream != str(manifest["event_stream_id"]):
             raise CertificationLeaseError("sealed manifest event stream does not match the startup run ID")
         executable_sha256 = path_sha256(executable)
+        cleanup_token = ""
+        scenario_name = str(getattr(args, "scenario_identity", "") or "").strip()
+        if scenario_name:
+            declaration = load_scenario(scenario_name)
+            if "r027_isolated_launch" in declaration:
+                from r027_isolated_launch import select_r027_isolated_executable
+                isolated = select_r027_isolated_executable(declaration, repository=repo_root())
+                if isolated["executable_path"] != str(executable.resolve()) or \
+                        isolated["executable_sha256"] != executable_sha256:
+                    raise CertificationLeaseError("R-027 isolated runtime changed before lease reservation")
+                cleanup_token = isolated["cleanup_token"]
         connection = open_registry(registry_path)
     except (CertificationLeaseError, KeyError, OSError, ValueError) as exc:
         raise SystemExit(f"certification startup lease rejected: {exc}") from exc
@@ -17683,6 +19117,7 @@ def certification_startup_lease_context(
         "recheck_inputs_path": recheck_path,
         "executable_path": str(executable.resolve()),
         "executable_sha256": executable_sha256,
+        "cleanup_token": cleanup_token,
         "inspector": SystemProcessInspector(),
     }
 
@@ -17802,7 +19237,7 @@ def capture_certification_inputs(path_text: str) -> Dict[str, Any]:
     return _certification_recheck_producer_inputs(json.dumps(source, ensure_ascii=False))
 
 
-def derive_registry_owned_certification_inputs(scenario_name: str) -> Dict[str, Any]:
+def derive_registry_owned_certification_inputs(scenario_name: str, *, executable: Path | None = None) -> Dict[str, Any]:
     """Derive certification preflight solely from the installed scenario footing.
 
     This runs before the game process exists.  It intentionally reads the
@@ -17840,7 +19275,7 @@ def derive_registry_owned_certification_inputs(scenario_name: str) -> Dict[str, 
         raise CertificationLeaseError("installed player mutations are missing: " + ", ".join(missing))
     scenario_path_value = scenario_path(scenario_name).resolve()
     profile_path = profile_config_path(profile).resolve()
-    executable = detect_executable().resolve()
+    executable = (executable or detect_executable()).resolve()
     return {
         "repo_root": repo_root(), "executable": executable,
         "runtime_paths": list(RUNTIME_RELEVANT_PATHS),
@@ -18114,6 +19549,246 @@ def certification_record_world_save_progression(
             "lifecycle_sequence": lifecycle_sequence, "accepted": current}
 
 
+def r027_changed_observation_capture_artifact(
+        *, scenario: Mapping[str, Any], run_dir: Path, runtime_binding: Mapping[str, Any],
+        events: Sequence[Mapping[str, Any]], profile: str, world: str,
+        binding_id: str) -> Dict[str, Any] | None:
+    """Validate R-027's own native-read and saved-state contract.
+
+    This route is deliberately not a stationary dispatch capture: it proves a
+    retained lead refresh while its camp stays at home.  Every fact is read
+    from the run-owned event stream or the post-exit save.
+    """
+    if scenario.get("capabilities", {}).get("capabilities.r027.changed_observation_validation") != \
+            "same_saved_lead_same_source_changed_fd_fire_payload":
+        return None
+    artifact = str(run_dir / "r027.changed_observation.capture.json")
+    assertions = scenario.get("assertions", {})
+    if not isinstance(assertions, Mapping):
+        return {"status": "red", "reason": "r027_assertions_missing", "artifact": artifact}
+    source_omt = assertions.get("stable_source_omt")
+    lead_id = str(assertions.get("stable_lead_id", ""))
+    if not isinstance(source_omt, list) or len(source_omt) != 3 or not lead_id:
+        return {"status": "red", "reason": "r027_source_or_lead_declaration_missing", "artifact": artifact}
+    source = tuple(int(value) for value in source_omt)
+    process = json.loads((run_dir / "process.json").read_text(encoding="utf-8"))
+    cleanup = process.get("cleanup") if isinstance(process, Mapping) else None
+    if not isinstance(cleanup, Mapping) or not str(cleanup.get("status", "")).strip():
+        return {"status": "red", "reason": "r027_cleanup_missing", "artifact": artifact}
+    records: List[Dict[str, Any]] = []
+    for event in events:
+        read = event.get("staffed_camp_signal_read") if isinstance(event, Mapping) else None
+        if event.get("transition") != "staffed_camp_signal_read" or not isinstance(read, Mapping):
+            continue
+        identity = read.get("identity") if isinstance(read.get("identity"), Mapping) else {}
+        channel = read.get("channel") if isinstance(read.get("channel"), Mapping) else {}
+        event_source = read.get("source") if isinstance(read.get("source"), Mapping) else {}
+        records.append({
+            "run_id": identity.get("run_id"), "channel": channel.get("kind"),
+            "observed": event.get("outcome") == "refreshed",
+            "source_omt": event_source.get("omt"), "signal_origin": "local_field",
+            "binding": {"runtime_source_sha256": identity.get("source_sha256"),
+                        "executable_sha256": identity.get("executable_sha256"),
+                        "binding_id": identity.get("binding_id")},
+        })
+    world_dir = save_dir_for_profile(profile) / world
+    tile_audit = audit_map_tiles_near_player(world_dir, offsets=[(0, 11, 0)])
+    tile = next((item for item in tile_audit.get("tiles", []) if isinstance(item, Mapping)), {})
+    site_audit = audit_saved_bandit_live_world_state(world_dir, required_site_id_contains="bandit_camp")
+    site = next((item for item in site_audit.get("matching_sites", []) if isinstance(item, Mapping)), {})
+    persisted = {"tile": tile, "lead_count": site.get("lead_count"), "leads": site.get("leads", [])}
+    if tuple(tile.get("target_abs_omt", ())) != source:
+        return {"status": "red", "reason": "r027_saved_source_coordinates_mismatch", "artifact": artifact}
+    verdict = validate_changed_observation_capture(
+        records, persisted=persisted,
+        run_id=str(json.loads((run_dir / "transition.events.binding.json").read_text(encoding="utf-8")).get("run_id", "")),
+        source_sha256=str(runtime_binding.get("runtime_source_sha256", "")),
+        executable_sha256=str(runtime_binding.get("executable_sha256", "")), binding_id=binding_id,
+        source_omt=source, lead_id=lead_id,
+        source_key="camp-signal:camp-smoke@(140,50,0)",
+    )
+    return {
+        "status": "green" if verdict.get("accepted") else "red", "validation": verdict,
+        "records": records, "persisted": persisted, "cleanup": dict(cleanup),
+        "artifact": artifact,
+    }
+
+
+def apply_r027_changed_observation_finalization(
+        report: Dict[str, Any], *, capture: Mapping[str, Any], run_id: str,
+        binding_id: str) -> Dict[str, Any]:
+    """Project the claim-specific post-cleanup capture into the final report."""
+    gate = {
+        "status": str(capture.get("status", "red")), "run_id": run_id,
+        "binding_id": binding_id,
+        "gates": [{"id": "r027_changed_observation_capture",
+                   "status": str(capture.get("status", "red")),
+                   "artifact": str(capture.get("artifact", "")),
+                   "validation": dict(capture.get("validation", {}))}],
+        "diagnostics": [], "diagnostic_summary": [],
+    }
+    report["r027_changed_observation_capture"] = dict(capture)
+    report["certification_capture_artifacts"] = dict(capture)
+    report["certification_capture_kind"] = "r027_changed_observation"
+    report["structured_gate_evidence"] = gate
+    report["structured_gate"] = gate
+    if capture.get("status") == "green":
+        report["verdict"] = "r027_changed_observation_capture_matched"
+        report["feature_proof"] = True
+        report["evidence_class"] = "focused feature proof"
+        report["proof_classification"] = {
+            "status": "green", "verdict": "r027_changed_observation_capture_matched",
+            "feature_proof": True, "evidence_class": "focused feature proof",
+            "structured_gate_status": "green", "capture_artifact": str(capture.get("artifact", "")),
+        }
+    return gate
+
+
+def write_stationary_certification_capture(
+    run_dir: Path,
+    *,
+    capture: Mapping[str, Any],
+    events: Sequence[Mapping[str, Any]],
+    relaunch: Mapping[str, Any],
+    steps: Sequence[Mapping[str, Any]],
+) -> Dict[str, Any]:
+    """Write the exact certification lifecycle derived from one live run.
+
+    The stationary observer never contributes travel evidence.  Each emitted
+    lifecycle row points back to either a committed game transition, the
+    bound native quit receipt, or the bound post-relaunch audit.  Any missing
+    or ambiguous source prevents both capture artifacts from being written.
+    """
+    required = (
+        "token_id", "scenario_digest", "round_id", "binding_id", "world_id",
+        "player_id", "actor_ids", "captured_artifacts",
+    )
+    if any(not capture.get(key) for key in required):
+        return {"status": "red", "reason": "certification_capture_identity_missing"}
+    actor_ids = tuple(sorted(str(value) for value in capture["actor_ids"]))
+    if not actor_ids:
+        return {"status": "red", "reason": "certification_capture_actor_ids_missing"}
+    common = {
+        "token_id": str(capture["token_id"]),
+        "scenario_digest": str(capture["scenario_digest"]),
+        "round_id": str(capture["round_id"]),
+        "binding_id": str(capture["binding_id"]),
+        "world_id": str(capture["world_id"]),
+        "player_id": str(capture["player_id"]),
+        "actor_ids": list(actor_ids),
+    }
+
+    def matching_events(**expected: Any) -> List[Mapping[str, Any]]:
+        return [
+            event for event in events
+            if all(event.get(key) == value for key, value in expected.items())
+        ]
+
+    dispatches = matching_events(
+        domain="bandit_live_world", transition="active_sortie_dispatch",
+        outcome="committed", simulation_owner="abstract", previous_state="at_home",
+        new_state="outbound",
+    )
+    outbound_crossings = matching_events(
+        domain="bandit_live_world", transition="local_pair_handoff",
+        outcome="committed", simulation_owner="local", previous_state="abstract",
+        new_state="local",
+    )
+    returns = matching_events(
+        domain="bandit_live_world", transition="structural_member_physical_return",
+        outcome="committed", new_state="at_home",
+    )
+    decisions = matching_events(
+        domain="bandit_live_world", transition="camp_decision", outcome="committed",
+        simulation_owner="abstract", previous_state="idle",
+        new_state="report_awaiting_assessment",
+    )
+    saves = matching_events(
+        domain="certification", transition="save_receipt", outcome="committed",
+    )
+    if len(dispatches) != 1 or len(outbound_crossings) != 1 or len(decisions) != 1 or len(saves) != 1:
+        return {"status": "red", "reason": "certification_capture_required_transition_missing_or_ambiguous"}
+    returned_actor_ids = tuple(sorted({
+        str(actor_id) for event in returns for actor_id in event.get("actor_ids", ())
+    }))
+    if returned_actor_ids != actor_ids or len(returns) != len(actor_ids):
+        return {"status": "red", "reason": "certification_capture_actor_return_mismatch"}
+    save_receipt = saves[0].get("certification_save_receipt")
+    if not isinstance(save_receipt, Mapping) or str(save_receipt.get("round_id", "")) != common["round_id"]:
+        return {"status": "red", "reason": "certification_capture_save_receipt_missing"}
+    terminal_receipt = relaunch.get("terminal_save_quit_receipt")
+    if not isinstance(terminal_receipt, Mapping) or terminal_receipt.get("status") != "matched":
+        return {"status": "red", "reason": "certification_capture_native_quit_missing"}
+    if relaunch.get("status") != "ready" or not relaunch.get("original_process_exited"):
+        return {"status": "red", "reason": "certification_capture_relaunch_missing"}
+    if int(relaunch.get("pid", 0) or 0) <= 0 or int(relaunch.get("pid", 0) or 0) == int(relaunch.get("initial_pid", 0) or 0):
+        return {"status": "red", "reason": "certification_capture_process_replacement_missing"}
+    normalized = next((
+        step for step in steps
+        if str(step.get("label", "")) == "audit_normalized_persistence_after_relaunch" and
+        isinstance(step.get("metadata"), Mapping) and
+        step["metadata"].get("status") == "required_state_present"
+    ), None)
+    if normalized is None:
+        return {"status": "red", "reason": "certification_capture_normalized_persistence_missing"}
+
+    def source(event: Mapping[str, Any]) -> Dict[str, Any]:
+        return {
+            "stream_sequence": int(event.get("sequence", 0) or 0),
+            "transition": str(event.get("transition", "")),
+            "owner": str(event.get("simulation_owner", "")),
+        }
+
+    def lifecycle(kind: str, owner: str, sources: Sequence[Mapping[str, Any]]) -> Dict[str, Any]:
+        return {
+            **common,
+            "sequence": 0,
+            "kind": kind,
+            "owner": owner,
+            "route": "stationary_native_wait_only",
+            "sources": [source(event) for event in sources],
+        }
+
+    lifecycle_events = [
+        lifecycle("declared_world", "world_save", []),
+        lifecycle("departure", "abstract", dispatches),
+        lifecycle("shared_route_advance", "abstract", dispatches),
+        lifecycle("bubble_crossing_out", "local", outbound_crossings),
+        lifecycle("actor_outcomes", "local", returns),
+        lifecycle("bubble_crossing_in", "abstract", returns),
+        lifecycle("return_report", "abstract", decisions),
+        lifecycle("camp_decision", "abstract", decisions),
+        lifecycle("save", "world_save", saves),
+        lifecycle("quit", "semantic_ui", []),
+        lifecycle("relaunch", "post_relaunch_lifecycle", []),
+        lifecycle("normalized_persistence", "post_relaunch_lifecycle", []),
+    ]
+    for sequence, event in enumerate(lifecycle_events, 1):
+        event["sequence"] = sequence
+    crossing_receipts = [
+        {**common, "sequence": 1, "owner": "abstract", "next_owner": "local",
+         "source": source(outbound_crossings[0])},
+        {**common, "sequence": 2, "owner": "local", "next_owner": "abstract",
+         "source": [source(event) for event in returns]},
+    ]
+    captures = capture["captured_artifacts"]
+    lifecycle_path = Path(str(captures["lifecycle_stream"])).resolve()
+    receipts_path = Path(str(captures["crossing_receipts"])).resolve()
+    run_root = run_dir.resolve()
+    if run_root not in lifecycle_path.parents or run_root not in receipts_path.parents:
+        return {"status": "red", "reason": "certification_capture_path_escapes_run"}
+    if lifecycle_path.exists() or receipts_path.exists():
+        return {"status": "red", "reason": "certification_capture_artifact_already_exists"}
+    write_json(lifecycle_path, lifecycle_events)
+    write_json(receipts_path, crossing_receipts)
+    return {
+        "status": "green",
+        "lifecycle_stream": str(lifecycle_path),
+        "crossing_receipts": str(receipts_path),
+        "lifecycle_count": len(lifecycle_events),
+    }
+
+
 def certification_recheck_round(
     context: Mapping[str, Any], *, segment: str,
 ) -> Dict[str, Any]:
@@ -18142,11 +19817,11 @@ def certification_recheck_round(
         current_world = _certification_world_save_fact(
             current_binding["authoritative_components"]["world_save"]
         )
-        # Opening a disposable declared world can cause the selected game
-        # process to persist its initial save before the first feature gate.
-        # Bind that one process-owned successor to the active lease so the
-        # first evidence segment starts from the actual run state.  Every
-        # later successor still requires the authenticated game save receipt.
+        # Opening a disposable declared world can dirty the selected process's
+        # in-memory world before the first feature gate.  Do not promote that
+        # pending state to a separate successor: the child was launched with
+        # the sealed predecessor and can authenticate only its first completed
+        # Save-and-Quit receipt against that predecessor.
         if (
                 segment == "initial_evidence_segment"
                 and chain.get("ok")
@@ -18156,30 +19831,12 @@ def certification_recheck_round(
                     connection, manifest, str(context.get("lease_id", ""))
                 )
         ):
-            lifecycle_row = connection.execute(
-                "SELECT COALESCE(MAX(event_sequence), 0) + 1 "
-                "FROM certification_round_lifecycle WHERE round_id = ?",
-                (str(manifest["round_id"]),),
-            ).fetchone()
-            lifecycle_sequence = int(lifecycle_row[0])
-            append_certification_lifecycle_event(
-                connection,
-                round_id=str(manifest["round_id"]),
-                event_sequence=lifecycle_sequence,
-                event_kind="world_save_progressed",
-                details={
-                    "save_sequence": int(chain["save_sequence"]) + 1,
-                    "event_stream_id": str(manifest["event_stream_id"]),
-                    **{"previous_" + key: value for key, value in chain["accepted"].items()},
-                    **{"current_" + key: value for key, value in current_world.items()},
-                    "startup_process_observation": True,
-                },
-            )
-            chain = _certification_world_save_chain(connection, manifest)
-            result["mismatches"] = [
-                mismatch for mismatch in result.get("mismatches", [])
-                if mismatch not in {"world_save", "binding_id"}
-            ]
+            return {
+                "ok": True,
+                "mismatches": [],
+                "pending_initial_process_world_save": True,
+                "world_save_progression": chain,
+            }
         if not chain.get("ok"):
             result = {"ok": False, "mismatches": ["world_save"], "error": chain["reason"]}
         elif current_world != chain["accepted"]:
@@ -18320,6 +19977,93 @@ def semantic_run_binding_child_environment(run_id: str) -> Dict[str, str]:
     if not bound_run_id:
         raise ValueError("semantic emission requires a bound harness run ID")
     return {"OPENCLAW_HARNESS_SEMANTIC_RUN_ID": bound_run_id}
+
+
+def semantic_request_transport_child_environment(run_dir: Path, run_id: str) -> Dict[str, str]:
+    """Publish the one-run request path consumed by the native input owner."""
+    if not str(run_id).strip():
+        raise ValueError("semantic request transport requires a bound harness run ID")
+    path = run_dir / "semantic.requests.jsonl"
+    path.touch(exist_ok=True)
+    trace_path = run_dir / "semantic.native.events.jsonl"
+    trace_path.touch(exist_ok=True)
+    return {
+        "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH": str(path.resolve()),
+        "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH": str(trace_path.resolve()),
+    }
+
+
+semantic_wake_pipe_writers: Dict[Tuple[str, str], int] = {}
+semantic_wake_pipe_writers_lock = threading.Lock()
+
+
+def semantic_wake_pipe_contract_path(run_dir: Path) -> Path:
+    """Return the run binding's descriptor for its inherited anonymous pipe."""
+    return run_dir / "semantic.wake.pipe.json"
+
+
+def open_semantic_wake_pipe(run_dir: Path, run_id: str) -> Tuple[int, int, Dict[str, str]]:
+    """Create a run-private FIFO whose writer can outlive the launcher process."""
+    if os.name == "nt":
+        return -1, -1, {}
+    wake_path = run_dir / "semantic.wake.pipe"
+    if wake_path.exists():
+        raise RuntimeError("semantic wake FIFO already exists for this run")
+    os.mkfifo(wake_path, 0o600)
+    read_fd = os.open(wake_path, os.O_RDONLY | os.O_NONBLOCK)
+    os.set_inheritable(read_fd, True)
+    contract = {
+        "schema": "caol-semantic-wake-pipe-v2",
+        "transport": "named_fifo",
+        "run_id": run_id,
+        "read_descriptor": "inherited_nonblocking_read_fd",
+        "writer_owner": "worker_session",
+        "writer_endpoint": str(wake_path.resolve()),
+    }
+    path = semantic_wake_pipe_contract_path(run_dir)
+    with path.open("w", encoding="utf-8") as stream:
+        stream.write(json.dumps(contract, ensure_ascii=False, separators=(",", ":")) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
+    return read_fd, -1, {"OPENCLAW_HARNESS_SEMANTIC_WAKE_READ_FD": str(read_fd)}
+
+
+def semantic_wake_pipe_contract(run_dir: Path, run_id: str) -> Dict[str, Any]:
+    """Read and validate the launch-bound pipe contract without endpoint polling."""
+    path = semantic_wake_pipe_contract_path(run_dir)
+    try:
+        record = json.loads(path.read_text(encoding="utf-8"))
+    except (OSError, json.JSONDecodeError):
+        record = {}
+    endpoint = Path(str(record.get("writer_endpoint", ""))) if isinstance(record, Mapping) else Path()
+    if isinstance(record, Mapping) and record.get("schema") == "caol-semantic-wake-pipe-v2" and \
+            record.get("transport") == "named_fifo" and record.get("run_id") == run_id and \
+            record.get("read_descriptor") == "inherited_nonblocking_read_fd" and \
+            record.get("writer_owner") == "worker_session" and endpoint.is_fifo():
+        return {"status": "bound", "contract": dict(record), "path": str(path)}
+    return {"status": "unavailable", "path": str(path), "run_id": run_id}
+
+
+def write_semantic_wake_pipe(run_dir: Path, run_id: str) -> int:
+    """Write one wake byte through the run-private FIFO after a durable request."""
+    contract = semantic_wake_pipe_contract(run_dir, run_id)
+    if contract["status"] != "bound":
+        raise OSError("launch-bound semantic wake FIFO is unavailable")
+    endpoint = Path(str(contract["contract"]["writer_endpoint"]))
+    write_fd = os.open(endpoint, os.O_WRONLY | os.O_NONBLOCK)
+    try:
+        return os.write(write_fd, b"w")
+    finally:
+        os.close(write_fd)
+
+
+def append_semantic_wake_observation(run_dir: Path, record: Mapping[str, Any]) -> None:
+    """Retain the source-bound wake delivery result."""
+    path = run_dir / "semantic.wake.observation.jsonl"
+    with path.open("a", encoding="utf-8") as stream:
+        stream.write(json.dumps(dict(record), ensure_ascii=False, separators=(",", ":"), default=str) + "\n")
+        stream.flush()
+        os.fsync(stream.fileno())
 
 
 def native_preview_segment_requests(steps: Sequence[Mapping[str, Any]]) -> str:
@@ -18624,6 +20368,25 @@ def bind_transition_event_stream(
     return {"run_id": resolved_run_id, "event_path": str(resolved_path)}
 
 
+def registry_authority_transition_run_id(registry_launch_receipt: str) -> str:
+    """Return the one registry authority identity eligible for native emission.
+
+    A registry-issued focused run already has an immutable authority ID.  Its
+    native child must use that exact ID instead of creating a second UUID and
+    leaving the bridge, report, and event stream unable to correlate.
+    """
+    if not str(registry_launch_receipt).strip():
+        return ""
+    try:
+        receipt = json.loads(registry_launch_receipt)
+    except (TypeError, ValueError, json.JSONDecodeError):
+        return ""
+    authority = receipt.get("wec_authority") if isinstance(receipt, Mapping) else None
+    if not isinstance(authority, Mapping) or authority.get("authority") != "registry":
+        return ""
+    return str(authority.get("run_id", "")).strip()
+
+
 def launch_game(
     profile: str,
     target_world: str,
@@ -18636,8 +20399,10 @@ def launch_game(
     harness_raw_seed: str = "",
     transition_event_run_id: str = "",
     transition_event_path: str = "",
+    executable: str = "",
+    terminal_transport: str = "auto",
 ) -> subprocess.Popen[str]:
-    exe = detect_executable()
+    exe = Path(executable).resolve() if executable else detect_executable()
     cmd = build_game_command(
         exe,
         profile,
@@ -18658,13 +20423,108 @@ def launch_game(
     if env.get("OPENCLAW_HARNESS_R019_LIFECYCLE_ACTOR_ID", "").strip():
         env["OPENCLAW_HARNESS_R019_LIFECYCLE_RUN_ID"] = binding["run_id"]
     env.update(semantic_run_binding_child_environment(binding["run_id"]))
+    env.update(semantic_request_transport_child_environment(run_dir, binding["run_id"]))
     env["OPENCLAW_HARNESS_TRANSITION_EVENT_PATH"] = binding["event_path"]
     env.pop("OPENCLAW_HARNESS_SCENARIO", None)
     if scenario:
         env["OPENCLAW_HARNESS_SCENARIO"] = scenario
+    if should_use_curses_terminal(exe, terminal_transport):
+        transport, slave_fd = CursesTerminalTransport.open(run_dir / "game.terminal.log")
+        read_fd, write_fd, wake_environment = open_semantic_wake_pipe(run_dir, binding["run_id"])
+        env.update(wake_environment)
+        env.setdefault("TERM", "xterm-256color")
+        try:
+            process = subprocess.Popen(
+                cmd, cwd=str(repo_root()), stdin=slave_fd, stdout=slave_fd, stderr=slave_fd,
+                text=False, env=env, start_new_session=True,
+                preexec_fn=CursesTerminalTransport.make_controlling_terminal,
+                pass_fds=(read_fd,),
+            )
+        except BaseException:
+            os.close(read_fd)
+            if write_fd >= 0:
+                os.close(write_fd)
+            transport.close()
+            raise
+        finally:
+            os.close(slave_fd)
+        os.close(read_fd)
+        wake_key = (str(run_dir.resolve()), binding["run_id"])
+        append_semantic_wake_observation(run_dir, {
+            "schema": "caol-semantic-wake-observation-v1",
+            "event": "writer_bound",
+            "run_id": binding["run_id"],
+            "transport": "named_fifo",
+            "pid": process.pid,
+            "writer_pid": None,
+        })
+        transport.start_reader()
+        # The process object remains the compatibility surface for current
+        # callers.  The private attachment gives terminal cleanup a precise
+        # owner without exposing a byte-injection action route.
+        process._openclaw_curses_terminal = transport
+
+        def release_terminal_after_exit() -> None:
+            exit_code = process.wait()
+            append_semantic_wake_observation(run_dir, {
+                "schema": "caol-semantic-wake-observation-v1",
+                "event": "child_exit",
+                "run_id": binding["run_id"],
+                "transport": "anonymous_pipe",
+                "pid": process.pid,
+                "returncode": exit_code,
+            })
+            transport.close()
+
+        threading.Thread(
+            target=release_terminal_after_exit, name="caol-curses-terminal-cleanup", daemon=True,
+        ).start()
+        return process
     stdout_log = (run_dir / "game.stdout.log").open("w", encoding="utf-8")
     stderr_log = (run_dir / "game.stderr.log").open("w", encoding="utf-8")
-    return subprocess.Popen(cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log, text=True, env=env)
+    # Tiles polls the native request transport from its own input loop.  Bind
+    # the same anonymous wake-pipe contract as the curses route so a cockpit
+    # request has one run-owned delivery binding regardless of renderer.
+    # Tiles does not turn the byte into input; it remains a wake-only transport
+    # record and the native semantic owner remains the sole request consumer.
+    read_fd, write_fd, wake_environment = open_semantic_wake_pipe(run_dir, binding["run_id"])
+    env.update(wake_environment)
+    # The semantic cockpit addresses this child after the short-lived startup
+    # command returns.  Give Tiles the same independent session ownership as
+    # the PTY route so launcher teardown cannot turn a live semantic request
+    # into ESRCH.
+    try:
+        process = subprocess.Popen(
+            cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log,
+            text=True, env=env, start_new_session=True, pass_fds=(read_fd,),
+        )
+    except BaseException:
+        os.close(read_fd)
+        if write_fd >= 0:
+            os.close(write_fd)
+        stdout_log.close()
+        stderr_log.close()
+        raise
+    os.close(read_fd)
+    wake_key = (str(run_dir.resolve()), binding["run_id"])
+    append_semantic_wake_observation(run_dir, {
+        "schema": "caol-semantic-wake-observation-v1",
+        "event": "writer_bound",
+        "run_id": binding["run_id"],
+        "transport": "named_fifo",
+        "pid": process.pid,
+        "writer_pid": None,
+    })
+
+    def release_wake_pipe_after_exit() -> None:
+        process.wait()
+        stdout_log.close()
+        stderr_log.close()
+
+    threading.Thread(
+        target=release_wake_pipe_after_exit, name="caol-tiles-wake-pipe-cleanup", daemon=True,
+    ).start()
+    return process
 
 
 def build_game_command(
@@ -18683,9 +20543,38 @@ def build_game_command(
     return cmd
 
 
-def startup_gui_automation_required(strategy: str) -> bool:
+def startup_gui_automation_required(strategy: str, *, semantic_only: bool = False) -> bool:
     """Whether startup owns Peekaboo permission, focus, and input steps."""
-    return strategy != "harness_new_world"
+    return strategy != "harness_new_world" and not semantic_only
+
+
+def terminal_native_startup_identity(
+    pid: int,
+    executable: Path,
+    runtime_binding: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Authenticate a PTY child without inventing a GUI window requirement."""
+    expected_executable = str(Path(executable).resolve())
+    command = pid_command(pid)
+    binding = compare_runtime_binding(dict(runtime_binding))
+    result: Dict[str, Any] = {
+        "pid": pid,
+        "transport": "terminal_native",
+        "expected_executable": expected_executable,
+        "observed_command": command,
+        "runtime_binding": binding,
+        "ok": False,
+    }
+    if not pid_is_alive(pid):
+        result["error"] = "terminal_native_process_not_alive"
+    elif not command or expected_executable not in command:
+        result["error"] = "terminal_native_process_command_mismatch"
+    elif binding.get("status") != "matched":
+        result["error"] = "terminal_native_runtime_binding_unproven"
+    else:
+        result["ok"] = True
+        result["status"] = "matched_source_bound_process"
+    return result
 
 
 def pid_command(pid: int) -> str:
@@ -18868,7 +20757,10 @@ def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, A
             info["cleanup_finished_at"] = _utc_timestamp(time.time())
             return info
         info["command_lookup"] = "unavailable"
-    elif not re.search(r"(?:Cataclysm-AOL|cataclysm-(?:tiles|tlg-tiles))(?:\.exe)?(?:\s|$)", command):
+    elif not re.search(
+            r"(?:Cataclysm-AOL|cataclysm(?:-(?:tiles|tlg-tiles))?|r_surface_008_curses/cataclysm|r027-(?:closure|exploration)-[0-9]+-tiles)(?:\.exe)?(?:\s|$)",
+            command,
+    ):
         info["status"] = "skipped_non_cataclysm_process"
         info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
@@ -19135,6 +21027,27 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "bandit_committed_shakedown_operation":
+            site_id = str(raw.get("site_id", "")).strip()
+            target_id = str(raw.get("target_id", "")).strip()
+            raw_target_omt = raw.get("target_omt", [])
+            raw_member_ids = raw.get("member_ids", [])
+            if not site_id or not target_id or not isinstance(raw_target_omt, list) or len(raw_target_omt) != 3 or not isinstance(raw_member_ids, list):
+                raise SystemExit(f"Fixture save_transforms[{index}] needs site_id, target_id, target_omt, and member_ids in {manifest_path}")
+            member_ids = sorted({int(value) for value in raw_member_ids})
+            if len(member_ids) < 2:
+                raise SystemExit(f"Fixture save_transforms[{index}] needs at least two exact operation members in {manifest_path}")
+            try:
+                target_omt = [int(value) for value in raw_target_omt]
+                generation = int(raw.get("generation"))
+                current_minutes = int(raw.get("current_minutes"))
+            except (TypeError, ValueError):
+                raise SystemExit(f"Fixture save_transforms[{index}] needs integer target_omt, generation, and current_minutes in {manifest_path}")
+            if generation < 2 or current_minutes < 0:
+                raise SystemExit(f"Fixture save_transforms[{index}] generation must be at least two and current_minutes non-negative in {manifest_path}")
+            transforms.append({"kind": kind, "site_id": site_id, "target_id": target_id, "target_omt": target_omt, "member_ids": member_ids, "generation": generation, "current_minutes": current_minutes, "branch": str(raw.get("branch", "reopened_demand") or "").strip()})
+            continue
+
         if not player_save:
             raise SystemExit(f"Fixture save_transforms[{index}] needs player_save in {manifest_path}")
 
@@ -19230,6 +21143,16 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             transforms.append({"kind": kind, "player_save": player_save})
             continue
 
+        if kind == "clear_avatar_activity":
+            unexpected_keys = sorted(set(raw) - {"kind", "player_save"})
+            if unexpected_keys:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] clear_avatar_activity has unexpected "
+                    f"keys {unexpected_keys} in {manifest_path}"
+                )
+            transforms.append({"kind": kind, "player_save": player_save})
+            continue
+
         if kind == "player_items":
             storage = str(raw.get("storage", "legacy_top_level_inv")).strip().lower()
             supported_storage = {"legacy_top_level_inv", "live_accessible_worn_pocket", "live_accessible_wielded"}
@@ -19270,6 +21193,18 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                         raise SystemExit(
                             f"Fixture save_transforms[{index}].items[{item_index}] charges must be integer in {manifest_path}"
                         )
+                if "wetness" in item_raw:
+                    try:
+                        wetness = int(item_raw.get("wetness"))
+                    except (TypeError, ValueError):
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] wetness must be integer in {manifest_path}"
+                        )
+                    if wetness < 0:
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] wetness must be >= 0 in {manifest_path}"
+                        )
+                    item["wetness"] = wetness
                 if "contents" in item_raw:
                     contents = item_raw.get("contents")
                     if not isinstance(contents, dict):
@@ -20206,13 +22141,13 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
 
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
-            "supported kinds: player_mutations, player_remove_addiction, clear_avatar_auto_move, player_items, player_worn_items, player_condition, player_location_offset_ms, player_basecamp_at_omt, player_near_overmap_special, "
+            "supported kinds: player_mutations, player_remove_addiction, clear_avatar_auto_move, clear_avatar_activity, player_items, player_worn_items, player_condition, player_location_offset_ms, player_basecamp_at_omt, player_near_overmap_special, "
             "overmap_terrain_id_at_abs_omt, player_view_seen_omt, seed_overmap_special_near_player, map_fields_near_player, map_terrain_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
             "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_camp_supply, bandit_clear_site_evidence, "
-            "bandit_clone_site, bandit_site_roster_shape, bandit_projection_leases"
+            "bandit_clone_site, bandit_site_roster_shape, bandit_projection_leases, bandit_committed_shakedown_operation"
         )
     return transforms
 
@@ -20287,7 +22222,6 @@ NATURAL_ECOLOGY_FORBIDDEN_FIXTURE_TRANSFORMS = frozenset({
     "bandit_clone_site",
     "bandit_site_roster_shape",
     "game_turn",
-    "seed_overmap_special_near_player",
 })
 
 
@@ -20295,7 +22229,12 @@ def natural_ecology_fixture_eligibility(
     fixture_name: str,
     fixture_profile: str,
 ) -> Dict[str, Any]:
-    """Classify the complete fixture source chain for natural qualification."""
+    """Classify the complete fixture source chain for natural qualification.
+
+    A seed_overmap_special_near_player transform is a zero-credit hostile-footprint
+    preparation only.  It is permitted because production owns the resulting site
+    and every actor, signal, dispatch, and contact still has to be observed live.
+    """
     resolved = resolve_fixture_payload(fixture_name, fixture_profile)
     violations = []
     for index, transform in enumerate(resolved.get("save_transforms", []), start=1):
@@ -20575,6 +22514,57 @@ def apply_clear_avatar_auto_move_transform(world_dir: Path, transform: Dict[str,
     }
 
 
+def apply_clear_avatar_activity_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Clear persisted activity ownership before observing a World surface."""
+    player_save = world_dir / str(transform.get("player_save", "")).strip()
+    if not player_save.exists() or player_save.suffix != ".zzip":
+        raise SystemExit(f"Fixture activity transform target is not a .zzip save: {player_save}")
+
+    extracted_save = player_save.with_suffix("")
+    run_zzip(player_save)
+    try:
+        payload = json.loads(extracted_save.read_text(encoding="utf-8"))
+        player = payload.get("player") if isinstance(payload, dict) else None
+        if not isinstance(player, dict):
+            raise SystemExit(f"Fixture activity transform could not read player object: {extracted_save}")
+        before = {
+            "activity": player.get("activity"),
+            "stashed_outbounds_activity": player.get("stashed_outbounds_activity"),
+        }
+        player["activity"] = {"type": "ACT_NULL"}
+        player["stashed_outbounds_activity"] = {"type": "ACT_NULL"}
+        extracted_save.write_text(json.dumps(payload, ensure_ascii=False), encoding="utf-8")
+        run_zzip(extracted_save)
+    finally:
+        if extracted_save.exists():
+            extracted_save.unlink()
+
+    _selected_save, _path, saved_payload, _stat = load_saved_player_payload(
+        world_dir, str(transform.get("player_save", ""))
+    )
+    saved_player = saved_payload.get("player") if isinstance(saved_payload, dict) else None
+    if not isinstance(saved_player, dict):
+        raise RuntimeError("Fixture activity transform did not preserve a player object")
+    after = {
+        "activity": saved_player.get("activity"),
+        "stashed_outbounds_activity": saved_player.get("stashed_outbounds_activity"),
+    }
+    no_owned_activity_fixture_invariant = all(
+        isinstance(value, dict) and value.get("type") == "ACT_NULL"
+        for value in after.values()
+    )
+    if not no_owned_activity_fixture_invariant:
+        raise RuntimeError("Fixture activity transform could not establish no-owned-activity invariant")
+    return {
+        "kind": "clear_avatar_activity",
+        "world": world_dir.name,
+        "player_save": str(transform.get("player_save", "")),
+        "before": before,
+        "after": after,
+        "no_owned_activity_fixture_invariant": no_owned_activity_fixture_invariant,
+    }
+
+
 def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     player_save_name = str(transform.get("player_save", "")).strip()
     player_save = world_dir / player_save_name
@@ -20663,6 +22653,7 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
         typeid = str(item.get("typeid", "")).strip()
         count = int(item.get("count", 1) or 1)
         charges = item.get("charges")
+        wetness = item.get("wetness")
         contents = item.get("contents")
         for _ in range(count):
             entry: Dict[str, Any] = {
@@ -20673,6 +22664,8 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
             }
             if charges is not None:
                 entry["charges"] = int(charges)
+            if wetness is not None:
+                entry["wetness"] = int(wetness)
             if isinstance(contents, dict):
                 entry["contents"] = contents
             assert target_container is not None
@@ -20687,6 +22680,8 @@ def apply_player_items_transform(world_dir: Path, transform: Dict[str, Any]) -> 
         added: Dict[str, Any] = {"typeid": typeid, "count": count}
         if charges is not None:
             added["charges"] = int(charges)
+        if wetness is not None:
+            added["wetness"] = int(wetness)
         added_items.append(added)
 
     extracted_save.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -24481,6 +26476,50 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
     }
 
 
+def apply_bandit_committed_shakedown_operation_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Install a schema-current, zero-credit local shakedown setup."""
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Fixture committed shakedown transform target not found: {dimension_path}")
+    version_line, separator, payload_text = dimension_path.read_text(encoding="utf-8").partition("\n")
+    if not separator:
+        raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    live_world = payload.get("overmapbuffer", {}).get("bandit_live_world", {})
+    sites = live_world.get("sites", []) if isinstance(live_world, dict) else []
+    site_id = str(transform["site_id"])
+    site = next((candidate for candidate in sites if isinstance(candidate, dict) and candidate.get("site_id") == site_id), None)
+    if site is None or int(site.get("schema_version", 0) or 0) < 10:
+        raise SystemExit("Fixture committed shakedown transform needs one current-schema owned site")
+    member_ids = list(transform["member_ids"])
+    members = {int(member.get("npc_id")): member for member in site.get("members", []) if isinstance(member, dict) and str(member.get("npc_id", "")).lstrip("-").isdigit()}
+    missing_member_ids = sorted(set(member_ids) - set(members))
+    if missing_member_ids:
+        raise SystemExit(f"Fixture committed shakedown transform members are not camp residents: {missing_member_ids}")
+    if any(member.get("wounded_or_unready", False) for member in (members[npc_id] for npc_id in member_ids)):
+        raise SystemExit("Fixture committed shakedown transform cannot reserve wounded or unready members")
+    generation = int(transform["generation"])
+    current_minutes = int(transform["current_minutes"])
+    target_id = str(transform["target_id"])
+    target_omt = list(transform["target_omt"])
+    activity_id = f"{site_id}#hostile:{generation}"
+    route = [list(site.get("anchor", [])), [target_omt[0], target_omt[1] + 3, target_omt[2]], target_omt]
+    if len(route[0]) != 3 or route[0] == route[1] or route[1] == route[2]:
+        raise SystemExit("Fixture committed shakedown transform cannot derive a canonical camp-to-target route")
+    report_generation = generation - 1
+    report_activity_id = f"{site_id}#fixture_scout:{report_generation}"
+    report_application_key = f"{report_activity_id}:report:{report_generation}"
+    for npc_id in member_ids:
+        members[npc_id]["state"] = "local_contact"
+        members[npc_id]["last_writeback_summary"] = "fixture zero-credit committed shakedown contact"
+    site["next_outing_generation"] = max(int(site.get("next_outing_generation", 0) or 0), generation + 1)
+    site["current_scout_report"] = {"schema_version": 4, "revision": 1, "action_policy": "bandit_shakedown", "source_activity_id": report_activity_id, "source_generation": report_generation, "source_job_type": "scout", "target_id": target_id, "target_omt": target_omt, "target_lead_id": "", "target_lead_revision": 0, "application_key": report_application_key, "observations": [], "casualty_ids": [], "delivered_minutes": current_minutes, "provisional": False}
+    site["camp_decision"] = {"schema_version": 2, "state": "preparing_follow_on", "report_policy": "bandit_shakedown", "source_report_revision": 1, "source_report_generation": report_generation, "source_report_activity_id": report_activity_id, "source_report_application_key": report_application_key, "target_id": target_id, "target_omt": target_omt, "target_lead_id": "", "target_lead_revision": 0, "last_transition_minutes": current_minutes, "next_eligible_minutes": -1, "transition_reason": "fixture zero-credit committed shakedown setup"}
+    site["active_hostile_operation"] = {"schema_version": 1, "operation_kind": "shakedown", "phase": "committed_contact", "reservation": {"schema_version": 5, "kind": "hostile_operation", "activity_id": activity_id, "camp_id": site_id, "generation": generation, "member_ids": member_ids, "leader_id": member_ids[0], "shared_route": route, "waypoint_index": 2, "target_id": target_id, "target_omt": target_omt, "job_type": "toll", "target_lead_id": "", "target_lead_revision": 0, "phase": "observing", "observations": [], "cargo": {"supply_units": 0, "trade_value": 0}, "casualty_ids": [], "resolved_member_ids": [], "started_minutes": current_minutes, "local_contact_minutes": current_minutes, "last_progress_minutes": current_minutes, "expected_return_minutes": current_minutes + 120, "missing_deadline_minutes": current_minutes + 300, "simulation_owner": "local", "handoff_epoch": 1, "last_advanced_minutes": current_minutes, "return_application_key": f"{activity_id}:return:{generation}", "report_application_key": f"{activity_id}:report:{generation}", "cargo_application_key": f"{activity_id}:cargo:{generation}"}, "source_report_revision": 1, "source_report_generation": report_generation, "source_report_activity_id": report_activity_id, "source_report_application_key": report_application_key, "shakedown_pending_branch": str(transform["branch"]), "shakedown_pending_demanded_value": 0, "shakedown_pending_surrendered_value": 0, "shakedown_pending_reachable_value": 0, "shakedown_pending_basecamp_scene": False, "has_rally": True, "rally_omt": route[1], "last_transition_reason": "fixture zero-credit committed shakedown setup", "legacy_unpinned": False}
+    dimension_path.write_text(version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return {"kind": "bandit_committed_shakedown_operation", "world": world_dir.name, "site_id": site_id, "activity_id": activity_id, "generation": generation, "member_ids": member_ids, "phase": "committed_contact", "branch": str(transform["branch"]), "target_id": target_id, "target_omt": target_omt}
+
+
 def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     reports: List[Dict[str, Any]] = []
     for transform in transforms:
@@ -24499,6 +26538,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "clear_avatar_auto_move":
             reports.append(apply_clear_avatar_auto_move_transform(world_dir, transform))
+            continue
+        if kind == "clear_avatar_activity":
+            reports.append(apply_clear_avatar_activity_transform(world_dir, transform))
             continue
         if kind == "player_items":
             reports.append(apply_player_items_transform(world_dir, transform))
@@ -24583,6 +26625,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "bandit_site_roster_shape":
             reports.append(apply_bandit_site_roster_shape_transform(world_dir, transform))
+            continue
+        if kind == "bandit_committed_shakedown_operation":
+            reports.append(apply_bandit_committed_shakedown_operation_transform(world_dir, transform))
             continue
         raise SystemExit(f"Unsupported fixture save transform kind: {kind}")
     return reports
@@ -25012,6 +27057,26 @@ def run_probe_post_relaunch(
     if not isinstance(focus, dict) or not focus.get("ok"):
         result["status"] = "relaunch_focus_unproven"
         return result
+    if artifact_run_dir is not None:
+        launch_receipt: Mapping[str, Any] = {}
+        try:
+            parsed_receipt = json.loads(registry_launch_receipt) if registry_launch_receipt else {}
+            if isinstance(parsed_receipt, Mapping):
+                launch_receipt = parsed_receipt
+        except json.JSONDecodeError:
+            pass
+        write_json(artifact_run_dir / "process_chain.json", {
+            "schema": "caol-bound-process-chain-v1",
+            "binding_id": str(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")),
+            "selection_token": str(launch_receipt.get("selection_token", "")),
+            "run_id": transition_event_run_id,
+            "canonical_run_dir": str(artifact_run_dir.resolve()),
+            "initial_pid": initial_pid,
+            "replacement_pid": relaunch_pid,
+            "executable_identity": str(launch_receipt.get("runtime_binding", {}).get("executable_sha256", ""))
+            if isinstance(launch_receipt.get("runtime_binding"), Mapping) else "",
+            "lifecycle": "replacement_ready",
+        })
     result["status"] = "ready"
     return result
 
@@ -25054,7 +27119,7 @@ def startup_action_menu_dispatched_since( log_path: Path, start_offset: int ) ->
 
 def recover_declared_startup_action_menu_overlay(
     pid: int, trace_path: Path, recovery_artifact_path: Path, *,
-    trace_start_offset: int = 0, profile_owned_input: Sequence[str] = (),
+    trace_start_offset: int = 0, profile_owned_input: Sequence[str] = ( "escape", ),
 ) -> Dict[str, Any]:
     """Dismiss an overlay using only the current process's native trace slice.
 
@@ -25192,6 +27257,7 @@ AUTO_ACKNOWLEDGE_COMPLETED_INTERACTION_KINDS = frozenset({
     "debug_map_editor_place_terrain",
     "debug_map_editor_place_trap",
     "debug_spawn_follower_npc",
+    "debug_spawn_named_npc",
     "debug_spawn_item",
     "debug_spawn_monster",
     "debug_spawn_overmap_threat",
@@ -25249,6 +27315,193 @@ def adaptive_semantic_baseline_minutes(
         latest_now_minutes_marker(artifact_log, end_offset=artifact_log.stat().st_size),
         "artifact_now_minutes",
     )
+
+
+def submit_semantic_surface_probe_request(
+    *, run_dir: Path, run_id: str, request: Mapping[str, Any], malformed: bool = False,
+) -> Dict[str, Any]:
+    """Write one probe record through the production JSONL/wake transport.
+
+    This is deliberately narrower than the cockpit action API: R-SURFACE-002
+    needs to prove native rejection of identities the public cockpit refuses
+    to construct.  It never turns an action into foreground input.
+    """
+    request_path = run_dir / "semantic.requests.jsonl"
+    try:
+        with request_path.open("a", encoding="utf-8") as stream:
+            if malformed:
+                stream.write('{"transport":"interrupted",}\n')
+            else:
+                stream.write(json.dumps(dict(request), ensure_ascii=False, separators=(",", ":")) + "\n")
+            stream.flush()
+            os.fsync(stream.fileno())
+        pipe_contract = semantic_wake_pipe_contract(run_dir, run_id)
+        if pipe_contract["status"] != "bound":
+            raise OSError("launch-bound anonymous semantic wake pipe is unavailable")
+        bytes_written = write_semantic_wake_pipe(run_dir, run_id)
+        return {
+            "accepted": True,
+            "transport": "anonymous_pipe",
+            "bytes_written": bytes_written,
+            "request_path": str(request_path),
+            "malformed": malformed,
+        }
+    except OSError as exc:
+        return {"accepted": False, "reason": "native_surface_transport_failed", "detail": str(exc)}
+
+
+def await_semantic_surface_probe_receipts(
+    *, profile: str, run_dir: Path, run_id: str, start_offset: int,
+    request_id: str, timeout_seconds: float, poll_seconds: float, minimum_receipts: int = 1,
+) -> List[Dict[str, Any]]:
+    deadline = time.monotonic() + timeout_seconds
+    while time.monotonic() <= deadline:
+        _, owned = refresh_semantic_step_trace(
+            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=start_offset,
+        )
+        events, status = read_semantic_step_trace(owned, run_dir, run_id)
+        if status == "ok":
+            matches = [dict(event) for event in events if event.get("event") == "surface_receipt" and
+                       event.get("request_id") == request_id]
+            if len(matches) >= minimum_receipts:
+                return matches
+        time.sleep(poll_seconds)
+    return []
+
+
+def execute_semantic_surface_rejection_matrix(
+    *, profile: str, run_dir: Path, run_id: str, trace_start_offset: int, pid: int,
+    session_id: str, action_id: str, timeout_seconds: float, poll_seconds: float,
+    expect_actionless_stop: bool = False,
+) -> Dict[str, Any]:
+    """Exercise an actionable rejection matrix or verify an actionless hard stop."""
+    def current_descriptor() -> Dict[str, Any]:
+        _, owned = refresh_semantic_step_trace(
+            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
+        )
+        events, status = read_semantic_step_trace(owned, run_dir, run_id)
+        if status != "ok":
+            raise ValueError("native semantic trace is unavailable")
+        descriptor = next((dict(event) for event in reversed(events)
+                           if event.get("event") == "surface_descriptor"), None)
+        if descriptor is None:
+            raise ValueError("native semantic descriptor is unavailable")
+        return descriptor
+
+    before = current_descriptor()
+    advertised_action_ids = [
+        str(candidate.get("id", "")) if isinstance(candidate, Mapping) else str(candidate)
+        for candidate in before.get("valid_actions", [])
+    ]
+    if expect_actionless_stop:
+        after = current_descriptor()
+        actionless = before.get("kind") == "unsupported" and not advertised_action_ids
+        stable = all(
+            after.get(key) == before.get(key)
+            for key in ("run_id", "surface_id", "frame_id", "kind", "breadcrumbs", "payload")
+        )
+        return {
+            "ok": actionless and stable,
+            "mode": "actionless_stop",
+            "before": before,
+            "after": after,
+            "action_submission": "not_attempted",
+            "requests_submitted": 0,
+            "actionless": actionless,
+            "stable": stable,
+        }
+    if not before.get("surface_id") or action_id not in advertised_action_ids:
+        return {"ok": False, "error": "required_native_surface_action_unavailable", "before": before}
+
+    baseline_state = current_semantic_step_frame(
+        profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
+    )
+
+    def state_after_probe() -> Dict[str, Any]:
+        return current_semantic_step_frame(
+            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
+        )
+
+    def same_world_state(frame: Mapping[str, Any]) -> bool:
+        return frame.get("observed_turn") == baseline_state.get("observed_turn") and \
+               frame.get("game_minutes") == baseline_state.get("game_minutes")
+
+    cases = (
+        ("stale", {"action_id": action_id}, "stale_frame"),
+        ("unadvertised", {"action_id": "surface.unadvertised"}, "unadvertised_action"),
+        ("wrong_surface", {"action_id": action_id}, "wrong_surface"),
+    )
+    results: Dict[str, Any] = {"before": before, "rejections": {}}
+    for name, override, expected_reason in cases:
+        current = current_descriptor()
+        request_id = f"r-surface-002:{session_id}:{name}"
+        request = {
+            "run_id": run_id, "surface_id": str(current["surface_id"]),
+            "frame_id": str(current["frame_id"]), "request_id": request_id,
+            "action_id": action_id, **override,
+        }
+        if name == "stale":
+            request["frame_id"] = str(current["frame_id"]) + ":stale"
+        elif name == "wrong_surface":
+            request["surface_id"] = str(current["surface_id"]) + ":wrong"
+        transport = submit_semantic_surface_probe_request(run_dir=run_dir, run_id=run_id, request=request)
+        receipts = await_semantic_surface_probe_receipts(
+            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
+            request_id=request_id, timeout_seconds=timeout_seconds, poll_seconds=poll_seconds,
+        ) if transport.get("accepted") else []
+        after = state_after_probe()
+        receipt = receipts[-1] if receipts else {}
+        results["rejections"][name] = {
+            "request": request, "transport": transport, "receipt": receipt, "after": after,
+            "ok": len(receipts) == 1 and receipt.get("accepted") is False and
+                  receipt.get("rejection_reason") == expected_reason and same_world_state(after),
+        }
+
+    interrupted_transport = submit_semantic_surface_probe_request(
+        run_dir=run_dir, run_id=run_id, request={}, malformed=True,
+    )
+    time.sleep(poll_seconds)
+    interrupted_after = state_after_probe()
+    results["transport_interrupted"] = {
+        "transport": interrupted_transport, "after": interrupted_after,
+        "result": "transport_interrupted_inert",
+        "ok": interrupted_transport.get("accepted") is True and same_world_state(interrupted_after),
+    }
+
+    accepted_from = current_descriptor()
+    accepted = execute_semantic_act(
+        run_dir=run_dir, profile=profile, run_id=run_id, trace_start_offset=trace_start_offset,
+        pid=pid, session_id=session_id, frame_id=str(accepted_from["frame_id"]), action_id=action_id,
+        transition_timeout_seconds=timeout_seconds, observe_interval_seconds=poll_seconds,
+        observed_frame=accepted_from,
+    )
+    request = accepted.get("surface_request", {}) if isinstance(accepted, Mapping) else {}
+    request_id = str(request.get("request_id", ""))
+    duplicate_transport = submit_semantic_surface_probe_request(
+        run_dir=run_dir, run_id=run_id, request=request,
+    ) if request_id else {"accepted": False, "reason": "accepted_request_missing"}
+    duplicate_receipts = await_semantic_surface_probe_receipts(
+        profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
+        request_id=request_id, timeout_seconds=timeout_seconds, poll_seconds=poll_seconds,
+        minimum_receipts=2,
+    ) if duplicate_transport.get("accepted") else []
+    duplicate_after = current_descriptor()
+    # A trace byte offset locates an observation; it is not part of the native
+    # receipt protocol.  Replay must preserve every protocol field while its
+    # later log record necessarily has a different offset.
+    def receipt_protocol(receipt: Mapping[str, Any]) -> Dict[str, Any]:
+        return {key: value for key, value in receipt.items() if key != "_event_offset"}
+
+    results["duplicate"] = {
+        "accepted": accepted, "transport": duplicate_transport, "receipts": duplicate_receipts,
+        "after": duplicate_after,
+        "ok": accepted.get("accepted") is True and len(duplicate_receipts) == 2 and
+              receipt_protocol(duplicate_receipts[0]) == receipt_protocol(duplicate_receipts[1]) and
+              duplicate_after.get("frame_id") == accepted.get("next_frame", {}).get("frame_id"),
+    }
+    results["ok"] = all(case.get("ok") is True for case in results["rejections"].values()) and \
+                    results["transport_interrupted"]["ok"] is True and results["duplicate"]["ok"] is True
+    return results
 
 
 def execute_probe_steps(
@@ -25398,6 +27651,7 @@ def execute_probe_steps(
                     # run's no-input HUD producer.
                     trace_offset=semantic_trace_start,
                     run_id=semantic_run_id,
+                    run_dir=run_dir,
                 )
                 report["metadata"].update({
                     "matching_initial_hud_world_frame_count": matching,
@@ -25420,6 +27674,18 @@ def execute_probe_steps(
                     "status": "blocked_r014_first_same_run_semantic_frame_unavailable",
                     "verdict": "yellow_live_bootstrap_unproved",
                     "reason": str( report["metadata"].get( "reason", "unknown" ) ),
+                }
+                report["stop_after_step"] = True
+                reports.append( report )
+                return reports
+            wake_pipe = semantic_wake_pipe_contract(run_dir, semantic_run_id)
+            report["metadata"]["semantic_wake_pipe"] = wake_pipe
+            if wake_pipe["status"] != "bound":
+                report["abort"] = {
+                    "guard": "native_semantic_bootstrap",
+                    "status": "blocked_semantic_wake_pipe_unavailable",
+                    "verdict": "yellow_live_bootstrap_unproved",
+                    "reason": "the launch did not publish its inherited anonymous wake-pipe contract",
                 }
                 report["stop_after_step"] = True
                 reports.append( report )
@@ -25447,10 +27713,16 @@ def execute_probe_steps(
                 {str(operation).strip() for operation in declared_operations}
                 if isinstance(declared_operations, list) else None
             )
+            ordinary_player_ui = step.get("authority", [])
+            if isinstance(ordinary_player_ui, list) and \
+                    "ordinary player UI through Peekaboo" in ordinary_player_ui:
+                if allowed_live_operations is None:
+                    allowed_live_operations = set()
+                allowed_live_operations.add("game.player_fire_setup")
             runtime = runtime_binding if isinstance(runtime_binding, Mapping) else {}
             witness_identity = {
                 "scenario_id": scenario_identity,
-                "source_identity": scenario_source_sha256,
+                "source_identity": live_witness_source_identity(runtime),
                 "executable_identity": str(runtime.get("executable_sha256", runtime_binary)),
             }
             def causal_boundary_precondition() -> Mapping[str, Any]:
@@ -25507,6 +27779,7 @@ def execute_probe_steps(
                 "bridge_binding_id": os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", ""),
                 "step_label": label,
                 "step_index": index,
+                "gameplay_credit": grants_gameplay_proof,
                 "objective": str( step.get( "objective", "" ) ).strip(),
                 "proof_targets": list( step.get( "proof_targets", [] ) ),
                 "authority": list( step.get( "authority", [] ) ),
@@ -25526,7 +27799,7 @@ def execute_probe_steps(
                     "action": "WITNESS / FINISH",
                     "charter": witness_charter,
                     "sequence": "observe, choose, act, repair or rerun when needed, run.witness, run.finish",
-                    "instruction": "Report the smallest supported conclusion; distinguish observation, inference, contradiction, and unknown; preserve inconvenient evidence; stop requesting proof once the charter is honestly settled.",
+                    "instruction": "Report the smallest supported conclusion for each affected claim. A single statement remains valid; use a caol-playtest-witness-bundle-v1 when one run has independent claim outcomes or a routed defect. Preserve inconvenient evidence without discarding unaffected observations, and stop requesting proof once the charter is honestly settled.",
                 }} if witness_charter is not None else {}),
                 "bound_bases": sorted(["game_mechanic", "scheduler_boundary", "path_progress",
                                        "measured_rate"]),
@@ -25541,7 +27814,18 @@ def execute_probe_steps(
             }
             descriptor_path = run_dir / f"{label}.cockpit_live_session.json"
             write_json( descriptor_path, descriptor )
-            print( json.dumps({"cockpit_live_session": descriptor}, ensure_ascii=False), flush=True )
+            # The detached bridge needs only the binding envelope to adopt the
+            # resident child.  Publish it immediately after the durable full
+            # descriptor, before any later live-session work can block stdout.
+            session_envelope = {
+                "cockpit_live_session": {
+                    key: descriptor[key] for key in (
+                        "schema", "entry_mode", "run_id", "binding_id",
+                        "bridge_binding_id", "bootstrap_only",
+                    )
+                }
+            }
+            print( json.dumps( session_envelope, ensure_ascii=False ), flush=True )
             if step.get( "bootstrap_only" ) is True:
                 report["cockpit_live_session"] = {"descriptor": descriptor}
                 report["metadata"] = {
@@ -25557,7 +27841,7 @@ def execute_probe_steps(
                 reports.append( report )
                 continue
             live_status = serve_cockpit_live( service, sys.stdin, sys.stdout )
-            final_path = run_dir / "cockpit.live.final.json"
+            final_path = cockpit_live_final_path( run_dir, label )
             final = json.loads( final_path.read_text( encoding="utf-8" ) ) \
                 if final_path.is_file() else {}
             report["cockpit_live_session"] = {
@@ -25595,14 +27879,41 @@ def execute_probe_steps(
                 reports.append( report )
                 return reports
         elif kind == "cockpit_act":
-            action_chain = [
-                str( item ).strip() for item in step.get( "action_chain", [] )
-                if str( item ).strip()
-            ]
+            action_chain = []
+            for raw_action in step.get( "action_chain", [] ):
+                if isinstance( raw_action, Mapping ):
+                    action_id = str( raw_action.get( "action_id", "" ) ).strip()
+                    if action_id:
+                        action_chain.append( {
+                            "action_id": action_id,
+                            "stable_id": str( raw_action.get( "stable_id", "" ) ).strip(),
+                            "stable_id_label_contains": str(
+                                raw_action.get( "stable_id_label_contains", "" )
+                            ).strip(),
+                            "stable_id_label_equals": str(
+                                raw_action.get( "stable_id_label_equals", "" )
+                            ).strip(),
+                            "stable_id_from_action": str(
+                                raw_action.get( "stable_id_from_action", "" )
+                            ).strip(),
+                            "stable_id_from_label_contains": str(
+                                raw_action.get( "stable_id_from_label_contains", "" )
+                            ).strip(),
+                            "parameters": {
+                                str( key ): str( value ) for key, value in raw_action.get(
+                                    "parameters", {}
+                                ).items()
+                            } if isinstance( raw_action.get( "parameters" ), Mapping ) else {},
+                            "wait_for_advertised_action": bool(
+                                raw_action.get( "wait_for_advertised_action", False )
+                            ),
+                        } )
+                elif str( raw_action ).strip():
+                    action_chain.append( { "action_id": str( raw_action ).strip() } )
             if not action_chain:
                 action_id = str( step.get( "action_id", "" ) ).strip()
                 if action_id:
-                    action_chain = [action_id]
+                    action_chain = [{ "action_id": action_id }]
             if not action_chain:
                 raise SystemExit( f"Scenario step '{label}' has no action_id or action_chain" )
             if not semantic_run_id:
@@ -25620,8 +27931,28 @@ def execute_probe_steps(
             )
             transactions: List[Dict[str, Any]] = []
             observation_ids: List[str] = []
-            for action_id in action_chain:
+            for action_spec in action_chain:
+                action_id = str( action_spec["action_id"] )
+                # An accepted receipt identifies its immediate successor, but
+                # a native child may finish unwinding before this next action.
+                # Always acquire a new top-descriptor observation: a returned
+                # parent descriptor is evidence, never authority to act after
+                # its owner has been recreated or popped.
                 observed = service.call( {"action": "game.observe"} )
+                if action_spec.get( "wait_for_advertised_action" ):
+                    deadline = time.monotonic() + float(
+                        step.get( "transition_timeout_seconds", 10.0 )
+                    )
+                    while not (
+                        observed.get( "ok" ) is True and
+                        cockpit_observation_advertises_action(
+                            observed.get( "result", {} ), action_id
+                        )
+                    ):
+                        if time.monotonic() > deadline:
+                            break
+                        time.sleep( float( step.get( "observe_interval_seconds", 0.1 ) ) )
+                        observed = service.call( {"action": "game.observe"} )
                 observation_id = str( observed.get( "result", {} ).get( "observation_id", "" ) )
                 if not observation_id or observation_id in observation_ids:
                     outcome = {
@@ -25639,6 +27970,51 @@ def execute_probe_steps(
                     "action": "game.act", "observation_id": observation_id,
                     "action_id": action_id,
                 }
+                stable_id = str( action_spec.get( "stable_id", "" ) ).strip()
+                stable_id_label_contains = str(
+                    action_spec.get( "stable_id_label_contains", "" )
+                ).strip()
+                stable_id_label_equals = str(
+                    action_spec.get( "stable_id_label_equals", "" )
+                ).strip()
+                stable_id_from_action = str( action_spec.get( "stable_id_from_action", "" ) ).strip()
+                stable_id_from_label_contains = str(
+                    action_spec.get( "stable_id_from_label_contains", "" )
+                ).strip()
+                if stable_id_label_contains or stable_id_label_equals or stable_id_from_action:
+                    details = observed.get( "result", {} ).get( "advertised_action_details", [] )
+                    stable_id_source_action = stable_id_from_action or action_id
+                    stable_id_source_label = stable_id_label_equals or \
+                                             stable_id_from_label_contains or stable_id_label_contains
+                    matches = [
+                        detail for detail in details if isinstance( detail, Mapping ) and
+                        str( detail.get( "id", "" ) ) == stable_id_source_action and
+                        detail.get( "enabled" ) is True and
+                        ( str( detail.get( "label", "" ) ).casefold() == stable_id_source_label.casefold()
+                          if stable_id_label_equals else stable_id_source_label.casefold() in str(
+                              detail.get( "label", "" ) ).casefold() ) and
+                        str( detail.get( "stable_id", "" ) )
+                    ]
+                    if len( matches ) != 1:
+                        outcome = {
+                            "ok": False,
+                            "error": "stable_id_label_not_unique_or_unadvertised",
+                            "action_id": action_id,
+                            "stable_id_source_action": stable_id_source_action,
+                            "stable_id_label_contains": stable_id_source_label,
+                        }
+                        transactions.append( {
+                            "action_id": action_id,
+                            "observation": observed,
+                            "outcome": outcome,
+                        } )
+                        break
+                    stable_id = str( matches[0]["stable_id"] )
+                if stable_id:
+                    request["stable_id"] = stable_id
+                parameters = action_spec.get( "parameters", {} )
+                if parameters:
+                    request["parameters"] = parameters
                 if "handle" in step:
                     request["handle"] = str( step["handle"] )
                 if isinstance( step.get( "recovery" ), Mapping ):
@@ -25650,6 +28026,15 @@ def execute_probe_steps(
                     "outcome": outcome,
                 } )
                 if outcome.get( "ok" ) is not True:
+                    break
+                next_observation = outcome.get( "observation" )
+                if not isinstance( next_observation, Mapping ) or not str(
+                        next_observation.get( "observation_id", "" )
+                ).strip():
+                    transactions[-1]["outcome"] = {
+                        "ok": False,
+                        "error": "fresh_authorized_observation_unavailable",
+                    }
                     break
             report["cockpit_act"] = transactions[-1]["outcome"] if len( transactions ) == 1 else {
                 "ok": len( transactions ) == len( action_chain ) and all(
@@ -25705,10 +28090,15 @@ def execute_probe_steps(
                     ) == item["action_id"]
                 ) for item in transactions
             )
+            transaction_complete = (
+                report["cockpit_act"].get( "ok" ) is True and
+                report["semantic_action_count"] == len( action_chain )
+            )
             report["metadata"] = {
                 "artifact_kind": "native_cockpit_transaction",
                 "artifact_path": str( artifact_path ),
                 "session_id": session_id,
+                "status": "required_state_present" if transaction_complete else "scanned",
                 "gameplay_credit": bool( step.get( "gameplay_credit", True ) ) and bool(
                     report["cockpit_act"].get( "ok" )
                 ),
@@ -25744,6 +28134,98 @@ def execute_probe_steps(
                 }
                 report["stop_after_step"] = True
                 reports.append( report )
+                return reports
+        elif kind == "semantic_surface_assertion":
+            if not semantic_run_id:
+                raise SystemExit(f"Scenario step '{label}' has no run-bound native semantic trace")
+            _, owned = refresh_semantic_step_trace(
+                profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                start_offset=semantic_trace_start,
+            )
+            events, trace_status = read_semantic_step_trace(owned, run_dir, semantic_run_id)
+            descriptor = next((dict(event) for event in reversed(events)
+                               if event.get("event") == "surface_descriptor"), {})
+            expected_kind = str(step.get("expected_kind", "")).strip()
+            payload = descriptor.get("payload", {})
+            actions = descriptor.get("valid_actions", [])
+            action_ids = {str(action.get("id", "")) for action in actions
+                          if isinstance(action, Mapping)}
+            payload_equals = step.get("payload_equals", {})
+            payload_absent = step.get("payload_absent", [])
+            actions_absent = step.get("actions_absent", [])
+            actions_empty = step.get("actions_empty", False)
+            breadcrumbs_contains = step.get("breadcrumbs_contains", [])
+            breadcrumbs = descriptor.get("breadcrumbs", [])
+            assertion_ok = trace_status == "ok" and (
+                not expected_kind or descriptor.get("kind") == expected_kind
+            ) and isinstance(payload, Mapping) and isinstance(payload_equals, Mapping) and all(
+                payload.get(str(key)) == str(value) for key, value in payload_equals.items()
+            ) and isinstance(payload_absent, list) and all(
+                str(key) not in payload for key in payload_absent
+            ) and isinstance(actions_absent, list) and all(
+                str(action_id) not in action_ids for action_id in actions_absent
+            ) and (not actions_empty or not action_ids) and isinstance(
+                breadcrumbs_contains, list
+            ) and isinstance(breadcrumbs, list) and all(
+                str(breadcrumb) in {str(value) for value in breadcrumbs}
+                for breadcrumb in breadcrumbs_contains
+            )
+            report["semantic_surface_assertion"] = {
+                "ok": assertion_ok,
+                "trace_status": trace_status,
+                "descriptor": descriptor,
+            }
+            report["metadata"] = {
+                "artifact_kind": "native_semantic_surface_assertion",
+                "gameplay_credit": False,
+                "status": "required_state_present" if assertion_ok else "scanned",
+            }
+            if not assertion_ok:
+                report["abort"] = {
+                    "guard": "semantic_surface_assertion",
+                    "status": "blocked_native_semantic_surface_assertion",
+                    "verdict": "red_native_semantic_surface_assertion_unproved",
+                    "reason": "the current native descriptor did not meet its declared fail-closed shape",
+                }
+                report["stop_after_step"] = True
+                reports.append( report )
+                return reports
+        elif kind == "semantic_surface_rejection_matrix":
+            if not semantic_run_id:
+                raise SystemExit(f"Scenario step '{label}' has no run-bound native semantic trace")
+            action_id = str(step.get("action_id", "world.inventory")).strip()
+            session_id = str(step.get("session_id", "")).strip()
+            if not session_id:
+                session_id, _ = adaptive_semantic_session_identity()
+            matrix = execute_semantic_surface_rejection_matrix(
+                profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                action_id=action_id,
+                timeout_seconds=float(step.get("transition_timeout_seconds", 10.0)),
+                poll_seconds=float(step.get("observe_interval_seconds", 0.1)),
+                expect_actionless_stop=step.get("expect_actionless_stop") is True,
+            )
+            artifact_path = run_dir / f"{label}.semantic_surface_matrix.json"
+            write_json(artifact_path, matrix)
+            report["semantic_surface_rejection_matrix"] = matrix
+            report["metadata"] = {
+                "artifact_kind": "native_semantic_surface_rejection_matrix",
+                "artifact_path": str(artifact_path),
+                "session_id": session_id,
+                "action_id": action_id,
+                "status": "required_state_present" if matrix.get("ok") is True else "scanned",
+                "gameplay_credit": False,
+                "transport": "request_jsonl_and_anonymous_wake_pipe_only",
+            }
+            if matrix.get("ok") is not True:
+                report["abort"] = {
+                    "guard": "semantic_surface_rejection_matrix",
+                    "status": "blocked_r_surface_002_native_rejection_matrix",
+                    "verdict": "red_native_semantic_boundary_unproved",
+                    "reason": "one required native rejection, inert transport, or duplicate replay result was absent",
+                }
+                report["stop_after_step"] = True
+                reports.append(report)
                 return reports
         elif kind == "cockpit_observe":
             if not semantic_run_id:
@@ -26189,6 +28671,10 @@ def execute_probe_steps(
                     ) or 0
                 ),
                 portal_storm_allowed=portal_storm_allowed,
+                expected_interruption_screen_text_contains=tuple(
+                    str(item) for item in step.get("expected_interruption_screen_text_contains", [])
+                    if str(item).strip()
+                ),
             )
             timing_status = str(report["timing"].get("status", ""))
             if timing_status == "blocked_contaminating_interruption":
@@ -26207,6 +28693,52 @@ def execute_probe_steps(
                 }
                 reports.append(report)
                 return reports
+        elif kind == "semantic_terminal_action_chain":
+            action_chain = [str(item).strip() for item in step.get("required_action_chain", []) if str(item).strip()]
+            timeout = float(step.get("observation_timeout_seconds", 0) or 0)
+            interval = float(step.get("observation_interval_seconds", 0) or 0)
+            if not action_chain or timeout <= 0 or interval <= 0 or not semantic_run_id:
+                raise SystemExit(f"Scenario step '{label}' requires terminal semantic actions and timing")
+            session_id, identity_source = adaptive_semantic_session_identity()
+            terminal_receipts = []
+            for position, declared_action in enumerate(action_chain):
+                frame = current_semantic_step_frame(profile=profile, run_dir=run_dir,
+                                                    run_id=semantic_run_id,
+                                                    start_offset=semantic_trace_start)
+                dispatch = semantic_frame_dispatch(frame, declared_action)
+                if dispatch is None:
+                    report["abort"] = {"guard": "semantic_terminal_action_chain",
+                                       "status": "blocked_semantic_terminal_action_unadvertised",
+                                       "verdict": "red_semantic_terminal_action_unproved",
+                                       "reason": "the current native owner did not advertise the required action",
+                                       "required_action": declared_action}
+                    report["stop_after_step"] = True
+                    reports.append(report)
+                    return reports
+                receipt = execute_semantic_act(run_dir=run_dir, profile=profile, run_id=semantic_run_id,
+                    trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                    frame_id=str(frame["frame_id"]), action_id=dispatch[0], stable_id=dispatch[1] or None,
+                    declared_action_id=declared_action, transition_timeout_seconds=timeout,
+                    observe_interval_seconds=interval, observed_frame=frame,
+                    allow_terminal_exit=position == len(action_chain) - 1)
+                terminal_receipts.append(receipt)
+                if receipt.get("accepted") is not True:
+                    report["semantic_receipts"] = terminal_receipts
+                    report["abort"] = {"guard": "semantic_terminal_action_chain",
+                                       "status": "blocked_semantic_terminal_receipt_rejected",
+                                       "verdict": "red_semantic_terminal_action_unproved",
+                                       "reason": "the required native action received no accepted receipt",
+                                       "required_action": declared_action}
+                    report["stop_after_step"] = True
+                    reports.append(report)
+                    return reports
+            report["semantic_terminal_session"] = {"run_id": semantic_run_id, "session_id": session_id,
+                                                   "session_identity_source": identity_source,
+                                                   "required_action_chain": action_chain}
+            report["semantic_receipts"] = terminal_receipts
+            report["metadata"] = {"artifact_kind": "semantic_native_save_and_quit",
+                                  "native_actions_proved": action_chain,
+                                  "terminal_receipt_proved": True}
         elif kind == "adaptive_semantic_window":
             if artifact_log is None or action_trace_log is None:
                 raise SystemExit(f"Scenario step '{label}' requires native artifact and action traces")
@@ -26329,6 +28861,7 @@ def execute_probe_steps(
                 for action_id in required_action_chain:
                     action_deadline = time.monotonic() + observation_timeout_seconds
                     frame: Dict[str, Any] | None = None
+                    dispatch: tuple[str, str] | None = None
                     while time.monotonic() <= action_deadline:
                         try:
                             candidate = current_semantic_step_frame(
@@ -26338,7 +28871,8 @@ def execute_probe_steps(
                         except ValueError:
                             time.sleep(observation_interval_seconds)
                             continue
-                        if action_id in candidate.get("valid_actions", []):
+                        dispatch = semantic_frame_dispatch( candidate, action_id )
+                        if dispatch is not None:
                             frame = candidate
                             break
                         report["semantic_session"] = descriptor
@@ -26372,7 +28906,8 @@ def execute_probe_steps(
                         run_dir=run_dir, profile=profile, run_id=semantic_run_id,
                         trace_start_offset=semantic_trace_start, pid=pid,
                         session_id=session_id, frame_id=str(frame["frame_id"]),
-                        action_id=action_id,
+                        action_id=dispatch[0], stable_id=dispatch[1] or None,
+                        declared_action_id=action_id,
                         transition_timeout_seconds=observation_timeout_seconds,
                         observe_interval_seconds=observation_interval_seconds,
                         observed_frame=frame,
@@ -26390,6 +28925,7 @@ def execute_probe_steps(
                         report["stop_after_step"] = True
                         reports.append(report)
                         return reports
+                    receipt["declared_action_id"] = action_id
                     next_frame = receipt.get("_next_frame")
                     if adaptive_interrupt_actions and isinstance(next_frame, Mapping):
                         for interrupt_action in adaptive_interrupt_actions:
@@ -26429,7 +28965,8 @@ def execute_probe_steps(
             while time.monotonic() <= deadline:
                 if adaptive_semantic_autodrive and "activity.ignore" in adaptive_interrupt_actions:
                     activity_result = recover_adaptive_activity_distraction(
-                        pid=pid, action_trace_log=action_trace_log,
+                        pid=pid, run_dir=run_dir, profile=profile, run_id=semantic_run_id,
+                        session_id=session_id, action_trace_log=action_trace_log,
                         trace_start_offset=semantic_trace_start, delay_ms=200,
                     )
                     if activity_result.get("status") == "recovered":
@@ -26522,7 +29059,8 @@ def execute_probe_steps(
                         )
                     except ValueError:
                         next_frame = None
-                    if next_frame is not None and next_frame.get("state") == "world":
+                    if next_frame is not None and \
+                            str(next_frame.get("state", next_frame.get("kind", ""))) == "world":
                         break
                 time.sleep(observation_interval_seconds)
             receipts_path = run_dir / "semantic.steps.jsonl"
@@ -26533,7 +29071,7 @@ def execute_probe_steps(
                     if isinstance(value, dict):
                         receipts.append(value)
             accepted_actions = [
-                str(item.get("action_id", "")) for item in receipts
+                str(item.get("declared_action_id", item.get("action_id", ""))) for item in receipts
                 if item.get("accepted") is True and item.get("session_id") == session_id
             ]
             action_cursor = 0
@@ -27112,6 +29650,28 @@ def execute_probe_steps(
                 "menu_settle_seconds": menu_settle_seconds,
                 "debug_menu_path": ["}", "s", "f"],
                 "spawn_type": "random_follower_npc",
+            })
+        elif kind == "debug_spawn_named_npc":
+            template_id = str(step.get("template_id", "")).strip()
+            if not template_id:
+                raise SystemExit(f"Scenario step '{label}' needs template_id")
+            delay_ms = int(step.get("delay_ms", 200) or 200)
+            type_delay_ms = int(step.get("type_delay_ms", 20) or 20)
+            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.35) or 0.35)
+            debug_spawn_named_npc(
+                pid,
+                template_id=template_id,
+                delay_ms=delay_ms,
+                type_delay_ms=type_delay_ms,
+                menu_settle_seconds=menu_settle_seconds,
+            )
+            report.update({
+                "template_id": template_id,
+                "delay_ms": delay_ms,
+                "type_delay_ms": type_delay_ms,
+                "menu_settle_seconds": menu_settle_seconds,
+                "debug_menu_path": ["}", "s", "p", "/", template_id, "enter"],
+                "spawn_type": "source_defined_named_npc",
             })
         elif kind == "debug_force_temperature":
             try:
@@ -29377,6 +31937,7 @@ def build_startup_step_ledger(
     screen_summary: Dict[str, Any],
     screen_label: str,
     run_dir: Path,
+    terminal_native_identity: Optional[Dict[str, Any]] = None,
     failure_reason: str = "",
 ) -> List[Dict[str, Any]]:
     plan_path = run_dir / "plan.json"
@@ -29444,15 +32005,31 @@ def build_startup_step_ledger(
             },
         ),
         startup_ledger_row(
-            step="window focus",
+            step=("terminal-native process identity" if terminal_native_identity is not None else "window focus"),
             preconditions="cataclysm process is running",
-            action="peekaboo window focus --pid <pid>",
-            expected_state="the game window is selected before any title/load keystrokes or screenshots",
+            action=(
+                "verify the source-bound PTY child PID and runtime binding"
+                if terminal_native_identity is not None else "peekaboo window focus --pid <pid>"
+            ),
+            expected_state=(
+                "the terminal-native child is the bound executable; its native gameplay-HUD trace supplies HUD identity"
+                if terminal_native_identity is not None else "the game window is selected before any title/load keystrokes or screenshots"
+            ),
             evidence_artifact=str(run_dir / "startup.result.json"),
-            failure_rule="non-zero focus returncode is yellow for startup and red for any keystroke-dependent feature proof",
-            next_step_gate="startup polling may continue, but feature proof needs a green focus row before key delivery is trusted",
-            verdict="green_focus_returned" if focus_result.get("ok") else "yellow_focus_unproven",
-            metadata=focus_result,
+            failure_rule=(
+                "a dead child, command mismatch, or runtime-binding mismatch is yellow; GUI focus is not an identity for terminal-native transport"
+                if terminal_native_identity is not None else "non-zero focus returncode is yellow for startup and red for any keystroke-dependent feature proof"
+            ),
+            next_step_gate=(
+                "semantic feature steps may continue only with a matched source-bound process and native gameplay HUD"
+                if terminal_native_identity is not None else "startup polling may continue, but feature proof needs a green focus row before key delivery is trusted"
+            ),
+            verdict=(
+                "green_terminal_native_process_matched" if terminal_native_identity.get("ok") else "yellow_terminal_native_process_unproven"
+            ) if terminal_native_identity is not None else (
+                "green_focus_returned" if focus_result.get("ok") else "yellow_focus_unproven"
+            ),
+            metadata=terminal_native_identity if terminal_native_identity is not None else focus_result,
         ),
         startup_ledger_row(
             step="load/readiness gate",
@@ -29486,32 +32063,54 @@ def build_feature_debug_guard(
     screen_probe: Optional[Dict[str, Any]] = None,
     screen_summary: Optional[Dict[str, Any]] = None,
     process_alive: Optional[bool] = None,
+    expected_debug_log_messages: Optional[Sequence[str]] = None,
+    require_screen_observability: bool = True,
+    expected_clean_terminal_exit: bool = False,
 ) -> Dict[str, Any]:
     """Build a release-blocking feature-phase log/modal ledger row."""
 
     probe = screen_probe if isinstance(screen_probe, dict) else {}
     raw_error_lines = debug_capture.get("error_evidence_lines", [])
     error_lines = [str(line) for line in raw_error_lines] if isinstance(raw_error_lines, list) else []
+    expected_messages = [str(message).strip() for message in expected_debug_log_messages or []
+                         if str(message).strip()]
+    expected_error_lines = [
+        line for line in error_lines
+        if any(message in line for message in expected_messages)
+    ]
+    # CDDA emits this preamble immediately before the declared debugmsg record.
+    # It is not an independently permitted failure: an unrelated preamble remains
+    # blocking unless this same delta contains the scenario's exact message.
+    debugmsg_preamble = "ERROR : (error message will follow backtrace)"
+    if expected_error_lines:
+        expected_error_lines.extend(
+            line for line in error_lines
+            if debugmsg_preamble in line and line not in expected_error_lines
+        )
+    unexpected_error_lines = [line for line in error_lines if line not in expected_error_lines]
     visible_error_popup = bool(probe.get("visible_error_popup"))
     summary = screen_summary if isinstance(screen_summary, dict) else {}
     capture_observable = screen_capture_succeeded(summary)
     ocr_observable = bool(probe.get("ocr_ok"))
     black_capture_warning = bool(probe.get("black_capture_warning"))
     debug_tail_classified = bool(debug_capture.get("tail_classified", True))
+    process_liveness_proven = process_alive is True or expected_clean_terminal_exit
     issues: List[str] = []
-    if error_lines:
+    if unexpected_error_lines:
         issues.append("feature_phase_error_logged")
+    if expected_error_lines:
+        issues.append("feature_phase_expected_error_logged")
     if visible_error_popup:
         issues.append("feature_phase_visible_error_popup")
-    if process_alive is False:
+    if process_alive is False and not expected_clean_terminal_exit:
         issues.append("feature_phase_process_exited")
     elif process_alive is not True:
         issues.append("feature_phase_process_liveness_unproven")
-    if not capture_observable:
+    if require_screen_observability and not capture_observable:
         issues.append("feature_phase_screen_capture_failed")
-    if not ocr_observable:
+    if require_screen_observability and not ocr_observable:
         issues.append("feature_phase_screen_ocr_failed")
-    if black_capture_warning:
+    if require_screen_observability and black_capture_warning:
         issues.append("feature_phase_screen_capture_black")
     if not debug_tail_classified:
         issues.append("feature_phase_debug_tail_unclassified")
@@ -29519,17 +32118,17 @@ def build_feature_debug_guard(
     if visible_error_popup:
         status = "red"
         verdict = "red_feature_phase_visible_error_popup"
-    elif error_lines:
+    elif unexpected_error_lines:
         status = "red"
         verdict = "red_feature_phase_error_logged"
-    elif process_alive is False:
+    elif process_alive is False and not expected_clean_terminal_exit:
         status = "red"
         verdict = "red_feature_phase_process_exited"
     elif (
-        process_alive is not True
-        or not capture_observable
-        or not ocr_observable
-        or black_capture_warning
+        not process_liveness_proven
+        or (require_screen_observability and not capture_observable)
+        or (require_screen_observability and not ocr_observable)
+        or (require_screen_observability and black_capture_warning)
         or not debug_tail_classified
     ):
         status = "yellow"
@@ -29547,7 +32146,7 @@ def build_feature_debug_guard(
         "label": "feature_debug_guard",
         "kind": "debug_log_guard",
         "primitive_step": "feature_phase_debug_log_guard",
-        "expected_visible_fact": "feature steps complete without a new ERROR/DEBUG log or visible error modal",
+        "expected_visible_fact": "feature steps complete without an undeclared new ERROR/DEBUG log or visible error modal",
         "evidence_artifact": evidence_artifact,
         "issues": issues,
         "verdict": verdict,
@@ -29556,17 +32155,22 @@ def build_feature_debug_guard(
         "status": status,
         "verdict": verdict,
         "error_evidence_lines": error_lines,
+        "expected_error_evidence_lines": expected_error_lines,
+        "unexpected_error_evidence_lines": unexpected_error_lines,
+        "expected_debug_log_messages": expected_messages,
         "visible_error_popup": visible_error_popup,
         "process_alive": process_alive,
+        "expected_clean_terminal_exit": expected_clean_terminal_exit,
         "capture_observable": capture_observable,
         "ocr_observable": ocr_observable,
         "black_capture_warning": black_capture_warning,
+        "require_screen_observability": require_screen_observability,
         "debug_tail_classified": debug_tail_classified,
         "artifact_path": evidence_artifact,
         "debug_capture": debug_capture,
         "screen_probe": probe,
         "ledger_row": ledger_row,
-        "rule": "Any new feature-phase ERROR/DEBUG line or visible error modal blocks feature proof; the guard never sends dismissal or input keys.",
+        "rule": "Any undeclared feature-phase ERROR/DEBUG line or visible error modal blocks feature proof.  A declared CDDA debugmsg record is retained as scenario-bound evidence.  Screen observability is mandatory unless this native-receipt-only scenario explicitly opts out; the guard never sends dismissal or input keys.",
     }
 
 
@@ -29580,6 +32184,9 @@ def capture_feature_phase_guard(
     screen_summary: Dict[str, Any],
     pid: int,
     debug_identity: Optional[Dict[str, Any]] = None,
+    expected_debug_log_messages: Optional[Sequence[str]] = None,
+    require_screen_observability: bool = True,
+    expected_clean_terminal_exit: bool = False,
 ) -> Dict[str, Any]:
     """Observe the final feature screen, then scan logs, then prove liveness."""
 
@@ -29601,7 +32208,18 @@ def capture_feature_phase_guard(
         expected_identity=debug_identity,
     )
     error_lines = debug_capture.get("error_evidence_lines", [])
-    if isinstance(error_lines, list) and error_lines:
+    expected_messages = [str(message).strip() for message in expected_debug_log_messages or []
+                         if str(message).strip()]
+    expected_debugmsg_record = isinstance(error_lines, list) and any(
+        any(message in str(line) for message in expected_messages)
+        for line in error_lines
+    )
+    unexpected_error_lines = [
+        str(line) for line in error_lines
+        if not any(message in str(line) for message in expected_messages)
+        and not (expected_debugmsg_record and "ERROR : (error message will follow backtrace)" in str(line))
+    ] if isinstance(error_lines, list) else []
+    if unexpected_error_lines:
         screen_probe["startup_error_logged"] = True
         screen_probe["debug_error_lines"] = error_lines
         screen_probe["debug_delta_artifact"] = str(debug_artifact)
@@ -29615,6 +32233,9 @@ def capture_feature_phase_guard(
         screen_probe=screen_probe,
         screen_summary=screen_summary,
         process_alive=pid_is_alive(pid),
+        expected_debug_log_messages=expected_messages,
+        require_screen_observability=require_screen_observability,
+        expected_clean_terminal_exit=expected_clean_terminal_exit,
     )
 
 
@@ -29626,6 +32247,7 @@ def startup_proof_classification(
     debug_popups_recorded: int = 0,
     debug_errors_recorded: int = 0,
     failure_reason: str = "",
+    native_semantic_startup_ready: bool = False,
 ) -> Dict[str, Any]:
     popup_count = max(0, int(debug_popups_recorded or 0))
     error_count = max(0, int(debug_errors_recorded or 0))
@@ -29679,7 +32301,8 @@ def startup_proof_classification(
         verdict = "startup_load_only_runtime_version_mismatch"
         clean_for_feature_steps = False
         feature_gate = "runtime_version_mismatch"
-    elif screen_summary.get("version_matches_runtime_paths") is not True:
+    elif screen_summary.get("version_matches_runtime_paths") is not True and \
+            screen_summary.get("surface_identity_status") != "matched":
         status = "yellow"
         verdict = "startup_load_only_runtime_version_unproven"
         clean_for_feature_steps = False
@@ -29689,7 +32312,7 @@ def startup_proof_classification(
         verdict = "startup_load_only_focus_unproven"
         clean_for_feature_steps = False
         feature_gate = "focus_unproven"
-    elif not screen_probe.get("gameplay_hud_present"):
+    elif not screen_probe.get("gameplay_hud_present") and not native_semantic_startup_ready:
         status = "yellow"
         verdict = "startup_load_only_gameplay_hud_absent"
         clean_for_feature_steps = False
@@ -30071,7 +32694,7 @@ def run_startup(args: argparse.Namespace) -> int:
     if args.dry_run:
         plan = build_plan(
             profile, args.world, args.fixture, harness_new_world, harness_raw_seed,
-            harness_bandit_feasibility
+            harness_bandit_feasibility, str(getattr(args, "executable", "") or "")
         )
         run_dir = Path(plan.run_dir)
         write_json(run_dir / "plan.json", asdict(plan))
@@ -30110,7 +32733,7 @@ def run_startup(args: argparse.Namespace) -> int:
     flexbuffer_cache_purge = purge_profile_flexbuffer_cache(profile)
     plan = build_plan(
         profile, args.world, args.fixture, harness_new_world, harness_raw_seed,
-        harness_bandit_feasibility
+        harness_bandit_feasibility, str(getattr(args, "executable", "") or "")
     )
     run_dir = Path(plan.run_dir)
     write_json(run_dir / "plan.json", asdict(plan))
@@ -30197,6 +32820,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 executable_path=certification_lease["executable_path"],
                 executable_sha256=certification_lease["executable_sha256"],
                 inspector=certification_lease["inspector"],
+                cleanup_token=certification_lease["cleanup_token"],
             )
         except CertificationLeaseError as exc:
             certification_lease["connection"].close()
@@ -30208,12 +32832,49 @@ def run_startup(args: argparse.Namespace) -> int:
     child_environment["OPENCLAW_HARNESS_LOCAL_PAIR_SNAPSHOT_PATH"] = str(
         (run_dir / LOCAL_PAIR_HANDOFF_SNAPSHOT_FILENAME).resolve()
     )
+    child_environment["OPENCLAW_HARNESS_R008_CHANNEL_PATH"] = str(
+        (run_dir / R008_CHANNEL_RECORD_FILENAME).resolve()
+    )
     child_environment["OPENCLAW_HARNESS_RUNTIME_SOURCE_SHA256"] = str(
         runtime_binding["runtime_source_sha256"]
     )
     child_environment["OPENCLAW_HARNESS_EXECUTABLE_SHA256"] = str(
         runtime_binding["executable_sha256"]
     )
+    runtime_binding_id = str(
+        sha256_file(run_dir / RUNTIME_BINDING_FILENAME)[0]
+        if (run_dir / RUNTIME_BINDING_FILENAME).is_file() else ""
+    )
+    bridge_binding_id = os.environ.get( "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "" ).strip()
+    if certification_lease is not None and bridge_binding_id and \
+            bridge_binding_id != str( certification_lease["manifest"]["binding_id"] ):
+        raise SystemExit( "live bridge binding differs from the sealed certification binding" )
+    child_environment["OPENCLAW_HARNESS_BINDING_ID"] = native_child_binding_id(
+        live_session=bool( bridge_binding_id ),
+        bridge_binding_id=bridge_binding_id,
+        runtime_binding_id=runtime_binding_id,
+    )
+    if bool( getattr( args, "r028_render_trace", False ) ):
+        child_environment["OPENCLAW_HARNESS_R028_RENDER_TRACE"] = "1"
+    if bool(getattr(args, "r027_world_state_snapshot", False)):
+        # The native endpoint accepts only this one run-local destination and
+        # its complete binding envelope.  It is a read-only audit artifact,
+        # not a scheduler or signal-observation action.
+        child_environment["OPENCLAW_HARNESS_R027_WORLD_STATE_REQUEST"] = "read"
+        child_environment["OPENCLAW_HARNESS_R027_WORLD_STATE_PATH"] = str(
+            (run_dir / "r027.world_state.snapshot.json").resolve()
+        )
+    if bool(getattr(args, "r027_onfire_cleanup_bootstrap", False)):
+        # Cleanup reuses the independently guarded snapshot writer for its
+        # before/after receipts, but never enables the ordinary audit path.
+        child_environment["OPENCLAW_HARNESS_R027_WORLD_STATE_REQUEST"] = "read"
+        child_environment["OPENCLAW_HARNESS_R027_ONFIRE_CLEANUP_REQUEST"] = "remove_onfire"
+        child_environment["OPENCLAW_HARNESS_R027_ONFIRE_CLEANUP_BEFORE_PATH"] = str(
+            (run_dir / "r027.onfire_cleanup.before.json").resolve()
+        )
+        child_environment["OPENCLAW_HARNESS_R027_ONFIRE_CLEANUP_AFTER_PATH"] = str(
+            (run_dir / "r027.onfire_cleanup.after.json").resolve()
+        )
     # The lifecycle recorder is diagnostic-only and must never inherit a tag
     # from a prior launch.  A scenario may opt in to exactly one fixture actor.
     child_environment.pop("OPENCLAW_HARNESS_R019_LIFECYCLE_ACTOR_ID", None)
@@ -30261,16 +32922,27 @@ def run_startup(args: argparse.Namespace) -> int:
         raise SystemExit(str(error)) from error
     if certification_lease is not None:
         child_environment.update(certification_save_child_environment(certification_lease))
+        # The title is a visible capability of this exact certification child,
+        # rather than an inferred application name.  Its digest prefix makes a
+        # shared executable surface ineligible before any OCR or native input.
+        child_environment["OPENCLAW_HARNESS_SURFACE_TITLE"] = (
+            "C-AOL certification " + str(certification_lease["manifest"]["round_id"]) +
+            " " + str(certification_lease["executable_sha256"])[:16]
+        )
     child_environment.pop("OPENCLAW_HARNESS_BANDIT_FEASIBILITY", None)
     if plan.harness_bandit_feasibility:
         child_environment["OPENCLAW_HARNESS_BANDIT_FEASIBILITY"] = "1"
-    gui_automation_required = startup_gui_automation_required(plan.strategy)
+    terminal_native_transport = should_use_curses_terminal(Path(plan.executable), "auto")
+    semantic_only_startup = bool(getattr(args, "semantic_only_startup", False))
+    gui_automation_required = startup_gui_automation_required(
+        plan.strategy, semantic_only=semantic_only_startup
+    ) and not terminal_native_transport
     if gui_automation_required:
         peekaboo_permissions = require_peekaboo_permissions()
         write_json(run_dir / "peekaboo.permissions.json", peekaboo_permissions)
     else:
         peekaboo_permissions = {
-            "status": "not_required_harness_new_world",
+            "status": "not_required_native_semantic" if semantic_only_startup else "not_required_harness_new_world",
             "gui_automation": False,
         }
     # This legacy broad matching behavior is deliberately unavailable to a
@@ -30317,6 +32989,7 @@ def run_startup(args: argparse.Namespace) -> int:
         harness_raw_seed=plan.harness_raw_seed,
         transition_event_run_id=transition_binding["run_id"],
         transition_event_path=transition_binding["event_path"],
+        executable=plan.executable,
     )
     if certification_lease is not None:
         try:
@@ -30328,6 +33001,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 executable_path=certification_lease["executable_path"],
                 executable_sha256=certification_lease["executable_sha256"],
                 inspector=certification_lease["inspector"],
+                cleanup_token=certification_lease["cleanup_token"],
             )
         except CertificationLeaseError as exc:
             certification_lease["connection"].close()
@@ -30355,6 +33029,16 @@ def run_startup(args: argparse.Namespace) -> int:
              if key not in {"command"}}
             if certification_lease is not None else None
         ),
+        "surface_identity": (
+            {
+                "pid": proc.pid,
+                "window_title": child_environment["OPENCLAW_HARNESS_SURFACE_TITLE"],
+                "executable_sha256": certification_lease["executable_sha256"],
+                "lease_id": certification_lease["lease"]["lease_id"],
+                "cleanup_token": certification_lease["lease"]["cleanup_token"],
+            }
+            if certification_lease is not None else None
+        ),
     })
 
     startup_cfg = config["startup"]
@@ -30364,10 +33048,14 @@ def run_startup(args: argparse.Namespace) -> int:
         prelaunch_size=debug_size,
         prelaunch_identity=debug_identity,
     )
+    terminal_identity: Optional[Dict[str, Any]] = None
     focus_result = {
         "ok": True,
-        "status": "skipped_harness_new_world",
+        "status": "not_required_native_semantic" if semantic_only_startup else "skipped_harness_new_world",
     }
+    if terminal_native_transport:
+        terminal_identity = terminal_native_startup_identity(proc.pid, Path(plan.executable), runtime_binding)
+        focus_result = dict(terminal_identity)
     if gui_automation_required:
         focus_result = peekaboo_focus_pid_with_retry(proc.pid)
     if gui_automation_required and plan.strategy == "play_now_default":
@@ -30473,6 +33161,7 @@ def run_startup(args: argparse.Namespace) -> int:
                     "feature_proof": False,
                     "gui_automation": "not_run_harness_new_world_route",
                 }
+                result["cleanup"] = finalize_failed_certification_start(certification_lease, run_dir)
                 write_json(run_dir / "startup.result.json", result)
                 print(json.dumps(result, indent=2, ensure_ascii=False))
                 return 0 if ready else 1
@@ -30546,6 +33235,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "evidence_class": proof_classification["evidence_class"],
                 "feature_proof": proof_classification["feature_proof"],
             }
+            result["cleanup"] = finalize_failed_certification_start(certification_lease, run_dir)
             write_json(run_dir / "startup.step_ledger.json", {"startup_step_ledger": startup_step_ledger})
             write_json(run_dir / "startup.result.json", result)
             print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -30643,6 +33333,28 @@ def run_startup(args: argparse.Namespace) -> int:
             screen = capture_screenshot(proc.pid, run_dir, "success")
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             screen_summary = screen.get("screen_summary", {})
+            native_semantic_startup = {}
+            if semantic_only_startup:
+                # Current native semantic builds publish a surface descriptor
+                # at the ordinary input boundary.  It is the action authority
+                # for this session; the older HUD/world-ready frame is not
+                # emitted on this route and must not make a valid descriptor
+                # unavailable to the bridge.
+                native_semantic_startup = await_r014_native_semantic_bootstrap(
+                    profile=profile,
+                    run_dir=run_dir,
+                    run_id=transition_binding["run_id"],
+                    required_state="world",
+                    required_actions=["world.wait"],
+                    timeout_seconds=timeout_seconds,
+                    poll_seconds=poll_seconds,
+                    trace_start_offset=semantic_step_trace_start,
+                    require_initial_hud_world_ready_frame=False,
+                )
+                screen_summary["native_semantic_startup"] = native_semantic_startup
+            if terminal_identity is not None and terminal_identity.get("ok"):
+                screen_summary["surface_identity_status"] = "matched"
+                screen_summary["surface_identity"] = terminal_identity
             final_evidence = capture_final_startup_evidence(
                 profile=profile,
                 debug_start_size=debug_size,
@@ -30678,6 +33390,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 screen_summary=screen_summary,
                 screen_label="success",
                 run_dir=run_dir,
+                terminal_native_identity=terminal_identity,
             )
             if final_evidence["process_alive"] is not True:
                 startup_failure_reason = "process_exited_after_readiness"
@@ -30693,6 +33406,9 @@ def run_startup(args: argparse.Namespace) -> int:
                 debug_popups_recorded=debug_popup_evidence_count,
                 debug_errors_recorded=debug_error_evidence_count,
                 failure_reason=startup_failure_reason,
+                native_semantic_startup_ready=(
+                    native_semantic_startup.get("status") == "required_state_present"
+                ),
             )
             startup_ok, startup_failure_reason = startup_result_status(
                 base_ok=base_startup_ok,
@@ -30734,6 +33450,8 @@ def run_startup(args: argparse.Namespace) -> int:
                 "evidence_class": proof_classification["evidence_class"],
                 "feature_proof": proof_classification["feature_proof"],
             }
+            if not startup_ok:
+                result["cleanup"] = finalize_failed_certification_start(certification_lease, run_dir)
             write_json(run_dir / "startup.step_ledger.json", {"startup_step_ledger": startup_step_ledger})
             write_json(run_dir / "startup.result.json", result)
             print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -30762,13 +33480,7 @@ def run_startup(args: argparse.Namespace) -> int:
         if certification_lease is None:
             cleanup = cleanup_game_process(proc.pid)
         else:
-            cleanup = release_certification_lease_handle(
-                certification_lease["connection"],
-                manifest=certification_lease["manifest"],
-                lease=certification_lease["lease"],
-                inspector=certification_lease["inspector"],
-            )
-            certification_lease["connection"].close()
+            cleanup = finalize_failed_certification_start(certification_lease, run_dir)
         try:
             proc.wait(timeout=1.0)
         except subprocess.TimeoutExpired:
@@ -30900,6 +33612,7 @@ def run_startup(args: argparse.Namespace) -> int:
         "evidence_class": proof_classification["evidence_class"],
         "feature_proof": proof_classification["feature_proof"],
     }
+    result["cleanup"] = finalize_failed_certification_start(certification_lease, run_dir)
     write_json(run_dir / "startup.step_ledger.json", {"startup_step_ledger": startup_step_ledger})
     write_json(run_dir / "startup.result.json", result)
     print(json.dumps(result, indent=2, ensure_ascii=False))
@@ -30929,6 +33642,37 @@ def run_json_command(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, str]:
             "returncode": proc.returncode,
         }
     return proc.returncode, payload, proc.stdout, proc.stderr
+
+
+def run_startup_in_process(cmd: List[str]) -> Tuple[int, Dict[str, Any], str, str]:
+    """Run a constructed ``start`` command without losing anonymous wake FDs.
+
+    A probe must own both ends of its launch-bound anonymous pipe: startup
+    retains the writer while later semantic acts append, fsync, and wake the
+    child.  Running ``start`` in a helper Python process closes that writer
+    before the probe can act, so parse the same CLI arguments and invoke its
+    implementation in this process instead.
+    """
+    if len(cmd) < 3 or cmd[2] != "start":
+        raise ValueError("in-process startup requires a constructed start command")
+    stdout_capture = io.StringIO()
+    stderr_capture = io.StringIO()
+    start_args = build_parser().parse_args(cmd[2:])
+    with contextlib.redirect_stdout(stdout_capture), contextlib.redirect_stderr(stderr_capture):
+        returncode = run_startup(start_args)
+    stdout = stdout_capture.getvalue()
+    stderr = stderr_capture.getvalue()
+    try:
+        payload = json.loads(stdout.strip()) if stdout.strip() else {}
+    except json.JSONDecodeError:
+        payload = {
+            "ok": False,
+            "reason": "invalid_in_process_startup_json",
+            "stdout": stdout,
+            "stderr": stderr,
+            "returncode": returncode,
+        }
+    return returncode, payload, stdout, stderr
 
 
 def snapshot_world_state(profile: str, world_name: str, run_dir: Path, label: str = "saved_world") -> Dict[str, Any]:
@@ -30966,7 +33710,8 @@ def finalize_probe_report(
 ) -> None:
     report["materiality_waivers"] = collect_materiality_waivers(report)
     capture = report.get("certification_capture")
-    if isinstance(capture, Mapping):
+    if isinstance(capture, Mapping) and report.get("certification_capture_kind") != \
+            "r027_changed_observation":
         from certification_route import capture_and_finalize_certification
         try:
             if run_dir is None:
@@ -31014,6 +33759,7 @@ def finalize_probe_report(
         else:
             report["cleanup"] = cleanup_game_process(cleanup_pid)
     if run_dir is not None and isinstance(report.get("cleanup"), Mapping):
+        seal_r027_signal_cleanup_sidecar(run_dir, report["cleanup"])
         report["wait_diagnostic"] = seal_wait_diagnostic_ledger(
             run_dir, report["cleanup"]
         )
@@ -32062,6 +34808,11 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     scenario_manifest = scenario_manifest_binding(scenario)
     scenario_name = str(scenario.get("name", args.scenario))
     transition_event_run_id = uuid.uuid4().hex
+    registry_authority_run_id = registry_authority_transition_run_id(
+        str(getattr(args, "registry_launch_receipt", "") or "")
+    )
+    if registry_authority_run_id:
+        transition_event_run_id = registry_authority_run_id
     blocker_info = scenario_blocker_info(scenario)
     profile = resolve_profile_name(args.profile or str(scenario.get("profile", "")))
     config_profile = resolve_startup_config_profile(scenario, profile)
@@ -32087,12 +34838,40 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     recommended_test_command = args.test_command or str(scenario.get("recommended_test_command", "")).strip()
     artifact_source = str(scenario.get("artifact_source", "debug.log")).strip() or "debug.log"
     steps = normalize_scenario_steps(scenario.get("steps", []), advance_count, settle_seconds)
+    post_relaunch = normalize_post_relaunch_contract(scenario.get("post_relaunch"), steps)
+    post_relaunch_continuation = bool(getattr(args, "post_relaunch_continuation", False))
+    if post_relaunch_continuation:
+        if handoff:
+            raise SystemExit("post-relaunch continuation cannot use a deferred handoff")
+        if post_relaunch is None:
+            raise SystemExit("post-relaunch continuation requires a declared post_relaunch contract")
+        # This route is only for the durable save left by the selected route's
+        # native exit.  Reinstalling a fixture or replaying initial setup would
+        # replace that footing and invalidate the continuation boundary.
+        bootstrap_steps = [
+            copy.deepcopy(step) for step in steps
+            if str(step.get("kind", "")).strip().lower() == "native_semantic_bootstrap"
+        ]
+        if len(bootstrap_steps) != 1:
+            raise SystemExit(
+                "post-relaunch continuation requires exactly one native semantic bootstrap step"
+            )
+        # Recreate the source-bound semantic World owner without replaying any
+        # player action or setup mutation from the initial segment.
+        steps = [*bootstrap_steps,
+                 *normalize_scenario_steps(post_relaunch["steps"], advance_count, settle_seconds)]
+        fixture = ""
+        fixture_profile = ""
+        profile_snapshot = ""
+        profile_snapshot_profile = ""
+        profile_option_overrides = {}
+        replace_existing_worlds = False
+        post_relaunch = None
     bind_pre_descriptor_bootstrap_objectives(steps, scenario)
     try:
         native_preview_requests = native_preview_segment_requests(steps)
     except ValueError as error:
         raise SystemExit(str(error)) from error
-    post_relaunch = normalize_post_relaunch_contract(scenario.get("post_relaunch"), steps)
     raw_derived_screens = scenario.get("derived_screens", [])
     derived_screens = [entry for entry in raw_derived_screens if isinstance(entry, dict)] if isinstance(raw_derived_screens, list) else []
     capture_world_after = bool(scenario.get("capture_world_after", False))
@@ -32251,6 +35030,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         )
 
     startup_dismisses_first_step = scenario_requests_startup_overlay_dismissal( steps )
+    post_relaunch_dismisses_first_step = bool( post_relaunch ) and \
+        scenario_requests_startup_overlay_dismissal( post_relaunch.get( "steps", [] ) )
     start_cmd = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -32269,6 +35050,21 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         start_cmd.extend(["--scenario-contract-path", scenario_contract_path])
     if world:
         start_cmd.extend(["--world", world])
+    explicit_executable = str(getattr(args, "executable", "") or "").strip()
+    if not explicit_executable:
+        runtime_contract = scenario.get("runtime_contract", {})
+        requirements = runtime_contract.get("requirements", {}) if isinstance(runtime_contract, Mapping) else {}
+        declared_executable = str(requirements.get("executable", "")).strip() \
+                            if isinstance(requirements, Mapping) else ""
+        if declared_executable:
+            candidate = (repo_root() / declared_executable).resolve()
+            if not candidate.is_file() or not os.access(candidate, os.X_OK):
+                raise ValueError(
+                    f"scenario runtime executable is unavailable: {declared_executable}"
+                )
+            explicit_executable = str(candidate)
+    if explicit_executable:
+        start_cmd.extend(["--executable", explicit_executable])
     if profile_snapshot:
         start_cmd.extend(["--profile-snapshot", profile_snapshot])
     if profile_snapshot_profile:
@@ -32285,8 +35081,22 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         start_cmd.append("--startup-dismiss-blocking-overlay")
     if scenario.get("suppress_profile_startup_input") is True:
         start_cmd.append("--suppress-profile-startup-input")
+    if scenario.get("semantic_only_startup") is True:
+        start_cmd.append("--semantic-only-startup")
+    if post_relaunch_continuation:
+        # The saved game has no initial setup action to wake its ordinary
+        # input loop.  Ask startup itself to await the native World descriptor
+        # before the bridge advertises the continuation session.
+        start_cmd.append("--semantic-only-startup")
+    if bool(getattr(args, "r027_world_state_snapshot", False)) or \
+            scenario.get("r027_world_state_snapshot") is True:
+        start_cmd.append("--r027-world-state-snapshot")
+    if scenario.get("r027_onfire_cleanup_bootstrap") is True:
+        start_cmd.append("--r027-onfire-cleanup-bootstrap")
     if bool(scenario.get("wait_input_trace", False)):
         start_cmd.append("--wait-input-trace")
+    if bool(scenario.get("r028_render_trace", False)):
+        start_cmd.append("--r028-render-trace")
     if native_preview_requests:
         start_cmd.extend(["--native-preview-segment-requests", native_preview_requests])
     lifecycle_actor_id = str(scenario.get("r019_lifecycle_actor_id", "") or "").strip()
@@ -32308,7 +35118,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     if args.dry_run:
         start_cmd.append("--dry-run")
 
-    start_rc, start_result, start_stdout, start_stderr = run_json_command(start_cmd)
+    # Keep the anonymous semantic wake writer in this probe process.  The
+    # child only inherits its nonblocking read end during launch.
+    start_rc, start_result, start_stdout, start_stderr = run_startup_in_process(start_cmd)
     if args.dry_run:
         print(json.dumps({
             "mode": mode,
@@ -32368,6 +35180,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "start_stdout": start_stdout,
             "start_stderr": start_stderr,
         }
+        startup_cleanup = start_result.get("cleanup")
+        if isinstance(startup_cleanup, Mapping):
+            # Startup already closed a certification process through its exact
+            # lease.  Do not replace that receipt with legacy name-based
+            # cleanup while assembling the parent probe report.
+            report["cleanup"] = dict(startup_cleanup)
         finalize_scenario_report(
             run_dir,
             report,
@@ -32412,6 +35230,19 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             post_finalize_hook=post_finalize_hook,
         )
         return 1
+
+    # The file-backed cockpit owns terminal interaction, but its enclosing
+    # probe report is still the registry ingestion boundary.  Retain the
+    # launched runtime binding even when no normal screen summary populated it.
+    runtime_binding_at_start = load_runtime_binding(run_dir)
+    if isinstance(runtime_binding_at_start, Mapping):
+        startup_screen = start_result.get("screen")
+        if not isinstance(startup_screen, dict):
+            startup_screen = {}
+            start_result["screen"] = startup_screen
+        binding_observed = compare_runtime_binding(runtime_binding_at_start)
+        startup_screen["runtime_binding_status"] = binding_observed.get("status", "")
+        startup_screen["runtime_binding_observed"] = binding_observed
 
     scenario_setup: Dict[str, Any] = {}
     declared_setup = scenario.get("setup_contract", scenario.get("setup_receipt_contract"))
@@ -32797,6 +35628,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     # Resolving it after the native quit would erase the identity needed to
     # distinguish a true terminal exit from an unbound disappearance.
     initial_process_command = pid_command(pid)
+    r028_process_before = (
+        sample_child_resources(pid)
+        if bool(scenario.get("r028_render_trace", False)) else None
+    )
     step_reports = execute_probe_steps(
         pid,
         run_dir,
@@ -32808,7 +35643,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         action_trace_baseline=feature_debug_start,
         semantic_step_trace_start_offset=semantic_step_trace_start,
         adaptive_semantic_autodrive=bool(
-            getattr(args, "adaptive_semantic_autodrive", False)
+            getattr(args, "adaptive_semantic_autodrive", False) or
+            scenario.get("adaptive_semantic_autodrive", False)
         ),
         artifact_baseline=artifact_start,
         filter_debug_noise=filter_debug_noise,
@@ -32838,6 +35674,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             if isinstance(scenario.get("proof_gates", []), list) else []
         ),
     )
+    r028_process_observation = (
+        complete_child_resource_interval(r028_process_before, sample_child_resources(pid))
+        if r028_process_before is not None else None
+    )
     relaunch: Dict[str, Any] = {}
     certification_post_relaunch_segment: Optional[Dict[str, Any]] = None
     final_pid = pid
@@ -32864,7 +35704,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 scenario_name=scenario_name,
                 registry_launch_receipt=registry_launch_receipt,
                 terminal_exit_timeout_seconds=post_relaunch["terminal_exit_timeout_seconds"],
-                startup_dismiss_blocking_overlay=startup_dismisses_first_step,
+                startup_dismiss_blocking_overlay=post_relaunch_dismisses_first_step,
                 wait_input_trace=bool(scenario.get("wait_input_trace", False)),
                 artifact_run_dir=run_dir,
                 transition_event_run_id=transition_event_run_id,
@@ -32888,15 +35728,31 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             else:
                 relaunch["certification_recheck"] = certification_post_relaunch_segment
         if relaunch.get("status") == "ready":
+            post_semantic_trace_start = semantic_step_trace_start
+            relaunch_startup = relaunch.get("startup")
+            post_run_dir = run_dir
+            if isinstance(relaunch_startup, Mapping):
+                candidate_run_dir = str(relaunch_startup.get("run_dir", "") or "").strip()
+                if candidate_run_dir:
+                    post_run_dir = Path(candidate_run_dir)
+                try:
+                    post_semantic_trace_start = int(
+                        relaunch_startup.get(
+                            "semantic_step_trace_start_offset", semantic_step_trace_start
+                        )
+                    )
+                except (TypeError, ValueError):
+                    pass
             post_reports = execute_probe_steps(
                 final_pid,
-                run_dir,
+                post_run_dir,
                 post_relaunch["steps"],
                 profile=profile,
                 world=world,
                 artifact_log=artifact_log,
                 action_trace_log=feature_debug_log,
                 action_trace_baseline=feature_debug_start,
+                semantic_step_trace_start_offset=post_semantic_trace_start,
                 artifact_baseline=relaunch_artifact_baseline,
                 filter_debug_noise=filter_debug_noise,
                 artifact_patterns=artifact_patterns,
@@ -32914,6 +35770,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                     relaunch.get("startup", {}).get("startup_overlay_recovery")
                     if isinstance(relaunch.get("startup"), Mapping) else None
                 ),
+                semantic_bootstrap_timeout_seconds=semantic_bootstrap_timeout,
+                semantic_bootstrap_poll_seconds=semantic_bootstrap_poll,
                 structured_event_reader=transition_event_reader,
                 structured_events=structured_events,
                 structured_event_diagnostics=structured_event_diagnostics,
@@ -32944,6 +35802,15 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         if isinstance(screen_after.get("screen_summary"), dict)
         else {}
     )
+    expected_clean_terminal_exit = any(
+        isinstance(step.get("cockpit_live_session"), Mapping) and
+        isinstance(step["cockpit_live_session"].get("final"), Mapping) and
+        step["cockpit_live_session"]["final"].get("state") == "finished" and
+        isinstance(step["cockpit_live_session"]["final"].get("cleanup"), Mapping) and
+        step["cockpit_live_session"]["final"]["cleanup"].get("status") in
+        CLEANUP_ACCEPTED_STATUSES
+        for step in step_reports if isinstance(step, Mapping)
+    )
     feature_debug_guard = capture_feature_phase_guard(
         profile=profile,
         debug_start_size=feature_debug_start,
@@ -32953,6 +35820,15 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         screen_summary=feature_screen_summary,
         pid=final_pid,
         debug_identity=feature_debug_identity,
+        expected_debug_log_messages=(
+            scenario.get("runtime_contract", {}).get("expected_debug_log_messages", [])
+            if isinstance(scenario.get("runtime_contract", {}), Mapping) else []
+        ),
+        require_screen_observability=(
+            bool(scenario.get("runtime_contract", {}).get("require_screen_observability", True))
+            if isinstance(scenario.get("runtime_contract", {}), Mapping) else True
+        ),
+        expected_clean_terminal_exit=expected_clean_terminal_exit,
     )
 
     artifact_text = read_log_delta(artifact_log, artifact_start, filter_debug_noise=filter_debug_noise)
@@ -33110,6 +35986,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         run_id=transition_event_run_id,
         binding_id=str(ledger_authority.get("binding_id", "")),
     )
+    r027_capture: Dict[str, Any] | None = None
+    r027_capture_pending = scenario.get("capabilities", {}).get(
+        "capabilities.r027.changed_observation_validation"
+    ) == "same_saved_lead_same_source_changed_fd_fire_payload"
     if scenario.get("proof_gates"):
         write_json(run_dir / "proof.gates.json", structured_gate_evidence)
 
@@ -33227,6 +36107,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         "startup": start_result,
         "scenario_setup": scenario_setup,
         "scenario_interventions": scenario_setup.get("interventions", []),
+        "r028_process_observation": r028_process_observation,
         "relaunch": relaunch,
         "certification": {
             "initial_evidence_segment": certification_initial_segment,
@@ -33276,6 +36157,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             "gate_evidence_path": str(run_dir / "proof.gates.json") if scenario.get("proof_gates") else "",
         },
         "structured_gate_evidence": structured_gate_evidence,
+        "r027_changed_observation_capture": r027_capture,
         "runtime_warnings": runtime_warnings,
         "abort": abort_report,
         "proof_classification": proof_classification,
@@ -33341,6 +36223,44 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 "crossing_receipts": str(run_dir / "certification.crossing_receipts.json"),
             },
         }
+        report["certification_capture_artifacts"] = (
+            {"status": "pending", "reason": "r027_cleanup_required_before_capture"}
+            if r027_capture_pending else write_stationary_certification_capture(
+                run_dir,
+                capture=report["certification_capture"],
+                events=structured_events,
+                relaunch=relaunch,
+                steps=step_reports,
+            )
+        )
+        if report["certification_capture_artifacts"].get("status") == "green" and \
+                structured_gate_evidence.get("status") == "green":
+            finalization = capture_and_finalize_certification(
+                capture_manifest=report["certification_capture"],
+                report_path=run_dir / "certification.finalization.json",
+                expected_token_id=str(report["certification_capture"]["token_id"]),
+                expected_scenario_digest=str(report["certification_capture"]["scenario_digest"]),
+                expected_round_id=str(report["certification_capture"]["round_id"]),
+                expected_binding_id=str(report["certification_capture"]["binding_id"]),
+                expected_world_id=str(report["certification_capture"]["world_id"]),
+                expected_player_id=str(report["certification_capture"]["player_id"]),
+                expected_actor_ids=report["certification_capture"]["actor_ids"],
+                write_report=False,
+            )
+            report["certification_lifecycle"] = {
+                "world_id": finalization["world_id"],
+                "player_id": finalization["player_id"],
+                "actor_ids": finalization["actor_ids"],
+                "events": finalization["events"],
+                "captured_artifacts": dict(report["certification_capture"]["captured_artifacts"]),
+            }
+            report["proof_classification"] = continuous_capture_proof_classification(
+                base_classification=report["proof_classification"],
+                structured_gate_evidence=structured_gate_evidence,
+                finalization=finalization,
+            )
+            report["evidence_class"] = report["proof_classification"]["evidence_class"]
+            report["feature_proof"] = report["proof_classification"]["feature_proof"]
     if isinstance(scenario.get("proof_gates"), list):
         attach_first_divergence_diagnostic(
             report,
@@ -33378,6 +36298,28 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         )
         return 0
 
+    if certification_registry and certification_round_manifest and final_pid > 0:
+        # A bound round owns a deliberately named executable.  Its cleanup is
+        # authenticated by the lease, never by the legacy filename heuristic.
+        report["cleanup"] = finalize_bound_certification_process(
+            run_dir, final_pid,
+            registry_path=certification_registry,
+            manifest_path=certification_round_manifest,
+        )
+    if r027_capture_pending:
+        # R-027's native sidecar and saved-map audit are meaningful only once
+        # the certification lease has authenticated the native process exit.
+        r027_capture = r027_changed_observation_capture_artifact(
+            scenario=scenario, run_dir=run_dir, runtime_binding=load_runtime_binding(run_dir) or {},
+            events=structured_events, profile=profile, world=world,
+            binding_id=str(ledger_authority.get("binding_id", "")),
+        )
+        assert r027_capture is not None
+        write_json(run_dir / "r027.changed_observation.capture.json", r027_capture)
+        structured_gate_evidence = apply_r027_changed_observation_finalization(
+            report, capture=r027_capture, run_id=transition_event_run_id,
+            binding_id=str(ledger_authority.get("binding_id", "")),
+        )
     finalize_scenario_report(
         run_dir,
         report,
@@ -33424,6 +36366,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--profile", default="", help="Profile name (defaults to sanitized current branch).")
     start_p.add_argument("--config-profile", default="", help="Startup policy profile; defaults to the target user-data profile.")
     start_p.add_argument("--world", default="", help="Explicit target world name.")
+    start_p.add_argument("--executable", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--scenario-identity", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--scenario-contract-path", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--registry-launch-receipt", default="", help=argparse.SUPPRESS)
@@ -33446,7 +36389,13 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--transition-event-path", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--startup-dismiss-blocking-overlay", action="store_true", help=argparse.SUPPRESS)
     start_p.add_argument("--suppress-profile-startup-input", action="store_true", help=argparse.SUPPRESS)
+    start_p.add_argument("--semantic-only-startup", action="store_true", help=argparse.SUPPRESS)
+    start_p.add_argument("--r027-world-state-snapshot", action="store_true",
+                         help=argparse.SUPPRESS)
+    start_p.add_argument("--r027-onfire-cleanup-bootstrap", action="store_true",
+                         help=argparse.SUPPRESS)
     start_p.add_argument("--wait-input-trace", action="store_true", help=argparse.SUPPRESS)
+    start_p.add_argument("--r028-render-trace", action="store_true", help=argparse.SUPPRESS)
     start_p.add_argument("--native-preview-segment-requests", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--r019-lifecycle-actor-id", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--scheduler-trace-eoc", default="", help=argparse.SUPPRESS)
@@ -33473,6 +36422,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("scenario", help="Scenario name, e.g. locker.weather_wait")
     probe_p.add_argument("--profile", default="", help="Override scenario profile.")
     probe_p.add_argument("--world", default="", help="Override scenario world.")
+    probe_p.add_argument("--executable", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--fixture", nargs="?", default=None, help="Override scenario fixture; pass empty string to disable fixture install.")
     probe_p.add_argument("--fixture-profile", default="", help="Override the fixture source profile.")
     probe_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
@@ -33481,6 +36431,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("--artifact-pattern", default="", help="Override the artifact substring to match in the debug delta.")
     probe_p.add_argument("--test-command", default="", help="Override the recommended deterministic test command recorded in the report.")
     probe_p.add_argument("--compact-stdout", action="store_true", help="Print only a compact report index to stdout; the full report still lands on disk.")
+    probe_p.add_argument("--post-relaunch-continuation", action="store_true", help=argparse.SUPPRESS)
     probe_p.add_argument("--production-observation-output", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--certification-registry", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--certification-round-manifest", default="", help=argparse.SUPPRESS)
@@ -33488,6 +36439,8 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("--certification-recheck-inputs", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--adaptive-semantic-autodrive", action="store_true", help=argparse.SUPPRESS)
     probe_p.add_argument("--cockpit-live-session", action="store_true", help=argparse.SUPPRESS)
+    probe_p.add_argument("--r027-world-state-snapshot", action="store_true", help=argparse.SUPPRESS)
+    probe_p.add_argument("--r027-onfire-cleanup-bootstrap", action="store_true", help=argparse.SUPPRESS)
     probe_p.add_argument("--dry-run", action="store_true", help="Resolve the scenario contract and startup plan only.")
 
     handoff_p = subparsers.add_parser("handoff", help="Run a packaged live setup and leave the game running for manual playtest handoff.")
@@ -33533,6 +36486,9 @@ def build_parser() -> argparse.ArgumentParser:
     semantic_act_p.add_argument("--session-id", required=True)
     semantic_act_p.add_argument("--frame-id", required=True)
     semantic_act_p.add_argument("--action-id", required=True)
+    semantic_act_p.add_argument("--stable-id")
+    semantic_act_p.add_argument("--parameter", action="append", default=[], metavar="KEY=VALUE",
+                                help="Native semantic action parameter; may be repeated.")
     semantic_act_p.add_argument("--transition-timeout-seconds", required=True, type=float)
     semantic_act_p.add_argument("--observe-interval-seconds", required=True, type=float)
     semantic_act_p.add_argument("--delay-ms", type=int, default=200)

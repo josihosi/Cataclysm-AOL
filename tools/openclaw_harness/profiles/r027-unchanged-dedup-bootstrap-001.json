@@ -1,0 +1,7 @@
+{
+  "profile_name": "r027-unchanged-dedup-bootstrap-001",
+  "startup": {
+    "post_lastworld_wait_seconds": 0.0,
+    "post_lastworld_continue_keys": []
+  }
+}

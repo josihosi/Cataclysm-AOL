@@ -1,0 +1,287 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r005_west_flank_corridor_qualification",
+  "description": "One disposable, zero-credit R-005 qualification of the current native west-flank corridor. It independently traverses [140,41,0] -> [139,41,0] -> [139,31,0] -> [140,31,0] and the exact reverse, stopping at the first interruption or hostile boundary. It cannot start certification.",
+  "capabilities": {
+    "capabilities.bandit.r005.west_flank_corridor_qualification": "source_bound_zero_credit_hostile_free_out_and_back",
+    "world.id": "McWilliams"
+  },
+  "runtime_contract": {
+    "permitted_input": ["ordinary-overmap-route"],
+    "forbidden_input": [
+      "diagnostic_replay",
+      "checkpoint_rollback",
+      "segment_splice",
+      "replacement_world",
+      "replacement_identity",
+      "fixture-mutation",
+      "scenario-mutation",
+      "debug:ecology_edit",
+      "raw-save-rewrite",
+      "combat",
+      "hostile-dialog-authorization"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_r005_natural_hostile_ecology_v0",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_r005_natural_hostile_ecology_v0",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "cleanup": true,
+      "input": ["ordinary-overmap-route"]
+    },
+    "grants_gameplay_proof": false
+  },
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r005_natural_hostile_ecology_v0",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION"
+  ],
+  "steps": [
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "declared_world",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "record_baseline": true,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "ordinary_overmap_route_constructor",
+      "label": "west_flank_departure",
+      "origin_omt": [140, 41, 0],
+      "destination_omt": [139, 41, 0],
+      "cursor_keys": ["left"],
+      "route_key": "W",
+      "require_native_corridor": true,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "type",
+      "label": "confirm_west_flank_departure",
+      "text": "W",
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "type",
+      "label": "accept_west_flank_departure",
+      "text": "Y",
+      "settle_seconds": 0,
+      "native_travel_stabilization": {
+        "mode": "continue_exact_hostile_auto_move_until_hud",
+        "danger_handling": "stop_on_interruption",
+        "allow_hostile_auto_move_cancel": false,
+        "require_completed_destination_cleared": true,
+        "expected_destination_omt": [139, 41, 0]
+      }
+    },
+    {
+      "kind": "ordinary_overmap_route_constructor",
+      "label": "west_flank_northbound",
+      "origin_omt": [139, 41, 0],
+      "destination_omt": [139, 31, 0],
+      "cursor_keys": ["up", "up", "up", "up", "up", "up", "up", "up", "up", "up"],
+      "route_key": "W",
+      "require_native_corridor": true,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "type",
+      "label": "confirm_west_flank_northbound",
+      "text": "W",
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "type",
+      "label": "accept_west_flank_northbound",
+      "text": "Y",
+      "settle_seconds": 0,
+      "native_travel_stabilization": {
+        "mode": "continue_exact_hostile_auto_move_until_hud",
+        "danger_handling": "stop_on_interruption",
+        "allow_hostile_auto_move_cancel": false,
+        "require_completed_destination_cleared": true,
+        "expected_destination_omt": [139, 31, 0]
+      }
+    },
+    {
+      "kind": "ordinary_overmap_route_constructor",
+      "label": "west_flank_destination",
+      "origin_omt": [139, 31, 0],
+      "destination_omt": [140, 31, 0],
+      "cursor_keys": ["right"],
+      "route_key": "W",
+      "require_native_corridor": true,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "type",
+      "label": "confirm_west_flank_destination",
+      "text": "W",
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "type",
+      "label": "accept_west_flank_destination",
+      "text": "Y",
+      "settle_seconds": 0,
+      "native_travel_stabilization": {
+        "mode": "continue_exact_hostile_auto_move_until_hud",
+        "danger_handling": "stop_on_interruption",
+        "allow_hostile_auto_move_cancel": false,
+        "require_completed_destination_cleared": true,
+        "expected_destination_omt": [140, 31, 0]
+      }
+    },
+    {
+      "kind": "ordinary_overmap_route_constructor",
+      "label": "west_flank_return_departure",
+      "origin_omt": [140, 31, 0],
+      "destination_omt": [139, 31, 0],
+      "cursor_keys": ["left"],
+      "route_key": "W",
+      "require_native_corridor": true,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "type",
+      "label": "confirm_west_flank_return_departure",
+      "text": "W",
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "type",
+      "label": "accept_west_flank_return_departure",
+      "text": "Y",
+      "settle_seconds": 0,
+      "native_travel_stabilization": {
+        "mode": "continue_exact_hostile_auto_move_until_hud",
+        "danger_handling": "stop_on_interruption",
+        "allow_hostile_auto_move_cancel": false,
+        "require_completed_destination_cleared": true,
+        "expected_destination_omt": [139, 31, 0]
+      }
+    },
+    {
+      "kind": "ordinary_overmap_route_constructor",
+      "label": "west_flank_southbound_return",
+      "origin_omt": [139, 31, 0],
+      "destination_omt": [139, 41, 0],
+      "cursor_keys": ["down", "down", "down", "down", "down", "down", "down", "down", "down", "down"],
+      "route_key": "W",
+      "require_native_corridor": true,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "type",
+      "label": "confirm_west_flank_southbound_return",
+      "text": "W",
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "type",
+      "label": "accept_west_flank_southbound_return",
+      "text": "Y",
+      "settle_seconds": 0,
+      "native_travel_stabilization": {
+        "mode": "continue_exact_hostile_auto_move_until_hud",
+        "danger_handling": "stop_on_interruption",
+        "allow_hostile_auto_move_cancel": false,
+        "require_completed_destination_cleared": true,
+        "expected_destination_omt": [139, 41, 0]
+      }
+    },
+    {
+      "kind": "ordinary_overmap_route_constructor",
+      "label": "west_flank_return_home",
+      "origin_omt": [139, 41, 0],
+      "destination_omt": [140, 41, 0],
+      "cursor_keys": ["right"],
+      "route_key": "W",
+      "require_native_corridor": true,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "type",
+      "label": "confirm_west_flank_return_home",
+      "text": "W",
+      "settle_seconds": 0.5
+    },
+    {
+      "kind": "type",
+      "label": "accept_west_flank_return_home",
+      "text": "Y",
+      "settle_seconds": 0,
+      "native_travel_stabilization": {
+        "mode": "continue_exact_hostile_auto_move_until_hud",
+        "danger_handling": "stop_on_interruption",
+        "allow_hostile_auto_move_cancel": false,
+        "require_completed_destination_cleared": true,
+        "expected_destination_omt": [140, 41, 0]
+      }
+    }
+  ],
+  "proof_gates": [
+    {
+      "id": "declared_world",
+      "label": "One declared natural world",
+      "boundary_step": "declared_world",
+      "predecessors": [],
+      "expectations": [{"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true}}],
+      "checkpoint_safe_ui": {"semantic_state": {"required": true}}
+    },
+    {
+      "id": "west_flank_outbound",
+      "label": "West-flank outbound completes without a hostile boundary",
+      "boundary_step": "accept_west_flank_destination",
+      "predecessors": ["declared_world"],
+      "expectations": [
+        {"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "producer_step_label": "accept_west_flank_departure", "destination": [139, 41, 0], "handled_hostile_boundaries": [], "artifact_hash_present": true}},
+        {"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "producer_step_label": "accept_west_flank_northbound", "destination": [139, 31, 0], "handled_hostile_boundaries": [], "artifact_hash_present": true}},
+        {"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "producer_step_label": "accept_west_flank_destination", "destination": [140, 31, 0], "handled_hostile_boundaries": [], "artifact_hash_present": true}}
+      ],
+      "checkpoint_safe_ui": {"semantic_state": {"required": true}}
+    },
+    {
+      "id": "west_flank_return",
+      "label": "West-flank return completes without a hostile boundary",
+      "boundary_step": "accept_west_flank_return_home",
+      "predecessors": ["west_flank_outbound"],
+      "expectations": [
+        {"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "producer_step_label": "accept_west_flank_return_departure", "destination": [139, 31, 0], "handled_hostile_boundaries": [], "artifact_hash_present": true}},
+        {"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "producer_step_label": "accept_west_flank_southbound_return", "destination": [139, 41, 0], "handled_hostile_boundaries": [], "artifact_hash_present": true}},
+        {"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_kind": "native_travel_terminal_receipt", "producer_step_label": "accept_west_flank_return_home", "destination": [140, 41, 0], "handled_hostile_boundaries": [], "artifact_hash_present": true}}
+      ],
+      "checkpoint_safe_ui": {"semantic_state": {"required": true}}
+    }
+  ],
+  "proof_route": {
+    "gates": ["declared_world", "west_flank_outbound", "west_flank_return"],
+    "terminal": ["west_flank_return"],
+    "capability_gates": {
+      "capabilities.bandit.r005.west_flank_corridor_qualification": {"terminal": ["west_flank_return"]}
+    }
+  }
+}

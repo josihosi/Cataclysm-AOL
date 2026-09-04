@@ -1,0 +1,56 @@
+{
+  "name": "r027_returned_signal_response_tick_ready_v003_20260903",
+  "source_fixture": "r027_retained_signal_response_tick_ready_v002_20260903",
+  "source_profile": "r027-ordinary-response-setup-002",
+  "description": "Zero-credit R-027 response fixture. It preserves the retained, source-absent physical lead and creates only the ordinary scheduler inputs that the drive reads: a returned-report lead provenance, a low camp supply drive, and ready reserve. Production alone may create an outing or mutate a selected lead.",
+  "production_origin": {
+    "credit": "setup_only_non_feature",
+    "anti_promotion": true,
+    "response_owner": "ordinary_hostile_camp_drive",
+    "forbidden": [
+      "direct_response_mutation",
+      "direct_outing_mutation",
+      "direct_member_state_mutation_during_validation",
+      "direct_lead_mutation_during_validation"
+    ]
+  },
+  "save_transforms": [
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "lead_id": "overmap_special:bandit_camp@140,51,0#lead:smoke_signal:camp-smoke@(140,50,0)@140,50,0",
+      "lead_kind": "smoke_signal",
+      "origin": "returned_report",
+      "status": "suspected",
+      "target_id": "camp-smoke@(140,50,0)",
+      "target_omt": [140, 50, 0],
+      "radius_omt": 2,
+      "source_key": "camp-signal:camp-smoke@(140,50,0)",
+      "source_summary": "setup-only returned-report provenance for the immutable source-absent physical smoke lead; no response state is seeded",
+      "first_seen_minutes": 9245,
+      "last_seen_minutes": 9250,
+      "last_checked_minutes": -1,
+      "last_scouted_minutes": -1,
+      "bounty": 0,
+      "threat": 0,
+      "confidence": 2,
+      "threat_confirmed": false,
+      "target_alert": false,
+      "scout_seen": false,
+      "generated_by_this_camp_routine": true,
+      "last_outcome": "camp_observer_smoke"
+    },
+    {
+      "kind": "bandit_camp_supply",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "supply_units": 0,
+      "supply_last_update_minutes": -1,
+      "supply_accounted_living_total": 8,
+      "supply_member_minute_remainder": 0,
+      "source_key": "fixture_r027_ordinary_drive",
+      "source_summary": "setup-only ordinary scarcity input; the production drive decides whether and how to dispatch"
+    }
+  ]
+}

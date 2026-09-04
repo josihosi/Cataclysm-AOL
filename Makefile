@@ -585,7 +585,7 @@ TOOL_CXXFLAGS = -DCATA_IN_TOOL
 DEFINES += -DZSTD_STATIC_LINKING_ONLY -DZSTD_DISABLE_ASM -DFMT_USE_LOCALE=0
 
 BINDIST_EXTRAS += README.md data doc LICENSE.txt LICENSE-OFL-Terminus-Font.txt VERSION.txt $(JSON_FORMATTER_BIN)
-BINDIST_EXTRAS += Plan.md TechnicalTome.md Agents.md
+BINDIST_EXTRAS += Plan.md TechnicalTome.md
 BINDIST    = $(BUILD_PREFIX)cataclysmdda-$(VERSION).tar.gz
 W32BINDIST = $(BUILD_PREFIX)cataclysmdda-$(VERSION).zip
 BINDIST_CMD    = tar --transform=s@^$(BINDIST_DIR)@cataclysmdda-$(VERSION)@ -czvf $(BINDIST) $(BINDIST_DIR)
@@ -1300,7 +1300,7 @@ $(SRC_DIR)/version.h: version-force
         elif [ -e ".git" ]; then \
           GITVERSION=$$( git describe --tags --always --match "[0-9A-Z]*.[0-9A-Z]*" --match "cdda-experimental-*" --exact-match 2>/dev/null || true ) && \
           GITSHA=$$( git rev-parse --short HEAD ) && \
-          DIRTYFLAG=$$( [ -z "$$(git -c core.autocrlf=input -c core.safecrlf=false status --porcelain --untracked-files=all -- . ':(exclude)lang/po/**' ':(exclude)Agents.md')" ] || echo "-dirty") && \
+          DIRTYFLAG=$$( [ -z "$$(git -c core.autocrlf=input -c core.safecrlf=false status --porcelain --untracked-files=all -- . ':(exclude)lang/po/**')" ] || echo "-dirty") && \
           VERSION_STRING="$$GITVERSION $$GITSHA$$DIRTYFLAG" && \
           VERSION_STRING="$${VERSION_STRING## }" ; \
         fi ; \
@@ -1514,7 +1514,6 @@ endif
 	cp README.md $(APPRESOURCESDIR)/
 	cp Plan.md $(APPRESOURCESDIR)/
 	cp TechnicalTome.md $(APPRESOURCESDIR)/
-	cp Agents.md $(APPRESOURCESDIR)/
 	cp VERSION.txt $(APPRESOURCESDIR)/
 	cp LICENSE.txt $(APPRESOURCESDIR)/
 	cp LICENSE-OFL-Terminus-Font.txt $(APPRESOURCESDIR)/

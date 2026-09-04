@@ -1,0 +1,32 @@
+{
+  "name": "r008_fire_signal_roof_bandit_v1",
+  "source_fixture": "r008_fire_signal_common_v1",
+  "source_profile": "live-debug",
+  "description": "Exposed-roof member of the R-008 fire-signal family. A receipted player-only relocation reaches the generated flat roof; several log-bearing roof tiles and their SOURCE_FIREWOOD zone are setup only. The outside-bubble bandit actors, ignition, signal observations, movement, response, local/abstract lifecycle, and persistence remain production behavior.",
+  "save_transforms": [
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [0, 0, 1]
+    },
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        { "typeid": "log", "count": 12, "offset_ms": [1, -1, 0] },
+        { "typeid": "log", "count": 12, "offset_ms": [1, 0, 0] },
+        { "typeid": "log", "count": 12, "offset_ms": [1, 1, 0] }
+      ]
+    },
+    {
+      "kind": "source_firewood_zone_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "name": "R-008 exposed roof firewood",
+      "zone_type": "SOURCE_FIREWOOD",
+      "faction": "your_followers",
+      "start_offset_ms": [1, -1, 0],
+      "end_offset_ms": [1, 1, 0],
+      "write_temp": true
+    }
+  ]
+}

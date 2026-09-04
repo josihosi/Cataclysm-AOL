@@ -1,0 +1,59 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_avatar_onfire_cleanup_bootstrap_v001_mcw",
+  "description": "Zero-credit R-027 preparation: remove only the persisted avatar onfire effect from the far-footing fixture, then native-save.",
+  "status": "active",
+  "profile": "r027-avatar-onfire-cleanup-bootstrap-001",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_safe_footing_far_v003_20260902",
+  "fixture_profile": "r027-avatar-safe-footing-bootstrap-015",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "r027_onfire_cleanup_bootstrap": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r027.avatar_onfire_cleanup": "zero_credit_only",
+    "runtime.r027.source_binding": "r027-closure-007-tiles:r027-avatar-onfire-cleanup-bootstrap-001"
+  },
+  "runtime_contract": {
+    "permitted_input": ["native:onfire_cleanup", "semantic:world.quicksave", "cockpit:run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "callback-injection", "direct-state-mutation", "direct-save-edit", "direct-lead-mutation", "shared-profile"],
+    "platform": ["macos"],
+    "profile": "r027-avatar-onfire-cleanup-bootstrap-001",
+    "fixture": "r027_safe_footing_far_v003_20260902",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"build/r027-closure-007-tiles","profile":"r027-avatar-onfire-cleanup-bootstrap-001","fixture":"r027_safe_footing_far_v003_20260902","helper":"native-semantic-broker","peekaboo":false,"ocr":false,"input":["frame-bound semantic requests"],"cleanup":true},
+    "grants_gameplay_proof": false,
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"]
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/r027-avatar-safe-footing-bootstrap-015/r027_safe_footing_far_v003_20260902/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/r027-avatar-onfire-cleanup-bootstrap-001.json",
+    "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"
+  },
+  "r027_isolated_launch": {
+    "name": "r027-closure-007-tiles",
+    "path": "build/r027-closure-007-tiles",
+    "sha256": "3fad605ec204d26e6ef3a1f6f3ed02677b79fcb0b59250128a3b9f49185c16e3",
+    "profile": "r027-avatar-onfire-cleanup-bootstrap-001",
+    "world": "McWilliams",
+    "fixture": "r027_safe_footing_far_v003_20260902",
+    "run_identity": "r027-avatar-onfire-cleanup-bootstrap-001",
+    "control_endpoint": "native-semantic-broker",
+    "receipt_sidecar": "r027.staffed-camp-signal.receipts.jsonl",
+    "cleanup_token": "r027-avatar-onfire-cleanup-bootstrap-001-cleanup",
+    "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"
+  },
+  "steps": [
+    {"kind":"audit_saved_map_tile_near_player","label":"audit_fixed_saved_source_present","offsets":[[0,11,0]],"required_fields":["fd_fire"],"abort_on_metadata_failure":true},
+    {"kind":"native_semantic_bootstrap","label":"bind_cleanup_save","native_semantic_checkpoint":{"required_actions":["world.quicksave"],"required_state":"world","require_initial_hud_world_ready_frame":false}},
+    {"kind":"cockpit_live_session","label":"save_onfire_cleanup_only","cleanup_on_finish":true,"stop_after_live_session":true,"objective":"Zero-credit: native-save the already-applied exact onfire cleanup and finish.","proof_targets":["native save","before/after cleanup snapshots"],"authority":["currently advertised world.quicksave","run.finish"],"invariants":["only onfire may differ","do not alter fields, entities, camp, lead, or drive state"],"live_operations":["game.act"],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}
+  ],
+  "proof_route": {"precondition":["audit_fixed_saved_source_present","bind_cleanup_save"],"production_behavior":["save_onfire_cleanup_only"],"terminal_persistence":["save_onfire_cleanup_only"],"disallowed_shortcuts":["save_onfire_cleanup_only"],"artifact_verdict":["save_onfire_cleanup_only"]}
+}

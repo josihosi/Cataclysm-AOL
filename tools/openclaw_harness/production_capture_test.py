@@ -150,6 +150,22 @@ class ProductionCaptureTest(unittest.TestCase):
         with self.assertRaisesRegex(production_capture.ProductionCaptureError, "runtime source differs"):
             self.prepare(runtime=stale)
 
+    def test_setup_capture_is_explicitly_zero_credit_and_cannot_promote_feature_proof(self) -> None:
+        self.report.write_text(json.dumps({
+            "run_id": "sealed-setup", "feature_proof": False,
+            "cleanup": {"status": "already_exited"},
+        }), encoding="utf-8")
+        provenance = production_capture.prepare_setup_only_capture(
+            report_path=self.report, runtime_binding=self.runtime,
+        )
+        self.assertEqual(provenance["credit"], "setup_only_non_feature")
+        self.assertTrue(provenance["anti_promotion"])
+        self.report.write_text(json.dumps({
+            "feature_proof": True, "cleanup": {"status": "already_exited"},
+        }), encoding="utf-8")
+        with self.assertRaisesRegex(production_capture.ProductionCaptureError, "non-feature"):
+            production_capture.prepare_setup_only_capture(report_path=self.report, runtime_binding=self.runtime)
+
     def test_malformed_report_fails_closed(self) -> None:
         self.report.write_text("{", encoding="utf-8")
         with self.assertRaisesRegex(production_capture.ProductionCaptureError, "unreadable"):

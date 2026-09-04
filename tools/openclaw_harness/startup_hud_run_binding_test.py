@@ -69,6 +69,31 @@ class StartupHudRunBindingTest( unittest.TestCase ):
             child_environment = popen.call_args.kwargs["env"]
             self.assertEqual(child_environment["OPENCLAW_HARNESS_RUN_ID"], "current-run")
             self.assertEqual(child_environment["OPENCLAW_HARNESS_SEMANTIC_RUN_ID"], "current-run")
+            self.assertTrue(popen.call_args.kwargs["start_new_session"])
+
+    def test_prepared_certification_context_survives_to_the_run_bound_native_writer( self ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            sidecar = run_dir / "transition.events.jsonl"
+            prepared = '{"binding_id":"sealed-binding","round_id":"round-a"}'
+            with mock.patch.object(startup_harness, "detect_executable", return_value=Path("game")), \
+                    mock.patch.object(startup_harness, "build_game_command", return_value=["game"]), \
+                    mock.patch.object(startup_harness.subprocess, "Popen") as popen:
+                startup_harness.launch_game(
+                    "profile", "world", run_dir,
+                    child_environment={
+                        "OPENCLAW_CERTIFICATION_PREPARED_ROUND": prepared,
+                        "OPENCLAW_HARNESS_BINDING_ID": "sealed-binding",
+                    },
+                    transition_event_run_id="run-bound-sidecar",
+                    transition_event_path=str(sidecar),
+                )
+
+            child_environment = popen.call_args.kwargs["env"]
+            self.assertEqual(child_environment["OPENCLAW_CERTIFICATION_PREPARED_ROUND"], prepared)
+            self.assertEqual(child_environment["OPENCLAW_HARNESS_BINDING_ID"], "sealed-binding")
+            self.assertEqual(child_environment["OPENCLAW_HARNESS_RUN_ID"], "run-bound-sidecar")
+            self.assertEqual(child_environment["OPENCLAW_HARNESS_TRANSITION_EVENT_PATH"], str(sidecar.resolve()))
 
     def test_native_producer_requires_matching_launch_binding_and_resets_on_change( self ) -> None:
         source = (Path(__file__).resolve().parents[2] / "src" / "handle_action.cpp").read_text()

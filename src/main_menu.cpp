@@ -54,6 +54,7 @@
 #include "popup.h"
 #include "safemode_ui.h"
 #include "scenario.h"
+#include "semantic_surface.h"
 #include "sdlsound.h"
 #include "sounds.h"
 #include "string_formatter.h"
@@ -740,49 +741,117 @@ bool main_menu::opening_screen()
     EM_ASM( window.dispatchEvent( new Event( 'menuready' ) ); );
 #endif
 
+    std::optional<semantic_surface_manager_session> semantic_session;
+    semantic_surface_manager *semantic_manager = nullptr;
+    if( openclaw_harness_semantic_session_active() ) {
+        semantic_manager = &openclaw_harness_semantic_surface_manager();
+        semantic_session.emplace( *semantic_manager );
+    }
+
     while( !start ) {
         ui_manager::redraw();
-        std::string action = ctxt.handle_input();
+        std::string semantic_action;
+        std::optional<semantic_surface_scope> semantic_scope;
+        if( semantic_manager != nullptr ) {
+            semantic_scope.emplace( *semantic_manager, "main_menu", "Main menu",
+            std::map<std::string, std::string>{},
+            std::vector<semantic_action_descriptor>{
+                { "main_menu.quit", "", _( "Quit" ), true }
+            }, [semantic_manager]( const semantic_action_request &request ) {
+                if( request.action_id != "main_menu.quit" || request.stable_id.has_value() ) {
+                    return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                }
+                if( !semantic_manager->queue_native_intent( request, "main_menu.quit" ) ) {
+                    return semantic_action_dispatch_result{ false, "native_intent_unavailable", "" };
+                }
+                // A confirmed quit has no successor main-menu frame: query_yn
+                // returns into this owner and the process exits.  Withhold the
+                // parent while its confirmation child is active so releasing
+                // that child cannot publish a stale main-menu receipt that a
+                // relay may mistake for a live replacement process.
+                if( !semantic_manager->withhold_parent_authority_until_recreated(
+                        request.surface_id ) ) {
+                    semantic_manager->take_native_intent( "main_menu.quit" );
+                    return semantic_action_dispatch_result{ false, "native_parent_withhold_failed", "" };
+                }
+                if( std::getenv( "OPENCLAW_HARNESS_UI_TRACE" ) != nullptr ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "openclaw_harness_ui_trace: component=semantic_ui"
+                            << " event=main_menu_quit_callback";
+                }
+                // The actual child owner is query_yn( "Really quit?" ).
+                return semantic_action_dispatch_result{ true, "", "", true };
+            } );
+            semantic_scope->consume_request();
+        }
+        if( semantic_manager != nullptr && semantic_manager->take_native_intent( "main_menu.quit" ) ) {
+#if !defined(EMSCRIPTEN)
+            if( std::getenv( "OPENCLAW_HARNESS_UI_TRACE" ) != nullptr ) {
+                DebugLog( D_INFO, DC_ALL )
+                        << "openclaw_harness_ui_trace: component=semantic_ui"
+                        << " event=main_menu_quit_before_confirmation";
+            }
+            const bool confirmed = query_yn( _( "Really quit?" ) );
+            if( std::getenv( "OPENCLAW_HARNESS_UI_TRACE" ) != nullptr ) {
+                DebugLog( D_INFO, DC_ALL )
+                        << "openclaw_harness_ui_trace: component=semantic_ui"
+                        << " event=main_menu_quit_after_confirmation"
+                        << " confirmed=" << ( confirmed ? "true" : "false" );
+            }
+            if( confirmed ) {
+                return false;
+            }
+#endif
+            continue;
+        }
+        const bool semantic_action_consumed = !semantic_action.empty();
+        std::string action = semantic_action_consumed ? semantic_action : ctxt.handle_input();
         input_event sInput = ctxt.get_raw_input();
 
-        // check automatic menu shortcuts
+        // A semantic callback already selected the native action for this
+        // iteration.  Its prior physical event can still be retained by the
+        // input context; do not let that stale event replace QUIT before the
+        // native confirmation owner opens.
         bool match = false;
-        for( int i = 0; static_cast<size_t>( i ) < vMenuHotkeys.size() && !match; ++i ) {
-            for( const std::string &hotkey : vMenuHotkeys[i] ) {
-                if( sInput.text == hotkey && sel1 != i ) {
-                    sel1 = i;
-                    sel2 = i == getopt( main_menu_opts::LOADCHAR ) ? last_world_pos : 0;
-                    sel_line = 0;
-                    if( i == getopt( main_menu_opts::HELP ) ) {
-                        action = "CONFIRM";
-                    } else if( i == getopt( main_menu_opts::QUIT ) ) {
-                        action = "QUIT";
-                    }
-                    match = true;
-                    break;
-                }
-            }
-        }
-        if( sel1 == getopt( main_menu_opts::SETTINGS ) ) {
-            for( int i = 0; !match && static_cast<size_t>( i ) < vSettingsSubItems.size(); ++i ) {
-                for( const std::string &hotkey : vSettingsHotkeys[i] ) {
-                    if( sInput.text == hotkey ) {
-                        sel2 = i;
-                        action = "CONFIRM";
+        if( !semantic_action_consumed ) {
+            // Check automatic menu shortcuts.
+            for( int i = 0; static_cast<size_t>( i ) < vMenuHotkeys.size() && !match; ++i ) {
+                for( const std::string &hotkey : vMenuHotkeys[i] ) {
+                    if( sInput.text == hotkey && sel1 != i ) {
+                        sel1 = i;
+                        sel2 = i == getopt( main_menu_opts::LOADCHAR ) ? last_world_pos : 0;
+                        sel_line = 0;
+                        if( i == getopt( main_menu_opts::HELP ) ) {
+                            action = "CONFIRM";
+                        } else if( i == getopt( main_menu_opts::QUIT ) ) {
+                            action = "QUIT";
+                        }
                         match = true;
                         break;
                     }
                 }
             }
-        }
-        if( sel1 == getopt( main_menu_opts::NEWCHAR ) ) {
-            for( int i = 0; !match && static_cast<size_t>( i ) < vNewGameSubItems.size(); ++i ) {
-                for( const std::string &hotkey : vNewGameHotkeys[i] ) {
-                    if( sInput.text == hotkey ) {
-                        sel2 = i;
-                        action = "CONFIRM";
-                        match = true;
-                        break;
+            if( sel1 == getopt( main_menu_opts::SETTINGS ) ) {
+                for( int i = 0; !match && static_cast<size_t>( i ) < vSettingsSubItems.size(); ++i ) {
+                    for( const std::string &hotkey : vSettingsHotkeys[i] ) {
+                        if( sInput.text == hotkey ) {
+                            sel2 = i;
+                            action = "CONFIRM";
+                            match = true;
+                            break;
+                        }
+                    }
+                }
+            }
+            if( sel1 == getopt( main_menu_opts::NEWCHAR ) ) {
+                for( int i = 0; !match && static_cast<size_t>( i ) < vNewGameSubItems.size(); ++i ) {
+                    for( const std::string &hotkey : vNewGameHotkeys[i] ) {
+                        if( sInput.text == hotkey ) {
+                            sel2 = i;
+                            action = "CONFIRM";
+                            match = true;
+                            break;
+                        }
                     }
                 }
             }

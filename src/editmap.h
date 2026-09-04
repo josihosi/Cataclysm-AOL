@@ -160,7 +160,7 @@ struct editmap_brush {
 
     //terrain, furniture, trap
     template <typename T_t>
-    std::optional<int_id<T_t>> select_feature();
+    std::optional<int_id<T_t>> select_feature( bool await_semantic_successor = false );
     std::optional<field_type_id> select_field();
     int select_radiation() const;
 

@@ -34,6 +34,7 @@
 #include "item_search.h"
 #include "item_stack.h"
 #include "item_tname.h"
+#include "item_wakeup.h"
 #include "itype.h"
 #include "json.h"
 #include "line.h"
@@ -47,6 +48,7 @@
 #include "point.h"
 #include "ret_val.h"
 #include "sdltiles.h"
+#include "semantic_surface.h"
 #include "string_formatter.h"
 #include "string_input_popup.h"
 #include "trade_ui.h"
@@ -115,6 +117,54 @@ static std::string openclaw_harness_item_location_type_name( const item_location
     }
 
     return "unknown";
+}
+
+// A selector entry's location is a native view of an item, not an identity.
+// Preserve only a bounded owner hint beside the item UID so a semantic request
+// must resolve back to the exact live entry rather than following a name,
+// invlet, or display position after the inventory changes.
+static item_locator_hint inventory_selector_hint_from_location( const item_location &loc )
+{
+    item_locator_hint hint;
+    if( !loc ) {
+        return hint;
+    }
+    item_location top = loc;
+    while( top.has_parent() ) {
+        top = top.parent_item();
+    }
+    switch( top.where() ) {
+        case item_location::type::character: {
+            Character *carrier = top.carrier();
+            if( carrier != nullptr ) {
+                hint.where = item_locator_hint::place::character;
+                hint.location = carrier->getID();
+            }
+            break;
+        }
+        case item_location::type::map:
+            hint.where = item_locator_hint::place::map;
+            hint.location = top.pos_abs();
+            break;
+        case item_location::type::vehicle: {
+            const vehicle_cursor *cursor = top.veh_cursor();
+            if( cursor != nullptr ) {
+                vehicle_hint vehicle;
+                vehicle.cargo_square = top.pos_abs();
+                vehicle.part_index = static_cast<int>( cursor->part );
+                if( vehicle.part_index >= 0 && vehicle.part_index < cursor->veh.part_count() ) {
+                    vehicle.mount_offset = cursor->veh.part( vehicle.part_index ).mount;
+                }
+                hint.where = item_locator_hint::place::vehicle;
+                hint.location = vehicle;
+            }
+            break;
+        }
+        case item_location::type::container:
+        case item_location::type::invalid:
+            break;
+    }
+    return hint;
 }
 
 static void openclaw_harness_trace_inventory_entry( const std::string &event,
@@ -399,12 +449,6 @@ struct navigation_mode_data {
     navigation_mode next_mode;
     translation name;
     nc_color color;
-};
-
-struct inventory_input {
-    std::string action;
-    int ch = 0;
-    inventory_entry *entry;
 };
 
 namespace
@@ -3704,6 +3748,139 @@ inventory_input inventory_selector::process_input( const std::string &action, in
     return res;
 }
 
+std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
+    const std::vector<semantic_action_descriptor> &mode_actions ) const
+{
+    std::vector<semantic_action_descriptor> actions;
+    std::vector<std::pair<std::string, std::string>> selectable_items;
+    for( inventory_column *column : get_all_columns() ) {
+        for( inventory_entry *entry : column->get_entries( return_item, true ) ) {
+            if( entry == nullptr || !entry->is_item() ) {
+                continue;
+            }
+            for( const item_location &location : entry->locations ) {
+                if( !location || !location->uid().is_valid() ) {
+                    continue;
+                }
+                const std::string stable_id = std::to_string( location->uid().get_value() );
+                const bool enabled = entry->is_selectable();
+                if( enabled ) {
+                    selectable_items.emplace_back( stable_id, location->tname() );
+                }
+                actions.push_back( { "inventory.select", stable_id, location->tname(), enabled } );
+                actions.push_back( { "inventory.details", stable_id, _( "Details" ), enabled } );
+                if( location->is_container() ) {
+                    actions.push_back( { "inventory.contents", stable_id, _( "Contents" ), enabled } );
+                }
+            }
+        }
+    }
+    actions.push_back( { "inventory.filter", "", _( "Filter" ), true } );
+    actions.push_back( { "inventory.reset_filter", "", _( "Reset filter" ), !get_filter().empty() } );
+    for( const semantic_action_descriptor &mode_action : mode_actions ) {
+        if( !mode_action.stable_id.empty() || mode_action.id == "inventory.commit" ) {
+            actions.push_back( mode_action );
+            continue;
+        }
+        for( const auto &item : selectable_items ) {
+            actions.push_back( { mode_action.id, item.first, mode_action.label, mode_action.enabled } );
+        }
+    }
+    actions.push_back( { "inventory.cancel", "", _( "Cancel" ), true } );
+    return actions;
+}
+
+semantic_action_dispatch_result inventory_selector::handle_semantic_request(
+    const semantic_action_request &request, std::optional<inventory_input> &native_input )
+{
+    if( request.action_id == "inventory.cancel" ) {
+        native_input = inventory_input{ "QUIT" };
+        return { true, "", "" };
+    }
+    if( request.action_id == "inventory.filter" ) {
+        const auto filter = request.parameters.find( "text" );
+        if( filter == request.parameters.end() ) {
+            return { false, "missing_filter_text", "" };
+        }
+        set_filter( filter->second );
+        return { true, "", "" };
+    }
+    if( request.action_id == "inventory.reset_filter" ) {
+        if( get_filter().empty() ) {
+            return { false, "disabled_action", "" };
+        }
+        set_filter( "" );
+        return { true, "", "" };
+    }
+    if( request.action_id == "inventory.commit" ) {
+        native_input = inventory_input{ "CONFIRM" };
+        return { true, "", "" };
+    }
+    if( request.action_id == "inventory.contain_mode" ) {
+        native_input = inventory_input{ "CONTAIN_MODE" };
+        return { true, "", "" };
+    }
+    if( !request.stable_id ) {
+        return { false, "missing_stable_id", "" };
+    }
+    for( inventory_column *column : get_all_columns() ) {
+        for( inventory_entry *entry : column->get_entries( return_item, true ) ) {
+            if( entry == nullptr || !entry->is_selectable() || !entry->is_item() ) {
+                continue;
+            }
+            for( const item_location &location : entry->locations ) {
+                if( !location || !location->uid().is_valid() ||
+                    std::to_string( location->uid().get_value() ) != *request.stable_id ) {
+                    continue;
+                }
+                const int64_t uid = location->uid().get_value();
+                const item_location resolved = find_item_by_uid( uid,
+                                               inventory_selector_hint_from_location( location ) );
+                if( !resolved || resolved != location ) {
+                    return { false, "stale_stable_id", "" };
+                }
+                if( !highlight( resolved ) ) {
+                    return { false, "invalid_stable_id", "" };
+                }
+                if( request.action_id == "inventory.select" ) {
+                    native_input = inventory_input{ "CONFIRM", 0, nullptr, resolved };
+                    return { true, "", "", true };
+                }
+                if( request.action_id == "inventory.details" ) {
+                    native_input = inventory_input{ "EXAMINE", 0, nullptr, resolved };
+                    return { true, "", "", true };
+                }
+                if( request.action_id == "inventory.contents" && resolved->is_container() ) {
+                    native_input = inventory_input{ "EXAMINE_CONTENTS", 0, nullptr, resolved };
+                    return { true, "", "" };
+                }
+                if( request.action_id == "inventory.toggle" ) {
+                    native_input = inventory_input{ "TOGGLE_ENTRY", 0, nullptr, resolved };
+                    return { true, "", "" };
+                }
+                if( request.action_id == "inventory.increase_quantity" ) {
+                    native_input = inventory_input{ "INCREASE_COUNT", 0, nullptr, resolved };
+                    return { true, "", "" };
+                }
+                if( request.action_id == "inventory.decrease_quantity" ) {
+                    native_input = inventory_input{ "DECREASE_COUNT", 0, nullptr, resolved };
+                    return { true, "", "" };
+                }
+                if( request.action_id == "inventory.wield" ) {
+                    native_input = inventory_input{ "WIELD", 0, nullptr, resolved };
+                    return { true, "", "" };
+                }
+                if( request.action_id == "inventory.wear" ) {
+                    native_input = inventory_input{ "WEAR", 0, nullptr, resolved };
+                    return { true, "", "" };
+                }
+                return { false, "unadvertised_action", "" };
+            }
+        }
+    }
+    return { false, "invalid_stable_id", "" };
+}
+
 void inventory_column::cycle_hide_override()
 {
     if( hide_entries_override ) {
@@ -3768,7 +3945,7 @@ void inventory_selector::on_input( const inventory_input &input )
         const inventory_entry &selected = get_active_column().get_highlighted();
         if( selected ) {
             //TODO: Should probably be any_item() rather than direct front() access, but that seems to lock us into const item_location, which various functions are unprepared for
-            item_location sitem = selected.locations.front();
+            item_location sitem = input.semantic_target ? input.semantic_target : selected.locations.front();
             inventory_examiner examine_contents( u, sitem );
             examine_contents.add_contained_items( sitem );
             int examine_result = examine_contents.execute();
@@ -3784,7 +3961,7 @@ void inventory_selector::on_input( const inventory_input &input )
     } else if( input.action == "EXAMINE" ) {
         const inventory_entry &selected = get_active_column().get_highlighted();
         if( selected ) {
-            const item_location &sitem = selected.any_item();
+            const item_location &sitem = input.semantic_target ? input.semantic_target : selected.any_item();
             action_examine( sitem );
         }
     } else if( input.action == "INVENTORY_FILTER" ) {
@@ -4051,6 +4228,8 @@ item_location inventory_pick_selector::execute()
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
     openclaw_harness_trace_inventory_entry( "open", get_title(), get_filter(), "", "", nullptr );
+    std::optional<inventory_input> semantic_input;
+    std::optional<semantic_surface_scope> semantic_scope;
     item_location startDragItem;
     bool dragActive = false;
     while( true ) {
@@ -4060,7 +4239,33 @@ item_location inventory_pick_selector::execute()
                 "highlight_after_redraw", &highlighted_after_redraw );
         openclaw_harness_trace_inventory_entries( *this, columns, "state", "redraw",
                 "highlight_after_redraw" );
-        const inventory_input input = get_input();
+        if( !semantic_scope ) {
+            if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+                semantic_scope.emplace( *manager, "inventory", get_title(),
+                std::map<std::string, std::string>{
+                    { "title", get_title() },
+                    { "filter", get_filter() }
+                }, semantic_actions( { { "inventory.commit", "", _( "Select" ), true } } ),
+                [this, &semantic_input]( const semantic_action_request &request ) {
+                    return handle_semantic_request( request, semantic_input );
+                } );
+            }
+        }
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_actions( { { "inventory.commit", "", _( "Select" ), true } } ) );
+            semantic_scope->consume_request();
+        }
+        inventory_input input;
+        if( semantic_input ) {
+            input = *semantic_input;
+            semantic_input.reset();
+        } else {
+            // The semantic consumer can run while get_input() is waiting for
+            // the transport wake.  Keep its native input for this selector's
+            // next turn instead of clearing it with that wake's ERROR event.
+            input = get_input();
+        }
 
         if( input.entry != nullptr ) {
             if( drag_enabled && input.action == "CLICK_AND_DRAG" ) {
@@ -4112,7 +4317,7 @@ item_location inventory_pick_selector::execute()
             if( highlighted && highlighted.is_selectable() ) {
                 openclaw_harness_trace_inventory_entry( "return", get_title(), get_filter(), input.action,
                         "highlight_confirm", &highlighted );
-                return highlighted.any_item();
+                return input.semantic_target ? input.semantic_target : highlighted.any_item();
             }
         } else {
             on_input( input );
@@ -4408,9 +4613,37 @@ drop_location ammo_inventory_selector::execute()
 {
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
+    std::optional<inventory_input> semantic_input;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "inventory", get_title(),
+        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_actions( {
+            { "inventory.commit", "", _( "Reload" ), true },
+            { "inventory.increase_quantity", "", _( "Increase quantity" ), true },
+            { "inventory.decrease_quantity", "", _( "Decrease quantity" ), true }
+        } ), [this, &semantic_input]( const semantic_action_request &request ) {
+            return handle_semantic_request( request, semantic_input );
+        } );
+    }
     while( true ) {
         ui_manager::redraw();
-        const inventory_input input = get_input();
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_actions( {
+                { "inventory.commit", "", _( "Reload" ), true },
+                { "inventory.increase_quantity", "", _( "Increase quantity" ), true },
+                { "inventory.decrease_quantity", "", _( "Decrease quantity" ), true }
+            } ) );
+            semantic_scope->consume_request();
+        }
+        inventory_input input;
+        if( semantic_input ) {
+            input = *semantic_input;
+            semantic_input.reset();
+        } else {
+            input = get_input();
+        }
 
         if( input.entry != nullptr ) {
             if( input.action == "MOUSE_MOVE" ) {
@@ -4705,10 +4938,35 @@ drop_locations inventory_multiselector::execute( bool allow_empty )
 {
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
+    std::optional<inventory_input> semantic_input;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "inventory", get_title(),
+        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_actions( {
+            { "inventory.toggle", "", _( "Toggle selection" ), true },
+            { "inventory.commit", "", _( "Confirm selection" ), true }
+        } ), [this, &semantic_input]( const semantic_action_request &request ) {
+            return handle_semantic_request( request, semantic_input );
+        } );
+    }
     while( true ) {
         ui_manager::redraw();
-
-        const inventory_input input = get_input();
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_actions( {
+                { "inventory.toggle", "", _( "Toggle selection" ), true },
+                { "inventory.commit", "", _( "Confirm selection" ), true }
+            } ) );
+            semantic_scope->consume_request();
+        }
+        inventory_input input;
+        if( semantic_input ) {
+            input = *semantic_input;
+            semantic_input.reset();
+        } else {
+            input = get_input();
+        }
 
         if( input.action == "CONFIRM" ) {
             if( to_use.empty() && !allow_empty ) {
@@ -4740,10 +4998,30 @@ std::pair<const item *, const item *> inventory_compare_selector::execute()
 {
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
+    std::optional<inventory_input> semantic_input;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "inventory", get_title(),
+        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_actions( { { "inventory.toggle", "", _( "Toggle comparison" ), true } } ),
+        [this, &semantic_input]( const semantic_action_request &request ) {
+            return handle_semantic_request( request, semantic_input );
+        } );
+    }
     while( true ) {
         ui_manager::redraw();
-
-        const inventory_input input = get_input();
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_actions( { { "inventory.toggle", "", _( "Toggle comparison" ), true } } ) );
+            semantic_scope->consume_request();
+        }
+        inventory_input input;
+        if( semantic_input ) {
+            input = *semantic_input;
+            semantic_input.reset();
+        } else {
+            input = get_input();
+        }
 
         inventory_entry *just_selected = nullptr;
 
@@ -4999,13 +5277,39 @@ drop_locations inventory_drop_selector::execute()
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
     openclaw_harness_trace_drop_selector( "open", get_title(), get_filter(), "", to_use );
+    std::optional<inventory_input> semantic_input;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "inventory", get_title(),
+        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_actions( {
+            { "inventory.toggle", "", _( "Toggle selection" ), true },
+            { "inventory.commit", "", _( "Drop selected items" ), true }
+        } ), [this, &semantic_input]( const semantic_action_request &request ) {
+            return handle_semantic_request( request, semantic_input );
+        } );
+    }
     while( true ) {
         ui_manager::redraw();
         openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), "redraw", to_use );
         openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", "redraw",
                 "drop_highlight_after_redraw", "inventory_drop_selector" );
 
-        const inventory_input input = get_input();
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_actions( {
+                { "inventory.toggle", "", _( "Toggle selection" ), true },
+                { "inventory.commit", "", _( "Drop selected items" ), true }
+            } ) );
+            semantic_scope->consume_request();
+        }
+        inventory_input input;
+        if( semantic_input ) {
+            input = *semantic_input;
+            semantic_input.reset();
+        } else {
+            input = get_input();
+        }
         if( input.action == "CONFIRM" ) {
             for( drop_location &stuff : to_use ) {
                 if( !avatar_action::check_stealing( get_player_character(), *stuff.first ) ) {
@@ -5182,11 +5486,40 @@ drop_locations pickup_selector::execute()
 {
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
+    std::optional<inventory_input> semantic_input;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "inventory", get_title(),
+        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_actions( {
+            { "inventory.toggle", "", _( "Toggle selection" ), true },
+            { "inventory.wield", "", _( "Wield" ), true },
+            { "inventory.wear", "", _( "Wear" ), true },
+            { "inventory.commit", "", _( "Pick up selected items" ), true }
+        } ), [this, &semantic_input]( const semantic_action_request &request ) {
+            return handle_semantic_request( request, semantic_input );
+        } );
+    }
 
     while( true ) {
         ui_manager::redraw();
-
-        const inventory_input input = get_input();
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_actions( {
+                { "inventory.toggle", "", _( "Toggle selection" ), true },
+                { "inventory.wield", "", _( "Wield" ), true },
+                { "inventory.wear", "", _( "Wear" ), true },
+                { "inventory.commit", "", _( "Pick up selected items" ), true }
+            } ) );
+            semantic_scope->consume_request();
+        }
+        inventory_input input;
+        if( semantic_input ) {
+            input = *semantic_input;
+            semantic_input.reset();
+        } else {
+            input = get_input();
+        }
 
         if( input.action == "CONFIRM" ) {
             if( to_use.empty() ) {
@@ -5379,6 +5712,16 @@ int inventory_examiner::execute()
     }
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
+    std::optional<inventory_input> semantic_input;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "inventory", get_title(),
+        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_actions( { { "inventory.commit", "", _( "Close contents" ), true } } ),
+        [this, &semantic_input]( const semantic_action_request &request ) {
+            return handle_semantic_request( request, semantic_input );
+        } );
+    }
 
     ui_adaptor ui_examine;
 
@@ -5414,7 +5757,18 @@ int inventory_examiner::execute()
          The item list will only be redrawn when specifically invalidated */
         ui_manager::redraw();
 
-        const inventory_input input = get_input();
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_actions( { { "inventory.commit", "", _( "Close contents" ), true } } ) );
+            semantic_scope->consume_request();
+        }
+        inventory_input input;
+        if( semantic_input ) {
+            input = *semantic_input;
+            semantic_input.reset();
+        } else {
+            input = get_input();
+        }
 
         if( input.entry != nullptr ) {
             if( highlight( input.entry->any_item() ) ) {
@@ -5470,9 +5824,35 @@ std::pair<item_location, bool> unload_selector::execute()
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     item_location startDragItem;
     bool dragActive = false;
+    std::optional<inventory_input> semantic_input;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "inventory", get_title(),
+        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_actions( {
+            { "inventory.commit", "", _( "Select unload destination" ), true },
+            { "inventory.contain_mode", "", _( "Toggle containment mode" ), true }
+        } ), [this, &semantic_input]( const semantic_action_request &request ) {
+            return handle_semantic_request( request, semantic_input );
+        } );
+    }
     while( true ) {
         ui_manager::redraw();
-        const inventory_input input = get_input();
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_actions( {
+                { "inventory.commit", "", _( "Select unload destination" ), true },
+                { "inventory.contain_mode", "", _( "Toggle containment mode" ), true }
+            } ) );
+            semantic_scope->consume_request();
+        }
+        inventory_input input;
+        if( semantic_input ) {
+            input = *semantic_input;
+            semantic_input.reset();
+        } else {
+            input = get_input();
+        }
         if( input.entry != nullptr ) {
             if( drag_enabled && input.action == "CLICK_AND_DRAG" ) {
                 if( input.entry->is_item() ) {
@@ -5558,6 +5938,27 @@ void trade_selector::execute()
 {
     debug_print_timer( tp_start );
     bool exit = false;
+    std::optional<std::string> semantic_input;
+    std::optional<inventory_input> semantic_inventory_input;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "inventory", get_title(),
+        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_actions( {
+            { "inventory.toggle", "", _( "Toggle trade item" ), true },
+            { "inventory.commit", "", _( "Confirm trade" ), true }
+        } ), [this, &semantic_input, &semantic_inventory_input]( const semantic_action_request &request ) {
+            if( request.action_id == "inventory.commit" ) {
+                semantic_input = ACTION_TRADE_OK;
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            if( request.action_id == "inventory.cancel" ) {
+                semantic_input = ACTION_TRADE_CANCEL;
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            return handle_semantic_request( request, semantic_inventory_input );
+        } );
+    }
 
     get_active_column().on_activate();
 
@@ -5567,7 +5968,22 @@ void trade_selector::execute()
         openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), "redraw", to_use );
         openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", "redraw",
                 "trade_highlight_after_redraw", "trade_selector" );
-        std::string const &action = _ctxt_trade.handle_input();
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_actions( {
+                { "inventory.toggle", "", _( "Toggle trade item" ), true },
+                { "inventory.commit", "", _( "Confirm trade" ), true }
+            } ) );
+            semantic_scope->consume_request();
+        }
+        const std::string action = semantic_input ? *semantic_input :
+                                   semantic_inventory_input ? semantic_inventory_input->action :
+                                   _ctxt_trade.handle_input();
+        const bool use_semantic_input = semantic_input || semantic_inventory_input;
+        const item_location semantic_target = semantic_inventory_input ?
+                                            semantic_inventory_input->semantic_target : item_location();
+        semantic_input.reset();
+        semantic_inventory_input.reset();
         if( action == ACTION_SWITCH_PANES ) {
             _parent->pushevent( trade_ui::event::SWITCH );
             get_active_column().on_deactivate();
@@ -5583,9 +5999,13 @@ void trade_selector::execute()
         } else if( action == ACTION_BANKBALANCE ) {
             _parent->bank_balance();
         } else {
-            input_event const iev = _ctxt_trade.get_raw_input();
-            inventory_input const input =
-                process_input( ctxt.input_to_action( iev ), iev.get_first_input() );
+            inventory_input input;
+            if( use_semantic_input ) {
+                input = inventory_input{ action, 0, nullptr, semantic_target };
+            } else {
+                input_event const iev = _ctxt_trade.get_raw_input();
+                input = process_input( ctxt.input_to_action( iev ), iev.get_first_input() );
+            }
             inventory_drop_selector::on_input( input );
             openclaw_harness_trace_drop_selector( "state", get_title(), get_filter(), input.action, to_use );
             openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", input.action,

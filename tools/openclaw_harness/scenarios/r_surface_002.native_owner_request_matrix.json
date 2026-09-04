@@ -1,0 +1,64 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_002.native_owner_request_matrix",
+  "description": "Terminal-only, source-bound R-SURFACE-002 proof. A disposable profile locally remaps Inventory from i to z, while the cockpit requests world.inventory only through the native JSONL/anonymous-wake transport. The active world owner must reject stale, unadvertised, wrong-surface, and malformed interrupted transport without a game-state transition, then accept one request and replay its exact receipt for a duplicate without a second transition.",
+  "profile": "r-surface-002-native-owner",
+  "config_profile": "dev-harness",
+  "profile_snapshot": "r_surface_002_inventory_binding_v1",
+  "profile_snapshot_profile": "live-debug",
+  "world": "McWilliams",
+  "fixture": "r_surface_001_inventory_prompt_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "capabilities.r_surface_002.native_owner_request_matrix": "source_bound_terminal_native_descriptor_rejection_and_duplicate_receipt"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.inventory", "semantic:raw-rejection-probe"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-surface-002-native-owner",
+    "config_profile": "dev-harness",
+    "fixture": "r_surface_001_inventory_prompt_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "r_surface_002_native_owner_curses/cataclysm", "profile": "r-surface-002-native-owner", "fixture": "r_surface_001_inventory_prompt_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests", "raw native rejection probes"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_001_inventory_prompt_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/r_surface_002_inventory_binding_v1/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "emit_r_surface_002_remapped_world_descriptor",
+      "native_semantic_checkpoint": {"required_actions": ["world.inventory"], "required_state": "world"}
+    },
+    {
+      "kind": "semantic_surface_rejection_matrix",
+      "label": "r_surface_002_native_owner_rejection_matrix",
+      "action_id": "world.inventory",
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_gates": [
+    {
+      "id": "r_surface_002_native_owner_matrix",
+      "label": "terminal native owner accepts only descriptor-bound request and returns exact matrix receipts",
+      "boundary_step": "r_surface_002_native_owner_rejection_matrix",
+      "predecessors": [],
+      "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_semantic_surface_rejection_matrix", "gameplay_credit": false, "same_run": true}}],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}
+    }
+  ],
+  "proof_route": {"gates": ["r_surface_002_native_owner_matrix"], "terminal": ["r_surface_002_native_owner_matrix"]}
+}

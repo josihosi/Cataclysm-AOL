@@ -62,7 +62,7 @@ if ($SDL3 -and $staged.Count -eq 0) {
 mkdir bindist/lang
 cp -r lang/mo bindist/lang
 
-$extras = "data", "doc", "gfx", "LICENSE.txt", "LICENSE-OFL-Terminus-Font.txt", "README.md", "Plan.md", "TechnicalTome.md", "Agents.md", "VERSION.txt"
+$extras = "data", "doc", "gfx", "LICENSE.txt", "LICENSE-OFL-Terminus-Font.txt", "README.md", "Plan.md", "TechnicalTome.md", "VERSION.txt"
 ForEach ($extra in $extras) {
 	cp -r $extra bindist
 }

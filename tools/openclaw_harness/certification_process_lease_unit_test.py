@@ -18,6 +18,7 @@ sys.path.insert(0, str(HARNESS_DIR))
 from certification_process_lease import (  # noqa: E402
     CertificationLeaseConflict,
     ProcessSnapshot,
+    quarantine_released_live_lease,
     release_certification_lease_handle,
     reserve_certification_lease,
     transfer_certification_lease,
@@ -31,12 +32,15 @@ class FakeInspector:
     def __init__(self, snapshots):
         self.snapshots = snapshots
         self.signals = []
+        self.exit_on_signal = set()
 
     def inspect(self, pid):
         return self.snapshots.get(pid, ProcessSnapshot(pid=pid, alive=False))
 
     def signal(self, pid, sig):
         self.signals.append((pid, sig))
+        if pid in self.exit_on_signal:
+            self.snapshots[pid] = ProcessSnapshot(pid=pid, alive=False)
 
 
 class CertificationProcessLeaseTest(unittest.TestCase):
@@ -64,13 +68,13 @@ class CertificationProcessLeaseTest(unittest.TestCase):
                                birth_identity=birth,
                                command=command or f"{executable} --world certification")
 
-    def manifest(self, round_id):
+    def manifest(self, round_id, world_name="world-A"):
         names = ("worktree", "executable", "data_config", "harness", "scenario", "fixture", "profile", "world_save", "player", "actors")
         authoritative = {name: {"identity": name} for name in names}
         authoritative["executable"] = {"path": str(self.exe), "identity": "executable",
                                         "content_sha256": self.digest}
         authoritative["scenario"] = {"identity": "scenario", "content_sha256": "a" * 64}
-        authoritative["world_save"] = {"world": str(self.root / "world-A"), "identity": "world-A"}
+        authoritative["world_save"] = {"world": str(self.root / world_name), "identity": world_name}
         components = {name: component_identity(name, authoritative[name]) for name in names}
         binding = {"schema": 1, "components": components, "authoritative_components": authoritative}
         binding["sha256"] = canonical_digest({key: value["sha256"] for key, value in components.items()}, domain="caol-complete-binding:v1")
@@ -139,9 +143,17 @@ class CertificationProcessLeaseTest(unittest.TestCase):
         self.assertEqual(self.inspector.signals, [])
 
     def test_release_rejects_wrong_lease_round_world_or_executable(self):
-        manifest, _, bound = self.reserve_and_bind()
+        manifest = self.manifest("round-a")
+        reserve_certification_lease(self.db, manifest=manifest, lease_id="lease-a",
+                                    executable_path=str(self.exe), executable_sha256=self.digest,
+                                    inspector=self.inspector, cleanup_token="sealed-token")
+        bound = transfer_certification_lease(self.db, manifest=manifest, lease_id="lease-a", pid=101,
+                                             executable_path=str(self.exe), executable_sha256=self.digest,
+                                             inspector=self.inspector, cleanup_token="sealed-token")
         wrong_world = dict(bound, world_identity="other-world")
         self.assertEqual(release_certification_lease_handle(self.db, manifest=manifest, lease=wrong_world, inspector=self.inspector)["status"], "rejected_world_identity")
+        wrong_token = dict(bound, cleanup_token="wrong-token")
+        self.assertEqual(release_certification_lease_handle(self.db, manifest=manifest, lease=wrong_token, inspector=self.inspector)["status"], "rejected_cleanup_token")
         wrong_exe = dict(bound, executable_path=str(self.root / "other"))
         self.assertEqual(release_certification_lease_handle(self.db, manifest=manifest, lease=wrong_exe, inspector=self.inspector)["status"], "rejected_stored_identity")
         wrong_lease = dict(bound, lease_id="other-lease")
@@ -161,11 +173,52 @@ class CertificationProcessLeaseTest(unittest.TestCase):
                                                   executable_path=str(self.exe), executable_sha256=self.digest,
                                                   inspector=self.inspector)
         self.assertEqual(relaunched["pid"], 202)
+        self.inspector.exit_on_signal.add(202)
         released = release_certification_lease_handle(self.db, manifest=manifest, lease=relaunched,
                                                       inspector=self.inspector)
-        self.assertEqual(released["status"], "signaled")
+        self.assertEqual(released["status"], "terminated")
         self.assertEqual([pid for pid, _ in self.inspector.signals], [202])
         self.assertNotEqual(bound["process_birth_identity"], relaunched["process_birth_identity"])
+
+    def test_exact_release_remains_owned_until_exit_is_observed(self):
+        manifest, _, bound = self.reserve_and_bind()
+        first = release_certification_lease_handle(self.db, manifest=manifest, lease=bound,
+                                                   inspector=self.inspector)
+        second = release_certification_lease_handle(self.db, manifest=manifest, lease=bound,
+                                                    inspector=self.inspector)
+        self.assertEqual(first["status"], "exit_unobserved")
+        self.assertEqual(second["status"], "exit_unobserved")
+        self.assertEqual([pid for pid, _ in self.inspector.signals], [101])
+        self.inspector.snapshots[101] = ProcessSnapshot(pid=101, alive=False)
+        released = release_certification_lease_handle(self.db, manifest=manifest, lease=bound,
+                                                       inspector=self.inspector)
+        self.assertEqual(released["status"], "already_exited")
+
+    def test_released_live_owner_quarantine_never_signals_and_fences_its_world(self):
+        manifest, _, bound = self.reserve_and_bind()
+        self.inspector.exit_on_signal.add(101)
+        self.assertEqual(
+            release_certification_lease_handle(self.db, manifest=manifest, lease=bound,
+                                               inspector=self.inspector)["status"],
+            "terminated",
+        )
+        signal_count_before_quarantine = len(self.inspector.signals)
+        self.inspector.snapshots[101] = self.snapshot(101, "birth-101")
+        quarantined = quarantine_released_live_lease(
+            self.db, manifest=manifest, lease_id="lease-a",
+            reason="released receipt contradicted by later external PID observation",
+        )
+        self.assertEqual(quarantined["status"], "quarantined")
+        self.assertEqual(len(self.inspector.signals), signal_count_before_quarantine)
+        with self.assertRaises(CertificationLeaseConflict):
+            reserve_certification_lease(self.db, manifest=self.manifest("round-b"), lease_id="lease-b",
+                                        executable_path=str(self.exe), executable_sha256=self.digest,
+                                        inspector=self.inspector)
+        fresh = reserve_certification_lease(self.db, manifest=self.manifest("round-c", "world-B"),
+                                            lease_id="lease-c", executable_path=str(self.exe),
+                                            executable_sha256=self.digest, inspector=self.inspector)
+        self.assertEqual(fresh["state"], "reserved")
+        self.assertEqual(len(self.inspector.signals), signal_count_before_quarantine)
 
     def test_unrelated_game_like_process_is_never_selected_or_signalled(self):
         manifest, _, bound = self.reserve_and_bind()

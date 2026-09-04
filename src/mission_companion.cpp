@@ -63,6 +63,7 @@
 #include "point.h"
 #include "ret_val.h"
 #include "rng.h"
+#include "semantic_surface.h"
 #include "skill.h"
 #include "string_formatter.h"
 #include "translation.h"
@@ -1012,6 +1013,95 @@ bool talk_function::display_and_choose_opts(
     } );
     ui.mark_resize();
 
+    // The camp board is its own native selector rather than a uilist.  Keep
+    // the semantic owner here so a request chooses the same mission_entry the
+    // visible CONFIRM branch below will dispatch through basecamp::handle_mission.
+    std::string semantic_native_action;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( role_id == role_id_faction_camp ) {
+        std::optional<basecamp *> camp = overmap_buffer.find_camp( omt_pos.xy() );
+        semantic_surface_manager *manager = active_semantic_surface_manager();
+        if( camp && manager != nullptr ) {
+            basecamp *const expected_camp = *camp;
+            const std::string expected_camp_id = expected_camp->camp_omt_pos().to_string();
+            const faction_id expected_faction = expected_camp->get_owner();
+            const auto find_mission = [ &mission_key ]( const mission_kind kind ) -> const mission_entry * {
+                for( const std::vector<mission_entry> &entries : mission_key.entries ) {
+                    const auto found = std::find_if( entries.begin(), entries.end(), [ kind ]( const mission_entry &entry ) {
+                        return entry.id.id.id == kind && !entry.id.ret;
+                    } );
+                    if( found != entries.end() ) {
+                        return &*found;
+                    }
+                }
+                return nullptr;
+            };
+            const mission_entry *const food_mission = find_mission( Camp_Distribute_Food );
+            const mission_entry *const looting_mission = find_mission( Camp_Menial );
+            const bool food_available = food_mission != nullptr && food_mission->possible;
+            const bool looting_available = looting_mission != nullptr && looting_mission->possible;
+            faction *const camp_faction = g->faction_manager_ptr->get( expected_faction );
+            const int food_kcal = camp_faction ? camp_faction->food_supply().kcal() : 0;
+            const std::map<std::string, std::string> payload = {
+                { "camp_id", expected_camp_id },
+                { "camp_name", expected_camp->camp_name() },
+                { "faction", expected_faction.str() },
+                { "food_kcal", std::to_string( food_kcal ) },
+                { "food_days_no_exercise", std::to_string( expected_camp->camp_food_supply_days( NO_EXERCISE ) ) },
+                { "distribute_food_available", food_available ? "true" : "false" },
+                { "distribute_food_unavailable_reason", food_available ? "" :
+                    _( "The visible camp board currently does not offer food distribution." ) },
+                { "looting_sorting_available", looting_available ? "true" : "false" },
+                { "looting_sorting_unavailable_reason", looting_available ? "" :
+                    _( "The visible camp board currently does not offer looting and sorting." ) }
+            };
+            const std::vector<semantic_action_descriptor> actions = {
+                { "camp.distribute_food", expected_camp_id, _( "Distribute camp food" ), food_available },
+                { "camp.start_looting_sorting", expected_camp_id, _( "Start camp looting and sorting" ), looting_available }
+            };
+            semantic_scope.emplace( *manager, "basecamp_mission_selector", _( "Base Missions" ), payload, actions,
+            [ &mission_key, &semantic_native_action, expected_camp, expected_camp_id, expected_faction,
+              food_available, looting_available ]( const semantic_action_request &request ) {
+                if( request.stable_id.value_or( "" ) != expected_camp_id ) {
+                    return semantic_action_dispatch_result{ false, "wrong_camp", "" };
+                }
+                if( expected_camp->camp_omt_pos().to_string() != expected_camp_id ||
+                    expected_camp->get_owner() != expected_faction ) {
+                    return semantic_action_dispatch_result{ false, "stale_camp", "" };
+                }
+                const mission_kind expected_kind = request.action_id == "camp.distribute_food" ?
+                                                   Camp_Distribute_Food : Camp_Menial;
+                const bool expected_available = request.action_id == "camp.distribute_food" ?
+                                                food_available : looting_available;
+                if( request.action_id != "camp.distribute_food" &&
+                    request.action_id != "camp.start_looting_sorting" ) {
+                    return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                }
+                if( !expected_available ) {
+                    return semantic_action_dispatch_result{ false, "unavailable", "" };
+                }
+                const auto mission = std::find_if( mission_key.entries.begin(), mission_key.entries.end(),
+                [ expected_kind ]( const std::vector<mission_entry> &entries ) {
+                    return std::any_of( entries.begin(), entries.end(), [ expected_kind ]( const mission_entry &entry ) {
+                        return entry.id.id.id == expected_kind && !entry.id.ret && entry.possible;
+                    } );
+                } );
+                if( mission == mission_key.entries.end() ) {
+                    return semantic_action_dispatch_result{ false, "stale_mission_availability", "" };
+                }
+                const auto entry = std::find_if( mission->begin(), mission->end(), [ expected_kind ]( const mission_entry &candidate ) {
+                    return candidate.id.id.id == expected_kind && !candidate.id.ret && candidate.possible;
+                } );
+                if( entry == mission->end() ) {
+                    return semantic_action_dispatch_result{ false, "stale_mission_availability", "" };
+                }
+                mission_key.cur_key = *entry;
+                semantic_native_action = "CONFIRM";
+                return semantic_action_dispatch_result{ true, "", "" };
+            } );
+        }
+    }
+
     ui.on_redraw( [&]( const ui_adaptor & ) {
         werase( w_list );
         draw_border( w_list );
@@ -1132,9 +1222,16 @@ bool talk_function::display_and_choose_opts(
     } );
 
     while( true ) {
-        mission_key.cur_key = cur_key_list[sel];
+        if( semantic_native_action.empty() ) {
+            mission_key.cur_key = cur_key_list[sel];
+        }
         ui_manager::redraw();
-        const std::string action = ctxt.handle_input();
+        std::string action;
+        if( semantic_scope && semantic_scope->consume_request() && !semantic_native_action.empty() ) {
+            action = semantic_native_action;
+        } else {
+            action = ctxt.handle_input();
+        }
         const int recmax = static_cast<int>( cur_key_list.size() );
         const int scroll_rate = recmax > 20 ? 10 : 3;
         if( action == "UP" || action == "SCROLL_UP" || action == "DOWN" || action == "SCROLL_DOWN" ) {

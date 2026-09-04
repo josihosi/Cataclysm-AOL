@@ -33,6 +33,7 @@
 #include "pimpl.h"
 #include "pocket_type.h"
 #include "point.h"
+#include "semantic_surface.h"
 #include "translations.h"
 #include "units.h"
 
@@ -228,6 +229,20 @@ class inventory_entry
         bool _indent = true;
         mutable std::optional<entry_cell_cache_t> entry_cell_cache;
 
+};
+
+struct inventory_input {
+    inventory_input( std::string action = {}, int ch = 0, inventory_entry *entry = nullptr,
+                     item_location semantic_target = item_location() ) :
+        action( std::move( action ) ),
+        ch( ch ),
+        entry( entry ),
+        semantic_target( std::move( semantic_target ) ) {}
+
+    std::string action;
+    int ch;
+    inventory_entry *entry;
+    item_location semantic_target;
 };
 
 struct inventory_selector_save_state;
@@ -763,6 +778,15 @@ class inventory_selector
          * Handle all actions standard to derived classes.
          */
         void on_input( const inventory_input &input );
+        /**
+         * Build the renderer-neutral actions shared by every item selector.
+         * Derived selectors append only the mode operations they actually
+         * handle; item identity remains the native item_location UID.
+         */
+        std::vector<semantic_action_descriptor> semantic_actions(
+            const std::vector<semantic_action_descriptor> &mode_actions = {} ) const;
+        semantic_action_dispatch_result handle_semantic_request(
+            const semantic_action_request &request, std::optional<inventory_input> &native_input );
         /** Entry has been changed. */
         void on_change( const inventory_entry &entry );
 

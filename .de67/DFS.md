@@ -891,13 +891,46 @@ Mechanism:
 Implementation status:
 
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-028 -->
-- [ ] 🔴 R-028 — The package lacks a current bound performance qualification for combined
-  established-base and hostile-ecology workloads, including rendered local transitions and the
-  mechanical and gameplay-feel context needed to interpret the measurements.
+- [x] R-028 — Qualify the current package's performance under paired combined workloads including
+  rendered local transitions, mechanical context, and gameplay feel.
   - DFS slices: `R-028-S001`
-  - Preserved footing: `tools/hostile_camp_benchmark.py` and earlier timing artifacts may seed the
-    paired route, but no existing artifact binds the completed semantic cockpit, current package
-    workload, rendered transitions, and current executable strongly enough to close this claim.
+  - Known footing: `tools/hostile_camp_benchmark.py` and earlier timing artifacts can seed a route,
+    but they do not bind the completed cockpit, current package workload, rendered transitions, and
+    current executable strongly enough to close this claim.
+  - Current evidence: fresh baseline report
+    `20260903_183103_938dff78278a4cd8926c2ba74a1f856b` and feature report
+    `20260903_183420_7782a0e532dd43ce9d449bb06eb0a404` use equivalent prepared state and the same
+    rebuilt Tiles executable. Both runs have green semantic ledgers, rendered gameplay traces,
+    accepted save-and-quit receipts, and observed native exit of the original game process. The
+    feature run also records two live two-site hostile-camp cadence measurements. The earlier matched
+    reports preserve 263 raw renderer samples per run, comparable process CPU and memory context, and
+    shared long pacing gaps. Together this evidence proves no material difference was observed on
+    this paired route. It does not define a product threshold or make a universal guarantee.
+  - Closure status: four review attempts ended because the worker service returned HTTP 404 before
+    examining the reports. Those attempts produced no product finding and closed no gap. The service
+    recovered during `R-028-closure-005`. That review closed `performance-verdict` because the matched
+    reports support only the route-bounded conclusion that no material difference was observed. The
+    reports record the same long pacing gaps, infer no product threshold, and make no universal
+    guarantee. `R-028-closure-006` closed `measurement-fidelity` because the reports preserve raw live
+    renderer distributions, native hostile-camp counters, process context, semantic receipts,
+    variability, and controlled harness cleanup. `R-028-closure-007` then found that both reports
+    ended through harness-issued `SIGTERM` with `native_exit_credit: false`. This means they do not
+    prove clean native termination. `paired-route-binding` remains open. The next route must preserve
+    the valid binding and measurement evidence while producing a fresh matched pair that saves and
+    quits in-game and records each exact process exit. `R-028-closure-008` produced that pair and
+    closed `paired-route-binding`. All three closure gaps are now closed. Preserve every immutable
+    report and the failed all-semantic counterexample. Do not replay any failed worker attempt.
+  - Subtasks:
+    - [done] bind-current-workloads :: Versioned baseline and feature scenarios use equivalent fixture state, one current build, rendered local transitions, and combined hostile-camp work.
+    - [done] preserve-mechanical-context :: Both reports bind source, executable, world, scenario, active behavior, semantic receipts, cleanup, and the gameplay-feel interpretation.
+    - [done] capture-frame-and-update-cost :: Each run preserves 263 renderer samples, and the feature run preserves two live native cadence measurements.
+    - [done] capture-process-cost :: Both reports preserve comparable process CPU and memory observations without treating them as frame cost.
+    - [done] compare-without-invented-gates :: The paired distributions support no material observed difference at median and p95 without inventing a product threshold.
+    - [done] profile-reproduced-regressions :: No repeatable regression or feel concern appeared, so no profiler question was created and no profile was run.
+    - [done] publish-performance-verdict :: The matched reports preserve variability, mechanics, feel, cleanup, and the limit that this is not a universal guarantee.
+  - Durable acceptance: #1 via `R-028-closure-008`; SQLite evidence is authoritative. The acceptance
+    command reported that the DFS baseline is missing after it wrote the acceptance. Policy must route
+    that projection defect without creating a second acceptance.
 <!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-028-S001 claim=R-028 -->
 
@@ -979,18 +1012,70 @@ Implementation status:
     refinement does not invalidate that narrower result. Existing night-rally, Pay/Fight, trade,
     persistence, and rolling-travel scenarios remain focused route evidence at their recorded
     setup and source ceilings.
-  - Current divergence: `overmap_npc_move` still calls the cannibal-only direct dispatcher before
-    the shared staffed-observer route. In normal local contact, `game::do_turn` runs `monmove()`
-    before the periodic aftermath path can open the shakedown, while generic faction hostility can
-    classify the player as hostile or set `NPCATT_KILL`. The existing parley query protects an
-    allied patrol from escalating against a shakedown member, but does not reserve that member's
-    relationship to the player and does not cover paid departure.
-  - Unproved edges: existing tests establish daylight rally hold and night departure but not
-    daylight-before-contact persistence. Prepared-contact scenarios demonstrate a visible demand,
-    native trade payment, fight selection, and saved outcome, but do not prove natural first-contact
-    ordering or safe paid departure over later NPC turns and reload.
+  - Current implementation and accepted branch footing: the cannibal-only production shortcut is
+    removed; exact members persist parley, combat-release, and paid-departure relationships; generic
+    hostility yields to that operation owner. Current runs prove demand-before-choice, Fight release
+    for the exact group, unrelated-hostile isolation, and paid safe return through reload and later
+    ordinary turns. Preserve those results at their focused ceilings.
+  - Current continuation: durable receipt `513ff62a4910ccc0fd93d40bc7d6ccd72312b8079f1a48ec380facd3c8507a65`
+    binds the current natural-route run and artifacts. It accepts the launch, World observation pair,
+    and first duration cycle through minute 8222 without ecology credit. The first open boundary is
+    the missing response for `r029-dispatch-keep-watch-4m`; after repair, natural routes for both
+    profiles, daylight-after-cannibal-departure, refusal/incomplete payment, player attack, Fight
+    terminal behavior, rolling ambush, persistence, cleanup, and independent verdicts remain unproved.
 <!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-029-S001 claim=R-029 -->
+
+### 13. Quiet, indexed, lossless agent evidence
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-030-S001 claim=R-030 -->
+
+Mechanism:
+
+- Scope: repository-owned CAOL registry, build/runtime status, cockpit, witness, and diagnostic
+  commands plus the Phase-3 worker result/continuation boundary. This is an evidence transport and
+  context-shape claim; it does not change gameplay truth or the evidence class of any observation.
+- Artifact-backed quiet output: a command that can produce a large status, history, transcript, or
+  witness payload preserves the complete output as a digest-bound artifact and prints a compact
+  receipt by default. Explicit full retrieval remains available and lossless. Quiet output may omit
+  payload content, never the identities, digest, evidence ceiling, contradictions, or lookup footing
+  required to recover it.
+- Pinpoint retrieval: evidence stores expose exact selectors for the fields they own, including
+  scenario/run/binding, event/evidence class, actor/action, native receipt, first divergence, and
+  verdict. A narrow query returns only matching compact records; a caller explicitly asks for the
+  complete record or artifact. No caller must deserialize the whole registry or search prose merely
+  to find one known identity.
+- Worker brief: a successor receives the outcome, current frontier, compact continuation receipt,
+  no-replay work, first open boundary, exact bindings and entrypoints, and a progressive read plan
+  that names why each source might matter. The plan is not a quota or mandatory command sequence;
+  broader reads follow only when evidence makes them material.
+- Durable continuation: every worker-owned completion, finding, or abandonment is preceded by one
+  validated identity-bound receipt containing the outcome or divergence, changes, tests/live acts,
+  evidence ceiling, bindings, stable journal identities, artifact paths and digests, accepted and
+  active work, first open boundary, narrow queries, and entrypoints. The terminal transition cites
+  that receipt, so a successor does not reconstruct state from chat or log archaeology.
+- Measurement: bytes, record counts, checkpoint counts, elapsed time, and retrieval shape are
+  diagnostic evidence used to locate bulk or ambiguity. They are not invented limits, quotas,
+  retention rules, or substitutes for causal correctness.
+- Failure behavior: compact-only output without the complete artifact, full output without a stable
+  digest/reference, filters that silently scan and return unrelated history, a receipt with identity
+  or digest drift, a terminal worker transition without its receipt, or a successor that must replay
+  accepted work cannot close this claim.
+
+Implementation status:
+
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-030 -->
+- [ ] 🔴 R-030 — Phase-3 now has guarded compact worker receipts, exact terminal gating, narrow
+  receipt queries, progressive packets, and backfilled R-026/R-029 continuation. The repository CAOL
+  command surfaces still emit bulk payloads by default and lack the cross-surface pinpoint retrieval
+  needed for lossless continuation.
+  - DFS slices: `R-030-S001`
+  - Reproduced cause: current `registry-status` emitted one 4,236,128-character JSON line containing
+    223 complete entries; prior continuation depended on 151 and 6 free-text checkpoints.
+  - First open boundary: implement one representative CAOL quiet/artifact status route and exact
+    indexed query, then generalize only to the other named evidence surfaces needed by this claim.
+<!-- DE67:DELIVERY-STATUS:END -->
+<!-- DE67:DFS-SLICE:END id=R-030-S001 claim=R-030 -->
 
 ## Competing systems and override direction
 
@@ -1012,6 +1097,7 @@ Implementation status:
 | Night-raid commitment | cannibal hostile operation and travel | rally night gate, contact-time clock, generic drive | Night controls the atomic `rallying` → `approaching` departure only. The persisted operation owns commitment afterward; dawn before contact cannot override it. |
 | Shakedown member versus player | NPC AI, dialogue/trade, hostile-operation travel | exact operation relationship, faction dislike, NPC attitude/cache, local gate | The persisted operation-scoped relationship wins before generic hostility: parley blocks offensive action until demand outcome; Fight/incomplete payment/player attack releases combat; paid departure blocks renewed aggression until normal return completion. Rolling-travel ambush is an explicit separate posture. |
 | Package performance | product qualification and feel review | isolated microbenchmark, unmatched build/world, profiler | A paired current-source workload with rendered transitions owns comparison. Profiling follows a reproducible question and does not replace it. |
+| Agent evidence projection | coordinator, successor worker, focused evidence query | bulk command stdout, chat summary, free-text checkpoint history, immutable artifact store | The compact identity-bound receipt owns continuation; stable indexed selectors locate evidence; digest-bound artifacts own full fidelity. Compact and full forms must resolve to the same identities and bytes. |
 
 Ownership transfer is atomic at scope push and pop. The manager publishes the transferred owner and
 frame before accepting its first semantic request. One request may be consumed once. A request never
@@ -1046,6 +1132,7 @@ source-bound binary and fixture
 | `R-027` | A staffed camp independently observes a saved structural signal, retains a valid lead, passes bounded causal controls, and reaches an ordinary response. | Production-cadence observer/source/channel receipts, saved-source validation, controls, memory evidence, and normal-drive response. | Reusing the unchanged bootstrap, direct mutation, timestamp adjacency, ordinary proximity, player-only observation, or observation without response fails. |
 | `R-028` | Paired current-source workloads qualify combined package cost including rendered local transitions and gameplay feel. | Matched build/world/scenario identity, frame pacing/update latency/native counters, CPU/RSS, variability, and feel; profiler only after reproduction. | Unmatched runs, isolated synthetic loop, no rendering, average-only summary, invented threshold, or profiler-only evidence fails. |
 | `R-029` | Both camp profiles use the natural shared signal/scout/report route; cannibals wait to depart at night and continue through dawn; normal bandits demand before attacking, leave safely after payment, and fight only after release, while rolling-travel ambush remains direct. | One current-source, identity-bound natural route per profile plus branch/control artifacts: physical signal and staffed observation, camp memory, physical scout/report/response travel, night departure then daylight contact for cannibals, and bandit first-demand ordering, native payment, later safe turns and reload, refusal/incomplete-payment and player-attack combat, rolling-travel ambush, persistence, and cleanup. | Direct cannibal dispatch, fabricated report/state/contact, startup/load, prepared-contact-only proof, screenshot-only ordering, paid writeback without later safe turns, night-only contact, loss of rolling ambush, or aggregate verdict fails. |
+| `R-030` | Large CAOL and worker result paths are quiet by default, preserve full fidelity, support exact pinpoint retrieval, and resume from a durable outcome-sized receipt. | Reproduce a former bulk route; compact default receipt; digest-equal full artifact retrieval; exact indexed field query; rejected digest/identity drift and terminal-without-receipt controls; fresh successor packet continuing at the recorded first open boundary. | Dropped full payload, unbound artifact, broad prose/log search, unrelated query results, arbitrary output quota, undocumented interface, or replay of accepted work fails. |
 
 The existing run `20260826_135902` is retained as focused evidence that the old wait prototype can
 emit separate frames and exact receipts. It cannot close any broad red item because its action was
@@ -1094,6 +1181,10 @@ renderer-neutrality, broad surface coverage, or unsupported hard stop.
   rolling-travel ambush and forced Pay/Fight trade surface; normal shakedown members cannot attack
   before demand or after accepted payment while returning home. Shared player-light work, writhing
   stalkers, zombie riders, automatic theft, and arrival-time night checks remain outside this change.
+- Owner-authorized evidence-shape refinement: preserve full digest-bound artifacts while making
+  routine CAOL and worker-result output compact and exactly queryable; hand successors an
+  outcome-sized receipt and progressive read plan; treat context/retrieval shape as a first-class
+  diagnostic concern without inventing quotas, retention rules, or a new evidence class.
 - Evidence-implied package refinements: current source already implements staffed-camp signal
   observation and memory, so R-027 now asks for independent validation rather than a new bridge; its
   surviving selectable scenario has an older executable binding; several earlier threat scenarios

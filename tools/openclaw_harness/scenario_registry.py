@@ -177,6 +177,15 @@ def _validate_runtime_contract(
         if any(not isinstance(item, str) or not item.strip() for item in value[key]):
             raise _error(path, f"runtime_contract.{key} must contain only non-empty strings")
 
+    expected_debug_log_messages = value.get("expected_debug_log_messages", [])
+    if not isinstance(expected_debug_log_messages, list) or any(
+            not isinstance(item, str) or not item.strip()
+            for item in expected_debug_log_messages):
+        raise _error(path, "runtime_contract.expected_debug_log_messages must be a list of non-empty strings")
+    if "require_screen_observability" in value and \
+            type(value["require_screen_observability"]) is not bool:
+        raise _error(path, "runtime_contract.require_screen_observability must be bool")
+
     requirements = value["requirements"]
     for key in RUNTIME_REQUIREMENT_KEYS:
         if key not in requirements:
@@ -277,6 +286,7 @@ def _validate_checkpoint_safe_ui(value: Any, *, path: Path, field: str) -> None:
             "bandit.r005_direct_native_route_qualification.json",
             "bandit.r005_current_world_corridor_observation.json",
             "bandit.r005_native_wait_qualification.json",
+            "bandit.r005_west_flank_corridor_qualification.json",
     }:
         if value != {"semantic_state": {"required": True}}:
             raise _error(path, f"{field} must require semantic_state for the improved R-007 route")
@@ -349,6 +359,8 @@ def _validate_checkpoint_chain_fields(manifest: Mapping[str, Any], *, path: Path
         allow_gameplay_proof=manifest.get("name") in {
             "r018.raw_wait_acceptance_mcw", "r019.keep_watch_acceptance_mcw",
             "r019.primitive_safe_popup_comparison_mcw",
+            "r026.living_npc_package_v001_mcw",
+            "cannibal.r029_natural_route_roof_mcw",
         },
     )
     if manifest["run_class"] not in {"combat", "non_combat"}:
@@ -428,7 +440,14 @@ def _validate_versioned_fields(manifest: Mapping[str, Any], *, path: Path) -> No
         if field not in manifest:
             raise _error(path, f"{field} is required by manifest_version {MANIFEST_VERSION}")
     _validate_capabilities(manifest["capabilities"], path=path)
-    _validate_runtime_contract(manifest["runtime_contract"], path=path)
+    _validate_runtime_contract(
+        manifest["runtime_contract"], path=path,
+        allow_gameplay_proof=manifest.get("name") in {
+            "r018.raw_wait_acceptance_mcw", "r019.keep_watch_acceptance_mcw",
+            "r019.primitive_safe_popup_comparison_mcw",
+            "r026.living_npc_package_v001_mcw",
+        },
+    )
     _validate_proof_route(manifest["proof_route"], manifest, path=path)
     if "source_binding_validation" in manifest:
         _validate_source_binding_validation(manifest["source_binding_validation"], manifest, path=path)
@@ -632,6 +651,17 @@ def validate_manifest(manifest: Any, *, path: Path) -> Dict[str, Any]:
         raise _error(path, f"source is not valid UTF-8 JSON: {exc}") from exc
     if not isinstance(source_manifest, dict) or source_manifest != manifest:
         raise _error(path, "provided declaration does not match the source bytes")
+
+    isolated = manifest.get("r027_isolated_launch")
+    if isolated is not None:
+        required = {"name", "path", "sha256", "profile", "world", "fixture", "run_identity",
+                    "control_endpoint", "receipt_sidecar", "cleanup_token", "build_receipt"}
+        if not isinstance(isolated, dict) or set(isolated) != required or any(
+                not isinstance(value, str) or not value.strip() for value in isolated.values()):
+            raise _error(path, "r027_isolated_launch must be a complete named runtime declaration")
+        digest = isolated["sha256"].lower()
+        if len(digest) != 64 or any(character not in "0123456789abcdef" for character in digest):
+            raise _error(path, "r027_isolated_launch.sha256 must be a SHA-256 hex digest")
 
     versioned = "manifest_version" in manifest
     if versioned:

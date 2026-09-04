@@ -1,0 +1,8 @@
+{
+  "outcome": "R-029: prove the cannibal profile begins with the shared natural physical-signal, staffed-observer, camp-memory, scout, report, authorization, rally, and response route.",
+  "scenario": "cannibal.r029_natural_route_roof_mcw",
+  "query": {
+    "preferences": [],
+    "requirements": [{"key": "capabilities.r029.cannibal_natural_route", "minimum_evidence": "declared", "op": "eq", "value": "physical_fire_staffed_observer_scout_report_rally_response"}]
+  }
+}

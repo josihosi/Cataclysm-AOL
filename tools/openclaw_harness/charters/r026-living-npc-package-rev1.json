@@ -1,0 +1,31 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On the current source and established-base footing, native semantic interaction can separately bind a follower free-text route, an ambient LLM route, request snapshots, and basecamp request context to their actual recipients without physical control or synthetic response injection.",
+  "material_proof": "One selected current-source run records native semantic receipts for each player operation; same-run LLM records identify the actual follower and ambient recipients and their request snapshots; and, where a current camp-routed actor handles the request, records its basecamp context. Any persisted state change is saved and reloaded before credit. The witness includes a bounded gameplay-feel observation and accepted cleanup.",
+  "material_contradiction": [
+    "a player operation is accepted without a matching native receipt",
+    "a claimed recipient or snapshot is inferred rather than recorded",
+    "ambient behavior is credited as follower behavior or conversely",
+    "a basecamp request is claimed without a current camp-routing record",
+    "a response is injected, directly mutated, or controlled by physical input",
+    "binding drift, a failed persistence check for changed state, or cleanup failure"
+  ],
+  "already_accepted_evidence": [
+    "R-SURFACE-001 through R-SURFACE-010 provide native semantic operation and observation only.",
+    "The R-026 prepared-base audit establishes startup/load readiness only."
+  ],
+  "current_uncertainty": "The established base may route a submitted utterance to a different current NPC than older standalone probes, and the ambient or basecamp branch may be unavailable in this exact live state. Each branch requires its own verdict.",
+  "forbidden_shortcuts": [
+    "physical keys, hotkeys, OCR, screenshots, coordinates, or guessed controls",
+    "synthetic LLM response injection",
+    "direct NPC, camp, snapshot, or save mutation",
+    "crediting fixture installation, startup, debug setup, or semantic-surface acceptance as gameplay proof",
+    "treating one aggregate success or failure as every claim's verdict"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch if the registry selection or current source/executable binding is absent",
+    "after launch, isolate a missing recipient, missing snapshot, wrong owner, source drift, or cleanup failure to its affected claim and continue independent clean branches",
+    "seal a claim-scoped witness bundle when the available branches and controls are honestly settled"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

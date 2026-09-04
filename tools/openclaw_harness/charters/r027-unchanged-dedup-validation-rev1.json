@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-027 unchanged dedup: an independently launched production cadence rereads the retained in-range signal without creating a duplicate lead or changing its persisted payload.",
+  "material_proof": "A new isolated profile loads only the immutable fixture captured after the zero-credit bootstrap. Its run-bound receipt is outcome unchanged for the same observer, camp, channel, source, and lead as the preceding created receipt; lead_count_before and lead_count_after both equal the creation count, while lead_hash_before and lead_hash_after equal the creation hash. The strict verifier accepts the created and unchanged receipts together.",
+  "current_uncertainty": "No current-binding second production receipt has yet been captured from a freshly retained in-range lead.",
+  "material_contradiction": ["the captured fixture lacks the production-created lead", "the second read is out of range or lacks line of sight", "the second read creates a duplicate lead", "lead count or hash changes", "the source, channel, observer, camp, or lead identity differs", "a receipt lacks its run, executable, lease, or cleanup binding"],
+  "already_accepted_evidence": ["The canonical out-of-range control is separate evidence and cannot substitute for this in-range retained-lead validation.", "The strict verifier rejects missing creation, mismatched identity, missing persistence fields, duplicate counts, payload drift, and out-of-range/no-LOS reads.", "The native wait is an atomic semantic menu transaction: world.wait, followed by the advertised wait-mode and wait-duration choices. A nested menu frame may omit game_minutes, so progression is proved from its surrounding world frames."],
+  "forbidden_shortcuts": ["reusing the bootstrap process", "direct lead mutation", "direct save edit", "callback injection", "shared profile", "accepting aggregate observations"],
+  "honest_stop_conditions": ["finish accepted after the immutable fixture reload, one run-bound unchanged receipt, strict verifier acceptance, and cleanup", "finish contradicted on a run-bound duplicate or payload mutation", "finish inconclusive on a bound native, persistence, or identity defect"],
+  "requested_evidence_ceiling": "focused"
+}

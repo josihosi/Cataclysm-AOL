@@ -114,6 +114,36 @@ def recipe_service() -> tuple[RecordingService, list[dict]]:
 
 
 class CockpitTuiTest(unittest.TestCase):
+    def test_native_surface_projection_keeps_exact_descriptor_facts_and_actions(self) -> None:
+        native_surface = {
+            "schema": "caol-cockpit-observation-v2", "observation_id": "run-1:target-4",
+            "frame_id": "run-1:target-4", "run_id": "run-1", "surface_id": "target-4",
+            "breadcrumbs": ["World", "Inventory", "Use", "Target"],
+            "surface": {
+                "family": "Target", "kind": "target", "facts": {"candidate": "zombie"},
+                "breadcrumbs": ["World", "Inventory", "Use", "Target"],
+                "actions": [{"id": "target.choose", "stable_id": "creature-42",
+                             "label": "zombie", "enabled": True}],
+            },
+            "advertised_actions": ["target.choose"],
+            "advertised_action_details": [{"id": "target.choose", "stable_id": "creature-42",
+                                            "label": "zombie", "enabled": True}],
+            "compact_log": {"unsafe": False, "receipt_count": 1, "latest_receipt": {
+                "accepted": True, "resulting_frame_id": "run-1:target-4"},
+                "first_divergence": None, "contradictory_evidence": [], "latest_transition": None,
+                "persistence": "confirmed", "evidence_refs": []},
+        }
+        rendered = cockpit_tui.render_state(native_surface, {
+            "run_id": "run-1", "binding_id": "binding", "state": "active",
+        })
+        self.assertEqual(rendered["schema"], "caol-cockpit-tui-v2")
+        self.assertEqual(rendered["active_surface"], native_surface["surface"])
+        self.assertEqual(rendered["breadcrumbs"], native_surface["breadcrumbs"])
+        self.assertEqual(rendered["commands"][0]["request_view"]["request"], {
+            "action": "game.act", "observation_id": "run-1:target-4",
+            "action_id": "target.choose", "stable_id": "creature-42",
+        })
+
     def test_wait_and_move_contracts_expose_three_agent_selected_danger_modes(self) -> None:
         expected = ["stop_on_interruption", "handle_classified_non_dangerous",
                     "ignore_danger_and_interruptions"]

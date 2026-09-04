@@ -1,0 +1,22 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_closure_004_lead_aging_validation_v001_mcw",
+  "description": "Independent R-027 closure-004 validation: reload the immutable source-absent retained-lead fixture and use ordinary native maintenance only.",
+  "status": "active",
+  "profile": "r027-closure-004-aging-validation",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_source_absent_retained_lead_v001_20260903",
+  "fixture_profile": "r027-closure-004-lead-aging",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {"runtime.entry_mode":"cockpit_live_session","capabilities.r027.lead_aging_validation":"source_absent_deterministic_native_wait","runtime.r027.source_binding":"r027-closure-007-tiles:r027-closure-004-aging-validation"},
+  "runtime_contract": {"setup_only_debug":false,"disposable_copy":false,"permissions":["accessibility"],"permitted_input":["semantic:world.wait","semantic:world.quicksave","cockpit:game.act","cockpit:run.finish"],"forbidden_input":["guessed-key","physical-key","callback-injection","direct-state-mutation","direct-save-edit","direct-lead-mutation","shared-profile"],"helpers":["native-semantic-broker"],"platform":["macos"],"profile":"r027-closure-004-aging-validation","fixture":"r027_source_absent_retained_lead_v001_20260903","requirements":{"os":"macos","source":"current-worktree","executable":"build/r027-closure-007-tiles","profile":"r027-closure-004-aging-validation","fixture":"r027_source_absent_retained_lead_v001_20260903","helper":"native-semantic-broker","peekaboo":false,"ocr":false,"input":["frame-bound semantic requests"],"cleanup":true},"grants_gameplay_proof":false},
+  "source_binding": {"fixture_manifest":"tools/openclaw_harness/fixtures/saves/r027-closure-004-lead-aging/r027_source_absent_retained_lead_v001_20260903/manifest.json","profile":"tools/openclaw_harness/profiles/r027-closure-004-aging-validation.json","build_receipt":".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "r027_isolated_launch": {"name":"r027-closure-007-tiles","path":"build/r027-closure-007-tiles","sha256":"9f0b289e51087cbbf78e3ddfe452bdef7255b5dba48b985d76bd99c038e627b3","profile":"r027-closure-004-aging-validation","world":"McWilliams","fixture":"r027_source_absent_retained_lead_v001_20260903","run_identity":"r027-closure-004-aging-validation","control_endpoint":"native-semantic-broker","receipt_sidecar":"r027.staffed-camp-signal.receipts.jsonl","cleanup_token":"r027-closure-004-aging-validation-cleanup","build_receipt":".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "steps":[{"kind":"audit_saved_map_tile_near_player","label":"audit_source_absent","offsets":[[0,11,0]],"forbidden_fields":["fd_fire","fd_smoke"],"abort_on_metadata_failure":true},{"kind":"audit_saved_bandit_live_world_state","label":"audit_retained_leads","required_site_id_contains":"bandit_camp","required_min_ready_at_home_count":5,"required_active_outside_count":0,"required_min_leads":2,"abort_on_metadata_failure":true},{"kind":"native_semantic_bootstrap","label":"bind_native_wait","native_semantic_checkpoint":{"required_actions":["world.wait","world.quicksave"],"required_state":"world","require_initial_hud_world_ready_frame":false}},{"kind":"cockpit_live_session","label":"ordinary_signal_aging","cleanup_on_finish":true,"stop_after_live_session":true,"objective":"Record no-refresh baseline then deterministic native waits through smoke/light six-hour expiry and save/reload.","authority":["advertised native semantic actions","run.finish"],"invariants":["no direct lead mutation","no source refresh","ordinary maintenance only"],"live_operations":["game.act"],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}],
+  "proof_route":{"precondition":["audit_source_absent","audit_retained_leads","bind_native_wait"],"production_behavior":["ordinary_signal_aging"],"terminal_persistence":["ordinary_signal_aging"],"artifact_verdict":["ordinary_signal_aging"],"disallowed_shortcuts":["ordinary_signal_aging"]}
+}

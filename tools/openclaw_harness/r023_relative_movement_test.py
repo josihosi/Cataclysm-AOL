@@ -3,6 +3,7 @@
 
 from __future__ import annotations
 
+import json
 from pathlib import Path
 import sys
 import unittest
@@ -128,6 +129,20 @@ class RelativeMovementTest(unittest.TestCase):
         self.assertEqual(finished["result"]["cleanup"]["status"], "terminated")
         self.assertEqual(finals[0]["stop_reason"], "target_reached")
 
+    def test_relative_position_reads_avatar_from_current_world_surface(self) -> None:
+        channel = cockpit.CockpitRunChannel(lambda: frame(1, [1, 1, 0]), lambda *_: {})
+        observation_id = "r023-relative-proof:surface:2"
+        channel._observations[observation_id] = {
+            "issuing_frame": {
+                "event": "surface_descriptor", "schema_version": 1,
+                "run_id": "r023-relative-proof", "frame_id": observation_id,
+                "surface_id": observation_id, "kind": "world", "breadcrumbs": ["World"],
+                "payload": {"avatar": json.dumps({"name": "Ada", "absolute_ms": [12, 21, 0]})},
+                "valid_actions": [],
+            },
+        }
+        self.assertEqual(channel._relative_position({"observation_id": observation_id}), [12, 21, 0])
+
         blocked, actions, _ = self.service([frame(1, [10, 20, 0]), frame(2, [10, 20, 0])], outcomes=["blocked"])
         stopped = blocked.call({"action": "game.raw_move_relative", "raw_move_relative": {
             "enabled": True, "offset_ms": [-1, 0], "bound": bound(1),
@@ -147,7 +162,8 @@ class RelativeMovementTest(unittest.TestCase):
 
     def test_guarded_rechecks_and_rejects_stale_binding_unknown_blocked_bounds_and_switches(self) -> None:
         for guarded, reason in (
-            (frame(1, [1, 1, 0], entities=[{"kind": "monster"}]), "guarded_move_relative_creature"),
+            (frame(1, [1, 1, 0], entities=[{"kind": "monster", "dx": 1, "dy": 0}]),
+             "guarded_move_relative_creature"),
             (frame(1, [1, 1, 0], damage=True), "guarded_move_relative_damage"),
             (frame(1, [1, 1, 0], state="semantic_ui"), "guarded_move_relative_prompt_or_unknown_event"),
         ):
@@ -166,7 +182,7 @@ class RelativeMovementTest(unittest.TestCase):
         self.assertEqual(actions, ["world.move.east"])
 
     def test_explicit_movement_modes_allow_agent_selected_fictional_danger(self) -> None:
-        visible = [{"kind": "monster", "handle": "visible-1"}]
+        visible = [{"kind": "monster", "handle": "visible-1", "dx": 1, "dy": 0}]
         cautious, actions, _ = self.service([frame(1, [1, 1, 0], entities=visible)])
         stopped = cautious.call({"action": "game.move_relative", "move_relative": {
             "enabled": True, "offset_ms": [1, 0], "bound": bound(1),

@@ -61,6 +61,7 @@ from startup_harness import (  # noqa: E402
     apply_overmap_terrain_id_at_abs_omt_transform,
     apply_option_overrides_to_file,
     apply_player_basecamp_at_omt_transform,
+    apply_clear_avatar_activity_transform,
     apply_clear_avatar_auto_move_transform,
     apply_player_mutations_transform,
     apply_player_view_seen_omt_transform,
@@ -824,44 +825,21 @@ class BlockingInterruptionClassifierContractTest(unittest.TestCase):
         self.assertEqual(stabilization["response_keys"], [])
         self.assertEqual([entry.args[1] for entry in type_text.call_args_list], ["Y"])
 
-    def test_r005_route_declares_permissive_handling_without_hiding_receipt_boundary(self) -> None:
+    def test_r005_stationary_certification_uses_only_native_waits(self) -> None:
         scenario_path = HARNESS_DIR / "scenarios" / \
             "bandit.r005_continuous_hostile_ecology_certification.json"
         scenario = json.loads(scenario_path.read_text(encoding="utf-8"))
-        travel_accepts = [
-            step for step in scenario["steps"]
-            if "native_travel_stabilization" in step
-        ]
-        self.assertTrue(travel_accepts)
-        for accept in travel_accepts:
-            self.assertEqual(accept.get("text"), "Y")
-            stabilization = accept.get("native_travel_stabilization")
-            self.assertEqual(
-                stabilization.get("mode"),
-                "continue_exact_hostile_auto_move_until_hud",
-            )
-            self.assertEqual(
-                stabilization.get("danger_handling"),
-                "ignore_danger_and_interruptions",
-            )
-            self.assertTrue(stabilization.get("require_completed_destination_cleared"))
-            self.assertEqual(len(stabilization.get("expected_destination_omt", [])), 3)
-        self.assertFalse(any(
-            step.get("label") == "continue_harmless_auto_move"
-            for step in scenario["steps"]
-        ))
-        wait = next(
-            step for step in scenario["steps"]
-            if step.get("label") == "advance_natural_ecology_window"
+        self.assertEqual(
+            scenario["runtime_contract"]["permitted_input"],
+            ["long_wait:1h", "press:S", "press:Y", "press:q", "press:left", "press:enter"],
         )
-        self.assertTrue(wait.get("allow_hostile_auto_move_cancel"))
-        self.assertTrue(wait.get("continue_hostile_auto_move"))
-        self.assertEqual(wait.get("hostile_auto_move_continuation"), {
-            "actor": "feral human",
-            "native_prompt": "feral human spotted! Cancel auto move? (Case Sensitive)",
-            "observed_prompt": "eral human spotted! Cancel auto move? (Case Sensitive",
-            "response_key": "N",
-        })
+        self.assertIn("ordinary-overmap-route", scenario["runtime_contract"]["forbidden_input"])
+        self.assertEqual(scenario["fixture"], "bandit_r005_native_wait_visibility_bootstrap_v0")
+        self.assertFalse(any("native_travel_stabilization" in step for step in scenario["steps"]))
+        waits = [step for step in scenario["steps"] if step["kind"] == "long_wait"]
+        self.assertEqual(len(waits), 5)
+        self.assertTrue(all(step["expected_duration"] == "1h" for step in waits))
+        self.assertTrue(any("native_wait_continuation" in step for step in waits))
 
     def test_r005_stable_hud_markers_accept_fixture_and_reject_hostile_modal(self) -> None:
         fixture_hud = {
@@ -5160,6 +5138,36 @@ class ClearAvatarAutoMoveTransformContractTest(unittest.TestCase):
             and retained["destination_activity"].get("type") == "ACT_NULL"
             and retained["automoveroute"] == []
         )
+
+
+class ClearAvatarActivityTransformContractTest(unittest.TestCase):
+    @staticmethod
+    def fake_zzip(path: Path) -> None:
+        if path.suffix == ".zzip":
+            path.with_suffix("").write_bytes(path.read_bytes())
+        else:
+            path.with_suffix(f"{path.suffix}.zzip").write_bytes(path.read_bytes())
+
+    def test_clears_persisted_activity_owners_with_receipt(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "McWilliams"
+            world_dir.mkdir()
+            player_save = world_dir / "player.sav.zzip"
+            player_save.write_text(json.dumps({"player": {
+                "activity": {"type": "ACT_WAIT", "moves_left": 100},
+                "stashed_outbounds_activity": {"type": "ACT_TRAVELLING"},
+            }}), encoding="utf-8")
+            with mock.patch("startup_harness.run_zzip", side_effect=self.fake_zzip):
+                receipt = apply_clear_avatar_activity_transform(world_dir, {
+                    "kind": "clear_avatar_activity", "player_save": player_save.name,
+                })
+            installed = json.loads(player_save.read_text(encoding="utf-8"))["player"]
+
+        self.assertEqual(receipt["before"]["activity"]["type"], "ACT_WAIT")
+        self.assertEqual(receipt["before"]["stashed_outbounds_activity"]["type"], "ACT_TRAVELLING")
+        self.assertEqual(installed["activity"], {"type": "ACT_NULL"})
+        self.assertEqual(installed["stashed_outbounds_activity"], {"type": "ACT_NULL"})
+        self.assertTrue(receipt["no_owned_activity_fixture_invariant"])
 
 
 class PlayerBasecampTransformContractTest(unittest.TestCase):

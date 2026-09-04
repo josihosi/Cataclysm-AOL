@@ -68,6 +68,25 @@ json_formatter
 .cache/
 zzip
 
+# DE67 runtime and reproducible playtest/build artifacts
+/.de67/state/
+/.de67/no-go-zone/
+/build_logs/
+/tools/openclaw_harness/scenario_registry.sqlite3
+/tests/build/
+/test_user_dir*/
+/closure*-obj/
+/r*-obj/
+/r*_curses_obj/
+/r_surface_*_curses*/
+/r_surface_*/
+/r026_save_*/
+/r026_seq*_chat_successor_*/
+/r*-cataclysm
+/imgui.ini
+/cataclysm-tiles_*.png
+/window-*_*.png
+
 # Visual Studio files
 *.code-workspace
 !Cataclysm-DDA.code-workspace

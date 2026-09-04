@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-027 changed-observation setup: natively replace the retained physical fd_fire with intensity 2 while preserving the saved lead identity.",
+  "material_proof": "The disposable setup run removes the source, independently observes the empty tile, uses the ordinary nested native field and intensity menus to place fd_fire intensity 2 at offset [0,11,0], native-saves, and audits that exact persisted source before setup-only capture.",
+  "current_uncertainty": "This setup earns no changed-observation feature credit; only the later independent production route can do that.",
+  "material_contradiction": ["field selection is consumed by the editor rather than the nested menu", "the tile is not empty before replacement", "the persisted field is not fd_fire intensity 2", "lead identity changes", "direct save edit or direct lead mutation occurs"],
+  "already_accepted_evidence": ["The saved lead fixture is input only."],
+  "forbidden_shortcuts": ["callback injection", "direct lead mutation", "direct save edit", "physical key"],
+  "honest_stop_conditions": ["finish after exact native-save audit and setup-only capture", "finish inconclusive on a bound native-owner or lifecycle defect"],
+  "requested_evidence_ceiling": "focused"
+}

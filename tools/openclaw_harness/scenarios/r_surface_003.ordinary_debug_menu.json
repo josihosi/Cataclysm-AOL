@@ -1,0 +1,70 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_003.ordinary_debug_menu",
+  "description": "Source-bound R-SURFACE-003 proof of the shared ordinary menu family.  The native World owner opens the real Debug Functions uilist, then direct stable-ID semantic choices select Game and Show debug message.  No physical key, label-as-identity, screen position, or OCR input is permitted.",
+  "profile": "r-surface-003-ordinary-debug-menu",
+  "config_profile": "dev-harness",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "world": "McWilliams",
+  "fixture": "r_surface_001_inventory_prompt_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_surface_003.ordinary_debug_menu": "source_bound_world_to_nested_ordinary_debug_uilist_stable_identity"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.debug_menu", "semantic:menu.choose"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "expected_debug_log_messages": ["Test debugmsg"],
+    "require_screen_observability": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-surface-003-ordinary-debug-menu",
+    "config_profile": "dev-harness",
+    "fixture": "r_surface_001_inventory_prompt_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r-surface-003-ordinary-debug-menu", "fixture": "r_surface_001_inventory_prompt_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_001_inventory_prompt_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/mcwilliams_live_debug_2026-04-07/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "emit_r_surface_003_world_descriptor",
+      "native_semantic_checkpoint": {"required_actions": ["world.debug_menu"], "required_state": "world"}
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "r_surface_003_ordinary_debug_menu_stable_id_chain",
+      "objective": "Use the current World descriptor to open Debug Functions, then choose the real Game and Show debug message entries by the distinct stable IDs advertised by their native uilist frames.",
+      "proof_targets": ["one accepted world.debug_menu receipt", "one accepted root menu.choose receipt for Game", "one accepted nested menu.choose receipt for Show debug message", "no physical input or label-as-identity dispatch"],
+      "authority": ["frame-bound semantic requests only", "run.witness", "run.finish"],
+      "invariants": ["select entries only by their advertised stable IDs", "each accepted receipt consumes the requested native owner/frame", "the debug action executes once"],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_gates": [
+    {
+      "id": "r_surface_003_ordinary_debug_menu_chain",
+      "label": "source-bound ordinary nested debug menu stable-ID chain",
+      "boundary_step": "r_surface_003_ordinary_debug_menu_stable_id_chain",
+      "predecessors": [],
+      "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}
+    }
+  ],
+  "proof_route": {"gates": ["r_surface_003_ordinary_debug_menu_chain"], "terminal": ["r_surface_003_ordinary_debug_menu_chain"]}
+}

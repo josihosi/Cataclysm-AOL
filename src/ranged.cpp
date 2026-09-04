@@ -73,6 +73,7 @@
 #include "projectile.h"
 #include "ret_val.h"
 #include "rng.h"
+#include "semantic_surface.h"
 #include "skill.h"
 #include "sounds.h"
 #include "string_formatter.h"
@@ -2983,11 +2984,165 @@ target_handler::trajectory target_ui::run()
         }
     }
 
+    struct semantic_target_candidate {
+        tripoint_bub_ms position;
+        Creature *creature = nullptr;
+        vehicle *vehicle_target = nullptr;
+    };
+    std::map<std::string, semantic_target_candidate> semantic_candidates;
+    std::optional<std::string> semantic_native_action;
+    semantic_surface_manager *const semantic_manager = active_semantic_surface_manager();
+    const auto semantic_payload = [this, &semantic_candidates]() {
+        std::map<std::string, std::string> payload;
+        payload.emplace( "origin", src.to_string() );
+        payload.emplace( "cursor", dst.to_string() );
+        payload.emplace( "destination", dst.to_string() );
+        payload.emplace( "range", std::to_string( range ) );
+        payload.emplace( "mode", std::to_string( static_cast<int>( mode ) ) );
+        payload.emplace( "trajectory_length", std::to_string( traj.size() ) );
+        std::string trajectory;
+        for( const tripoint_bub_ms &point : traj ) {
+            if( !trajectory.empty() ) {
+                trajectory += ";";
+            }
+            trajectory += point.to_string();
+        }
+        payload.emplace( "trajectory", trajectory );
+        std::string candidates;
+        for( const auto &candidate : semantic_candidates ) {
+            if( !candidates.empty() ) {
+                candidates += ";";
+            }
+            candidates += candidate.first + "@" + candidate.second.position.to_string();
+        }
+        payload.emplace( "candidates", candidates );
+        return payload;
+    };
+    const auto semantic_actions = [this, &here, &semantic_candidates]() {
+        semantic_candidates.clear();
+        std::vector<semantic_action_descriptor> actions = {
+            { "target.move_cursor", "north", _( "Move cursor north" ), true },
+            { "target.move_cursor", "south", _( "Move cursor south" ), true },
+            { "target.move_cursor", "west", _( "Move cursor west" ), true },
+            { "target.move_cursor", "east", _( "Move cursor east" ), true },
+            { "target.move_cursor", "northwest", _( "Move cursor northwest" ), true },
+            { "target.move_cursor", "northeast", _( "Move cursor northeast" ), true },
+            { "target.move_cursor", "southwest", _( "Move cursor southwest" ), true },
+            { "target.move_cursor", "southeast", _( "Move cursor southeast" ), true },
+            { "target.choose", "coordinate:destination", _( "Choose destination" ),
+              status == Status::Good },
+            { "target.cancel", "", _( "Cancel" ), true }
+        };
+        if( fov_3d_z_range > 0 ) {
+            actions.emplace_back( semantic_action_descriptor{
+                "target.move_cursor", "up", _( "Move cursor up" ), true
+            } );
+            actions.emplace_back( semantic_action_descriptor{
+                "target.move_cursor", "down", _( "Move cursor down" ), true
+            } );
+        }
+        for( std::size_t index = 0; index < targets.size(); ++index ) {
+            const tripoint_bub_ms &position = targets[index];
+            if( position == dst ) {
+                continue;
+            }
+            Creature *const creature = targeting_Mode == LegalTargets::Vehicles ? nullptr :
+                                       get_creature_tracker().creature_at( position, true );
+            vehicle *const vehicle_target = creature == nullptr && targeting_Mode != LegalTargets::Creatures ?
+                                            veh_pointer_or_null( here.veh_at( position ) ) : nullptr;
+            if( creature == nullptr && vehicle_target == nullptr ) {
+                continue;
+            }
+            const std::string token = "candidate:" + std::to_string( index );
+            semantic_candidates.emplace( token, semantic_target_candidate{
+                position, creature, vehicle_target
+            } );
+            actions.emplace_back( semantic_action_descriptor{
+                "target.select_candidate", token,
+                string_format( _( "Select %s" ), creature != nullptr ? creature->disp_name() :
+                               vehicle_target->disp_name() ), true
+            } );
+        }
+        return actions;
+    };
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_manager != nullptr ) {
+        const std::vector<semantic_action_descriptor> actions = semantic_actions();
+        semantic_scope.emplace( *semantic_manager, "target", uitext_title(), semantic_payload(), actions,
+        [this, &here, &semantic_candidates, &semantic_native_action](
+        const semantic_action_request &request ) {
+            const std::string stable_id = request.stable_id.value_or( "" );
+            if( request.action_id == "target.cancel" && stable_id.empty() ) {
+                semantic_native_action = "QUIT";
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            if( request.action_id == "target.move_cursor" ) {
+                static const std::map<std::string, std::string> directions = {
+                    { "north", "UP" }, { "south", "DOWN" }, { "west", "LEFT" },
+                    { "east", "RIGHT" }, { "northwest", "LEFTUP" },
+                    { "northeast", "RIGHTUP" }, { "southwest", "LEFTDOWN" },
+                    { "southeast", "RIGHTDOWN" }, { "up", "LEVEL_UP" },
+                    { "down", "LEVEL_DOWN" }
+                };
+                const auto direction = directions.find( stable_id );
+                if( direction == directions.end() ||
+                    ( ( stable_id == "up" || stable_id == "down" ) && fov_3d_z_range <= 0 ) ) {
+                    return semantic_action_dispatch_result{ false, "invalid_target", "" };
+                }
+                semantic_native_action = direction->second;
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            if( request.action_id == "target.choose" ) {
+                if( stable_id != "coordinate:destination" || status != Status::Good ) {
+                    return semantic_action_dispatch_result{ false, "invalid_target", "" };
+                }
+                semantic_native_action = "FIRE";
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            if( request.action_id != "target.select_candidate" ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            const auto candidate = semantic_candidates.find( stable_id );
+            if( candidate == semantic_candidates.end() ) {
+                return semantic_action_dispatch_result{ false, "invalid_target", "" };
+            }
+            const semantic_target_candidate &binding = candidate->second;
+            Creature *const creature = targeting_Mode == LegalTargets::Vehicles ? nullptr :
+                                       get_creature_tracker().creature_at( binding.position, true );
+            vehicle *const vehicle_target = creature == nullptr && targeting_Mode != LegalTargets::Creatures ?
+                                            veh_pointer_or_null( here.veh_at( binding.position ) ) : nullptr;
+            if( ( binding.creature != nullptr && ( creature != binding.creature ||
+                                                   !you->sees( here, *creature ) ) ) ||
+                ( binding.vehicle_target != nullptr && vehicle_target != binding.vehicle_target ) ||
+                ( binding.creature == nullptr && binding.vehicle_target == nullptr ) ||
+                dist_fn( binding.position ) > range ) {
+                return semantic_action_dispatch_result{ false, "invalid_target", "" };
+            }
+            // The binding is exact: a stale candidate is rejected rather than
+            // allowing set_cursor_pos() to clamp or re-target it.
+            if( !set_cursor_pos( binding.position ) || dst != binding.position ) {
+                return semantic_action_dispatch_result{ false, "invalid_target", "" };
+            }
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
+
     // Event loop!
     ExitCode loop_exit_code;
     std::string timed_out_action;
     bool skip_redraw = false;
     for( ;; action.clear() ) {
+        if( semantic_scope ) {
+            const std::vector<semantic_action_descriptor> actions = semantic_actions();
+            semantic_scope->publish( semantic_payload(), actions );
+            const bool semantic_request_pending = semantic_manager->has_pending_request();
+            semantic_scope->consume_request();
+            if( semantic_request_pending && !semantic_native_action ) {
+                // A rejected semantic request cannot fall through into TARGET
+                // input or a parent World control.
+                continue;
+            }
+        }
         if( !skip_redraw ) {
             g->invalidate_main_ui_adaptor();
             ui_manager::redraw();
@@ -2997,7 +3152,12 @@ target_handler::trajectory target_ui::run()
         // Wait for user input (or use value retrieved from activity)
         if( action.empty() ) {
             int timeout = get_option<int>( "EDGE_SCROLL" );
-            action = ctxt.handle_input( timeout );
+            if( semantic_native_action ) {
+                action = std::move( *semantic_native_action );
+                semantic_native_action.reset();
+            } else {
+                action = ctxt.handle_input( timeout );
+            }
         }
 
         // If an aiming mode is selected, use "*_SHOT" instead of "FIRE"

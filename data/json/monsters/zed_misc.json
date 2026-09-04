@@ -796,11 +796,7 @@
       },
       { "id": "impale" }
     ],
-    "upgrades": {
-      "half_life": 168,
-      "into_group": "GROUP_ZOMBIE_PREDATOR_UPGRADE",
-      "starts_after_seasons": 8
-    },
+    "upgrades": { "half_life": 168, "into_group": "GROUP_ZOMBIE_PREDATOR_UPGRADE", "starts_after_seasons": 8 },
     "armor": { "bash": 5, "cut": 5, "bullet": 4, "electric": 1 }
   },
   {

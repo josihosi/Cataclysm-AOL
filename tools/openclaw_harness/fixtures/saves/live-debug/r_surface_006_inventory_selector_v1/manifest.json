@@ -1,0 +1,26 @@
+{
+  "name": "r_surface_006_inventory_selector_v1",
+  "claim": "R-SURFACE-006",
+  "description": "Disposable, zero-credit inventory-selector bootstrap.  It puts the rock in a worn container and the plastic bottle in the wielded slot, so both are distinct selector-visible entries; fixture manufacture proves nothing until fresh native descriptors advertise their item UIDs.",
+  "source_fixture": "r_surface_001_inventory_prompt_v1",
+  "source_profile": "live-debug",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        { "typeid": "rock", "count": 1 }
+      ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [
+        { "typeid": "bottle_plastic", "count": 1 }
+      ]
+    }
+  ]
+}

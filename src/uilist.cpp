@@ -2,6 +2,7 @@
 
 #include <cctype>
 #include <algorithm>
+#include <cstdint>
 #include <climits>
 #include <cstdlib>
 #include <iterator>
@@ -17,6 +18,7 @@
 #include "input.h"
 #include "memory_fast.h"
 #include "output.h"
+#include "semantic_surface.h"
 #include "sdltiles.h"
 #include "input_popup.h"
 #include "translations.h"
@@ -29,6 +31,41 @@
 #include <jni.h>
 #include "options.h"
 #endif
+
+namespace
+{
+constexpr size_t semantic_trace_max_bytes = 256 * 1024;
+
+std::string next_uilist_semantic_stable_id()
+{
+    static uint64_t next_id = 0;
+    return "uilist-entry:" + std::to_string( ++next_id );
+}
+
+// The run-owned semantic trace has a 256 KiB hard ceiling.  A selectable
+// descriptor must fit beneath it: otherwise an ordinary searchable uilist
+// first exposes only its native filter control.  This is deliberately an
+// all-or-nothing publication; an omitted entry never remains semantically
+// selectable.
+bool semantic_actions_require_filter( const std::vector<uilist_entry> &entries,
+                                      const std::vector<int> &filtered_entries )
+{
+    size_t bytes = 2; // JSON action-array brackets.
+    for( const int index : filtered_entries ) {
+        const uilist_entry &entry = entries[index];
+        // JSON may escape every byte of a translated label or stable ID.
+        // Account for both select and choose actions plus their fixed fields.
+        const size_t escaped_entry_bytes = 6 * ( entry.semantic_stable_id.size() + entry.txt.size() );
+        const size_t action_bytes = 96 + escaped_entry_bytes;
+        if( action_bytes > semantic_trace_max_bytes - bytes ||
+            action_bytes > ( semantic_trace_max_bytes - bytes ) / 2 ) {
+            return true;
+        }
+        bytes += 2 * action_bytes;
+    }
+    return false;
+}
+} // namespace
 
 #if defined(TILES) && !defined(__ANDROID__)
 #include "sdl_wrappers.h"
@@ -235,28 +272,28 @@ static std::optional<input_event> hotkey_from_char( const int ch )
 
 uilist_entry::uilist_entry( const std::string &txt )
     : retval( -1 ), enabled( true ), hotkey( std::nullopt ), txt( txt ),
-      text_color( c_red_red )
+      text_color( c_red_red ), semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
 
 uilist_entry::uilist_entry( const std::string &txt, const std::string &desc )
     : retval( -1 ), enabled( true ), hotkey( std::nullopt ), txt( txt ),
-      desc( desc ), text_color( c_red_red )
+      desc( desc ), text_color( c_red_red ), semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
 
 uilist_entry::uilist_entry( const std::string &txt, const int key )
     : retval( -1 ), enabled( true ), hotkey( hotkey_from_char( key ) ), txt( txt ),
-      text_color( c_red_red )
+      text_color( c_red_red ), semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
 
 uilist_entry::uilist_entry( const std::string &txt, const std::optional<input_event> &key )
     : retval( -1 ), enabled( true ), hotkey( key ), txt( txt ),
-      text_color( c_red_red )
+      text_color( c_red_red ), semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
@@ -264,7 +301,7 @@ uilist_entry::uilist_entry( const std::string &txt, const std::optional<input_ev
 uilist_entry::uilist_entry( const int retval, const bool enabled, const int key,
                             const std::string &txt )
     : retval( retval ), enabled( enabled ), hotkey( hotkey_from_char( key ) ), txt( txt ),
-      text_color( c_red_red )
+      text_color( c_red_red ), semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
@@ -273,7 +310,7 @@ uilist_entry::uilist_entry( const int retval, const bool enabled,
                             const std::optional<input_event> &key,
                             const std::string &txt )
     : retval( retval ), enabled( enabled ), hotkey( key ), txt( txt ),
-      text_color( c_red_red )
+      text_color( c_red_red ), semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
@@ -281,7 +318,7 @@ uilist_entry::uilist_entry( const int retval, const bool enabled,
 uilist_entry::uilist_entry( const int retval, const bool enabled, const int key,
                             const std::string &txt, const std::string &desc )
     : retval( retval ), enabled( enabled ), hotkey( hotkey_from_char( key ) ), txt( txt ),
-      desc( desc ), text_color( c_red_red )
+      desc( desc ), text_color( c_red_red ), semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
@@ -289,7 +326,7 @@ uilist_entry::uilist_entry( const int retval, const bool enabled, const int key,
 uilist_entry::uilist_entry( const int retval, const bool enabled,
                             const std::optional<input_event> &key, const std::string &txt, const std::string &desc )
     : retval( retval ), enabled( enabled ), hotkey( key ), txt( txt ),
-      desc( desc ), text_color( c_red_red )
+      desc( desc ), text_color( c_red_red ), semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
@@ -298,7 +335,8 @@ uilist_entry::uilist_entry( const int retval, const bool enabled, const int key,
                             const std::string &txt, const std::string &desc,
                             const std::string &column )
     : retval( retval ), enabled( enabled ), hotkey( hotkey_from_char( key ) ), txt( txt ),
-      desc( desc ), ctxt( column ), text_color( c_red_red )
+      desc( desc ), ctxt( column ), text_color( c_red_red ),
+      semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
@@ -308,7 +346,8 @@ uilist_entry::uilist_entry( const int retval, const bool enabled,
                             const std::string &txt, const std::string &desc,
                             const std::string &column )
     : retval( retval ), enabled( enabled ), hotkey( key ), txt( txt ),
-      desc( desc ), ctxt( column ), text_color( c_red_red )
+      desc( desc ), ctxt( column ), text_color( c_red_red ),
+      semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
@@ -317,7 +356,8 @@ uilist_entry::uilist_entry( const int retval, const bool enabled, const int key,
                             const std::string &txt,
                             const nc_color &keycolor, const nc_color &txtcolor )
     : retval( retval ), enabled( enabled ), hotkey( hotkey_from_char( key ) ), txt( txt ),
-      hotkey_color( keycolor ), text_color( txtcolor )
+      hotkey_color( keycolor ), text_color( txtcolor ),
+      semantic_stable_id( next_uilist_semantic_stable_id() )
 {
 
 }
@@ -435,7 +475,10 @@ uilist::operator int() const
  */
 void uilist::init()
 {
-    cata_assert( !test_mode ); // uilist should not be used in tests where there's no place for it
+    // Unit tests may exercise the native control only through the scoped,
+    // renderer-neutral semantic owner.  Other test-mode UI construction is
+    // still invalid because it has no supported input or observation path.
+    cata_assert( !test_mode || active_semantic_surface_manager() != nullptr );
     desired_bounds = std::nullopt;
     calculated_bounds = { -1.f, -1.f, -1.f, -1.f };
     calculated_menu_size = { 0.0, 0.0 };
@@ -465,6 +508,7 @@ void uilist::init()
     allow_anykey = false;    // do not return on unbound keys
     allow_cancel = true;     // allow canceling with "UILIST.QUIT" action
     allow_confirm = true;     // allow confirming with confirm action
+    semantic_owner = true;   // publish this uilist unless its caller owns the semantic scope
     allow_additional = false; // do not return on unhandled additional actions
     hilight_disabled =
         false; // if false, hitting 'down' onto a disabled entry will advance downward to the first enabled entry
@@ -900,10 +944,132 @@ shared_ptr_fast<uilist_impl> uilist::query( bool loop, int timeout, bool allow_u
     if( !query_setup() ) {
         return nullptr;
     }
+    // The semantic descriptor must be made from the same filtered entries
+    // that the first native draw will present, rather than from an empty
+    // pre-layout list.
+    setup();
     shared_ptr_fast<uilist_impl> ui = create_or_get_ui();
+    semantic_surface_manager *semantic_manager = active_semantic_surface_manager();
+    std::optional<semantic_surface_scope> semantic_scope;
+    const auto semantic_actions = [this]() {
+        std::vector<semantic_action_descriptor> actions;
+        const bool filter_required = semantic_actions_require_filter( entries, fentries );
+        if( !filter_required ) {
+            for( const int index : fentries ) {
+                const uilist_entry &entry = entries[index];
+                actions.push_back( { "menu.select", entry.semantic_stable_id, entry.txt, entry.enabled } );
+                actions.push_back( { "menu.choose", entry.semantic_stable_id, entry.txt,
+                                     entry.enabled && allow_confirm } );
+            }
+        }
+        if( filtering ) {
+            actions.push_back( { "menu.filter", "", _( "Filter" ), true } );
+            if( !filter.empty() ) {
+                actions.push_back( { "menu.clear_filter", "", _( "Clear filter" ), true } );
+            }
+        }
+        if( allow_cancel ) {
+            actions.push_back( { "menu.cancel", "", _( "Cancel" ), true } );
+        }
+        return actions;
+    };
+    const auto semantic_payload = [this]() {
+        return std::map<std::string, std::string>{
+            { "title", title }, { "text", text }, { "filter", filter },
+            { "filtered_entry_count", std::to_string( fentries.size() ) },
+            { "filter_required", semantic_actions_require_filter( entries, fentries ) ? "true" : "false" },
+            { "selected_stable_id", selected >= 0 && selected < static_cast<int>( entries.size() ) ?
+                entries[selected].semantic_stable_id : "" }
+        };
+    };
+    if( semantic_manager != nullptr && semantic_owner ) {
+        semantic_surface_manager *manager = semantic_manager;
+        // Some ordinary menus present their user-facing identity in ``text``
+        // and intentionally leave the window title empty.  The semantic
+        // breadcrumb must still name this native owner.
+        const std::string semantic_breadcrumb = !title.empty() ? title :
+                                              !text.empty() ? text : _( "Menu" );
+        semantic_scope.emplace( *manager, "menu", semantic_breadcrumb, semantic_payload(), semantic_actions(),
+        [this, manager, &semantic_scope, &semantic_actions, &semantic_payload]( const semantic_action_request &request ) {
+            if( request.action_id == "menu.cancel" && allow_cancel ) {
+                ret = UILIST_CANCEL;
+                return semantic_action_dispatch_result{ true, "", "", semantic_await_child_successor };
+            }
+            if( request.action_id == "menu.filter" ) {
+                const auto text = request.parameters.find( "text" );
+                if( !filtering || text == request.parameters.end() ) {
+                    return semantic_action_dispatch_result{ false, "invalid_parameters", "" };
+                }
+                filter = text->second;
+                filterlist();
+            } else if( request.action_id == "menu.clear_filter" ) {
+                if( !filtering || filter.empty() ) {
+                    return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                }
+                filter.clear();
+                filterlist();
+            } else {
+                if( semantic_actions_require_filter( entries, fentries ) ) {
+                    return semantic_action_dispatch_result{ false, "filter_required", "" };
+                }
+                if( !request.stable_id ) {
+                    return semantic_action_dispatch_result{ false, "missing_stable_id", "" };
+                }
+                std::vector<int> matches;
+                for( const int index : fentries ) {
+                    if( entries[index].semantic_stable_id == *request.stable_id ) {
+                        matches.push_back( index );
+                    }
+                }
+                if( matches.empty() ) {
+                    return semantic_action_dispatch_result{ false, "invalid_stable_id", "" };
+                }
+                if( matches.size() != 1 ) {
+                    return semantic_action_dispatch_result{ false, "duplicate_stable_id", "" };
+                }
+                const int index = matches.front();
+                if( !entries[index].enabled ) {
+                    return semantic_action_dispatch_result{ false, "disabled_stable_id", "" };
+                }
+                const auto filtered = std::find( fentries.begin(), fentries.end(), index );
+                fselected = std::distance( fentries.begin(), filtered );
+                selected = previewing = index;
+                if( callback != nullptr ) {
+                    callback->select( this );
+                }
+                if( request.action_id == "menu.choose" ) {
+                    if( !allow_confirm ) {
+                        return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                    }
+                    ret = entries[index].retval;
+                    if( callback != nullptr ) {
+                        callback->confirm( this );
+                    }
+                    return semantic_action_dispatch_result{ true, "", "",
+                                                             semantic_await_child_successor };
+                }
+                if( request.action_id != "menu.select" ) {
+                    return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                }
+            }
+            if( !semantic_scope->publish( semantic_payload(), semantic_actions() ) ) {
+                return semantic_action_dispatch_result{ false, "owner_not_topmost", "" };
+            }
+            return semantic_action_dispatch_result{ true, "", manager->top()->frame_id };
+        } );
+    }
     do {
         ui_manager::redraw();
-        query_once( ctxt, timeout, allow_unfiltered_hotkeys );
+        // A delivered semantic request is authoritative even when its native
+        // validation rejects it.  Do not reinterpret that rejection as local
+        // keyboard input, which would bypass the semantic failure receipt.
+        const bool semantic_request_pending = semantic_scope && semantic_manager->has_pending_request();
+        if( !( semantic_scope && semantic_scope->consume_request() ) && !semantic_request_pending ) {
+            query_once( ctxt, timeout, allow_unfiltered_hotkeys );
+            if( semantic_scope && ret == UILIST_WAIT_INPUT ) {
+                semantic_scope->publish( semantic_payload(), semantic_actions() );
+            }
+        }
     } while( loop && ret == UILIST_WAIT_INPUT );
     return ui;
 }

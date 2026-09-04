@@ -1,0 +1,22 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_absent_source_bootstrap_v003_mcw",
+  "description": "Zero-credit native setup: delete only the accepted physical fd_fire entry from a disposable original-fixture clone.",
+  "status": "active",
+  "profile": "r027-absent-source-bootstrap-003",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_preserved_physical_fire_20260902",
+  "fixture_profile": "r027-closure-015",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {"runtime.entry_mode":"cockpit_live_session","capabilities.r027.absent_source_bootstrap":"zero_credit_native_field_removal","runtime.r027.source_binding":"r027-closure-007-tiles:r027-absent-source-bootstrap-003"},
+  "runtime_contract": {"permitted_input":["semantic:world.debug_menu","semantic:world.quicksave","semantic:menu.choose","semantic:editmap.move_target","semantic:editmap.remove_field","semantic:editmap.close","run.finish"],"forbidden_input":["guessed-key","physical-key","callback-injection","direct-state-mutation","direct-save-edit","direct-lead-mutation","shared-profile"],"setup_only_debug":true,"disposable_copy":true,"helpers":["native-semantic-broker"],"permissions":["accessibility"],"platform":["macos"],"profile":"r027-absent-source-bootstrap-003","fixture":"r027_preserved_physical_fire_20260902","requirements":{"os":"macos","source":"current-worktree","executable":"build/r027-closure-007-tiles","profile":"r027-absent-source-bootstrap-003","fixture":"r027_preserved_physical_fire_20260902","helper":"native-semantic-broker","peekaboo":false,"ocr":false,"input":["frame-bound semantic requests"],"cleanup":true},"grants_gameplay_proof":false},
+  "source_binding": {"fixture_manifest":"tools/openclaw_harness/fixtures/saves/r027-closure-015/r027_preserved_physical_fire_20260902/manifest.json","profile":"tools/openclaw_harness/profiles/r027-absent-source-bootstrap-003.json","build_receipt":".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "r027_isolated_launch": {"name":"r027-closure-007-tiles","path":"build/r027-closure-007-tiles","sha256":"436ed2a6291ea160335860c6692b054aca538d57fe9f7fcbefec70988b0ca3cf","profile":"r027-absent-source-bootstrap-003","world":"McWilliams","fixture":"r027_preserved_physical_fire_20260902","run_identity":"r027-absent-source-bootstrap-003","control_endpoint":"native-semantic-broker","receipt_sidecar":"r027.staffed-camp-signal.receipts.jsonl","cleanup_token":"r027-absent-source-bootstrap-003-cleanup","build_receipt":".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "steps":[{"kind":"audit_saved_map_tile_near_player","label":"audit_original_fire","offsets":[[-1,0,0]],"required_fields":["fd_fire"],"abort_on_metadata_failure":true},{"kind":"native_semantic_bootstrap","label":"bind_absent_source_editor","native_semantic_checkpoint":{"required_actions":["world.debug_menu","world.quicksave"],"required_state":"world","require_initial_hud_world_ready_frame":false}},{"kind":"cockpit_live_session","label":"native_absent_source_setup","cleanup_on_finish":true,"stop_after_live_session":true,"objective":"Delete exact fd_fire through advertised native Map Editor action, quicksave, and finish.","proof_targets":["zero-credit absent source fixture"],"authority":["currently advertised native semantic actions","run.finish"],"invariants":["setup only","no callback","no direct save edit"],"live_operations":["game.act"],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}],
+  "proof_route":{"precondition":["audit_original_fire","bind_absent_source_editor"],"production_behavior":["native_absent_source_setup"],"terminal_persistence":["native_absent_source_setup"],"artifact_verdict":["native_absent_source_setup"],"disallowed_shortcuts":["native_absent_source_setup"]}
+}

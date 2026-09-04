@@ -5,6 +5,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <memory>
+#include <optional>
 
 #include "cached_options.h"
 #include "cata_imgui.h"
@@ -14,6 +15,7 @@
 #include "imgui/imgui.h"
 #include "input_context.h"
 #include "output.h"
+#include "semantic_surface.h"
 #include "string_formatter.h"
 #include "ui_manager.h"
 
@@ -220,6 +222,7 @@ query_popup &query_popup::option( const std::string &opt )
     options.emplace_back( opt, []( const input_event & ) {
         return true;
     } );
+    options.back().semantic_bound = true;
     return *this;
 }
 
@@ -228,6 +231,10 @@ query_popup &query_popup::option( const std::string &opt,
 {
     invalidate_ui();
     options.emplace_back( opt, filter );
+    // The filter restricts physical input only.  A frame-bound semantic
+    // request still selects this exact native option without synthesizing a
+    // key, so it remains dispatchable by its stable descriptor ID.
+    options.back().semantic_bound = true;
     return *this;
 }
 
@@ -343,7 +350,7 @@ query_popup::result query_popup::query_once()
         return { false, "ERROR", {} };
     }
 
-    if( test_mode ) {
+    if( test_mode && active_semantic_surface_manager() == nullptr ) {
         return { false, "ERROR", {} };
     }
 
@@ -376,13 +383,86 @@ query_popup::result query_popup::query_once()
         ctxt.register_action( "QUIT" );
     }
 
+    std::optional<std::string> semantic_action;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        std::vector<semantic_action_descriptor> semantic_actions;
+        for( const query_popup::query_option &option : options ) {
+            semantic_actions.push_back( { "prompt.choose", option.semantic_stable_id,
+                                          option.action, option.semantic_bound } );
+        }
+        if( cancel ) {
+            semantic_actions.push_back( { "prompt.cancel", "", _( "Cancel" ), true } );
+        }
+        if( anykey ) {
+            semantic_actions.push_back( { "prompt.acknowledge", "", _( "Acknowledge" ), true } );
+        }
+        semantic_scope.emplace( *manager, "prompt", category,
+        std::map<std::string, std::string>{
+            { "text", text },
+            { "title", category }
+        }, std::move( semantic_actions ),
+        [this, &semantic_action]( const semantic_action_request &request ) {
+            if( request.action_id == "prompt.cancel" && cancel ) {
+                semantic_action = "QUIT";
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            if( request.action_id == "prompt.acknowledge" && anykey ) {
+                semantic_action = "ANY_INPUT";
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            if( request.action_id != "prompt.choose" || !request.stable_id ) {
+                return semantic_action_dispatch_result{ false, "missing_stable_id", "" };
+            }
+            size_t matches = 0;
+            const query_popup::query_option *selected_option = nullptr;
+            for( const query_popup::query_option &option : options ) {
+                if( option.semantic_stable_id == *request.stable_id ) {
+                    ++matches;
+                    if( !option.semantic_bound ) {
+                        return semantic_action_dispatch_result{ false, "unbound_native_operation", "" };
+                    }
+                    selected_option = &option;
+                }
+            }
+            if( matches == 1 ) {
+                semantic_action = selected_option->action;
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            if( matches > 1 ) {
+                return semantic_action_dispatch_result{ false, "duplicate_stable_id", "" };
+            }
+            return semantic_action_dispatch_result{ false, "invalid_stable_id", "" };
+        } );
+    }
+
     result res;
+    bool semantic_option_selected = false;
     // Assign outside construction of `res` to ensure execution order
     res.wait_input = !anykey;
     do {
         ui_manager::redraw();
-        res.action = ctxt.handle_input( 50 );
-        res.evt = ctxt.get_raw_input();
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+        }
+        if( semantic_action ) {
+            res.action = *semantic_action;
+            res.evt = input_event();
+            semantic_action.reset();
+            semantic_option_selected = true;
+        } else {
+            res.action = ctxt.handle_input( 50 );
+            res.evt = ctxt.get_raw_input();
+            // The transport wake is consumed by input_context while it waits.
+            // Its active prompt callback records the semantic choice, so read
+            // that native result before treating the wake as ordinary input.
+            if( semantic_action ) {
+                res.action = *semantic_action;
+                res.evt = input_event();
+                semantic_action.reset();
+                semantic_option_selected = true;
+            }
+        }
 
         // If we're tracking mouse movement
         if( !options.empty() && res.action == "SELECT" && impl->get_mouse_selected_option() != -1 ) {
@@ -431,7 +511,7 @@ query_popup::result query_popup::query_once()
         for( size_t ind = 0; ind < options.size(); ++ind ) {
             if( res.action == options[ind].action ) {
                 impl->keyboard_selected_option = ind;
-                if( options[ind].filter( res.evt ) ) {
+                if( semantic_option_selected || options[ind].filter( res.evt ) ) {
                     res.wait_input = false;
                     break;
                 }
@@ -514,6 +594,8 @@ query_popup::query_option::query_option(
     const std::function<bool( const input_event & )> &filter )
     : action( action ), filter( filter )
 {
+    static uint64_t next_semantic_stable_id = 0;
+    semantic_stable_id = "prompt-option:" + std::to_string( ++next_semantic_stable_id );
 }
 
 query_popup::button::button( const std::string &text, const point &p )

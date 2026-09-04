@@ -3,13 +3,16 @@ import tempfile
 import unittest
 from pathlib import Path
 
-from certification_route import capture_and_finalize_certification
+from certification_route import (
+    capture_and_finalize_certification,
+    continuous_capture_proof_classification,
+)
 
 
 class CertificationFinalizationTest(unittest.TestCase):
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory(); self.root = Path(self.temp.name)
-        kinds = ("declared_world", "departure", "overmap_advance", "bubble_crossing_out", "actor_outcomes", "save", "quit", "relaunch", "bubble_crossing_in", "return_report", "camp_decision")
+        kinds = ("declared_world", "departure", "shared_route_advance", "bubble_crossing_out", "actor_outcomes", "bubble_crossing_in", "return_report", "camp_decision", "save", "quit", "relaunch", "normalized_persistence")
         common = {"token_id": "tok", "scenario_digest": "scenario", "round_id": "round", "binding_id": "bind", "world_id": "world", "player_id": "player", "actor_ids": ["a", "b"]}
         self.events = [dict(common, sequence=i, kind=kind, owner="abstract") for i, kind in enumerate(kinds, 1)]
         self.receipts = [dict(common, sequence=1, owner="abstract", next_owner="local")]
@@ -27,7 +30,26 @@ class CertificationFinalizationTest(unittest.TestCase):
     def test_complete_capture_finalizes_once(self):
         result = capture_and_finalize_certification(**self.kwargs())
         self.assertEqual(result["status"], "green")
+        self.assertEqual(result["events"], self.events)
         self.assertEqual(capture_and_finalize_certification(**self.kwargs())["status"], "green")
+
+    def test_only_green_structured_and_capture_receipts_promote_classification(self):
+        finalization = capture_and_finalize_certification(**self.kwargs())
+        promoted = continuous_capture_proof_classification(
+            base_classification={"status": "yellow", "feature_proof": False},
+            structured_gate_evidence={"status": "green"},
+            finalization=finalization,
+        )
+        self.assertEqual(
+            (promoted["status"], promoted["evidence_class"], promoted["feature_proof"]),
+            ("green", "automated continuous-round certification", True),
+        )
+        preserved = continuous_capture_proof_classification(
+            base_classification={"status": "yellow", "feature_proof": False},
+            structured_gate_evidence={"status": "yellow"},
+            finalization=finalization,
+        )
+        self.assertEqual(preserved, {"status": "yellow", "feature_proof": False})
 
     def test_incomplete_or_mutated_capture_rejects(self):
         events = list(self.events); events[7] = dict(events[7], sequence=9)

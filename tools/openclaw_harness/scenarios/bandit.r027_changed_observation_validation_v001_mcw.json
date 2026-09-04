@@ -1,0 +1,54 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_changed_observation_validation_v001_mcw",
+  "description": "Independent R-027 validation from the sealed setup-only intensity-2 save: audit the retained source and lead, then directly observe production refresh without retargeting or promotion of setup evidence.",
+  "status": "active",
+  "profile": "r027-changed-observation-validation-001",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_changed_observation_intensity2_v001_20260903",
+  "fixture_profile": "r027-changed-observation-retained-intensity-002",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r027.changed_observation_validation": "same_saved_lead_same_source_changed_fd_fire_payload",
+    "runtime.r027.source_binding": "r027-closure-007-tiles:r027-changed-observation-validation-001"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.raw_wait", "cockpit:run.continue", "cockpit:run.finish"],
+    "forbidden_input": ["direct-state-mutation", "direct-save-edit", "direct-lead-mutation", "lead-retarget", "shared-profile"],
+    "platform": ["macos"],
+    "profile": "r027-changed-observation-validation-001",
+    "fixture": "r027_changed_observation_intensity2_v001_20260903",
+    "grants_gameplay_proof": false,
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "requirements": {"os":"macos","source":"current-worktree","executable":"build/r027-closure-007-tiles","profile":"r027-changed-observation-validation-001","fixture":"r027_changed_observation_intensity2_v001_20260903","helper":"native-semantic-broker","peekaboo":false,"ocr":false,"input":["frame-bound semantic requests"],"cleanup":true}
+  },
+  "source_binding": {"fixture_manifest":"tools/openclaw_harness/fixtures/saves/r027-changed-observation-retained-intensity-002/r027_changed_observation_intensity2_v001_20260903/manifest.json","fixture_credit":"setup_only_non_feature","anti_promotion":true,"profile":"tools/openclaw_harness/profiles/r027-changed-observation-validation-001.json","build_receipt":".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "r027_isolated_launch": {"name":"r027-closure-007-tiles","path":"build/r027-closure-007-tiles","sha256":"2abcc29bc7dabbe30848a106db00b947dfbc8733688a8cd17dac1a39d5b59576","profile":"r027-changed-observation-validation-001","world":"McWilliams","fixture":"r027_changed_observation_intensity2_v001_20260903","run_identity":"r027-changed-observation-validation-001","control_endpoint":"native-semantic-broker","receipt_sidecar":"r027.staffed-camp-signal.receipts.jsonl","cleanup_token":"r027-changed-observation-validation-001-cleanup","build_receipt":".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "steps": [
+    {"kind":"audit_saved_map_tile_near_player","label":"saved_intensity_two_source","offsets":[[0,11,0]],"required_fields":["fd_fire"],"abort_on_metadata_failure":true},
+    {"kind":"audit_saved_bandit_live_world_state","label":"baseline_retained_lead","required_site_id_contains":"bandit_camp","required_min_leads":2,"abort_on_metadata_failure":true},
+    {"kind":"cockpit_live_session","label":"direct_production_observation_refresh","cleanup_on_finish":true,"stop_after_live_session":true,"live_operations":["game.act","game.raw_wait","run.continue"],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}
+  ],
+  "assertions": {
+    "stable_observer_id": 4,
+    "stable_camp_omt": [140, 51, 0],
+    "stable_source_omt": [140, 50, 0],
+    "stable_lead_id": "overmap_special:bandit_camp@140,51,0#lead:smoke_signal:camp-smoke@(140,50,0)@140,50,0",
+    "pre_change_source": {"field":"fd_fire","intensity":3},
+    "post_change_source": {"field":"fd_fire","intensity":2},
+    "post_change_receipt": "refreshed",
+    "unchanged_identity": ["stable_lead_id", "stable_source_omt", "stable_camp_omt", "stable_observer_id"],
+    "changed_payload": ["lead_hash", "source_payload_hash"],
+    "forbid": ["retarget", "direct_lead_mutation", "direct_save_edit"]
+  },
+  "proof_route": {"precondition":["saved_intensity_two_source","baseline_retained_lead"],"production_behavior":["direct_production_observation_refresh"],"terminal_persistence":["direct_production_observation_refresh"],"artifact_verdict":["direct_production_observation_refresh"],"disallowed_shortcuts":["direct_production_observation_refresh"]}
+}

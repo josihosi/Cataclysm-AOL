@@ -1,0 +1,167 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_physical_signal_bootstrap_mcw",
+  "description": "Zero-credit R-027 setup: leave the autoloaded overmap explicitly, prove the local gameplay HUD, place one physical fire, and persist its exact saved-map location for a separately authorized observation.",
+  "status": "active",
+  "profile": "r027-closure-015",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "bandit_phase4_structural_signal_matrix_v0_2026-08-04",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "capabilities.r027.physical_signal_bootstrap": "zero_credit_exact_saved_fd_fire_source"
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:escape", "debug:map-editor-place-fd_fire", "save-and-quit"],
+    "forbidden_input": ["world.wait", "debug:inject_signal", "debug:inject_dispatch", "debug:inject_lead", "shared-profile", "global-process-cleanup"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r027-closure-015",
+    "fixture": "bandit_phase4_structural_signal_matrix_v0_2026-08-04",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "r027-closure-007-tiles",
+      "profile": "r027-closure-015",
+      "fixture": "bandit_phase4_structural_signal_matrix_v0_2026-08-04",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": ["press:escape", "debug:map-editor-place-fd_fire", "save-and-quit"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["return_from_overmap_to_local_hud", "stage_r027_physical_fire_before_scheduler", "audit_r027_physical_fire_source_after_save"],
+    "production_behavior": ["stage_r027_physical_fire_before_scheduler"],
+    "terminal_persistence": ["audit_r027_physical_fire_source_after_save"],
+    "artifact_verdict": ["audit_r027_physical_fire_source_after_save"],
+    "disallowed_shortcuts": ["stage_r027_physical_fire_before_scheduler"]
+  },
+  "r027_isolated_launch": {
+    "name": "r027-exploration-013-tiles",
+    "path": "build/r027-exploration-013-tiles",
+    "sha256": "c9c04bb252454904693366c0fab10563a605df73f0cbf1f30eec019a149f3d89",
+    "profile": "r027-closure-015",
+    "world": "McWilliams",
+    "fixture": "bandit_phase4_structural_signal_matrix_v0_2026-08-04",
+    "run_identity": "r027-exploration-013",
+    "control_endpoint": "native-semantic-broker",
+    "receipt_sidecar": "r027.staffed-camp-signal.receipts.jsonl",
+    "cleanup_token": "r027-exploration-013-cleanup",
+    "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-exploration-013-tiles.json"
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "loaded_r027_local_hud_before_overmap_transition",
+      "seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the isolated R-027 world has loaded at a verified local gameplay HUD before the explicit map-mode transition"
+    },
+    {
+      "kind": "press",
+      "label": "open_r027_overmap_before_returning_local",
+      "keys": ["m"],
+      "delay_ms": 200,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the ordinary overmap is explicitly open before its return to the local HUD"
+    },
+    {
+      "kind": "press",
+      "label": "return_from_overmap_to_local_hud",
+      "keys": ["escape"],
+      "delay_ms": 200,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "expected_visible_fact": "the explicitly opened overmap has returned to the local gameplay HUD before field placement"
+    },
+    {
+      "kind": "press",
+      "label": "verify_r027_debug_menu_binding",
+      "keys": ["}"],
+      "delay_ms": 200,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Debug"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r027_debug_menu_binding_unverified",
+      "abort_reason": "the scenario-scoped Debug binding did not visibly open the native Debug menu before field placement",
+      "expected_visible_fact": "the native Debug menu is visibly open through the scenario-scoped debug binding before field placement"
+    },
+    {
+      "kind": "press",
+      "label": "close_r027_verified_debug_menu_before_field_command",
+      "keys": ["escape"],
+      "delay_ms": 200,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "expected_visible_fact": "the verified native Debug menu is closed before the field-placement command reopens it"
+    },
+    {
+      "kind": "debug_map_editor_place_field",
+      "label": "stage_r027_physical_fire_before_scheduler",
+      "field_query": "fd_fire",
+      "field_intensity": 3,
+      "target_keys": ["left"],
+      "capture_after": true,
+      "expected_visible_fact": "a physical fd_fire field is placed exactly one local-map square west of the player without advancing the scheduler",
+      "failure_rule": "This is explicit setup and has zero signal-observation, lead, dispatch, or gameplay credit."
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_r027_physical_fire_save_before_writeback",
+      "expected_visible_fact": "saved-player mtime baseline is captured before preserving the setup field"
+    },
+    {
+      "kind": "press",
+      "label": "request_r027_physical_fire_setup_save",
+      "keys": ["S"],
+      "delay_ms": 250,
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Case Sensitive"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r027_physical_fire_setup_save_prompt_missing",
+      "abort_reason": "the native Save-and-Quit confirmation did not open after physical setup",
+      "expected_visible_fact": "save-and-quit is visibly requested after the zero-credit setup mutation"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_r027_physical_fire_setup_save",
+      "keys": ["Y"],
+      "delay_ms": 250,
+      "settle_seconds": 5.0,
+      "expected_visible_fact": "the setup save is confirmed before the field source is read back"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_r027_physical_fire_save_after_writeback",
+      "changed_since_label": "audit_r027_physical_fire_save_before_writeback",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r027_physical_fire_setup_save_unproven",
+      "abort_reason": "the field setup was not durably written before a later observation could consume it",
+      "expected_visible_fact": "saved-player mtime advanced after confirming the zero-credit setup save"
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_r027_physical_fire_source_after_save",
+      "offsets": [[-1, 0, 0]],
+      "required_fields": ["fd_fire"],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r027_physical_fire_source_missing",
+      "abort_reason": "the exact saved source tile west of the player did not retain fd_fire after setup writeback",
+      "expected_visible_fact": "the saved audit names the exact target_location_ms/target_abs_omt of the physical fd_fire source for the later independent observation"
+    }
+  ]
+}

@@ -206,6 +206,8 @@ class query_popup
 
             std::string action;
             std::function<bool( const input_event & )> filter;
+            std::string semantic_stable_id;
+            bool semantic_bound = false;
         };
 
         std::string category;

@@ -1,0 +1,99 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_isolated_staffed_camp_signal_read_mcw",
+  "status": "active",
+  "profile": "r027-barrier-bootstrap-001",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_preserved_physical_fire_20260902",
+  "fixture_profile": "r027-closure-015",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "capabilities.r027.isolated_scheduler_tick": "zero_credit_digest_bound_staffed_camp_signal_read",
+    "runtime.r027.source_binding": "r027-closure-007-tiles:r027-barrier-bootstrap-001"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.debug_menu", "semantic:menu.choose", "semantic:menu.filter", "semantic:editmap.move_target", "semantic:editmap.edit_overmap", "semantic:editmap.close"],
+    "forbidden_input": ["shared-executable", "shared-profile", "global-process-cleanup", "debug:ecology_edit"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "r027-barrier-bootstrap-001",
+    "fixture": "r027_preserved_physical_fire_20260902",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r027-closure-007-tiles",
+      "profile": "r027-barrier-bootstrap-001",
+      "fixture": "r027_preserved_physical_fire_20260902",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "ocr": false,
+      "input": ["semantic:world.wait"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "semantic_only_startup": true,
+  "adaptive_semantic_autodrive": true,
+  "suppress_profile_startup_input": true,
+  "proof_route": {
+    "precondition": ["audit_r027_saved_fire_source", "bind_r027_native_wait"],
+    "production_behavior": ["bootstrap_r027_opaque_barrier_fixture"],
+    "terminal_persistence": ["bootstrap_r027_opaque_barrier_fixture"],
+    "artifact_verdict": ["bootstrap_r027_opaque_barrier_fixture"],
+    "disallowed_shortcuts": ["bootstrap_r027_opaque_barrier_fixture"]
+  },
+  "r027_isolated_launch": {
+    "name": "r027-closure-007-tiles",
+    "path": "build/r027-closure-007-tiles",
+    "sha256": "4510c8e3bd202251337339d9435410408d216cf0ba951153934dc88e65732e12",
+    "profile": "r027-barrier-bootstrap-001",
+    "world": "McWilliams",
+    "fixture": "r027_preserved_physical_fire_20260902",
+    "run_identity": "r027-barrier-bootstrap-001",
+    "control_endpoint": "native-semantic-broker",
+    "receipt_sidecar": "r027.staffed-camp-signal.receipts.jsonl",
+    "cleanup_token": "r027-barrier-bootstrap-001-cleanup",
+    "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"
+  },
+  "steps": [
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_r027_saved_fire_source",
+      "offsets": [[-1, 0, 0]],
+      "required_fields": ["fd_fire"],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_r027_saved_fire_source_missing",
+      "abort_reason": "the independent run must begin from the preserved physical fd_fire source",
+      "expected_visible_fact": "the preserved physical fd_fire source remains west of the saved player before production cadence runs"
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r027_native_wait",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.wait"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "bootstrap_r027_opaque_barrier_fixture",
+      "bootstrap_only": true,
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "objective": "Use only current native semantic owners to enter the map editor, filter the oversized terrain menu, select one opaque terrain at the derived intermediate OMT, then save and cleanly finish this disposable setup run.",
+      "proof_targets": ["filter-only large-menu descriptor", "filtered native stable terrain entry", "source-preserving opaque-barrier saved fixture"],
+      "authority": ["currently advertised native semantic actions", "run.witness", "run.finish"],
+      "invariants": ["setup receives zero gameplay credit", "no raw keys, callback injection, direct lead mutation, or save editing", "a missing advertised action is fail-closed"],
+      "live_operations": ["game.act"],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ]
+}

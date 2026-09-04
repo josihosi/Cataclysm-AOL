@@ -1,0 +1,31 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_008.direction_curses",
+  "description": "Source-bound curses route for a real use-item direction prompt. Fixture manufacture is zero-credit; the lighter UID and every direction token must be rediscovered from live descriptors.",
+  "profile": "r-surface-004-world-children-curses",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r_surface_008_direction_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": { "capabilities.r_surface_008.direction_curses": "source_bound_curses_native_use_item_direction", "runtime.entry_mode": "cockpit_live_session" },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.inventory", "semantic:inventory.*", "semantic:direction.choose", "semantic:direction.cancel"],
+    "forbidden_input": ["guessed-key", "physical-key-after-setup", "keyboard-after-setup", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "setup_only_debug": false, "disposable_copy": true, "helpers": [], "permissions": [], "platform": ["macos"],
+    "profile": "r-surface-004-world-children-curses", "config_profile": "dev-harness", "fixture": "r_surface_008_direction_v1",
+    "requirements": { "os": "macos", "source": "current-worktree", "executable": "r_surface_008_curses/cataclysm", "profile": "r-surface-004-world-children-curses", "fixture": "r_surface_008_direction_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": { "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_008_direction_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/dev-harness.json" },
+  "steps": [
+    { "kind": "native_semantic_bootstrap", "label": "emit_r_surface_008_direction_curses_world", "native_semantic_checkpoint": { "required_actions": ["world.inventory"], "required_state": "world" } },
+    { "kind": "cockpit_live_session", "label": "r_surface_008_direction_curses_witness", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Use the live lighter through advertised inventory controls and settle the native curses direction owner solely through its current direction tokens.", "proof_targets": ["the lighter is found only by a fresh advertised inventory UID", "the real item-use route yields a direction child with no World or inventory actions", "an advertised direction.choose token has its exact receipt and a fresh successor", "invalid, stale, parent-World, or unadvertised controls fail without moving or selecting a direction", "accepted cleanup; fixture has zero feature credit"], "authority": ["currently advertised native semantic actions", "run.witness", "run.finish"], "invariants": ["resolve every item and direction token from the current frame", "do not use keys, labels, rows, coordinates, OCR, screenshots, fallback, or direct mutation", "fixture and inventory entry are zero-credit", "stop on binding drift, missing receipt, raw dispatch, or cleanup failure"], "live_operations": ["game.act"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1 }
+  ],
+  "proof_gates": [{ "id": "r_surface_008_direction_curses_observation", "label": "source-bound curses use-item direction observation", "boundary_step": "r_surface_008_direction_curses_witness", "predecessors": [], "expectations": [{ "kind": "saved_artifact", "predicate": { "artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true }}], "checkpoint_safe_ui": { "screen_text_contains": ["Move:"] } }],
+  "proof_route": { "gates": ["r_surface_008_direction_curses_observation"], "terminal": ["r_surface_008_direction_curses_observation"] }
+}

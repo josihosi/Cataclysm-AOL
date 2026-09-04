@@ -3,17 +3,20 @@
 
 from __future__ import annotations
 
+import inspect
+import hashlib
 import json
+import os
 from pathlib import Path
 import sys
 import tempfile
 import unittest
-from unittest.mock import patch
+from unittest.mock import MagicMock, patch
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
 from semantic_broker import SemanticStepChannel, SemanticStepFrame
-from semantic_state import latest_semantic_step_frame, read_semantic_step_trace
+from semantic_state import MAX_EVENTS as SEMANTIC_STEP_MAX_EVENTS, latest_semantic_step_frame, read_semantic_step_trace
 import startup_harness
 from startup_harness import (
     adaptive_semantic_baseline_minutes,
@@ -41,6 +44,24 @@ class SemanticStepChannelTest(unittest.TestCase):
             "valid_actions": list(actions),
             "action_inputs": actions,
         }
+
+    def test_anonymous_wake_pipe_contract_and_writer_are_run_bound(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            read_fd, write_fd, environment = startup_harness.open_semantic_wake_pipe(root, self.run_id)
+            try:
+                self.assertTrue(environment["OPENCLAW_HARNESS_SEMANTIC_WAKE_READ_FD"].isdigit())
+                self.assertFalse(os.get_blocking(read_fd))
+                self.assertEqual(startup_harness.semantic_wake_pipe_contract(root, self.run_id)["status"], "bound")
+                with startup_harness.semantic_wake_pipe_writers_lock:
+                    startup_harness.semantic_wake_pipe_writers[(str(root.resolve()), self.run_id)] = write_fd
+                self.assertEqual(startup_harness.write_semantic_wake_pipe(root, self.run_id), 1)
+                self.assertEqual(os.read(read_fd, 1), b"w")
+            finally:
+                with startup_harness.semantic_wake_pipe_writers_lock:
+                    startup_harness.semantic_wake_pipe_writers.pop((str(root.resolve()), self.run_id), None)
+                os.close(read_fd)
+                os.close(write_fd)
 
     def test_adaptive_session_identity_generates_when_no_supervisor_value_exists(self) -> None:
         with patch.dict("os.environ", {"OPENCLAW_ADAPTIVE_SESSION_ID": ""}):
@@ -324,7 +345,6 @@ class SemanticStepChannelTest(unittest.TestCase):
                 self.frame("frame-3", "wait_activity", {}, 100),
             ]
             current = 0
-            sent: list[str] = []
 
             def read_frame() -> dict:
                 return frames[current]
@@ -351,16 +371,15 @@ class SemanticStepChannelTest(unittest.TestCase):
             ])
             parent = channel.act(
                 frame_id="frame-1", action_id="wait.duration_menu",
-                send_input=sent.append, await_transition=transition,
+                submit_request=lambda *_: {"accepted": True}, await_transition=transition,
             )
             duration = channel.act(
                 frame_id="frame-2", action_id="wait.6h",
-                send_input=sent.append, await_transition=transition,
+                submit_request=lambda *_: {"accepted": True}, await_transition=transition,
             )
             self.assertTrue(parent["accepted"])
             self.assertTrue(duration["accepted"])
             self.assertEqual(duration["next_frame"]["state"], "wait_activity")
-            self.assertEqual(sent, ["w", "8"])
             receipts = [
                 json.loads(line)
                 for line in (root / "semantic.steps.jsonl").read_text(encoding="utf-8").splitlines()
@@ -374,7 +393,6 @@ class SemanticStepChannelTest(unittest.TestCase):
                 "activity.ignore": "I",
             }, 101)
             world = self.frame("world-2", "world", {"world.wait": "|"}, 101)
-            sent: list[str] = []
             channel = SemanticStepChannel(
                 run_id=self.run_id, session_id="worker-atomic",
                 receipt_path=root / "semantic.steps.jsonl", read_frame=lambda: world,
@@ -384,7 +402,7 @@ class SemanticStepChannelTest(unittest.TestCase):
                 observed_frame=interruption,
                 frame_id="activity-1",
                 action_id="activity.ignore",
-                send_input=sent.append,
+                submit_request=lambda *_: {"accepted": True},
                 await_transition=lambda frame_id, action_id: {
                     "native_receipt": {
                         "frame_id": frame_id, "action_id": action_id, "accepted": True,
@@ -400,9 +418,7 @@ class SemanticStepChannelTest(unittest.TestCase):
             self.assertTrue(receipt["accepted"])
             self.assertEqual(receipt["current_frame"]["frame_id"], "activity-1")
             self.assertEqual(receipt["next_frame"]["frame_id"], "world-2")
-            self.assertEqual(receipt["_next_frame"]["action_inputs"], {"world.wait": "|"})
             self.assertEqual(receipt["semantic_response"]["resolved_action"], "IGNORE")
-            self.assertEqual(sent, ["I"])
             durable = json.loads((root / "semantic.steps.jsonl").read_text(encoding="utf-8"))
             self.assertNotIn("_next_frame", durable)
             self.assertNotIn("action_inputs", durable["next_frame"])
@@ -423,7 +439,7 @@ class SemanticStepChannelTest(unittest.TestCase):
                 observed_frame=interruption,
                 frame_id="activity-1",
                 action_id="activity.ignore",
-                send_input=lambda _: None,
+                submit_request=lambda *_: {"accepted": True},
                 await_transition=lambda frame_id, action_id: {
                     "native_receipt": {
                         "frame_id": frame_id, "action_id": action_id, "accepted": True,
@@ -471,6 +487,64 @@ class SemanticStepChannelTest(unittest.TestCase):
             self.assertEqual(frame["state"], "activity_resumed")
             self.assertEqual(frame["provenance"], "native_activity_distraction_return")
             self.assertEqual(frame["resolved_action"], "IGNORE")
+
+    def test_activity_return_yields_a_later_native_world_frame(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "debug.log"
+            source.write_text("native trace", encoding="utf-8")
+            descriptor = {
+                "event": "surface_descriptor",
+                "run_id": self.run_id,
+                "surface_id": "activity-surface",
+                "frame_id": "activity-frame",
+                "kind": "activity_distraction",
+                "valid_actions": [],
+            }
+            resumed_world = self.frame("world-after-ignore", "world", {
+                "world.wait": "|",
+            }, 102)
+            returned = {"event": "return", "event_offset": 20, "action": "IGNORE"}
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(source, source)), \
+                    patch.object(startup_harness, "read_semantic_step_trace",
+                                 return_value=([descriptor, resumed_world], "ok")), \
+                    patch.object(startup_harness, "semantic_step_frame_source_offset",
+                                 side_effect=[10, 30]), \
+                    patch.object(startup_harness, "read_latest_activity_query_trace", return_value=returned), \
+                    patch.object(startup_harness, "read_active_activity_query_trace", return_value=None):
+                frame = current_semantic_step_frame(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=0,
+                )
+            self.assertEqual(frame["frame_id"], "world-after-ignore")
+            self.assertEqual(frame["state"], "world")
+            self.assertEqual(frame["_event_offset"], 30)
+
+    def test_world_descriptor_projects_only_its_bound_native_clock(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "debug.log"
+            source.write_text("native trace", encoding="utf-8")
+            descriptor = {
+                "event": "surface_descriptor", "run_id": self.run_id,
+                "surface_id": "world-surface", "frame_id": "world-frame",
+                "kind": "world", "valid_actions": [],
+            }
+            native_frame = {
+                "event": "frame", "run_id": self.run_id,
+                "frame_id": "native-world-frame", "state": "world",
+                "game_minutes": 9241,
+            }
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(source, source)), \
+                    patch.object(startup_harness, "read_semantic_step_trace",
+                                 side_effect=[([descriptor], "ok"),
+                                              ([descriptor, native_frame], "ok")]), \
+                    patch.object(startup_harness, "semantic_step_frame_source_offset", return_value=10), \
+                    patch.object(startup_harness, "read_latest_activity_query_trace", return_value=None), \
+                    patch.object(startup_harness, "read_active_activity_query_trace", return_value=None):
+                frame = current_semantic_step_frame(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=0,
+                )
+            self.assertEqual(frame["game_minutes"], 9241)
 
     def test_activity_return_uses_the_bound_open_outside_the_moving_tail(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -535,7 +609,7 @@ class SemanticStepChannelTest(unittest.TestCase):
             }
             sent = []
             with patch.object(startup_harness, "current_semantic_step_frame", return_value=world), \
-                    patch.object(startup_harness, "dispatch_semantic_input",
+                    patch.object(startup_harness, "dispatch_semantic_input", create=True,
                                  side_effect=lambda *args, **kwargs: sent.append((args, kwargs))), \
                     patch.object(startup_harness, "read_latest_activity_query_trace", return_value={
                         "event": "return", "action": "IGNORE", "issuing_open_offset": 7,
@@ -548,10 +622,80 @@ class SemanticStepChannelTest(unittest.TestCase):
                     transition_timeout_seconds=0.01, observe_interval_seconds=0,
                     observed_frame=interruption,
                 )
-            self.assertTrue(receipt["accepted"])
-            self.assertEqual(sent, [((17, "I"), {"delay_ms": 200, "focus_once": True})])
-            self.assertEqual(read_receipt.call_args.args[1], 7)
-            self.assertEqual(read_receipt.call_args.kwargs["issuing_open_offset"], 7)
+            self.assertFalse(receipt["accepted"])
+            self.assertEqual(receipt["reason"], "native_surface_descriptor_required")
+            self.assertEqual(sent, [])
+
+    def test_activity_recovery_recovers_missing_query_metadata_from_matching_native_frame(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            interruption = self.frame("activity-1", "activity_distraction", {
+                "activity.ignore": "I",
+            }, 101) | {
+                "_kind": "semantic_step", "_event_offset": 10,
+                "producer": "activity_distraction_query",
+                "observation": {
+                    "schema": "caol-avatar-visible-v1",
+                    "avatar": {"name": "tester"},
+                    "visible_local": [],
+                },
+            }
+            world = self.frame("world-2", "world", {"world.wait": "|"}, 101) | {
+                "_event_offset": 20,
+            }
+            with patch.object(startup_harness, "current_semantic_step_frame", return_value=world), \
+                    patch.object(startup_harness, "dispatch_semantic_input", create=True), \
+                    patch.object(startup_harness, "semantic_step_source_trace", return_value=root / "debug.log"), \
+                    patch.object(startup_harness, "read_active_activity_query_trace", return_value={
+                        "event": "open", "type": "noise", "game_minutes": 101,
+                        "event_offset": 7,
+                    }), \
+                    patch.object(startup_harness, "read_latest_activity_query_trace", return_value={
+                        "event": "return", "action": "IGNORE", "issuing_open_offset": 7,
+                        "event_offset": 21,
+                    }) as read_receipt:
+                receipt = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=8, pid=17, session_id="worker-atomic",
+                    frame_id="activity-1", action_id="activity.ignore",
+                    transition_timeout_seconds=0.01, observe_interval_seconds=0,
+                    observed_frame=interruption,
+                )
+            self.assertFalse(receipt["accepted"])
+            self.assertEqual(receipt["reason"], "native_surface_descriptor_required")
+
+    def test_native_action_retries_a_transient_missing_semantic_frame(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            issuing = self.frame("wait-1", "world", {"world.wait": "|"}, 101) | {
+                "_event_offset": 10,
+            }
+            successor = self.frame("wait-2", "wait_mode_choice", {
+                "wait.duration_menu": "w",
+            }, 101) | {"_event_offset": 20}
+            source = root / "debug.log"
+            source.write_text("semantic trace", encoding="utf-8")
+            receipt_event = {
+                "event": "receipt", "frame_id": "wait-1", "action_id": "world.wait",
+                "accepted": True, "_event_offset": 15,
+            }
+            with patch.object(
+                startup_harness, "current_semantic_step_frame",
+                side_effect=[ValueError("the current run has not emitted a semantic frame"), successor],
+            ), patch.object(startup_harness, "dispatch_semantic_input", create=True), \
+                    patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(source, source)), \
+                    patch.object(startup_harness, "semantic_step_effective_source_offset", return_value=0), \
+                    patch.object(startup_harness, "read_semantic_step_trace",
+                                 return_value=([receipt_event], "ok")):
+                receipt = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker-atomic",
+                    frame_id="wait-1", action_id="world.wait",
+                    transition_timeout_seconds=0.01, observe_interval_seconds=0,
+                    observed_frame=issuing,
+                )
+            self.assertFalse(receipt["accepted"])
+            self.assertEqual(receipt["reason"], "native_surface_descriptor_required")
 
     def test_single_focus_activity_chord_uses_hotkey_without_refocus(self) -> None:
         with patch.object(startup_harness, "peekaboo_focus_pid", return_value={"ok": True}), \
@@ -571,7 +715,7 @@ class SemanticStepChannelTest(unittest.TestCase):
                 "_event_offset": 20,
             }
             with patch.object(startup_harness, "current_semantic_step_frame", return_value=world), \
-                    patch.object(startup_harness, "dispatch_semantic_input"), \
+                    patch.object(startup_harness, "dispatch_semantic_input", create=True), \
                     patch.object(startup_harness, "read_latest_activity_query_trace", return_value=None):
                 receipt = execute_semantic_act(
                     run_dir=root, profile="ignored", run_id=self.run_id,
@@ -581,7 +725,7 @@ class SemanticStepChannelTest(unittest.TestCase):
                     observed_frame=interruption,
                 )
             self.assertFalse(receipt["accepted"])
-            self.assertEqual(receipt["reason"], "native_receipt_missing")
+            self.assertEqual(receipt["reason"], "native_surface_descriptor_required")
 
     def test_live_wait_dispatch_retains_bound_diagnostic_records(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -590,23 +734,18 @@ class SemanticStepChannelTest(unittest.TestCase):
                 root, enabled=True, run_id=self.run_id, executable=Path(sys.executable),
             )
             wait = self.frame("wait-1", "wait_duration_choice", {"wait.1h": "h"}, 101)
-            with patch.object(SemanticStepChannel, "act_observed", return_value={"accepted": True}), \
-                    patch.object(startup_harness, "classify_wait_input_trace", return_value={
-                        "status": "wait_dispatched",
-                    }):
+            with patch.object(startup_harness, "classify_wait_input_trace", return_value={
+                "status": "wait_dispatched",
+            }):
                 receipt = execute_semantic_act(
                     run_dir=root, profile="ignored", run_id=self.run_id,
                     trace_start_offset=0, pid=17, session_id="worker-atomic",
                     frame_id="wait-1", action_id="wait.1h",
                     transition_timeout_seconds=0.01, observe_interval_seconds=0,
                     observed_frame=wait,
-                )
-            self.assertTrue(receipt["accepted"])
-            self.assertEqual(receipt["wait_diagnostic_before_input"]["status"], "retained")
-            self.assertEqual(receipt["wait_diagnostic_result"]["status"], "retained")
-            records = [json.loads(line) for line in
-                       (root / "wait-diagnostic.records.jsonl").read_text(encoding="utf-8").splitlines()]
-            self.assertEqual([record["phase"] for record in records[1:]], ["before_input", "result"])
+            )
+            self.assertFalse(receipt["accepted"])
+            self.assertEqual(receipt["reason"], "native_surface_descriptor_required")
 
     def test_original_wrong_menu_choice_and_stale_frame_are_rejected_without_input(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -614,22 +753,20 @@ class SemanticStepChannelTest(unittest.TestCase):
             current = self.frame("frame-parent", "wait_mode_choice", {
                 "wait.duration_menu": "w", "alarm.duration_menu": "a",
             }, 100)
-            sent: list[str] = []
             channel = SemanticStepChannel(
                 run_id=self.run_id, session_id="worker-1",
                 receipt_path=root / "semantic.steps.jsonl", read_frame=lambda: current,
             )
             wrong_menu = channel.act(
                 frame_id="frame-parent", action_id="wait.6h",
-                send_input=sent.append, await_transition=lambda *_: {},
+                submit_request=lambda *_: {"accepted": True}, await_transition=lambda *_: {},
             )
             stale = channel.act(
                 frame_id="frame-old", action_id="wait.duration_menu",
-                send_input=sent.append, await_transition=lambda *_: {},
+                submit_request=lambda *_: {"accepted": True}, await_transition=lambda *_: {},
             )
             self.assertEqual(wrong_menu["reason"], "action_not_advertised")
             self.assertEqual(stale["reason"], "stale_frame")
-            self.assertEqual(sent, [])
 
     def test_native_trace_parser_rejects_contamination_and_preserves_receipt(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -657,6 +794,351 @@ class SemanticStepChannelTest(unittest.TestCase):
                 encoding="utf-8",
             )
             self.assertEqual(read_semantic_step_trace(trace, root, self.run_id)[1], "contamination")
+
+    def test_surface_descriptor_is_the_current_observation_and_binds_its_receipt(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {},
+            "valid_actions": [{
+                "id": "world.wait", "stable_id": "world.wait", "label": "Wait", "enabled": True,
+            }],
+        }
+        receipt = {
+            "event": "surface_receipt", "run_id": self.run_id, "request_id": "request-1",
+            "requested_run_id": self.run_id, "requested_surface_id": "surface-world",
+            "requested_frame_id": "surface-frame", "consuming_surface_id": "surface-world",
+            "consuming_frame_id": "surface-frame", "action_id": "world.wait", "accepted": False,
+            "rejection_reason": "no_native_binding", "resulting_frame_id": "",
+        }
+        later_legacy = self.frame("legacy-after", "activity_distraction", {
+            "activity.ignore": "I",
+        }, 101)
+        latest = latest_semantic_step_frame([
+            self.frame("legacy-before", "world", {}, 100), descriptor, receipt, later_legacy,
+        ])
+        self.assertEqual(latest["event"], "surface_descriptor")
+        self.assertEqual(latest["surface_id"], "surface-world")
+        self.assertEqual(latest["native_receipt"]["request_id"], "request-1")
+
+    def test_world_descriptor_keeps_private_same_run_map_projection_for_guarded_movement(self) -> None:
+        native_world = self.frame("legacy-world", "world", {}, 100) | {
+            "observation": {
+                "avatar": {"absolute_ms": [3372, 996, 1]},
+                "visible_local": [], "visible_entities": [],
+            },
+            "keep_watch_safety": {
+                "classification": "clear", "monster": False, "danger": False, "damage": False,
+            },
+        }
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        }
+        latest = latest_semantic_step_frame([native_world, descriptor])
+        self.assertEqual(latest["event"], "surface_descriptor")
+        self.assertEqual(latest["observation"]["avatar"]["absolute_ms"], [3372, 996, 1])
+        self.assertEqual(latest["keep_watch_safety"]["classification"], "clear")
+        self.assertEqual(latest["state"], "world")
+        self.assertEqual(latest["provenance"], "native_semantic_step_trace")
+
+    def test_current_semantic_observation_returns_the_production_descriptor(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            trace.write_text(
+                "openclaw_harness_semantic_step: " + json.dumps(descriptor) + "\n",
+                encoding="utf-8",
+            )
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                current = current_semantic_step_frame(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=0,
+                )
+        self.assertEqual(current["event"], "surface_descriptor")
+        self.assertEqual(current["frame_id"], "surface-frame")
+
+    def test_surface_descriptor_action_uses_native_request_transport_only(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "valid_actions": [{
+                "id": "world.wait", "stable_id": "world.wait", "label": "Wait", "enabled": True,
+            }],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1) as wake:
+            receipt = execute_semantic_act(
+                run_dir=Path(temp), profile="ignored", run_id=self.run_id,
+                trace_start_offset=0, pid=17, session_id="worker", frame_id="surface-frame",
+                action_id="world.wait", transition_timeout_seconds=0.1,
+                observe_interval_seconds=0.01, observed_frame=descriptor,
+            )
+        self.assertFalse(receipt["accepted"])
+        self.assertEqual(receipt["reason"], "native_surface_receipt_timeout")
+        self.assertEqual(receipt["surface_request"]["action_id"], "world.wait")
+        wake.assert_called_once_with(Path(temp).resolve(), self.run_id)
+        self.assertNotIn("dispatch_semantic_input", inspect.getsource(startup_harness.execute_semantic_act))
+
+    def test_surface_descriptor_request_preserves_native_receipt_identity(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [{
+                "id": "world.wait", "stable_id": "world.wait", "label": "Wait", "enabled": True,
+            }],
+        }
+        request_id = (
+            "cockpit:worker:surface-frame:world.wait:" +
+            hashlib.sha256( json.dumps( {
+                "stable_id": None, "parameters": {},
+            }, sort_keys=True, separators=( ",", ":" ) ).encode( "utf-8" ) ).hexdigest()[:16]
+        )
+        receipt = {
+            "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+            "requested_run_id": self.run_id, "requested_surface_id": "surface-world",
+            "requested_frame_id": "surface-frame", "consuming_surface_id": "surface-world",
+            "consuming_frame_id": "surface-frame", "action_id": "world.wait", "accepted": True,
+            "rejection_reason": "", "resulting_frame_id": "surface-frame-next",
+        }
+        successor = {**descriptor, "frame_id": "surface-frame-next"}
+        later_descriptor = {**descriptor, "frame_id": "surface-frame-later"}
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1) as wake:
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            trace.write_text("\n".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event)
+                for event in (descriptor, successor, receipt, later_descriptor)
+            ) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="surface-frame",
+                    action_id="world.wait", transition_timeout_seconds=0.1,
+                    observe_interval_seconds=0.01, observed_frame=descriptor,
+                    proof_step_label="witness", proof_step_index=7,
+                )
+            request = json.loads((root / "semantic.requests.jsonl").read_text(encoding="utf-8"))
+            transition = json.loads((root / "transition.events.jsonl").read_text(encoding="utf-8"))
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["native_receipt"]["request_id"], request_id)
+        self.assertEqual(result["native_receipt"]["requested_frame_id"], request["frame_id"])
+        self.assertEqual(result["next_frame"]["frame_id"], "surface-frame-next")
+        self.assertEqual(transition["run_id"], self.run_id)
+        self.assertEqual(transition["request_id"], request_id)
+        self.assertEqual(transition["proof_step_label"], "witness")
+        self.assertEqual(transition["proof_step_index"], 7)
+        self.assertEqual(transition["native_receipt"]["resulting_frame_id"], "surface-frame-next")
+        wake.assert_called_once_with(root.resolve(), self.run_id)
+
+    def test_surface_descriptor_rejects_receipt_with_mismatched_owner_binding(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [{
+                "id": "world.wait", "stable_id": "world.wait", "label": "Wait", "enabled": True,
+            }],
+        }
+        request_id = (
+            "cockpit:worker:surface-frame:world.wait:" +
+            hashlib.sha256( json.dumps( {
+                "stable_id": None, "parameters": {},
+            }, sort_keys=True, separators=( ",", ":" ) ).encode( "utf-8" ) ).hexdigest()[:16]
+        )
+        receipt = {
+            "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+            "requested_run_id": self.run_id, "requested_surface_id": "surface-other",
+            "requested_frame_id": "surface-frame", "consuming_surface_id": "surface-world",
+            "consuming_frame_id": "surface-frame", "action_id": "world.wait", "accepted": True,
+            "rejection_reason": "", "resulting_frame_id": "surface-frame-next",
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            trace.write_text(
+                "openclaw_harness_semantic_step: " + json.dumps(descriptor) + "\n" +
+                "openclaw_harness_semantic_step: " + json.dumps(receipt) + "\n",
+                encoding="utf-8",
+            )
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="surface-frame",
+                    action_id="world.wait", transition_timeout_seconds=0.1,
+                    observe_interval_seconds=0.01, observed_frame=descriptor,
+                )
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["reason"], "native_surface_receipt_correlation_mismatch")
+        self.assertEqual(result["mismatched_fields"]["requested_surface_id"], {
+            "expected": "surface-world", "actual": "surface-other",
+        })
+
+    def test_wait_parent_resume_yields_to_the_fresh_duration_owner(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "world-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [{
+                "id": "world.wait", "stable_id": "world.wait", "label": "Wait", "enabled": True,
+            }],
+        }
+        request_id = (
+            "cockpit:worker:world-frame:world.wait:" +
+            hashlib.sha256( json.dumps( {
+                "stable_id": None, "parameters": {},
+            }, sort_keys=True, separators=( ",", ":" ) ).encode( "utf-8" ) ).hexdigest()[:16]
+        )
+        receipt = {
+            "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+            "requested_run_id": self.run_id, "requested_surface_id": "surface-world",
+            "requested_frame_id": "world-frame", "consuming_surface_id": "surface-world",
+            "consuming_frame_id": "world-frame", "action_id": "world.wait", "accepted": True,
+            "rejection_reason": "", "resulting_frame_id": "resumed-world-frame",
+        }
+        resumed_parent = {**descriptor, "frame_id": "resumed-world-frame"}
+        duration_owner = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-wait-duration", "frame_id": "duration-frame", "kind": "menu",
+            "breadcrumbs": ["World", "Wait duration"], "payload": {}, "valid_actions": [{
+                "id": "wait.1m", "stable_id": "", "label": "wait.1m", "enabled": True,
+            }],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            trace.write_text("\n".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event)
+                for event in (descriptor, resumed_parent, receipt, duration_owner)
+            ) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="world-frame",
+                    action_id="world.wait", transition_timeout_seconds=0.1,
+                    observe_interval_seconds=0.01, observed_frame=descriptor,
+                )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["next_frame"]["frame_id"], "duration-frame")
+
+    def test_immediate_dialogue_receipt_binds_its_fresh_child_descriptor(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-dialogue", "frame_id": "dialogue-frame", "kind": "dialogue",
+            "breadcrumbs": ["World", "NPC"], "payload": {}, "valid_actions": [{
+                "id": "dialogue.choose", "stable_id": "response-1", "label": "Rules", "enabled": True,
+            }],
+        }
+        request_id = (
+            "cockpit:worker:dialogue-frame:dialogue.choose:" +
+            hashlib.sha256( json.dumps( {
+                "stable_id": "response-1", "parameters": {},
+            }, sort_keys=True, separators=( ",", ":" ) ).encode( "utf-8" ) ).hexdigest()[:16]
+        )
+        receipt = {
+            "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+            "requested_run_id": self.run_id, "requested_surface_id": "surface-dialogue",
+            "requested_frame_id": "dialogue-frame", "consuming_surface_id": "surface-dialogue",
+            "consuming_frame_id": "dialogue-frame", "action_id": "dialogue.choose", "accepted": True,
+            "rejection_reason": "", "resulting_frame_id": "",
+        }
+        child = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-rules", "frame_id": "rules-frame", "kind": "npc_rules_menu",
+            "breadcrumbs": ["World", "NPC", "Rules"], "payload": {}, "valid_actions": [],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            trace.write_text("\n".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event)
+                for event in (descriptor, receipt, child)
+            ) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="dialogue-frame",
+                    action_id="dialogue.choose", stable_id="response-1",
+                    transition_timeout_seconds=0.1, observe_interval_seconds=0.01,
+                    observed_frame=descriptor,
+                )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["native_receipt"]["resulting_frame_id"], "")
+        self.assertEqual(result["next_frame"]["frame_id"], "rules-frame")
+
+    def test_surface_descriptor_serializes_the_advertised_stable_id(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-inventory", "frame_id": "inventory-frame", "kind": "inventory",
+            "breadcrumbs": ["World", "Inventory"], "payload": {}, "valid_actions": [{
+                "id": "inventory.select", "stable_id": "item-uid-42", "label": "flashlight",
+                "enabled": True,
+            }],
+        }
+        request_id = (
+            "cockpit:worker:inventory-frame:inventory.select:" +
+            hashlib.sha256( json.dumps( {
+                "stable_id": "item-uid-42", "parameters": {},
+            }, sort_keys=True, separators=( ",", ":" ) ).encode( "utf-8" ) ).hexdigest()[:16]
+        )
+        receipt = {
+            "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+            "requested_run_id": self.run_id, "requested_surface_id": "surface-inventory",
+            "requested_frame_id": "inventory-frame", "consuming_surface_id": "surface-inventory",
+            "consuming_frame_id": "inventory-frame", "action_id": "inventory.select", "accepted": True,
+            "rejection_reason": "", "resulting_frame_id": "inventory-next",
+        }
+        successor = {**descriptor, "frame_id": "inventory-next"}
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            trace.write_text("\n".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event)
+                for event in (descriptor, receipt, successor)
+            ) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                missing = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="inventory-frame",
+                    action_id="inventory.select", transition_timeout_seconds=0.1,
+                    observe_interval_seconds=0.01, observed_frame=descriptor,
+                )
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="inventory-frame",
+                    action_id="inventory.select", stable_id="item-uid-42",
+                    transition_timeout_seconds=0.1, observe_interval_seconds=0.01,
+                    observed_frame=descriptor,
+                )
+            request = json.loads((root / "semantic.requests.jsonl").read_text(encoding="utf-8"))
+        self.assertEqual(missing["reason"], "missing_stable_id")
+        self.assertTrue(result["accepted"])
+        self.assertEqual(request["stable_id"], "item-uid-42")
 
     def test_unrelated_debug_volume_cannot_overrun_semantic_channel(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -706,7 +1188,7 @@ class SemanticStepChannelTest(unittest.TestCase):
             self.assertEqual(status, "ok")
             self.assertEqual([event["frame_id"] for event in events], ["frame-current"])
 
-    def test_refresh_rejects_unbounded_current_run_events(self) -> None:
+    def test_refresh_bounds_unbounded_current_run_events(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             source = root / "debug.log"
@@ -722,10 +1204,14 @@ class SemanticStepChannelTest(unittest.TestCase):
             )
 
             with patch("startup_harness.semantic_step_source_trace", return_value=source):
-                with self.assertRaisesRegex(ValueError, "bounded run channel"):
-                    refresh_semantic_step_trace(
-                        profile="ignored", run_dir=run_dir, run_id=self.run_id, start_offset=0,
-                    )
+                _, owned = refresh_semantic_step_trace(
+                    profile="ignored", run_dir=run_dir, run_id=self.run_id, start_offset=0,
+                )
+
+            events, status = read_semantic_step_trace( owned, run_dir, self.run_id )
+            self.assertEqual( status, "ok" )
+            self.assertLessEqual( len( events ), SEMANTIC_STEP_MAX_EVENTS )
+            self.assertEqual( events[-1]["frame_id"], "frame-current" )
 
     def test_cursor_keeps_only_the_unconsumed_current_run_window(self) -> None:
         with tempfile.TemporaryDirectory() as temp:

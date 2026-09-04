@@ -12,6 +12,7 @@
 #include "output.h"
 #include "point.h"
 #include "ret_val.h"
+#include "semantic_surface.h"
 #include "translation.h"
 #include "translations.h"
 #include "try_parse_integer.h"
@@ -419,6 +420,42 @@ const std::string &string_input_popup::query_string( const bool loop, const bool
 
     _canceled = false;
     _confirmed = false;
+    std::optional<std::string> semantic_submitted_text;
+    bool semantic_canceled = false;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        const std::string semantic_breadcrumb = _title.empty() ? _( "Text input" ) : _title;
+        semantic_scope.emplace( *manager, "string_prompt", semantic_breadcrumb,
+        std::map<std::string, std::string>{
+            { "title", _title }, { "text", ret.str() }, { "description", _description },
+            { "max_length", std::to_string( _max_length ) },
+            { "only_digits", _only_digits ? "true" : "false" }
+        }, std::vector<semantic_action_descriptor>{
+            { "prompt.submit", "", _( "Submit" ), true },
+            { "prompt.cancel", "", _( "Cancel" ), true }
+        },
+        [this, &semantic_submitted_text, &semantic_canceled]( const semantic_action_request &request ) {
+            if( request.action_id == "prompt.cancel" ) {
+                semantic_canceled = true;
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            const auto text = request.parameters.find( "text" );
+            if( request.action_id != "prompt.submit" || text == request.parameters.end() ) {
+                return semantic_action_dispatch_result{ false, "invalid_parameters", "" };
+            }
+            const utf8_wrapper submitted( text->second );
+            if( _max_length > 0 && submitted.display_width() > static_cast<size_t>( _max_length ) ) {
+                return semantic_action_dispatch_result{ false, "constraint_invalid", "" };
+            }
+            if( _only_digits && std::any_of( text->second.begin(), text->second.end(), []( const char ch ) {
+            return ch != '-' && !isdigit( static_cast<unsigned char>( ch ) );
+            } ) ) {
+                return semantic_action_dispatch_result{ false, "constraint_invalid", "" };
+            }
+            semantic_submitted_text = text->second;
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
     do {
         if( _text_changed ) {
             ret = utf8_wrapper( _text );
@@ -464,6 +501,21 @@ const std::string &string_input_popup::query_string( const bool loop, const bool
 
         if( draw_only ) {
             return _text;
+        }
+
+        if( semantic_scope && semantic_scope->consume_request() ) {
+            if( semantic_canceled ) {
+                _text.clear();
+                _position = -1;
+                _canceled = true;
+                return _text;
+            }
+            if( semantic_submitted_text ) {
+                add_to_history( *semantic_submitted_text );
+                _confirmed = true;
+                _text = *semantic_submitted_text;
+                return _text;
+            }
         }
 
         const std::string action = ctxt->handle_input();

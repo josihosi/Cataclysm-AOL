@@ -113,6 +113,98 @@ void create_tile_zone( const std::string &name, const zone_type_id &zone_type, t
 
 } // namespace
 
+TEST_CASE( "zone_data_new_instances_have_distinct_identities", "[zones][identity]" )
+{
+    const zone_data first( "first", zone_type_LOOT_DEFAULT, faction_your_followers, false, true,
+                           tripoint_abs_ms::zero, tripoint_abs_ms::zero );
+    const zone_data second( "second", zone_type_LOOT_DEFAULT, faction_your_followers, false, true,
+                            tripoint_abs_ms::zero, tripoint_abs_ms::zero );
+
+    CHECK_FALSE( first.get_identity().empty() );
+    CHECK_FALSE( second.get_identity().empty() );
+    CHECK( first.get_identity() != second.get_identity() );
+}
+
+TEST_CASE( "zone_data_copy_preserves_identity", "[zones][identity]" )
+{
+    const zone_data original( "original", zone_type_LOOT_DEFAULT, faction_your_followers, false, true,
+                              tripoint_abs_ms::zero, tripoint_abs_ms::zero );
+    zone_data copy = original;
+
+    CHECK( copy.get_identity() == original.get_identity() );
+    CHECK( copy.get_semantic_revision() == original.get_semantic_revision() );
+}
+
+TEST_CASE( "zone_data_serialization_round_trips_identity_and_revision", "[zones][identity]" )
+{
+    zone_data original( "original", zone_type_LOOT_DEFAULT, faction_your_followers, false, false,
+                        tripoint_abs_ms::zero, tripoint_abs_ms::zero );
+    const std::string identity = original.get_identity();
+    original.set_enabled( true );
+    REQUIRE( original.get_semantic_revision() == std::optional<int64_t>( 1 ) );
+
+    std::ostringstream stream;
+    JsonOut json( stream );
+    original.serialize( json );
+    zone_data loaded;
+    loaded.deserialize( json_loader::from_string( stream.str() ).get_object() );
+
+    CHECK( loaded.get_identity() == identity );
+    CHECK( loaded.get_semantic_revision() == std::optional<int64_t>( 1 ) );
+}
+
+TEST_CASE( "zone_data_legacy_deserialization_assigns_identity_and_unknown_revision", "[zones][identity]" )
+{
+    zone_data loaded;
+    loaded.deserialize( json_loader::from_string( R"({
+        "name": "legacy", "type": "LOOT_DEFAULT", "faction": "your_followers",
+        "invert": false, "enabled": false, "is_vehicle": false, "is_personal": false,
+        "start": [ 0, 0, 0 ], "end": [ 0, 0, 0 ], "is_displayed": false
+    })" ).get_object() );
+
+    CHECK_FALSE( loaded.get_identity().empty() );
+    CHECK_FALSE( loaded.get_semantic_revision().has_value() );
+}
+
+TEST_CASE( "zone_data_semantic_revision_tracks_real_mutations", "[zones][identity]" )
+{
+    zone_data zone( "zone", zone_type_LOOT_DEFAULT, faction_your_followers, false, false,
+                    tripoint_abs_ms::zero, tripoint_abs_ms::zero );
+    CHECK_FALSE( zone.get_semantic_revision().has_value() );
+
+    zone.set_enabled( true );
+    CHECK( zone.get_semantic_revision() == std::optional<int64_t>( 1 ) );
+    zone.set_enabled( true );
+    CHECK( zone.get_semantic_revision() == std::optional<int64_t>( 1 ) );
+
+    const std::pair<tripoint_abs_ms, tripoint_abs_ms> moved_position {
+        tripoint_abs_ms( 1, 0, 0 ), tripoint_abs_ms( 2, 0, 0 )
+    };
+    zone.set_position( moved_position, false, false, true );
+    CHECK( zone.get_semantic_revision() == std::optional<int64_t>( 2 ) );
+    zone.set_position( moved_position, false, false, true );
+    CHECK( zone.get_semantic_revision() == std::optional<int64_t>( 2 ) );
+
+    CHECK( zone.set_name( "renamed zone" ) );
+    CHECK( zone.get_semantic_revision() == std::optional<int64_t>( 3 ) );
+    CHECK_FALSE( zone.set_name( "renamed zone" ) );
+    CHECK( zone.get_semantic_revision() == std::optional<int64_t>( 3 ) );
+
+    CHECK( zone.set_type( zone_type_LOOT_FOOD, zone_options::create( zone_type_LOOT_FOOD ) ) );
+    CHECK( zone.get_semantic_revision() == std::optional<int64_t>( 4 ) );
+    CHECK_FALSE( zone.set_type( zone_type_LOOT_FOOD, zone_options::create( zone_type_LOOT_FOOD ) ) );
+    CHECK( zone.get_semantic_revision() == std::optional<int64_t>( 4 ) );
+
+    zone_data legacy;
+    legacy.deserialize( json_loader::from_string( R"({
+        "name": "legacy", "type": "LOOT_DEFAULT", "faction": "your_followers",
+        "invert": false, "enabled": false, "is_vehicle": false, "is_personal": false,
+        "start": [ 0, 0, 0 ], "end": [ 0, 0, 0 ], "is_displayed": false
+    })" ).get_object() );
+    legacy.set_enabled( true );
+    CHECK( legacy.get_semantic_revision() == std::optional<int64_t>( 1 ) );
+}
+
 TEST_CASE( "zone_unloading_ammo_belts", "[zones][items][ammo_belt][activities][unload]" )
 {
     avatar &dummy = get_avatar();

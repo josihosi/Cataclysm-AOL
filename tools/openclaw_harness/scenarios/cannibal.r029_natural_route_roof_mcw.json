@@ -1,0 +1,54 @@
+{
+  "manifest_version": 2,
+  "name": "cannibal.r029_natural_route_roof_mcw",
+  "description": "Current-source R-029 cannibal natural-route witness.  The disposable fixture supplies only the roof and a nearby cannibal-camp footprint; the player must create the physical fire and retreat through native product actions before any signal, scout, report, rally, response, or contact observation receives credit.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r008_fire_signal_roof_cannibal_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r029.cannibal_natural_route": "physical_fire_staffed_observer_scout_report_rally_response",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r029.source_binding": "r008_fire_signal_roof_cannibal_v1:dev-harness"
+  },
+  "runtime_contract": {
+    "permitted_input": ["ordinary-player-ui:deploy-brazier", "ordinary-player-ui:ignite-with-charged-lighter", "cockpit:game.guarded_move_relative", "cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.keep_watch", "cockpit:run.continue", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["hostile-teleport", "debug:inject_signal", "debug:inject_target_knowledge", "debug:inject_dispatch", "debug:inject_local_contact", "raw-save-rewrite-after-install", "fixture-fire-as-proof", "direct-state-mutation"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "r008_fire_signal_roof_cannibal_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r008_fire_signal_roof_cannibal_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["ordinary fire setup and worker-owned live cockpit"], "cleanup": true},
+    "grants_gameplay_proof": true
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r008_fire_signal_roof_cannibal_v1/manifest.json", "native_source": "src/do_turn.cpp", "native_executable": "cataclysm-tiles"},
+  "proof_gates": [{"id": "r029_cannibal_natural_route_bound", "label": "R-029 cannibal route reaches one current source-bound live session", "boundary_step": "operate_r029_cannibal_natural_route", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r029_cannibal_natural_route_bound"], "terminal": ["r029_cannibal_natural_route_bound"], "capability_gates": {"capabilities.r029.cannibal_natural_route": {"terminal": ["r029_cannibal_natural_route_bound"]}}},
+  "steps": [
+    {"kind": "wait", "label": "load_r029_cannibal_roof_laboratory", "seconds": 2.0, "capture_after": true},
+    {"kind": "audit_saved_player_items", "label": "audit_r029_cannibal_fire_tools", "required_items": ["brazier", "lighter"], "abort_on_metadata_failure": true},
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_r029_cannibal_roof_surface", "offsets": [[0, 0, 0], [1, -1, 0], [1, 0, 0], [1, 1, 0]], "required_terrain": ["t_tile_flat_roof"], "required_items": ["log"], "abort_on_metadata_failure": true},
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_r029_cannibal_has_no_fixture_fire", "offsets": [[1, -1, 0], [1, 0, 0], [1, 1, 0]], "forbidden_fields": ["fd_fire", "fd_smoke"], "abort_on_metadata_failure": true},
+    {"kind": "native_semantic_bootstrap", "label": "bind_r029_cannibal_native_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "operate_r029_cannibal_natural_route", "objective": "First independently create the brazier fire by ordinary player UI and receipt the exact guarded north retreat.  Preserve that native checkpoint with Save and Quit, exit the original process through its native main-menu confirmation, then let the declared relaunch continue only from the saved state.  Do not fabricate any ecology transition.", "proof_targets": ["physical f_brazier and fd_fire", "exact guarded retreat receipt", "native Save and Quit receipt and original-process exit", "source, executable, actor, receipt, and cleanup binding"], "authority": ["ordinary player UI through Peekaboo", "game.guarded_move_relative", "advertised native Save and Quit actions and worker-chosen waits", "run.continue", "run.witness", "run.finish"], "invariants": ["fixture installation is zero-credit", "the fire and retreat must be production-created before the save boundary", "do not reuse consumed authority", "preserve the first divergence and retain unaffected observations"], "live_operations": ["game.act", "game.guarded_move_relative", "game.wait"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "operate_r029_cannibal_natural_route",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {"kind": "audit_saved_map_tile_near_player", "label": "audit_persisted_r029_player_fire", "offsets": [[1, 1, 0]], "required_furniture": ["f_brazier"], "required_fields": ["fd_fire"], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r029_post_retreat_save_missing_player_fire", "abort_reason": "The native save did not preserve the player-created brazier fire; no fixture may be reinstalled after the retreat checkpoint."},
+      {"kind": "cockpit_live_session", "label": "operate_r029_cannibal_post_retreat_keep_watch", "objective": "Continue only from the persisted player-created fire and guarded retreat.  Cross the next five-minute production signal cadence once and preserve the first staffed-observer receipt or first causal divergence; do not create or edit ecology state.", "proof_targets": ["persisted f_brazier and fd_fire checkpoint", "native keep_watch receipts and elapsed world minutes", "first shared natural staffed-observer or divergence fact", "source, executable, actor, receipt, and cleanup binding"], "authority": ["game.keep_watch through advertised native menu choices", "advertised native actions and worker-chosen waits", "run.continue", "run.witness", "run.finish"], "invariants": ["no fixture installation or save transform occurs after the native save boundary", "the preceding fire and retreat are setup evidence only and are not replayed", "the signal, scout, report, operation, and contact must be production-created", "do not reuse consumed authority", "preserve the first divergence and retain unaffected observations"], "live_operations": ["game.keep_watch", "game.raw_wait", "game.wait"], "keep_watch": {"enabled": true, "danger_handling": "handle_classified_non_dangerous", "target_delta_game_minutes": 4, "bound": {"basis": "scheduler_boundary", "source": "do_turn.cpp signals staffed camps every five minutes; the production bootstrap committed at minute 8220 and the persisted post-relaunch checkpoint is minute 8221, so minute 8225 is the next cadence", "unit": "game_minutes", "maximum": 4, "progress_required": true}, "recipe": ["world.wait", {"action_id": "menu.choose", "stable_id": "wait-mode:wait-a-while", "label": "Wait a while"}, "wait.1m"], "duration_stable_id": "wait-duration:wait.1m"}, "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+    ]
+  },
+  "evidence_contract": {"claim": "one source-bound R-029 cannibal witness supplies only independently observed natural-route facts", "failure_rule": "fixture fire, injected camp state, missing source/executable identity, missing guarded-retreat receipt, or fabricated report/contact leaves the affected R-029 path unproved"}
+}

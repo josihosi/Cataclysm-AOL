@@ -116,14 +116,18 @@ class SemanticInterruptionBroker:
 
 @dataclass(frozen=True)
 class SemanticStepFrame:
-    """One run-bound observation and its private action translation table."""
+    """One run-bound semantic observation.
+
+    Native bindings deliberately remain inside CDDA.  A cockpit frame carries
+    action identities only; it never exposes a private key or other physical
+    input translation.
+    """
 
     run_id: str
     frame_id: str
     state: str
     observed_turn: Optional[int]
     valid_actions: tuple[str, ...]
-    action_inputs: Mapping[str, str]
     provenance: str
     producer: str
     observation: Optional[Mapping[str, Any]]
@@ -135,18 +139,12 @@ class SemanticStepFrame:
         frame_id = str(value.get("frame_id", "")).strip()
         state = str(value.get("state", "")).strip()
         actions = value.get("valid_actions", ())
-        bindings = value.get("action_inputs", {})
         observed_turn = value.get("observed_turn")
         if not run_id or not frame_id or not state:
             raise ValueError("semantic frame requires run, frame, and state identity")
         if isinstance(actions, (str, bytes)) or not isinstance(actions, Sequence):
             raise ValueError("semantic frame actions must be a sequence")
         normalized = tuple(str(action).strip() for action in actions if str(action).strip())
-        if not isinstance(bindings, Mapping) or set(bindings) != set(normalized):
-            raise ValueError("semantic frame bindings must exactly cover advertised actions")
-        private_bindings = {str(key): str(item).strip() for key, item in bindings.items()}
-        if any(not item for item in private_bindings.values()):
-            raise ValueError("semantic frame bindings must be non-empty")
         if observed_turn is not None and (isinstance(observed_turn, bool) or not isinstance(observed_turn, int)):
             raise ValueError("semantic frame observed turn must be an integer")
         producer = str(value.get("producer", "")).strip()
@@ -163,7 +161,7 @@ class SemanticStepFrame:
         if game_minutes is not None and (isinstance(game_minutes, bool) or not isinstance(game_minutes, int)):
             raise ValueError("semantic frame game minutes must be an integer")
         return cls(
-            run_id, frame_id, state, observed_turn, normalized, private_bindings,
+            run_id, frame_id, state, observed_turn, normalized,
             str(value.get("provenance", "native_semantic_step_trace")), producer,
             dict(observation) if isinstance(observation, Mapping) else None, game_minutes,
         )
@@ -220,7 +218,7 @@ class SemanticStepChannel:
 
     def act(
         self, *, frame_id: str, action_id: str,
-        send_input: Callable[[str], None],
+        submit_request: Callable[[str, str], Mapping[str, Any]],
         await_transition: Callable[[str, str], Mapping[str, Any]],
     ) -> dict[str, Any]:
         current = SemanticStepFrame.from_mapping(self.read_frame())
@@ -228,14 +226,14 @@ class SemanticStepChannel:
             observed_frame=current,
             frame_id=frame_id,
             action_id=action_id,
-            send_input=send_input,
+            submit_request=submit_request,
             await_transition=await_transition,
         )
 
     def act_observed(
         self, *, observed_frame: SemanticStepFrame | Mapping[str, Any],
         frame_id: str, action_id: str,
-        send_input: Callable[[str], None],
+        submit_request: Callable[[str, str], Mapping[str, Any]],
         await_transition: Callable[[str, str], Mapping[str, Any]],
     ) -> dict[str, Any]:
         """Act from one immutable issuing frame without rereading the live UI.
@@ -267,7 +265,11 @@ class SemanticStepChannel:
         elif str(action_id) not in current.valid_actions:
             receipt["reason"] = "action_not_advertised"
         else:
-            send_input(current.action_inputs[str(action_id)])
+            submission = submit_request(current.frame_id, str(action_id))
+            if not isinstance(submission, Mapping) or submission.get("accepted") is not True:
+                receipt["reason"] = "native_surface_transport_failed"
+                self._persist(receipt)
+                return receipt
             transition = await_transition(current.frame_id, str(action_id))
             native = transition.get("native_receipt")
             response = transition.get("semantic_response")

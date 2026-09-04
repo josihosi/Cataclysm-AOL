@@ -1,0 +1,35 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_009.debug_spells_tiles",
+  "description": "Source-bound Tiles traversal of World to Debug Functions to Player to Spells.  It selects the real loaded magic_missile spell by its advertised stable ID and changes its level through a native receipt.",
+  "profile": "r-surface-003-ordinary-debug-menu",
+  "config_profile": "dev-harness",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "world": "McWilliams",
+  "fixture": "r_surface_009_debug_spells_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {"runtime.entry_mode": "cockpit_live_session", "capabilities.r_surface_009.debug_spells_tiles": "source_bound_tiles_native_debug_spell_id_selection"},
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.debug_menu", "semantic:menu.choose", "semantic:debug_spells.select", "semantic:debug_spells.increment_level", "semantic:debug_spells.close"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "setup_only_debug": false, "disposable_copy": true, "helpers": [], "permissions": [], "platform": ["macos"],
+    "profile": "r-surface-003-ordinary-debug-menu", "config_profile": "dev-harness", "fixture": "r_surface_009_debug_spells_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r-surface-003-ordinary-debug-menu", "fixture": "r_surface_009_debug_spells_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_009_debug_spells_v1/manifest.json", "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/mcwilliams_live_debug_2026-04-07/manifest.json", "profile": "tools/openclaw_harness/profiles/dev-harness.json"},
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "emit_r_surface_009_tiles_spell_world", "native_semantic_checkpoint": {"required_actions": ["world.debug_menu"], "required_state": "world"}},
+    {"kind": "cockpit_act", "label": "r_surface_009_enter_debug_spells", "gameplay_credit": false, "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1, "action_chain": ["world.debug_menu", {"action_id": "menu.choose", "stable_id_label_equals": "Player…"}, {"action_id": "menu.choose", "stable_id_label_equals": "Change spells"}], "expected_final_action": "debug_spells.select", "expected_visible_fact": "The real native spell editor owns the active frame after Player then Change spells."},
+    {"kind": "semantic_surface_assertion", "label": "r_surface_009_debug_spells_isolated", "expected_kind": "debug_spells", "actions_absent": ["world.debug_menu", "menu.choose"]},
+    {"kind": "cockpit_act", "label": "r_surface_009_select_real_spell_and_change_level", "gameplay_credit": false, "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1, "action_chain": [{"action_id": "debug_spells.select", "stable_id": "magic_missile"}, "debug_spells.increment_level", "debug_spells.close"], "expected_final_action": "world.debug_menu", "expected_visible_fact": "The advertised magic_missile stable ID is selected and its native level change receipt occurs before close returns to World."}
+  ],
+  "proof_gates": [{"id": "r_surface_009_tiles_debug_spells_route", "label": "source-bound Tiles stable spell-ID selection and native level receipt", "boundary_step": "r_surface_009_select_real_spell_and_change_level", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_cockpit_transaction", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
+  "proof_route": {"gates": ["r_surface_009_tiles_debug_spells_route"], "terminal": ["r_surface_009_tiles_debug_spells_route"]}
+}

@@ -31,6 +31,7 @@
 #include "map.h"
 #include "options.h"
 #include "output.h"
+#include "semantic_surface.h"
 #include "point.h"
 #include "popup.h"
 #include "sdltiles.h" // IWYU pragma: keep
@@ -173,6 +174,32 @@ bool openclaw_harness_wait_input_trace_enabled()
 bool openclaw_harness_is_wait_probe_input( const input_event &input )
 {
     return input.type == input_event_t::keyboard_char || input.type == input_event_t::keyboard_code;
+}
+
+bool semantic_surface_owns_input_context( const semantic_surface_descriptor &surface,
+        const input_context &ctxt )
+{
+    // World input is the only owner allowed to use DEFAULTMODE directly.  The
+    // other supported owners construct their own semantic scope before they
+    // wait for input, so their top descriptor is sufficient proof of ownership.
+    return surface.kind != "world" || ctxt.get_category() == "DEFAULTMODE";
+}
+
+std::optional<semantic_surface_scope> unsupported_semantic_input_owner( const input_context &ctxt )
+{
+    semantic_surface_manager *const manager = active_semantic_surface_manager();
+    if( manager == nullptr ) {
+        return std::nullopt;
+    }
+    const std::optional<semantic_surface_descriptor> &surface = manager->top();
+    if( surface && semantic_surface_owns_input_context( *surface, ctxt ) ) {
+        return std::nullopt;
+    }
+    return semantic_surface_scope( *manager, "unsupported",
+                                   string_format( "Unsupported input owner: %s", ctxt.get_category() ), {
+        { "owner", ctxt.get_category() },
+        { "reason", "unclassified_native_input_owner" }
+    } );
 }
 
 void openclaw_harness_trace_wait_input_resolution( const input_context &ctxt,
@@ -570,6 +597,11 @@ const std::string &input_context::handle_input()
 
 const std::string &input_context::handle_input( const int timeout )
 {
+    // Every direct native input loop participates in this boundary.  A loop
+    // which has not installed its own semantic scope must become an explicit,
+    // actionless owner while automation is active; it cannot consume the
+    // currently visible parent's request.
+    std::optional<semantic_surface_scope> unsupported_owner = unsupported_semantic_input_owner( *this );
     const int old_timeout = inp_mngr.get_timeout();
     if( timeout >= 0 ) {
         inp_mngr.set_timeout( timeout );
@@ -577,8 +609,22 @@ const std::string &input_context::handle_input( const int timeout )
     next_action.type = input_event_t::error;
     const std::string *result = &CATA_ERROR;
     while( true ) {
-
         next_action = inp_mngr.get_input_event( preferred_keyboard_mode );
+        // A transport wake is not an input event.  The active top scope owns
+        // the native binding and consumes the queued request before this
+        // context can inspect another physical event.
+        if( take_active_semantic_surface_wake() ) {
+            if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+                if( !manager->consume_top_request() ) {
+                    // A child may consume its request before the outer loop
+                    // wakes again.  That stale transport notification is not
+                    // native input for the newly restored owner.
+                    continue;
+                }
+            }
+            result = &CATA_ERROR;
+            break;
+        }
         if( next_action.type == input_event_t::timeout ) {
             result = &TIMEOUT;
             break;

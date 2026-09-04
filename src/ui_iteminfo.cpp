@@ -1,11 +1,13 @@
 #include "ui_iteminfo.h"
 
 #include <imgui/imgui.h>
+#include <optional>
 #include <string>
 #include <vector>
 
 #include "color.h"
 #include "input_enums.h"
+#include "semantic_surface.h"
 #include "translations.h"
 #include "ui_manager.h"
 
@@ -68,9 +70,42 @@ void iteminfo_window::execute()
         return;
     }
 
+    std::optional<std::string> semantic_input;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "item_info", _( "Item info" ),
+        std::map<std::string, std::string>{
+            { "item_name", data.get_item_name() },
+            { "type_name", data.get_type_name() }
+        }, std::vector<semantic_action_descriptor>{
+            { "item_info.close", "", _( "Close" ), true }
+        }, [&semantic_input]( const semantic_action_request &request ) {
+            if( request.action_id != "item_info.close" ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            semantic_input = "QUIT";
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
+
     while( true ) {
         ui_manager::redraw();
-        std::string action = ctxt.handle_input();
+        if( semantic_scope ) {
+            semantic_scope->publish( std::map<std::string, std::string>{
+                { "item_name", data.get_item_name() },
+                { "type_name", data.get_type_name() }
+            }, std::vector<semantic_action_descriptor>{
+                { "item_info.close", "", _( "Close" ), true }
+            } );
+            semantic_scope->consume_request();
+        }
+        std::string action;
+        if( semantic_input ) {
+            action = *semantic_input;
+            semantic_input.reset();
+        } else {
+            action = ctxt.handle_input();
+        }
 
         if( data.handle_scrolling && data.arrow_scrolling && action == "UP" ) {
             s = cataimgui::scroll::line_up;

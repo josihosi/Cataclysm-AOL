@@ -1,0 +1,28 @@
+{
+  "name": "r008_fire_signal_roof_cannibal_v1",
+  "source_fixture": "r008_fire_signal_roof_bandit_v1",
+  "source_profile": "live-debug",
+  "description": "Cannibal-policy roof variant. Setup adds a cannibal_camp footprint within the observed production signal envelope as zero-credit origin preparation; it does not alter either camp roster or inject cannibal actors, a signal, target knowledge, dispatch, or local contact. Only production-created cannibal response can receive ecology credit.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": [
+        "DEBUG_LS",
+        "DEBUG_NOTEMP",
+        "DEBUG_STAMINA",
+        "DEBUG_CARDIO",
+        "DEBUG_CLAIRVOYANCE",
+        "DEBUG_NIGHTVISION"
+      ]
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [0, 6, -1]
+    }
+  ]
+}

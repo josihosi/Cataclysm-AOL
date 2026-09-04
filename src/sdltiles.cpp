@@ -12,6 +12,7 @@
 #include <algorithm>
 #include <array>
 #include <atomic>
+#include <chrono>
 #include <climits>
 #include <cmath>
 #include <cstdint>
@@ -78,6 +79,7 @@
 #include "sdl_renderer_recovery.h"
 #include "sdl_wrappers.h"
 #include "sdl_font.h"
+#include "semantic_surface.h"
 #include "tileset_loader.h"
 #include "sdl_gamepad.h"
 #if defined(SDL_SOUND)
@@ -207,6 +209,35 @@ void openclaw_harness_trace_wait_normalized_input( const char *const source,
             << " modifier_ctrl=" << ( input.modifiers.count( keymod_t::ctrl ) ? "yes" : "no" )
             << " modifier_alt=" << ( input.modifiers.count( keymod_t::alt ) ? "yes" : "no" )
             << " text=\"" << input.text << "\"";
+}
+
+void openclaw_harness_trace_r028_render_present( const std::int64_t present_us )
+{
+    const char *const enabled = std::getenv( "OPENCLAW_HARNESS_R028_RENDER_TRACE" );
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const char *const source = std::getenv( "OPENCLAW_HARNESS_RUNTIME_SOURCE_SHA256" );
+    const char *const executable = std::getenv( "OPENCLAW_HARNESS_EXECUTABLE_SHA256" );
+    const char *const binding = std::getenv( "OPENCLAW_HARNESS_BINDING_ID" );
+    if( enabled == nullptr || std::strcmp( enabled, "1" ) != 0 || run_id == nullptr ||
+        source == nullptr || executable == nullptr || binding == nullptr || run_id[0] == '\0' ||
+        source[0] == '\0' || executable[0] == '\0' || binding[0] == '\0' ) {
+        return;
+    }
+
+    static std::optional<std::chrono::steady_clock::time_point> previous_present;
+    const std::chrono::steady_clock::time_point now = std::chrono::steady_clock::now();
+    const std::optional<std::int64_t> frame_interval_us = previous_present ?
+            std::optional<std::int64_t>( std::chrono::duration_cast<std::chrono::microseconds>(
+                    now - *previous_present ).count() ) : std::nullopt;
+    previous_present = now;
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_r028_render: run_id=\"" << run_id
+                               << "\" source_sha256=" << source
+                               << " executable_sha256=" << executable
+                               << " binding_id=" << binding
+                               << " present_us=" << present_us
+                               << " frame_interval_us="
+                               << ( frame_interval_us ? std::to_string( *frame_interval_us ) : "first" )
+                               << '\n';
 }
 } // namespace
 
@@ -1108,7 +1139,11 @@ void refresh_display()
     draw_virtual_joystick();
 #endif
     draw_gamepad_radial_menu();
+    const auto present_started = std::chrono::steady_clock::now();
     RenderPresent( renderer );
+    openclaw_harness_trace_r028_render_present(
+        std::chrono::duration_cast<std::chrono::microseconds>(
+            std::chrono::steady_clock::now() - present_started ).count() );
 }
 
 // only update if the set interval has elapsed
@@ -6557,6 +6592,9 @@ input_event input_manager::get_input_event( const keyboard_mode preferred_keyboa
 
     if( inputdelay < 0 ) {
         do {
+            if( poll_active_semantic_surface_request() ) {
+                return input_event();
+            }
             CheckMessages();
             if( last_input.type != input_event_t::error ) {
                 break;
@@ -6568,6 +6606,9 @@ input_event input_manager::get_input_event( const keyboard_mode preferred_keyboa
         uint32_t endtime = 0;
         bool timedout = false;
         do {
+            if( poll_active_semantic_surface_request() ) {
+                return input_event();
+            }
             CheckMessages();
             endtime = GetTicks();
             if( last_input.type != input_event_t::error ) {
@@ -6580,6 +6621,9 @@ input_event input_manager::get_input_event( const keyboard_mode preferred_keyboa
             }
         } while( !timedout );
     } else {
+        if( poll_active_semantic_surface_request() ) {
+            return input_event();
+        }
         CheckMessages();
     }
 

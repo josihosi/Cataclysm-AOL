@@ -101,6 +101,30 @@ class RawWaitTest(unittest.TestCase):
         self.assertEqual(primitive_actions, raw_actions)
         self.assertEqual(observed["game_minutes"], result["result"]["terminal_observation"]["game_minutes"])
 
+    def test_menu_selection_keeps_its_native_owner_frame(self) -> None:
+        menu = frame(1, 100)
+        menu["valid_actions"] = ["menu.select"]
+        menu["action_inputs"] = {"menu.select": "s"}
+
+        def dispatch(issuing: dict[str, object], action_id: str) -> dict[str, object]:
+            return {
+                "native_receipt": {
+                    "frame_id": issuing["frame_id"], "action_id": action_id, "accepted": True,
+                },
+                "_next_frame": issuing,
+            }
+
+        channel = cockpit.CockpitRunChannel(lambda: menu, dispatch, binding_id="binding-a")
+        service = cockpit.CockpitService(run_channel=channel)
+        observed = service.call({"action": "game.observe"})["result"]
+        result = service.call({
+            "action": "game.act", "observation_id": observed["observation_id"],
+            "action_id": "menu.select",
+        })
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["observation"]["observation_id"], observed["observation_id"])
+
     def test_raw_route_stops_on_native_prompt_without_recovery(self) -> None:
         prompt = frame(1, 100, state="semantic_ui")
         prompt["provenance"] = "native_semantic_ui_trace"

@@ -1,0 +1,18 @@
+{
+  "name": "r_surface_001_inventory_prompt_v1",
+  "claim": "R-SURFACE-001",
+  "description": "Disposable source-bound semantic-surface fixture.  It starts at the audited idle World footing and replaces the wielded item with one wet flashlight so Inventory can reach its native item menu and Activate can open its real query_popup confirmation.  The manufactured item is setup-only and grants no gameplay credit.",
+  "source_fixture": "r_surface_001_world_start_v1",
+  "source_profile": "live-debug",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [
+        { "typeid": "flashlight", "count": 1, "wetness": 100 }
+      ]
+    }
+  ]
+}

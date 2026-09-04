@@ -34,6 +34,7 @@
 
 #include <array>
 #include <chrono>
+#include <climits>
 #include <map>
 #include <vector>
 #include <string>
@@ -461,7 +462,18 @@ void ImTui_ImplNcurses_DrawScreen( bool active )
                     lastp = p;
                 }
                 strTmp[0] = cell.ch;
+#if defined( __APPLE__ )
+                // macOS ships the narrow ncurses interface, without
+                // waddwstr().  Encode the single ImTui cell before writing
+                // it through that interface.
+                char encoded[MB_LEN_MAX];
+                const int encoded_length = std::wctomb( encoded, strTmp[0] );
+                if( encoded_length > 0 ) {
+                    waddnstr( cursesWin, encoded, encoded_length );
+                }
+#else
                 waddwstr( cursesWin, strTmp );
+#endif
 
                 if( cell.chwidth > 1 ) {
                     x += ( cell.chwidth - 1 );

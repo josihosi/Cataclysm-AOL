@@ -1,0 +1,11 @@
+{
+  "outcome": "R-028 paired-route binding revision 2: fresh matched current-source baseline and feature workload runs preserve equivalent prepared state, rendered semantic local transitions, and the intended combined hostile-camp workload, then each saves and quits through native semantic game owners and proves its exact bound process exited without harness termination.",
+  "scenario": "performance.r028_paired_baseline_v1",
+  "charter_id": "5d0df584c9b16faab999913394f3b8bcfc84ec2484ef26248533c73477126d70",
+  "query": {
+    "preferences": [],
+    "requirements": [
+      {"key": "capabilities.r028.variant", "minimum_evidence": "declared", "op": "eq", "value": "baseline_established_base"}
+    ]
+  }
+}

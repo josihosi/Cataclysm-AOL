@@ -22,6 +22,7 @@
 #include "input_enums.h"
 #include "npc.h"
 #include "pimpl.h"
+#include "semantic_surface.h"
 #include "string_formatter.h"
 #include "translation.h"
 #include "ui_manager.h"
@@ -76,11 +77,37 @@ void follower_rules_ui::draw_follower_rules_ui( npc *guy )
     // This is still bizarrely necessary for imgui
     ctxt.set_timeout( 10 );
 
+    std::optional<bool> semantic_close_requested;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "npc_rules_menu", _( "Rules for your follower" ),
+        std::map<std::string, std::string> {
+            { "title", _( "Rules for your follower" ) },
+            { "speaker_id", guy ? std::to_string( guy->getID().get_value() ) : "" },
+            { "speaker_name", guy ? guy->disp_name() : "" }
+        },
+        std::vector<semantic_action_descriptor> { { "menu.cancel", "", _( "Done" ), true } },
+        [&semantic_close_requested]( const semantic_action_request &request ) {
+            if( request.action_id != "menu.cancel" ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            semantic_close_requested = true;
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
+
     while( true ) {
         ui_manager::redraw_invalidated();
 
-
-        p_impl.last_action = ctxt.handle_input();
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+        }
+        if( semantic_close_requested ) {
+            p_impl.last_action = "QUIT";
+            semantic_close_requested.reset();
+        } else {
+            p_impl.last_action = ctxt.handle_input();
+        }
 
         if( p_impl.last_action == "QUIT" || !p_impl.get_is_open() ) {
             break;

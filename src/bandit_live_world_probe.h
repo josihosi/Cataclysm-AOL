@@ -13,6 +13,7 @@
 #include <unordered_map>
 #include <vector>
 
+
 class monster;
 
 namespace bandit_live_world_probe
@@ -129,6 +130,8 @@ struct transition_event {
     std::string outcome;
     std::string site_id;
     std::string operation_id;
+    std::string target_lead_id;
+    int target_lead_revision = 0;
     int generation = 0;
     int handoff_epoch = -1;
     std::string simulation_owner;
@@ -155,6 +158,58 @@ struct transition_event {
     int hitpoints = 0;
     bool dead = false;
     bool visible = false;
+    // Per-read staffed-camp observations are deliberately carried in the
+    // run-bound transition stream.  Aggregate scheduler counters are useful
+    // diagnostics, but cannot stand in for a source/channel/lead receipt.
+    bool has_staffed_camp_signal_read = false;
+    std::string observer_id;
+    std::string observer_capability;
+    std::string observer_home;
+    bool observer_at_home = false;
+    bool observer_eligible = false;
+    std::string camp_omt;
+    std::string signal_channel;
+    std::string source_omt;
+    int source_intensity = -1;
+    int range_actual = -1;
+    int range_cap = -1;
+    bool line_of_sight = false;
+    int elevation_delta = 0;
+    std::string weather;
+    int visibility_input = -1;
+    bool visibility_result = false;
+    int emitted_minutes = -1;
+    std::string lead_id;
+    std::string lead_outcome;
+    int work_reads = 0;
+    int work_callbacks = 0;
+    std::string persistence_site_id;
+    std::string persistence_lead_id;
+    int persistence_lead_count_before = -1;
+    int persistence_lead_count_after = -1;
+    std::string persistence_lead_hash_before;
+    std::string persistence_lead_hash_after;
+    std::string drive_state_before;
+    std::string drive_state_after;
+    // Aging receipts are emitted only after the production maintenance path
+    // has committed an expired returned signal lead.  They make the retained
+    // lead's exact channel horizon observable without changing that path.
+    bool has_staffed_camp_signal_aging = false;
+    std::string aging_lead_id;
+    std::string aging_channel;
+    std::string aging_source_omt;
+    std::string aging_source_key;
+    int aging_previous_last_seen_minutes = -1;
+    std::int64_t aging_previous_age_minutes = -1;
+    std::string aging_previous_status;
+    int aging_result_last_seen_minutes = -1;
+    std::int64_t aging_result_age_minutes = -1;
+    std::string aging_result_status;
+    bool aging_expired_removed = false;
+    std::string aging_lead_set_hash_before;
+    std::string aging_lead_set_hash_after;
+    std::string aging_drive_state_before;
+    std::string aging_drive_state_after;
 };
 
 struct snapshot {

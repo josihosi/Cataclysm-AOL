@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-027 ordinary response: the normal hostile-camp drive consumes a saved retained physical-signal lead and commits its native structural sortie.",
+  "material_proof": "One current-bound run starts with the retained smoke/light lead, five ready at-home members, no outside pressure, idle decision slot, an absent physical source, and only setup-only cooldown clearing. The production transition stream then records one active_sortie_dispatch committed event whose target lead is one of the retained signal identities, while the saved after-state records the same outing and lead as active.",
+  "current_uncertainty": "The physical observation path refreshes last_checked with last_seen, so an unmodified live source can never reach the scheduler's pre-expiry response window.",
+  "material_contradiction": ["a response is scripted or directly mutated", "the dispatched target is not a retained signal lead", "the source remains present or refreshes a lead", "members, decision state, or active pressure fail the ordinary preconditions", "binding drift or cleanup failure"],
+  "already_accepted_evidence": ["The changed-observation capture is immutable focused proof of the source and retained lead but is not response proof."],
+  "forbidden_shortcuts": ["callback injection", "direct response mutation", "direct outing mutation", "direct member-state mutation during validation", "direct save edit after fixture installation", "physical input"],
+  "honest_stop_conditions": ["finish after one native committed structural dispatch with its post-exit saved-state audit", "stop inconclusive at a concrete scheduler rejection"],
+  "requested_evidence_ceiling": "focused"
+}

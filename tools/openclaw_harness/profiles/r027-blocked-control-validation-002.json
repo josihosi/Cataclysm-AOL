@@ -1,0 +1,9 @@
+{
+  "profile_name": "r027-blocked-control-validation-002",
+  "startup": {
+    "timeout_seconds": 75.0,
+    "poll_seconds": 2.0,
+    "post_lastworld_wait_seconds": 15.0,
+    "post_lastworld_continue_keys": []
+  }
+}

@@ -61,7 +61,7 @@ def read_semantic_step_trace(
     path: Path, run_dir: Path, run_id: str, *, start_offset: int = 0,
     event_filter: Optional[Set[str]] = None,
 ) -> tuple[list[dict[str, Any]], str]:
-    """Read run-owned semantic frames and native action receipts from a debug trace."""
+    """Read run-owned semantic frames, surfaces, and receipts from a debug trace."""
     path = Path(path)
     if not _owned_path(path, Path(run_dir)):
         return [], "escaped_authority"
@@ -94,7 +94,7 @@ def read_semantic_step_trace(
             return [], "contamination"
         event = str(value.get("event", ""))
         frame_id = str(value.get("frame_id", "")).strip()
-        if event not in {"frame", "receipt", "travel"}:
+        if event not in {"frame", "receipt", "surface_descriptor", "surface_receipt", "travel"}:
             return [], "malformed_semantic_step"
         normalized = dict(value)
         normalized["_event_offset"] = start_offset + byte_cursor + len(
@@ -107,14 +107,68 @@ def read_semantic_step_trace(
             bindings = normalized.get("action_inputs")
             if not isinstance(actions, list) or any(not isinstance(item, str) or not item for item in actions):
                 return [], "malformed_semantic_step"
-            if not isinstance(bindings, Mapping) or set(bindings) != set(actions) or any(
-                    not isinstance(item, str) or not item for item in bindings.values()):
+            # Production native descriptors are the sole semantic action
+            # authority.  A companion observational frame intentionally has
+            # no physical-input bindings; retain it only as observation.
+            if bindings is not None and (not isinstance(bindings, Mapping) or
+                                         set(bindings) != set(actions) or any(
+                                             not isinstance(item, str) or not item
+                                             for item in bindings.values())):
                 return [], "malformed_semantic_step"
         elif event == "receipt":
             if not frame_id:
                 return [], "malformed_semantic_step"
             if not isinstance(normalized.get("accepted"), bool):
                 return [], "malformed_semantic_step"
+        elif event == "surface_descriptor":
+            schema_version = normalized.get("schema_version")
+            surface_id = normalized.get("surface_id")
+            kind = normalized.get("kind")
+            breadcrumbs = normalized.get("breadcrumbs")
+            payload = normalized.get("payload")
+            actions = normalized.get("valid_actions")
+            if schema_version != 1 or not isinstance(surface_id, str) or not surface_id or \
+                    not frame_id or not isinstance(kind, str) or not kind or \
+                    not isinstance(breadcrumbs, list) or not breadcrumbs or \
+                    any(not isinstance(value, str) or not value for value in breadcrumbs) or \
+                    not isinstance(payload, Mapping) or any(
+                        not isinstance(key, str) or not isinstance(value, str)
+                        for key, value in payload.items()
+                    ) or not isinstance(actions, list):
+                return [], "malformed_semantic_surface_descriptor"
+            action_keys = set()
+            repeated_action_ids = set()
+            action_ids = set()
+            for action in actions:
+                if not isinstance(action, Mapping) or not isinstance(action.get("id"), str) or \
+                        not action["id"] or not isinstance(action.get("stable_id"), str) or \
+                        not isinstance(action.get("label"), str) or not isinstance(
+                            action.get("enabled"), bool):
+                    return [], "malformed_semantic_surface_descriptor"
+                action_id = action["id"]
+                stable_id = action["stable_id"]
+                action_key = (action_id, stable_id)
+                if action_key in action_keys:
+                    return [], "malformed_semantic_surface_descriptor"
+                if action_id in action_ids:
+                    repeated_action_ids.add(action_id)
+                action_keys.add(action_key)
+                action_ids.add(action_id)
+            if any(not action["stable_id"] and action["id"] in repeated_action_ids
+                   for action in actions):
+                return [], "malformed_semantic_surface_descriptor"
+            if kind == "unsupported" and actions:
+                return [], "malformed_semantic_surface_descriptor"
+        elif event == "surface_receipt":
+            required = (
+                "request_id", "requested_run_id", "requested_surface_id", "requested_frame_id",
+                "consuming_surface_id", "consuming_frame_id", "action_id", "rejection_reason",
+                "resulting_frame_id",
+            )
+            if any(not isinstance(normalized.get(key), str) for key in required) or \
+                    not isinstance(normalized.get("accepted"), bool) or \
+                    normalized.get("requested_run_id") != normalized.get("run_id"):
+                return [], "malformed_semantic_surface_receipt"
         else:
             destination = normalized.get("destination")
             if str(normalized.get("travel_id", "")).strip() == "" or \
@@ -252,16 +306,52 @@ def decide_native_travel_boundary(
 
 
 def latest_semantic_step_frame(events: Sequence[Mapping[str, Any]]) -> Optional[dict[str, Any]]:
-    """Return the latest native frame with its matching receipt, if any."""
+    """Return the latest production observation with its matching receipt.
+
+    A production ``surface_descriptor`` remains authoritative while its owner
+    is active.  Legacy frames remain a compatibility fallback only for routes
+    that have not published a production descriptor.
+    """
     latest: Optional[dict[str, Any]] = None
-    receipts: dict[str, dict[str, Any]] = {}
+    latest_native_observation: Optional[dict[str, Any]] = None
+    legacy_receipts: dict[str, dict[str, Any]] = {}
+    surface_receipts: dict[tuple[str, str], dict[str, Any]] = {}
     for event in events:
-        if str(event.get("event", "")) == "frame":
+        event_kind = str(event.get("event", ""))
+        if event_kind == "surface_descriptor":
             latest = dict(event)
-        elif str(event.get("event", "")) == "receipt":
-            receipts[str(event.get("frame_id", ""))] = dict(event)
+        elif event_kind == "frame":
+            latest_native_observation = dict(event)
+            if latest is None:
+                latest = dict(event)
+        elif event_kind == "receipt":
+            legacy_receipts[str(event.get("frame_id", ""))] = dict(event)
+        elif event_kind == "surface_receipt":
+            surface_receipts[(
+                str(event.get("requested_surface_id", "")),
+                str(event.get("requested_frame_id", "")),
+            )] = dict(event)
     if latest is not None:
-        latest["native_receipt"] = receipts.get(str(latest["frame_id"]))
+        if latest.get("event") == "surface_descriptor":
+            latest["native_receipt"] = surface_receipts.get((
+                str(latest.get("surface_id", "")), str(latest["frame_id"]),
+            ))
+            # A World descriptor owns the public action grant, but deliberately
+            # omits the private map projection.  Keep its newest same-run World
+            # frame as private issuing evidence so guarded movement can verify
+            # its actual position and next tile without substituting legacy
+            # actions or exposing that projection on the public surface.
+            if latest.get("kind") == "world" and isinstance(latest_native_observation, Mapping) and \
+                    latest_native_observation.get("run_id") == latest.get("run_id") and \
+                    latest_native_observation.get("state") == "world":
+                latest["observation"] = dict(latest_native_observation.get("observation", {}))
+                latest["keep_watch_safety"] = dict(
+                    latest_native_observation.get("keep_watch_safety", {})
+                )
+                latest["state"] = "world"
+                latest["provenance"] = "native_semantic_step_trace"
+        else:
+            latest["native_receipt"] = legacy_receipts.get(str(latest["frame_id"]))
     return latest
 
 

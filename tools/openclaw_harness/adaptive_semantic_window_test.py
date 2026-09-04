@@ -21,10 +21,33 @@ from startup_harness import (  # noqa: E402
     compact_probe_report_for_stdout,
     finalize_probe_report,
     recover_adaptive_activity_distraction,
+    semantic_frame_action_ids,
+    semantic_frame_dispatch,
 )
 
 
 class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
+    def test_raw_surface_descriptor_actions_are_advertised(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor",
+            "kind": "world",
+            "valid_actions": [
+                {"id": "world.wait", "stable_id": "", "enabled": True},
+                {"id": "world.inventory", "stable_id": "", "enabled": True},
+            ],
+        }
+        self.assertEqual(
+            semantic_frame_action_ids( descriptor ),
+            ["world.wait", "world.inventory"],
+        )
+
+    def test_wait_route_uses_advertised_stable_menu_entry(self) -> None:
+        frame = {"kind": "menu", "valid_actions": [
+            {"id": "menu.choose", "stable_id": "uilist-entry:5", "label": "5 minutes", "enabled": True},
+        ]}
+        self.assertEqual( semantic_frame_dispatch( frame, "wait.5m" ),
+                          ("menu.choose", "uilist-entry:5") )
+
     def receipt(self, action_id: str, frame_id: str, *, accepted: bool = True) -> dict:
         return {
             "accepted": accepted,

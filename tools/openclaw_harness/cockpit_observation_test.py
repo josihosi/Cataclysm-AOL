@@ -76,6 +76,192 @@ def observed_activity_interruption_frame(marker: int) -> dict[str, object]:
 
 
 class CockpitObservationTest(unittest.TestCase):
+    def test_native_top_descriptor_replaces_world_view_for_every_surface_family(self) -> None:
+        descriptors = [
+            ("world", "World"), ("overmap", "Overmap"), ("inventory", "Inventory"),
+            ("dialogue", "Dialogue"), ("menu", "Menu/Prompt"), ("prompt", "Menu/Prompt"),
+            ("direction", "Direction"), ("target", "Target"), ("unsupported", "Unsupported"),
+        ]
+        frames = [{
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": f"surface-{kind}", "frame_id": f"surface-proof:{index}", "kind": kind,
+            "breadcrumbs": ["World", kind], "payload": {"owner": kind},
+            "valid_actions": ([] if kind == "unsupported" else [{
+                "id": f"{kind}.act", "stable_id": f"{kind}-target", "label": kind,
+                "enabled": True,
+            }]),
+            # A child descriptor must not acquire these legacy parent fields.
+            "observation": {"schema": "caol-avatar-visible-v1", "avatar": {"name": "parent"},
+                            "visible_local": [{"terrain": "leak"}]},
+        } for index, (kind, _family) in enumerate(descriptors)]
+        for frame in frames:
+            frame.pop("observation")
+        index = [0]
+        channel = cockpit.CockpitRunChannel(lambda: frames[index[0]])
+        for expected_index, (kind, family) in enumerate(descriptors):
+            index[0] = expected_index
+            observed = channel.observe()
+            self.assertEqual(observed["schema"], "caol-cockpit-observation-v2")
+            self.assertEqual(observed["surface"]["family"], family)
+            self.assertEqual(observed["surface"]["facts"], {"owner": kind})
+            self.assertEqual(observed["breadcrumbs"], ["World", kind])
+            self.assertNotIn("avatar", observed)
+            self.assertNotIn("visible_local", observed)
+            if kind == "unsupported":
+                self.assertEqual(observed["advertised_actions"], [])
+                self.assertEqual(observed["automation"]["state"], "stopped")
+            else:
+                self.assertEqual(observed["advertised_actions"], [f"{kind}.act"])
+
+    def test_unsupported_descriptor_with_an_action_fails_closed(self) -> None:
+        frame = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "unsupported", "frame_id": "surface-proof:unsupported", "kind": "unsupported",
+            "breadcrumbs": ["World", "Unsupported"], "payload": {}, "valid_actions": [{
+                "id": "forbidden", "stable_id": "forbidden", "label": "forbidden", "enabled": True,
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "unsupported native surface advertised an action"):
+            cockpit.CockpitRunChannel(lambda: frame).observe()
+
+    def test_unsupported_descriptor_never_retains_disabled_parent_actions(self) -> None:
+        frame = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "unsupported", "frame_id": "surface-proof:unsupported", "kind": "unsupported",
+            "breadcrumbs": ["World", "Unsupported"], "payload": {}, "valid_actions": [{
+                "id": "world.inventory", "stable_id": "", "label": "Inventory", "enabled": False,
+            }],
+        }
+        with self.assertRaisesRegex(ValueError, "unsupported native surface advertised an action"):
+            cockpit.CockpitRunChannel(lambda: frame).observe()
+
+    def test_descriptor_action_does_not_reread_same_cycle_legacy_frame(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "surface-world", "frame_id": "surface-proof:1", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {"owner": "world"},
+            "valid_actions": [{"id": "world.inventory", "stable_id": "", "label": "Inventory",
+                               "enabled": True}],
+        }
+        successor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "surface-inventory", "frame_id": "surface-proof:2", "kind": "inventory",
+            "breadcrumbs": ["World", "Inventory"], "payload": {"owner": "inventory"},
+            "valid_actions": [],
+        }
+        reads = 0
+        dispatches: list[dict[str, object]] = []
+
+        def read_frame() -> dict[str, object]:
+            nonlocal reads
+            reads += 1
+            return descriptor
+
+        def dispatch(frame: dict[str, object], action_id: str) -> dict[str, object]:
+            dispatches.append({"frame_id": frame["frame_id"], "action_id": action_id})
+            return {
+                "native_receipt": {
+                    "requested_frame_id": frame["frame_id"],
+                    "requested_surface_id": frame["surface_id"],
+                    "consuming_surface_id": frame["surface_id"], "action_id": action_id,
+                    "accepted": True,
+                },
+                "next_frame": successor,
+            }
+
+        channel = cockpit.CockpitRunChannel(read_frame, dispatch)
+        observed = channel.observe()
+        acted = channel.act(observation_id=observed["observation_id"], action_id="world.inventory")
+
+        self.assertTrue(acted["ok"])
+        self.assertEqual(dispatches, [{"frame_id": "surface-proof:1", "action_id": "world.inventory"}])
+        self.assertEqual(acted["observation"]["frame_id"], "surface-proof:2")
+        self.assertEqual(reads, 1)
+
+    def test_descriptor_retains_all_advertised_stable_ids_for_one_action(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "surface-inventory", "frame_id": "surface-proof:stable", "kind": "inventory",
+            "breadcrumbs": ["World", "Inventory"], "payload": {}, "valid_actions": [
+                {"id": "inventory.select", "stable_id": "lighter", "label": "lighter", "enabled": True},
+                {"id": "inventory.select", "stable_id": "flashlight", "label": "flashlight", "enabled": True},
+            ],
+        }
+        successor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "surface-menu", "frame_id": "surface-proof:stable:next", "kind": "menu",
+            "breadcrumbs": ["World", "Inventory", "Item menu"], "payload": {}, "valid_actions": [],
+        }
+        dispatches: list[tuple[str, str, str]] = []
+
+        def dispatch(frame: dict[str, object], action_id: str, stable_id: str) -> dict[str, object]:
+            dispatches.append((str(frame["frame_id"]), action_id, stable_id))
+            return {
+                "native_receipt": {
+                    "requested_frame_id": frame["frame_id"],
+                    "requested_surface_id": frame["surface_id"],
+                    "consuming_surface_id": frame["surface_id"], "action_id": action_id,
+                    "stable_id": stable_id, "accepted": True,
+                },
+                "next_frame": successor,
+            }
+
+        channel = cockpit.CockpitRunChannel(lambda: descriptor, dispatch)
+        observed = channel.observe()
+        acted = channel.act(
+            observation_id=observed["observation_id"], action_id="inventory.select", stable_id="lighter",
+        )
+
+        self.assertTrue(acted["ok"])
+        self.assertEqual(dispatches, [("surface-proof:stable", "inventory.select", "lighter")])
+
+    def test_descriptor_action_rejects_a_receipt_from_a_different_surface(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "surface-proof:inventory", "frame_id": "surface-proof:receipt", "kind": "inventory",
+            "breadcrumbs": ["World", "Inventory"], "payload": {}, "valid_actions": [{
+                "id": "inventory.cancel", "stable_id": "", "label": "Cancel", "enabled": True,
+            }],
+        }
+        successor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "surface-proof:world", "frame_id": "surface-proof:receipt:next", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        }
+
+        def dispatch(_frame: dict[str, object], _action_id: str) -> dict[str, object]:
+            return {"native_receipt": {
+                "requested_frame_id": "surface-proof:receipt", "requested_surface_id": "surface-proof:other",
+                "consuming_surface_id": "surface-proof:other", "action_id": "inventory.cancel", "accepted": True,
+            }, "next_frame": successor}
+
+        channel = cockpit.CockpitRunChannel(lambda: descriptor, dispatch)
+        observed = channel.observe()
+        rejected = channel.act(observation_id=observed["observation_id"], action_id="inventory.cancel")
+        self.assertEqual(rejected["error"], "native_receipt_mismatch")
+
+    def test_descriptor_action_never_falls_back_to_a_legacy_successor(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "surface-proof:inventory", "frame_id": "surface-proof:legacy", "kind": "inventory",
+            "breadcrumbs": ["World", "Inventory"], "payload": {}, "valid_actions": [{
+                "id": "inventory.cancel", "stable_id": "", "label": "Cancel", "enabled": True,
+            }],
+        }
+        legacy_successor = native_frame(99)
+
+        def dispatch(frame: dict[str, object], action_id: str) -> dict[str, object]:
+            return {"native_receipt": {
+                "requested_frame_id": frame["frame_id"], "requested_surface_id": frame["surface_id"],
+                "consuming_surface_id": frame["surface_id"], "action_id": action_id, "accepted": True,
+            }, "next_frame": legacy_successor}
+
+        channel = cockpit.CockpitRunChannel(lambda: descriptor, dispatch)
+        observed = channel.observe()
+        rejected = channel.act(observation_id=observed["observation_id"], action_id="inventory.cancel")
+        self.assertFalse(rejected["ok"])
+        self.assertEqual(rejected["error"], "fresh_observation_missing")
+
     def test_causal_boundary_revokes_action_before_native_dispatch(self) -> None:
         dispatched: list[str] = []
         frame = native_frame(1)
@@ -133,7 +319,7 @@ class CockpitObservationTest(unittest.TestCase):
         self.assertEqual(reports[0]["semantic_action_count"], 1)
         self.assertTrue(transaction["outcome"]["ok"])
 
-    def test_cockpit_action_chain_uses_fresh_observations_and_fails_closed(self) -> None:
+    def test_cockpit_action_chain_reobserves_the_current_top_descriptor_and_fails_closed(self) -> None:
         calls: list[dict[str, object]] = []
 
         class PublicGameService:
@@ -160,6 +346,7 @@ class CockpitObservationTest(unittest.TestCase):
 
         self.assertTrue(reports[0]["cockpit_act"]["ok"])
         self.assertEqual(reports[0]["semantic_action_count"], 4)
+        self.assertEqual(reports[0]["metadata"]["status"], "required_state_present")
         self.assertEqual(reports[0]["metadata"]["observation_ids"], [
             "r013-live:1", "r013-live:3", "r013-live:5", "r013-live:7",
         ])
@@ -188,8 +375,7 @@ class CockpitObservationTest(unittest.TestCase):
                     ]}], profile="dev-harness", world="McWilliams",
                 )
 
-        self.assertEqual(reports[0]["cockpit_act"]["transactions"][1]["outcome"]["error"],
-                         "fresh_authorized_observation_unavailable")
+        self.assertEqual(reports[0]["cockpit_act"]["error"], "fresh_authorized_observation_unavailable")
         self.assertEqual(reports[0]["abort"]["status"], "blocked_r013_native_transaction_rejected")
 
     def test_expected_interruption_wait_requires_current_native_identity(self) -> None:
@@ -483,6 +669,34 @@ class CockpitObservationTest(unittest.TestCase):
         read.assert_called_once_with(
             profile="dev-harness", run_dir=Path("/tmp/r012-proof"), run_id="r012-proof", start_offset=0,
         )
+
+    def test_harness_adapter_retains_real_descriptor_across_activity_fallback(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            source = Path(temp) / "debug.log"
+            source.write_text("x" * 400, encoding="utf-8")
+            first = {
+                "event": "surface_descriptor", "schema_version": 1, "run_id": "r012-proof",
+                "frame_id": "r012-proof:world:1", "surface_id": "world:1",
+                "kind": "world", "breadcrumbs": ["World"], "payload": {},
+                "valid_actions": [], "_event_offset": 10,
+            }
+            stale_activity = {
+                "event": "frame", "run_id": "r012-proof",
+                "frame_id": "r012-proof:activity:2", "state": "activity_distraction",
+                "_event_offset": 20,
+            }
+            newer = first | {"frame_id": "r012-proof:world:3", "surface_id": "world:3",
+                             "_event_offset": 30}
+            frames = iter((first, stale_activity, newer))
+            with patch.object(startup_harness, "semantic_step_source_trace", return_value=source), \
+                    patch.object(startup_harness, "current_semantic_step_frame", side_effect=lambda **_: next(frames)):
+                service = startup_harness.open_cockpit_game_service(
+                    profile="dev-harness", run_dir=Path(temp), run_id="r012-proof",
+                    trace_start_offset=0,
+                )
+                self.assertEqual(service.call({"action": "game.observe"})["result"]["frame_id"], first["frame_id"])
+                self.assertEqual(service.call({"action": "game.observe"})["result"]["frame_id"], first["frame_id"])
+                self.assertEqual(service.call({"action": "game.observe"})["result"]["frame_id"], newer["frame_id"])
 
 
 if __name__ == "__main__":

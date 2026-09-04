@@ -1,0 +1,13 @@
+{
+  "name": "r_surface_009_debug_spells_v1",
+  "claim": "R-SURFACE-009",
+  "profile": "live-debug",
+  "world": "McWilliams",
+  "description": "Disposable source-bound debug-spell fixture.  Its captured World save enables Magiclysm in mods.json, loading real spell types for the native editor without a synthetic UI owner or input bypass.",
+  "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/live-debug/save/McWilliams",
+  "save_transforms": [{
+    "kind": "player_mutations",
+    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"]
+  }]
+}

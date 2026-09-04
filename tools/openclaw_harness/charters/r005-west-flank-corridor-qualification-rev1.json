@@ -1,0 +1,33 @@
+{
+  "claim": "A fresh, disposable, zero-credit R-005 bootstrap can establish and qualify a complete hostile-free west-flank corridor in the unchanged McWilliams world: [140,41,0] -> [139,41,0] -> [139,31,0] -> [140,31,0] and the exact reverse.",
+  "material_proof": "One separately selected run binds the preserved bandit_r005_natural_hostile_ecology_v0 world, player, source, executable, and exact six-leg route. Every native leg produces a same-run terminal receipt with its declared destination and no handled hostile boundary; the final receipt returns to [140,41,0]. Registry ingestion and cleanup are accepted. This work remains zero-credit and cannot start certification.",
+  "material_contradiction": [
+    "a current source or executable binding is absent",
+    "any leg cannot be constructed or completed by ordinary native routing",
+    "any interruption or hostile boundary is observed or handled",
+    "a leg reaches a different endpoint or the route does not return to [140,41,0]",
+    "ingestion or cleanup is not accepted"
+  ],
+  "already_accepted_evidence": [
+    "cb25d3d5… preserves its no-response hostile boundary at [141,39,0].",
+    "de226886… preserves its no-response hostile boundary at [140,29,0].",
+    "The earlier x=139 preview was only selection support and receives no qualification authority."
+  ],
+  "current_uncertainty": "The west-flank route has not yet been traversed under current source and executable binding; this run settles the complete out-and-back corridor or its first divergence.",
+  "forbidden_shortcuts": [
+    "diagnostic replay",
+    "checkpoint rollback",
+    "segment splicing",
+    "raw-save rewriting",
+    "debug ecology edits",
+    "combat handling",
+    "hostile-dialog authorization",
+    "certification authority"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch when current selection or source-matching executable binding is absent",
+    "after selection, stop at the first route-construction failure, interruption, hostile boundary, endpoint mismatch, ingestion failure, or cleanup failure",
+    "after successful zero-credit qualification, return the bound result; certification requires independently fresh authority"
+  ],
+  "requested_evidence_ceiling": "zero-credit"
+}

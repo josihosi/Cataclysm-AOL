@@ -38,6 +38,7 @@
 #include "point.h"
 #include "popup.h"
 #include "ret_val.h"
+#include "semantic_surface.h"
 #include "translations.h"
 #include "type_id.h"
 #include "uilist.h"
@@ -835,6 +836,16 @@ action_id handle_action_menu( map &here )
         DebugLog( D_INFO, DC_ALL )
                 << "openclaw_harness_ui_trace: component=action_menu event=open";
     }
+    // This loop owns input after the World loop dispatches ACTION_ACTIONMENU.
+    // Until the ordinary menu family has native semantic bindings, fail closed
+    // rather than allowing the suspended World descriptor to remain executable.
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "unsupported", "Action menu",
+                                std::map<std::string, std::string>{
+            { "stop_reason", "action menu lacks semantic bindings" }
+        } );
+    }
     const input_context ctxt = get_default_mode_input_context();
     std::string catgname;
 
@@ -1236,6 +1247,73 @@ std::optional<tripoint_rel_ms> choose_direction( const std::string &message,
         ctxt.register_action( "SELECT" );
     }
 
+    // DEFAULTMODE provides the key category for direction bindings, but this
+    // prompt, not the World loop, owns the next input.
+    std::optional<std::string> semantic_native_action;
+    std::optional<semantic_surface_scope> semantic_scope;
+    semantic_surface_manager *const semantic_manager = active_semantic_surface_manager();
+    const auto semantic_actions = [allow_vertical]() {
+        std::vector<semantic_action_descriptor> actions = {
+                { "direction.choose", "north", _( "North" ), true },
+                { "direction.choose", "south", _( "South" ), true },
+                { "direction.choose", "west", _( "West" ), true },
+                { "direction.choose", "east", _( "East" ), true },
+                { "direction.choose", "northwest", _( "Northwest" ), true },
+                { "direction.choose", "northeast", _( "Northeast" ), true },
+                { "direction.choose", "southwest", _( "Southwest" ), true },
+                { "direction.choose", "southeast", _( "Southeast" ), true },
+                { "direction.choose", "pause", _( "Pause" ), true },
+                { "direction.cancel", "", _( "Cancel" ), true }
+            };
+            if( allow_vertical ) {
+                actions.emplace_back( semantic_action_descriptor{
+                    "direction.choose", "up", _( "Up" ), true
+                } );
+                actions.emplace_back( semantic_action_descriptor{
+                    "direction.choose", "down", _( "Down" ), true
+                } );
+            }
+        return actions;
+    };
+    if( semantic_manager != nullptr ) {
+        const std::map<std::string, std::string> semantic_payload = {
+            { "prompt", message }, { "allow_vertical", allow_vertical ? "true" : "false" }
+        };
+        semantic_scope.emplace( *semantic_manager, "direction", message,
+                                semantic_payload,
+        semantic_actions(), [&semantic_native_action, allow_vertical](
+        const semantic_action_request &request ) {
+            const std::string stable_id = request.stable_id.value_or( "" );
+            if( request.action_id == "direction.cancel" && stable_id.empty() ) {
+                semantic_native_action = "QUIT";
+            } else if( request.action_id == "direction.choose" ) {
+                static const std::map<std::string, std::string> directions = {
+                    { "north", "UP" }, { "south", "DOWN" }, { "west", "LEFT" },
+                    { "east", "RIGHT" }, { "northwest", "LEFTUP" },
+                    { "northeast", "RIGHTUP" }, { "southwest", "LEFTDOWN" },
+                    { "southeast", "RIGHTDOWN" }, { "pause", "pause" }
+                };
+                const auto direction = directions.find( stable_id );
+                if( direction != directions.end() ) {
+                    semantic_native_action = direction->second;
+                } else if( allow_vertical && stable_id == "up" ) {
+                    semantic_native_action = "LEVEL_UP";
+                } else if( allow_vertical && stable_id == "down" ) {
+                    semantic_native_action = "LEVEL_DOWN";
+                } else {
+                    return semantic_action_dispatch_result{ false, "invalid_target", "" };
+                }
+            } else {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            // Direction selection returns to the item-use callback, which may
+            // immediately enter a confirmation prompt or recreate the item
+            // menu.  Neither the suspended item menu nor World owns input at
+            // that boundary, so bind this receipt to the actual successor.
+            return semantic_action_dispatch_result{ true, "", "", true };
+        } );
+    }
+
     static_popup popup;
     popup.message( allow_mouse
                    //~ %s: "Close where?" "Pry where?" etc.
@@ -1249,7 +1327,27 @@ std::optional<tripoint_rel_ms> choose_direction( const std::string &message,
     bool done = false;
     do {
         ui_manager::redraw();
-        action = ctxt.handle_input();
+        const bool semantic_request_pending = semantic_manager != nullptr &&
+                                              semantic_manager->has_pending_request();
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "prompt", message },
+                                       { "allow_vertical", allow_vertical ? "true" : "false" } },
+            semantic_actions() );
+        }
+        if( semantic_request_pending ) {
+            semantic_scope->consume_request();
+            if( !semantic_native_action ) {
+                // A rejected request is terminal for this frame; never ask
+                // DEFAULTMODE to interpret a replacement physical key.
+                continue;
+            }
+        }
+        if( semantic_native_action ) {
+            action = std::move( *semantic_native_action );
+            semantic_native_action.reset();
+        } else {
+            action = ctxt.handle_input();
+        }
         if( std::optional<tripoint_rel_ms> vec = ctxt.get_direction_rel_ms( action ) ) {
             FacingDirection &facing = get_player_character().facing;
             // Make player's sprite face left/right if interacting with something to the left or right

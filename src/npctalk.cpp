@@ -53,6 +53,7 @@
 #include "dialogue_chatbin.h"
 #include "dialogue_helpers.h"
 #include "dialogue_win.h"
+#include "semantic_surface.h"
 #include "effect_on_condition.h"
 #include "enum_conversions.h"
 #include "enum_traits.h"
@@ -278,6 +279,7 @@ static npc *select_llm_ambient_speech_target( const avatar &speaker, int hear_vo
     if( g == nullptr ) {
         return nullptr;
     }
+    map &here = get_map();
     std::vector<npc *> candidates = g->get_npcs_if( [&]( const npc &guy ) {
         if( guy.is_player_ally() || guy.is_hallucination() ) {
             return false;
@@ -286,7 +288,7 @@ static npc *select_llm_ambient_speech_target( const avatar &speaker, int hear_vo
             guy.get_attitude() == NPCATT_FLEE_TEMP ) {
             return false;
         }
-        return guy.can_hear( speaker.pos_bub(), hear_volume );
+        return speaker.sees( here, guy ) && guy.can_hear( speaker.pos_bub(), hear_volume );
     } );
     if( candidates.empty() ) {
         return nullptr;
@@ -356,6 +358,42 @@ static bool llm_direct_address_matches( std::string_view utterance, std::string_
     const unsigned char next = lowered_utterance[lowered_candidate.size()];
     return std::isspace( next ) || next == ',' || next == ':' || next == ';' ||
            next == '!' || next == '?' || next == '-';
+}
+
+// A camp listener is selected from the unmodified utterance first.  Once that
+// identity is fixed, its own direct-address prefix is conversational framing,
+// not part of the camp command grammar.
+static std::string strip_llm_direct_address_prefix( const std::string &utterance,
+        const npc &listener )
+{
+    const auto strip_prefix = [&]( const std::string &candidate ) -> std::optional<std::string> {
+        if( !llm_direct_address_matches( utterance, candidate ) ) {
+            return std::nullopt;
+        }
+        size_t prefix_end = candidate.size();
+        while( prefix_end < utterance.size() ) {
+            const unsigned char next = utterance[prefix_end];
+            if( !std::isspace( next ) && next != ',' && next != ':' && next != ';' &&
+                next != '!' && next != '?' && next != '-' ) {
+                break;
+            }
+            ++prefix_end;
+        }
+        return utterance.substr( prefix_end );
+    };
+
+    const std::string full_name = listener.get_name();
+    if( const std::optional<std::string> stripped = strip_prefix( full_name ); stripped.has_value() ) {
+        return *stripped;
+    }
+    const size_t first_space = full_name.find( ' ' );
+    if( first_space != std::string::npos ) {
+        if( const std::optional<std::string> stripped = strip_prefix( full_name.substr( 0, first_space ) );
+            stripped.has_value() ) {
+            return *stripped;
+        }
+    }
+    return utterance;
 }
 
 static std::vector<npc *> filter_llm_hearers_by_direct_address( const std::vector<npc *> &hearers,
@@ -997,6 +1035,11 @@ static int creature_select_menu( const std::vector<Creature *> &talker_list,
         return 0;
     } else {
         uilist nmenu;
+        // Selecting a talker immediately enters that creature's native
+        // dialogue loop.  The receipt for this semantic selection must name
+        // the dialogue child, not the temporary world parent exposed while
+        // this selector unwinds.
+        nmenu.semantic_await_child_successor = true;
         std::vector<tripoint_bub_ms> locations;
         nmenu.text = prompt;
         for( const Creature *elem : talker_list ) {
@@ -1376,8 +1419,21 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
         }
     }
 
+    int chat_choice = UILIST_CANCEL;
+    std::string message;
+    std::string yell_msg;
+    std::string emote_msg;
+    bool is_order = true;
+    bool is_sentence_say = false;
+    sentence_speech_mode sentence_mode = sentence_speech_mode::normal;
+    {
     uilist nmenu;
     nmenu.text = std::string( _( "What do you want to do?" ) );
+    // Several choices immediately enter another native input owner, such as
+    // the sentence prompt.  Keep the semantic receipt attached to that
+    // successor instead of transiently republishing World while this menu
+    // unwinds.
+    nmenu.semantic_await_child_successor = true;
 
     if( !available.empty() ) {
         const Creature *guy = available.front();
@@ -1454,19 +1510,15 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                         _( "Tell everyone on your team to relax (Clear Overrides)" ) );
         nmenu.addentry( NPC_CHAT_ORDERS, true, 'o', _( "Tell everyone on your team to temporarily…" ) );
     }
-    std::string message;
-    std::string yell_msg;
-    std::string emote_msg;
-    bool is_order = true;
-    bool is_sentence_say = false;
-    sentence_speech_mode sentence_mode = sentence_speech_mode::normal;
     nmenu.query();
+    chat_choice = nmenu.ret;
+    }
 
-    if( nmenu.ret < 0 ) {
+    if( chat_choice < 0 ) {
         return;
     }
 
-    switch( nmenu.ret ) {
+    switch( chat_choice ) {
         case NPC_CHAT_TALK: {
             const int npcselect = creature_select_menu( available, _( "Talk to whom?" ), false );
             if( npcselect < 0 ) {
@@ -1930,7 +1982,8 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
 
                     for( camp_hearer_group &group : camp_groups ) {
                         if( group.camp != nullptr && !group.hearers.empty() &&
-                            group.camp->handle_heard_camp_request( *group.hearers.front(), utterance ) ) {
+                            group.camp->handle_heard_camp_request( *group.hearers.front(),
+                                    strip_llm_direct_address_prefix( utterance, *group.hearers.front() ) ) ) {
                             continue;
                         }
                         llm_hearers.insert( llm_hearers.end(), group.hearers.begin(), group.hearers.end() );
@@ -3151,10 +3204,16 @@ void parse_tags( std::string &phrase, const_talker const &u, const_talker const 
 void dialogue::add_gen_response( const talk_response &resp, bool insert_front,
                                  bool condition_exists, bool condition_result )
 {
+    talk_response generated = resp;
+    // A generated response may have the same label and source JSON as another
+    // response.  Its semantic identity instead belongs to this object life.
+    static std::size_t next_semantic_response_id = 0;
+    generated.semantic_stable_id = "dialogue-response-" +
+                                   std::to_string( ++next_semantic_response_id );
     if( insert_front ) {
-        responses.insert( responses.begin(), resp );
+        responses.insert( responses.begin(), std::move( generated ) );
     } else {
-        responses.push_back( resp );
+        responses.push_back( std::move( generated ) );
     }
     response_condition_exists.emplace_back( condition_exists );
     response_condition_eval.emplace_back( condition_result );
@@ -3523,6 +3582,86 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
     };
     generate_response_lines();
 
+    semantic_surface_manager *semantic_manager = active_semantic_surface_manager();
+    std::optional<semantic_surface_scope> semantic_scope;
+    std::optional<size_t> semantic_response_index;
+    const std::string semantic_speaker_id = std::to_string( actor( true )->getID().get_value() );
+    const auto semantic_actions = [&]() {
+        std::vector<semantic_action_descriptor> actions;
+        for( size_t index = 0; index < responses.size(); ++index ) {
+            const bool enabled = !( response_condition_exists[index] &&
+                                    !response_condition_eval[index] && !debug_mode );
+            actions.push_back( { "dialogue.choose", responses[index].semantic_stable_id,
+                                 response_lines[index].text, enabled } );
+        }
+        if( get_best_quit_response() < static_cast<int>( responses.size() ) ) {
+            actions.push_back( { "dialogue.cancel", "", _( "Goodbye" ), true } );
+        }
+        return actions;
+    };
+    const auto semantic_payload = [&]() {
+        return std::map<std::string, std::string> {
+            { "speaker_id", semantic_speaker_id },
+            { "speaker_name", speaker_name( d_win ) },
+            { "history", d_win.history_text() },
+            { "prompt", challenge }
+        };
+    };
+    if( semantic_manager != nullptr ) {
+        semantic_scope.emplace( *semantic_manager, "dialogue", speaker_name( d_win ),
+        semantic_payload(), semantic_actions(),
+        [this, &d_win, &semantic_response_index, &semantic_speaker_id]
+        ( const semantic_action_request &request ) {
+            const auto speaker = request.parameters.find( "speaker_id" );
+            if( speaker != request.parameters.end() && speaker->second != semantic_speaker_id ) {
+                return semantic_action_dispatch_result{ false, "wrong_speaker", "" };
+            }
+            if( request.action_id == "dialogue.cancel" ) {
+                const int quit_response = get_best_quit_response();
+                if( quit_response < 0 ) {
+                    return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                }
+                semantic_response_index = static_cast<size_t>( quit_response );
+                d_win.sel_response = quit_response;
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            if( request.action_id != "dialogue.choose" ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            if( !request.stable_id ) {
+                return semantic_action_dispatch_result{ false, "missing_stable_id", "" };
+            }
+            std::vector<size_t> matches;
+            for( size_t index = 0; index < responses.size(); ++index ) {
+                if( responses[index].semantic_stable_id == *request.stable_id ) {
+                    matches.push_back( index );
+                }
+            }
+            if( matches.empty() ) {
+                return semantic_action_dispatch_result{ false, "invalid_stable_id", "" };
+            }
+            if( matches.size() != 1 ) {
+                return semantic_action_dispatch_result{ false, "duplicate_stable_id", "" };
+            }
+            const size_t index = matches.front();
+            // The response can be rendered disabled after its condition failed.
+            // Re-evaluate immediately before the existing trial/effect path.
+            if( response_condition_exists[index] && !debug_mode ) {
+                response_condition_eval[index] = responses[index].condition( *this );
+                if( !response_condition_eval[index] ) {
+                    return semantic_action_dispatch_result{ false, "disabled_stable_id", "" };
+                }
+            }
+            semantic_response_index = index;
+            d_win.sel_response = static_cast<int>( index );
+            // A selected response can enter a native modal before this input
+            // loop returns (for example, follower rules).  Its exact receipt
+            // therefore belongs to this dialogue frame and must not wait for
+            // a successor that cannot be published until that modal closes.
+            return semantic_action_dispatch_result{ true, "", "", true, false };
+        } );
+    }
+
     ui.on_redraw( [&]( const ui_adaptor & ) {
         d_win.draw( speaker_name( d_win ) );
     } );
@@ -3532,16 +3671,33 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
     do {
         std::string action;
         do {
-            if( debug_mode ) {
-                d_win.set_responses_debug( build_debug_info( d_win, topic, d_win.sel_response ) );
-                d_win.debug_topic_name = topic.id;
-            }
-            ui_manager::redraw();
             input_event evt;
-            action = ctxt.handle_input();
-            evt = ctxt.get_raw_input();
+            if( semantic_scope ) {
+                semantic_scope->publish( semantic_payload(), semantic_actions() );
+                semantic_scope->consume_request();
+            }
+            if( semantic_response_index ) {
+                response_ind = *semantic_response_index;
+                semantic_response_index.reset();
+                action = "CONFIRM";
+            } else {
+                if( debug_mode ) {
+                    d_win.set_responses_debug( build_debug_info( d_win, topic, d_win.sel_response ) );
+                    d_win.debug_topic_name = topic.id;
+                }
+                ui_manager::redraw();
+                action = ctxt.handle_input();
+                evt = ctxt.get_raw_input();
+                if( semantic_response_index ) {
+                    response_ind = *semantic_response_index;
+                    semantic_response_index.reset();
+                    action = "CONFIRM";
+                }
+            }
             if( evt.type == input_event_t::error || evt.type == input_event_t::timeout ) {
-                continue;
+                if( action != "CONFIRM" ) {
+                    continue;
+                }
             }
             d_win.handle_scrolling( action, ctxt );
             talk_topic st = special_talk( action );
@@ -9133,7 +9289,10 @@ void talk_effect_t::parse_string_effect( const std::string &effect_id, const Jso
             WRAP( buy_cow ),
             WRAP( buy_chicken ),
             WRAP( buy_horse ),
-            WRAP( basecamp_mission ),
+            { "basecamp_mission", []( npc & p ) {
+                    talk_function::basecamp_mission( p );
+                }
+            },
             WRAP( wake_up ),
             WRAP( reveal_stats ),
             WRAP( end_conversation ),

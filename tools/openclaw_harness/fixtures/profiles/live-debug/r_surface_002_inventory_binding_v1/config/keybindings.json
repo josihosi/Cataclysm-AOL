@@ -1,0 +1,11 @@
+[
+  {
+    "id": "inventory",
+    "version": 2,
+    "category": "DEFAULTMODE",
+    "bindings": [
+      { "input_method": "keyboard_char", "key": [ "z" ] },
+      { "input_method": "keyboard_code", "key": [ "z" ] }
+    ]
+  }
+]

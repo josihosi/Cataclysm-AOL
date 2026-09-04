@@ -7,6 +7,7 @@
 #include "imgui/imgui_stdlib.h"
 #include "input_enums.h"
 #include "ret_val.h"
+#include "semantic_surface.h"
 #include "text.h"
 #include "translations.h"
 #include "try_parse_integer.h"
@@ -335,9 +336,51 @@ void string_input_popup_imgui::add_to_history( const std::string &value ) const
 std::string string_input_popup_imgui::query()
 {
     is_cancelled = false;
+    std::optional<std::string> semantic_submitted_text;
+    bool semantic_cancelled = false;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "string_prompt", "Text input",
+        std::map<std::string, std::string>{ { "text", text } },
+        std::vector<semantic_action_descriptor>{
+            { "prompt.submit", "", _( "Submit" ), true },
+            { "prompt.cancel", "", _( "Cancel" ), true }
+        }, [this, &semantic_submitted_text, &semantic_cancelled]( const semantic_action_request &request ) {
+            if( request.action_id == "prompt.cancel" ) {
+                semantic_cancelled = true;
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            const auto submitted = request.parameters.find( "text" );
+            if( request.action_id != "prompt.submit" || submitted == request.parameters.end() ) {
+                return semantic_action_dispatch_result{ false, "invalid_parameters", "" };
+            }
+            semantic_submitted_text = submitted->second;
+            // A chat sentence returns through the chat menu and its one-turn
+            // World input scope before the next World owner is constructed.
+            // Keep the receipt private across that native unwind so it names
+            // the actual, consumable World successor instead of that expired
+            // intermediate scope.
+            return semantic_action_dispatch_result{ true, "", "", identifier == "sentence" };
+        } );
+    }
 
     while( true ) {
         ui_manager::redraw_invalidated();
+
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "text", text } },
+                                      { { "prompt.submit", "", _( "Submit" ), true },
+                                        { "prompt.cancel", "", _( "Cancel" ), true } } );
+            semantic_scope->consume_request();
+            if( semantic_submitted_text ) {
+                text = *semantic_submitted_text;
+                add_to_history( text );
+                return text;
+            }
+            if( semantic_cancelled ) {
+                break;
+            }
+        }
 
         std::string action = ctxt.handle_input();
         if( handle_custom_callbacks( action ) ) {

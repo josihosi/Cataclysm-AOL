@@ -16,6 +16,7 @@ from playtest_witness import (  # noqa: E402
     compose_evidence_journals,
     normalize_witness_charter,
     review_witness,
+    validate_witness_bundle,
     validate_witness_statement,
 )
 
@@ -104,6 +105,86 @@ def current_journal(*, charter: dict[str, object], run_id: str) -> dict[str, obj
 
 
 class PlaytestWitnessTest(unittest.TestCase):
+    def test_mixed_run_routes_one_defect_without_erasing_other_claims(self) -> None:
+        transcript = [
+            {"kind": "observation", "value": {
+                "observation_id": "mixed:1", "run_id": "mixed", "game_minutes": 100,
+                "visible_entities": [{"handle": "bandit-4", "kind": "npc", "name": "bandit"}],
+                "advertised_actions": ["world.wait"], "delta": {}, "compact_log": {},
+            }},
+            {"kind": "observation", "value": {
+                "observation_id": "mixed:2", "run_id": "mixed", "game_minutes": 101,
+                "visible_entities": [], "advertised_actions": ["world.wait"], "delta": {},
+                "compact_log": {"contradictory_evidence": [{
+                    "kind": "locker_reservation_lost", "zone": "CAMP_LOCKER",
+                }]},
+            }},
+            {"kind": "observation", "value": {
+                "observation_id": "mixed:3", "run_id": "mixed", "game_minutes": 102,
+                "visible_entities": [{"handle": "patrol-2", "kind": "npc", "name": "patrol"}],
+                "advertised_actions": ["world.wait"], "delta": {}, "compact_log": {},
+            }},
+        ]
+        mixed = build_evidence_journal(
+            charter=CHARTER,
+            identity={
+                "scenario_id": "r008.fire_signal_roof_bandit_mcw",
+                "source_identity": "source-a", "executable_identity": "exe-a",
+                "run_id": "mixed", "binding_id": "binding-a",
+            },
+            transcript=transcript, terminal={"stop_reason": "claims_settled"},
+            evidence_ceiling="focused",
+        )
+
+        def claim(verdict: str, citation_id: str, supported: str) -> dict[str, object]:
+            return {
+                "verdict": verdict,
+                "smallest_supported_claim": supported,
+                "causal_account": "The cited bound observation settles only this claim.",
+                "citations": [{"citation_id": citation_id, "meaning": supported, "checks": {}}],
+                "contradictions": [{"citation_id": "J0004", "meaning": "locker defect"}],
+                "recommended_disposition": "repair" if verdict == "contradicted" else "accept",
+                "evidence_ceiling": "focused",
+            }
+
+        bundle = validate_witness_bundle(
+            charter=CHARTER, journal=mixed, bundle={
+                "schema": "caol-playtest-witness-bundle-v1",
+                "claims": [
+                    {"claim_id": "bandit_detection", "statement": claim(
+                        "proved", "J0002", "The bound bandit remained observable.",
+                    )},
+                    {"claim_id": "locker_coherence", "statement": claim(
+                        "contradicted", "J0004", "The locker lost its reservation.",
+                    )},
+                    {"claim_id": "patrol_observation", "statement": claim(
+                        "proved", "J0005", "Patrol observation continued after the defect.",
+                    )},
+                ],
+                "findings": [{
+                    "finding_id": "DBG-R008-LOCKER-001",
+                    "observed_defect": "CAMP_LOCKER lost a live reservation during contact.",
+                    "citations": ["J0004"],
+                    "affected_claims": ["locker_coherence"],
+                    "unaffected_claims": ["bandit_detection", "patrol_observation"],
+                    "disposition": "repair",
+                    "next_action": "Repair reservation retention and revalidate the locker claim.",
+                }],
+            },
+        )
+        self.assertEqual(bundle["status"], "mechanically_valid_bundle")
+        self.assertEqual(bundle["claim_count"], 3)
+        self.assertEqual(bundle["finding_count"], 1)
+
+        invalid = copy.deepcopy(bundle["bundle"])
+        invalid["claims"] = [
+            {"claim_id": item["claim_id"], "statement": item["validation"]["witness"]}
+            for item in invalid["claims"]
+        ]
+        invalid["findings"][0]["unaffected_claims"] = ["locker_coherence"]
+        with self.assertRaisesRegex(WitnessError, "finding_claim_scope_invalid"):
+            validate_witness_bundle(charter=CHARTER, journal=mixed, bundle=invalid)
+
     def test_action_receipt_without_a_run_id_does_not_fabricate_none_identity(self) -> None:
         result = build_evidence_journal(
             charter=CHARTER,

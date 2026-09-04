@@ -58,24 +58,21 @@ class QuitConfirmationSemanticTest(unittest.TestCase):
         )
         self.assertTrue(initial_steps["open_native_main_menu_quit_confirmation"]["abort_on_semantic_ui_failure"])
         self.assertEqual(
-            initial_steps["confirm_native_process_exit_after_camp_decision"]["keys"],
+            initial_steps["confirm_native_process_exit_after_stationary_lifecycle"]["keys"],
             ["left", "enter"],
         )
         self.assertEqual(
-            initial_steps["confirm_native_process_exit_after_camp_decision"]["checkpoint_evidence"],
+            initial_steps["confirm_native_process_exit_after_stationary_lifecycle"]["checkpoint_evidence"],
             {"classification": "incidental_lifecycle_observation", "authoritative_owner": "post_relaunch_lifecycle"},
         )
         self.assertEqual(
             scenario["post_relaunch"]["terminal_save_step_label"],
-            "confirm_native_process_exit_after_camp_decision",
+            "confirm_native_process_exit_after_stationary_lifecycle",
         )
         post_labels = [str(step["label"]) for step in scenario["post_relaunch"]["steps"]]
         self.assertEqual(post_labels[0], "post_relaunch_gameplay_hud")
-        for label in ("relaunch_and_bubble_crossing_in", "return_report", "camp_decision"):
-            self.assertIn(label, post_labels)
-        self.assertNotIn("relaunch_and_bubble_crossing_in", initial_steps)
-        self.assertNotIn("return_report", initial_steps)
-        self.assertNotIn("camp_decision", initial_steps)
+        self.assertIn("audit_normalized_persistence_after_relaunch", post_labels)
+        self.assertNotIn("audit_normalized_persistence_after_relaunch", initial_steps)
 
     def write_trace(self, root: Path, body: str) -> Path:
         path = root / "feature.debug.log"

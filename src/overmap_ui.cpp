@@ -79,6 +79,7 @@
 #include "regional_settings.h"
 #include "rng.h"
 #include "sdltiles.h" // IWYU pragma: keep
+#include "semantic_surface.h"
 #include "simple_pathfinding.h"
 #include "sounds.h"
 #include "string_formatter.h"
@@ -3336,6 +3337,7 @@ static tripoint_abs_omt display()
     }
     ictxt.register_action( "QUIT" );
     std::string action;
+    std::optional<std::string> semantic_native_action;
     data.show_explored = true;
     int fast_scroll_offset = get_option<int>( "FAST_SCROLL_OFFSET" );
     std::optional<tripoint_rel_omt> mouse_pos;
@@ -3345,12 +3347,103 @@ static tripoint_abs_omt display()
     std::chrono::milliseconds cursor_advance_time = std::chrono::milliseconds( 0 );
     bool keep_overmap_ui = false;
 
+    semantic_surface_manager *const semantic_manager = active_semantic_surface_manager();
+    const auto cursor_stable_id = [&curs]() {
+        return "omt:" + curs.to_string();
+    };
+    const auto semantic_payload = [&curs, &cursor_stable_id]() {
+        std::map<std::string, std::string> payload;
+        const avatar &player_character = get_avatar();
+        payload.emplace( "player_position", player_character.pos_abs_omt().to_string() );
+        payload.emplace( "cursor_position", curs.to_string() );
+        payload.emplace( "level", std::to_string( curs.z() ) );
+        payload.emplace( "cursor_discovered",
+                         overmap_buffer.seen( curs ) == om_vision_level::unseen ? "false" : "true" );
+        if( overmap_buffer.seen( curs ) != om_vision_level::unseen ) {
+            payload.emplace( "selected_stable_id", cursor_stable_id() );
+            payload.emplace( "selected_terrain",
+                             overmap_buffer.ter( curs )->get_name( overmap_buffer.seen( curs ) ) );
+        }
+        if( !player_character.omt_path.empty() ) {
+            payload.emplace( "route_destination", player_character.omt_path.front().to_string() );
+        }
+        return payload;
+    };
+    const auto semantic_actions = [&curs, &cursor_stable_id]() {
+        std::vector<semantic_action_descriptor> actions = {
+            { "overmap.move_cursor", "north", "Move cursor north", true },
+            { "overmap.move_cursor", "south", "Move cursor south", true },
+            { "overmap.move_cursor", "west", "Move cursor west", true },
+            { "overmap.move_cursor", "east", "Move cursor east", true },
+            { "overmap.change_level", "up", "Move cursor up a level", true },
+            { "overmap.change_level", "down", "Move cursor down a level", true },
+            { "overmap.add_note", cursor_stable_id(), "Add note", true },
+            { "overmap.close", "", "Close overmap", true }
+        };
+        if( overmap_buffer.seen( curs ) != om_vision_level::unseen ) {
+            actions.emplace_back( semantic_action_descriptor{
+                "overmap.select", cursor_stable_id(), "Select location", true
+            } );
+            actions.emplace_back( semantic_action_descriptor{
+                "overmap.choose_destination", cursor_stable_id(), "Choose destination", true
+            } );
+        }
+        return actions;
+    };
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_manager != nullptr ) {
+        semantic_scope.emplace( *semantic_manager, "overmap", "Overmap", semantic_payload(),
+        semantic_actions(), [&semantic_native_action, &cursor_stable_id]( const semantic_action_request &request ) {
+            const std::string stable_id = request.stable_id.value_or( "" );
+            if( request.action_id == "overmap.move_cursor" ) {
+                if( stable_id == "north" ) {
+                    semantic_native_action = "UP";
+                } else if( stable_id == "south" ) {
+                    semantic_native_action = "DOWN";
+                } else if( stable_id == "west" ) {
+                    semantic_native_action = "LEFT";
+                } else if( stable_id == "east" ) {
+                    semantic_native_action = "RIGHT";
+                } else {
+                    return semantic_action_dispatch_result{ false, "invalid_target", "" };
+                }
+            } else if( request.action_id == "overmap.change_level" ) {
+                if( stable_id == "up" ) {
+                    semantic_native_action = "LEVEL_UP";
+                } else if( stable_id == "down" ) {
+                    semantic_native_action = "LEVEL_DOWN";
+                } else {
+                    return semantic_action_dispatch_result{ false, "invalid_target", "" };
+                }
+            } else if( request.action_id == "overmap.close" && stable_id.empty() ) {
+                semantic_native_action = "QUIT";
+            } else if( stable_id == cursor_stable_id() ) {
+                if( request.action_id == "overmap.select" ) {
+                    semantic_native_action = "CONFIRM";
+                } else if( request.action_id == "overmap.choose_destination" ) {
+                    semantic_native_action = "CHOOSE_DESTINATION";
+                } else if( request.action_id == "overmap.add_note" ) {
+                    semantic_native_action = "CREATE_NOTE";
+                } else {
+                    return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                }
+            } else {
+                return semantic_action_dispatch_result{ false, "invalid_target", "" };
+            }
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
+
     ui->on_redraw( [&]( ui_adaptor & ui ) {
         ( void )ui;
         draw( g->overmap_data );
     } );
 
     do {
+        if( semantic_scope ) {
+            semantic_scope->publish( semantic_payload(), semantic_actions() );
+            semantic_scope->consume_request();
+        }
         ui->invalidate_ui();
         ui_manager::redraw();
 #if (defined TILES || defined _WIN32 || defined WINDOWS )
@@ -3360,9 +3453,19 @@ static tripoint_abs_omt display()
         if( scroll_timeout < 0 ) {
             scroll_timeout = 33;
         }
-        action = ictxt.handle_input( scroll_timeout );
+        if( semantic_native_action ) {
+            action = std::move( *semantic_native_action );
+            semantic_native_action.reset();
+        } else {
+            action = ictxt.handle_input( scroll_timeout );
+        }
 #else
-        action = ictxt.handle_input( get_option<int>( "BLINK_SPEED" ) );
+        if( semantic_native_action ) {
+            action = std::move( *semantic_native_action );
+            semantic_native_action.reset();
+        } else {
+            action = ictxt.handle_input( get_option<int>( "BLINK_SPEED" ) );
+        }
 #endif
         openclaw_harness_trace_overmap_input_resolution( ictxt.get_raw_input(), action );
         if( !display_path.empty() ) {

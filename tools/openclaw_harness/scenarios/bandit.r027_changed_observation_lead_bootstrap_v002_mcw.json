@@ -1,0 +1,37 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_changed_observation_lead_bootstrap_v002_mcw",
+  "description": "Zero-credit R-027 changed-observation prerequisite: save a real in-range smoke lead from the preserved physical fire before a distinct changed-payload validation.",
+  "status": "active",
+  "profile": "r027-changed-observation-lead-bootstrap-002",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_preserved_physical_fire_20260902",
+  "fixture_profile": "r027-closure-015",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "r027_world_state_snapshot": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r027.changed_observation_lead_bootstrap": "zero_credit_in_range_saved_lead",
+    "runtime.r027.source_binding": "r027-closure-007-tiles:r027-changed-observation-lead-bootstrap-002"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.keep_watch", "semantic:world.quicksave", "cockpit:game.act", "cockpit:run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "callback-injection", "direct-state-mutation", "direct-save-edit", "direct-lead-mutation", "shared-profile"],
+    "platform": ["macos"], "profile": "r027-changed-observation-lead-bootstrap-002", "fixture": "r027_preserved_physical_fire_20260902",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"build/r027-closure-007-tiles","profile":"r027-changed-observation-lead-bootstrap-002","fixture":"r027_preserved_physical_fire_20260902","helper":"native-semantic-broker","peekaboo":false,"ocr":false,"input":["frame-bound semantic requests"],"cleanup":true},
+    "grants_gameplay_proof": false, "setup_only_debug": true, "disposable_copy": true, "helpers": ["native-semantic-broker"], "permissions": ["accessibility"]
+  },
+  "source_binding": {"fixture_manifest":"tools/openclaw_harness/fixtures/saves/r027-closure-015/r027_preserved_physical_fire_20260902/manifest.json","profile":"tools/openclaw_harness/profiles/r027-changed-observation-lead-bootstrap-002.json","build_receipt":".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "r027_isolated_launch": {"name":"r027-closure-007-tiles","path":"build/r027-closure-007-tiles","sha256":"9f0b289e51087cbbf78e3ddfe452bdef7255b5dba48b985d76bd99c038e627b3","profile":"r027-changed-observation-lead-bootstrap-002","world":"McWilliams","fixture":"r027_preserved_physical_fire_20260902","run_identity":"r027-changed-observation-lead-bootstrap-002","control_endpoint":"native-semantic-broker","receipt_sidecar":"r027.staffed-camp-signal.receipts.jsonl","cleanup_token":"r027-changed-observation-lead-bootstrap-002-cleanup","build_receipt":".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "steps": [
+    {"kind":"audit_saved_map_tile_near_player","label":"audit_in_range_source_present","offsets":[[-1,0,0]],"required_fields":["fd_fire"],"abort_on_metadata_failure":true},
+    {"kind":"native_semantic_bootstrap","label":"bind_in_range_production_cadence","native_semantic_checkpoint":{"required_actions":["world.wait","world.quicksave"],"required_state":"world","require_initial_hud_world_ready_frame":false}},
+    {"kind":"cockpit_live_session","label":"create_and_save_in_range_lead","cleanup_on_finish":true,"stop_after_live_session":true,"objective":"Use the strict atomic keep-watch recipe to cross the observed production cadence, require an in-range smoke lead creation receipt, native-quicksave, then finish.","proof_targets":["in-range production-created smoke lead","native save for changed-observation fixture"],"authority":["game.keep_watch with the declared safe native wait recipe","currently advertised world.quicksave","run.finish"],"invariants":["source remains at OMT 138,49","no callback","no direct lead mutation","no direct save edit","wait mode is wait-mode:wait-a-while","wait duration is wait-duration:wait.1m"],"live_operations":["game.act","game.keep_watch","run.continue"],"keep_watch":{"enabled":true,"danger_handling":"handle_classified_non_dangerous","target_game_minutes":9245,"bound":{"basis":"scheduler_boundary","source":"native scheduler cadence observed at game minute 9241 with target minute 9245","unit":"game_minutes","maximum":4,"progress_required":true},"recipe":["world.wait",{"action_id":"menu.choose","stable_id":"wait-mode:wait-a-while","label":"Wait a while"},"wait.1m"],"duration_stable_id":"wait-duration:wait.1m"},"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}
+  ],
+  "proof_route": {"precondition":["audit_in_range_source_present","bind_in_range_production_cadence"],"production_behavior":["create_and_save_in_range_lead"],"terminal_persistence":["create_and_save_in_range_lead"],"artifact_verdict":["create_and_save_in_range_lead"],"disallowed_shortcuts":["create_and_save_in_range_lead"]}
+}

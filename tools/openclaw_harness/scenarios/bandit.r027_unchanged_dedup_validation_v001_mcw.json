@@ -1,0 +1,43 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_unchanged_dedup_validation_v001_mcw",
+  "description": "Independent R-027 production reread from the immutable saved in-range lead; strict receipt verification owns the unchanged-dedup conclusion.",
+  "status": "active",
+  "profile": "r027-unchanged-dedup-validation-001",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_in_range_saved_lead_v001_20260902",
+  "fixture_profile": "r027-unchanged-dedup-bootstrap-001",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r027.unchanged_dedup_validation": "independent_production_unchanged_read",
+    "runtime.r027.source_binding": "r027-closure-007-tiles:r027-unchanged-dedup-validation-001"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.wait", "semantic:menu.choose", "cockpit:game.act", "cockpit:run.continue", "cockpit:run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "callback-injection", "direct-state-mutation", "direct-save-edit", "direct-lead-mutation", "shared-profile"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "r027-unchanged-dedup-validation-001",
+    "fixture": "r027_in_range_saved_lead_v001_20260902",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "build/r027-closure-007-tiles", "profile": "r027-unchanged-dedup-validation-001", "fixture": "r027_in_range_saved_lead_v001_20260902", "helper": "native-semantic-broker", "peekaboo": false, "ocr": false, "input": ["frame-bound semantic requests"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/r027-unchanged-dedup-bootstrap-001/r027_in_range_saved_lead_v001_20260902/manifest.json", "profile": "tools/openclaw_harness/profiles/r027-unchanged-dedup-validation-001.json", "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "r027_isolated_launch": {"name": "r027-closure-007-tiles", "path": "build/r027-closure-007-tiles", "sha256": "9f0b289e51087cbbf78e3ddfe452bdef7255b5dba48b985d76bd99c038e627b3", "profile": "r027-unchanged-dedup-validation-001", "world": "McWilliams", "fixture": "r027_in_range_saved_lead_v001_20260902", "run_identity": "r027-unchanged-dedup-validation-001", "control_endpoint": "native-semantic-broker", "receipt_sidecar": "r027.staffed-camp-signal.receipts.jsonl", "cleanup_token": "r027-unchanged-dedup-validation-001-cleanup", "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "steps": [
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_retained_physical_source", "offsets": [[0, 11, 0]], "required_fields": ["fd_fire"], "abort_on_metadata_failure": true},
+    {"kind": "audit_saved_bandit_live_world_state", "label": "audit_retained_lead_and_home_state", "required_site_id_contains": "bandit_camp", "required_min_ready_at_home_count": 5, "required_active_outside_count": 0, "required_min_leads": 2, "abort_on_metadata_failure": true},
+    {"kind": "native_semantic_bootstrap", "label": "bind_unchanged_production_cadence", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": false}},
+    {"kind": "cockpit_live_session", "label": "independent_unchanged_cadence", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "From the captured retained lead only, cross the next observed native cadence and collect one same-identity unchanged receipt. Verify it against the bootstrap created receipt; do not repair or modify source, lead, camp, observer, or drive.", "proof_targets": ["run-bound unchanged signal receipt", "same observer/camp/channel/source/lead", "stable lead count and hash", "strict verifier acceptance"], "authority": ["native atomic wait menu: game.act world.wait, then advertised wait-mode and wait-duration menu choices", "run.finish"], "invariants": ["separate process and profile from bootstrap", "no callback or direct mutation", "the fixture is immutable input", "derive progression from surrounding world frames because nested menu frames need not expose game_minutes", "stop at the first unchanged receipt or causal failure"], "live_operations": ["game.act", "run.continue"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_route": {"precondition": ["audit_retained_physical_source", "audit_retained_lead_and_home_state", "bind_unchanged_production_cadence"], "production_behavior": ["independent_unchanged_cadence"], "terminal_persistence": ["independent_unchanged_cadence"], "artifact_verdict": ["independent_unchanged_cadence"], "disallowed_shortcuts": ["independent_unchanged_cadence"]}
+}

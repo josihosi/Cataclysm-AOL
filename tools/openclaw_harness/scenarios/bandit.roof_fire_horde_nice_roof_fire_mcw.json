@@ -1,5 +1,7 @@
 {
   "name": "bandit.roof_fire_horde_nice_roof_fire_mcw",
+  "status": "blocked",
+  "blocked_reason": "Superseded as an active route by the R-008 fire-signal lifecycle family; its short staged-horde wait cannot settle the natural lifecycle charter.",
   "description": "Nice roof-fire horde playtest for CAOL-ROOF-HORDE-NICE-FIRE-v0: start from the saved normal player-created roof/elevated fire world captured in run 20260429_172847, re-audit the credible roof brazier/fire before waiting, prove a plausible staged horde before waiting, run bounded in-game time, require same-run live roof-fire horde signal artifacts, then save and inspect direct horde response metadata plus cost/stability report fields.",
   "profile": "dev-harness",
   "world": "McWilliams",

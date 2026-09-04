@@ -1,0 +1,189 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_changed_observation_retained_intensity_v001_mcw",
+  "description": "Zero-credit rebuild of the saved retained lead: remove the original field, freshly observe the empty tile, place fd_fire intensity 2, save, and independently audit the persisted source before fixture capture.",
+  "status": "active",
+  "profile": "r027-changed-observation-retained-intensity-002",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_in_range_saved_lead_v001_20260902",
+  "fixture_profile": "r027-unchanged-dedup-bootstrap-001",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r027.changed_observation_retained_intensity": "same_retained_lead_same_fd_fire_intensity_changed",
+    "runtime.r027.source_binding": "r027-closure-007-tiles:r027-changed-observation-retained-intensity-002"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "semantic:world.debug_menu",
+      "semantic:menu.choose",
+      "semantic:editmap.move_target",
+      "semantic:editmap.remove_field",
+      "semantic:editmap.select_field",
+      "semantic:editmap.confirm",
+      "semantic:editmap.close",
+      "semantic:world.quicksave",
+      "cockpit:game.act",
+      "cockpit:run.continue",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "guessed-key",
+      "physical-key",
+      "direct-state-mutation",
+      "direct-save-edit",
+      "direct-lead-mutation",
+      "shared-profile"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "r027-changed-observation-retained-intensity-002",
+    "fixture": "r027_in_range_saved_lead_v001_20260902",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "build/r027-closure-007-tiles",
+      "profile": "r027-changed-observation-retained-intensity-002",
+      "fixture": "r027_in_range_saved_lead_v001_20260902",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "ocr": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false,
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [
+      "native-semantic-broker"
+    ],
+    "permissions": [
+      "accessibility"
+    ]
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/r027-unchanged-dedup-bootstrap-001/r027_in_range_saved_lead_v001_20260902/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/r027-changed-observation-retained-intensity-002.json",
+    "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"
+  },
+  "r027_isolated_launch": {
+    "name": "r027-closure-007-tiles",
+    "path": "build/r027-closure-007-tiles",
+    "sha256": "4ec6adebd8e951d7533d51d61c75effd0f1868077469a8bf07ba9c528f440ce9",
+    "profile": "r027-changed-observation-retained-intensity-002",
+    "world": "McWilliams",
+    "fixture": "r027_in_range_saved_lead_v001_20260902",
+    "run_identity": "r027-changed-observation-retained-intensity-002",
+    "control_endpoint": "native-semantic-broker",
+    "receipt_sidecar": "r027.staffed-camp-signal.receipts.jsonl",
+    "cleanup_token": "r027-changed-observation-retained-intensity-002-cleanup",
+    "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"
+  },
+  "steps": [
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "baseline_retained_fire",
+      "offsets": [
+        [
+          0,
+          11,
+          0
+        ]
+      ],
+      "required_fields": [
+        "fd_fire"
+      ],
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "baseline_retained_lead",
+      "required_site_id_contains": "bandit_camp",
+      "required_min_leads": 2,
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_native_editor",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.debug_menu",
+          "world.quicksave"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "reduce_same_fire_intensity",
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "live_operations": [
+        "game.act",
+        "run.continue"
+      ],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "assertions": {
+    "stable_observer_id": 4,
+    "stable_camp_omt": [
+      140,
+      51,
+      0
+    ],
+    "stable_source_omt": [
+      138,
+      49,
+      0
+    ],
+    "stable_lead_id": "overmap_special:bandit_camp@140,51,0#lead:smoke_signal:camp-smoke@(138,49,0)@138,49,0",
+    "source_offset": [
+      0,
+      11,
+      0
+    ],
+    "pre_change_source": {
+      "field": "fd_fire",
+      "intensity": 3
+    },
+    "post_change_source": {
+      "field": "fd_fire",
+      "intensity": 2
+    },
+    "forbid": [
+      "retarget",
+      "direct_lead_mutation",
+      "direct_save_edit"
+    ]
+  },
+  "proof_route": {
+    "precondition": [
+      "baseline_retained_fire",
+      "baseline_retained_lead",
+      "bind_native_editor"
+    ],
+    "production_behavior": [
+      "reduce_same_fire_intensity"
+    ],
+    "terminal_persistence": [
+      "reduce_same_fire_intensity"
+    ],
+    "artifact_verdict": [
+      "reduce_same_fire_intensity"
+    ],
+    "disallowed_shortcuts": [
+      "reduce_same_fire_intensity"
+    ]
+  }
+}

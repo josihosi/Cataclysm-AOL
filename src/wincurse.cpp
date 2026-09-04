@@ -26,6 +26,7 @@
 #include "cata_scope_helpers.h"
 #include "cata_utility.h"
 #include "string_formatter.h"
+#include "semantic_surface.h"
 #include "color_loader.h"
 #include "font_loader.h"
 #include "platform_win.h"
@@ -717,11 +718,17 @@ input_event input_manager::get_input_event( const keyboard_mode /*preferred_keyb
     lastchar = ERR;
     if( inputdelay < 0 ) {
         for( ; lastchar == ERR; Sleep( 1 ) ) {
+            if( poll_active_semantic_surface_request() ) {
+                return input_event();
+            }
             CheckMessages();
         }
     } else if( inputdelay > 0 ) {
         for( uint64_t t0 = GetPerfCount(), t1 = 0; t1 < ( t0 + inputdelay * Frequency / 1000 );
              t1 = GetPerfCount() ) {
+            if( poll_active_semantic_surface_request() ) {
+                return input_event();
+            }
             CheckMessages();
             if( lastchar != ERR ) {
                 break;
@@ -729,6 +736,9 @@ input_event input_manager::get_input_event( const keyboard_mode /*preferred_keyb
             Sleep( 1 );
         }
     } else {
+        if( poll_active_semantic_surface_request() ) {
+            return input_event();
+        }
         CheckMessages();
     }
 

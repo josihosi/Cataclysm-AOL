@@ -149,6 +149,33 @@ class SemanticStateTest(unittest.TestCase):
             self.assertEqual(len(events), 1)
             self.assertEqual(events[0]["event"], "travel")
 
+    def test_surface_descriptor_and_rejection_receipt_stay_in_the_run_owned_trace(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            descriptor = {
+                "event": "surface_descriptor", "schema_version": 1, "run_id": "run-1",
+                "surface_id": "run-1:surface:2", "frame_id": "run-1:frame:3",
+                "kind": "unsupported", "breadcrumbs": ["World", "Wait unavailable"],
+                "payload": {"stop_reason": "missing binding"}, "valid_actions": [],
+            }
+            receipt = {
+                "event": "surface_receipt", "run_id": "run-1", "request_id": "request-1",
+                "requested_run_id": "run-1", "requested_surface_id": "run-1:surface:2",
+                "requested_frame_id": "run-1:frame:3", "consuming_surface_id": "run-1:surface:2",
+                "consuming_frame_id": "run-1:frame:3", "action_id": "world.wait",
+                "accepted": False, "rejection_reason": "no_native_binding", "resulting_frame_id": "",
+            }
+            trace.write_text(
+                SEMANTIC_STEP_PREFIX + json.dumps(descriptor) + "\n" +
+                SEMANTIC_STEP_PREFIX + json.dumps(receipt) + "\n", encoding="utf-8",
+            )
+            events, status = read_semantic_step_trace(trace, root, "run-1")
+            self.assertEqual(status, "ok")
+            self.assertEqual([event["event"] for event in events], ["surface_descriptor", "surface_receipt"])
+            self.assertEqual(events[0]["valid_actions"], [])
+            self.assertFalse(events[1]["accepted"])
+
     def test_native_travel_boundary_fails_active_stale_wrong_run_blocked_and_interrupted(self):
         active = {
             "event": "travel", "run_id": "run-1", "travel_id": "travel-1",

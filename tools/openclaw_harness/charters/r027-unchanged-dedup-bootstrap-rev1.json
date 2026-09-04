@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Zero-credit prerequisite for R-027 unchanged-dedup: create and natively save one real in-range signal lead from a physical fd_fire without mutating camp, observer, drive, or lead state directly.",
+  "material_proof": "The disposable bootstrap starts with fd_fire intensity 3 at [3360,1211,0] / OMT [140,50,0], a staffed camp at [140,51,0], one known baseline lead, and an idle five-member home roster. A production receipt creates a run-bound lead and world.quicksave persists it for a separate run.",
+  "current_uncertainty": "This run only creates the retained footing. It earns no unchanged-dedup credit and cannot stand in for the independent second cadence.",
+  "material_contradiction": ["the physical source is absent or not in range", "a lead, camp, observer, or drive field is directly mutated", "the receipt is not production/run-bound", "the saved output is not native"],
+  "already_accepted_evidence": ["Offline installed-fixture audit records fd_fire intensity 3 at the declared location, camp overmap_special:bandit_camp@140,51,0, five ready-at-home members, zero active outside, one baseline lead, and no onfire trait."],
+  "forbidden_shortcuts": ["callback injection", "direct lead mutation", "direct save edit", "physical key input", "shared profile"],
+  "honest_stop_conditions": ["finish after one in-range created receipt, native quicksave, immutable fixture capture, and cleanup", "finish inconclusive on a bound native lifecycle or persistence defect"],
+  "requested_evidence_ceiling": "zero-credit"
+}

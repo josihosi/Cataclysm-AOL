@@ -1,0 +1,28 @@
+{
+  "outcome": "On the current source and audited McWilliams established-base footing, the real native Zone Manager owner can expose a stable faction-scoped zone, apply one advertised enable or disable action, reject a stale or unavailable control without mutation, and retain the resulting state through native save, process replacement, and relaunch.",
+  "scenario": "r026.camp_zone_manager_v001_mcw",
+  "charter_id": "ee9f97320ac09274e9d171f98c89c8920dd8c8e2a6a6037de4cee1b0cde8a045",
+  "query": {
+    "preferences": [],
+    "requirements": [
+      {
+        "key": "runtime.fixture",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "bandit_basecamp_prepared_base_v1_2026-04-22"
+      },
+      {
+        "key": "runtime.world",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "McWilliams"
+      },
+      {
+        "key": "capabilities.r026.zone_manager",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "native_zone_enable_disable_with_persistence"
+      }
+    ]
+  }
+}

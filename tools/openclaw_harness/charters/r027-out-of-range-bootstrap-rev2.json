@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Setup only: a disposable native run removes the accepted source, moves the avatar to a distant diagnostic footing, and creates one fd_fire within the real local-source scan while beyond the camp's emitted cap.",
+  "material_proof": "An independent saved-world audit identifies the removed original source, the new nonzero fd_fire, its observer distance beyond the emitted cap, its scanner distance from the saved avatar, and unchanged camp/observer geometry.",
+  "current_uncertainty": "This setup earns no signal-feature credit until a separate production cadence run consumes its saved output.",
+  "material_contradiction": ["the original source remains", "the new source is within cap or outside the local physical scan", "camp or observer geometry changes", "a direct save edit or callback is used"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["direct save edit", "callback injection", "direct lead mutation", "physical input"],
+  "honest_stop_conditions": ["finish after native save and independent setup audit"],
+  "requested_evidence_ceiling": "zero-credit"
+}

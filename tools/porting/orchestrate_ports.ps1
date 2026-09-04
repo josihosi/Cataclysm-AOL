@@ -197,10 +197,6 @@ param(
         "Plan.md",
         "README.md",
         "TechnicalTome.md",
-        "AGENTS.md",
-        "Agent.md",
-        "Agents.md",
-        "agents.md",
         ".gitignore",
         "tools/porting/*"
     ),
@@ -229,9 +225,6 @@ param(
         "Plan.md",
         "README.md",
         "TechnicalTome.md",
-        "AGENTS.md",
-        "Agents.md",
-        "agents.md",
         ".gitignore",
         "tools/porting/README.md",
         "tools/porting/PORTING_CONTEXT.md"
@@ -482,9 +475,6 @@ function Sync-OrchestratorFilesFromMaster {
             "README.md",
             "Plan.md",
             "TechnicalTome.md",
-            "AGENTS.md",
-            "Agents.md",
-            "agents.md",
             "tools/porting/orchestrate_ports.ps1",
             "tools/porting/README.md",
             "tools/porting/PORTING_CONTEXT.md",
@@ -1446,7 +1436,7 @@ function New-CodexPromptFile {
         [Parameter(Mandatory = $true)] [string]$Body
     )
     $readFirstPaths = @()
-    foreach( $contextPath in @( "Agents.md", "AGENTS.md", "tools/porting/PORTING_CONTEXT.md", "Plan.md" ) ) {
+    foreach( $contextPath in @( "tools/porting/PORTING_CONTEXT.md", "Plan.md" ) ) {
         if( Test-Path -LiteralPath $contextPath ) {
             if( -not ( $readFirstPaths -contains $contextPath ) ) {
                 $readFirstPaths += $contextPath

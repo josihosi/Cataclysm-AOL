@@ -40,6 +40,8 @@ class dialogue_window
                              nc_color speaker_color );
         /** Adds a separator to the conversation history. */
         void add_history_separator();
+        /** Native dialogue history, in the order presented to the player. */
+        std::string history_text() const;
 
         void set_responses( const std::vector<talk_data> &responses );
 
@@ -101,4 +103,3 @@ class dialogue_window
         void print_header( const std::string &name ) const;
 };
 #endif // CATA_SRC_DIALOGUE_WIN_H
-

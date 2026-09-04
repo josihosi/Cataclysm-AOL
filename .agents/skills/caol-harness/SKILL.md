@@ -67,7 +67,13 @@ real external decision, unavailable capability, irreversible user-data risk, bin
 materially different owner outcome.
 
 At the honest boundary, seal `run.witness` and call `run.finish`. State the smallest conclusion
-supported by cited immutable evidence; do not invent facts or promote the evidence ceiling.
+supported by cited immutable evidence; do not invent facts or promote the evidence ceiling. When
+one run settles independent claims differently, submit a `caol-playtest-witness-bundle-v1`: each
+claim keeps its own verdict, while bound product or harness defects name affected and explicitly
+unaffected claims. Continue useful observation after a defect when the remaining causal footing is
+clean. The coordinator records ordinary defects in `.de67/debug-findings.md`; reserve the durable
+capability-gap history for missing reusable observation, action, or setup interfaces.
+
 `registry-record-witness` persists the witness and `registry-review-witness` records the
 coordinator's separate causal judgment.
 

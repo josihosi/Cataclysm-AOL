@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-027 out-of-range control: a real physical fd_fire beyond the smoke cap is rejected by the production camp recorder without creating or mutating a retained lead.",
+  "material_proof": "An independent installed-state audit proves the original source absent and the replacement fd_fire at OMT 152,49; native cadence records observer 4 at camp 140,51 rejecting the physical source at actual range 12 over cap 11 with equal lead counts and no new lead.",
+  "current_uncertainty": "The activity recovery must yield a fresh World semantic successor before further automation.",
+  "material_contradiction": ["an in-range source remains", "the source creates a lead", "lead counts change", "the receipt lacks the physical identities or range/cap"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["callback injection", "direct lead mutation", "direct save edit", "physical key"],
+  "honest_stop_conditions": ["finish after the independent production receipt and cleanup", "finish inconclusive on a bound native lifecycle defect"],
+  "requested_evidence_ceiling": "focused"
+}

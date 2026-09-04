@@ -6,6 +6,7 @@
 #include <cstdint>
 #include <cstdlib>
 #include <cstring>
+#include <fstream>
 #include <initializer_list>
 #include <list>
 #include <map>
@@ -24,6 +25,7 @@
 #include "bionics.h"
 #include "bodygraph.h"
 #include "bodypart.h"
+#include "basecamp.h"
 #include "cached_options.h"
 #include "calendar.h"
 #include "cata_utility.h"
@@ -45,6 +47,7 @@
 #include "event.h"
 #include "event_bus.h"
 #include "faction.h"
+#include "faction_camp.h"
 #include "field.h"
 #include "field_type.h"
 #include "flag.h"
@@ -90,6 +93,7 @@
 #include "ranged.h"
 #include "rng.h"
 #include "safemode_ui.h"
+#include "semantic_surface.h"
 #if defined(TILES)
 #include "sdl_gamepad.h"
 #endif
@@ -167,10 +171,32 @@ static std::string openclaw_harness_quote_action_value( const std::string &value
 {
     std::string out = "\"";
     for( const char c : value ) {
-        if( c == '\\' || c == '"' ) {
-            out += '\\';
+        switch( c ) {
+            case '\\':
+                out += "\\\\";
+                break;
+            case '"':
+                out += "\\\"";
+                break;
+            case '\n':
+                out += "\\n";
+                break;
+            case '\r':
+                out += "\\r";
+                break;
+            case '\t':
+                out += "\\t";
+                break;
+            case '\b':
+                out += "\\b";
+                break;
+            case '\f':
+                out += "\\f";
+                break;
+            default:
+                out += c;
+                break;
         }
-        out += c;
     }
     out += "\"";
     return out;
@@ -236,6 +262,125 @@ static std::string openclaw_harness_bound_semantic_run_id()
 }
 
 static bool openclaw_harness_semantic_step_trace_enabled()
+{
+    return !openclaw_harness_bound_semantic_run_id().empty();
+}
+
+static void openclaw_harness_write_semantic_step_event( const std::string &event )
+{
+    const char *const path = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" );
+    if( path == nullptr || path[0] == '\0' || event.empty() ) {
+        return;
+    }
+    std::ofstream stream( path, std::ios::app | std::ios::binary );
+    if( stream ) {
+        stream << "openclaw_harness_semantic_step: " << event << '\n';
+    }
+}
+
+static void openclaw_harness_semantic_surface_descriptor(
+    const semantic_surface_descriptor &descriptor )
+{
+    if( descriptor.run_id != openclaw_harness_bound_semantic_run_id() ) {
+        return;
+    }
+
+    std::ostringstream breadcrumbs;
+    breadcrumbs << '[';
+    for( size_t index = 0; index < descriptor.breadcrumbs.size(); ++index ) {
+        if( index > 0 ) {
+            breadcrumbs << ',';
+        }
+        breadcrumbs << openclaw_harness_quote_action_value( descriptor.breadcrumbs[index] );
+    }
+    breadcrumbs << ']';
+
+    std::ostringstream payload;
+    payload << '{';
+    for( auto iter = descriptor.payload.begin(); iter != descriptor.payload.end(); ++iter ) {
+        if( iter != descriptor.payload.begin() ) {
+            payload << ',';
+        }
+        payload << openclaw_harness_quote_action_value( iter->first ) << ':'
+                << openclaw_harness_quote_action_value( iter->second );
+    }
+    payload << '}';
+
+    std::ostringstream actions;
+    actions << '[';
+    for( size_t index = 0; index < descriptor.valid_actions.size(); ++index ) {
+        const semantic_action_descriptor &action = descriptor.valid_actions[index];
+        if( index > 0 ) {
+            actions << ',';
+        }
+        actions << "{\"id\":" << openclaw_harness_quote_action_value( action.id )
+                << ",\"stable_id\":" << openclaw_harness_quote_action_value( action.stable_id )
+                << ",\"label\":" << openclaw_harness_quote_action_value( action.label )
+                << ",\"enabled\":" << ( action.enabled ? "true" : "false" ) << '}';
+    }
+    actions << ']';
+
+    std::ostringstream event;
+    event << "{\"event\":\"surface_descriptor\",\"schema_version\":"
+          << descriptor.schema_version
+          << ",\"run_id\":" << openclaw_harness_quote_action_value( descriptor.run_id )
+          << ",\"surface_id\":" << openclaw_harness_quote_action_value( descriptor.surface_id )
+          << ",\"frame_id\":" << openclaw_harness_quote_action_value( descriptor.frame_id )
+          << ",\"kind\":" << openclaw_harness_quote_action_value( descriptor.kind )
+          << ",\"breadcrumbs\":" << breadcrumbs.str()
+          << ",\"payload\":" << payload.str()
+          << ",\"valid_actions\":" << actions.str() << '}';
+    openclaw_harness_write_semantic_step_event( event.str() );
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();
+}
+
+static void openclaw_harness_semantic_surface_receipt(
+    const semantic_action_receipt &receipt )
+{
+    const std::string run_id = openclaw_harness_bound_semantic_run_id();
+    if( run_id.empty() || receipt.requested_run_id != run_id ) {
+        return;
+    }
+
+    std::ostringstream event;
+    event << "{\"event\":\"surface_receipt\",\"run_id\":"
+          << openclaw_harness_quote_action_value( run_id )
+          << ",\"request_id\":" << openclaw_harness_quote_action_value( receipt.request_id )
+          << ",\"requested_run_id\":" << openclaw_harness_quote_action_value(
+                receipt.requested_run_id )
+          << ",\"requested_surface_id\":" << openclaw_harness_quote_action_value(
+                receipt.requested_surface_id )
+          << ",\"requested_frame_id\":" << openclaw_harness_quote_action_value(
+                receipt.requested_frame_id )
+          << ",\"consuming_surface_id\":" << openclaw_harness_quote_action_value(
+                receipt.consuming_surface_id )
+          << ",\"consuming_frame_id\":" << openclaw_harness_quote_action_value(
+                receipt.consuming_frame_id )
+          << ",\"action_id\":" << openclaw_harness_quote_action_value( receipt.action_id )
+          << ",\"accepted\":" << ( receipt.accepted ? "true" : "false" )
+          << ",\"rejection_reason\":" << openclaw_harness_quote_action_value(
+                receipt.rejection_reason )
+          << ",\"resulting_frame_id\":" << openclaw_harness_quote_action_value(
+                receipt.resulting_frame_id ) << '}';
+    openclaw_harness_write_semantic_step_event( event.str() );
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();
+}
+
+semantic_surface_manager &openclaw_harness_semantic_surface_manager()
+{
+    static std::optional<semantic_surface_manager> manager;
+    static std::string manager_run_id;
+    const std::string run_id = openclaw_harness_bound_semantic_run_id();
+    if( !manager || manager_run_id != run_id ) {
+        manager.emplace( run_id );
+        manager_run_id = run_id;
+        manager->set_descriptor_observer( openclaw_harness_semantic_surface_descriptor );
+        manager->set_receipt_observer( openclaw_harness_semantic_surface_receipt );
+    }
+    return *manager;
+}
+
+bool openclaw_harness_semantic_session_active()
 {
     return !openclaw_harness_bound_semantic_run_id().empty();
 }
@@ -418,6 +563,21 @@ static std::string openclaw_harness_visible_local_facts( const map &here,
                           << ",\"dy\":" << y << ",\"terrain\":"
                           << openclaw_harness_quote_action_value( here.ter( fact_pos ).obj().id.str() )
                           << '}';
+                    const furn_id furniture = here.furn( fact_pos );
+                    if( furniture != furn_str_id::NULL_ID() ) {
+                        facts << ",\"furniture\":" << openclaw_harness_quote_action_value(
+                                  furniture.obj().id.str() );
+                    }
+                    facts << ",\"fields\":[";
+                    bool first_field = true;
+                    for( const std::pair<const field_type_id, field_entry> &field : here.field_at( fact_pos ) ) {
+                        if( !first_field ) {
+                            facts << ',';
+                        }
+                        first_field = false;
+                        facts << openclaw_harness_quote_action_value( field.first.obj().id.str() );
+                    }
+                    facts << ']';
                 }
                 facts << ",\"terrain\":" << openclaw_harness_quote_action_value(
                           here.tername( fact_pos ) );
@@ -613,20 +773,14 @@ static std::string openclaw_harness_semantic_step_frame(
     avatar &player = get_avatar();
     const tripoint_bub_ms avatar_pos = player.pos_bub( here );
     std::ostringstream action_ids;
-    std::ostringstream action_inputs;
     action_ids << '[';
-    action_inputs << '{';
     for( size_t index = 0; index < actions.size(); ++index ) {
         if( index > 0 ) {
             action_ids << ',';
-            action_inputs << ',';
         }
         action_ids << openclaw_harness_quote_action_value( actions[index].first );
-        action_inputs << openclaw_harness_quote_action_value( actions[index].first ) << ':'
-                      << openclaw_harness_quote_action_value( actions[index].second );
     }
     action_ids << ']';
-    action_inputs << '}';
     std::ostringstream minimap;
     if( include_minimap ) {
         minimap << ",\"minimap\":{\"schema\":\"caol-native-minimap-v1\",\"radius\":" << SEEX
@@ -645,28 +799,29 @@ static std::string openclaw_harness_semantic_step_frame(
             << player.pos_abs_omt().z() << "],\"cells\":"
             << openclaw_harness_overmap_facts( player, overmap_radius, turn ) << '}';
 
-    DebugLog( D_INFO, DC_ALL )
-            << "openclaw_harness_semantic_step: {\"event\":\"frame\",\"run_id\":"
-            << openclaw_harness_quote_action_value( run_id )
-            << ",\"frame_id\":" << openclaw_harness_quote_action_value( frame_id )
-            << ",\"state\":" << openclaw_harness_quote_action_value( state )
-            << ",\"observed_turn\":" << turn
-            << ",\"game_minutes\":" << game_minutes
-            << ",\"producer\":" << openclaw_harness_quote_action_value( producer )
-            << ",\"initial_world_ready\":" << ( producer == "hud_world_ready" ? "true" : "false" )
-            << ",\"keep_watch_safety\":"
-            << openclaw_harness_keep_watch_safety( run_id, player )
-            << ",\"observation\":{\"schema\":\"caol-avatar-visible-v1\",\"avatar\":{\"name\":"
-            << openclaw_harness_quote_action_value( player.name )
-            << ",\"absolute_ms\":[" << player.pos_abs().x() << ',' << player.pos_abs().y() << ','
-            << player.pos_abs().z() << "]},\"visible_local\":"
-            << openclaw_harness_visible_local_facts( here, avatar_pos, 1, false, true )
-            << minimap.str()
-            << overmap.str()
-            << ",\"visible_entities\":" << openclaw_harness_visible_entities( player )
-            << ",\"visible_zones\":" << openclaw_harness_visible_zones( here, avatar_pos ) << '}'
-            << ",\"valid_actions\":" << action_ids.str()
-            << ",\"action_inputs\":" << action_inputs.str() << '}';
+    std::ostringstream event;
+    event << "{\"event\":\"frame\",\"run_id\":"
+          << openclaw_harness_quote_action_value( run_id )
+          << ",\"frame_id\":" << openclaw_harness_quote_action_value( frame_id )
+          << ",\"state\":" << openclaw_harness_quote_action_value( state )
+          << ",\"observed_turn\":" << turn
+          << ",\"game_minutes\":" << game_minutes
+          << ",\"producer\":" << openclaw_harness_quote_action_value( producer )
+          << ",\"initial_world_ready\":" << ( producer == "hud_world_ready" ? "true" : "false" )
+          << ",\"keep_watch_safety\":"
+          << openclaw_harness_keep_watch_safety( run_id, player )
+          << ",\"observation\":{\"schema\":\"caol-avatar-visible-v1\",\"avatar\":{\"name\":"
+          << openclaw_harness_quote_action_value( player.name )
+          << ",\"absolute_ms\":[" << player.pos_abs().x() << ',' << player.pos_abs().y() << ','
+          << player.pos_abs().z() << "]},\"visible_local\":"
+          << openclaw_harness_visible_local_facts( here, avatar_pos, 1, false, true )
+          << minimap.str()
+          << overmap.str()
+          << ",\"visible_entities\":" << openclaw_harness_visible_entities( player )
+          << ",\"visible_zones\":" << openclaw_harness_visible_zones( here, avatar_pos ) << '}'
+          << ",\"valid_actions\":" << action_ids.str() << '}';
+    openclaw_harness_write_semantic_step_event( event.str() );
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();
     return frame_id;
 }
 
@@ -674,7 +829,16 @@ static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_a
     const input_context &context )
 {
     static const std::vector<std::pair<std::string, std::string>> action_ids = {
+        { "world.pause", "pause" },
         { "world.wait", "wait" },
+        { "world.quicksave", "quicksave" },
+        { "world.save_quit", "save" },
+        { "world.inventory", "inventory" },
+        { "world.zone_manager", "zones" },
+        { "world.overmap", "map" },
+        { "world.chat", "chat" },
+        { "world.fire", "fire" },
+        { "world.debug_menu", "debug" },
         { "world.move.north", "UP" },
         { "world.move.south", "DOWN" },
         { "world.move.west", "LEFT" },
@@ -682,24 +846,28 @@ static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_a
     };
     std::vector<std::pair<std::string, std::string>> result;
     for( const std::pair<std::string, std::string> &action : action_ids ) {
-        if( const std::optional<std::string> input =
-                context.first_keyboard_character_for_action( action.second ) ) {
-            result.emplace_back( action.first, *input );
+        // The native context, rather than an optional physical keybinding,
+        // decides whether this logical action is currently available.
+        if( context.is_registered_action( action.second ) ) {
+            result.emplace_back( action );
         }
     }
     return result;
 }
 
 void openclaw_harness_semantic_initial_world_frame_if_ready( const input_context *active_input_context,
-        const bool no_activity_owns_turn,
-        const bool no_auto_move_owns_turn, const bool no_dead_watch_owns_turn )
+        const bool no_activity_owns_turn, const bool no_auto_move_owns_turn,
+        const bool no_dead_watch_owns_turn )
 {
-    // The render path is the first production boundary that can publish the
-    // startup descriptor.  Its active native context, rather than UI-stack
-    // guesses, decides whether a modal owns input.
+    // The completed world-HUD render is the only startup producer.  The
+    // active native input context, not UI topology, decides whether a modal
+    // owner prevents publication.
     if( active_input_context == nullptr || active_input_context->get_category() != "DEFAULTMODE" ||
         !no_activity_owns_turn || !no_auto_move_owns_turn || !no_dead_watch_owns_turn ||
         !openclaw_harness_semantic_step_trace_enabled() ) {
+        return;
+    }
+    if( !active_input_context->first_keyboard_character_for_action( "wait" ) ) {
         return;
     }
 
@@ -710,12 +878,7 @@ void openclaw_harness_semantic_initial_world_frame_if_ready( const input_context
         bound_run_id = active_run_id;
         emitted = false;
     }
-    if( active_run_id.empty() || emitted ) {
-        return;
-    }
-
-    avatar &player = get_avatar();
-    if( player.is_dead_state() ) {
+    if( active_run_id.empty() || emitted || get_avatar().is_dead_state() ) {
         return;
     }
 
@@ -725,11 +888,95 @@ void openclaw_harness_semantic_initial_world_frame_if_ready( const input_context
         return;
     }
 
-    const std::string frame = openclaw_harness_semantic_step_frame( "world", actions,
-                              "hud_world_ready" );
-    if( !frame.empty() ) {
+    if( !openclaw_harness_semantic_step_frame( "world", actions, "hud_world_ready" ).empty() ) {
         emitted = true;
     }
+}
+
+static std::vector<character_id> openclaw_harness_basecamp_mission_candidates()
+{
+    std::vector<character_id> result;
+    avatar &you = get_avatar();
+    for( const shared_ptr_fast<npc> &candidate : overmap_buffer.get_npcs_near_player( HALF_MAPSIZE ) ) {
+        if( !candidate || candidate->is_dead() || !candidate->assigned_camp ) {
+            continue;
+        }
+        // This entry deliberately supports only the ordinary nearby-contact
+        // route.  Radio contact remains owned by the existing faction UI.
+        if( rl_dist( you.pos_abs_omt(), candidate->pos_abs_omt() ) > 3 ) {
+            continue;
+        }
+        std::optional<basecamp *> camp = overmap_buffer.find_camp( candidate->assigned_camp->xy() );
+        if( camp && ( *camp )->allowed_access_by( you ) ) {
+            result.push_back( candidate->getID() );
+        }
+    }
+    return result;
+}
+
+static std::string openclaw_harness_world_messages()
+{
+    const std::vector<std::pair<std::string, std::string>> messages =
+        Messages::recent_messages( Messages::size() );
+    std::ostringstream result;
+    result << '[';
+    for( size_t index = 0; index < messages.size(); ++index ) {
+        if( index > 0 ) {
+            result << ',';
+        }
+        result << "{\"time\":" << openclaw_harness_quote_action_value( messages[index].first )
+               << ",\"text\":" << openclaw_harness_quote_action_value( messages[index].second ) << '}';
+    }
+    result << ']';
+    return result.str();
+}
+
+static std::map<std::string, std::string> openclaw_harness_world_payload()
+{
+    const map &here = get_map();
+    avatar &player = get_avatar();
+    const tripoint_bub_ms avatar_pos = player.pos_bub( here );
+    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    const int overmap_radius = MINIMAP_WIDTH / 2;
+
+    std::ostringstream avatar_fact;
+    avatar_fact << "{\"name\":" << openclaw_harness_quote_action_value( player.name )
+                << ",\"absolute_ms\":[" << player.pos_abs().x() << ',' << player.pos_abs().y() << ','
+                << player.pos_abs().z() << "]}";
+    std::ostringstream minimap;
+    minimap << "{\"schema\":\"caol-native-minimap-v1\",\"radius\":" << SEEX
+            << ",\"cells\":" << openclaw_harness_visible_local_facts( here, avatar_pos, SEEX, true,
+                    false ) << '}';
+    std::ostringstream overmap;
+    overmap << "{\"schema\":\"caol-avatar-overmap-v1\",\"coordinate_system\":"
+            << "\"avatar_relative_omt\",\"radius\":" << overmap_radius
+            << ",\"bound_source\":\"native_hud_minimap_width\",\"center_absolute_omt\":["
+            << player.pos_abs_omt().x() << ',' << player.pos_abs_omt().y() << ','
+            << player.pos_abs_omt().z() << "],\"cells\":"
+            << openclaw_harness_overmap_facts( player, overmap_radius, turn ) << '}';
+
+    return {
+        { "avatar", avatar_fact.str() },
+        { "visible_local", openclaw_harness_visible_local_facts( here, avatar_pos, 1, false, true ) },
+        { "minimap", minimap.str() },
+        { "overmap", overmap.str() },
+        { "visible_entities", openclaw_harness_visible_entities( player ) },
+        { "visible_zones", openclaw_harness_visible_zones( here, avatar_pos ) },
+        { "messages", openclaw_harness_world_messages() },
+        { "world_mode", player.current_movement_mode().str() },
+        { "last_save_result", g == nullptr ? "unavailable" : g->last_save_result() }
+    };
+}
+
+static std::vector<semantic_action_descriptor> semantic_surface_actions(
+    const std::vector<std::pair<std::string, std::string>> &actions )
+{
+    std::vector<semantic_action_descriptor> result;
+    result.reserve( actions.size() );
+    for( const std::pair<std::string, std::string> &action : actions ) {
+        result.push_back( { action.first, "", action.first, true } );
+    }
+    return result;
 }
 
 void openclaw_harness_semantic_wait_activity_complete()
@@ -745,6 +992,16 @@ void openclaw_harness_semantic_activity_distraction()
         { "activity.manage", "M" },
         { "activity.ignore", "I" },
     }, "activity_distraction_query" );
+}
+
+void openclaw_harness_semantic_world_after_activity_distraction()
+{
+    if( !openclaw_harness_semantic_step_trace_enabled() ) {
+        return;
+    }
+    input_context world_context = get_default_mode_input_context();
+    openclaw_harness_pending_world_frame = openclaw_harness_semantic_step_frame(
+                    "world", openclaw_harness_world_actions( world_context ) );
 }
 
 static void openclaw_harness_semantic_step_receipt( const std::string &frame_id,
@@ -765,8 +1022,9 @@ static void openclaw_harness_semantic_step_receipt( const std::string &frame_id,
 }
 
 static void openclaw_harness_semantic_movement_receipt( const std::string &frame_id,
-        const std::string &action_id, const tripoint_bub_ms &before,
-        const tripoint_bub_ms &expected, const tripoint_bub_ms &after, const map &here,
+        const std::string &action_id, const tripoint_abs_ms &before,
+        const tripoint_abs_ms &expected, const tripoint_abs_ms &after, const map &here,
+        const tripoint_bub_ms &after_bub,
         bool move_handled )
 {
     if( frame_id.empty() || !openclaw_harness_semantic_step_trace_enabled() ) {
@@ -775,12 +1033,10 @@ static void openclaw_harness_semantic_movement_receipt( const std::string &frame
     const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
     const char *const outcome = !move_handled ? "blocked" : after == expected ? "moved" :
                                 after == before ? "no_progress" : "unexpected_displacement";
-    // Native movement starts in the bubble coordinate space, while semantic
-    // frames describe the avatar in absolute map squares.  Receipts must use
-    // that same space so their postcondition can be compared directly.
-    const tripoint_abs_ms before_abs = here.get_abs( before );
-    const tripoint_abs_ms expected_abs = here.get_abs( expected );
-    const tripoint_abs_ms after_abs = here.get_abs( after );
+    // Movement may shift the map bubble.  Capture receipt coordinates in
+    // absolute map-square space at their own side of that shift, matching the
+    // semantic frame contract rather than translating pre-move bubble points
+    // through the post-move map origin.
     const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
     DebugLog( D_INFO, DC_ALL )
             << "openclaw_harness_semantic_step: {\"event\":\"receipt\",\"run_id\":"
@@ -790,11 +1046,11 @@ static void openclaw_harness_semantic_movement_receipt( const std::string &frame
             << ",\"accepted\":" << ( std::strcmp( outcome, "moved" ) == 0 ? "true" : "false" )
             << ",\"outcome\":" << openclaw_harness_quote_action_value( outcome )
             << ",\"coordinate_space\":\"absolute_ms\""
-            << ",\"before_absolute_ms\":[" << before_abs.x() << ',' << before_abs.y() << ',' << before_abs.z()
-            << "],\"expected_absolute_ms\":[" << expected_abs.x() << ',' << expected_abs.y() << ',' << expected_abs.z()
-            << "],\"after_absolute_ms\":[" << after_abs.x() << ',' << after_abs.y() << ',' << after_abs.z()
+            << ",\"before_absolute_ms\":[" << before.x() << ',' << before.y() << ',' << before.z()
+            << "],\"expected_absolute_ms\":[" << expected.x() << ',' << expected.y() << ',' << expected.z()
+            << "],\"after_absolute_ms\":[" << after.x() << ',' << after.y() << ',' << after.z()
             << "],\"after_terrain\":" << openclaw_harness_quote_action_value(
-                here.ter( after ).obj().id.str() )
+                here.ter( after_bub ).obj().id.str() )
             << ",\"observed_turn\":" << turn << '}';
 }
 
@@ -1901,18 +2157,13 @@ static int try_set_alarm()
     as_m.entries.emplace_back( 1, true, 'a', already_set ?
                                _( "Change your alarm" ) :
                                _( "Set an alarm for later" ) );
-    const std::string semantic_frame = openclaw_harness_semantic_step_frame(
-                                           "wait_mode_choice",
-    {
-        { "wait.duration_menu", "w" },
-        { "alarm.duration_menu", "a" }
-    } );
+    // These two entries are recreated for every wait.  Their generic uilist
+    // identities are deliberately process-local, so bind the native logical
+    // choices explicitly for semantic clients which must safely repeat a
+    // bounded wait.  Other uilists retain their generic identities.
+    as_m.entries[0].semantic_stable_id = "wait-mode:wait-a-while";
+    as_m.entries[1].semantic_stable_id = "wait-mode:set-alarm";
     as_m.query();
-
-    const std::string semantic_action = as_m.ret == 0 ? "wait.duration_menu" :
-                                        as_m.ret == 1 ? "alarm.duration_menu" : "";
-    openclaw_harness_semantic_step_receipt( semantic_frame, semantic_action,
-                                            !semantic_action.empty() );
 
     return as_m.ret;
 }
@@ -1964,6 +2215,14 @@ static void wait()
                   ) ) ||
                 ( veh.is_in_water( true ) && !veh.can_float( here ) ) // is sinking in deep water
             ) ) {
+            std::optional<semantic_surface_scope> semantic_scope;
+            if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+                semantic_scope.emplace( *manager, "unsupported", "Wait unavailable",
+                                        std::map<std::string, std::string>{
+                    { "stop_reason", "moving vehicle wait prompt lacks semantic bindings" }
+                } );
+                semantic_scope->consume_request();
+            }
             popup( _( "You can't pass time while controlling a moving vehicle." ) );
             return;
         }
@@ -1979,7 +2238,7 @@ static void wait()
 
     const bool has_watch = player_character.has_watch() || setting_alarm;
 
-    const auto add_menu_item = [ &as_m, &durations, &semantic_hotkeys, has_watch ]
+    const auto add_menu_item = [ &as_m, &durations, &semantic_hotkeys, has_watch, setting_alarm ]
                                ( int retval, int hotkey, const std::string &caption = "",
     const time_duration &duration = time_duration::from_turns( calendar::INDEFINITELY_LONG ) ) {
 
@@ -1990,6 +2249,13 @@ static void wait()
             text += ( text.empty() ? dur_str : string_format( " (%s)", dur_str ) );
         }
         as_m.addentry( retval, true, hotkey, text );
+        const std::string action_id = openclaw_harness_wait_duration_action( setting_alarm, retval );
+        if( !action_id.empty() ) {
+            // Like the parent choice, duration entries are reconstructed for
+            // each wait.  Use their native logical operation as the stable
+            // identity; validation still requires one enabled exact match.
+            as_m.entries.back().semantic_stable_id = "wait-duration:" + action_id;
+        }
         durations.emplace( retval, duration );
         semantic_hotkeys.emplace( retval, static_cast<char>( hotkey ) );
     };
@@ -2072,7 +2338,41 @@ static void wait()
     const std::string semantic_frame = openclaw_harness_semantic_step_frame(
                                            setting_alarm ? "alarm_duration_choice" : "wait_duration_choice",
                                            semantic_actions );
-    as_m.query(); /* calculate key and window variables, generate window, and loop until we get a valid answer */
+    std::optional<semantic_surface_scope> semantic_scope;
+    bool semantic_action_consumed = false;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        // This scope is the duration menu's native semantic owner.  Do not
+        // let uilist::query create a second generic menu scope below it: a
+        // wake can arrive after the first pre-query consume attempt, at
+        // which point that duplicate owner would retire the advertised
+        // wait-duration surface before it consumed its exact request.
+        as_m.semantic_owner = false;
+        const std::vector<semantic_action_descriptor> semantic_actions_descriptor =
+            semantic_surface_actions( semantic_actions );
+        std::map<std::string, int> semantic_action_retvals;
+        for( const auto &entry : semantic_hotkeys ) {
+            semantic_action_retvals.emplace( openclaw_harness_wait_duration_action( setting_alarm, entry.first ),
+                                             entry.first );
+        }
+        semantic_scope.emplace( *manager, "menu", setting_alarm ? "Set alarm" : "Wait duration",
+                                std::map<std::string, std::string>{},
+                                semantic_actions_descriptor,
+        [ &as_m, semantic_action_retvals ]
+        ( const semantic_action_request &request ) {
+            const auto selected = semantic_action_retvals.find( request.action_id );
+            if( selected == semantic_action_retvals.end() ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            as_m.ret = selected->second;
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+        // The duration menu owns input until query returns, so it alone may
+        // consume one queued semantic request before blocking for input.
+        semantic_action_consumed = semantic_scope->consume_request();
+    }
+    if( !semantic_action_consumed ) {
+        as_m.query(); /* calculate key and window variables, generate window, and loop until we get a valid answer */
+    }
 
     const auto dur_iter = durations.find( as_m.ret );
     const std::string semantic_action = openclaw_harness_wait_duration_action( setting_alarm, as_m.ret );
@@ -3237,8 +3537,11 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
                     dest_delta = dest_next;
                 }
                 const tripoint_bub_ms pos_before = player_character.pos_bub();
+                const tripoint_abs_ms pos_before_abs = player_character.pos_abs();
                 const tripoint_bub_ms dest_tile = pos_before +
                                                   tripoint_rel_ms( dest_delta, 0 );
+                const tripoint_abs_ms expected_abs = pos_before_abs +
+                                                      tripoint_rel_ms( dest_delta, 0 );
                 const ter_id ter_before = here.ter( dest_tile );
                 const furn_id furn_before = here.furn( dest_tile );
                 int veh_door_part_before = -1;
@@ -3249,10 +3552,11 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
                 const bool move_handled = avatar_action::move(
                                               player_character, here, tripoint_rel_ms( dest_delta, 0 ) );
                 const tripoint_bub_ms pos_after = player_character.pos_bub();
+                const tripoint_abs_ms pos_after_abs = player_character.pos_abs();
                 if( !semantic_action.empty() ) {
                     openclaw_harness_semantic_movement_receipt(
-                        openclaw_harness_pending_world_frame, semantic_action, pos_before, dest_tile,
-                        pos_after, here, move_handled );
+                        openclaw_harness_pending_world_frame, semantic_action, pos_before_abs, expected_abs,
+                        pos_after_abs, here, pos_after, move_handled );
                     openclaw_harness_pending_world_frame = openclaw_harness_semantic_step_frame(
                                 "world", {}, "post_step" );
                 }
@@ -4031,6 +4335,10 @@ bool game::handle_action()
     action_id act = ACTION_NULL;
     user_turn current_turn;
     avatar &player_character = get_avatar();
+    std::optional<semantic_surface_manager_session> semantic_session;
+    std::optional<semantic_surface_scope> world_semantic_scope;
+    bool semantic_action_consumed = false;
+    std::optional<character_id> semantic_basecamp_mission_actor;
     // Check if we have an auto-move destination
     if( player_character.has_destination() ) {
         act = player_character.get_next_auto_move_direction();
@@ -4056,7 +4364,133 @@ bool game::handle_action()
         return false;
     } else {
         // No auto-move, ask player for input
-        ctxt = get_player_input( action );
+        const std::string semantic_run_id = openclaw_harness_bound_semantic_run_id();
+        if( !semantic_run_id.empty() ) {
+            semantic_surface_manager &semantic_manager = openclaw_harness_semantic_surface_manager();
+            semantic_session.emplace( semantic_manager );
+            if( uquit == QUIT_WATCH && player_character.is_dead_state() ) {
+                world_semantic_scope.emplace( semantic_manager, "unsupported", "Death camera",
+                                              std::map<std::string, std::string>{
+                    { "stop_reason", "death camera lacks semantic bindings" }
+                } );
+            } else {
+                input_context world_context = get_default_mode_input_context();
+                const std::vector<std::pair<std::string, std::string>> native_world_actions =
+                    openclaw_harness_world_actions( world_context );
+                std::vector<semantic_action_descriptor> semantic_actions =
+                    semantic_surface_actions( native_world_actions );
+                const std::vector<character_id> basecamp_mission_candidates =
+                    openclaw_harness_basecamp_mission_candidates();
+                for( const character_id candidate : basecamp_mission_candidates ) {
+                    semantic_actions.push_back( { "world.basecamp_missions",
+                                                  std::to_string( candidate.get_value() ),
+                                                  _( "Open Base Missions" ), true } );
+                }
+                world_semantic_scope.emplace( semantic_manager, "world", "World",
+                                              openclaw_harness_world_payload(),
+                                              semantic_actions,
+                [ &act, &semantic_basecamp_mission_actor, basecamp_mission_candidates ]( const semantic_action_request &request ) {
+                    if( request.action_id == "world.pause" ) {
+                        // Pause is an ordinary native one-turn action.  It
+                        // reaches do_turn without opening the alarm-clock
+                        // wait menus, which lets production cadence remain
+                        // bound to its actual World owner.
+                        act = ACTION_PAUSE;
+                    } else if( request.action_id == "world.wait" ) {
+                        // Keep the native action branch authoritative; this merely
+                        // selects ACTION_WAIT before handle_action dispatches it.
+                        act = ACTION_WAIT;
+                    } else if( request.action_id == "world.quicksave" ) {
+                        // Use the ordinary save-without-quit action so a native
+                        // semantic setup session can persist its own changes
+                        // before its separate lifecycle cleanup.
+                        act = ACTION_QUICKSAVE;
+                    } else if( request.action_id == "world.save_quit" ) {
+                        // ACTION_SAVE retains the ordinary native confirmation
+                        // prompt.  That child prompt publishes and consumes its
+                        // own semantic choice before the saved process exits.
+                        act = ACTION_SAVE;
+                    } else if( request.action_id == "world.inventory" ) {
+                        act = ACTION_INVENTORY;
+                    } else if( request.action_id == "world.zone_manager" ) {
+                        act = ACTION_ZONES;
+                    } else if( request.action_id == "world.basecamp_missions" ) {
+                        const std::string candidate_id = request.stable_id.value_or( "" );
+                        const auto candidate = std::find_if( basecamp_mission_candidates.begin(),
+                        basecamp_mission_candidates.end(), [ &candidate_id ]( const character_id id ) {
+                            return std::to_string( id.get_value() ) == candidate_id;
+                        } );
+                        if( candidate == basecamp_mission_candidates.end() ) {
+                            return semantic_action_dispatch_result{ false, "invalid_basecamp_actor", "" };
+                        }
+                        npc *const actor = g->find_npc( *candidate );
+                        if( actor == nullptr || actor->is_dead() || !actor->assigned_camp ||
+                            rl_dist( get_avatar().pos_abs_omt(), actor->pos_abs_omt() ) > 3 ) {
+                            return semantic_action_dispatch_result{ false, "stale_basecamp_actor", "" };
+                        }
+                        std::optional<basecamp *> camp = overmap_buffer.find_camp( actor->assigned_camp->xy() );
+                        if( !camp || !( *camp )->allowed_access_by( get_avatar() ) ) {
+                            return semantic_action_dispatch_result{ false, "unavailable_basecamp", "" };
+                        }
+                        semantic_basecamp_mission_actor = *candidate;
+                    } else if( request.action_id == "world.overmap" ) {
+                        act = ACTION_MAP;
+                    } else if( request.action_id == "world.chat" ) {
+                        act = ACTION_CHAT;
+                    } else if( request.action_id == "world.fire" ) {
+                        act = ACTION_FIRE;
+                    } else if( request.action_id == "world.debug_menu" ) {
+                        act = ACTION_DEBUG;
+                    } else if( request.action_id == "world.move.north" ) {
+                        act = ACTION_MOVE_FORTH;
+                    } else if( request.action_id == "world.move.south" ) {
+                        act = ACTION_MOVE_BACK;
+                    } else if( request.action_id == "world.move.west" ) {
+                        act = ACTION_MOVE_LEFT;
+                    } else if( request.action_id == "world.move.east" ) {
+                        act = ACTION_MOVE_RIGHT;
+                    } else {
+                        return semantic_action_dispatch_result{ false, "no_native_binding", "" };
+                    }
+                    return semantic_action_dispatch_result{ true, "", "",
+                                                            act == ACTION_INVENTORY || act == ACTION_MAP ||
+                                                            act == ACTION_FIRE || act == ACTION_CHAT ||
+                                                            semantic_basecamp_mission_actor.has_value() };
+                } );
+            }
+            // The scope constructed above is the actual owner for this input
+            // turn.  Let it validate and receipt at most one queued request
+            // before the blocking native input path runs.
+            semantic_action_consumed = world_semantic_scope->consume_request();
+            // A semantic World request selects ACTION_WAIT directly, skipping
+            // the physical lookup branch below.  Keep its receipt on the same
+            // native action boundary as the physical route so the cockpit can
+            // bind the following duration menu to this exact World frame.
+            if( semantic_action_consumed && act == ACTION_WAIT ) {
+                openclaw_harness_semantic_step_receipt(
+                    openclaw_harness_pending_world_frame, "world.wait", true );
+                openclaw_harness_pending_world_frame.clear();
+            }
+            if( semantic_action_consumed && semantic_basecamp_mission_actor ) {
+                npc *const actor = find_npc( *semantic_basecamp_mission_actor );
+                if( actor == nullptr ) {
+                    return false;
+                }
+                // The World request has only selected the ordinary nearby
+                // companion route.  The actual Base Missions selector owns
+                // facts, mission availability, and dispatch from here.
+                const talk_function::basecamp_mission_resolution resolution =
+                    talk_function::basecamp_mission( *actor );
+                if( resolution != talk_function::basecamp_mission_resolution::selector_entered ) {
+                    DebugLog( D_INFO, DC_ALL ) << "openclaw_basecamp_mission_resolution=" <<
+                                               static_cast<int>( resolution );
+                }
+                return false;
+            }
+        }
+        if( !semantic_action_consumed ) {
+            ctxt = get_player_input( action );
+        }
     }
 
     // Remove asynchronous animations if any action taken before the input timeout
@@ -4078,6 +4512,20 @@ bool game::handle_action()
     if( uquit == QUIT_WATCH && action == "QUIT" ) {
         uquit = QUIT_DIED;
         return false;
+    }
+
+    if( act == ACTION_ACTIONMENU ) {
+        if( uquit == QUIT_WATCH ) {
+            return false;
+        }
+        // Semantic dispatch preselects this native action before the physical
+        // lookup branch.  It must still enter the same menu owner.
+        player_character.clear_destination();
+        destination_preview.clear();
+        act = handle_action_menu( here );
+        if( act == ACTION_NULL ) {
+            return false;
+        }
     }
 
     if( act == ACTION_NULL ) {

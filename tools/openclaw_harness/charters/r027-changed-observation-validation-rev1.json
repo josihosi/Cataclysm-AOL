@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-027 changed observation: a separately saved, valid in-range smoke lead refreshes after its physical fd_fire source payload changes, without lead retargeting.",
+  "material_proof": "The validation starts from the native-saved created smoke lead at camp 140,51 from source OMT 138,49. A distinct zero-credit native map-editor setup changes only that fd_fire payload, then an independent production cadence emits a refreshed smoke receipt with the same lead_id and source OMT, a changed lead hash/payload, observer 4, in-range actual range, clear line of sight, and unchanged target identity.",
+  "current_uncertainty": "The lead bootstrap and native changed-source fixture do not yet exist; neither earns changed-observation credit until independently consumed by this route.",
+  "material_contradiction": ["the saved lead is absent or was directly injected", "the changed source moves OMT or changes channel instead of its declared physical payload", "the refreshed receipt retargets the lead", "the receipt is unchanged, created, missing, out of range, or line-of-sight blocked", "the setup or validation uses a callback, direct lead mutation, or direct save edit"],
+  "already_accepted_evidence": ["Canonical run 76bc9842…1f2481c is an out-of-range control only and does not prove this in-range refresh."],
+  "forbidden_shortcuts": ["callback injection", "direct lead mutation", "direct save edit", "physical key"],
+  "honest_stop_conditions": ["stop before validation if source, retained lead identity, or native setup audit differs", "finish after one independently bound refreshed receipt and cleanup", "finish inconclusive on a bound lifecycle defect"],
+  "requested_evidence_ceiling": "focused"
+}

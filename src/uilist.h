@@ -73,6 +73,9 @@ struct uilist_entry {
         nc_color hotkey_color;
         nc_color text_color;
         mvwzstr extratxt;
+        // Renderer-neutral identity for the lifetime of this entry.  It is
+        // deliberately independent of row position, label, and hotkey.
+        std::string semantic_stable_id;
 
         // In the following constructors, int key only support letters (a-z, A-Z) and
         // digits (0-9), MENU_AUTOASSIGN, and 0 or ' ' (disable hotkey). Other
@@ -485,6 +488,13 @@ class uilist // NOLINT(cata-xy)
         bool allow_cancel = true;
         // return retval on "CONFIRM" action, default true
         bool allow_confirm = true;
+        // A focused owner may use a uilist solely for native presentation while
+        // retaining its own semantic action namespace and consumer.
+        bool semantic_owner = true;
+        // A selected entry is about to enter a native child owner.  Keep the
+        // accepted receipt bound to that child rather than republishing this
+        // menu's parent while the caller constructs it.
+        bool semantic_await_child_successor = false;
         // return UILIST_ADDITIONAL if the input action is inside `additional_actions`
         // and unhandled by callback, default false.
         bool allow_additional = false;

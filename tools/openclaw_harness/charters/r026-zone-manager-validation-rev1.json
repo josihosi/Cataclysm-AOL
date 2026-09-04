@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On the current source and audited McWilliams established-base footing, the real native Zone Manager owner can expose a stable faction-scoped zone, apply one advertised enable or disable action, reject a stale or unavailable control without mutation, and retain the resulting state through native save, process replacement, and relaunch.",
+  "material_proof": "An independent current-source run enters through world.zone_manager, records the native Zone Manager descriptor and receipt, observes exact stable zone identity/faction/enabled/revision before and after one native mutation, records a rejected control with unchanged state, then verifies the same saved state after native exit and relaunch with accepted cleanup and a bounded feel observation.",
+  "material_contradiction": ["World does not enter the native Zone Manager owner", "the action applies to a different zone or stale revision", "a rejected control mutates state", "native save/relaunch loses the observed state", "physical input, direct state mutation, setup, or a semantic acceptance alone is credited as behavior"],
+  "already_accepted_evidence": ["R-026 established-base audit is readiness only.", "Zone identity/revision and semantic owner unit tests are implementation evidence only."],
+  "current_uncertainty": "The fixture's currently active zone and save lifecycle must be independently observed; fixture setup has zero feature credit.",
+  "forbidden_shortcuts": ["physical or guessed input", "direct zone/save mutation", "fixture restage", "crediting startup or descriptor publication as gameplay behavior"],
+  "honest_stop_conditions": ["missing current binding or authorization before launch", "after launch preserve the first owner, receipt, state, or persistence divergence while retaining unaffected controls"],
+  "requested_evidence_ceiling": "focused"
+}

@@ -24,6 +24,241 @@ No pending suggestions.
 
 ## Consumed suggestions
 
+* Owner-authorized [trigger]: At the next durable quiet junction, force one cumulative review of the
+  worker-facing evidence and continuity interface before dispatching more ordinary CAOL work. Do not
+  interrupt a live worker, build, playtest, or native process merely because this entry exists. The
+  problem is not missing proof rigor: comprehensive harness artifacts are being serialized into the
+  model conversation, and successor workers are reconstructing current state by reading old briefs,
+  registry dumps, build logs, reports, and broad search results. Preserve the full evidence on disk,
+  the pragmatic LLM witness, exact identities, evidence classes, fail-closed behavior, current dirty
+  frontier, accepted receipts, and `src/llm_intent.cpp` as a protected boundary. Change how workers
+  receive and retrieve that evidence; do not weaken what acceptance means.
+
+  Treat the following five entries as one forcing package with independently testable outcomes:
+
+  1. **Artifact-backed quiet command output.** Make worker-facing registry, cockpit, scenario,
+     observation, action, report-finalization, reconciliation, and build routes write their complete
+     audit artifacts to durable files while returning only the compact operational receipt needed for
+     the next decision: command outcome, current task/run/binding identities, material state delta,
+     evidence class, first divergence or actionable failure, proof-journal entry IDs, artifact paths
+     and digests, and useful narrow follow-up queries. Full candidate inventories, lifecycle history,
+     transition streams, compiler invocations, and nested reports must not enter stdout merely because
+     they were generated. Do not solve this with an arbitrary byte or line cap, silent truncation, or
+     loss of evidence. A worker may explicitly retrieve a full artifact when a compact receipt is
+     contradicted or genuinely insufficient.
+
+  2. **Indexed pinpoint evidence retrieval.** Give durable witness and diagnostic records stable,
+     compact, machine-searchable fields for claim, task, worker, run, scenario, binding, sequence,
+     event type, evidence class, actor/action/receipt identity, status or verdict, first-divergence
+     class, summary, and artifact reference where applicable. Provide narrow queries over those fields
+     so a worker can ask for one current continuation, one actor receipt, one failure class, or the
+     latest relevant journal entry without reading a whole report or grepping all of `build_logs/` and
+     `.userdata/`. Compact JSONL suitable for `rg`/`jq` and an indexed projection may coexist; grep is
+     a fallback, not the primary discovery protocol. Preserve a direct path from every compact result
+     to the complete immutable artifact that supports it.
+
+  3. **Outcome-sized worker brief and read plan.** Revise the generated worker-brief guidance and its
+     behavioral contract so a dispatched worker receives the assigned outcome, current proof frontier,
+     accepted or protected no-replay facts, first open boundary, exact current save/build/run/artifact
+     bindings, relevant code or harness entrypoints, the smallest initial evidence reads that make the
+     next decision possible, and the conditions that justify expanding the search. The brief should
+     explain why each named read is relevant, not tell the worker to ingest the complete WEC, DFS,
+     ledger, registry, historical reports, or repository by ritual. Preserve worker autonomy to inspect,
+     repair, test, and change strategy; prohibit neither broad investigation nor full-artifact reads
+     when current evidence actually requires them. The correction is progressive disclosure and exact
+     footing, not a prescribed command sequence or a cosmetic shorter prompt.
+
+  4. **Durable no-archaeology terminal and continuation receipt.** Require each worker result and
+     execution-context handoff to settle the attempt with a compact durable receipt naming the achieved
+     outcome or first divergence, material repository and runtime changes, journal entries, tests and
+     live actions performed, evidence ceilings, exact continuation artifacts and bindings, active work
+     inherited by a successor, accepted proof that must not be replayed, the first remaining boundary,
+     and narrow queries that can recover additional detail. The same coordinator should project this
+     receipt into a successor packet instead of asking a fresh worker to rediscover state from old
+     briefs and logs. An ended worker context may abandon an attempt without abandoning the outcome,
+     but it must not orphan a live build or force the successor to infer ownership and state from the
+     filesystem.
+
+  5. **Continuous efficiency and context-engineering responsibility.** Make operational and systemic
+     efficiency a first-class concern of mutation review alongside correctness, integrity, and honest
+     proof. Monitor token use and context shape before reading contents: use compact metadata about
+     source, approximate size, repetition, freshness, and role to surface both isolated large outputs
+     and small recurring baggage. Inspect only opportunities that matter in the observed situation,
+     apply the deletion test to simplify, remove, or make material retrievable on demand, and validate
+     on a realistic worker route that the same outcome and honest proof remain possible; metrics must
+     not become quotas, mandatory scans, or incentives to hide failures or end useful work early.
+
+     Avoid archaeology: when relevant history truly must be reconstructed, the reviewer may ask
+     optional native Luna helpers to inspect bounded artifacts and return compact independent
+     conclusions with exact references, without DE67 tasks, clocks, ledger entries, or any transfer of
+     the reviewer's mutation and acceptance responsibility.
+
+  The review must determine the smallest correct division between compiled Phase-3 policy, generated
+  brief/result contracts, coordinator guidance, harness/registry interfaces, proof journal, tests, and
+  ordinary downstream implementation. It may update and behaviorally prove the mutation-scoped policy,
+  coordinator, generated-brief, result-contract, and retrieval-contract surfaces directly. It must
+  project repository-owned harness implementation that properly belongs to an ordinary worker into the
+  refrozen DFS and active work ledger with explicit acceptance, then release the gate so the successor
+  coordinator can dispatch that work. Do not require the exclusive reviewer to wait for work that only
+  a post-mutation ordinary worker is authorized to perform. Equally, do not mark the downstream harness
+  outcome accepted merely because its method contract and task projection exist. Do not leave a
+  prose-only rule pointing at commands or schemas that no planned ordinary task will create, and do not
+  make the mutation reviewer conduct the CAOL playtests whose interface it is correcting.
+
+  Validate behavior rather than wording. Demonstrate that complete evidence is still written and
+  recoverable by digest; ordinary stdout contains the causal receipt rather than the full artifact;
+  pinpoint queries recover the same exact evidence as the referenced artifact; generated briefs do not
+  demand blanket startup reading and do name sufficient current footing; and a successor can continue
+  a preserved build or playtest from the terminal receipt without replaying completed setup or scanning
+  historical logs. Record model-visible output size, fresh/cached token use when directly observable,
+  command count, and context growth as evidence, not as invented gates or quotas.
+
+  Reproduction evidence for the review: deleting the repository `Agents.md` reduced the fresh
+  coordinator's initial input from 25,886 to 22,662 tokens, but inspected worker startups remained near
+  21,350 tokens. After that deletion, the coordinator plus three R-029 workers consumed about 1,023,023
+  directly observable fresh tokens and 38.55 million cached input tokens in roughly the first 48
+  minutes. Individual registry and historical-log commands emitted hundreds of thousands to about one
+  million raw characters; model-visible tool results repeatedly carried roughly forty thousand
+  characters; one successor accumulated about 654,000 response-item characters and 149,947 fresh
+  tokens in about six minutes while rereading harness guidance, old briefs, logs, diffs, registry state,
+  and build output. The workers were trying to preserve current-source binding, no-replay evidence, and
+  the first divergence, so treat this as an interface and handoff failure rather than worker misconduct.
+
+  Do not add evidence retention or garbage collection to this forcing package. Referenced artifacts for
+  active tasks, accepted claims, and continuations need a separate reachability and retention design;
+  no owner retention period or deletion policy has been chosen. Do not add arbitrary token, output,
+  search, command, retry, or file limits. The exclusive mutation review is complete when its method
+  changes and generated contracts are behaviorally proved, every repository-owned implementation item
+  has an executable acceptance contract in the refrozen DFS and active ledger, and the successor
+  coordinator can dispatch that work without weakening current CAOL evidence or replaying closed proof.
+  The overall five-route efficiency outcome remains visibly open in the work ledger until ordinary
+  workers implement and behaviorally prove the projected harness and retrieval work; mutation-gate
+  release is neither acceptance of that downstream work nor a reason to keep ordinary workers blocked.
+
+  Disposition (gate `e8b6511ab381`, lineage `semantic-surface-cockpit`, 2026-09-04): consumed. The
+  immediate recovery preserves R-026 and R-029 as compact identity-bound continuation receipts with
+  exact first-open boundaries, no-replay work, bindings, narrow queries, and digest-bound artifacts;
+  neither gameplay claim is accepted or replayed. The cause was an interface mismatch, not worker
+  misconduct: the default registry route serialized a 4,236,128-character/223-entry full history and
+  continuation depended on 151 and 6 free-text checkpoints, so responsible workers had to reread bulk
+  evidence to protect binding and proof truth.
+
+  The repeatable method correction is guarded and behaviorally exercised: worker-owned terminal
+  transitions require an exact validated receipt; receipt queries are indexed by continuation and
+  evidence identities and return compact projections unless full retrieval is explicit; successor
+  packets contain the outcome, current frontier, compact receipt, exact bindings/entrypoints, and a
+  reasoned progressive read plan. Artifact digest drift and terminal-without-receipt controls fail,
+  one action-ID query returns only its compact match, and a successor packet omits bulky accepted
+  history while retaining the first open boundary. Metrics remain diagnostics rather than quotas.
+
+  The complete five-route outcome remains red as `R-030`. Its active ledger item and frozen
+  `R-030-S001` acceptance contract require ordinary workers to implement quiet artifact-backed CAOL
+  command output, cross-surface pinpoint retrieval, CAOL skill/test alignment, and a lossless fresh
+  successor proof before further expensive R-026/R-029 playtests. No retention/garbage-collection
+  policy or arbitrary limit was introduced, and `src/llm_intent.cpp` was not changed.
+
+* Owner-authorized [trigger]: Unearth the previously designed current-source CAOL feature playtest
+  package from this ledger's consumed history and place it in conjunction with—not in replacement
+  of—the active semantic-surface delivery. Preserve the accepted R-SURFACE evidence, allow the
+  current R-SURFACE-009 and R-SURFACE-010 work to finish, and treat the complete semantic cockpit as
+  enabling footing for richer playtests rather than as the final gameplay outcome. This suggestion
+  must not interrupt the present coordinator merely because it exists.
+
+  During the next ordinary mutation review, inspect the consumed entry beginning “Reshape de67 3
+  delivery around a current-source CAOL feature playtest package,” its recorded disposition, the
+  current refrozen `.de67/DFS.md`, `.de67/work-ledger.md`, accepted semantic-surface receipts, current
+  source, fixtures, scenario registry, playtest findings, and any surviving package artifacts. Then
+  expand and refreeze the DFS and rewrite/refill the active work ledger so the integrated package is
+  once again an explicit downstream frontier. Do not merely paste the old prose back, erase the
+  semantic work, reopen accepted semantic claims, or write product/harness implementation during
+  mutation review. Reconcile the old package with what the now-capable cockpit can actually operate
+  and observe, preserve honest prior evidence with its ceilings, retire stale assumptions, and give
+  ordinary coordinators outcome-sized work that uses the semantic surface to build, repair, and run
+  the package afterward.
+
+  Restore the package's intended gameplay scope unless current repository evidence justifies a
+  narrower or revised route: follower and ambient LLM NPC behavior and snapshots, basecamp request
+  context, Smart Zone Manager, Locker and Patrol behavior, overmap light/smoke/significant-sound
+  causation, bandit and cannibal discovery/stalking/contact/attack/return lifecycles, and flesh-raptor
+  behavior, while retaining the owner's earlier exclusion of writhing stalkers and zombie riders
+  pending another design pass. Prefer combined living-world scenarios, independent claim verdicts,
+  causal fire/signal controls, current-source bindings, mechanical checks plus gameplay feel, and
+  reusable findings over isolated paperwork. Keep the established-base fixture and the detailed
+  scenario/tooling/evidence guidance from the consumed package where still true, and update it where
+  the semantic cockpit has removed an old harness limitation.
+
+  Disposition (gate `1cb2f53ad1fe`, lineage `semantic-surface-cockpit`, 2026-09-02): consumed. The
+  immediate recovery preserves durable acceptance and exact receipt references for all ten
+  R-SURFACE claims, composes R-026 through R-028 into the refrozen DFS, and rewrites the active
+  projection around the current established-base package. No accepted semantic claim was reopened,
+  and no product, harness, fixture, scenario, test, or unrelated documentation was changed during
+  this review.
+
+  Incident reconstruction: the semantic DFS declared that it replaced the hostile-ecology DFS and
+  retained only cockpit requirements. The active ledger then defined necessity solely against that
+  narrowed WEC/DFS and explicitly deleted hostile-ecology work. The actor followed the supplied
+  contract and incentive correctly; the earliest preventable cause was a destructive refreeze
+  boundary with no rule for preserving a compatible owner-authorized unfinished downstream outcome.
+  Immediate recovery alone would have pasted old claims back and left the same transition able to
+  erase them again.
+
+  Repeatable method correction: the active DFS now states one compositional rule in place of the
+  replacement rule—an enabling refreeze may compact accepted footing, but it does not become a
+  delivery ceiling or erase a compatible owner-authorized outcome that remains unproved. The ledger
+  projects accepted semantics compactly and retains the unfinished product frontier, ordinary
+  repository recovery authority, independent verdicts, and the bootstrap/validation split. Current
+  evidence also retires two stale assumptions: staffed-camp signal observation is implemented and
+  needs independent validation rather than a new implementation bridge, and the accepted semantic
+  surfaces must be tried before inventing package-specific NPC interaction plumbing.
+
+  Reproduction and counterexample: before correction, the durable mutation gate resolved to
+  `owner-suggestion:1cb2f53ad1fe`, while both `.de67/DFS.md` and `.de67/work-ledger.md` contained no
+  R-026, R-027, or R-028 route despite their consumed owner-authorized design. The current-source
+  registry simultaneously selected the isolated R-027 scenario but rejected an older hostile-camp
+  fire route for current contradiction, exposing why a verbatim restoration would be false. After
+  correction, all ten R-SURFACE delivery markers and durable acceptance references remain closed,
+  the slice inventory adds exactly R-026-S001 through R-028-S001 as red package work, R-027 records
+  implemented source plus its zero-credit bootstrap and stale executable binding, and the active
+  ledger contains meaningful stable subtasks for every non-atomic package item. Removing any one of
+  those new claims again leaves the owner package contract unmet; preserving only the cockpit
+  reproduces the original failure.
+
+* Owner-authorized [defer]: Make optional Terra-to-Luna delegation easy to recognize without adding
+  new administration or forcing delegation. Keep Terra responsible for its assigned outcome, but
+  briefly tell it to consider a Luna helper when bounded work can return independently, especially
+  an isolated live playtest witness, focused test run, log analysis, source trace, screenshot
+  inspection, or platform check. For a playtest, Terra supplies the compact charter and isolated run
+  context; Luna operates the run and returns the smallest journal-cited witness result; Terra judges
+  the evidence and owns any repair.
+
+  Preserve the existing native-helper model: no helper deadline task, DFS/ledger/clock mutation, or
+  further delegation. Do not redesign parallel Terra dispatch or prescribe when Terra must delegate.
+  Add only the smallest routed guidance needed to make this option discoverable, and keep helpers
+  away from overlapping source edits or shared mutable runtime state unless they have explicit
+  exclusive ownership.
+
+  Disposition (cycle 3, 2026-09-01): consumed. The existing generated worker brief already allowed
+  Terra to use native Luna helpers, but described the option only as useful “when that helps.” The
+  supplied information therefore hid the decision boundary: it did not identify independently
+  returnable work, the compact playtest handoff/result, or the shared-state ownership condition.
+  This was an instruction-surface defect, not a worker failure. Immediate recovery preserves
+  exploration-007's honest abandonment, source-bound implementation/build evidence, and the active
+  R-SURFACE-007 route for deterministic talker selection; no live worker or product result required
+  alteration. The repeatable correction rewrites the existing generated helper clause in place. It
+  now makes bounded independent examples recognizable, keeps delegation optional, gives playtest
+  helpers the compact charter and isolated run context, returns the smallest journal-cited witness
+  to Terra for judgment and repair, and excludes helper-owned DE67 state or overlapping mutable work
+  without explicit exclusive ownership. It adds no helper task, gate, quota, or coordinator step.
+
+  Counterexample and proof: before the correction, the exact generated Terra message contained none
+  of the bounded-work, isolated-playtest, journal-cited-witness, or shared-state ownership cues. The
+  corrected unbound-task message contains each cue while retaining `fork_turns="none"`, Terra's
+  whole-outcome responsibility, worker-selected effort, native helper freedom, collection/stop, and
+  the no-further-delegation boundary; it also contains no `must delegate` instruction. All 55 focused
+  policy-kernel tests pass. The cycle guard accepted the stored `orchestrator-guidelines.md` lane as
+  an exact no-op because it already projects failed strategies and honest result settlement, and
+  accepted only the generated-brief implementation and its behavioral boundary test.
+
 * Owner-authorized [defer]: Reshape de67 3 delivery around a current-source **CAOL feature playtest
   package** which will exercise the implemented systems together in a living world, instead of
   preserving a cabinet of isolated old demos. This is a non-forcing suggestion for the next ordinary
@@ -1170,3 +1405,97 @@ No pending suggestions.
     inconclusion, generic registry persistence, coordinator review separation, and absence of the
     playtest manual from unmarked dispatches. Policy guard digest:
     `b3f1d2e28fb4409173c5f24717f12ccdaa245e14eb8fb9addd50aba1753a6af5`.
+
+* Owner-authorized [trigger]: Add automatic recoverability check-ins for the Phase-3 product
+    workspace, using its configured source branch and single push target just as method work is
+    durably committed and pushed to `de67-lab`. The C-AOL `dev` branch exists for active development,
+    so a recovery checkpoint does not require owner approval or polished hand-written commit prose.
+    It must remain explicitly distinct from DFS acceptance, tested integration, promotion, or
+    release.
+
+    Keep exactly two publication domains. C-AOL product code and its repository-owned playtest
+    harness, witness contracts, fixtures, tests, and workspace-local DE67 delivery artifacts are one
+    product domain and checkpoint together on C-AOL `dev`. Reusable DE67 method source, packaged
+    assets, and method tests are a separate `de67-lab` domain and checkpoint only to that repository.
+    Never mix either domain's files, commit, ref, receipt, or push target into the other.
+
+    Check in only at a real quiescent lifecycle boundary after durable state shows no live ordinary
+    worker or reviewer editing that repository. Include tracked changes and new non-ignored source,
+    test, harness, policy, and documentation files. First make repository ignore rules accurately
+    exclude generated builds, run logs, saves, coordinator state, screenshots, and other reproducible
+    bulk so they cannot enter the commit merely because they are untracked. Derive a concise,
+    deterministic recovery message from the DE67 lineage and terminal transition; model-authored
+    wording may improve it but must not be required for safety.
+
+    Perform the check-in as supervisor or harness infrastructure outside model context. Do not ask a
+    coordinator, worker, or reviewer to stage files, write a report, choose a message, inspect the
+    diff for checkpointing, or spend a turn supervising routine Git durability. Agents continue to
+    own implementation and proof judgment; the automatic check-in merely preserves their files.
+
+    Make the Git and SQLite histories mutually discoverable without committing the mutable database.
+    Allocate one stable checkpoint id in SQLite before staging, and put that id plus the lineage and
+    relevant durable state revision in structured commit-message trailers. After Git creates the
+    commit, finalize the same SQLite row with the commit SHA, source and target refs, remote, and push
+    verification. A crash between those steps must be idempotently recoverable by reading the
+    checkpoint trailer from HEAD and completing the existing row rather than creating another commit.
+    Either side must retain enough identity to find and verify the other; do not depend on a mutable
+    database pathname or paste verbose ledger/report text into the commit message.
+
+    Push the resulting commit through the workspace's existing single-target configuration, verify
+    that the remote `dev` ref equals the new local HEAD, and record a compact receipt. A failed add,
+    commit, hook, push, or verification must preserve the dirty tree, surface a recoverability
+    incident, and prevent silently accumulating another work interval without protection. Never
+    reset, discard, amend, force-push, sweep another worktree, or treat a checkpoint as evidence that
+    the changed behavior passed. Prove with temporary repositories that a quiescent C-AOL-style
+    workspace commits and pushes modified and newly added product files, excludes generated bulk,
+    makes no empty commit, refuses the wrong branch or multiple targets, detects a remote mismatch,
+    reconciles a crash after Git commit but before SQLite finalization without duplicating the commit,
+    resolves Git-to-SQLite and SQLite-to-Git identity, and does not check in while any worker or
+    reviewer is live. Preserve the separate `de67-lab` publication route and install/hash-check the
+    validated method change before resolution.
+
+    Disposition (gate `72b2d68a242d`, lineage `semantic-surface-cockpit`, 2026-09-04): consumed.
+    Immediate recovery preserves interrupted R-030 attempt receipt `a6286419…b61163`, its four
+    untested harness edits, and its exact no-credit ceiling; the already abandoned attempt and
+    released worker claim were not terminalized again. The active ledger now tells the successor to
+    validate and complete those edits instead of discarding them or treating them as accepted. The
+    product ignore boundary excludes `.de67/state`, the no-go archive, build logs, mutable registry
+    storage, generated builds/saves, and captured screenshots while leaving new repository-owned
+    source, tests, fixtures, scenarios, charters, and guidance visible to checkpointing.
+
+    Incident reconstruction: workers and reviewers correctly left a large, valuable dirty frontier
+    because Git durability was model-visible manual work and the supervisor's terminal journal had no
+    repository transition. Generated bulk was also still eligible for a blanket `git add`, while Git
+    and SQLite had no shared recovery identity. The earliest preventable cause was the missing
+    supervisor-owned transaction after a quiescent journal close, not agent caution or commit-message
+    quality. A later blanket reminder to commit would have repeated the same dependency on model
+    attention and could not recover a crash between Git and SQLite.
+
+    Repeatable correction: the external supervisor now invokes one standalone checkpoint transaction
+    only after it closes the active coordinator or mutation-reviewer journal row and before another
+    model interval. The transaction validates the configured local branch, exact single push target,
+    and remote URL; scopes liveness to the current supervisor owner so dead historical journal rows do
+    not create a false gate; allocates a stable SQLite checkpoint ID and state revision before staging;
+    stages tracked changes and non-ignored new files; creates no empty commit; writes the identity,
+    lineage, state revision, source ref, and target ref as structured Git trailers; pushes without
+    amend, reset, or force; and verifies the remote ref. Commit, hook, push, or verification failure is
+    durable and stops the next interval while preserving the tree. A pending allocation whose trailer
+    is already on `HEAD` resumes the same row and commit rather than duplicating either.
+
+    Reproduction and counterexamples: seven temporary-repository tests prove modified and new product
+    files reach the configured bare remote while ignored bulk does not; an unchanged tree creates no
+    commit; wrong branch and multiple targets fail before staging; a forced crash after Git commit but
+    before SQLite finalization resumes the same checkpoint and commit; a forced post-push remote-ref
+    race records failure rather than green; current worker or reviewer ownership refuses the
+    checkpoint; and an unfinished row from a prior supervisor owner does not block the current
+    quiescent boundary. A supervisor integration test observes zero unfinished current journal rows at
+    checkpoint invocation. On this live state, the installed helper rejects the still-running
+    `mutation-610cd…` reviewer itself, proving that installation did not smuggle the current model into
+    product staging. The installed focused checkpoint/supervisor suite passes 77 tests.
+
+    Method publication remains a separate domain: lab main was committed and push-verified at
+    `13d72ab6…45fc0`; the installed release worktree, including the preceding compact-receipt method,
+    was committed and push-verified to the `de67-lab` remote at `4849ed13…ab0b6`. The checkpoint
+    implementation, tests, and supervisor reference hash-match between lab main and the installed
+    skill. No product checkpoint was claimed during this live reviewer; checkpoint commits remain
+    explicitly non-evidence and begin only at a supervisor-observed quiescent boundary.

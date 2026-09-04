@@ -1,0 +1,84 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_001.inventory_item_prompt_parity",
+  "description": "Source-owned renderer-parity route for R-SURFACE-001.  It opens the native Inventory, chooses the stable UID of the wielded wet flashlight, chooses the item-menu Activate action by its advertised stable action ID, and chooses Yes on the resulting real query_popup.  Every action is a frame-bound semantic request; fixture state is setup-only.",
+  "profile": "r-surface-001-inventory-prompt",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r_surface_001_inventory_prompt_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r_surface_001.inventory_item_prompt": "source_bound_semantic_inventory_item_menu_to_query_popup"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.inventory", "semantic:inventory.select", "semantic:inventory.item_menu.choose", "semantic:prompt.choose"],
+    "forbidden_input": ["guessed-key", "physical-key", "ocr", "screen-coordinate", "direct-state-mutation", "fixture-save-transform-after-install"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-surface-001-inventory-prompt",
+    "config_profile": "dev-harness",
+    "fixture": "r_surface_001_inventory_prompt_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r-surface-001-inventory-prompt", "fixture": "r_surface_001_inventory_prompt_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_001_inventory_prompt_v1/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json"
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_r_surface_001_inventory_prompt_hud",
+      "seconds": 2.0,
+      "expected_visible_fact": "Native World HUD confirms the disposable fixture loaded before semantic bootstrap.",
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_r_surface_001_inventory_prompt_hud_missing"
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "emit_r_surface_001_inventory_prompt_native_frame",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.inventory"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_act",
+      "label": "r_surface_001_inventory_item_prompt",
+      "gameplay_credit": false,
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1,
+      "action_chain": [
+        "world.inventory",
+        {"action_id": "inventory.select", "stable_id_label_contains": "flashlight"},
+        {"action_id": "inventory.item_menu.choose", "stable_id_label_contains": "activate"},
+        {"action_id": "prompt.choose", "stable_id_label_contains": "yes"}
+      ],
+      "expected_visible_fact": "The native inventory item menu owns its stable action selection, a real nested query_popup owns the child confirmation, and the parent publishes a fresh successor without inherited actions."
+    }
+  ],
+  "proof_gates": [
+    {
+      "id": "r_surface_001_inventory_prompt_semantic_chain",
+      "label": "bound semantic inventory-item-menu to query_popup chain",
+      "boundary_step": "r_surface_001_inventory_item_prompt",
+      "predecessors": [],
+      "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_cockpit_transaction", "gameplay_credit": false, "same_run": true}}],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}
+    }
+  ],
+  "proof_route": {"gates": ["r_surface_001_inventory_prompt_semantic_chain"], "terminal": ["r_surface_001_inventory_prompt_semantic_chain"]}
+}

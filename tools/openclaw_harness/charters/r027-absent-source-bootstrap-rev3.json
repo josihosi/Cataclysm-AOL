@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Setup only: a disposable native editor run deletes the exact saved fd_fire entry without moving the camp or observer.",
+  "material_proof": "The saved-world audit identifies source absence and unchanged camp/observer geometry.",
+  "current_uncertainty": "This setup earns no signal-feature credit until a separate production cadence run consumes it.",
+  "material_contradiction": ["the source remains", "camp or observer geometry changes", "a direct save edit or callback is used"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["direct save edit", "callback injection", "direct lead mutation", "physical input"],
+  "honest_stop_conditions": ["finish after native save and independent setup audit"],
+  "requested_evidence_ceiling": "zero-credit"
+}

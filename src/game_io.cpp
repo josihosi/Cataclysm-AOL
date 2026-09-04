@@ -52,6 +52,7 @@
 #include "enums.h"
 #include "event.h"
 #include "event_bus.h"
+#include "effect.h"
 #include "filesystem.h"
 #include "flexbuffer_json.h"
 #include "gamemode.h"
@@ -107,18 +108,49 @@ namespace
 bandit_live_world::local_projection_reconciliation_result
 reconcile_loaded_bandit_live_world_projections()
 {
-    std::vector<bandit_live_world::local_projection_claim> claims;
-    for( const shared_ptr_fast<npc> &member : overmap_buffer.get_overmap_npcs() ) {
-        if( !member ) {
-            continue;
-        }
+    std::map<character_id, bandit_live_world::local_projection_claim> claims_by_npc;
+    bool conflicting_claim = false;
+    const auto collect_claim = [&claims_by_npc, &conflicting_claim]( const npc & member ) {
         const bandit_live_world_projection_lease &lease =
-            member->get_bandit_live_world_projection_lease();
-        if( lease.present ) {
-            claims.push_back( { member->getID(), lease.site_id, lease.activity_id, lease.owner,
-                                lease.generation, lease.handoff_epoch,
-                                lease.last_advanced_minutes } );
+            member.get_bandit_live_world_projection_lease();
+        if( !lease.present ) {
+            return;
         }
+        const bandit_live_world::local_projection_claim claim = { member.getID(), lease.site_id,
+            lease.activity_id, lease.owner, lease.generation, lease.handoff_epoch,
+            lease.last_advanced_minutes };
+        const auto inserted = claims_by_npc.emplace( claim.npc_id, claim );
+        if( inserted.second ) {
+            return;
+        }
+        const bandit_live_world::local_projection_claim &existing = inserted.first->second;
+        if( existing.site_id != claim.site_id || existing.activity_id != claim.activity_id ||
+            existing.owner != claim.owner || existing.generation != claim.generation ||
+            existing.handoff_epoch != claim.handoff_epoch ||
+            existing.last_advanced_minutes != claim.last_advanced_minutes ) {
+            conflicting_claim = true;
+        }
+    };
+    for( const shared_ptr_fast<npc> &member : overmap_buffer.get_overmap_npcs() ) {
+        if( member ) {
+            collect_claim( *member );
+        }
+    }
+    // An active reality-bubble projection and its persistent overmap handle
+    // are distinct save owners.  On reload the local copy can be restored
+    // before the persistent handle is visible to the overmap scan.  Reconcile
+    // the same exact lease once, but keep any disagreement fail-closed.
+    for( npc &member : g->all_npcs() ) {
+        collect_claim( member );
+    }
+    if( conflicting_claim ) {
+        return bandit_live_world::local_projection_reconciliation_result::rejected;
+    }
+    std::vector<bandit_live_world::local_projection_claim> claims;
+    claims.reserve( claims_by_npc.size() );
+    for( const std::pair<const character_id,
+           bandit_live_world::local_projection_claim> &entry : claims_by_npc ) {
+        claims.push_back( entry.second );
     }
     return bandit_live_world::reconcile_loaded_local_projections(
                overmap_buffer.global_state.bandit_live_world, claims );
@@ -770,6 +802,7 @@ bool game::save_external_options_record()
 bool game::save()
 {
     if( save_is_dirty ) {
+        last_save_result_ = "failed_dirty_state";
         popup( _( "The game is in an unsupported state after using debug tools and cannot be saved." ) );
         return false;
     }
@@ -779,45 +812,75 @@ bool game::save()
     std::chrono::seconds total_time_played = time_played_at_last_load + time_since_load;
     events().send<event_type::game_save>( time_since_load, total_time_played );
     try {
-        if( !save_player_data() ||
-            !save_achievements() ||
-            !save_factions_missions_npcs() ||
-            !save_external_options_record() ||
-            !save_dimension_data() ||
-            !save_maps() ||
-            !get_auto_pickup().save_character() ||
-            !get_auto_notes_settings().save( true ) ||
-            !get_safemode().save_character() ||
-            !zone_manager::get_manager().save_zones() ||
-            !write_to_file( PATH_INFO::world_base_save_path() / "uistate.json", [&](
+        if( !save_player_data() ) {
+            last_save_result_ = "failed_player_data";
+            return false;
+        }
+        if( !save_achievements() ) {
+            last_save_result_ = "failed_achievements";
+            return false;
+        }
+        if( !save_factions_missions_npcs() ) {
+            last_save_result_ = "failed_factions_missions_npcs";
+            return false;
+        }
+        if( !save_external_options_record() ) {
+            last_save_result_ = "failed_external_options";
+            return false;
+        }
+        if( !save_dimension_data() ) {
+            last_save_result_ = "failed_dimension_data";
+            return false;
+        }
+        if( !save_maps() ) {
+            last_save_result_ = "failed_maps";
+            return false;
+        }
+        if( !get_auto_pickup().save_character() ) {
+            last_save_result_ = "failed_auto_pickup";
+            return false;
+        }
+        if( !get_auto_notes_settings().save( true ) ) {
+            last_save_result_ = "failed_auto_notes";
+            return false;
+        }
+        if( !get_safemode().save_character() ) {
+            last_save_result_ = "failed_safemode";
+            return false;
+        }
+        if( !zone_manager::get_manager().save_zones() ) {
+            last_save_result_ = "failed_zones";
+            return false;
+        }
+        if( !write_to_file( PATH_INFO::world_base_save_path() / "uistate.json", [&](
         std::ostream & fout ) {
         JsonOut jsout( fout );
             uistate.serialize( jsout );
         }, _( "uistate data" ) ) ) {
-            debugmsg( "game not saved" );
+            last_save_result_ = "failed_uistate";
             return false;
-        } else {
-            world_generator->last_world_name = world_generator->active_world->world_name;
-            world_generator->last_character_name = u.name;
-            world_generator->save_last_world_info();
-            world_generator->active_world->add_save( save_t::from_save_id( u.get_save_id() ) );
-            write_to_file( PATH_INFO::world_base_save_path() / ( base64_encode(
+        }
+        world_generator->last_world_name = world_generator->active_world->world_name;
+        world_generator->last_character_name = u.name;
+        world_generator->save_last_world_info();
+        world_generator->active_world->add_save( save_t::from_save_id( u.get_save_id() ) );
+        write_to_file( PATH_INFO::world_base_save_path() / ( base64_encode(
             u.get_save_id() ) + ".pt" ), [&total_time_played]( std::ostream & fout ) {
                 fout.imbue( std::locale::classic() );
                 fout << total_time_played.count();
             } );
-            const std::vector<bandit_live_world::world_state::crossing_receipt_identity>
+        const std::vector<bandit_live_world::world_state::crossing_receipt_identity>
             acknowledged_crossings =
                 overmap_buffer.global_state.bandit_live_world.acknowledge_persisted_crossings();
-            if( !acknowledged_crossings.empty() && !save_maps() ) {
-                overmap_buffer.global_state.bandit_live_world.rollback_persisted_crossings(
+        if( !acknowledged_crossings.empty() && !save_maps() ) {
+            overmap_buffer.global_state.bandit_live_world.rollback_persisted_crossings(
                     acknowledged_crossings );
-                debugmsg( "game save could not persist crossing acknowledgement" );
-                return false;
-            }
-            // The certification digest must describe the completed ordinary
-            // save, including any persisted crossing acknowledgement above.
-            bandit_live_world_probe::record_certification_save_receipt(
+            last_save_result_ = "failed_crossing_acknowledgement";
+            return false;
+        }
+        // The certification digest must describe the completed ordinary
+        // save, including any persisted crossing acknowledgement above.
+        bandit_live_world_probe::record_certification_save_receipt(
                 to_turns<int>( calendar::turn - calendar::turn_zero ),
                 PATH_INFO::world_base_save_path().get_unrelative_path().string() );
 #if defined(EMSCRIPTEN)
@@ -825,12 +888,18 @@ bool game::save()
             // is called.
             EM_ASM( window.game_unsaved = false; );
 #endif
-            return true;
-        }
+        last_save_result_ = "saved";
+        return true;
     } catch( std::ios::failure & ) {
+        last_save_result_ = "failed_io_exception";
         popup( _( "Failed to save game data" ) );
         return false;
     }
+}
+
+const std::string &game::last_save_result() const
+{
+    return last_save_result_;
 }
 
 std::vector<std::string> game::list_active_saves()
@@ -938,11 +1007,27 @@ void game::init_autosave()
     last_save_timestamp = std::time( nullptr );
 }
 
-void game::quicksave()
+bool game::quicksave()
 {
+    // The R-027 fixture repair is permitted solely in its disposable bootstrap
+    // manifest.  Apply it immediately before the ordinary save so no turn can
+    // reintroduce the already diagnosed condition between cleanup and disk.
+    const char *const r027_cleanup = std::getenv( "OPENCLAW_HARNESS_R027_ONFIRE_CLEANUP_REQUEST" );
+    const char *const r027_scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
+    const bool r027_onfire_cleanup = r027_cleanup != nullptr && r027_scenario != nullptr &&
+                                    std::string_view( r027_cleanup ) == "remove_onfire" &&
+                                    std::string_view( r027_scenario ) ==
+                                    "bandit.r027_avatar_onfire_cleanup_bootstrap_v001_mcw";
+    if( r027_onfire_cleanup ) {
+        u.remove_effect( efftype_id( "onfire" ) );
+    }
     //Don't autosave if the player hasn't done anything since the last autosave/quicksave,
-    if( !moves_since_last_save && !world_generator->active_world->world_saves.empty() ) {
-        return;
+    // except for the sealed R-027 cleanup.  Its sole purpose is to persist
+    // the just-removed effect without adding an otherwise unrelated turn.
+    if( !moves_since_last_save && !world_generator->active_world->world_saves.empty() &&
+        !r027_onfire_cleanup ) {
+        last_save_result_ = "not_needed";
+        return true;
     }
     add_msg( m_info, _( "Saving game, this may take a while." ) );
 
@@ -955,10 +1040,13 @@ void game::quicksave()
     time_t now = std::time( nullptr ); //timestamp for start of saving procedure
 
     //perform save
-    save();
+    if( !save() ) {
+        return false;
+    }
     //Now reset counters for autosaving, so we don't immediately autosave after a quicksave or autosave.
     moves_since_last_save = 0;
     last_save_timestamp = now;
+    return true;
 }
 
 void game::quickload()

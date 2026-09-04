@@ -1,3 +1,4 @@
+#include <cstdlib>
 #include <string>
 
 #include "cata_utility.h"
@@ -104,5 +105,15 @@ void set_language( const std::string &lang )
     // names.
     SNIPPET.reload_names( PATH_INFO::names() );
 
-    set_title( string_format( _( "Cataclysm: Dark Days Ahead - %s" ), getVersionString() ) );
+    std::string title = string_format( _( "Cataclysm: Dark Days Ahead - %s" ), getVersionString() );
+    // A certification child may expose one explicit, launch-bound surface.
+    // This is intentionally opt-in: ordinary players retain the normal title,
+    // while a harness cannot confuse a shared Cataclysm window for its leased
+    // process merely because both binaries report the same version string.
+    const char *const surface_title = std::getenv( "OPENCLAW_HARNESS_SURFACE_TITLE" );
+    if( surface_title != nullptr && *surface_title != '\0' ) {
+        title += " - ";
+        title += surface_title;
+    }
+    set_title( title );
 }

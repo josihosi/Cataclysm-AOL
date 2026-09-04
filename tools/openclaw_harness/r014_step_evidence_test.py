@@ -72,6 +72,32 @@ class R014StepEvidenceTest( unittest.TestCase ):
         self.assertEqual( metadata["status"], "required_state_present" )
         self.assertEqual( metadata["bootstrap"], "launcher_first_same_run_semantic_frame" )
 
+    def test_bootstrap_accepts_source_bound_world_surface_descriptor( self ) -> None:
+        descriptor = {
+            "event": "surface_descriptor",
+            "schema_version": 1,
+            "run_id": "run-a",
+            "surface_id": "run-a:surface:1",
+            "frame_id": "run-a:frame:1",
+            "kind": "world",
+            "breadcrumbs": ["World"],
+            "payload": {},
+            "valid_actions": [{
+                "id": "world.inventory", "stable_id": "", "label": "world.inventory",
+                "enabled": True,
+            }],
+            "_event_offset": 42,
+        }
+        with tempfile.TemporaryDirectory() as directory, mock.patch.object(
+            startup_harness, "current_semantic_step_frame", return_value=descriptor,
+        ):
+            metadata = startup_harness.r014_native_semantic_bootstrap_metadata(
+                profile="test", run_dir=Path( directory ), run_id="run-a", start_offset=0,
+                press_trace_offset=41, required_state="world", required_actions=["world.inventory"],
+            )
+        self.assertEqual( metadata["status"], "required_state_present" )
+        self.assertEqual( metadata["frame_event"], "surface_descriptor" )
+
     def test_launcher_bootstrap_fails_closed_for_wrong_run_or_absent_frame( self ) -> None:
         wrong_run = {
             "run_id": "run-b",
@@ -151,6 +177,33 @@ class R014StepEvidenceTest( unittest.TestCase ):
                 )
                 self.assertEqual( yellow["status"], "scanned" )
                 self.assertTrue( startup_harness.metadata_checkpoint_verdict( yellow )[0].startswith( "yellow" ) )
+
+    def test_declared_live_steps_own_distinct_terminal_artifacts( self ) -> None:
+        with tempfile.TemporaryDirectory() as directory:
+            root = Path( directory )
+            crossing = startup_harness.cockpit_live_final_path(
+                root, "observe_cannibal_roof_fire_lifecycle",
+            )
+            persisted = startup_harness.cockpit_live_final_path(
+                root, "observe_persisted_cannibal_return_lifecycle",
+            )
+            self.assertNotEqual( crossing, persisted )
+            self.assertEqual(
+                startup_harness.cockpit_live_final_path( root ).name,
+                "cockpit.live.final.json",
+            )
+            first = startup_harness.finalize_cockpit_live_session(
+                root, 1, {"run_id": "run-a", "state": "finished"},
+                cleanup_process=False, final_path=crossing,
+            )
+            second = startup_harness.finalize_cockpit_live_session(
+                root, 1, {"run_id": "run-a", "state": "finished"},
+                cleanup_process=False, final_path=persisted,
+            )
+            self.assertEqual( first["final_report_ref"], crossing.name )
+            self.assertEqual( second["final_report_ref"], persisted.name )
+            self.assertTrue( crossing.is_file() )
+            self.assertTrue( persisted.is_file() )
 
 
 if __name__ == "__main__":

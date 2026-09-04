@@ -1,0 +1,18 @@
+{
+  "fixture_id": "r027_out_of_range_v004_20260902",
+  "claim": "R-027",
+  "evidence_ceiling": "zero-credit",
+  "provenance": {
+    "source_fixture": "r027_preserved_physical_fire_20260902",
+    "setup_run_id": "4ca9f047c34542d39052372e78acc318",
+    "executable_sha256": "0ea5d29fcc480a58bcf7f61aac103b468a82a9fa6297ee6b09476dc821f47a1b",
+    "native_operation": "editmap.remove_field(fd_fire); debug teleport; editmap field intensity 3",
+    "audit": "build_logs/r027_exploration_001_out_of_range_v004_saved_audit.json",
+    "tree_sha256": "157e64fb2a23a9dd9f01063aa236de6db2779a1c87dbabc8636d8acb59df0043",
+    "layout": "save/McWilliams canonical installer payload"
+  },
+  "world": "McWilliams",
+  "source": { "original_omt": [138,49,0], "original_present": false, "omt": [152,49,0], "field": "fd_fire", "intensity": 3, "channel": "smoke" },
+  "camp": { "omt": [140,51,0], "observer_id": 4, "range_omt": 12, "smoke_cap_omt": 11 },
+  "setup_only": true
+}

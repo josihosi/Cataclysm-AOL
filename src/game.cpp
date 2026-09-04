@@ -194,6 +194,7 @@
 #include "scenario.h"
 #include "scent_map.h"
 #include "scores_ui.h"
+#include "semantic_surface.h"
 #include "sdltiles.h" // IWYU pragma: keep
 #include "sounds.h"
 #include "start_location.h"
@@ -1613,7 +1614,34 @@ bool game::cancel_activity_or_ignore_query( const distraction_type type, const s
     // world.  Preserve that same native state before the modal suppresses the
     // normal world-frame producer.
     openclaw_harness_semantic_activity_distraction();
-    const std::string &action = query_popup()
+    std::string semantic_action;
+    std::optional<semantic_surface_manager_session> semantic_session;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( openclaw_harness_semantic_session_active() ) {
+        semantic_surface_manager &semantic_manager = openclaw_harness_semantic_surface_manager();
+        semantic_session.emplace( semantic_manager );
+        semantic_scope.emplace( semantic_manager, "activity_distraction", "Activity distraction",
+                                std::map<std::string, std::string>{},
+                                std::vector<semantic_action_descriptor>{
+            { "activity.stop", "", "activity.stop", true },
+            { "activity.continue", "", "activity.continue", true },
+            { "activity.manage", "", "activity.manage", true },
+            { "activity.ignore", "", "activity.ignore", true },
+        }, [ &semantic_action ]( const semantic_action_request &request ) {
+            const std::map<std::string, std::string> actions = {
+                { "activity.stop", "YES" }, { "activity.continue", "NO" },
+                { "activity.manage", "MANAGER" }, { "activity.ignore", "IGNORE" },
+            };
+            const auto selected = actions.find( request.action_id );
+            if( selected == actions.end() ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            semantic_action = selected->second;
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+        semantic_scope->consume_request();
+    }
+    const std::string action = semantic_action.empty() ? query_popup()
                                 .preferred_keyboard_mode( keyboard_mode::keycode )
                                 .context( "CANCEL_ACTIVITY_OR_IGNORE_QUERY" )
                                 .message( force_uc && !is_keycode_mode_supported() ?
@@ -1627,7 +1655,7 @@ bool game::cancel_activity_or_ignore_query( const distraction_type type, const s
                                 .option( "MANAGER", allow_key )
                                 .option( "IGNORE", allow_key )
                                 .query()
-                                .action;
+                                .action : semantic_action;
     openclaw_harness_trace_activity_query( "return", type, text, action );
 
     if( action == "YES" ) {
@@ -1648,6 +1676,10 @@ bool game::cancel_activity_or_ignore_query( const distraction_type type, const s
 
     ui_manager::redraw();
     refresh_display();
+    // The distraction scope has consumed its one semantic request.  Publish
+    // the resumed world owner now, rather than leaving an actionless return
+    // marker to strand a bound cockpit session until unrelated physical input.
+    openclaw_harness_semantic_world_after_activity_distraction();
 
     return false;
 }
@@ -2243,9 +2275,56 @@ int game::inventory_item_menu( item_location locThisItem,
         static int lang_version = detail::get_current_language_version();
         catacurses::window w_info;
         shared_ptr_fast<uilist_impl> ui_impl;
+        std::map<int, std::string> semantic_action_ids;
+        std::optional<int> semantic_menu_choice;
+        std::optional<semantic_surface_scope> semantic_scope;
+        semantic_surface_manager *const semantic_manager = active_semantic_surface_manager();
+        bool semantic_recreate_after_item_use = false;
+        std::vector<semantic_action_descriptor> semantic_actions;
+        const std::string semantic_item_name = oThisItem.tname();
+        const std::string semantic_item_uid = locThisItem->uid().is_valid() ?
+                                              std::to_string( locThisItem->uid().get_value() ) : "";
+        const auto recreate_semantic_scope = [&]() {
+            if( semantic_manager == nullptr ) {
+                return;
+            }
+            semantic_scope.emplace( *semantic_manager, "inventory_item_menu", semantic_item_name,
+            std::map<std::string, std::string>{
+                { "item_uid", semantic_item_uid },
+                { "item_name", semantic_item_name }
+            }, semantic_actions,
+            [&action_menu, &semantic_action_ids, &semantic_menu_choice,
+             &semantic_recreate_after_item_use]( const semantic_action_request &request ) {
+                if( request.action_id == "inventory.item_menu.cancel" ) {
+                    semantic_menu_choice = UILIST_CANCEL;
+                    return semantic_action_dispatch_result{ true, "", "" };
+                }
+                if( request.action_id != "inventory.item_menu.choose" || !request.stable_id ) {
+                    return semantic_action_dispatch_result{ false, "missing_stable_id", "" };
+                }
+                for( const uilist_entry &entry : action_menu.entries ) {
+                    const auto action_id = semantic_action_ids.find( entry.retval );
+                    if( action_id != semantic_action_ids.end() && action_id->second == *request.stable_id ) {
+                        if( !entry.enabled ) {
+                            return semantic_action_dispatch_result{ false, "disabled_stable_id", "" };
+                        }
+                        semantic_menu_choice = entry.retval;
+                        semantic_recreate_after_item_use = entry.retval == 'a';
+                        return semantic_action_dispatch_result{ true, "", "",
+                                                               semantic_recreate_after_item_use };
+                    }
+                }
+                return semantic_action_dispatch_result{ false, "invalid_stable_id", "" };
+            } );
+        };
         do {
             //lang check here is needed to redraw the menu when using "Toggle language to English" option
             if( first_execution || lang_version != detail::get_current_language_version() ) {
+                if( openclaw_harness_activity_query_trace_enabled() ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "openclaw_harness_ui_trace: component=item_menu_recreation"
+                            << " event=loop_rebuild";
+                }
 
                 const hint_rating rate_drop_item = u.get_wielded_item() &&
                                                    u.get_wielded_item()->has_flag( flag_NO_UNWIELD ) ?
@@ -2258,6 +2337,11 @@ int game::inventory_item_menu( item_location locThisItem,
                     // The char is used as retval from the uilist *and* as hotkey.
                     action_menu.addentry( key, true, key, text );
                     auto &entry = action_menu.entries.back();
+                    if( semantic_action_ids.count( key ) == 0 ) {
+                        static uint64_t next_semantic_action_id = 0;
+                        semantic_action_ids.emplace( key, "inventory-item-action:" +
+                                                     std::to_string( ++next_semantic_action_id ) );
+                    }
                     switch( hint ) {
                         case hint_rating::cant:
                             entry.text_color = c_light_gray;
@@ -2305,12 +2389,27 @@ int game::inventory_item_menu( item_location locThisItem,
                     addentry( '+', _( "Auto pickup" ), hint_rating::good );
                 }
 
+                if( openclaw_harness_activity_query_trace_enabled() ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "openclaw_harness_ui_trace: component=item_menu_recreation"
+                            << " event=item_info_begin";
+                }
                 oThisItem.info( true, vThisItem );
+                if( openclaw_harness_activity_query_trace_enabled() ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "openclaw_harness_ui_trace: component=item_menu_recreation"
+                            << " event=item_info_end";
+                }
 
                 popup_width += ImGui::CalcTextSize( " [X] " ).x + 2 * ( ImGui::GetStyle().WindowPadding.x +
                                ImGui::GetStyle().WindowBorderSize );
                 // Filtering isn't needed, the number of entries is manageable.
                 action_menu.filtering = false;
+                // This uilist renders the focused inventory-item menu.  Its
+                // caller owns the semantic descriptor and consumes requests;
+                // publishing a generic child here would advertise a stale
+                // parent while the uilist blocks for input.
+                action_menu.semantic_owner = false;
                 // Default menu border color is different, this matches the border of the item info window.
                 action_menu.border_color = BORDER_COLOR;
 
@@ -2352,12 +2451,40 @@ int game::inventory_item_menu( item_location locThisItem,
                     { "RIGHT", translation() }
                 };
 
+                if( semantic_manager != nullptr ) {
+                    semantic_actions.clear();
+                    for( const uilist_entry &entry : action_menu.entries ) {
+                        const auto action_id = semantic_action_ids.find( entry.retval );
+                        if( action_id != semantic_action_ids.end() ) {
+                            semantic_actions.push_back( { "inventory.item_menu.choose", action_id->second,
+                                                          entry.txt, entry.enabled } );
+                        }
+                    }
+                    semantic_actions.push_back( { "inventory.item_menu.cancel", "", _( "Cancel" ), true } );
+                    recreate_semantic_scope();
+                }
+
                 lang_version = detail::get_current_language_version();
                 first_execution = false;
             }
 
             const int prev_selected = action_menu.selected;
-            ui_impl = action_menu.query( false );
+            if( semantic_scope ) {
+                semantic_scope->consume_request();
+            }
+            if( semantic_menu_choice ) {
+                action_menu.ret = *semantic_menu_choice;
+                semantic_menu_choice.reset();
+            } else {
+                ui_impl = action_menu.query( false );
+                // A transport wake is not a menu key.  A child owner may
+                // already have consumed it before this recreated menu resumes.
+                if( semantic_scope && action_menu.ret == UILIST_UNBOUND &&
+                    action_menu.ret_act == "ERROR" ) {
+                    action_menu.ret = UILIST_WAIT_INPUT;
+                    continue;
+                }
+            }
             if( action_menu.ret >= 0 ) {
                 cMenu = action_menu.ret; /* Remember: hotkey == retval, see addentry above. */
             } else if( action_menu.ret == UILIST_UNBOUND && action_menu.ret_act == "RIGHT" ) {
@@ -2374,7 +2501,8 @@ int game::inventory_item_menu( item_location locThisItem,
                 cMenu = 0;
             }
 
-            if( action_menu.ret != UILIST_WAIT_INPUT && action_menu.ret != UILIST_UNBOUND ) {
+            if( action_menu.ret != UILIST_WAIT_INPUT && action_menu.ret != UILIST_UNBOUND &&
+                !semantic_recreate_after_item_use ) {
                 exit = true;
                 ui = nullptr;
             }
@@ -2384,12 +2512,28 @@ int game::inventory_item_menu( item_location locThisItem,
 #endif
             switch( cMenu ) {
                 case 'a': {
+                    if( semantic_recreate_after_item_use && semantic_scope ) {
+                        if( openclaw_harness_activity_query_trace_enabled() ) {
+                            DebugLog( D_INFO, DC_ALL )
+                                    << "openclaw_harness_ui_trace: component=item_menu_recreation"
+                                    << " event=withhold"
+                                    << " surface_id=" << semantic_scope->surface_id();
+                        }
+                        semantic_manager->withhold_parent_authority_until_recreated(
+                            semantic_scope->surface_id() );
+                    }
                     contents_change_handler handler;
                     handler.unseal_pocket_containing( locThisItem );
                     if( locThisItem.get_item()->type->has_use() &&
                         !locThisItem.get_item()->item_has_uses_recursive( true ) ) { // NOLINT(bugprone-branch-clone)
                         // Item has uses and none of its contents (if any) has uses.
                         avatar_action::use_item( u, locThisItem );
+                        if( semantic_recreate_after_item_use &&
+                            openclaw_harness_activity_query_trace_enabled() ) {
+                            DebugLog( D_INFO, DC_ALL )
+                                    << "openclaw_harness_ui_trace: component=item_menu_recreation"
+                                    << " event=item_use_returned";
+                        }
                     } else if( locThisItem.get_item()->item_has_uses_recursive() ) {
                         game::item_action_menu( locThisItem );
                     } else if( locThisItem.get_item()->has_relic_activation() &&
@@ -2536,6 +2680,23 @@ int game::inventory_item_menu( item_location locThisItem,
                     break;
                 default:
                     break;
+            }
+            if( semantic_recreate_after_item_use ) {
+                // The native item-use callback may have owned a direction or
+                // confirmation child.  Its old item-menu descriptor is now
+                // stale; close it privately and rebuild this same menu loop.
+                if( openclaw_harness_activity_query_trace_enabled() ) {
+                    DebugLog( D_INFO, DC_ALL )
+                            << "openclaw_harness_ui_trace: component=item_menu_recreation"
+                            << " event=scope_reset";
+                }
+                semantic_scope.reset();
+                if( locThisItem ) {
+                    recreate_semantic_scope();
+                    semantic_recreate_after_item_use = false;
+                } else {
+                    exit = true;
+                }
             }
 #if defined(TILES)
             action_menu.set_hide( false );
@@ -3496,10 +3657,8 @@ void game::draw( ui_adaptor &ui )
 
     draw_panels( true );
 
-    // Publishing at the completed world-HUD render is required during
-    // startup, before game::do_turn may receive any input.  The context stack
-    // is the native authority for a modal input owner; a missing or non-world
-    // owner fails closed.
+    // Publish the bound initial semantic frame only after the real HUD has
+    // rendered and only while the native world input owner is active.
     input_context world_context = get_default_mode_input_context();
     input_context::scoped_activation world_input_owner( world_context );
     openclaw_harness_semantic_initial_world_frame_if_ready(

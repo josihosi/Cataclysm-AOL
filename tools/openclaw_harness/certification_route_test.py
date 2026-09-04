@@ -7,9 +7,9 @@ from certification_route import evaluate_continuous_certification, write_immutab
 
 class ContinuousCertificationRouteTest(unittest.TestCase):
     def events(self):
-        kinds = ("declared_world", "departure", "overmap_advance", "bubble_crossing_out",
-                 "actor_outcomes", "save", "quit", "relaunch", "bubble_crossing_in",
-                 "return_report", "camp_decision")
+        kinds = ("declared_world", "departure", "shared_route_advance", "bubble_crossing_out",
+                 "actor_outcomes", "bubble_crossing_in", "return_report", "camp_decision",
+                 "save", "quit", "relaunch", "normalized_persistence")
         return [{"kind": kind, "round_id": "r", "binding_id": "b", "world_id": "w",
                  "player_id": "p", "actor_ids": ["a", "c"], "owner": "abstract"}
                 for kind in kinds]
@@ -20,7 +20,7 @@ class ContinuousCertificationRouteTest(unittest.TestCase):
         self.assertEqual(result["status"], "green")
 
     def test_identity_drift_stops_at_first_divergence(self):
-        events = self.events(); events[7] = dict(events[7], binding_id="replacement")
+        events = self.events(); events[10] = dict(events[10], binding_id="replacement")
         result = evaluate_continuous_certification(round_id="r", binding_id="b", world_id="w",
                                                    player_id="p", actor_ids=["a", "c"], events=events)
         self.assertEqual((result["status"], result["first_divergence"]), ("red", "relaunch"))

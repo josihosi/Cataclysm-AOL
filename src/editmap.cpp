@@ -52,6 +52,7 @@
 #include "overmap.h"
 #include "overmapbuffer.h"
 #include "scent_map.h"
+#include "semantic_surface.h"
 #include "sdltiles.h"
 #include "shadowcasting.h"
 #include "string_formatter.h"
@@ -371,6 +372,7 @@ void editmap_ui::handle_action()
     brush.update_brush_points();
 
     std::string action;
+    std::optional<std::string> semantic_native_action;
 
     editmap_state.blink = true;
 
@@ -383,6 +385,121 @@ void editmap_ui::handle_action()
     } );
 
     bool invalidate_ui = false;
+
+    semantic_surface_manager *const semantic_manager = active_semantic_surface_manager();
+    const auto semantic_payload = [&brush]() {
+        const field_type_id fire = field_type_str_id( "fd_fire" );
+        return std::map<std::string, std::string> {
+            { "target", brush.target.to_string() },
+            { "origin", brush.origin.to_string() },
+            { "mode", editmap_state.mode == EMM_DRAWING ? "drawing" : "selecting" },
+            { "brush_shape", io::enum_to_string( brush.shape_basic_brush ) },
+            { "terrain_enabled", brush.drawing_terrain ? "true" : "false" },
+            { "furniture_enabled", brush.drawing_furniture ? "true" : "false" },
+            { "trap_enabled", brush.drawing_trap ? "true" : "false" },
+            { "field_enabled", brush.drawing_field ? "true" : "false" },
+            { "radiation_enabled", brush.drawing_radiation ? "true" : "false" },
+            { "target_has_fd_fire", get_map().get_field( brush.target, fire ) != nullptr ? "true" : "false" }
+        };
+    };
+    const auto semantic_actions = [&brush]() {
+        std::vector<semantic_action_descriptor> actions = {
+            { "editmap.move_target", "north", "Move target north", true },
+            { "editmap.move_target", "south", "Move target south", true },
+            { "editmap.move_target", "west", "Move target west", true },
+            { "editmap.move_target", "east", "Move target east", true },
+            { "editmap.confirm", "", "Apply brush or confirm selection", true },
+            { "editmap.close", "", "Close map editor", true },
+            { "editmap.select_brush", "", "Select brush shape", true },
+            { "editmap.select_terrain", "", "Select terrain", true },
+            { "editmap.select_furniture", "", "Select furniture", true },
+            { "editmap.select_trap", "", "Select trap", true },
+            { "editmap.select_field", "", "Select field", true },
+            { "editmap.select_radiation", "", "Select radiation", true },
+            { "editmap.toggle_terrain", "", "Toggle terrain brush", true },
+            { "editmap.toggle_furniture", "", "Toggle furniture brush", true },
+            { "editmap.toggle_trap", "", "Toggle trap brush", true },
+            { "editmap.toggle_field", "", "Toggle field brush", true },
+            { "editmap.toggle_radiation", "", "Toggle radiation brush", true },
+            { "editmap.change_mode", "", "Change brush mode", true },
+            { "editmap.swap_points", "", "Swap brush points", true },
+            { "editmap.toggle_advanced_info", "", "Toggle advanced information", true },
+            { "editmap.toggle_fast_scroll", "", "Toggle fast scroll", true },
+            { "editmap.edit_items", "", "Edit items", true },
+            { "editmap.edit_overmap", "", "Edit overmap terrain", true }
+        };
+        if( get_map().get_field( brush.target, field_type_str_id( "fd_fire" ) ) != nullptr ) {
+            actions.push_back( { "editmap.remove_field", "fd_fire", "Remove fire field at target", true } );
+        }
+        return actions;
+    };
+    const auto make_semantic_scope = [&]() -> std::optional<semantic_surface_scope> {
+        if( semantic_manager == nullptr ) {
+            return std::nullopt;
+        }
+        return std::optional<semantic_surface_scope>( std::in_place, *semantic_manager, "map_editor", "Map editor", semantic_payload(),
+        semantic_actions(), [&brush, &semantic_native_action]( const semantic_action_request &request ) {
+            static const std::map<std::string, std::string> action_map = {
+                { "editmap.confirm", "CONFIRM" },
+                { "editmap.close", "QUIT" },
+                { "editmap.select_brush", "EDITMAP_SELECT_BRUSH" },
+                { "editmap.select_terrain", "EDITMAP_SELECT_TERRAIN" },
+                { "editmap.select_furniture", "EDITMAP_SELECT_FURNITURE" },
+                { "editmap.select_trap", "EDITMAP_SELECT_TRAP" },
+                { "editmap.select_field", "EDITMAP_SELECT_FIELD" },
+                { "editmap.select_radiation", "EDITMAP_SELECT_RADIATION" },
+                { "editmap.toggle_terrain", "EDITMAP_ENABLE_TERRAIN" },
+                { "editmap.toggle_furniture", "EDITMAP_ENABLE_FURNITURE" },
+                { "editmap.toggle_trap", "EDITMAP_ENABLE_TRAP" },
+                { "editmap.toggle_field", "EDITMAP_ENABLE_FIELD" },
+                { "editmap.toggle_radiation", "EDITMAP_ENABLE_RADIATION" },
+                { "editmap.change_mode", "EDITMAP_CHANGE_MODE" },
+                { "editmap.swap_points", "EDITMAP_SWAP_POINTS" },
+                { "editmap.toggle_advanced_info", "EDITMAP_TOGGLE_ADVANCED_INFO" },
+                { "editmap.toggle_fast_scroll", "EDITMAP_TOGGLE_FAST_SCROLL" },
+                { "editmap.edit_items", "EDITMAP_EDIT_ITEMS" },
+                { "editmap.edit_overmap", "EDITMAP_EDIT_OVERMAP" }
+            };
+            if( request.action_id == "editmap.remove_field" ) {
+                if( request.stable_id.value_or( "" ) != "fd_fire" ) {
+                    return semantic_action_dispatch_result{ false, "invalid_target", "" };
+                }
+                const field_type_id fire = field_type_str_id( "fd_fire" );
+                map &here = get_map();
+                if( here.get_field( brush.target, fire ) == nullptr ) {
+                    return semantic_action_dispatch_result{ false, "target_field_absent", "" };
+                }
+                // A field whose intensity is merely set to zero can remain in
+                // the loaded submap until regular field processing runs.  The
+                // map editor's explicit removal operation must erase it before
+                // the ordinary save boundary serializes this tile.
+                here.delete_field( brush.target, fire );
+            } else if( request.action_id == "editmap.move_target" ) {
+                const std::string target = request.stable_id.value_or( "" );
+                if( target == "north" ) {
+                    semantic_native_action = "UP";
+                } else if( target == "south" ) {
+                    semantic_native_action = "DOWN";
+                } else if( target == "west" ) {
+                    semantic_native_action = "LEFT";
+                } else if( target == "east" ) {
+                    semantic_native_action = "RIGHT";
+                } else {
+                    return semantic_action_dispatch_result{ false, "invalid_target", "" };
+                }
+            } else if( request.stable_id.value_or( "" ).empty() ) {
+                const auto action = action_map.find( request.action_id );
+                if( action == action_map.end() ) {
+                    return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                }
+                semantic_native_action = action->second;
+            } else {
+                return semantic_action_dispatch_result{ false, "invalid_target", "" };
+            }
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    };
+    std::optional<semantic_surface_scope> semantic_scope = make_semantic_scope();
     do {
         invalidate_ui = true;
 
@@ -390,9 +507,18 @@ void editmap_ui::handle_action()
             uistate.editmap_state.mode = EMM_DRAWING;
         }
 
+        if( semantic_scope ) {
+            semantic_scope->publish( semantic_payload(), semantic_actions() );
+            semantic_scope->consume_request();
+        }
         ui_manager::redraw();
 
-        action = ictxt.handle_input( 33 );
+        if( semantic_native_action ) {
+            action = std::move( *semantic_native_action );
+            semantic_native_action.reset();
+        } else {
+            action = ictxt.handle_input( 33 );
+        }
 
         std::optional<editmap_action> selected_action;
         for( int i = 0; i < SELECTABLE_ACTIONS; i++ ) {
@@ -485,7 +611,16 @@ void editmap_ui::handle_action()
                     brush_set_feature<trap, trap_id>( brush, brush.selected_trap, brush.drawing_trap );
                     break;
                 case SELECT_FIELD: {
+                    // select_field owns two native uilist loops.  Yield the
+                    // editor before either one can publish or consume a
+                    // request; retaining it would shadow both child owners.
+                    if( semantic_scope ) {
+                        semantic_manager->withhold_parent_authority_until_recreated(
+                            semantic_scope->surface_id() );
+                        semantic_scope.reset();
+                    }
                     std::optional<field_type_id> selected_fd = brush.select_field();
+                    semantic_scope = make_semantic_scope();
                     if( !!selected_fd ) {
                         brush.selected_field = *selected_fd;
                         if( !brush.drawing_field ) {
@@ -972,7 +1107,7 @@ void apply<field_type>( const field_type &t, const editmap_brush &brush )
 
 // edit terrain, furnitrue, or traps
 template<typename T_t>
-std::optional<int_id<T_t>> editmap_brush::select_feature()
+std::optional<int_id<T_t>> editmap_brush::select_feature( const bool await_semantic_successor )
 {
     using T_id = decltype( T_t().id.id() );
 
@@ -982,6 +1117,7 @@ std::optional<int_id<T_t>> editmap_brush::select_feature()
     }
 
     uilist emenu;
+    emenu.semantic_await_child_successor = await_semantic_successor;
     emenu.desc_enabled = true;
     emenu.input_category = "EDITMAP_FEATURE";
 
@@ -1448,11 +1584,69 @@ void editmap_ui::mapgen_retarget()
     // Needed for timeout to be useful
     ctxt.register_action( "ANY_INPUT" );
     std::string action;
+    std::optional<std::string> semantic_native_action;
     tripoint_bub_ms origm = target;
 
+    semantic_surface_manager *const semantic_manager = active_semantic_surface_manager();
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_manager != nullptr ) {
+        const std::map<std::string, std::string> semantic_payload = {
+            { "target", target.to_string() }
+        };
+        const std::vector<semantic_action_descriptor> semantic_actions = {
+            { "editmap.retarget", "north", "Move target north", true },
+            { "editmap.retarget", "south", "Move target south", true },
+            { "editmap.retarget", "west", "Move target west", true },
+            { "editmap.retarget", "east", "Move target east", true },
+            { "editmap.confirm", "", "Confirm target", true },
+            { "editmap.cancel", "", "Cancel retarget", true }
+        };
+        semantic_scope.emplace( *semantic_manager, "map_editor_retarget", "Mapgen retarget",
+                                semantic_payload, semantic_actions,
+        [&semantic_native_action]( const semantic_action_request &request ) {
+            if( request.action_id == "editmap.retarget" ) {
+                const std::string target_id = request.stable_id.value_or( "" );
+                if( target_id == "north" ) {
+                    semantic_native_action = "UP";
+                } else if( target_id == "south" ) {
+                    semantic_native_action = "DOWN";
+                } else if( target_id == "west" ) {
+                    semantic_native_action = "LEFT";
+                } else if( target_id == "east" ) {
+                    semantic_native_action = "RIGHT";
+                } else {
+                    return semantic_action_dispatch_result{ false, "invalid_target", "" };
+                }
+            } else if( request.stable_id.value_or( "" ).empty() && request.action_id == "editmap.confirm" ) {
+                semantic_native_action = "CONFIRM";
+            } else if( request.stable_id.value_or( "" ).empty() && request.action_id == "editmap.cancel" ) {
+                semantic_native_action = "QUIT";
+            } else {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
+
     do {
+        if( semantic_scope ) {
+            semantic_scope->publish( { { "target", target.to_string() } }, {
+                { "editmap.retarget", "north", "Move target north", true },
+                { "editmap.retarget", "south", "Move target south", true },
+                { "editmap.retarget", "west", "Move target west", true },
+                { "editmap.retarget", "east", "Move target east", true },
+                { "editmap.confirm", "", "Confirm target", true },
+                { "editmap.cancel", "", "Cancel retarget", true }
+            } );
+            semantic_scope->consume_request();
+        }
         ui_manager::redraw();
-        action = ctxt.handle_input( get_option<int>( "BLINK_SPEED" ) );
+        if( semantic_native_action ) {
+            action = std::move( *semantic_native_action );
+            semantic_native_action.reset();
+        } else {
+            action = ctxt.handle_input( get_option<int>( "BLINK_SPEED" ) );
+        }
         if( const std::optional<tripoint_rel_omt> vec = ctxt.get_direction_rel_omt( action ) ) {
             point_rel_ms vec_ms = coords::project_to<coords::ms>( vec->xy() );
             tripoint_bub_ms ptarget = target + vec_ms;
@@ -1669,10 +1863,11 @@ cataimgui::bounds editmap_ui::get_bounds()
 
 std::optional<field_type_id> editmap_brush::select_field()
 {
-    std::optional<field_type_id> selected_field_opt = select_feature<field_type>();
+    std::optional<field_type_id> selected_field_opt = select_feature<field_type>( true );
 
     if( !!selected_field_opt && selected_field_opt->id() != field_type_str_id::NULL_ID() ) {
         uilist femenu;
+        femenu.semantic_await_child_successor = true;
         field_type_id selected_field = *selected_field_opt;
         int i = 0;
         for( const field_intensity_level &intensity_level : selected_field->intensity_levels ) {

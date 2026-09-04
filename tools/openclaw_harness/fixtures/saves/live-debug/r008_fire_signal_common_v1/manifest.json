@@ -1,0 +1,47 @@
+{
+  "name": "r008_fire_signal_common_v1",
+  "source_fixture": "tmp_bandit_live_world_post_writeback_snapshot_2026-04-23",
+  "source_profile": "live-debug",
+  "description": "Reusable zero-credit fire-signal laboratory footing. It starts from the clean post-writeback production-owned bandit origin, retains the generated concrete basecamp building and existing CAMP_LOCKER/CAMP_PATROL zones, and equips only normal player-action fire tools. The source's player-only basecamp placement is setup; no fire, signal, hostile position, lead, dispatch, target knowledge, or lifecycle transition is injected.",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        {
+          "typeid": "lighter",
+          "count": 1,
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 1,
+                "contents": [
+                  {
+                    "typeid": "butane",
+                    "charges": 100,
+                    "bday": 0,
+                    "last_temp_check": 0,
+                    "template_traits": []
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        }
+      ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [
+        { "typeid": "brazier", "count": 1 }
+      ]
+    }
+  ]
+}

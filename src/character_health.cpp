@@ -13,6 +13,7 @@
 #include <optional>
 #include <set>
 #include <string>
+#include <string_view>
 #include <unordered_set>
 #include <utility>
 #include <vector>
@@ -2624,6 +2625,35 @@ void Character::apply_damage( Creature *source, bodypart_id hurt, int dam,
     }
 }
 
+namespace
+{
+void record_openclaw_harness_r027_damage_source( const Character &target,
+        const Creature *source, const bodypart_id &body_part, const int damage )
+{
+    static bool recorded = false;
+    const char *const request = std::getenv( "OPENCLAW_HARNESS_R027_WORLD_STATE_REQUEST" );
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const char *const scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
+    const char *const binding = std::getenv( "OPENCLAW_HARNESS_BINDING_ID" );
+    if( recorded || !target.is_avatar() || damage <= 0 || request == nullptr ||
+        std::string_view( request ) != "read" || run_id == nullptr || run_id[0] == '\0' ||
+        scenario == nullptr || scenario[0] == '\0' || binding == nullptr || binding[0] == '\0' ) {
+        return;
+    }
+    recorded = true;
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness r027 damage observation"
+                               << " run_id=" << run_id
+                               << " scenario=" << scenario
+                               << " binding=" << binding
+                               << " damage=" << damage
+                               << " body_part=" << body_part.id().str()
+                               << " source_available=" << ( source != nullptr ? "yes" : "no" )
+                               << " source_identity=" << ( source != nullptr ? source->disp_name() : "none" )
+                               << " source_position=" << ( source != nullptr ?
+                                       source->pos_abs().to_string() : "none" ) << '\n';
+}
+} // namespace
+
 bool Character::is_within_wound_limit_for_bp( const bodypart_id bp, wound_type_id wound_id ) const
 {
     if( wound_id->get_limit() == 0 ) {
@@ -2677,6 +2707,7 @@ dealt_damage_instance Character::deal_damage( Creature *source, bodypart_id bp,
     dealt_damage_instance dealt_dams = Creature::deal_damage( source, bp, d, attack );
     //block reduction should be by applied this point
     int dam = dealt_dams.total_damage();
+    record_openclaw_harness_r027_damage_source( *this, source, bp, dam );
 
     const tripoint_bub_ms pos = pos_bub( here );
 

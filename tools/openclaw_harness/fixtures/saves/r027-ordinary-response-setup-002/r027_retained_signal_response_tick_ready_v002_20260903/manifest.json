@@ -1,0 +1,34 @@
+{
+  "name": "r027_retained_signal_response_tick_ready_v002_20260903",
+  "source_fixture": "r027_retained_signal_response_ready_v001_20260903",
+  "source_profile": "r027-ordinary-response-setup-001",
+  "description": "Zero-credit R-027 response fixture derived from the retained source-absent lead footing. It changes only the copied clock to one second before the normal structural scheduler's 9300-minute pass, while preserving the retained lead, the cleared check clock, and all camp response state for production to consume.",
+  "production_origin": {
+    "credit": "setup_only_non_feature",
+    "anti_promotion": true,
+    "response_owner": "ordinary_hostile_camp_drive",
+    "forbidden": [
+      "direct_response_mutation",
+      "direct_outing_mutation",
+      "direct_member_state_mutation",
+      "direct_lead_mutation_during_validation"
+    ]
+  },
+  "save_transforms": [
+    {
+      "kind": "bandit_site_roster_shape",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "living_member_count": 5,
+      "wounded_or_unready_count": 0,
+      "active_outside_member_count": 0,
+      "headcount_override": 8
+    },
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5309999,
+      "shift_queued_eocs": true
+    }
+  ]
+}

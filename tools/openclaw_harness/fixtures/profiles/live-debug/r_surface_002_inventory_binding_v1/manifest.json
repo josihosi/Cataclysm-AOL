@@ -1,0 +1,6 @@
+{
+  "name": "r_surface_002_inventory_binding_v1",
+  "description": "Disposable R-SURFACE-002 profile snapshot.  It replaces the local DEFAULTMODE inventory binding with z; the semantic descriptor and request protocol expose only world.inventory, never this physical key.",
+  "claim": "R-SURFACE-002",
+  "setup_only": true
+}

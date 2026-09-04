@@ -1,0 +1,55 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_001.inventory_item_prompt_curses_parity",
+  "description": "Curses-specific source-bound renderer-parity route for R-SURFACE-001. It traverses the same native inventory, wet flashlight, item-menu Activate, real query_popup Yes, and restored item-menu route as the preserved Tiles witness, under a separately bound curses executable.",
+  "profile": "r-surface-001-inventory-prompt-curses",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r_surface_001_inventory_prompt_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r_surface_001.inventory_item_prompt_curses": "source_bound_semantic_inventory_item_menu_to_query_popup"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.inventory", "semantic:inventory.select", "semantic:inventory.item_menu.choose", "semantic:prompt.choose"],
+    "forbidden_input": ["guessed-key", "physical-key", "ocr", "screen-coordinate", "direct-state-mutation", "fixture-save-transform-after-install"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-surface-001-inventory-prompt-curses",
+    "config_profile": "dev-harness",
+    "fixture": "r_surface_001_inventory_prompt_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "r_surface_001_closure033_curses/cataclysm", "profile": "r-surface-001-inventory-prompt-curses", "fixture": "r_surface_001_inventory_prompt_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_001_inventory_prompt_v1/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "emit_r_surface_001_inventory_prompt_curses_native_frame",
+      "native_semantic_checkpoint": {"required_actions": ["world.inventory"], "required_state": "world"}
+    },
+    {
+      "kind": "cockpit_act",
+      "label": "r_surface_001_inventory_item_prompt_curses",
+      "gameplay_credit": false,
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1,
+      "action_chain": ["world.inventory", {"action_id": "inventory.select", "stable_id_label_contains": "flashlight"}, {"action_id": "inventory.item_menu.choose", "stable_id_label_contains": "activate"}, {"action_id": "prompt.choose", "stable_id_label_contains": "yes"}],
+      "expected_visible_fact": "Curses independently reaches the native inventory, wet flashlight, item menu, real YESNO query_popup, safe Yes, then restored item-menu surface without inherited parent actions."
+    }
+  ],
+  "proof_gates": [{"id": "r_surface_001_inventory_prompt_curses_semantic_chain", "label": "bound curses semantic inventory-item-menu to query_popup chain", "boundary_step": "r_surface_001_inventory_item_prompt_curses", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_cockpit_transaction", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
+  "proof_route": {"gates": ["r_surface_001_inventory_prompt_curses_semantic_chain"], "terminal": ["r_surface_001_inventory_prompt_curses_semantic_chain"]}
+}

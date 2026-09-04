@@ -1,0 +1,271 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.extortion_committed_paid_departure_continuation_mcw",
+  "description": "Continue the schema-current zero-credit R-029 committed shakedown footing through its native Pay trade, then preserve the completed paid operation across a full save/relaunch and later ordinary turns.  The fixture supplies only contact footing; payment, return, persistence, and later safety remain production evidence.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r029_committed_shakedown_fixture_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides_by_platform": {
+    "macos": {
+      "SCALING_FACTOR": "2",
+      "LLM_INTENT_ENABLE": "false"
+    }
+  },
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": [
+    "shakedown_surface_dialogue_window opening=reopened_demand responses=pay/fight payment_surface=npc_trade_ui",
+    "shakedown_trade_ui result=paid",
+    "shakedown_surface paid toll=",
+    "bandit_live_world shakedown_fight_advance"
+  ],
+  "capabilities": {
+    "player.hud": ["Move:", "Wield:"],
+    "local_place.shakedown.reopened_options": ["Pay", "Fight"],
+    "capabilities.shakedown.payment": "native_trade_completed",
+    "capabilities.shakedown.paid_departure": ["exact_operation", "returning_home", "later_ordinary_turns"],
+    "capabilities.persistence": "full_save_exit_relaunch_same_world"
+  },
+  "runtime_contract": {
+    "permitted_input": ["advance_turns", "press:p", "press:tab", "press:/", "type:gold watch", "press:F1", "press:enter", "press:Y", "press:S", "press:left"],
+    "forbidden_input": ["debug:spawn", "raw-save-rewrite", "fixture-save-transform"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_r029_committed_shakedown_fixture_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_r029_committed_shakedown_fixture_v1",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": ["advance_turns", "press:p", "press:tab", "press:/", "type:gold watch", "press:F1", "press:enter", "press:Y", "press:S", "press:left"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "proof_route": {
+    "precondition": ["post_load_paid_continuation_settle", "preflight_current_committed_shakedown_reservation"],
+    "production_behavior": ["advance_to_reopened_pay_gate", "choose_reopened_pay", "autobalance_paid_offer", "confirm_paid_offer", "accept_paid_trade_confirmation", "audit_completed_native_payment"],
+    "terminal_persistence": ["audit_paid_returning_home_after_native_save", "later_ordinary_paid_departure_turns", "audit_later_paid_departure_no_fight"],
+    "artifact_verdict": ["audit_completed_native_payment", "audit_paid_returning_home_after_native_save", "audit_later_paid_departure_no_fight"],
+    "disallowed_shortcuts": ["audit_completed_native_payment", "audit_paid_returning_home_after_native_save"],
+    "capability_gates": {
+      "player.hud": { "startup": ["post_load_paid_continuation_settle"] },
+      "local_place.shakedown.reopened_options": { "interaction": ["advance_to_reopened_pay_gate"] },
+      "capabilities.shakedown.payment": { "interaction": ["choose_reopened_pay", "accept_paid_trade_confirmation", "audit_completed_native_payment"] },
+      "capabilities.shakedown.paid_departure": { "persistence": ["audit_paid_returning_home_after_native_save", "later_ordinary_paid_departure_turns", "audit_later_paid_departure_no_fight"] },
+      "capabilities.persistence": { "persistence": ["audit_paid_returning_home_after_native_save"] }
+    }
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_paid_continuation_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Move:", "Wield:"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_paid_continuation_hud_not_visible",
+      "abort_reason": "the copied committed-contact fixture did not reach a native gameplay HUD"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "preflight_current_committed_shakedown_reservation",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_active_hostile_operation_kind": "shakedown",
+      "required_active_hostile_operation_phase": "committed_contact",
+      "required_active_hostile_reservation_job_type": "toll",
+      "required_active_hostile_reservation_target_id_exact": "player@146,51,0",
+      "required_active_hostile_reservation_simulation_owner": "local",
+      "required_active_hostile_reservation_min_member_ids": 2,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_current_committed_shakedown_fixture",
+      "abort_reason": "the copied save did not contain the current local committed shakedown operation"
+    },
+    {
+      "kind": "advance_turns",
+      "label": "advance_to_reopened_pay_gate",
+      "count": 299,
+      "settle_seconds": 0.5,
+      "expected_interruption_screen_text_contains": ["Pay.", "Fight."],
+      "expected_visible_fact": "ordinary turns reach the current operation-owned reopened Pay/Fight demand"
+    },
+    {
+      "kind": "press",
+      "label": "choose_reopened_pay",
+      "keys": ["p"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["F1 to auto balance"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_current_pay_trade_ui_missing",
+      "abort_reason": "Pay did not open the native trade interface from the current operation-owned demand"
+    },
+    {
+      "kind": "press",
+      "label": "focus_player_trade_pane_for_fixture_payment_stack",
+      "keys": ["tab"],
+      "settle_seconds": 0.3,
+      "expected_visible_fact": "the native Pay trade interface focuses the player-offer pane before filtering its fixture payment stack"
+    },
+    {
+      "kind": "press",
+      "label": "open_trade_filter_for_fixture_payment_stack",
+      "keys": ["/"],
+      "settle_seconds": 0.5,
+      "expected_visible_fact": "the native trade interface opens its native filter for the zero-credit payment stack"
+    },
+    {
+      "kind": "type",
+      "label": "filter_fixture_gold_watch_payment_stack",
+      "text": "gold watch",
+      "submit": true,
+      "submit_key": "enter",
+      "submit_delay_ms": 200,
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["gold watch"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_fixture_payment_stack_not_visible",
+      "abort_reason": "the current committed-contact fixture did not expose its declared tradeable payment stack in the native Pay UI"
+    },
+    {
+      "kind": "press",
+      "label": "autobalance_paid_offer",
+      "keys": ["F1"],
+      "settle_seconds": 0.5,
+      "expected_visible_fact": "the native trade interface balances the filtered fixture payment stack against the displayed debt"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_paid_offer",
+      "keys": ["enter"],
+      "settle_seconds": 0.5,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Case Sensitive"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_paid_trade_confirmation_missing",
+      "abort_reason": "the balanced native Pay offer did not reach its confirmation prompt"
+    },
+    {
+      "kind": "press",
+      "label": "accept_paid_trade_confirmation",
+      "keys": ["Y"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_visible_fact": "the native trade completion returns control to the world without choosing Fight"
+    },
+    {
+      "kind": "audit_log_contains",
+      "label": "audit_completed_native_payment",
+      "required_line_patterns": [
+        ["shakedown_trade_ui result=paid", "trader="],
+        ["shakedown_surface paid toll=", "return=physical"]
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_completed_native_payment_writeback_missing",
+      "abort_reason": "the native trade result and paid physical-return transition were not both recorded"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_before_paid_save"
+    },
+    {
+      "kind": "press",
+      "label": "open_full_save_prompt_after_paid_return",
+      "keys": ["S"],
+      "settle_seconds": 1.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["quit", "Case"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_paid_return_save_prompt_missing",
+      "abort_reason": "the native full-save prompt was not visible after payment"
+    },
+    {
+      "kind": "press",
+      "label": "confirm_full_paid_return_save",
+      "keys": ["left", "enter"],
+      "settle_seconds": 5.0,
+      "expected_visible_fact": "the paid operation is saved through the native save-and-quit route"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_player_save_mtime_after_paid_save",
+      "changed_since_label": "audit_player_save_mtime_before_paid_save",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_paid_return_writeback_missing",
+      "abort_reason": "the native full save did not update the player save"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_paid_returning_home_after_native_save",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_active_hostile_operation_kind": "shakedown",
+      "required_active_hostile_operation_phase": "returning_home",
+      "required_active_hostile_reservation_job_type": "toll",
+      "required_active_hostile_reservation_target_id_exact": "player@146,51,0",
+      "required_active_hostile_reservation_min_member_ids": 2,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_paid_returning_home_not_persisted",
+      "abort_reason": "the native save did not preserve the exact paid shakedown operation in returning_home"
+    },
+    {
+      "kind": "press",
+      "label": "quit_native_main_menu_after_paid_save",
+      "keys": ["q", "left", "enter"],
+      "settle_seconds": 1.0,
+      "expected_visible_fact": "after the native Save-and-Quit reaches the main menu, its native Quit confirmation terminates this exact saved-world process"
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "quit_native_main_menu_after_paid_save",
+    "terminal_exit_timeout_seconds": 5.0,
+    "steps": [
+      {
+        "kind": "advance_turns",
+        "label": "later_ordinary_paid_departure_turns",
+        "count": 120,
+        "settle_seconds": 0.5,
+        "auto_acknowledge_interruptions": true,
+        "capture_after": true,
+        "extract_text_after_capture": true,
+        "expected_screen_text_after_contains": ["Move:", "Wield:"],
+        "expected_visible_fact": "a fresh native process advances ordinary turns after the persisted paid return without reopening the shakedown"
+      },
+      {
+        "kind": "audit_log_not_contains",
+        "label": "audit_later_paid_departure_no_fight",
+        "forbidden_line_patterns": [
+          ["bandit_live_world shakedown_fight_advance", "npc=4"],
+          ["bandit_live_world shakedown_fight_advance", "npc=5"]
+        ],
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "contradicted_paid_departure_renewed_shakedown_offense",
+        "abort_reason": "an exact paid operation member resumed the shakedown fight path during later ordinary turns"
+      }
+    ]
+  },
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.extortion_committed_paid_departure_continuation_mcw",
+  "evidence_contract": {
+    "claim": "a current committed shakedown uses native Pay trade to complete payment, atomically persists its exact operation as returning_home across full save/relaunch, and its two members do not re-enter the shakedown offense path across later ordinary turns",
+    "fixture_binding": "bandit_r029_committed_shakedown_fixture_v1 is zero-credit committed-contact footing; it fabricates neither payment, paid departure, later turns, nor persistence",
+    "already_accepted_evidence": "the current visible reopened demand and Fight path remain prior evidence; this continuation does not replay Fight selection or combat projection",
+    "failure_rule": "no paid-departure credit if native trade, paid-return transition, persisted returning_home state, fresh-process later turns, or exact-member no-offense control is missing"
+  }
+}

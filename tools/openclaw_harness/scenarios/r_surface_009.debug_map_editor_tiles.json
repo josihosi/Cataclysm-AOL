@@ -1,0 +1,49 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_009.debug_map_editor_tiles",
+  "description": "Source-bound Tiles traversal of the real Debug Functions to Map to Map editor chain.  The focused map-editor owner must publish only its own semantic actions, move its target through a native action, and close back to World without a physical input fallback.",
+  "profile": "r-surface-003-ordinary-debug-menu",
+  "config_profile": "dev-harness",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "world": "McWilliams",
+  "fixture": "r_surface_001_inventory_prompt_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_surface_009.debug_map_editor_tiles": "source_bound_tiles_native_debug_map_editor_owner"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.debug_menu", "semantic:menu.choose", "semantic:editmap.move_target", "semantic:editmap.close"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-surface-003-ordinary-debug-menu",
+    "config_profile": "dev-harness",
+    "fixture": "r_surface_001_inventory_prompt_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r-surface-003-ordinary-debug-menu", "fixture": "r_surface_001_inventory_prompt_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_001_inventory_prompt_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/mcwilliams_live_debug_2026-04-07/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json"
+  },
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "emit_r_surface_009_tiles_world", "native_semantic_checkpoint": {"required_actions": ["world.debug_menu"], "required_state": "world"}},
+    {"kind": "cockpit_act", "label": "r_surface_009_enter_map_editor", "gameplay_credit": false, "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1, "action_chain": ["world.debug_menu", {"action_id": "menu.choose", "stable_id_label_equals": "Map…"}, {"action_id": "menu.choose", "stable_id_label_equals": "Map editor"}], "expected_final_action": "editmap.move_target", "expected_visible_fact": "The native Map editor owns the active frame after the ordinary Debug Functions and Map menus select Map editor by their advertised stable IDs."},
+    {"kind": "semantic_surface_assertion", "label": "r_surface_009_map_editor_isolated", "expected_kind": "map_editor", "actions_absent": ["world.debug_menu", "menu.choose"], "expected_visible_fact": "The focused map-editor descriptor excludes parent World and ordinary-menu actions."},
+    {"kind": "cockpit_act", "label": "r_surface_009_move_and_close_map_editor", "gameplay_credit": false, "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1, "action_chain": [{"action_id": "editmap.move_target", "stable_id_label_contains": "north"}, "editmap.close"], "expected_final_action": "world.debug_menu", "expected_visible_fact": "A native map-editor movement receipt is followed by a native close receipt and a fresh World descriptor."},
+    {"kind": "semantic_surface_rejection_matrix", "label": "r_surface_009_world_rejection_control", "action_id": "world.debug_menu", "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_gates": [{"id": "r_surface_009_tiles_map_editor_route", "label": "source-bound Tiles focused map-editor owner route", "boundary_step": "r_surface_009_world_rejection_control", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_semantic_surface_rejection_matrix", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
+  "proof_route": {"gates": ["r_surface_009_tiles_map_editor_route"], "terminal": ["r_surface_009_tiles_map_editor_route"]}
+}

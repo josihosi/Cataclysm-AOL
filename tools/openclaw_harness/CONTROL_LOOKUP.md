@@ -6,9 +6,8 @@ _Practical control notes for automation. Not a full CDDA controls manual; only t
 - These are **pragmatic automation notes**, not authoritative game documentation.
 - Context matters. The same key may do something slightly different depending on UI state, quest prompts, nearby NPCs, or branch-specific menu differences.
 - Keep evidence classes separate: startup/load, deterministic test, live/screen behavior, and artifact/log proof are not interchangeable. A probe that only loads a save and closes is `load proof only / inconclusive for feature`, even when auto-close and artifact capture worked correctly.
-- For GUI/live feature probes, every screenshot checkpoint should name the expected visible fact it is supposed to prove. If the screenshot only shows “the game loaded”, do not reuse it as proof that Smart Zones, bandit standoff, fire setup, or another feature worked.
-- Probe/handoff reports now write `<mode>.step_ledger.json` plus embedded `step_ledger_summary`. `artifacts_matched` is feature proof only when startup is clean, every scenario step ledger row is green, and wait ledgers are not yellow/blocked. Use `expected_visible_fact` plus `expected_screen_text_contains` / `expected_screen_text_after_contains` on capture checkpoints when OCR text is the guard.
-- Prefer **observables + logs** over blind faith. If possible, confirm the resulting state from `llm_intent.log`, screenshots, or another artifact.
+- Use the smallest direct evidence that decides the current claim. Screenshots and OCR are useful for visible UI state, but startup, step-ledger, log, saved-state, native-receipt, and gameplay evidence keep their own ceilings.
+- A surprising or broken feature is claim-scoped. Preserve facts for unaffected claims, continue when their causal footing remains clean, and route an ordinary product defect through the playtest witness/debug queue rather than the capability-gap store.
 - Beware raw keybind semantics: gameplay `t` is throw, so accidental hotkey mismatches can produce surreal results like trying to throw boxer shorts at a cow. Typed characters and raw keybinds are not always interchangeable for harness work.
 
 ## Registry-owned scenario requests
@@ -53,18 +52,11 @@ A coordinator playtest brief with its matching validated charter requests execut
 | Mark/count command | `inventory_multiselector` registers `MARK_WITH_COUNT` (`!`) and `TOGGLE_ENTRY` (`l`/Right/6). `MARK_WITH_COUNT` calls `query_count()` then `toggle_entries(query_result, SELECTED)`; `TOGGLE_ENTRY` calls `toggle_entries(count, SELECTED)`. `set_chosen_count()` clamps to available count and fills `to_use`; non-charge stacks add one `drop_location` per selected item. | A green count primitive requires `total_selected_qty=20` after `MARK_WITH_COUNT` / selected row `chosen_count=20`, not just the keypress. If the row is visible but selected quantity stays zero, classify `blocked_untrusted_drop_mark_count_primitive`. |
 | Confirm / return-to-map condition | `inventory_drop_selector::execute()` only returns on `CONFIRM` when `to_use` is non-empty and stealing/liquid checks do not cancel; if `to_use` is empty it shows the no-items popup and remains in Multidrop. | A green exit primitive requires `inventory_drop_selector event=return title="Multidrop" action="CONFIRM" total_selected_qty=20` before any save key is sent. If selection is correct but no return appears, classify `blocked_untrusted_drop_menu_exit_primitive`. |
 
-### Brazier deploy source/control lookup (2026-04-27)
+### Brazier and firestarter behavior
 
-This is a harness-primitive blocker, not a real-fire product failure. The normal player-action deploy primitive remains untrusted until a live confirmation proves the deploy prompt/selector state and saved target tile.
-
-Source-backed facts:
-- `data/json/items/tool/deployable.json` gives `brazier` `use_action: { "type": "deploy_furn", "furn_type": "f_brazier" }`.
-- `game_menus::inv::use()` opens the `Use item` inventory via `activatable_inventory_preset`; activatable items include tool use methods such as the brazier.
-- `inventory_pick_selector::execute()` returns the highlighted selectable item on `CONFIRM`, or an item selected by invlet/`SELECT`; filtering alone is not proof that the intended entry was returned.
-- `deploy_furn_actor` calls `choose_adjacent( "Deploy where?" )` when deploying at the player position.
-- `choose_adjacent` uses `choose_direction`, which registers `RIGHT`; default keybindings include right arrow and `l` for `RIGHT`. So `right` is valid only after the harness has really entered the `Deploy where?` direction prompt.
-
-Current blocker label: `blocked_untrusted_brazier_deploy_selector`. Run `.userdata/dev-harness/harness_runs/20260427_200100/` proves the fixture inventory exists (`brazier=1`, `2x4=20`, `lighter=1`) but the saved east tile remains empty/missing `f_brazier`; run `.userdata/dev-harness/harness_runs/20260427_200919/` adds checked GUI-as-text guards and blocks at the first `Use item` menu proof. Run `.userdata/dev-harness/harness_runs/20260427_202434/` adds harness-gated selector/direction traces and richer saved-item metadata: it proves the `Use item` selector opens and the saved `brazier` definition is `deploy_furn -> f_brazier`, but after filter text `brazier` the post-redraw selector state does not prove a highlighted brazier row. Run `.userdata/dev-harness/harness_runs/20260427_203847/` adds selector-entry tracing: the live `Use item` selector shows only `smart_phone` before filtering and zero visible entries after filter `brazier`, even though saved `player.inv` contains `brazier`. Do not try more blind key variants. Next acceptable proof must explain/repair that fixture-to-live inventory availability gap before another confirm/right attempt.
+- `brazier` uses `deploy_furn` to create `f_brazier`; normal Apply opens the activatable-item selector and deployment asks for an adjacent tile.
+- A charged lighter uses the normal firestarter target and activity path. `tests/firestarter_activity_test.cpp` owns deterministic ignition law; a live run still needs a native/UI result plus `f_brazier` and `fd_fire` state for the fire it claims.
+- Inventory filtering, a keypress, fixture fuel, or a `SOURCE_FIREWOOD` zone is setup evidence, not deployment or ignition proof. The worker may use any competent normal-player route; preserve the resulting receipt, UI state, message, or saved-state fact instead of constitutionalizing one key sequence.
 
 ### Debug-menu caution for Package 2
 - The shorthand `}`, `p`, `p`, `b`, `A` is **not** the current camp-state seam on the McWilliams fixture.
@@ -73,13 +65,11 @@ Current blocker label: `blocked_untrusted_brazier_deploy_selector`. Run `.userda
 
 ## Important caveats learned live
 
-### Long wait is a real primitive, not accelerated dot spam
-- `.` / `5` is one-turn pause. It is appropriate for tiny deterministic turn burns and queued UI resolution.
-- `|` is the real long-wait action. It creates an `ACT_WAIT` activity through the wait menu, and should be preferred for minutes/hours of live-world time passage once the scenario has verified the menu path.
-- Treat any interruption as evidence, not noise: safe mode, hostile sightings, noises, hunger/thirst/sleep, damage, activity cancellation prompts, and wrong-screen focus can all invalidate a long-wait proof.
-- Do not type `I`, `N`, `Y`, or `Esc` through prompts blindly. Capture the prompt/screen, classify it, and only ignore/cancel when the proof contract says that is the expected branch.
-- A long-wait proof should record before/after game clock or turn, expected elapsed duration, whether the wait completed or interrupted, the typed choice, and the artifact/screenshot path. If elapsed time or prompt handling is missing, the verdict is not green.
-- Harness scenario primitive: use `{"kind":"wait_action","choice_key":"3"}` for a 5m proof or `choice_key":"4"` for 30m. It captures `<label>.before`, `<label>.initial_wait_menu` when an alarm/watch pre-menu appears, `<label>.wait_menu`, and `<label>.after` screenshots/OCR, records expected duration plus prompt classification, and writes `<label>.before_wait.artifacts.log` / `<label>.after_wait.artifacts.log` deltas when artifact patterns are configured. It also writes a `wait_step_ledger` and top-level `wait_step_summary`; artifact matches no longer turn a wait probe green when the wait ledger is yellow/blocked. It does not type through interruption prompts.
+### Time passage and interruptions
+
+- `.` / `5` passes one turn; `|` opens the native wait activity. The cockpit also exposes primitive, guarded, and raw waiting with native receipts.
+- Choose interruption handling for the experiment: stop, handle classified non-dangerous prompts, or permissively continue and receipt what was crossed. An interruption is a new observation, not automatically a failed run.
+- Derive any horizon from the mechanic or observed progress. Record native time and transition facts, and do not treat a short uneventful interval as a lifecycle negative.
 
 ### `C+b` recipient selection is situational
 A live probe in the current `master` / `Sandy Creek` save showed:

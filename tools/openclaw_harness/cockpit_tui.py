@@ -249,13 +249,28 @@ def _commands(observation: Mapping[str, Any]) -> list[Dict[str, Any]]:
     advertised = sorted({str(action) for action in observation.get("advertised_actions", [])
                          if isinstance(action, str) and action})
     observation_id = str(observation.get("observation_id", ""))
-    commands = [{"id": f"command.{action}", "kind": "primitive", "action": "game.act",
-                 "action_id": action, "legal": True, "key": str(index + 1),
-                 "request_view": _request_view(
-                     f"request.command.{action}", "game.act",
-                     {"action": "game.act", "observation_id": observation_id, "action_id": action},
-                 )}
-                for index, action in enumerate(advertised)]
+    action_details = observation.get("advertised_action_details", [])
+    by_action: Dict[str, list[str]] = {}
+    for detail in action_details:
+        if not isinstance(detail, Mapping) or detail.get("enabled") is not True:
+            continue
+        action = str(detail.get("id", ""))
+        stable_id = str(detail.get("stable_id", ""))
+        if action:
+            by_action.setdefault(action, []).append(stable_id)
+    commands = []
+    for index, action in enumerate(advertised):
+        stable_ids = [stable_id for stable_id in by_action.get(action, []) if stable_id] or [None]
+        for stable_id in stable_ids:
+            suffix = f".{stable_id}" if stable_id else ""
+            request = {"action": "game.act", "observation_id": observation_id, "action_id": action}
+            if stable_id:
+                request["stable_id"] = stable_id
+            commands.append({
+                "id": f"command.{action}{suffix}", "kind": "primitive", "action": "game.act",
+                "action_id": action, "stable_id": stable_id, "legal": True, "key": str(index + 1),
+                "request_view": _request_view(f"request.command.{action}{suffix}", "game.act", request),
+            })
     for label, action in sorted(_ALIASES.items()):
         commands.append({"id": f"alias.{label.lower().replace(' ', '_')}", "kind": "alias",
                          "label": label, "equivalent": action, "legal": False,
@@ -330,6 +345,7 @@ def render_state(observation: Mapping[str, Any], status: Mapping[str, Any], last
         "terminal_receipt": _value_or_unavailable(final.get("target_receipt")),
     }
     result = dict(last_result or {})
+    active_surface = observation.get("surface") if isinstance(observation.get("surface"), Mapping) else None
     fields = [
         {"id": "field.binding_id", "value": (
             str(status["binding_id"]) if status.get("binding_id") else {"state": "unavailable"}
@@ -344,13 +360,20 @@ def render_state(observation: Mapping[str, Any], status: Mapping[str, Any], last
         {"id": "field.receipt", "value": _receipt_drilldown(compact_log)},
         {"id": "field.mission", "value": _value_or_unavailable(mission)},
         {"id": "field.target", "value": target},
-        {"id": "field.error", "value": dict(result) if result.get("ok") is False else {"state": "clear"}},
     ]
+    if active_surface is not None:
+        fields.extend([
+            {"id": "field.active_surface", "value": dict(active_surface)},
+            {"id": "field.breadcrumbs", "value": list(observation.get("breadcrumbs", []))},
+        ])
+    fields.append({"id": "field.error", "value": dict(result) if result.get("ok") is False else {"state": "clear"}})
     return {
-        "schema": "caol-cockpit-tui-v1",
+        "schema": "caol-cockpit-tui-v2" if active_surface is not None else "caol-cockpit-tui-v1",
         "fields": fields,
         "local_map": _local_map(observation),
         "overmap": _overmap(observation),
+        "active_surface": dict(active_surface) if active_surface is not None else None,
+        "breadcrumbs": list(observation.get("breadcrumbs", [])) if active_surface is not None else [],
         "commands": _commands(observation),
         "last_result": result,
     }

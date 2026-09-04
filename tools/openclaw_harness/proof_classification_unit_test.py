@@ -83,6 +83,7 @@ from startup_harness import (  # noqa: E402
     summarize_peekaboo_image_capture,
     summarize_probe_step_ledger,
     summarize_wait_step_ledgers,
+    terminal_native_startup_identity,
     wait_input_trace_child_environment,
 )
 
@@ -252,32 +253,10 @@ class AdvanceTurnInputContractTest(unittest.TestCase):
         type_mock.assert_called_once_with(17, "|", delay_ms=200)
         hotkey_mock.assert_not_called()
 
-    @patch("startup_harness.peekaboo_type_text")
-    @patch("startup_harness.peekaboo_focus_pid", return_value={"ok": True})
-    @patch("startup_harness.time.sleep")
-    def test_semantic_text_waits_for_focused_game_before_delivery(self, sleep_mock, focus_mock,
-            type_mock):
-        # The native dispatcher owns this focused text path.  The pause is the
-        # configured input delay, not an additional retry or guessed key.
-        from startup_harness import dispatch_semantic_input
+    def test_semantic_requests_have_no_focus_or_text_dispatcher(self):
+        import startup_harness
 
-        dispatch_semantic_input(17, "|", delay_ms=200)
-
-        focus_mock.assert_called_once_with(17)
-        sleep_mock.assert_called_once_with(0.2)
-        type_mock.assert_called_once_with(17, "|", delay_ms=200, focus_pid=False)
-
-    @patch("startup_harness.peekaboo_type_text")
-    @patch("startup_harness.peekaboo_focus_pid", return_value={"ok": False})
-    def test_semantic_text_fails_closed_when_game_focus_cannot_be_verified(self, focus_mock,
-            type_mock):
-        from startup_harness import dispatch_semantic_input
-
-        with self.assertRaisesRegex(RuntimeError, "semantic text focus failed"):
-            dispatch_semantic_input(17, "|")
-
-        focus_mock.assert_called_once_with(17)
-        type_mock.assert_not_called()
+        self.assertFalse(hasattr(startup_harness, "dispatch_semantic_input"))
 
     def test_named_navigation_keys_use_physical_press_mapping(self):
         self.assertEqual(peekaboo_physical_hotkey_for_key("escape"), "escape")
@@ -761,20 +740,18 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
         self.assertEqual(error, "")
         self.assertEqual(changes, ["tools/llm_runner/runner.py"])
 
-    def test_build_version_dirty_check_ignores_agents_but_catches_staged_and_untracked_runtime(self) -> None:
+    def test_build_version_dirty_check_catches_staged_and_untracked_runtime(self) -> None:
         repository_root = HARNESS_DIR.parents[1]
         makefile = (repository_root / "Makefile").read_text(encoding="utf-8")
         cmake_version = (repository_root / "src" / "version.cmake").read_text(encoding="utf-8")
         for build_version_source in (makefile, cmake_version):
             self.assertIn("status --porcelain --untracked-files=all", build_version_source)
-            self.assertIn(":(exclude)Agents.md", build_version_source)
+            self.assertNotIn(":(exclude)Agents.md", build_version_source)
 
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
-            agents = root / "Agents.md"
             runner = root / "tools" / "llm_runner" / "runner.py"
             runner.parent.mkdir(parents=True)
-            agents.write_text("committed guidance\n", encoding="utf-8")
             runner.write_text("print('committed')\n", encoding="utf-8")
             subprocess.run(
                 ["git", "init", "--quiet", str(root)],
@@ -782,7 +759,7 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
                 capture_output=True,
             )
             subprocess.run(
-                ["git", "-C", str(root), "add", "Agents.md", "tools/llm_runner/runner.py"],
+                ["git", "-C", str(root), "add", "tools/llm_runner/runner.py"],
                 check=True,
                 capture_output=True,
             )
@@ -813,17 +790,7 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
                 "--",
                 ".",
                 ":(exclude)lang/po/**",
-                ":(exclude)Agents.md",
             ]
-
-            agents.write_text("Josef's local guidance\n", encoding="utf-8")
-            agents_only = subprocess.run(
-                dirty_command,
-                check=True,
-                capture_output=True,
-                text=True,
-            )
-            self.assertEqual(agents_only.stdout, "")
 
             runner.write_text("print('staged runtime')\n", encoding="utf-8")
             subprocess.run(
@@ -2419,6 +2386,39 @@ class StartupScreenGateTest(unittest.TestCase):
         self.assertEqual(result["feature_gate"], "runtime_version_unproven")
         self.assertFalse(result["startup_clean_for_feature_steps"])
 
+    def test_bound_surface_identity_closes_missing_generic_version_label(self) -> None:
+        screen_summary = self.screen_summary(self.gameplay_probe())
+        screen_summary["version_matches_runtime_paths"] = None
+        screen_summary["surface_identity_status"] = "matched"
+        result = startup_proof_classification(
+            ok=True,
+            screen_summary=screen_summary,
+            focus_result={"ok": True},
+        )
+
+        self.assertEqual(result["status"], "green")
+        self.assertEqual(result["feature_gate"], "startup_clean")
+
+    @patch("startup_harness.compare_runtime_binding", return_value={"status": "matched"})
+    @patch("startup_harness.pid_is_alive", return_value=True)
+    @patch("startup_harness.pid_command", return_value="/Volumes/CodexBulk/cataclysm --world McWilliams")
+    def test_terminal_native_identity_uses_bound_process_without_gui_focus(
+        self, _command: Any, _alive: Any, _binding: Any,
+    ) -> None:
+        identity = terminal_native_startup_identity(
+            42, Path("/Volumes/CodexBulk/cataclysm"), {"schema": 1},
+        )
+        screen_summary = self.screen_summary(self.gameplay_probe())
+        screen_summary["version_matches_runtime_paths"] = None
+        screen_summary["surface_identity_status"] = "matched" if identity["ok"] else "unproven"
+        result = startup_proof_classification(
+            ok=True, screen_summary=screen_summary, focus_result=identity,
+        )
+
+        self.assertTrue(identity["ok"])
+        self.assertEqual(identity["transport"], "terminal_native")
+        self.assertEqual(result["feature_gate"], "startup_clean")
+
     def test_dismissed_debug_popup_still_blocks_real_gameplay_hud(self) -> None:
         result = startup_proof_classification(
             ok=True,
@@ -2947,6 +2947,59 @@ class ProbeProofClassificationTest(unittest.TestCase):
         self.assertEqual(result["status"], "red")
         self.assertFalse(result["feature_proof"])
 
+    def test_feature_guard_classifies_declared_debugmsg_without_masking_other_errors(self) -> None:
+        guard = build_feature_debug_guard(
+            debug_capture={
+                "artifact_path": "probe.feature_debug.log",
+                "error_evidence_lines": [
+                    "07:48:50.713 ERROR : (error message will follow backtrace)",
+                    "(continued from above) ERROR : src/debug_menu.cpp:4998 Test debugmsg",
+                    "07:48:51.000 ERROR NPC : unrelated feature failure",
+                ],
+            },
+            screen_probe={"visible_error_popup": False, "ocr_ok": True, "black_capture_warning": False},
+            screen_summary={"peekaboo_success": True},
+            process_alive=True,
+            expected_debug_log_messages=["Test debugmsg"],
+        )
+
+        self.assertEqual(guard["status"], "red")
+        self.assertEqual(len(guard["expected_error_evidence_lines"]), 2)
+        self.assertEqual(guard["unexpected_error_evidence_lines"], [
+            "07:48:51.000 ERROR NPC : unrelated feature failure",
+        ])
+
+    def test_feature_guard_accepts_only_the_declared_debugmsg_record(self) -> None:
+        guard = build_feature_debug_guard(
+            debug_capture={
+                "artifact_path": "probe.feature_debug.log",
+                "error_evidence_lines": [
+                    "07:48:50.713 ERROR : (error message will follow backtrace)",
+                    "(continued from above) ERROR : src/debug_menu.cpp:4998 Test debugmsg",
+                ],
+            },
+            screen_probe={"visible_error_popup": False, "ocr_ok": True, "black_capture_warning": False},
+            screen_summary={"peekaboo_success": True},
+            process_alive=True,
+            expected_debug_log_messages=["Test debugmsg"],
+        )
+
+        self.assertEqual(guard["status"], "green")
+        self.assertEqual(guard["verdict"], "green_feature_phase_error_free")
+        self.assertEqual(guard["unexpected_error_evidence_lines"], [])
+
+    def test_native_receipt_only_scenario_can_opt_out_of_screen_observability(self) -> None:
+        guard = build_feature_debug_guard(
+            debug_capture={"artifact_path": "probe.feature_debug.log", "error_evidence_lines": []},
+            screen_probe={"visible_error_popup": False, "ocr_ok": True, "black_capture_warning": True},
+            screen_summary={"peekaboo_success": True},
+            process_alive=True,
+            require_screen_observability=False,
+        )
+
+        self.assertEqual(guard["status"], "green")
+        self.assertNotIn("feature_phase_screen_capture_black", guard["ledger_row"]["issues"])
+
     def test_feature_guard_requires_observable_screen_and_live_process(self) -> None:
         unobservable = build_feature_debug_guard(
             debug_capture={"artifact_path": "", "error_evidence_lines": []},
@@ -2965,6 +3018,18 @@ class ProbeProofClassificationTest(unittest.TestCase):
         self.assertIn("feature_phase_screen_ocr_failed", unobservable["ledger_row"]["issues"])
         self.assertEqual(exited["status"], "red")
         self.assertEqual(exited["verdict"], "red_feature_phase_process_exited")
+
+    def test_feature_guard_accepts_declared_clean_terminal_exit(self) -> None:
+        guard = build_feature_debug_guard(
+            debug_capture={"artifact_path": "", "error_evidence_lines": []},
+            screen_probe={"ocr_ok": True, "black_capture_warning": False},
+            screen_summary={"peekaboo_success": True},
+            process_alive=False,
+            expected_clean_terminal_exit=True,
+        )
+
+        self.assertEqual(guard["status"], "green")
+        self.assertNotIn("feature_phase_process_exited", guard["ledger_row"]["issues"])
 
     def test_repeatability_rejects_red_feature_proof_even_with_zero_returncode(self) -> None:
         report = {

@@ -1,0 +1,66 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r008_closure_236_native_payload_capture",
+  "description": "Fresh zero-credit observation authority for a native local-pair handoff.  The run captures the producer-owned canonical persisted site sidecar and grants no handoff, crossing, save, or return proof credit.",
+  "profile": "r008-closure-231-bootstrap",
+  "world": "r008-natural-bandit-039",
+  "fixture": "bandit_r008_natural_safe_watch_withdrawal_free_v1",
+  "fixture_profile": "r008-closure-231-withdrawal-free",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "observer_safety_mode": "invisible",
+  "wait_input_trace": true,
+  "installed_save_player": "#R2xvcnkgVHJlam8=.sav.zzip",
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r008.closure_236_native_capture": "zero_credit_native_local_pair_payload_capture",
+    "world.r008.closure_236_local_pair": {
+      "actor_ids": [4, 5],
+      "generation": 1,
+      "simulation_owner": "local",
+      "handoff_epoch": 1
+    }
+  },
+  "runtime_contract": {
+    "permitted_input": ["press:escape", "press:|", "press:w", "press:8", "press:5", "press:.", "press:S", "press:Y", "press:q", "press:left", "press:enter"],
+    "forbidden_input": ["debug:teleport", "debug:ecology_edit", "raw-save-rewrite", "fixture-save-transform-after-install", "debug:inject_camp", "debug:inject_origin", "debug:inject_lead", "debug:inject_dispatch", "debug:inject_operation", "debug:drive", "debug:eligibility", "semantic:activity.ignore"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "r008-closure-231-bootstrap",
+    "fixture": "bandit_r008_natural_safe_watch_withdrawal_free_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r008-closure-231-bootstrap", "fixture": "bandit_r008_natural_safe_watch_withdrawal_free_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["native guarded wait"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "setup_receipt_contract": {
+    "kind": "r008_withdrawal_free_player_fixture",
+    "cleanup_owner": "cleanup_harness_world",
+    "native_capture_only": true,
+    "snapshot": "run-local producer sidecar; no reconstructed fields are permitted"
+  },
+  "steps": [
+    {"kind": "press", "label": "dismiss_inherited_actions_overlay", "keys": ["escape"], "settle_seconds": 0.5},
+    {"kind": "wait", "label": "post_load_hud", "seconds": 2.0, "capture_after": true},
+    {"kind": "audit_saved_game_turn", "label": "audit_safe_watch_position", "player_save": "#R2xvcnkgVHJlam8=.sav.zzip", "required_player_abs_omt": [174, 13, 0], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_closure_236_safe_watch_position_missing"},
+    {"kind": "long_wait", "label": "source_route_first_six_hour_scheduler_window", "wait_key": "|", "pre_menu_choice_key": "w", "choice_key": "8", "expected_duration": "6h", "require_native_wait_menu_guards": true, "require_wait_input_trace": true, "pre_menu_expected_screen_text_contains": ["Wait a while", "Set an alarm"], "duration_menu_expected_screen_text_contains": ["6 hours"], "allow_harmless_flavor_popup_wait_recovery": true, "completion_wait_seconds": 90.0, "completion_artifact_timeout_seconds": 420.0, "minimum_artifact_elapsed_minutes": 360, "abort_verdict": "blocked_r008_closure_236_first_native_wait_unproved"},
+    {"kind": "long_wait", "label": "source_route_second_six_hour_scheduler_window", "wait_key": "|", "pre_menu_choice_key": "w", "choice_key": "8", "expected_duration": "6h", "require_native_wait_menu_guards": true, "require_wait_input_trace": true, "pre_menu_expected_screen_text_contains": ["Wait a while", "Set an alarm"], "duration_menu_expected_screen_text_contains": ["6 hours"], "allow_harmless_flavor_popup_wait_recovery": true, "completion_wait_seconds": 90.0, "completion_artifact_timeout_seconds": 420.0, "minimum_artifact_elapsed_minutes": 360, "abort_verdict": "blocked_r008_closure_236_second_native_wait_unproved"},
+    {"kind": "long_wait", "label": "source_route_first_hour_to_dispatch", "wait_key": "|", "pre_menu_choice_key": "w", "choice_key": "5", "expected_duration": "1h", "require_native_wait_menu_guards": true, "require_wait_input_trace": true, "pre_menu_expected_screen_text_contains": ["Wait a while", "Set an alarm"], "duration_menu_expected_screen_text_contains": ["1 hour"], "allow_harmless_flavor_popup_wait_recovery": true, "completion_wait_seconds": 90.0, "completion_artifact_timeout_seconds": 420.0, "minimum_artifact_elapsed_minutes": 60, "abort_verdict": "blocked_r008_closure_236_first_dispatch_wait_unproved"},
+    {"kind": "long_wait", "label": "source_route_second_hour_to_dispatch", "wait_key": "|", "pre_menu_choice_key": "w", "choice_key": "5", "expected_duration": "1h", "require_native_wait_menu_guards": true, "require_wait_input_trace": true, "pre_menu_expected_screen_text_contains": ["Wait a while", "Set an alarm"], "duration_menu_expected_screen_text_contains": ["1 hour"], "allow_harmless_flavor_popup_wait_recovery": true, "completion_wait_seconds": 90.0, "completion_artifact_timeout_seconds": 420.0, "minimum_artifact_elapsed_minutes": 60, "abort_verdict": "blocked_r008_closure_236_second_dispatch_wait_unproved"},
+    {"kind": "press", "label": "resolve_native_active_sortie_dispatch_boundary", "keys": ["."], "settle_seconds": 1.0},
+    {"kind": "long_wait", "label": "source_route_native_local_pair_boundary_hour", "wait_key": "|", "pre_menu_choice_key": "w", "choice_key": "5", "expected_duration": "1h", "require_native_wait_menu_guards": true, "require_wait_input_trace": true, "pre_menu_expected_screen_text_contains": ["Wait a while", "Set an alarm"], "duration_menu_expected_screen_text_contains": ["1 hour"], "allow_harmless_flavor_popup_wait_recovery": true, "completion_wait_seconds": 90.0, "completion_artifact_timeout_seconds": 420.0, "minimum_artifact_elapsed_minutes": 60, "abort_verdict": "blocked_r008_closure_236_native_local_pair_boundary_unproved"},
+    {"kind": "audit_structured_transition_event", "label": "audit_native_active_sortie_dispatch_predecessor", "predicate": {"domain": "bandit_live_world", "transition": "active_sortie_dispatch", "outcome": "committed", "site_id": "overmap_special:bandit_camp@177,13,0", "operation_id": "overmap_special:bandit_camp@177,13,0#structural", "generation": 1, "simulation_owner": "abstract", "previous_state": "at_home", "new_state": "outbound", "actor_ids": [4, 5]}, "require_exactly_one": true, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_closure_236_dispatch_missing"},
+    {"kind": "audit_structured_transition_event", "label": "audit_native_local_pair_handoff", "predicate": {"domain": "bandit_live_world", "transition": "local_pair_handoff", "outcome": "committed", "site_id": "overmap_special:bandit_camp@177,13,0", "operation_id": "overmap_special:bandit_camp@177,13,0#structural", "generation": 1, "simulation_owner": "local", "previous_state": "abstract", "new_state": "local", "actor_ids": [4, 5], "handoff_epoch": 1}, "require_exactly_one": true, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r008_closure_236_local_pair_missing"}
+  ],
+  "proof_route": {
+    "precondition": ["audit_safe_watch_position"],
+    "production_behavior": ["audit_native_active_sortie_dispatch_predecessor", "audit_native_local_pair_handoff"],
+    "terminal_persistence": ["audit_native_local_pair_handoff"],
+    "artifact_verdict": ["audit_native_local_pair_handoff"],
+    "disallowed_shortcuts": ["audit_native_local_pair_handoff"],
+    "capability_gates": {"runtime.r008.closure_236_native_capture": {"terminal": ["audit_native_local_pair_handoff"]}}
+  },
+  "evidence_contract": {"claim": "This manifest authorizes one fresh native observation solely to emit a producer-owned canonical local-pair payload sidecar.", "failure_rule": "Missing, partial, stale, mixed, or mutated sidecars are red.  The observation earns no gameplay credit and cannot authorize stage two."}
+}

@@ -405,8 +405,11 @@ bool live_transition_stream_enabled()
     }
     const std::string path( path_value );
     const std::string run_id( run_id_value );
-    return transition_stream.initialized && transition_stream.path == path &&
-           transition_stream.run_id == run_id ? true : initialize_transition_stream( path, run_id );
+    // The semantic broker may append a correlated receipt after this process
+    // last wrote the shared run stream.  Re-read the authoritative watermark
+    // before every native append so a delayed broker collection cannot make a
+    // later game-owned event reuse an older sequence number.
+    return initialize_transition_stream( path, run_id );
 }
 
 bool append_live_transition_event( const bandit_live_world_probe::transition_event &event )
@@ -442,6 +445,12 @@ bool append_live_transition_event( const bandit_live_world_probe::transition_eve
     }
     if( !event.operation_id.empty() ) {
         json.member( "operation_id", event.operation_id );
+    }
+    if( !event.target_lead_id.empty() ) {
+        json.member( "target_lead_id", event.target_lead_id );
+    }
+    if( event.target_lead_revision > 0 ) {
+        json.member( "target_lead_revision", event.target_lead_revision );
     }
     if( event.generation > 0 ) {
         json.member( "generation", event.generation );
@@ -495,6 +504,157 @@ bool append_live_transition_event( const bandit_live_world_probe::transition_eve
         json.member( "current_world_tree_sha256", event.certification_current_world_tree_sha256 );
         json.member( "current_world_save_sha256", event.certification_current_world_save_sha256 );
         json.member( "proof", event.certification_proof );
+        json.end_object();
+    }
+    if( event.has_staffed_camp_signal_read ) {
+        json.member( "staffed_camp_signal_read" );
+        json.start_object();
+        const auto identity = []( const char *name ) {
+            const char *value = std::getenv( name );
+            return value == nullptr ? "" : std::string( value );
+        };
+        json.member( "identity" );
+        json.start_object();
+        json.member( "run_id", transition_stream.run_id );
+        json.member( "scenario", identity( "OPENCLAW_HARNESS_SCENARIO" ) );
+        json.member( "source_sha256", identity( "OPENCLAW_HARNESS_RUNTIME_SOURCE_SHA256" ) );
+        json.member( "executable_sha256", identity( "OPENCLAW_HARNESS_EXECUTABLE_SHA256" ) );
+        json.member( "binding_id", identity( "OPENCLAW_HARNESS_BINDING_ID" ) );
+        json.end_object();
+        json.member( "observer" );
+        json.start_object();
+        json.member( "id", event.observer_id );
+        json.member( "home", event.observer_home );
+        json.member( "at_home", event.observer_at_home );
+        json.member( "eligible", event.observer_eligible );
+        json.member( "capability" );
+        json.start_object();
+        json.member( "kind", event.observer_capability );
+        json.end_object();
+        json.end_object();
+        json.member( "camp" );
+        json.start_object();
+        json.member( "id", event.site_id );
+        json.member( "omt", event.camp_omt );
+        json.end_object();
+        json.member( "channel" );
+        json.start_object();
+        json.member( "kind", event.signal_channel );
+        json.end_object();
+        json.member( "source" );
+        json.start_object();
+        json.member( "omt", event.source_omt );
+        json.member( "intensity", event.source_intensity );
+        json.end_object();
+        json.member( "range" );
+        json.start_object();
+        json.member( "actual", event.range_actual );
+        json.member( "cap", event.range_cap );
+        json.end_object();
+        json.member( "line_of_sight" );
+        json.start_object();
+        json.member( "result", event.line_of_sight );
+        json.end_object();
+        json.member( "elevation" );
+        json.start_object();
+        json.member( "delta", event.elevation_delta );
+        json.end_object();
+        json.member( "weather" );
+        json.start_object();
+        json.member( "summary", event.weather );
+        json.end_object();
+        json.member( "visibility" );
+        json.start_object();
+        json.member( "inputs" );
+        json.start_object();
+        json.member( "sight_points", event.visibility_input );
+        json.end_object();
+        json.member( "result", event.visibility_result );
+        json.end_object();
+        json.member( "observation_clocks" );
+        json.start_object();
+        json.member( "game_minutes", event.game_minutes );
+        json.member( "emitted_minutes", event.emitted_minutes );
+        json.end_object();
+        json.member( "lead" );
+        json.start_object();
+        json.member( "id", event.lead_id );
+        json.end_object();
+        json.member( "outcome" );
+        json.start_object();
+        json.member( "kind", event.lead_outcome );
+        json.end_object();
+        json.member( "work" );
+        json.start_object();
+        json.member( "reads", event.work_reads );
+        json.member( "callbacks", event.work_callbacks );
+        json.end_object();
+        json.member( "persistence" );
+        json.start_object();
+        json.member( "site_id", event.persistence_site_id );
+        json.member( "lead_id", event.persistence_lead_id );
+        json.member( "lead_count_before", event.persistence_lead_count_before );
+        json.member( "lead_count_after", event.persistence_lead_count_after );
+        json.member( "lead_hash_before", event.persistence_lead_hash_before );
+        json.member( "lead_hash_after", event.persistence_lead_hash_after );
+        json.end_object();
+        json.member( "drive_response" );
+        json.start_object();
+        json.member( "before", event.drive_state_before );
+        json.member( "after", event.drive_state_after );
+        json.end_object();
+        json.end_object();
+    }
+    if( event.has_staffed_camp_signal_aging ) {
+        json.member( "staffed_camp_signal_aging" );
+        json.start_object();
+        const auto identity = []( const char *name ) {
+            const char *value = std::getenv( name );
+            return value == nullptr ? "" : std::string( value );
+        };
+        json.member( "identity" );
+        json.start_object();
+        json.member( "run_id", transition_stream.run_id );
+        json.member( "scenario", identity( "OPENCLAW_HARNESS_SCENARIO" ) );
+        json.member( "source_sha256", identity( "OPENCLAW_HARNESS_RUNTIME_SOURCE_SHA256" ) );
+        json.member( "executable_sha256", identity( "OPENCLAW_HARNESS_EXECUTABLE_SHA256" ) );
+        json.member( "binding_id", identity( "OPENCLAW_HARNESS_BINDING_ID" ) );
+        json.end_object();
+        json.member( "camp" );
+        json.start_object();
+        json.member( "id", event.site_id );
+        json.member( "omt", event.camp_omt );
+        json.end_object();
+        json.member( "lead" );
+        json.start_object();
+        json.member( "id", event.aging_lead_id );
+        json.member( "channel", event.aging_channel );
+        json.member( "source_omt", event.aging_source_omt );
+        json.member( "source_key", event.aging_source_key );
+        json.end_object();
+        json.member( "previous" );
+        json.start_object();
+        json.member( "last_seen_minutes", event.aging_previous_last_seen_minutes );
+        json.member( "age_minutes", event.aging_previous_age_minutes );
+        json.member( "status", event.aging_previous_status );
+        json.end_object();
+        json.member( "result" );
+        json.start_object();
+        json.member( "last_seen_minutes", event.aging_result_last_seen_minutes );
+        json.member( "age_minutes", event.aging_result_age_minutes );
+        json.member( "status", event.aging_result_status );
+        json.member( "expired_removed", event.aging_expired_removed );
+        json.end_object();
+        json.member( "persistence" );
+        json.start_object();
+        json.member( "lead_set_hash_before", event.aging_lead_set_hash_before );
+        json.member( "lead_set_hash_after", event.aging_lead_set_hash_after );
+        json.end_object();
+        json.member( "drive_response" );
+        json.start_object();
+        json.member( "before", event.aging_drive_state_before );
+        json.member( "after", event.aging_drive_state_after );
+        json.end_object();
         json.end_object();
     }
     json.end_object();

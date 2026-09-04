@@ -14,6 +14,7 @@ from unittest import mock
 HARNESS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(HARNESS_DIR))
 
+import startup_harness  # noqa: E402
 from startup_harness import (  # noqa: E402
     declared_startup_overlay_state_is_qualified,
     first_initial_hud_world_frame_after_boundary,
@@ -230,6 +231,112 @@ class R019ValidationStartupTest(unittest.TestCase):
                 )
         self.assertEqual(selected["frame_id"], "run-1:initial")
         self.assertLess(selected["_event_offset"], 10_000)
+
+    def test_native_bootstrap_rebases_to_the_run_owned_trace_at_byte_zero(self) -> None:
+        eligible = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:initial", "state": "world",
+            "valid_actions": ["world.wait"], "producer": "hud_world_ready",
+            "initial_world_ready": True,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            (run_dir / "semantic.native.events.jsonl").write_bytes(
+                b"openclaw_harness_semantic_step: " + json.dumps(eligible).encode() + b"\n"
+            )
+            metadata = startup_harness.await_r014_native_semantic_bootstrap(
+                profile="test", run_dir=run_dir, run_id="run-1", required_state="world",
+                required_actions=["world.wait"], timeout_seconds=0.0, poll_seconds=0.0,
+                trace_start_offset=10_000, require_initial_hud_world_ready_frame=True,
+            )
+        self.assertEqual(metadata["status"], "required_state_present")
+        self.assertEqual(metadata["frame_trace_offset"], 0)
+
+    def test_live_reader_and_dispatch_keep_their_cursor_in_the_run_owned_trace(self) -> None:
+        source = (HARNESS_DIR / "startup_harness.py").read_text(encoding="utf-8")
+        service_start = source.index("def open_cockpit_game_service(")
+        service_end = source.index("    player_fire_setup = None", service_start)
+        service = source[service_start:service_end]
+        self.assertEqual(service.count("semantic_step_source_trace(profile, run_dir)"), 2)
+
+    def test_world_successor_requires_its_immediately_preceding_same_run_descriptor(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "run-1",
+            "surface_id": "run-1:surface:2", "frame_id": "run-1:frame:2", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        }
+        raw = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:turn:2",
+            "state": "world", "game_minutes": 8222, "observed_turn": 10,
+            "observation": {"visible_local": []},
+            "keep_watch_safety": {"classification": "clear"},
+            "valid_actions": ["world.wait"],
+        }
+        prefix = b"openclaw_harness_semantic_step: "
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            trace = run_dir / "semantic.native.events.jsonl"
+            first = prefix + json.dumps(descriptor).encode() + b"\n"
+            trace.write_bytes(first + prefix + json.dumps(raw).encode() + b"\n")
+            paired = startup_harness.current_semantic_step_frame(
+                profile="test", run_dir=run_dir, run_id="run-1", start_offset=len(first),
+            )
+        self.assertEqual(paired["event"], "surface_descriptor")
+        self.assertEqual(paired["frame_id"], "run-1:frame:2")
+        self.assertEqual(paired["paired_raw_frame_id"], "run-1:turn:2")
+        self.assertEqual(paired["game_minutes"], 8222)
+
+    def test_world_descriptor_retains_only_its_adjacent_wait_activity_state(self) -> None:
+        activity = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:activity:1",
+            "state": "wait_activity", "valid_actions": [],
+        }
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "run-1",
+            "surface_id": "run-1:surface:2", "frame_id": "run-1:frame:2", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        }
+        prefix = b"openclaw_harness_semantic_step: "
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            trace = run_dir / "semantic.native.events.jsonl"
+            trace.write_bytes(prefix + json.dumps(activity).encode() + b"\n" +
+                              prefix + json.dumps(descriptor).encode() + b"\n")
+            paired = startup_harness.current_semantic_step_frame(
+                profile="test", run_dir=run_dir, run_id="run-1", start_offset=0,
+            )
+        self.assertEqual(paired["frame_id"], "run-1:frame:2")
+        self.assertEqual(paired["paired_raw_frame_id"], "run-1:activity:1")
+        self.assertEqual(paired["paired_raw_state"], "wait_activity")
+
+    def test_world_descriptor_prefers_its_immediate_world_successor_over_prior_activity(self) -> None:
+        activity = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:activity:1",
+            "state": "wait_activity_complete", "valid_actions": [],
+        }
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "run-1",
+            "surface_id": "run-1:surface:2", "frame_id": "run-1:frame:2", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        }
+        world = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:turn:2",
+            "state": "world", "game_minutes": 8222, "valid_actions": ["world.wait"],
+            "observation": {"visible_local": []}, "keep_watch_safety": {"classification": "clear"},
+        }
+        prefix = b"openclaw_harness_semantic_step: "
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            trace = run_dir / "semantic.native.events.jsonl"
+            trace.write_bytes(b"".join(prefix + json.dumps(event).encode() + b"\n"
+                                      for event in (activity, descriptor, world)))
+            paired = startup_harness.current_semantic_step_frame(
+                profile="test", run_dir=run_dir, run_id="run-1", start_offset=0,
+            )
+        self.assertEqual(paired["frame_id"], "run-1:frame:2")
+        self.assertEqual(paired["paired_raw_frame_id"], "run-1:turn:2")
+        self.assertEqual(paired["paired_raw_state"], "world")
+        self.assertEqual(paired["game_minutes"], 8222)
+        self.assertIsInstance(paired["dispatch_descriptor_event_offset"], int)
 
     def test_initial_frame_selector_rejects_counterexamples(self) -> None:
         base = {

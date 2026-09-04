@@ -1,5 +1,7 @@
 {
   "name": "bandit.roof_fire_horde_player_action_mcw",
+  "status": "blocked",
+  "blocked_reason": "Superseded as an active route by the R-008 fire-signal lifecycle family; retained only as provenance for the already-proved normal roof ignition primitive.",
   "description": "Roof-fire horde detection product-path probe: prove saved roof/elevated footing, stage horde/distance only, create the credited roof fire through normal Apply->brazier and Apply->lighter player actions, wait a bounded 5 minutes through the real wait UI, require live horde-light signal artifacts, then save and inspect elapsed turn/map/horde response metadata. Attempt 2 intentionally skips the old look/OCR visible-brazier gate on roof footing after run 20260429_171831 produced blank OCR there; deploy prompt UI trace, lighter target/source prompt, message-log ignition proof, and final saved f_brazier/fd_fire carry the product-path proof instead. Frau approved attempt 3: replace the brittle post-confirm OCR ignition gate with a result-state message-log guard before wait/horde proof. Attempt 4 correction: the saved-player .log is an overmap event log and did not carry transient ignition messages, so the roof-fire result gate is now guarded save/writeback plus saved roof f_brazier/fd_fire before horde waiting.",
   "profile": "dev-harness",
   "world": "McWilliams",

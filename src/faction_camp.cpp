@@ -777,25 +777,39 @@ void talk_function::start_camp( npc &p )
     }
 }
 
-void talk_function::basecamp_mission( npc &p )
+talk_function::basecamp_mission_resolution talk_function::basecamp_mission( npc &p )
 {
     const std::string title = _( "Base Missions" );
     const tripoint_abs_omt omt_pos = p.pos_abs_omt();
     mission_data mission_key;
 
-    std::optional<basecamp *> temp_camp = get_basecamp( p );
+    std::optional<basecamp *> temp_camp;
+    if( p.assigned_camp ) {
+        temp_camp = overmap_buffer.find_camp( p.assigned_camp->xy() );
+    }
     if( !temp_camp ) {
-        return;
+        temp_camp = get_basecamp( p );
+    }
+    if( !temp_camp ) {
+        DebugLog( D_INFO, DC_ALL ) << "openclaw_basecamp_mission: no_resolved_camp";
+        return basecamp_mission_resolution::no_camp;
     }
     basecamp *bcp = *temp_camp;
     if( !bcp->allowed_access_by( p ) ) {
+        DebugLog( D_INFO, DC_ALL ) << "openclaw_basecamp_mission: access_rejected camp=" <<
+                                   bcp->camp_omt_pos().to_string();
         popup( _( "%s isn't under your control!" ), bcp->camp_name() );
-        return;
+        return basecamp_mission_resolution::access_rejected;
     }
     bcp->set_by_radio( get_avatar().dialogue_by_radio );
     map &here = bcp->get_camp_map();
     bcp->form_storage_zones( here, p.pos_abs() );
     bcp->get_available_missions( mission_key, here );
+    if( mission_key.entries.empty() ) {
+        DebugLog( D_INFO, DC_ALL ) << "openclaw_basecamp_mission: no_available_missions camp=" <<
+                                   bcp->camp_omt_pos().to_string();
+        return basecamp_mission_resolution::no_available_missions;
+    }
     if( display_and_choose_opts( mission_key, omt_pos, base_camps::id, title ) ) {
         bcp->handle_mission( mission_key.cur_key.id );
     }
@@ -803,6 +817,7 @@ void talk_function::basecamp_mission( npc &p )
     // This is to make sure the basecamp::camp_map is always usable and valid.
     // Otherwise when quick saving unloads submaps, basecamp::camp_map is still valid but becomes unusable.
     bcp->unload_camp_map();
+    return basecamp_mission_resolution::selector_entered;
 }
 
 void basecamp::add_available_recipes( mission_data &mission_key, mission_kind kind,

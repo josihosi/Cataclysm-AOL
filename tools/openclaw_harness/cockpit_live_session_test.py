@@ -133,6 +133,11 @@ class LiveSessionTest(unittest.TestCase):
                 "accepted": True,
                 "native_receipt": {
                     "frame_id": issuing["frame_id"], "action_id": action_id, "accepted": True,
+                    **({
+                        "requested_frame_id": issuing["frame_id"],
+                        "requested_surface_id": issuing["surface_id"],
+                        "consuming_surface_id": issuing["surface_id"],
+                    } if "surface_id" in issuing else {}),
                     **({"semantic_ui_instance_id": str(issuing["frame_id"]).split(
                         ":semantic-ui:", 1)[1].split(":", 1)[0]}
                        if ":semantic-ui:" in str(issuing["frame_id"]) else {}),
@@ -521,6 +526,9 @@ class LiveSessionTest(unittest.TestCase):
 
         service._test_frame_index[0] = 2
         completed = service.call({"action": "game.observe"})["result"]
+        self.assertEqual(completed["surface"]["kind"], "world")
+        self.assertIn("world.wait", completed["advertised_actions"])
+        self.assertNotIn("activity.ignore", completed["advertised_actions"])
         self.assertEqual(completed["continuation"], {
             "state": "completed", "before": 100.0, "after": 101.0,
         })
@@ -561,6 +569,60 @@ class LiveSessionTest(unittest.TestCase):
         self.assertEqual(completed["continuation"], {
             "state": "completed", "before": 100.0, "after": 101.0,
         })
+
+    def test_native_activity_return_marker_without_avatar_is_a_continuation_frame(self) -> None:
+        run_id, frame_id, turn, observation, actions = cockpit.CockpitRunChannel._frame(
+                activity_return_frame(3)
+            )
+
+        self.assertEqual(run_id, "live-proof")
+        self.assertEqual(frame_id, "live-proof:activity-return:3")
+        self.assertIsNone(turn)
+        self.assertEqual(observation["visible_local"], [])
+        self.assertEqual(actions, ())
+
+    def test_post_ignore_world_publishes_only_its_retained_continuation(self) -> None:
+        service, _ = self.service([frame(4, 100), wait_activity_frame(5, 100)])
+        channel = service.run_channel
+        channel._continuation = {
+            "run_id": "live-proof", "observation_id": "activity-frame",
+            "expected_signal": "game_minutes", "basis": "scheduler_boundary",
+            "source": "production next-eligible minute minus current game minute",
+            "unit": "game_minutes", "start": 100.0, "maximum": 60.0,
+            "progress_required": True, "phase": "awaiting_native_completion",
+            "activity_frame_id": "activity-frame", "post_activity_recovery_pending": True,
+        }
+        observed = service.call({"action": "game.observe"})["result"]
+        self.assertEqual(observed["continuation"], {
+            "state": "awaiting_native_completion", "expected_signal": "game_minutes",
+            "bound": bound(100),
+        })
+        self.assertEqual(service.call({
+            "action": "game.act", "observation_id": observed["observation_id"],
+            "action_id": "world.wait",
+        }), {"ok": False, "error": "continuation_bound_required"})
+        wrong_bound = {**observed["continuation"]["bound"], "start": 99}
+        self.assertEqual(service.call({
+            "action": "run.continue", "observation_id": observed["observation_id"],
+            "expected_signal": observed["continuation"]["expected_signal"],
+            "bound": wrong_bound,
+        }), {"ok": False, "error": "bound_start_does_not_match_current_signal"})
+        resumed = service.call({
+            "action": "run.continue", "observation_id": observed["observation_id"],
+            "expected_signal": observed["continuation"]["expected_signal"],
+            "bound": observed["continuation"]["bound"],
+        })
+        self.assertTrue(resumed["ok"])
+        self.assertEqual(resumed["result"]["resumed_observation_id"], observed["observation_id"])
+        self.assertTrue(service.call({
+            "action": "game.act", "observation_id": observed["observation_id"],
+            "action_id": "world.wait",
+        })["ok"])
+        self.assertEqual(service.call({
+            "action": "run.continue", "observation_id": observed["observation_id"],
+            "expected_signal": observed["continuation"]["expected_signal"],
+            "bound": observed["continuation"]["bound"],
+        }), {"ok": False, "error": "unknown_or_stale_observation"})
 
     def test_disabled_master_stops_at_hostile_interruption_without_ignore(self) -> None:
         wait_menu = frame(2, 100)
@@ -881,6 +943,25 @@ class LiveSessionTest(unittest.TestCase):
         })
         self.assertTrue(recovered["ok"])
 
+    def test_disabled_surface_action_is_rejected_without_consuming_its_observation(self) -> None:
+        dialogue = frame(1, 100)
+        dialogue["surface_id"] = "live-proof:surface:dialogue"
+        dialogue["valid_actions"] = [{
+            "id": "dialogue.choose", "stable_id": "response-disabled",
+            "label": "Unavailable", "enabled": False,
+        }]
+        service, _ = self.service([dialogue, frame(2, 100)])
+        observed = service.call({"action": "game.observe"})["result"]
+
+        rejected = service.call({
+            "action": "game.act", "observation_id": observed["observation_id"],
+            "action_id": "dialogue.choose", "stable_id": "response-disabled",
+        })
+
+        self.assertEqual(rejected["error"], "disabled_action_not_dispatchable")
+        self.assertEqual(rejected["stable_id"], "response-disabled")
+        self.assertFalse(service.run_channel._observations[observed["observation_id"]]["used"])
+
     def test_descriptor_bound_scheduler_diagnostic_terminal_seals_only_due_popup_acknowledgement(self) -> None:
         initial = frame(1, 100)
         popup = semantic_ui_frame(2, 100)
@@ -1041,7 +1122,7 @@ class LiveSessionTest(unittest.TestCase):
 
     def test_delayed_native_completion_without_progress_fails_closed(self) -> None:
         service, finals = self.service([
-            frame(1, 100), wait_activity_frame(2, 100), frame(3, 100),
+            frame(1, 100), wait_activity_frame(2, 100), frame(3, 100), frame(4, 100),
         ])
         observed = service.call({"action": "game.observe"})["result"]
         service.call({
@@ -1053,6 +1134,8 @@ class LiveSessionTest(unittest.TestCase):
             "action_id": "world.wait",
         })["ok"])
         service._test_frame_index[0] = 2
+        self.assertTrue(service.call({"action": "game.observe"})["ok"])
+        service._test_frame_index[0] = 3
         self.assertEqual(service.call({"action": "game.observe"}), {
             "ok": False, "error": "live session is finished",
         })
@@ -1112,6 +1195,31 @@ class LiveSessionTest(unittest.TestCase):
             "action": "run.continue", "observation_id": "stale-frame",
             "expected_signal": "game_minutes", "bound": bound(100),
         })["error"], "unknown_or_stale_observation")
+
+    def test_surface_action_uses_its_native_receipt_without_a_wait_continuation(self) -> None:
+        surface = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "live-proof",
+            "frame_id": "live-proof:1", "surface_id": "live-proof:surface:1", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {"avatar": "{}"},
+            "valid_actions": [{"id": "world.debug_menu", "stable_id": "",
+                               "label": "world.debug_menu", "enabled": True}],
+        }
+        next_surface = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "live-proof",
+            "frame_id": "live-proof:2", "surface_id": "live-proof:surface:2", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {"avatar": "{}"},
+            "valid_actions": [{"id": "world.wait", "stable_id": "",
+                               "label": "world.wait", "enabled": True}],
+        }
+        service, finals = self.service( [surface, next_surface] )
+        observed = service.call( {"action": "game.observe"} )["result"]
+        result = service.call( {
+            "action": "game.act", "observation_id": observed["observation_id"],
+            "action_id": "world.debug_menu",
+        } )
+        self.assertTrue( result["ok"] )
+        self.assertEqual( result["observation"]["observation_id"], "live-proof:2" )
+        self.assertEqual( finals, [] )
 
 
 if __name__ == "__main__":

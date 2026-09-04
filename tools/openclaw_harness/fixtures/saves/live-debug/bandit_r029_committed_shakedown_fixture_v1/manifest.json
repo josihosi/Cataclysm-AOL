@@ -1,0 +1,67 @@
+{
+  "profile": "live-debug",
+  "world": "McWilliams",
+  "description": "Zero-credit schema-current committed shakedown setup for R-029 contact ordering, active-member release, paid departure, and reload safety. It is not natural-route evidence.",
+  "source_fixture": "bandit_phase4_quiet_current_schema_v0_2026-08-05",
+  "source_profile": "live-debug",
+  "save_transforms": [
+    {
+      "kind": "bandit_committed_shakedown_operation",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "target_id": "player@146,51,0",
+      "target_omt": [146, 51, 0],
+      "member_ids": [4, 5],
+      "generation": 2,
+      "current_minutes": 8280,
+      "branch": "reopened_demand"
+    },
+    {
+      "kind": "bandit_projection_leases",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "activity_id": "overmap_special:bandit_camp@140,51,0#hostile:2",
+      "owner": "local",
+      "generation": 2,
+      "handoff_epoch": 1,
+      "last_advanced_minutes": 8280,
+      "npc_ids": [4, 5]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": false,
+      "require_free_target": true,
+      "monsters": [
+        {
+          "fixture_actor_id": "r029_unrelated_hostile_control",
+          "typeid": "mon_zombie",
+          "offset_ms": [10, 10, 0],
+          "anger": 65,
+          "morale": 18
+        }
+      ]
+    },
+    {
+      "kind": "player_condition",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "hp_percent": 100,
+      "stamina": 10000,
+      "hunger": 0,
+      "thirst": 0,
+      "sleepiness": 0
+    },
+    {
+      "kind": "player_worn_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": ["rm13_armor"],
+      "fitted": true
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        { "typeid": "gold_watch", "count": 101 }
+      ]
+    }
+  ]
+}

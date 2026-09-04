@@ -1,0 +1,29 @@
+{
+  "name": "r_surface_001_world_start_v1",
+  "claim": "R-SURFACE-001",
+  "description": "Disposable source-bound World-start footing for renderer-neutral semantic-surface observation. It starts from the audited idle R-009 source, clears persisted travel and activity ownership, clears active local monsters, and grants no gameplay credit.",
+  "source_fixture": "r009_m059_preopportunity_bootstrap",
+  "source_profile": "live-debug",
+  "source_binding": {
+    "owner": "fixture_source_binding",
+    "source_fixture": "r009_m059_preopportunity_bootstrap",
+    "source_profile": "live-debug",
+    "world": "McWilliams"
+  },
+  "save_transforms": [
+    {
+      "kind": "clear_avatar_auto_move",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip"
+    },
+    {
+      "kind": "clear_avatar_activity",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip"
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": []
+    }
+  ]
+}

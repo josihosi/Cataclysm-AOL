@@ -16,9 +16,9 @@ from typing import Any, Mapping, Sequence
 CERTIFICATION_AUTHORITY = "automated-certification"
 CERTIFICATION_AUTHORITY_ALIASES = frozenset({CERTIFICATION_AUTHORITY, "certification"})
 REQUIRED_LIFECYCLE = (
-    "declared_world", "departure", "overmap_advance", "bubble_crossing_out",
-    "actor_outcomes", "save", "quit", "relaunch", "bubble_crossing_in",
-    "return_report", "camp_decision",
+    "declared_world", "departure", "shared_route_advance", "bubble_crossing_out",
+    "actor_outcomes", "bubble_crossing_in", "return_report", "camp_decision",
+    "save", "quit", "relaunch", "normalized_persistence",
 )
 FORBIDDEN_ROUTES = frozenset({
     "diagnostic_replay", "checkpoint_rollback", "segment_splice", "replacement_world",
@@ -164,7 +164,42 @@ def capture_and_finalize_certification(
         raise ValueError(f"continuous lifecycle failed at {result.get('first_divergence', 'unknown')}")
     result["token_id"] = str(expected_token_id)
     result["scenario_digest"] = str(expected_scenario_digest)
+    # The report owns a verified copy of the captured lifecycle, rather than
+    # asking a later registry reader to reconstruct it from UI summaries.
+    # `events` reached this point only after its sequence and every binding
+    # field were checked against the sealed capture manifest above.
+    result["events"] = events
     result["crossing_receipts"] = values["crossing_receipts"]
     if write_report:
         write_immutable_certification_report(Path(report_path), result)
     return result
+
+
+def continuous_capture_proof_classification(
+    *, base_classification: Mapping[str, Any],
+    structured_gate_evidence: Mapping[str, Any],
+    finalization: Mapping[str, Any],
+) -> dict[str, Any]:
+    """Promote only a fully validated native continuous-round capture.
+
+    Generic step ledgers remain conservative about screenshot/OCR ambiguity.
+    Their yellow state must not suppress a separate certification result when
+    the exact structured gates and the capture's native Save-and-Quit,
+    process-relaunch, and normalized-persistence receipts have all already
+    passed their own fail-closed validators.
+    """
+    classification = dict(base_classification)
+    if (
+            structured_gate_evidence.get("status") != "green" or
+            finalization.get("status") != "green"
+    ):
+        return classification
+    classification.update({
+        "status": "green",
+        "verdict": "continuous_certification_capture_verified",
+        "evidence_class": "automated continuous-round certification",
+        "feature_proof": True,
+        "continuous_certification": True,
+        "continuous_certification_source": "verified_run_owned_capture",
+    })
+    return classification

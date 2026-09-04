@@ -1,0 +1,38 @@
+{
+  "fixture_id": "r027_absent_source_v003_20260902",
+  "claim": "R-027",
+  "evidence_ceiling": "zero-credit",
+  "provenance": {
+    "source_fixture": "r027_preserved_physical_fire_20260902",
+    "setup_run_id": "5f2d908770cb4a52a249172646b2dba4",
+    "executable_sha256": "436ed2a6291ea160335860c6692b054aca538d57fe9f7fcbefec70988b0ca3cf",
+    "native_operation": "editmap.remove_field(fd_fire)",
+    "audit": "build_logs/r027_exploration_001_absent_v003_saved_audit.json",
+    "tree_sha256": "b13d5abbdb05f696918e8433a50738bf73b3069c7f106c2ff27ddd1a13471104",
+    "layout": "save/McWilliams canonical installer payload"
+  },
+  "world": "McWilliams",
+  "source": {
+    "omt": [
+      138,
+      49,
+      0
+    ],
+    "relative_ms": [
+      -1,
+      0,
+      0
+    ],
+    "field": "fd_fire",
+    "present": false
+  },
+  "camp": {
+    "omt": [
+      140,
+      51,
+      0
+    ],
+    "observer_id": 4
+  },
+  "setup_only": true
+}

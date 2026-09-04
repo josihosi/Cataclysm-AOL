@@ -2321,6 +2321,11 @@ void npc::on_attacked( const Creature &attacker )
 
     hallucination_die( &here, nullptr );
 
+    if( attacker.is_avatar() ) {
+        bandit_live_world::release_shakedown_combat_on_player_attack(
+            overmap_buffer.global_state.bandit_live_world, getID() );
+    }
+
     const bool player_camp_attacker = attacker.is_avatar() ||
                                       ( attacker.is_npc() &&
                                         !attacker.as_npc()->is_fake() &&
@@ -3312,6 +3317,15 @@ bool npc::is_minion() const
 
 bool npc::guaranteed_hostile() const
 {
+    const bandit_live_world::hostile_operation_player_relationship operation_relationship =
+        bandit_live_world::hostile_operation_player_relationship_for(
+            overmap_buffer.global_state.bandit_live_world, getID() );
+    if( operation_relationship ==
+        bandit_live_world::hostile_operation_player_relationship::shakedown_parley ||
+        operation_relationship ==
+        bandit_live_world::hostile_operation_player_relationship::paid_departure ) {
+        return false;
+    }
     if( attitude_to( get_player_character() ) == Attitude::HOSTILE ) {
         return true;
     }
@@ -3427,6 +3441,17 @@ bool npc::is_travelling() const
 
 Creature::Attitude npc::attitude_to( const Creature &other ) const
 {
+    if( other.is_avatar() ) {
+        const bandit_live_world::hostile_operation_player_relationship operation_relationship =
+            bandit_live_world::hostile_operation_player_relationship_for(
+                overmap_buffer.global_state.bandit_live_world, getID() );
+        if( operation_relationship ==
+            bandit_live_world::hostile_operation_player_relationship::shakedown_parley ||
+            operation_relationship ==
+            bandit_live_world::hostile_operation_player_relationship::paid_departure ) {
+            return Creature::Attitude::NEUTRAL;
+        }
+    }
     if( get_option<bool>( "LLM_INTENT_ENABLE" ) ) {
         const llm_intent_state &state = llm_intent_state_for( *this );
         if( state.target_attacks_remaining > 0 && state.target_turns_remaining > 0 &&

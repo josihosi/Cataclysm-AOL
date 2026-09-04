@@ -42,7 +42,14 @@ class JsonObject;
 
 namespace talk_function
 {
-void basecamp_mission( npc & );
+enum class basecamp_mission_resolution : int {
+    selector_entered,
+    no_camp,
+    access_rejected,
+    no_available_missions
+};
+
+basecamp_mission_resolution basecamp_mission( npc & );
 
 /// Start a faction camp on the current OM tile
 void start_camp( npc & );

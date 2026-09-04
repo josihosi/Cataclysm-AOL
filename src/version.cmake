@@ -11,7 +11,7 @@ git_describe(GIT_VERSION --tags --always --match "cdda-*")
 if(EXISTS ${GIT_EXECUTABLE})
     execute_process(COMMAND ${GIT_EXECUTABLE} -c core.safecrlf=false
         status --porcelain --untracked-files=all -- .
-        ":(exclude)lang/po/**" ":(exclude)Agents.md"
+        ":(exclude)lang/po/**"
         WORKING_DIRECTORY ${CMAKE_SOURCE_DIR}
         RESULT_VARIABLE DIRTY_STATUS
         OUTPUT_VARIABLE DIRTY_OUTPUT
@@ -52,4 +52,3 @@ build number: ${_timestamp}\n\
 commit sha: ${_sha1}\n\
 commit url: https://github.com/CleverRaven/Cataclysm-DDA/commit/${_sha1}"
 )
-

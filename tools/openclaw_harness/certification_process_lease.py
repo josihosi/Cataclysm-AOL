@@ -199,7 +199,7 @@ def _append(connection: Any, *, record: Mapping[str, Any], event_kind: str,
 def _record_for_snapshot(*, manifest: Mapping[str, Any], lease_id: str,
                          executable_path: str, executable_sha256: str,
                          world_identity: str, snapshot: ProcessSnapshot,
-                         state: str) -> Dict[str, Any]:
+                         state: str, cleanup_token: str = "") -> Dict[str, Any]:
     executable = _canonical_path(executable_path)
     if not lease_id.strip() or not executable or len(executable_sha256) != 64:
         raise CertificationLeaseError("lease ID, executable path, and executable SHA-256 are required")
@@ -215,11 +215,12 @@ def _record_for_snapshot(*, manifest: Mapping[str, Any], lease_id: str,
         "command": snapshot.command,
         "process_identity": _process_identity(snapshot, executable_sha256.lower()),
         "state": state,
+        "cleanup_token": cleanup_token,
     }
 
 
 def _matches_live_owner(record: Mapping[str, Any], inspector: ProcessInspector) -> bool:
-    if record.get("state") != "active":
+    if record.get("state") not in {"active", "termination_requested"}:
         return False
     snapshot = inspector.inspect(int(record.get("pid", 0) or 0))
     if not snapshot.alive:
@@ -241,7 +242,7 @@ def _matches_live_owner(record: Mapping[str, Any], inspector: ProcessInspector) 
 def _recover_or_reject_conflicts(connection: Any, *, candidate: Mapping[str, Any],
                                  inspector: ProcessInspector) -> None:
     for current in _current_leases(connection):
-        if current.get("state") != "active":
+        if current.get("state") not in {"active", "termination_requested", "quarantined"}:
             continue
         same_lease = (current["round_id"], current["lease_id"]) == (
             candidate["round_id"], candidate["lease_id"])
@@ -252,6 +253,11 @@ def _recover_or_reject_conflicts(connection: Any, *, candidate: Mapping[str, Any
         )
         if same_lease or not (same_world or same_process):
             continue
+        if current.get("state") == "quarantined":
+            raise CertificationLeaseConflict(
+                f"quarantined certification lease {current['lease_id']} in round {current['round_id']} owns "
+                + ("the requested world" if same_world else "the requested process")
+            )
         if _matches_live_owner(current, inspector):
             raise CertificationLeaseConflict(
                 f"live certification lease {current['lease_id']} in round {current['round_id']} owns "
@@ -261,9 +267,46 @@ def _recover_or_reject_conflicts(connection: Any, *, candidate: Mapping[str, Any
                 extra={"recovery_reason": "stored_owner_not_live_or_identity_mismatch"})
 
 
+def quarantine_released_live_lease(connection: Any, *, manifest: Mapping[str, Any],
+                                   lease_id: str, reason: str) -> Dict[str, Any]:
+    """Fence a historically released lease whose process must never be reused.
+
+    A released row normally has no live owner.  If later external observation
+    proves its PID still exists but its executable bytes have drifted, this
+    registry cannot authenticate or signal that process safely.  Preserve the
+    original immutable receipt and append a no-signal quarantine instead.
+    """
+    _validate_manifest(manifest)
+    if not reason.strip():
+        raise CertificationLeaseError("quarantine reason is required")
+    try:
+        connection.execute("BEGIN IMMEDIATE")
+        current = next((item for item in _current_leases(connection)
+                        if item["round_id"] == manifest["round_id"] and item["lease_id"] == lease_id), None)
+        if current is None:
+            connection.execute("COMMIT")
+            return {"status": "rejected_lease_unknown"}
+        if current.get("state") == "quarantined":
+            connection.execute("COMMIT")
+            return {"status": "already_quarantined", "lease": current, "idempotent": True}
+        if current.get("state") != "released":
+            connection.execute("COMMIT")
+            return {"status": "rejected_lease_not_released"}
+        quarantined = _append(
+            connection, record=current, event_kind="quarantined_released_live_owner",
+            state="quarantined", extra={"quarantine_reason": reason},
+        )
+        connection.execute("COMMIT")
+        return {"status": "quarantined", "lease": quarantined}
+    except BaseException:
+        if connection.in_transaction:
+            connection.execute("ROLLBACK")
+        raise
+
+
 def reserve_certification_lease(connection: Any, *, manifest: Mapping[str, Any], lease_id: str,
                                 executable_path: str, executable_sha256: str,
-                                inspector: ProcessInspector) -> Dict[str, Any]:
+                                inspector: ProcessInspector, cleanup_token: str = "") -> Dict[str, Any]:
     """Atomically reserve the sealed world before startup; it never matches processes globally."""
     _validate_manifest(manifest)
     register_certification_round(connection, manifest)
@@ -272,6 +315,7 @@ def reserve_certification_lease(connection: Any, *, manifest: Mapping[str, Any],
         manifest=manifest, lease_id=lease_id, executable_path=executable_path,
         executable_sha256=executable_sha256, world_identity=world_identity,
         snapshot=ProcessSnapshot(pid=0, alive=False, birth_identity="not-started"), state="reserved",
+        cleanup_token=cleanup_token,
     )
     try:
         connection.execute("BEGIN IMMEDIATE")
@@ -301,7 +345,7 @@ def reserve_certification_lease(connection: Any, *, manifest: Mapping[str, Any],
                 )
             expected = {key: reserved[key] for key in (
                 "round_id", "lease_id", "world_identity", "executable_path", "executable_sha256", "pid",
-                "process_birth_identity", "command", "process_identity", "state")}
+                "process_birth_identity", "command", "process_identity", "state", "cleanup_token")}
             observed = {key: current.get(key) for key in expected}
             if observed == expected:
                 connection.execute("COMMIT")
@@ -319,7 +363,7 @@ def reserve_certification_lease(connection: Any, *, manifest: Mapping[str, Any],
 
 def transfer_certification_lease(connection: Any, *, manifest: Mapping[str, Any], lease_id: str,
                                  pid: int, executable_path: str, executable_sha256: str,
-                                 inspector: ProcessInspector) -> Dict[str, Any]:
+                                 inspector: ProcessInspector, cleanup_token: str = "") -> Dict[str, Any]:
     """Attach a reserved/exited same-round lease to a new PID by explicit transition only."""
     _validate_manifest(manifest)
     snapshot = inspector.inspect(pid)
@@ -328,7 +372,7 @@ def transfer_certification_lease(connection: Any, *, manifest: Mapping[str, Any]
     candidate = _record_for_snapshot(
         manifest=manifest, lease_id=lease_id, executable_path=executable_path,
         executable_sha256=executable_sha256, world_identity=world_identity_for_manifest(manifest),
-        snapshot=snapshot, state="active",
+        snapshot=snapshot, state="active", cleanup_token=cleanup_token,
     )
     if not _matches_live_owner(candidate, inspector):
         raise CertificationLeaseError("new lease process does not match executable, birth identity, and command")
@@ -341,13 +385,15 @@ def transfer_certification_lease(connection: Any, *, manifest: Mapping[str, Any]
         if current.get("state") == "active":
             if all(current.get(key) == candidate.get(key) for key in (
                     "world_identity", "executable_path", "executable_sha256", "pid",
-                    "process_birth_identity", "command", "process_identity")):
+                    "process_birth_identity", "command", "process_identity", "cleanup_token")):
                 connection.execute("COMMIT")
                 return current | {"idempotent": True}
             if _matches_live_owner(current, inspector):
                 raise CertificationLeaseError("live process replacement requires its old owner to exit first")
         elif current.get("state") not in {"reserved", "stale_recovered"}:
             raise CertificationLeaseError("released lease cannot be relaunched")
+        elif current.get("cleanup_token", "") != candidate.get("cleanup_token", ""):
+            raise CertificationLeaseError("lease cleanup token does not match its reservation")
         _recover_or_reject_conflicts(connection, candidate=candidate, inspector=inspector)
         appended = _append(connection, record=candidate, event_kind="transferred", state="active",
                            extra={"previous_pid": current.get("pid", 0),
@@ -363,7 +409,7 @@ def transfer_certification_lease(connection: Any, *, manifest: Mapping[str, Any]
 def release_certification_lease(connection: Any, *, manifest: Mapping[str, Any], lease_id: str,
                                 pid: int, world_identity: str, executable_path: str,
                                 executable_sha256: str, process_birth_identity: str,
-                                inspector: ProcessInspector) -> Dict[str, Any]:
+                                inspector: ProcessInspector, cleanup_token: str = "") -> Dict[str, Any]:
     """Verify all sealed ownership facts immediately before signalling the process."""
     _validate_manifest(manifest)
     if world_identity != world_identity_for_manifest(manifest):
@@ -375,27 +421,55 @@ def release_certification_lease(connection: Any, *, manifest: Mapping[str, Any],
         if current is None:
             connection.execute("COMMIT")
             return {"status": "rejected_lease_unknown"}
+        if current.get("cleanup_token") and cleanup_token != current.get("cleanup_token"):
+            _append(connection, record=current, event_kind="release_rejected", state=str(current.get("state", "")),
+                    extra={"release_rejection": "cleanup_token_mismatch"})
+            connection.execute("COMMIT")
+            return {"status": "rejected_cleanup_token"}
         expected = {
             "pid": pid, "world_identity": world_identity,
             "executable_path": _canonical_path(executable_path),
             "executable_sha256": executable_sha256.lower(),
             "process_birth_identity": process_birth_identity,
         }
-        if current.get("state") != "active" or any(current.get(key) != value for key, value in expected.items()):
+        if any(current.get(key) != value for key, value in expected.items()):
             _append(connection, record=current, event_kind="release_rejected", state=str(current.get("state", "")),
                     extra={"release_rejection": "stored_lease_identity_mismatch"})
             connection.execute("COMMIT")
             return {"status": "rejected_stored_identity"}
+        if current.get("state") == "released":
+            connection.execute("COMMIT")
+            return {"status": "already_released", "lease": current, "idempotent": True}
+        if current.get("state") not in {"active", "termination_requested"}:
+            _append(connection, record=current, event_kind="release_rejected", state=str(current.get("state", "")),
+                    extra={"release_rejection": "lease_not_active"})
+            connection.execute("COMMIT")
+            return {"status": "rejected_stored_identity"}
+        snapshot = inspector.inspect(pid)
+        if not snapshot.alive:
+            released = _append(connection, record=current, event_kind="exited", state="released",
+                               extra={"signal": "none", "cleanup": "already_exited"})
+            connection.execute("COMMIT")
+            return {"status": "already_exited", "lease": released}
         if not _matches_live_owner(current, inspector):
             _append(connection, record=current, event_kind="release_rejected", state="active",
                     extra={"release_rejection": "current_process_identity_mismatch"})
             connection.execute("COMMIT")
             return {"status": "rejected_current_process_identity"}
+        if current.get("state") == "termination_requested":
+            connection.execute("COMMIT")
+            return {"status": "exit_unobserved", "lease": current}
         inspector.signal(pid, signal.SIGTERM)
-        released = _append(connection, record=current, event_kind="released", state="released",
-                           extra={"signal": "SIGTERM"})
+        requested = _append(connection, record=current, event_kind="termination_requested",
+                            state="termination_requested", extra={"signal": "SIGTERM"})
+        exited = inspector.inspect(pid)
+        if not exited.alive:
+            released = _append(connection, record=requested, event_kind="exited", state="released",
+                               extra={"signal": "SIGTERM", "cleanup": "observed_exit"})
+            connection.execute("COMMIT")
+            return {"status": "terminated", "lease": released}
         connection.execute("COMMIT")
-        return {"status": "signaled", "lease": released}
+        return {"status": "exit_unobserved", "lease": requested}
     except BaseException:
         if connection.in_transaction:
             connection.execute("ROLLBACK")
@@ -411,4 +485,5 @@ def release_certification_lease_handle(connection: Any, *, manifest: Mapping[str
         executable_path=str(lease.get("executable_path", "")),
         executable_sha256=str(lease.get("executable_sha256", "")),
         process_birth_identity=str(lease.get("process_birth_identity", "")), inspector=inspector,
+        cleanup_token=str(lease.get("cleanup_token", "")),
     )

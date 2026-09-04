@@ -1,0 +1,4 @@
+{
+  "profile_name": "r027-opaque-barrier-bootstrap-006",
+  "startup": { "post_lastworld_wait_seconds": 15.0, "post_lastworld_continue_keys": [] }
+}

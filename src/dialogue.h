@@ -167,6 +167,9 @@ struct talk_effect_t {
  * json_talk_response to read response JSON
  */
 struct talk_response {
+    // Runtime-only identity for one generated response object.  It deliberately
+    // does not participate in dialogue JSON or save data.
+    std::string semantic_stable_id;
     /**
      * What the player character says (literally). Should already be translated and will be
      * displayed.

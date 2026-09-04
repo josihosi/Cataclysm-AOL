@@ -1,0 +1,42 @@
+{
+  "manifest_version": 1,
+  "name": "bandit.r027_blocked_control_validation_v002_mcw",
+  "description": "Independent R-027 blocked-line-of-sight control using the source-current denied-read receipt boundary and the sealed native rock-border fixture.",
+  "status": "active",
+  "profile": "r027-blocked-control-validation-002",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "fixture": "r027_opaque_barrier_v009_20260902",
+  "fixture_profile": "r027-closure-016",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r027.blocked_control": "independent_native_production_cadence",
+    "runtime.r027.source_binding": "r027-closure-007-tiles:r027-blocked-control-validation-002"
+  },
+  "runtime_contract": {
+    "permitted_input": ["semantic:world.wait", "semantic:menu.choose", "run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "callback-injection", "direct-state-mutation", "direct-save-edit", "direct-lead-mutation", "shared-profile"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "r027-blocked-control-validation-002",
+    "fixture": "r027_opaque_barrier_v009_20260902",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "build/r027-closure-007-tiles", "profile": "r027-blocked-control-validation-002", "fixture": "r027_opaque_barrier_v009_20260902", "helper": "native-semantic-broker", "peekaboo": false, "ocr": false, "input": ["frame-bound semantic requests"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/r027-closure-016/r027_opaque_barrier_v009_20260902/manifest.json", "profile": "tools/openclaw_harness/profiles/r027-blocked-control-validation-002.json", "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "r027_isolated_launch": {"name": "r027-closure-007-tiles", "path": "build/r027-closure-007-tiles", "sha256": "b94043f861a49157d6237c7e70c215e4f7e24afee6b203954b8227eb816aad6c", "profile": "r027-blocked-control-validation-002", "world": "McWilliams", "fixture": "r027_opaque_barrier_v009_20260902", "run_identity": "r027-blocked-control-validation-002", "control_endpoint": "native-semantic-broker", "receipt_sidecar": "r027.staffed-camp-signal.receipts.jsonl", "cleanup_token": "r027-blocked-control-validation-002-cleanup", "build_receipt": ".userdata/openclaw_harness/r027-build-receipts/r027-closure-007-tiles.json"},
+  "steps": [
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_r027_blocked_fixture_fire", "offsets": [[-1, 0, 0]], "required_fields": ["fd_fire"], "abort_on_metadata_failure": true},
+    {"kind": "native_semantic_bootstrap", "label": "bind_r027_blocked_production_wait", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": false}},
+    {"kind": "cockpit_live_session", "label": "r027_blocked_production_cadence", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Advance ordinary production cadence from the sealed blocked fixture and collect the bounded no-new-lead receipt.", "proof_targets": ["run-bound bounded read", "no new lead"], "authority": ["currently advertised native semantic actions", "run.finish"], "invariants": ["no recorder callback", "no lead mutation", "no debug setup", "no cleanup before run.finish"], "live_operations": ["game.act"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_route": {"precondition": ["audit_r027_blocked_fixture_fire", "bind_r027_blocked_production_wait"], "production_behavior": ["r027_blocked_production_cadence"], "terminal_persistence": ["r027_blocked_production_cadence"], "artifact_verdict": ["r027_blocked_production_cadence"], "disallowed_shortcuts": ["r027_blocked_production_cadence"]}
+}

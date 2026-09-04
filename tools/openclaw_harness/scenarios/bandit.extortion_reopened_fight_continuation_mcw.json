@@ -4,7 +4,7 @@
   "description": "Real continuation from the committed McWilliams local-contact export: visibly choose Fight at the reopened shakedown, then use only ordinary gameplay turns to reach an authoritative terminal, save and exit, relaunch the same world with a new focused process, and read exact/stale terminal receipt replays without changing the winner.",
   "profile": "dev-harness",
   "world": "McWilliams",
-  "fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+  "fixture": "bandit_r029_committed_shakedown_fixture_v1",
   "fixture_profile": "live-debug",
   "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
   "profile_snapshot_profile": "live-debug",
@@ -42,13 +42,13 @@
     "permissions": ["accessibility", "screen-recording"],
     "platform": ["macos"],
     "profile": "dev-harness",
-    "fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+    "fixture": "bandit_r029_committed_shakedown_fixture_v1",
     "requirements": {
       "os": "macos",
       "source": "current-worktree",
       "executable": "cataclysm-tiles",
       "profile": "dev-harness",
-      "fixture": "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+      "fixture": "bandit_r029_committed_shakedown_fixture_v1",
       "helper": "Peekaboo",
       "peekaboo": true,
       "input": ["press:f", "advance_turns", "press:S", "press:Y"],
@@ -59,7 +59,7 @@
   },
   "proof_route": {
     "precondition": ["post_load_fight_continuation_settle", "preflight_current_committed_shakedown_reservation"],
-    "production_behavior": ["advance_final_turn_to_reopened_fight_dialogue", "audit_reopened_fight_surface", "choose_reopened_fight", "audit_fight_branch_started", "ordinary_combat_to_authoritative_terminal", "advance_one_turn_after_saved_terminal_relaunch"],
+    "production_behavior": ["advance_299_turns_to_reopened_fight_gate", "audit_reopened_fight_surface", "choose_reopened_fight", "audit_fight_branch_started", "ordinary_combat_to_authoritative_terminal", "advance_one_turn_after_saved_terminal_relaunch"],
     "terminal_persistence": ["audit_authoritative_fight_terminal", "audit_player_save_mtime_after_fight_save", "audit_one_identity_stable_fight_receipt", "audit_post_relaunch_terminal_replay_inertness"],
     "artifact_verdict": ["audit_reopened_fight_surface", "audit_fight_branch_started", "audit_authoritative_fight_terminal", "audit_one_identity_stable_fight_receipt", "audit_post_relaunch_terminal_replay_inertness"],
     "disallowed_shortcuts": ["audit_reopened_fight_surface", "audit_authoritative_fight_terminal"],
@@ -68,7 +68,7 @@
         "startup": ["post_load_fight_continuation_settle"]
       },
       "local_place.shakedown.reopened_options": {
-        "interaction": ["advance_final_turn_to_reopened_fight_dialogue", "audit_reopened_fight_surface"]
+        "interaction": ["advance_299_turns_to_reopened_fight_gate", "audit_reopened_fight_surface"]
       },
       "capabilities.shakedown.fight_selection": {
         "interaction": ["choose_reopened_fight", "audit_fight_branch_started"]
@@ -104,7 +104,7 @@
       "required_active_hostile_operation_kind": "shakedown",
       "required_active_hostile_operation_phase": "committed_contact",
       "required_active_hostile_reservation_job_type": "toll",
-      "required_active_hostile_reservation_target_id_exact": "player@140,41,0",
+      "required_active_hostile_reservation_target_id_exact": "player@146,51,0",
       "required_active_hostile_reservation_simulation_owner": "local",
       "required_active_hostile_reservation_min_member_ids": 2,
       "abort_on_metadata_failure": true,
@@ -118,29 +118,14 @@
       "count": 299,
       "settle_seconds": 0.5,
       "capture_after": false,
+      "expected_interruption_screen_text_contains": ["Pay.", "Fight."],
       "expected_visible_fact": "ordinary turns reach the reopened local-contact dialogue boundary"
-    },
-    {
-      "kind": "advance_turns",
-      "label": "advance_final_turn_to_reopened_fight_dialogue",
-      "count": 1,
-      "settle_seconds": 1.0,
-      "capture_after": true,
-      "extract_text_after_capture": true,
-      "expected_screen_text_after_contains": ["Pay", "Fight"],
-      "abort_on_screen_text_expectation_failure": true,
-      "abort_verdict": "blocked_reopened_fight_dialogue_not_visible",
-      "abort_reason": "the real reopened local-contact dialogue did not visibly present Pay/Fight before selection"
     },
     {
       "kind": "audit_log_contains",
       "label": "audit_reopened_fight_surface",
       "required_line_patterns": [[
         "shakedown_surface_dialogue_window opening=reopened_demand responses=pay/fight payment_surface=npc_trade_ui"
-      ], [
-        "local_gate site=overmap_special:bandit_camp@140,51,0",
-        "posture=open_shakedown",
-        "combat_forward=no"
       ]],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_reopened_fight_surface_artifact_missing",
@@ -171,7 +156,7 @@
       "label": "ordinary_combat_to_authoritative_terminal",
       "count": 120,
       "settle_seconds": 0.5,
-      "auto_acknowledge_interruptions": false,
+      "auto_acknowledge_interruptions": true,
       "capture_after": true,
       "proof_deferred_to_label": "audit_authoritative_fight_terminal",
       "expected_visible_fact": "only ordinary gameplay turns advance the visible combat until a responder casualty or survivor-return terminal is reached"

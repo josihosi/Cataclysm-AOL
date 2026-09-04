@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Zero-credit prerequisite for R-027 aging: production cadence creates retained in-range smoke and light leads from the saved physical fd_fire, then native editing removes only that field and a native save preserves the resulting source-absent state.",
+  "material_proof": "Created in-range staffed-camp receipts identify the stable leads, and the independently audited save has no fd_fire at the source offset while retaining those same lead identities.",
+  "current_uncertainty": "This setup earns no aging credit. A separate fresh validation must reload it, advance ordinary time without a source or refresh, and capture production aging receipts at the exact horizon.",
+  "material_contradiction": ["the original source is absent before creation", "a lead is injected or directly mutated", "the field removal changes camp or observer geometry", "the setup is saved without native quicksave"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["callback injection", "direct lead mutation", "direct save edit", "physical key"],
+  "honest_stop_conditions": ["finish after the created receipts, exact native fd_fire removal, native quicksave, and cleanup", "finish inconclusive if an advertised native action cannot complete"],
+  "requested_evidence_ceiling": "zero-credit"
+}

@@ -1,0 +1,46 @@
+{
+  "manifest_version": 2,
+  "name": "r_surface_007.dialogue_tiles",
+  "description": "Source-bound Tiles dialogue route: a disposable named NPC opens CDDA's ordinary dialogue loop with duplicate labels and one visible disabled response before the response-ID proof begins.",
+  "profile": "r009-m095",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r_surface_007_dialogue_shakedown_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r_surface_007.dialogue_tiles": "source_bound_tiles_native_dialogue_response",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": ["setup:debug_spawn_named_npc", "setup:native_npc_dialogue", "semantic:menu.choose", "semantic:dialogue.choose", "semantic:dialogue.cancel"],
+    "forbidden_input": ["guessed-key", "physical-key-after-setup", "keyboard-after-setup", "mouse", "focus", "ocr", "screen-coordinate", "direct-state-mutation"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r009-m095",
+    "config_profile": "dev-harness",
+    "fixture": "r_surface_007_dialogue_shakedown_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r009-m095", "fixture": "r_surface_007_dialogue_shakedown_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r_surface_007_dialogue_shakedown_v1/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/r009-m095.json"
+  },
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "emit_r_surface_007_tiles_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world"}},
+    {"kind": "debug_spawn_named_npc", "label": "setup_spawn_disposable_dialogue_speaker", "template_id": "r_surface_007_talker", "settle_seconds": 1.0, "expected_visible_fact": "A source-owned debug fixture creates one nearby NPC whose ordinary dialogue contains duplicate visible labels and one disabled response."},
+    {"kind": "type", "label": "setup_open_native_npc_dialogue", "text": "C", "settle_seconds": 1.0},
+    {"kind": "cockpit_live_session", "label": "r_surface_007_tiles_dialogue_witness", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Select the source-advertised native talk target, then settle the R-SURFACE-007 Tiles charter only through advertised response IDs.", "proof_targets": ["the setup-only native Talk to whom? menu is selected by its advertised menu.choose stable ID", "fresh dialogue descriptor with speaker identity, native history, prompt, response text, enabled state, and response-owned stable IDs", "duplicate-label responses are distinguished by IDs where the live fixture supplies them", "wrong-speaker, missing, regenerated, duplicate, disabled, index, and hotkey controls reject without transition", "an advertised dialogue.choose ID produces its exact receipt and real successor topic or nested native confirmation", "accepted cleanup; fixture entry receives zero feature credit"], "authority": ["currently advertised native semantic actions", "run.witness", "run.finish"], "invariants": ["the setup-only menu target is resolved from the current menu descriptor and chosen through menu.choose", "resolve response targets only from this run's dialogue descriptor", "do not use hotkeys, indices, raw keys, labels as identity, screenshots, fallback, or direct mutation after setup", "fixture manufacture, startup, and dialogue entry receive zero feature credit", "stop on binding drift, missing receipt, retargeting, unsupported child action, or cleanup failure"], "live_operations": ["game.act"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_gates": [{"id": "r_surface_007_tiles_dialogue_observation", "label": "source-bound Tiles dialogue response observation", "boundary_step": "r_surface_007_tiles_dialogue_witness", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
+  "proof_route": {"gates": ["r_surface_007_tiles_dialogue_observation"], "terminal": ["r_surface_007_tiles_dialogue_observation"]}
+}

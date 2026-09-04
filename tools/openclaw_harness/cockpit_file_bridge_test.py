@@ -11,7 +11,7 @@ import unittest
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from cockpit_file_bridge import FileBackedCockpitBridge
+from cockpit_file_bridge import FileBackedCockpitBridge, FileBackedCockpitClient, FreshObservationSequence
 
 
 CHILD = (
@@ -52,6 +52,24 @@ HUD_PROGRESS_CHILD = (
     "print(json.dumps({'cockpit_live_session':{'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
     "'run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}}),flush=True); "
     "[print(json.dumps({'ok':True,'result':json.loads(line)}),flush=True) for line in sys.stdin]"
+)
+
+DELAYED_CHILD = (
+    "import json,sys,time; "
+    "[time.sleep(0.1) or print(json.dumps({'ok':True,'result':json.loads(line)}),flush=True) "
+    "for line in sys.stdin]"
+)
+
+OBSERVATION_CHAIN_CHILD = (
+    "import json,sys\n"
+    "frame=0\n"
+    "for line in sys.stdin:\n"
+    " request=json.loads(line)\n"
+    " if request.get('action') == 'game.observe':\n"
+    "  frame += 1; result={'ok':True,'result':{'observation_id':f'frame:{frame}'}}\n"
+    " else:\n"
+    "  result={'ok':True,'result':request}\n"
+    " print(json.dumps(result),flush=True)\n"
 )
 
 
@@ -109,6 +127,134 @@ class CockpitFileBridgeTest(unittest.TestCase):
             bridge.cleanup(directory, "bound-a")
             thread.join(2)
             self.assertFalse(thread.is_alive())
+
+    def test_delayed_response_collection_never_resubmits_request_identity(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", DELAYED_CHILD], binding_id="bound-a",
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            while not (directory / "status.json").is_file() or \
+                    json.loads((directory / "status.json").read_text())["state"] == "starting":
+                time.sleep(0.01)
+
+            submitted = FileBackedCockpitClient.submit_once(
+                directory, request_id="pause-1", binding_id="bound-a",
+                request={"action": "game.act", "action_id": "world.pause"},
+            )
+            self.assertEqual(submitted, {"ok": True, "request_id": "pause-1"})
+            self.assertFalse(FileBackedCockpitClient.collect_response(directory, "pause-1")["ok"])
+            while not FileBackedCockpitClient.collect_response(directory, "pause-1")["ok"]:
+                time.sleep(0.01)
+            self.assertEqual(
+                FileBackedCockpitClient.collect_response(directory, "pause-1")["receipt"]["request_id"],
+                "pause-1",
+            )
+
+            # The client collected the delayed artifact.  A second submission
+            # remains a bridge violation and must still fail closed.
+            self.assertTrue(FileBackedCockpitBridge.send_request(
+                directory, request_id="pause-1", binding_id="bound-a",
+                request={"action": "game.act", "action_id": "world.pause"},
+            )["ok"])
+            time.sleep(0.05)
+            self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "rejected")
+            self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+
+    def test_final3_style_five_step_observe_act_chain_keeps_ids_and_observations_unique(self):
+        """Regression: no extra status observe or retry may reuse a pause id."""
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", OBSERVATION_CHAIN_CHILD], binding_id="bound-a",
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            while not (directory / "status.json").is_file() or \
+                    json.loads((directory / "status.json").read_text())["state"] == "starting":
+                time.sleep(0.01)
+
+            client = FreshObservationSequence(directory, "bound-a", "final3")
+
+            def collect_observation() -> str:
+                request_id = client.observe()
+                while not (observation_id := client.accept_observation(request_id)):
+                    time.sleep(0.01)
+                return observation_id
+
+            first = collect_observation()
+            pause_one = client.act("world.pause")
+            while not client.collect(pause_one).get("ok"):
+                time.sleep(0.01)
+            second = collect_observation()
+            pause_two = client.act("world.pause")
+            while not client.collect(pause_two).get("ok"):
+                time.sleep(0.01)
+            third = collect_observation()
+
+            self.assertEqual((first, second, third), ("frame:1", "frame:2", "frame:3"))
+            receipts = sorted((directory / "responses").glob("*.receipt.json"))
+            self.assertEqual(len(receipts), 5)
+            identities = [json.loads(path.read_text())["request_id"] for path in receipts]
+            self.assertEqual(len(identities), len(set(identities)))
+            self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+
+    def test_delayed_collection_preserves_monotonic_shared_transition_sequence(self):
+        with tempfile.TemporaryDirectory() as temp:
+            run_dir = Path(temp)
+            stream = run_dir / "transition.events.jsonl"
+            stream.write_text("".join(
+                json.dumps({"run_id": "run-a", "sequence": sequence}) + "\n"
+                for sequence in range(1, 244)
+            ), encoding="utf-8")
+            request = {"request_id": "delayed-244", "action_id": "world.pause"}
+            receipt = {"accepted": True, "resulting_frame_id": "frame-244"}
+            from startup_harness import append_semantic_surface_transition_event
+            event = append_semantic_surface_transition_event(run_dir, "run-a", request, receipt)
+            self.assertEqual(event["sequence"], 244)
+            sequences = [json.loads(line)["sequence"] for line in stream.read_text().splitlines()]
+            self.assertEqual(sequences, list(range(1, 245)))
+
+    def test_sequential_sessions_reject_prior_binding_and_frame(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            first, first_thread = self.start(root / "first")
+            self.assertTrue(first.send_request(
+                root / "first", request_id="frame-1", binding_id="bound-a",
+                request={"action": "game.observe"},
+            )["ok"])
+            while not (root / "first" / "responses" / "frame-1.receipt.json").is_file():
+                time.sleep(0.01)
+            self.assertTrue(first.cleanup(root / "first", "bound-a")["ok"])
+            first_thread.join(2)
+
+            second = FileBackedCockpitBridge(
+                root / "second", [sys.executable, "-u", "-c", CHILD], binding_id="bound-b",
+            )
+            second_thread = threading.Thread(target=second.serve, daemon=True)
+            second_thread.start()
+            while not (root / "second" / "status.json").is_file() or \
+                    json.loads((root / "second" / "status.json").read_text())["state"] == "starting":
+                time.sleep(0.01)
+            self.assertFalse(second.send_request(
+                root / "second", request_id="frame-1", binding_id="bound-a",
+                request={"action": "game.observe"},
+            )["ok"])
+            self.assertFalse(second.response_status(root / "second", "frame-1")["ok"])
+            self.assertTrue(second.send_request(
+                root / "second", request_id="frame-2", binding_id="bound-b",
+                request={"action": "game.observe"},
+            )["ok"])
+            while not (root / "second" / "responses" / "frame-2.receipt.json").is_file():
+                time.sleep(0.01)
+            self.assertTrue(second.cleanup(root / "second", "bound-b")["ok"])
+            second_thread.join(2)
 
     def test_session_descriptor_fail_closed_on_missing_wrong_or_legacy_binding(self):
         descriptors = (
@@ -233,6 +379,21 @@ class CockpitFileBridgeTest(unittest.TestCase):
             self.assertEqual(status["reason"], "pre_descriptor_no_progress")
             self.assertEqual(status["startup_progress"]["state"], "startup_hud_ready")
 
+    def test_startup_rejection_is_retained_before_descriptor_validation(self):
+        child = "import json; print(json.dumps({'ok':False,'reason':'contract_preflight_rejected'}),flush=True)"
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", child], binding_id="bound-a",
+                require_session_ready=True,
+            )
+            self.assertEqual(bridge.serve(), 1)
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["reason"], "missing_cockpit_session_descriptor")
+            retained = [json.loads(line) for line in
+                        (directory / "child.startup.stdout.jsonl").read_text().splitlines()]
+            self.assertEqual(retained, [{"ok": False, "reason": "contract_preflight_rejected"}])
+
     def test_declared_pre_descriptor_prefix_is_retained_as_zero_credit_setup(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp) / "session"
@@ -303,6 +464,54 @@ class CockpitFileBridgeTest(unittest.TestCase):
             status = json.loads((directory / "status.json").read_text())
             self.assertEqual(status["state"], "safe_to_cleanup")
             self.assertEqual(status["cleanup"]["owner"], "scenario_terminalization")
+
+    def test_declared_reentry_binds_a_second_live_session_after_first_finish(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            child = (
+                "import json,os,sys; "
+                "d=lambda n:{'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
+                "'run_id':'run-a','binding_id':'native-'+n,'bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
+                "print(json.dumps({'cockpit_live_session':d('first')}),flush=True); sys.stdin.readline(); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "print(json.dumps({'cockpit_live_session':d('second')}),flush=True); sys.stdin.readline(); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'}))"
+            )
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", child], binding_id="bound-a",
+                require_session_ready=True, session_reentries=1,
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            while not (directory / "status.json").is_file() or \
+                    json.loads((directory / "status.json").read_text())["state"] != "ready":
+                time.sleep(0.01)
+            self.assertTrue(bridge.send_request(
+                directory, request_id="finish-first", binding_id="bound-a",
+                request={"action": "run.finish"},
+            )["ok"])
+            while json.loads((directory / "status.json").read_text()).get(
+                    "session_descriptor", {}).get("binding_id") != "native-second":
+                time.sleep(0.01)
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["state"], "ready")
+            self.assertEqual(status["remaining_session_reentries"], 0)
+            # send_request retains this envelope in the spool only.  The
+            # bridge must admit that exact post-reentry identity once, rather
+            # than requiring or accepting a FIFO replay.
+            self.assertTrue(bridge.send_request(
+                directory, request_id="keep-watch-after-relaunch", binding_id="bound-a",
+                request={"action": "game.keep_watch"},
+            )["ok"])
+            while not (directory / "responses" / "keep-watch-after-relaunch.receipt.json").is_file():
+                time.sleep(0.01)
+            receipt = json.loads((directory / "responses" /
+                                  "keep-watch-after-relaunch.receipt.json").read_text())
+            self.assertEqual(receipt["request_id"], "keep-watch-after-relaunch")
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
 
     def test_fail_closed_final_under_error_also_terminalizes_the_scenario(self):
         with tempfile.TemporaryDirectory() as temp:

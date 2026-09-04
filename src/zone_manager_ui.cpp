@@ -19,6 +19,7 @@
 #include "overmap_ui.h"
 #include "panels.h"
 #include "popup.h"
+#include "semantic_surface.h"
 #include "string_formatter.h"
 #include "string_input_popup.h"
 #include "translations.h"
@@ -626,6 +627,8 @@ void zone_manager_ui::display_zone_manager()
     const int scroll_rate = zone_cnt > 20 ? 10 : 3;
     bool quit = false;
     bool save = false;
+    std::string semantic_native_action;
+    std::optional<semantic_surface_scope> semantic_scope;
     g->set_zones_manager_open( true );
     zone_manager::get_manager().save_zones( "zmgr-temp" );
     while( !quit ) {
@@ -649,8 +652,100 @@ void zone_manager_ui::display_zone_manager()
 
         ui_manager::redraw();
 
-        //Wait for input
-        const std::string action = ctxt.handle_input();
+        std::string action;
+        semantic_native_action.clear();
+        if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+            std::map<std::string, std::string> semantic_payload;
+            std::vector<semantic_action_descriptor> semantic_actions;
+            if( zone_cnt > 0 ) {
+                const zone_data &active_zone = zones[active_index].get();
+                const std::string zone_identity = active_zone.get_identity();
+                const faction_id expected_faction = zones_faction;
+                const bool expected_enabled = active_zone.get_enabled();
+                const std::optional<int64_t> expected_revision = active_zone.get_semantic_revision();
+                semantic_payload = {
+                    { "zone_id", zone_identity },
+                    { "faction", expected_faction.str() },
+                    { "enabled", expected_enabled ? "true" : "false" },
+                    { "revision", expected_revision ? std::to_string( *expected_revision ) : "unknown" }
+                };
+                semantic_actions = {
+                    { "zone.enable", zone_identity, _( "Enable zone" ), !expected_enabled },
+                    { "zone.disable", zone_identity, _( "Disable zone" ), expected_enabled },
+                    { "zone.close", "", _( "Close Zone Manager" ), true }
+                };
+                if( !semantic_scope ) {
+                    semantic_scope.emplace( *manager, "zone_manager", _( "Zone Manager" ), semantic_payload,
+                semantic_actions,
+                [ &mgr, &semantic_native_action, zone_identity, expected_faction, expected_enabled,
+                  expected_revision ]( const semantic_action_request &request ) {
+                    if( request.action_id == "zone.close" ) {
+                        if( request.stable_id.has_value() && !request.stable_id->empty() ) {
+                            return semantic_action_dispatch_result{ false, "invalid_close_target", "" };
+                        }
+                        semantic_native_action = "QUIT";
+                        return semantic_action_dispatch_result{ true, "", "" };
+                    }
+                    if( request.stable_id.value_or( "" ) != zone_identity ) {
+                        return semantic_action_dispatch_result{ false, "invalid_zone_id", "" };
+                    }
+                    if( request.action_id != "zone.enable" && request.action_id != "zone.disable" ) {
+                        return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                    }
+                    const std::vector<zone_manager::ref_zone_data> current_zones = mgr.get_zones( expected_faction );
+                    const auto current = std::find_if( current_zones.begin(), current_zones.end(),
+                    [ &zone_identity ]( const zone_manager::ref_zone_data &entry ) {
+                        return entry.get().get_identity() == zone_identity;
+                    } );
+                    if( current == current_zones.end() ) {
+                        return semantic_action_dispatch_result{ false, "stale_zone_id", "" };
+                    }
+                    zone_data &zone = current->get();
+                    if( zone.get_faction() != expected_faction ) {
+                        return semantic_action_dispatch_result{ false, "wrong_faction", "" };
+                    }
+                    if( zone.get_semantic_revision() != expected_revision ) {
+                        return semantic_action_dispatch_result{ false, "stale_revision", "" };
+                    }
+                    if( zone.get_enabled() != expected_enabled ) {
+                        return semantic_action_dispatch_result{ false, "stale_enabled_state", "" };
+                    }
+                    if( request.action_id == "zone.enable" ) {
+                        if( expected_enabled ) {
+                            return semantic_action_dispatch_result{ false, "unavailable", "" };
+                        }
+                        semantic_native_action = "ENABLE_ZONE";
+                    } else {
+                        if( !expected_enabled ) {
+                            return semantic_action_dispatch_result{ false, "unavailable", "" };
+                        }
+                        semantic_native_action = "DISABLE_ZONE";
+                    }
+                    return semantic_action_dispatch_result{ true, "", "" };
+                    } );
+                } else {
+                    semantic_scope->publish( semantic_payload, semantic_actions );
+                }
+            } else {
+                if( !semantic_scope ) {
+                    semantic_scope.emplace( *manager, "zone_manager", _( "Zone Manager" ), semantic_payload,
+                    semantic_actions );
+                } else {
+                    semantic_scope->publish( semantic_payload, semantic_actions );
+                }
+            }
+        }
+
+        // The actual Zone Manager owner alone consumes a semantic request;
+        // accepted actions still traverse its ordinary native branches below.
+        if( semantic_scope && semantic_scope->consume_request() && !semantic_native_action.empty() ) {
+            action = semantic_native_action;
+        } else {
+            action = ctxt.handle_input();
+            if( !semantic_native_action.empty() ) {
+                action = semantic_native_action;
+            }
+        }
 
         if( action == "ADD_ZONE" ) {
             do { // not a loop, just for quick bailing out if canceled
@@ -1011,6 +1106,9 @@ void zone_manager_ui::display_zone_manager()
             }
         }
     }
+    // The confirmation child may republish its parent while returning.  Release
+    // this owner before native teardown so the semantic successor is World.
+    semantic_scope.reset();
     g->set_zones_manager_open( false );
     ctxt.reset_timeout();
     zone_cb = nullptr;

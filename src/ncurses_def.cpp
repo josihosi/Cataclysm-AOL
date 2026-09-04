@@ -24,11 +24,16 @@
 #include <curses.h>
 #endif
 
+#include <cstddef>
+#include <cerrno>
 #include <cstdint>
 #include <cstring>
+#include <cstdlib>
 #include <iosfwd>
 #include <memory>
+#include <limits>
 #include <stdexcept>
+#include <string>
 
 #include "cached_options.h"
 #include "cata_utility.h"
@@ -38,12 +43,16 @@
 #include "game_constants.h"
 #include "game_ui.h"
 #include "output.h"
+#include "semantic_surface.h"
 #include "ui_manager.h"
 
 #if defined(_WIN32)
 #include <windows.h>
 #else
+#include <fcntl.h>
 #include <langinfo.h>
+#include <sys/select.h>
+#include <unistd.h>
 #endif
 
 #if defined(SDL_SOUND)
@@ -51,6 +60,96 @@
 #endif
 
 std::unique_ptr<cataimgui::client> imclient;
+
+#if !defined(_WIN32)
+namespace
+{
+class semantic_wake_source
+{
+    public:
+        int fd() {
+            const char *const descriptor = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_WAKE_READ_FD" );
+            const std::string requested_descriptor = descriptor == nullptr ? "" : descriptor;
+            if( requested_descriptor == descriptor_ ) {
+                return fd_;
+            }
+            fd_ = -1;
+            descriptor_ = requested_descriptor;
+            if( descriptor_.empty() ) {
+                return -1;
+            }
+            char *end = nullptr;
+            errno = 0;
+            const long parsed = std::strtol( descriptor_.c_str(), &end, 10 );
+            if( errno != 0 || end == descriptor_.c_str() || *end != '\0' || parsed < 0 ||
+                parsed > std::numeric_limits<int>::max() ) {
+                return -1;
+            }
+            fd_ = static_cast<int>( parsed );
+            const int flags = fcntl( fd_, F_GETFL );
+            if( flags < 0 || fcntl( fd_, F_SETFL, flags | O_NONBLOCK ) != 0 ) {
+                fd_ = -1;
+            }
+            return fd_;
+        }
+
+        void drain() const {
+            char buffer[64];
+            while( read( fd_, buffer, sizeof( buffer ) ) > 0 ) {
+            }
+        }
+
+    private:
+        int fd_ = -1;
+        std::string descriptor_;
+};
+
+semantic_wake_source &active_semantic_wake_source()
+{
+    static semantic_wake_source source;
+    return source;
+}
+
+enum class curses_wait_result {
+    use_curses_input,
+    input_ready,
+    semantic_wake,
+    timed_out,
+};
+
+curses_wait_result wait_for_curses_input_or_semantic_wake( const int timeout_ms )
+{
+    semantic_wake_source &wake_source = active_semantic_wake_source();
+    const int wake_fd = wake_source.fd();
+    if( wake_fd < 0 ) {
+        return curses_wait_result::use_curses_input;
+    }
+
+    fd_set readable;
+    FD_ZERO( &readable );
+    FD_SET( STDIN_FILENO, &readable );
+    FD_SET( wake_fd, &readable );
+    timeval timeout;
+    timeval *timeout_pointer = nullptr;
+    if( timeout_ms >= 0 ) {
+        timeout.tv_sec = timeout_ms / 1000;
+        timeout.tv_usec = ( timeout_ms % 1000 ) * 1000;
+        timeout_pointer = &timeout;
+    }
+    const int select_nfds = ( STDIN_FILENO > wake_fd ? STDIN_FILENO : wake_fd ) + 1;
+    errno = 0;
+    const int selected = select( select_nfds, &readable, nullptr, nullptr, timeout_pointer );
+    if( selected == 0 ) {
+        return curses_wait_result::timed_out;
+    }
+    if( selected > 0 && FD_ISSET( wake_fd, &readable ) ) {
+        wake_source.drain();
+        return curses_wait_result::semantic_wake;
+    }
+    return curses_wait_result::input_ready;
+}
+} // namespace
+#endif
 
 static void curses_check_result( const int result, const int expected, const char *const /*name*/ )
 {
@@ -436,7 +535,43 @@ input_event input_manager::get_input_event( const keyboard_mode /*preferred_keyb
         previously_pressed_key = 0;
         // flush any output
         catacurses::doupdate();
+#if !defined(_WIN32)
+        const curses_wait_result wait_result = wait_for_curses_input_or_semantic_wake( input_timeout );
+        if( wait_result == curses_wait_result::semantic_wake ) {
+            bool request_polled = poll_active_semantic_surface_request();
+            // The request file is durable before the harness writes the wake
+            // byte, but a freshly opened stream can still observe its former
+            // extent.  A wake never authorizes a blocking getch(): retry the
+            // same transport observation once, then resume select if it was
+            // only an inert/malformed record.
+            if( !request_polled ) {
+                request_polled = poll_active_semantic_surface_request();
+            }
+            if( request_polled ) {
+                return input_event();
+            }
+            continue;
+        }
+        if( wait_result == curses_wait_result::timed_out ) {
+            key = ERR;
+        } else if( wait_result == curses_wait_result::input_ready ) {
+            // A PTY can report stdin readable without a curses character.
+            // Probe it non-blockingly so that false readiness cannot hide the
+            // semantic wake source behind a second blocking getch().
+            const int previous_timeout = input_timeout;
+            set_timeout( 0 );
+            key = getch();
+            set_timeout( previous_timeout );
+        } else {
+            key = getch();
+        }
+#else
         key = getch();
+#endif
+        const bool request_polled = poll_active_semantic_surface_request();
+        if( request_polled ) {
+            return input_event();
+        }
         if( key != ERR ) {
             int newch;
             // Clear the buffer of characters that match the one we're going to act on.

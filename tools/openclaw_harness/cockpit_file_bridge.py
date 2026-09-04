@@ -13,6 +13,7 @@ import hashlib
 import json
 import os
 from pathlib import Path
+import select
 import subprocess
 import sys
 import time
@@ -55,26 +56,33 @@ def _request_identity(request_bytes: bytes) -> dict[str, str]:
 
 
 class FileBackedCockpitBridge:
-    """Own one cockpit child and correlate FIFO requests to retained replies."""
+    """Own one cockpit child and correlate durable requests to retained replies."""
 
     def __init__(self, session_dir: Path, command: Sequence[str], *, binding_id: str,
+                 authorization_token_id: str = "",
                  require_session_ready: bool = False,
-                 pre_descriptor_prefix: Sequence[Mapping[str, Any]] = ()) -> None:
+                 pre_descriptor_prefix: Sequence[Mapping[str, Any]] = (),
+                 session_reentries: int = 0) -> None:
         self.session_dir = Path(session_dir)
         self.command = [str(part) for part in command]
         self.binding_id = str(binding_id).strip()
+        self.authorization_token_id = str(authorization_token_id).strip()
         self.require_session_ready = require_session_ready
         self.pre_descriptor_prefix = tuple(dict(item) for item in pre_descriptor_prefix)
+        self.session_reentries = session_reentries
         self.input_path = self.session_dir / "requests.fifo"
         self.status_path = self.session_dir / "status.json"
+        self.requests_dir = self.session_dir / "requests"
         self.responses_dir = self.session_dir / "responses"
         self._seen: set[str] = set()
+        self._spooled_request_ids: set[str] = set()
         self._sequence = 0
         self._child: subprocess.Popen[str] | None = None
         self._child_stderr = None
         self._bootstrap_run_id = ""
         self._terminal_request_id = ""
         self._startup_progress: dict[str, Any] = {}
+        self._active_session_descriptor: dict[str, Any] = {}
 
     def _bootstrap_receipt(self, *, sequence: int, stage: Mapping[str, Any],
                            descriptor: Mapping[str, Any]) -> None:
@@ -126,6 +134,7 @@ class FileBackedCockpitBridge:
         return {
             "schema": SCHEMA,
             "binding_id": self.binding_id,
+            "bridge_pid": os.getpid(),
             "state": state,
             "request_count": self._sequence,
             **extra,
@@ -153,13 +162,16 @@ class FileBackedCockpitBridge:
         if not self.command or not self.binding_id:
             raise ValueError("bridge needs a cockpit command and binding identity")
         self.session_dir.mkdir(parents=True)
+        self.requests_dir.mkdir()
         self.responses_dir.mkdir()
         os.mkfifo(self.input_path, 0o600)
         _atomic_json(self.session_dir / "bridge.manifest.json", {
             "schema": SCHEMA,
             "binding_id": self.binding_id,
+            "authorization_token_id": self.authorization_token_id,
             "command": self.command,
             "input_channel": self.input_path.name,
+            "request_directory": self.requests_dir.name,
             "response_directory": self.responses_dir.name,
         })
         self._write_status("starting")
@@ -181,7 +193,12 @@ class FileBackedCockpitBridge:
             "response_artifact": str(artifact.relative_to(self.session_dir)),
         }
         _atomic_json(self.responses_dir / (request_id + ".receipt.json"), receipt)
-        self._write_status("ready", last_response=receipt)
+        self._write_status(
+            "ready",
+            last_response=receipt,
+            **({"session_descriptor": self._active_session_descriptor}
+               if self._active_session_descriptor else {}),
+        )
         return receipt
 
     def _read_complete_response(self) -> str:
@@ -199,6 +216,20 @@ class FileBackedCockpitBridge:
             except json.JSONDecodeError:
                 continue
             return candidate
+
+    def _record_startup_output(self, response: str) -> None:
+        """Retain each child startup envelope before deciding whether to admit it.
+
+        The bridge owns child stdout while it waits for the live-session
+        descriptor.  A canonical launch rejection is therefore evidence, not
+        disposable transport noise: without this record a child that returns
+        an ordinary structured rejection is misreported as merely missing its
+        descriptor.
+        """
+        with (self.session_dir / "child.startup.stdout.jsonl").open("a", encoding="utf-8") as sink:
+            sink.write(response)
+            if not response.endswith("\n"):
+                sink.write("\n")
 
     def _session_descriptor(self, ready: str) -> Mapping[str, Any]:
         """Accept exactly one bound live-session descriptor before public input."""
@@ -239,13 +270,14 @@ class FileBackedCockpitBridge:
                             gameplay_credit=False )
         return True
 
-    def _await_session_descriptor(self) -> Mapping[str, Any]:
+    def _await_session_descriptor(self, *, consume_pre_descriptor_prefix: bool = True) -> Mapping[str, Any]:
         """Run only the declared zero-credit prefix before admitting public input."""
         prefix_index = 0
         while True:
             ready = self._read_complete_response()
             if not ready:
                 raise ValueError("pre_descriptor_no_progress")
+            self._record_startup_output(ready)
             try:
                 envelope = json.loads(ready)
             except json.JSONDecodeError as exc:
@@ -254,7 +286,7 @@ class FileBackedCockpitBridge:
                 raise ValueError("malformed_pre_descriptor_output")
             if self._consume_startup_progress( envelope ):
                 continue
-            if prefix_index < len(self.pre_descriptor_prefix):
+            if consume_pre_descriptor_prefix and prefix_index < len(self.pre_descriptor_prefix):
                 if not self._consume_pre_descriptor(envelope, prefix_index):
                     raise ValueError("missing_declared_pre_descriptor_stage")
                 prefix_index += 1
@@ -292,6 +324,15 @@ class FileBackedCockpitBridge:
             self._seen.add(request_id)
             request_bytes = (json.dumps(request, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
             assert self._child is not None and self._child.stdin is not None and self._child.stdout is not None
+            # Once admitted, a durable envelope is in flight until its receipt
+            # exists.  A stale ready status must not invite a duplicate submit.
+            self._write_status(
+                "awaiting_response",
+                child_pid=self._child.pid,
+                inflight_request_id=request_id,
+                **({"session_descriptor": self._active_session_descriptor}
+                   if self._active_session_descriptor else {}),
+            )
             self._child.stdin.write(request_bytes.decode("utf-8"))
             self._child.stdin.flush()
             response_line = self._read_complete_response()
@@ -319,9 +360,31 @@ class FileBackedCockpitBridge:
                 terminal = response.get("final")
             if isinstance(terminal, Mapping) and terminal.get("schema") == "caol-cockpit-live-final-v1" and \
                     terminal.get("state") == "finished":
+                if self.session_reentries:
+                    self.session_reentries -= 1
+                    self._write_status(
+                        "transitioning",
+                        last_response=(self.responses_dir / (request_id + ".receipt.json")).name,
+                        remaining_session_reentries=self.session_reentries,
+                        phase="awaiting_declared_reentry_descriptor",
+                    )
+                    descriptor = self._await_session_descriptor(
+                        consume_pre_descriptor_prefix=False,
+                    )
+                    self._write_status(
+                        "ready",
+                        child_pid=self._child.pid if self._child else 0,
+                        session_descriptor=descriptor,
+                        remaining_session_reentries=self.session_reentries,
+                        **({"startup_progress": self._startup_progress}
+                           if self._startup_progress else {}),
+                    )
+                    self._active_session_descriptor = dict(descriptor)
+                    return False
                 self._terminal_request_id = request_id
                 self._write_status("terminalizing", last_response=(self.responses_dir / (request_id + ".receipt.json")).name,
                                    terminal_request_id=request_id,
+                                   child_pid=self._child.pid if self._child else 0,
                                    cleanup={"status": "deferred_to_scenario_terminalization"})
                 return True
         except (BrokenPipeError, OSError):
@@ -371,6 +434,8 @@ class FileBackedCockpitBridge:
         self.prepare()
         environment = dict(os.environ)
         environment["OPENCLAW_COCKPIT_BRIDGE_BINDING_ID"] = self.binding_id
+        if self.authorization_token_id:
+            environment["OPENCLAW_COCKPIT_AUTHORIZATION_TOKEN_ID"] = self.authorization_token_id
         environment["OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR"] = str(self.session_dir)
         stderr_path = self.session_dir / "child.stderr.log"
         self._child_stderr = stderr_path.open("w", encoding="utf-8")
@@ -403,29 +468,70 @@ class FileBackedCockpitBridge:
                                **({"bootstrap_receipts": len(self.pre_descriptor_prefix),
                                    "bootstrap_gameplay_credit": False}
                                   if self.pre_descriptor_prefix else {}))
+            self._active_session_descriptor = dict(descriptor)
             if descriptor.get("bootstrap_only") is True:
                 return self._await_scenario_terminalization()
         else:
             self._write_status("ready", child_pid=self._child.pid)
-        # O_RDWR keeps the private FIFO readable between discrete client calls.
-        descriptor = os.open(self.input_path, os.O_RDWR)
+        # Keep independent nonblocking ends open for the bridge lifetime.  A
+        # single O_RDWR descriptor can be reported readable on macOS because
+        # of its own writer, then block forever in ``read`` before a client
+        # request is delivered.  The anchor writer prevents EOF while the
+        # read end remains a genuine externally-written FIFO stream.
+        descriptor = os.open(self.input_path, os.O_RDONLY | os.O_NONBLOCK)
+        anchor_writer = os.open(self.input_path, os.O_WRONLY | os.O_NONBLOCK)
+        pending = b""
         try:
-            with os.fdopen(descriptor, "r", encoding="utf-8") as source:
-                for line in source:
-                    if self._handle_request(line):
+            while True:
+                # A request is first persisted by the public client.  The
+                # spool is the authoritative handoff: a FIFO wake-up may be
+                # missed on macOS, but a retained envelope cannot vanish
+                # between a client accepting the request and the bridge
+                # forwarding it to the cockpit.
+                for request_path in sorted(self.requests_dir.glob("*.json")):
+                    request_id = request_path.stem
+                    if request_id in self._spooled_request_ids:
+                        continue
+                    self._spooled_request_ids.add(request_id)
+                    if self._handle_request(request_path.read_text(encoding="utf-8")):
                         if self._terminal_request_id:
                             return self._await_scenario_terminalization()
-                        break
-                    if self._child.poll() is not None:
-                        prior = json.loads(self.status_path.read_text(encoding="utf-8"))
-                        details = {
-                            key: value for key, value in prior.items()
-                            if key not in {"schema", "binding_id", "state", "request_count", "child_exit_code"}
-                        }
-                        self._write_status("process_dead", child_exit_code=self._child.returncode,
-                                           child_stderr="child.stderr.log", **details)
-                        return 1
+                        return 0
+                # macOS can leave an O_RDWR FIFO descriptor parked in a
+                # blocking read after the startup child has emitted its
+                # session descriptor.  Ask the kernel for readability before
+                # every drain so an accepted public request cannot be lost
+                # behind that startup handoff.
+                readable, _, _ = select.select([descriptor], [], [], 0.01)
+                if readable:
+                    try:
+                        received = os.read(descriptor, 65536)
+                    except BlockingIOError:
+                        received = b""
+                else:
+                    received = b""
+                if received:
+                    pending += received
+                    while b"\n" in pending:
+                        raw_line, pending = pending.split(b"\n", 1)
+                        if not raw_line:
+                            continue
+                        if self._handle_request(raw_line.decode("utf-8")):
+                            if self._terminal_request_id:
+                                return self._await_scenario_terminalization()
+                            return 0
+                if self._child.poll() is not None:
+                    prior = json.loads(self.status_path.read_text(encoding="utf-8"))
+                    details = {
+                        key: value for key, value in prior.items()
+                        if key not in {"schema", "binding_id", "state", "request_count", "child_exit_code"}
+                    }
+                    self._write_status("process_dead", child_exit_code=self._child.returncode,
+                                       child_stderr="child.stderr.log", **details)
+                    return 1
         finally:
+            os.close(descriptor)
+            os.close(anchor_writer)
             if self._child.poll() is None:
                 self._child.terminate()
                 self._child.wait()
@@ -450,10 +556,16 @@ class FileBackedCockpitBridge:
         status = json.loads((session_dir / "status.json").read_text(encoding="utf-8"))
         if status.get("state") != "ready" or status.get("binding_id") != binding_id:
             return {"ok": False, "status": status}
+        request_path = session_dir / "requests" / (request_id + ".json")
+        if request_path.exists():
+            # Preserve the accepted public submission so the bridge, rather
+            # than a client-side race, records the duplicate as a rejected
+            # stale request identity.
+            request_path = session_dir / "requests" / (
+                request_id + ".duplicate-" + str(time.time_ns()) + ".json"
+            )
         envelope = {"request_id": request_id, "binding_id": binding_id, "request": dict(request)}
-        with (session_dir / "requests.fifo").open("w", encoding="utf-8") as sink:
-            sink.write(json.dumps(envelope, ensure_ascii=False, separators=(",", ":")) + "\n")
-            sink.flush()
+        _atomic_json(request_path, envelope)
         return {"ok": True, "request_id": request_id}
 
     @staticmethod
@@ -498,20 +610,105 @@ class FileBackedCockpitBridge:
         return {"ok": True, "request_id": request_id, "slice": value}
 
 
+class FileBackedCockpitClient:
+    """Submit a live request once and collect its retained response separately.
+
+    A delayed artifact is an in-flight request, not authority to submit the
+    same request identity again.  Callers retain the returned request id and
+    use ``collect_response`` until the bridge publishes its receipt.
+    """
+
+    @staticmethod
+    def submit_once(session_dir: Path, *, request_id: str, binding_id: str,
+                    request: Mapping[str, Any]) -> dict[str, Any]:
+        return FileBackedCockpitBridge.send_request(
+            session_dir, request_id=request_id, binding_id=binding_id, request=request,
+        )
+
+    @staticmethod
+    def collect_response(session_dir: Path, request_id: str) -> dict[str, Any]:
+        return FileBackedCockpitBridge.response_status(session_dir, request_id)
+
+
+class FreshObservationSequence:
+    """Own a single observe/act chain without re-submitting delayed requests.
+
+    The file bridge deliberately rejects repeated request ids.  This small
+    client records the outstanding id separately from its response collection
+    and permits an action only for the newest, still-unconsumed observation.
+    """
+
+    def __init__(self, session_dir: Path, binding_id: str, request_prefix: str):
+        self.session_dir = session_dir
+        self.binding_id = binding_id
+        self.request_prefix = request_prefix
+        self._serial = 0
+        self._latest_observation_id = ""
+        self._consumed_observation_ids: set[str] = set()
+        self._submitted_request_ids: set[str] = set()
+
+    def _submit(self, suffix: str, request: Mapping[str, Any]) -> str:
+        self._serial += 1
+        request_id = f"{self.request_prefix}-{suffix}-{self._serial:04d}"
+        if request_id in self._submitted_request_ids:
+            raise ValueError("duplicate_cockpit_request_id")
+        submitted = FileBackedCockpitClient.submit_once(
+            self.session_dir, request_id=request_id, binding_id=self.binding_id, request=request,
+        )
+        if not submitted.get("ok") or submitted.get("request_id") != request_id:
+            raise ValueError("cockpit_request_submission_failed")
+        self._submitted_request_ids.add(request_id)
+        return request_id
+
+    def collect(self, request_id: str) -> dict[str, Any]:
+        """Collect a retained response only; this never sends another request."""
+        return FileBackedCockpitClient.collect_response(self.session_dir, request_id)
+
+    def observe(self) -> str:
+        request_id = self._submit("observe", {"action": "game.observe"})
+        return request_id
+
+    def accept_observation(self, request_id: str) -> str:
+        response = self.collect(request_id)
+        if not response.get("ok"):
+            return ""
+        artifact = self.session_dir / str(response["receipt"]["response_artifact"])
+        result = json.loads(artifact.read_text(encoding="utf-8"))
+        observation_id = str(result.get("result", {}).get("observation_id", "")).strip()
+        if not observation_id:
+            raise ValueError("fresh_observation_id_is_required")
+        self._latest_observation_id = observation_id
+        return observation_id
+
+    def act(self, action_id: str) -> str:
+        observation_id = self._latest_observation_id
+        if not observation_id or observation_id in self._consumed_observation_ids:
+            raise ValueError("fresh_unconsumed_observation_is_required")
+        request_id = self._submit(
+            "act", {"action": "game.act", "observation_id": observation_id, "action_id": action_id},
+        )
+        self._consumed_observation_ids.add(observation_id)
+        return request_id
+
+
 def main(argv: Sequence[str] | None = None) -> int:
     parser = argparse.ArgumentParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     serve = commands.add_parser("serve")
     serve.add_argument("--session-dir", required=True)
     serve.add_argument("--binding-id", required=True)
+    serve.add_argument("--authorization-token-id", default="")
     serve.add_argument("--require-session-ready", action="store_true")
     serve.add_argument("--pre-descriptor-prefix-json", default="[]")
+    serve.add_argument("--session-reentries", type=int, default=0)
     serve.add_argument("cockpit_command", nargs=argparse.REMAINDER)
     start = commands.add_parser("start")
     start.add_argument("--session-dir", required=True)
     start.add_argument("--binding-id", required=True)
+    start.add_argument("--authorization-token-id", default="")
     start.add_argument("--require-session-ready", action="store_true")
     start.add_argument("--pre-descriptor-prefix-json", default="[]")
+    start.add_argument("--session-reentries", type=int, default=0)
     start.add_argument("cockpit_command", nargs=argparse.REMAINDER)
     request = commands.add_parser("request")
     request.add_argument("--session-dir", required=True)
@@ -536,14 +733,18 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--pre-descriptor-prefix-json must be valid JSON")
         if not isinstance(prefix, list) or any(not isinstance(item, Mapping) for item in prefix):
             parser.error("--pre-descriptor-prefix-json must be an array of objects")
+        if args.session_reentries < 0:
+            parser.error("--session-reentries must be non-negative")
         command = list(args.cockpit_command)
         if command[:1] == ["--"]:
             command = command[1:]
         bridge_command = [
             sys.executable, str(Path(__file__).resolve()), "serve",
             "--session-dir", args.session_dir, "--binding-id", args.binding_id,
+            "--authorization-token-id", args.authorization_token_id,
             *( ["--require-session-ready"] if args.require_session_ready else [] ),
             "--pre-descriptor-prefix-json", json.dumps(prefix, separators=(",", ":")),
+            "--session-reentries", str(args.session_reentries),
             "--", *command,
         ]
         child = subprocess.Popen(bridge_command, stdin=subprocess.DEVNULL,
@@ -559,13 +760,17 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--pre-descriptor-prefix-json must be valid JSON")
         if not isinstance(prefix, list) or any(not isinstance(item, Mapping) for item in prefix):
             parser.error("--pre-descriptor-prefix-json must be an array of objects")
+        if args.session_reentries < 0:
+            parser.error("--session-reentries must be non-negative")
         command = list(args.cockpit_command)
         if command[:1] == ["--"]:
             command = command[1:]
         return FileBackedCockpitBridge(
             Path(args.session_dir), command, binding_id=args.binding_id,
+            authorization_token_id=args.authorization_token_id,
             require_session_ready=args.require_session_ready,
             pre_descriptor_prefix=prefix,
+            session_reentries=args.session_reentries,
         ).serve()
     if args.command == "request":
         value = json.loads(args.request_json)

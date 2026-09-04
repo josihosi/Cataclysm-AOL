@@ -64,6 +64,39 @@ def _chain(value: Any, field: str) -> list[str]:
     return list(value)
 
 
+def prepare_setup_only_capture(*, report_path: Path, runtime_binding: Mapping[str, Any]) -> dict[str, Any]:
+    """Bind one sealed setup save without allowing it to become feature proof.
+
+    Unlike ``prepare_production_capture``, this deliberately records no route
+    authority.  The explicit non-feature and accepted-cleanup checks make the
+    result usable only as an immutable input to a later independent run.
+    """
+    try:
+        report_bytes = report_path.read_bytes()
+        report = json.loads(report_bytes.decode("utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
+        raise ProductionCaptureError(f"setup source report is unreadable: {error}") from error
+    if not isinstance(report, Mapping) or report.get("feature_proof") is True:
+        raise ProductionCaptureError("setup fixture requires a sealed non-feature report")
+    cleanup = report.get("cleanup")
+    if not isinstance(cleanup, Mapping) or cleanup.get("status") not in {"already_exited", "accepted"}:
+        raise ProductionCaptureError("setup fixture requires accepted isolated cleanup")
+    if runtime_binding.get("ok") is not True:
+        raise ProductionCaptureError("setup fixture runtime binding is unavailable")
+    return {
+        "schema": "setup-origin-capture-v1",
+        "credit": "setup_only_non_feature",
+        "anti_promotion": True,
+        "source_report": {
+            "path": str(report_path.resolve()),
+            "sha256": hashlib.sha256(report_bytes).hexdigest(),
+            "run_id": report.get("run_id", ""),
+        },
+        "runtime": dict(runtime_binding),
+        "cleanup": dict(cleanup),
+    }
+
+
 def _observation_probe_sha256(report: Mapping[str, Any]) -> str:
     """Hash the immutable probe payload, excluding the sidecar pointer itself."""
     canonical = dict(report)

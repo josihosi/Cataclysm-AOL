@@ -1,0 +1,10 @@
+{
+  "claim": "On macOS, the current source- and executable-bound R-SURFACE-007 Tiles route chooses a real NPC dialogue response by its advertised response-object ID and preserves exact native receipts and condition safety.",
+  "material_proof": "One selected current-bound run reaches an automatic native dialogue through semantic wait, observes the fresh dialogue descriptor, rejects wrong-speaker, missing, regenerated, duplicate, disabled, index, and hotkey controls without a dialogue transition, then accepts one advertised dialogue.choose response ID and observes its exact receipt plus the actual successor topic or nested native confirmation. Fixture and entry are zero-credit.",
+  "material_contradiction": ["a response is selected by index, hotkey, raw key, label, screenshot, or direct mutation", "a missing, duplicate, stale/regenerated, wrong-speaker, or disabled ID advances dialogue", "an accepted receipt has another consuming dialogue frame or no genuine successor", "binding drift or cleanup failure"],
+  "already_accepted_evidence": ["Generated talk_response objects own runtime identities and the focused adapter publishes dialogue state."],
+  "current_uncertainty": "No source-bound Tiles transcript has independently exercised the actual dialogue owner and its failure controls.",
+  "forbidden_shortcuts": ["raw keys, hotkeys, indices, labels as identity, physical input, OCR, screenshots, coordinates, fallback, or direct state mutation", "crediting fixture manufacture, startup, or dialogue arrival"],
+  "honest_stop_conditions": ["stop before launch if current executable, fixture, scenario, or charter binding is not selected", "after launch stop on a missing receipt, binding drift, forbidden dispatch, incorrect successor, or cleanup contradiction", "seal and finish when the live descriptor, controls, accepted choice, successor, and cleanup are settled"],
+  "requested_evidence_ceiling": "focused"
+}
