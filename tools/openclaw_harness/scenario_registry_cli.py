@@ -75,6 +75,7 @@ from scenario_registry_store import (
 import startup_harness
 import production_capture
 from command_receipts import read_command_artifact, write_command_artifact
+from registry_query_output import query_page
 from startup_harness import (
     CLEANUP_ACCEPTED_STATUSES,
     fixture_source_binding,
@@ -97,6 +98,53 @@ class _ArgumentParser(argparse.ArgumentParser):
 def _write_result(value: Mapping[str, Any], *, stream: Optional[Any] = None) -> None:
     """Write JSON to the caller's current stdout unless an explicit stream is supplied."""
     print(json.dumps(value, ensure_ascii=False, sort_keys=True), file=sys.stdout if stream is None else stream)
+
+
+def _positive_page_size(value: str) -> int:
+    number = int(value)
+    if number <= 0:
+        raise argparse.ArgumentTypeError("page size must be positive")
+    return number
+
+
+def _query_launch_action(result: Mapping[str, Any], args: argparse.Namespace,
+                         registry_path: Path) -> Mapping[str, Any] | None:
+    if result.get("next_action") is not None:
+        return result["next_action"]
+    ranked = result["evaluation"]["evaluation"]["ranked_scenario_ids"]
+    if not result.get("token_id"):
+        return {"kind": "inspect_query_fit", "draft_path": result.get("draft_path"),
+                "action": "Inspect candidate fit and missing evidence; refine the query or repair the route."}
+    readiness = result.get("source_executable_readiness", {})
+    if readiness.get("status") != "ready":
+        return {"kind": "resolve_runtime_readiness", "reason": readiness.get("reason"),
+                "action": readiness.get("next_action"),
+                "evidence_ceiling": readiness.get("evidence_ceiling", "none")}
+    selected = next(item for item in result["evaluation"]["candidates"]
+                    if item["scenario_id"] == ranked[0])
+    manifest = selected["explanation"]["manifest"]
+    source = Path(manifest["source_path"])
+    try:
+        declaration = json.loads(source.read_text(encoding="utf-8"))
+        detached = any(isinstance(step, Mapping) and step.get("kind") == "cockpit_live_session"
+                       for step in declaration.get("steps", []))
+    except (OSError, ValueError, AttributeError) as error:
+        return {"kind": "inspect_selected_declaration", "source_path": str(source),
+                "reason": str(error)}
+    charter = str(args.witness_charter or "").strip()
+    if detached and not charter:
+        return {"kind": "provide_witness_charter", "scenario_id": ranked[0],
+                "action": "Supply the matching witness charter for the selected live-cockpit launch."}
+    command = [sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
+               "registry-detached-launch" if detached else "registry-launch", result["token_id"]]
+    if charter:
+        command.extend(["--witness-charter", str(Path(charter).resolve())])
+    if detached:
+        session = registry_path.parent / "bridge-sessions" / ("selected-" + uuid.uuid4().hex)
+        command.extend(["--session-dir", str(session)])
+    return {"kind": "launch_selected_scenario", "command": {"argv": command},
+            "precondition": "Launch revalidates the selected token and bindings; a detached session "
+                            "directory must not exist before launch."}
 
 
 def _identity_sha256(label: str) -> str:
@@ -453,6 +501,7 @@ def _apply_source_readiness_to_query(
 ) -> Dict[str, Any]:
     """Put the cheap prerequisite ahead of a query-bound repair authority."""
     routed = dict(result)
+    routed["source_executable_readiness"] = dict(readiness)
     action = routed.get("next_action")
     if not isinstance(action, Mapping) or action.get("kind") != "repair_current_contradiction":
         return routed
@@ -1205,6 +1254,15 @@ def build_parser() -> argparse.ArgumentParser:
     )
     query.add_argument("--coordinator-brief", help="coordinator brief JSON for explicit playtest authority")
     query.add_argument("--witness-charter", help="validated witness charter JSON for explicit playtest authority")
+    query.add_argument("--page-size", type=_positive_page_size, default=5,
+                       help="matches per page (default: 5; owner-selected presentation preference)")
+    query.add_argument("--full", action="store_true", help="print the complete query evaluation")
+    query_page_parser = commands.add_parser("registry-query-page", help="read another page of one saved query")
+    query_page_parser.add_argument("--sha256", required=True)
+    query_page_parser.add_argument("--offset", type=int, default=0)
+    query_page_parser.add_argument("--page-size", type=_positive_page_size, default=5)
+    query_artifact = commands.add_parser("registry-query-artifact", help="recover one complete query result")
+    query_artifact.add_argument("--sha256", required=True)
     status = commands.add_parser("registry-status", help="inspect registry lifecycle, relation, and retirement history")
     status.add_argument("--manifest-id", action="append", default=[],
                         help="exact manifest identity; repeat to retrieve only named current entries")
@@ -1960,6 +2018,24 @@ def main(argv: Sequence[str] | None = None) -> int:
             dry_run=args.dry_run,
         ))
     registry_path = resolve_registry_path(args.registry)
+    if args.command in {"registry-query-page", "registry-query-artifact"}:
+        try:
+            payload = read_command_artifact(artifact_root=registry_path.parent / "command-artifacts",
+                                            command="registry-query", sha256=args.sha256)
+            if args.command == "registry-query-artifact":
+                _write_result(payload)
+            else:
+                artifact = registry_path.parent / "command-artifacts" / "registry-query" / (args.sha256.lower() + ".json")
+                receipt = {"schema": "caol-command-receipt-v1", "command": "registry-query",
+                           "artifact": {"path": str(artifact), "sha256": args.sha256.lower(),
+                                        "bytes": artifact.stat().st_size}}
+                result = query_page(payload, receipt, offset=args.offset, page_size=args.page_size,
+                                    cli=[sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path)])
+                _write_result({"ok": True, "command": args.command, "registry": str(registry_path), "result": result})
+            return 0
+        except (OSError, ValueError, KeyError) as error:
+            _write_result({"ok": False, "command": args.command, "error": str(error)}, stream=sys.stderr)
+            return 1
     if args.command == "registry-detached-launch":
         return _launch_selection_file_bridge(args, registry_path)
     if args.command == "registry-repair-detached-launch":
@@ -2087,6 +2163,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )), _current_source_executable_readiness(
                     isolated_harness_diagnosis=bool(args.isolated_harness_diagnosis),
                 ))
+                result["next_action"] = _query_launch_action(result, args, registry_path)
             elif args.command == "registry-bootstrap":
                 runtime_binding = startup_harness.build_runtime_binding(
                     startup_harness.detect_executable()
@@ -2683,6 +2760,15 @@ def main(argv: Sequence[str] | None = None) -> int:
         "registry": str(registry_path),
         "result": result,
     }
+    if args.command == "registry-query":
+        receipt = write_command_artifact(artifact_root=registry_path.parent / "command-artifacts",
+                                         command="registry-query", payload=response)
+        if not args.full:
+            response["result"] = query_page(response, receipt, offset=0, page_size=args.page_size,
+                                           cli=[sys.executable, str(Path(__file__).resolve()),
+                                                "--registry", str(registry_path)])
+        _write_result(response)
+        return 0
     if args.command in {"registry-status", "runtime-status"} and not bool(args.full):
         receipt = write_command_artifact(
             artifact_root=registry_path.parent / "command-artifacts",

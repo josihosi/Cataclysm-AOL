@@ -1443,13 +1443,9 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             selected_result = json.loads(selected.stdout)["result"]
             self.assertIsNotNone(selected_result["token_id"])
             self.assertIsNone(selected_result["draft_path"])
-            self.assertEqual(selected_result["evaluation"]["evaluation"]["ranked_scenario_ids"], [
-                selected_result["evaluation"]["candidates"][0]["scenario_id"],
-            ])
-            self.assertEqual(
-                selected_result["evaluation"]["candidates"][0]["explanation"]["lifecycle"]["state"],
-                "active",
-            )
+            self.assertEqual(selected_result["selected_scenario_id"],
+                             selected_result["candidates"][0]["scenario_id"])
+            self.assertEqual(selected_result["candidates"][0]["lifecycle_state"], "active")
 
             no_match_query = {
                 "requirements": [{

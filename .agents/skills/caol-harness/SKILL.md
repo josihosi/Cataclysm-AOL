@@ -40,6 +40,12 @@ Translate the proof question into typed requirements, then query with:
 python3 tools/openclaw_harness/scenario_registry_cli.py registry-query --query-json '<request>'
 ```
 
+The result shows five ranked matches by default (`--page-size` changes that presentation). Each
+match gives its fit, evidence, lifecycle, and manifest binding. Follow `page.next` to browse the same
+saved result; paging does not rerun selection or issue another token. `full_result` retrieves the
+complete evaluation when a specific uncertainty needs it. The selected token belongs only to
+`selected_scenario_id`, not to every displayed candidate. Refine the query to choose a different fit.
+
 Explain the candidate fit, evidence ceiling, lifecycle, binding, and readiness. Querying never
 launches. If no executable selection exists, use the returned facts to choose whether to build,
 repair, create, rebind, or deliberately run an isolated zero-credit diagnosis. Do not weaken the
@@ -49,9 +55,10 @@ harness diagnosis only; current-product conclusions require a source-matching ex
 For a selected playtest, the coordinator brief and matching validated charter are the execution
 request. The registry token is single-use technical authority, not human permission:
 
-```sh
-python3 tools/openclaw_harness/scenario_registry_cli.py registry-launch <selection-token>
-```
+Use the returned `next_action`: a ready selected route supplies its launch argument array,
+including the witness charter and, for a live cockpit, `registry-detached-launch` with a new session
+path. Do not pre-create that directory. A build, repair, or missing-charter response identifies the
+prerequisite instead. Saved query readiness is a snapshot; launch revalidates current state.
 
 Launch revalidates source, executable, scenario, world, ownership, and runtime. Missing charter,
 stale binding, fixture defects, or tool defects are agent-owned repair when the outcome remains in
