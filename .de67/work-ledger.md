@@ -275,6 +275,18 @@ the package pending another owner design pass.
     Prove the native quit boundary, then use the declared post-relaunch route for saved fire,
     staffed observation, and natural response. If inspection disproves continuity, preserve the
     exact divergence and use the existing cleanup and fresh-authority route.
+  - Current handoff update: task `R-029-exploration-038` found that the input loop discarded a
+    main-menu quit action after its old pre-wait snapshot. Commits `1dd1eb83db` and `99ca9c4947`
+    preserve that action and write the terminal confirmation receipt before exit. Seventeen focused
+    checks pass, and one diagnostic run exited exact PID `35479`. This matters because native exit is
+    now implemented, but the final source-bound rerun did not exercise its last confirmation after
+    malformed stale-observation requests. The current Tiles binary is source-bound at commit
+    `99ca9c4947` with SHA `9244c3bb…6509c0`. The incomplete second run was safely cleaned and earns
+    no native-exit or ecology credit. The first unresolved step is one fresh detached run using each
+    exact `.receipt.next_frame` successor and a fresh `game.observe` observation ID. It must prove
+    the immediate final receipt and exact process exit before post-relaunch ecology validation.
+    Receipt `R-029-exploration-038` preserves the full continuation and no-replay facts. A fresh task
+    must continue from it because the previous worker context is exhausted.
   - Continuation evidence: task `R-029-exploration-035` proved the focused quit repair in Python
     and native tests; receipt `0846913f…eb6b0` preserves those no-replay facts. Its PID 89842 and
     running-build description are historical. Task `R-029-exploration-037` subsequently completed
