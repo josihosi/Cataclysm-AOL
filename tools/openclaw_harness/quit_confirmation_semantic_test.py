@@ -29,9 +29,11 @@ class QuitConfirmationSemanticTest(unittest.TestCase):
         self.assertNotIn('queue_native_intent', callback)
         self.assertNotIn('take_native_intent', source)
         release = source.index('if( semantic_action_consumed ) {')
-        action = source.index('std::string action = semantic_action_consumed ? semantic_action')
-        self.assertIn('semantic_scope.reset();', source[release:action])
-        self.assertLess(release, action)
+        action = source.index('std::string action;')
+        self.assertLess(action, release)
+        self.assertIn('semantic_scope.reset();', source[release:])
+        post_wait = source.index('semantic_action_consumed = !semantic_action.empty();', action)
+        self.assertIn('action = std::move( semantic_action );', source[post_wait:])
 
     def test_m095_uses_semantic_quit_gate_and_keeps_normal_relaunch_route(self) -> None:
         scenario_path = Path(__file__).resolve().parent / "scenarios" / (

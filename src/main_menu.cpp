@@ -784,7 +784,9 @@ bool main_menu::opening_screen()
             } );
             semantic_scope->consume_request();
         }
-        const bool semantic_action_consumed = !semantic_action.empty();
+        bool semantic_action_consumed = !semantic_action.empty();
+        std::string action;
+        input_event sInput;
         if( semantic_action_consumed ) {
             // The request was consumed by this main-menu scope, but QUIT's
             // actual native successor is query_yn.  Release the withheld
@@ -792,9 +794,22 @@ bool main_menu::opening_screen()
             // redraw can become the next published frame and prevent the
             // confirmation owner from ever being entered.
             semantic_scope.reset();
+            action = std::move( semantic_action );
+            sInput = ctxt.get_raw_input();
+        } else {
+            action = ctxt.handle_input();
+            sInput = ctxt.get_raw_input();
+            // A semantic transport wake is consumed by input_context while
+            // it waits.  Its callback writes semantic_action after the
+            // pre-wait check above, so preserve that native action instead
+            // of treating the wake as ordinary input and republishing this
+            // menu.
+            semantic_action_consumed = !semantic_action.empty();
+            if( semantic_action_consumed ) {
+                semantic_scope.reset();
+                action = std::move( semantic_action );
+            }
         }
-        std::string action = semantic_action_consumed ? semantic_action : ctxt.handle_input();
-        input_event sInput = ctxt.get_raw_input();
 
         // A semantic callback already selected the native action for this
         // iteration.  Its prior physical event can still be retained by the
