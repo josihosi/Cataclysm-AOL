@@ -150,6 +150,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             with mock.patch.object(scenario_registry_cli, "open_registry", return_value=connection), \
                     mock.patch.object(scenario_registry_cli, "reload_selection_token_for_launch",
                                       return_value=selection), \
+                    mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
+                                      return_value={"status": "ready"}), \
                     mock.patch.object(scenario_registry_cli, "_scenario_requires_bound_live_bridge",
                                       return_value=True), \
                     mock.patch.object(scenario_registry_cli, "_declared_pre_descriptor_prefix",
@@ -181,6 +183,35 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             launched_environment = run.call_args.kwargs["env"]
             self.assertIn("OPENCLAW_PLAYTEST_WITNESS_CHARTER", launched_environment)
             connection.close.assert_called_once()
+
+    def test_detached_launch_refuses_stale_product_binary_without_starting_bridge(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            args = argparse.Namespace(
+                command="registry-detached-launch",
+                selection_token="selected-token",
+                session_dir=str(root / "session"),
+                witness_charter=str(HARNESS_DIR / "charters" / "r009-macos-witness-rev2.json"),
+            )
+            selection = scenario_registry_cli.RegistryLaunchToken(
+                "selected-token", True, "current", "r009-m095", "scenario.json",
+            )
+            connection = mock.MagicMock()
+            stale = {"status": "build_required", "reason": "product_binary_source_is_stale_or_unproved"}
+            with mock.patch.object(scenario_registry_cli, "open_registry", return_value=connection), \
+                    mock.patch.object(scenario_registry_cli, "reload_selection_token_for_launch",
+                                      return_value=selection), \
+                    mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
+                                      return_value=stale), \
+                    mock.patch.object(scenario_registry_cli.subprocess, "run") as run, \
+                    mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
+                result = scenario_registry_cli._launch_selection_file_bridge(args, root / "registry.sqlite3")
+
+            self.assertEqual(result, 1)
+            run.assert_not_called()
+            receipt = write_result.call_args.args[0]
+            self.assertEqual(receipt["result"]["reason"], "source_matching_executable_required")
+            self.assertEqual(receipt["source_executable_readiness"], stale)
 
     def test_detached_live_namespaces_force_bounded_terminal_stdout(self) -> None:
         scenario = "bandit.r008_natural_safe_watch_validation_mcw"
@@ -369,6 +400,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
                 mock.patch.object(startup_harness, "detect_executable", return_value=executable), \
                 mock.patch.object(startup_harness, "build_runtime_binding", return_value=runtime_binding), \
+                mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
+                                  return_value={"status": "ready"}), \
                 mock.patch.object(startup_harness, "run_probe_mode", return_value=23) as run_probe, \
                 redirect_stdout(io.StringIO()), redirect_stderr(io.StringIO()):
             result = scenario_registry_cli.main([

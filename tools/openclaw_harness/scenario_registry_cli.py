@@ -1640,6 +1640,22 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
             _write_result({"ok": False, "command": args.command, "registry": str(registry_path),
                            "result": asdict(selection)}, stream=sys.stderr)
             return 1
+        readiness = _current_source_executable_readiness()
+        if readiness.get("status") != "ready":
+            # Do this before starting the bridge, so an executable that cannot
+            # prove the current product source never strands or consumes a
+            # selection token.  The canonical child repeats this check to
+            # cover a source change between bridge startup and token claim.
+            _write_result({
+                "ok": False,
+                "command": args.command,
+                "registry": str(registry_path),
+                "result": asdict(RegistryLaunchToken(
+                    selection.token_id, False, "source_matching_executable_required",
+                )),
+                "source_executable_readiness": dict(readiness),
+            }, stream=sys.stderr)
+            return 1
         if not _scenario_requires_bound_live_bridge(selection.scenario):
             _write_result({"ok": False, "command": args.command,
                            "error": "selected scenario has no live cockpit session"}, stream=sys.stderr)
@@ -2209,170 +2225,184 @@ def main(argv: Sequence[str] | None = None) -> int:
                 )
                 if not selection.accepted:
                     result = asdict(selection)
-                elif _scenario_requires_bound_live_bridge(selection.scenario) and not \
-                        bridge_binding_id and not str(
-                            os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")
-                        ).strip():
-                    result = asdict(RegistryLaunchToken(
-                        token_id=selection.token_id,
-                        accepted=False,
-                        reason="live_cockpit_requires_registry_detached_launch",
-                    ))
                 else:
-                    try:
-                        probe_namespace = _registry_launch_probe_namespace(
-                            selection,
-                            post_relaunch_continuation=bool(
-                                getattr(args, "post_relaunch_continuation", False)
-                            ),
-                        )
-                        # A registry-owned launch is the canonical executor for
-                        # an adaptive semantic window.  Leaving this disabled
-                        # makes the run wait for an external caller after the
-                        # issuing observation, which cannot produce a bound
-                        # transaction receipt or final report evidence.
-                        probe_namespace.adaptive_semantic_autodrive = True
-                        if args.command == "certification-launch":
-                            # The selected fixture is the sealed setup input;
-                            # reinstalling that same fixture is not a world or
-                            # identity replacement.  It makes retries after
-                            # an interrupted setup deterministic.
-                            probe_namespace.replace_existing_worlds = True
-                    except ScenarioRegistryStoreError as exc:
+                    readiness = _current_source_executable_readiness()
+                    if readiness.get("status") != "ready":
                         record_selection_token_rejection(
                             connection,
                             selection.token_id,
-                            reason="canonical_probe_source_mismatch",
-                            details={"error": str(exc)},
+                            reason="source_matching_executable_required",
+                            details={"source_executable_readiness": dict(readiness)},
                         )
                         result = asdict(RegistryLaunchToken(
                             token_id=selection.token_id,
                             accepted=False,
-                            reason="canonical_probe_source_mismatch",
+                            reason="source_matching_executable_required",
+                        ))
+                    elif _scenario_requires_bound_live_bridge(selection.scenario) and not \
+                            bridge_binding_id and not str(
+                                os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")
+                            ).strip():
+                        result = asdict(RegistryLaunchToken(
+                            token_id=selection.token_id,
+                            accepted=False,
+                            reason="live_cockpit_requires_registry_detached_launch",
                         ))
                     else:
-                        runtime_binding = startup_harness.build_runtime_binding(
-                            startup_harness.detect_executable()
-                        )
-                        if not runtime_binding.get("ok"):
+                        try:
+                            probe_namespace = _registry_launch_probe_namespace(
+                                selection,
+                                post_relaunch_continuation=bool(
+                                    getattr(args, "post_relaunch_continuation", False)
+                                ),
+                            )
+                            # A registry-owned launch is the canonical executor for
+                            # an adaptive semantic window.  Leaving this disabled
+                            # makes the run wait for an external caller after the
+                            # issuing observation, which cannot produce a bound
+                            # transaction receipt or final report evidence.
+                            probe_namespace.adaptive_semantic_autodrive = True
+                            if args.command == "certification-launch":
+                                # The selected fixture is the sealed setup input;
+                                # reinstalling that same fixture is not a world or
+                                # identity replacement.  It makes retries after
+                                # an interrupted setup deterministic.
+                                probe_namespace.replace_existing_worlds = True
+                        except ScenarioRegistryStoreError as exc:
                             record_selection_token_rejection(
                                 connection,
                                 selection.token_id,
-                                reason="runtime_binding_unavailable",
-                                details={"error": str(runtime_binding.get("error", "unknown error"))},
+                                reason="canonical_probe_source_mismatch",
+                                details={"error": str(exc)},
                             )
                             result = asdict(RegistryLaunchToken(
                                 token_id=selection.token_id,
                                 accepted=False,
-                                reason="runtime_binding_unavailable",
+                                reason="canonical_probe_source_mismatch",
                             ))
-                            probe_namespace = None
                         else:
-                            certification_setup_installed = False
-                            # Only ordinary focused routes may be marked as a
-                            # diagnostic replay.  A certification launch owns
-                            # its continuous-round authority below.
-                            diagnostic_replay = False
-                            if args.certification_inputs:
-                                producer_inputs = startup_harness.capture_certification_inputs(args.certification_inputs)
-                            elif args.command == "certification-launch":
-                                # Fixture installation is a registry-owned setup
-                                # mutation.  Perform it before sealing the
-                                # manifest, then prevent the probe from
-                                # reinstalling (and thereby changing) the
-                                # sealed world between preflight and recheck.
-                                launch_scenario = startup_harness.load_scenario(selection.scenario)
-                                launch_profile = startup_harness.resolve_profile_name(
-                                    str(launch_scenario.get("profile", ""))
-                                )
-                                launch_fixture = str(launch_scenario.get("fixture", "")).strip()
-                                launch_fixture_profile = str(
-                                    launch_scenario.get("fixture_profile", "")
-                                ).strip()
-                                if launch_fixture:
-                                    startup_harness.install_fixture(
-                                        launch_profile,
-                                        launch_fixture,
-                                        replace=True,
-                                        fixture_profile=launch_fixture_profile,
-                                    )
-                                    certification_setup_installed = True
-                                producer_inputs = startup_harness.derive_registry_owned_certification_inputs(
-                                    selection.scenario
-                                )
-                            else:
-                                producer_inputs = None
-                            if producer_inputs is not None:
-                                route = connection.execute(
-                                    "SELECT route_key FROM token_history WHERE token_id = ? AND event_kind = 'issued' "
-                                    "ORDER BY token_event_id LIMIT 1", (selection.token_id,),
-                                ).fetchone()
-                                if route is None:
-                                    raise ScenarioRegistryStoreError("selected launch token has no route")
-                                created = create_certification_round(
-                                    connection,
-                                    scenario_lineage_id=Path(selection.source_path).stem,
-                                    producer_inputs=producer_inputs,
-                                    launch_token=selection.token_id,
-                                    launch_source_path=Path(selection.source_path),
-                                    launch_route_key=str(route["route_key"]),
-                                    current_executable_sha256=str(runtime_binding["executable_sha256"]),
-                                )
-                                round_dir = registry_path.parent / "certification_rounds" / created["manifest"]["round_id"]
-                                round_dir.mkdir(parents=True, exist_ok=False)
-                                manifest_path = round_dir / "round.manifest.json"
-                                recheck_path = round_dir / "current-inputs.json"
-                                manifest_path.write_text(
-                                    json.dumps(created["manifest"], ensure_ascii=False, sort_keys=True),
-                                    encoding="utf-8",
-                                )
-                                recheck_path.write_text(
-                                    json.dumps(producer_inputs, default=str,
-                                               ensure_ascii=False, sort_keys=True),
-                                    encoding="utf-8",
-                                )
-                                probe_namespace.certification_registry = str(registry_path)
-                                probe_namespace.certification_round_manifest = str(manifest_path)
-                                probe_namespace.certification_lease_id = uuid.uuid4().hex
-                                probe_namespace.certification_recheck_inputs = str(recheck_path)
-                                probe_namespace.certification_save_capability = created["save_capability"]
-                                wec_authority = created["authority"]
-                                if certification_setup_installed:
-                                    probe_namespace.fixture = ""
-                                    probe_namespace.fixture_profile = ""
-                            else:
-                                launch_scenario = startup_harness.load_scenario(selection.scenario)
-                                runtime_contract = launch_scenario.get("runtime_contract", {})
-                                setup_support = isinstance(runtime_contract, Mapping) and \
-                                    runtime_contract.get("setup_only_debug") is True and \
-                                    runtime_contract.get("disposable_copy") is True
-                                diagnostic_replay = isinstance(runtime_contract, Mapping) and \
-                                    runtime_contract.get("diagnostic_replay") is True
-                                # A disposable setup transaction still needs registry-owned
-                                # authority, run, and executable binding so its immutable,
-                                # zero-credit receipt can be ingested.  Only an explicit
-                                # diagnostic replay is authority-free.
-                                wec_authority = None if diagnostic_replay else issue_wec_authority(
-                                    connection,
-                                    evidence_class="setup support" if setup_support else "focused feature proof",
-                                    authority="registry",
-                                    run_id=selection.token_id, binding_id=str(runtime_binding.get("executable_sha256", "")),
-                                    source_sha256=path_sha256(Path(selection.source_path)),
-                                )
-                            probe_namespace.registry_launch_receipt = json.dumps({
-                                "schema": 1,
-                                "registry_path": str(registry_path),
-                                "token_id": selection.token_id,
-                                "source_path": selection.source_path,
-                                "runtime_binding": runtime_binding,
-                                "wec_authority": wec_authority,
-                                "diagnostic_replay": diagnostic_replay,
-                                "witness_charter": _witness_charter_from_environment(),
-                            }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
-                            probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
-                                probe_namespace.registry_launch_receipt
+                            runtime_binding = startup_harness.build_runtime_binding(
+                                startup_harness.detect_executable()
                             )
-                            result = asdict(selection)
+                            if not runtime_binding.get("ok"):
+                                record_selection_token_rejection(
+                                    connection,
+                                    selection.token_id,
+                                    reason="runtime_binding_unavailable",
+                                    details={"error": str(runtime_binding.get("error", "unknown error"))},
+                                )
+                                result = asdict(RegistryLaunchToken(
+                                    token_id=selection.token_id,
+                                    accepted=False,
+                                    reason="runtime_binding_unavailable",
+                                ))
+                                probe_namespace = None
+                            else:
+                                certification_setup_installed = False
+                                # Only ordinary focused routes may be marked as a
+                                # diagnostic replay.  A certification launch owns
+                                # its continuous-round authority below.
+                                diagnostic_replay = False
+                                if args.certification_inputs:
+                                    producer_inputs = startup_harness.capture_certification_inputs(args.certification_inputs)
+                                elif args.command == "certification-launch":
+                                    # Fixture installation is a registry-owned setup
+                                    # mutation.  Perform it before sealing the
+                                    # manifest, then prevent the probe from
+                                    # reinstalling (and thereby changing) the
+                                    # sealed world between preflight and recheck.
+                                    launch_scenario = startup_harness.load_scenario(selection.scenario)
+                                    launch_profile = startup_harness.resolve_profile_name(
+                                        str(launch_scenario.get("profile", ""))
+                                    )
+                                    launch_fixture = str(launch_scenario.get("fixture", "")).strip()
+                                    launch_fixture_profile = str(
+                                        launch_scenario.get("fixture_profile", "")
+                                    ).strip()
+                                    if launch_fixture:
+                                        startup_harness.install_fixture(
+                                            launch_profile,
+                                            launch_fixture,
+                                            replace=True,
+                                            fixture_profile=launch_fixture_profile,
+                                        )
+                                        certification_setup_installed = True
+                                    producer_inputs = startup_harness.derive_registry_owned_certification_inputs(
+                                        selection.scenario
+                                    )
+                                else:
+                                    producer_inputs = None
+                                if producer_inputs is not None:
+                                    route = connection.execute(
+                                        "SELECT route_key FROM token_history WHERE token_id = ? AND event_kind = 'issued' "
+                                        "ORDER BY token_event_id LIMIT 1", (selection.token_id,),
+                                    ).fetchone()
+                                    if route is None:
+                                        raise ScenarioRegistryStoreError("selected launch token has no route")
+                                    created = create_certification_round(
+                                        connection,
+                                        scenario_lineage_id=Path(selection.source_path).stem,
+                                        producer_inputs=producer_inputs,
+                                        launch_token=selection.token_id,
+                                        launch_source_path=Path(selection.source_path),
+                                        launch_route_key=str(route["route_key"]),
+                                        current_executable_sha256=str(runtime_binding["executable_sha256"]),
+                                    )
+                                    round_dir = registry_path.parent / "certification_rounds" / created["manifest"]["round_id"]
+                                    round_dir.mkdir(parents=True, exist_ok=False)
+                                    manifest_path = round_dir / "round.manifest.json"
+                                    recheck_path = round_dir / "current-inputs.json"
+                                    manifest_path.write_text(
+                                        json.dumps(created["manifest"], ensure_ascii=False, sort_keys=True),
+                                        encoding="utf-8",
+                                    )
+                                    recheck_path.write_text(
+                                        json.dumps(producer_inputs, default=str,
+                                                   ensure_ascii=False, sort_keys=True),
+                                        encoding="utf-8",
+                                    )
+                                    probe_namespace.certification_registry = str(registry_path)
+                                    probe_namespace.certification_round_manifest = str(manifest_path)
+                                    probe_namespace.certification_lease_id = uuid.uuid4().hex
+                                    probe_namespace.certification_recheck_inputs = str(recheck_path)
+                                    probe_namespace.certification_save_capability = created["save_capability"]
+                                    wec_authority = created["authority"]
+                                    if certification_setup_installed:
+                                        probe_namespace.fixture = ""
+                                        probe_namespace.fixture_profile = ""
+                                else:
+                                    launch_scenario = startup_harness.load_scenario(selection.scenario)
+                                    runtime_contract = launch_scenario.get("runtime_contract", {})
+                                    setup_support = isinstance(runtime_contract, Mapping) and \
+                                        runtime_contract.get("setup_only_debug") is True and \
+                                        runtime_contract.get("disposable_copy") is True
+                                    diagnostic_replay = isinstance(runtime_contract, Mapping) and \
+                                        runtime_contract.get("diagnostic_replay") is True
+                                    # A disposable setup transaction still needs registry-owned
+                                    # authority, run, and executable binding so its immutable,
+                                    # zero-credit receipt can be ingested.  Only an explicit
+                                    # diagnostic replay is authority-free.
+                                    wec_authority = None if diagnostic_replay else issue_wec_authority(
+                                        connection,
+                                        evidence_class="setup support" if setup_support else "focused feature proof",
+                                        authority="registry",
+                                        run_id=selection.token_id, binding_id=str(runtime_binding.get("executable_sha256", "")),
+                                        source_sha256=path_sha256(Path(selection.source_path)),
+                                    )
+                                probe_namespace.registry_launch_receipt = json.dumps({
+                                    "schema": 1,
+                                    "registry_path": str(registry_path),
+                                    "token_id": selection.token_id,
+                                    "source_path": selection.source_path,
+                                    "runtime_binding": runtime_binding,
+                                    "wec_authority": wec_authority,
+                                    "diagnostic_replay": diagnostic_replay,
+                                    "witness_charter": _witness_charter_from_environment(),
+                                }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
+                                probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
+                                    probe_namespace.registry_launch_receipt
+                                )
+                                result = asdict(selection)
             elif args.command == "registry-bootstrap-launch":
                 selection = reload_bootstrap_token_for_launch(connection, args.bootstrap_token)
                 if not selection.accepted:

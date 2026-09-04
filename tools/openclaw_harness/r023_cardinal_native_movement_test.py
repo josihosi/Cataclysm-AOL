@@ -73,6 +73,8 @@ class CardinalNativeMovementTest(unittest.TestCase):
         self.assertIn('const tripoint_abs_ms pos_after_abs = player_character.pos_abs();', source)
         self.assertIn('const tripoint_bub_ms &after_bub', source)
         self.assertIn('\\"coordinate_space\\":\\"absolute_ms\\"', source)
+        movement_receipt = source[source.index('static void openclaw_harness_semantic_movement_receipt'):source.index('static std::string openclaw_harness_semantic_movement_action_id')]
+        self.assertIn('openclaw_harness_write_semantic_step_event( event.str() )', movement_receipt)
 
 
 if __name__ == "__main__":

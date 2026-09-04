@@ -16,6 +16,23 @@ from startup_harness import (
 class QuitConfirmationSemanticTest(unittest.TestCase):
     HUD_SAVE_AND_QUIT = {"ok": True, "text": "Actions\nS Save and quit\nMove: 100"}
 
+    def test_main_menu_semantic_quit_releases_the_withheld_owner_before_its_confirmation(self) -> None:
+        source = (Path(__file__).resolve().parents[2] / "src" / "main_menu.cpp").read_text(
+            encoding="utf-8"
+        )
+        callback_start = source.index('}, [semantic_manager, &semantic_action]')
+        callback_end = source.index('} );\n            semantic_scope->consume_request();', callback_start)
+        callback = source[callback_start:callback_end]
+
+        self.assertIn('semantic_action = "QUIT";', callback)
+        self.assertIn('withhold_parent_authority_until_recreated', callback)
+        self.assertNotIn('queue_native_intent', callback)
+        self.assertNotIn('take_native_intent', source)
+        release = source.index('if( semantic_action_consumed ) {')
+        action = source.index('std::string action = semantic_action_consumed ? semantic_action')
+        self.assertIn('semantic_scope.reset();', source[release:action])
+        self.assertLess(release, action)
+
     def test_m095_uses_semantic_quit_gate_and_keeps_normal_relaunch_route(self) -> None:
         scenario_path = Path(__file__).resolve().parent / "scenarios" / (
             "bandit.r009_m095_current_route_safe_watch_mcw.json"

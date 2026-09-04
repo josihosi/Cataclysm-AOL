@@ -252,19 +252,31 @@ the package pending another owner design pass.
     that places a non-colliding cannibal camp three overmap tiles from the physical source. Fresh
     runs proved physical smoke and light, bounded out-of-range controls, and ordinary fire creation.
     Receipt `2ee20a63…9143a2` preserves these changes, tests, runs, evidence limits, and no-replay work.
-  - Latest finding: the current natural-route manifest cannot launch because it requires an exclusive
-    source-bound review and no accepted review exists for manifest `166ff492…3844`, revision 7, SHA
-    `732c4158…8379e`. This matters because the worker and coordinator cannot grant or bypass that
-    external review. The exact attempted route remains unfinished rather than disproved.
-  - First open boundary: an external reviewer must accept the exact revision-7 source-bound manifest.
-    After that review, a fresh task must create the in-range fire through ordinary UI, retreat through
-    the repaired native path, save and quit through the game, and exit the original process. A
-    separate post-relaunch task must then validate observation and the natural camp response without
-    crediting bootstrap setup. Later proof still needs both natural profile routes, cannibal daylight
-    crossing, pre-demand, refusal, player-attack, Fight-terminal, rolling-ambush, persistence, cleanup,
-    and independent verdicts.
+  - Latest result: task `R-029-exploration-034` proved that revision 7 does not require a source
+    review and is eligible for a token. It repaired the actual registry retry mismatch, required the
+    executable to match current source before launch, and made native movement write an exact trace
+    receipt. It then created an ordinary in-range fire, moved north from `[3372,996,1]` to
+    `[3372,995,1]`, and completed the in-game save. The original process did not exit because the
+    withheld main-menu owner replaced the quit confirmation. The worker implemented an owner-release
+    repair, but its context ended before a reliable rebuild and focused native test could prove it.
+    Receipt `6169e0a0…e41b` preserves the result and all no-replay work. This is an unfinished repair
+    boundary, not a product finding.
+  - First open boundary: force a current native rebuild containing the main-menu owner-release repair
+    and run the focused C++ semantic-owner test plus the Python quit-confirmation tests. Do not request
+    another launch token before those checks pass. Then use fresh authority to prove the original
+    process exits through the game. A separate post-relaunch task must validate the saved fire,
+    staffed observation, and natural camp response without crediting bootstrap setup. Later proof
+    still needs both natural profile routes, cannibal daylight crossing, pre-demand, refusal,
+    player-attack, Fight-terminal, rolling-ambush, persistence, cleanup, and independent verdicts.
+  - Continuation update: task `R-029-exploration-035` refreshed stale build headers and proved the
+    quit-owner repair in both test layers. The Python suite passed 16 of 16, and the focused native
+    case passed 9 assertions. Source readiness correctly rejected the old Tiles binary without
+    issuing a token. A current Tiles rebuild is still running under PID 89842. The worker context
+    ended while that build remained active, so receipt `0846913f…eb6b0` preserves the result and the
+    no-replay boundary. A fresh worker must observe that build to completion, bind the resulting
+    executable, and continue to native-exit proof. This is not a product finding.
   - Subtasks:
-    - [active] unify-natural-discovery-route :: The production cannibal shortcut call is removed. The continuation receipt preserves the current launch and first World cadence; after the open Keep Watch executor boundary, a current witness must prove both profiles use staffed observation, camp memory, scout travel, a returned report, authorization, and response travel.
+    - [active] unify-natural-discovery-route :: The shortcut is removed, revision 7 is token-eligible, and the registry, launch, and movement paths are repaired. The quit-owner repair passes clean Python and native tests. Observe the active Tiles rebuild, bind its executable, and prove native exit before separate production validation.
     - [open] preserve-night-raid-commitment :: Prove daylight rally hold, night departure, a transition to daylight before contact, continued approach, and attack.
     - [active] enforce-shakedown-first-demand :: Fresh source-bound runs show the exact demand and Pay or Fight choices before either selection and preserve exact members through the chosen response. The pre-demand no-offense control plus refusal or incomplete-payment behavior still need direct verdicts.
     - [done] enforce-paid-departure-safety :: Run `20260903_161237_7fd03f6fb598406cb816b6871df080c4` proves exact members 4 and 5 are paid and returning home across native process replacement, reach abstract epoch 2, and make no renewed demand, Fight, or attack during 120 post-reload ordinary turns. Preserve this closure; do not replay it to repair report declarations.
@@ -277,7 +289,7 @@ the package pending another owner design pass.
 R-030's quiet-output and pinpoint-retrieval implementation precedes further expensive R-026 or R-029
 playtests because it changes how their evidence and continuation are preserved. Its repository work
 must not replay either claim's accepted footing. After that interface is proved, R-026 and R-029 may
-continue independently from receipts `ecbd0fc3…b355c` and `513ff62a…07a65`; R-026 may reuse accepted
+continue independently from receipts `ecbd0fc3…b355c` and `0846913f…eb6b0`; R-026 may reuse accepted
 R-027 observation/response without promoting zero-credit bootstrap. R-028 remains accepted.
 
 ## Evidence that cannot close the frontier
@@ -293,3 +305,5 @@ R-027 observation/response without promoting zero-credit bootstrap. R-028 remain
   outcomes remain independent, and an ordinary repository defect remains recoverable work.
 - A compact receipt without its digest-bound full artifact, or a full artifact without pinpoint
   retrieval and stable identity, cannot close R-030.
+  - Waiting work: Owner-authorized method/runtime restart interrupted R-029-exploration-036. Read `.de67/state/supervisor-service/consolidation-restart.md` for the unconsumed build/binding boundary before dispatch; preserve the current dirty frontier and prior receipts.
+

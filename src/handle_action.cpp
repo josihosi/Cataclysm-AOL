@@ -1038,20 +1038,22 @@ static void openclaw_harness_semantic_movement_receipt( const std::string &frame
     // semantic frame contract rather than translating pre-move bubble points
     // through the post-move map origin.
     const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
-    DebugLog( D_INFO, DC_ALL )
-            << "openclaw_harness_semantic_step: {\"event\":\"receipt\",\"run_id\":"
-            << openclaw_harness_quote_action_value( run_id )
-            << ",\"frame_id\":" << openclaw_harness_quote_action_value( frame_id )
-            << ",\"action_id\":" << openclaw_harness_quote_action_value( action_id )
-            << ",\"accepted\":" << ( std::strcmp( outcome, "moved" ) == 0 ? "true" : "false" )
-            << ",\"outcome\":" << openclaw_harness_quote_action_value( outcome )
-            << ",\"coordinate_space\":\"absolute_ms\""
-            << ",\"before_absolute_ms\":[" << before.x() << ',' << before.y() << ',' << before.z()
-            << "],\"expected_absolute_ms\":[" << expected.x() << ',' << expected.y() << ',' << expected.z()
-            << "],\"after_absolute_ms\":[" << after.x() << ',' << after.y() << ',' << after.z()
-            << "],\"after_terrain\":" << openclaw_harness_quote_action_value(
-                here.ter( after_bub ).obj().id.str() )
-            << ",\"observed_turn\":" << turn << '}';
+    std::ostringstream event;
+    event << "{\"event\":\"receipt\",\"run_id\":"
+          << openclaw_harness_quote_action_value( run_id )
+          << ",\"frame_id\":" << openclaw_harness_quote_action_value( frame_id )
+          << ",\"action_id\":" << openclaw_harness_quote_action_value( action_id )
+          << ",\"accepted\":" << ( std::strcmp( outcome, "moved" ) == 0 ? "true" : "false" )
+          << ",\"outcome\":" << openclaw_harness_quote_action_value( outcome )
+          << ",\"coordinate_space\":\"absolute_ms\""
+          << ",\"before_absolute_ms\":[" << before.x() << ',' << before.y() << ',' << before.z()
+          << "],\"expected_absolute_ms\":[" << expected.x() << ',' << expected.y() << ',' << expected.z()
+          << "],\"after_absolute_ms\":[" << after.x() << ',' << after.y() << ',' << after.z()
+          << "],\"after_terrain\":" << openclaw_harness_quote_action_value(
+              here.ter( after_bub ).obj().id.str() )
+          << ",\"observed_turn\":" << turn << '}';
+    openclaw_harness_write_semantic_step_event( event.str() );
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();
 }
 
 static std::string openclaw_harness_semantic_movement_action_id( action_id action )
@@ -3553,9 +3555,36 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
                                               player_character, here, tripoint_rel_ms( dest_delta, 0 ) );
                 const tripoint_bub_ms pos_after = player_character.pos_bub();
                 const tripoint_abs_ms pos_after_abs = player_character.pos_abs();
-                if( !semantic_action.empty() ) {
+                std::string movement_semantic_action = semantic_action;
+                // View-relative movement may have been normalized to a
+                // diagonal action enum before this branch even though the
+                // native absolute step is cardinal.  The semantic owner has
+                // already attested the request; derive that cardinal receipt
+                // from the actual absolute delta instead of losing it solely
+                // to the intermediate action spelling.
+                if( movement_semantic_action.empty() && openclaw_harness_semantic_step_trace_enabled() ) {
+                    const tripoint_rel_ms absolute_delta = pos_after_abs - pos_before_abs;
+                    if( absolute_delta == tripoint_rel_ms( 0, -1, 0 ) ) {
+                        movement_semantic_action = "world.move.north";
+                    } else if( absolute_delta == tripoint_rel_ms( 0, 1, 0 ) ) {
+                        movement_semantic_action = "world.move.south";
+                    } else if( absolute_delta == tripoint_rel_ms( -1, 0, 0 ) ) {
+                        movement_semantic_action = "world.move.west";
+                    } else if( absolute_delta == tripoint_rel_ms( 1, 0, 0 ) ) {
+                        movement_semantic_action = "world.move.east";
+                    }
+                }
+                if( !movement_semantic_action.empty() ) {
+                    // The semantic World scope retires its published frame
+                    // after writing its owner receipt.  Retain a native frame
+                    // for the coordinate completion even when that retirement
+                    // has already cleared the pending global.
+                    const std::string movement_frame = openclaw_harness_pending_world_frame.empty() ?
+                                                       openclaw_harness_semantic_step_frame(
+                                                           "world", {}, "movement_receipt" ) :
+                                                       openclaw_harness_pending_world_frame;
                     openclaw_harness_semantic_movement_receipt(
-                        openclaw_harness_pending_world_frame, semantic_action, pos_before_abs, expected_abs,
+                        movement_frame, movement_semantic_action, pos_before_abs, expected_abs,
                         pos_after_abs, here, pos_after, move_handled );
                     openclaw_harness_pending_world_frame = openclaw_harness_semantic_step_frame(
                                 "world", {}, "post_step" );

@@ -1077,6 +1077,52 @@ TEST_CASE( "direction selection receipts bind to its real confirmation successor
     } ) );
 }
 
+TEST_CASE( "withheld main-menu quit releases its owner before publishing confirmation",
+           "[semantic_surface]" )
+{
+    semantic_surface_manager manager( "test-run" );
+    std::vector<semantic_surface_descriptor> descriptors;
+    std::vector<semantic_action_receipt> receipts;
+    manager.set_descriptor_observer( [&descriptors]( const semantic_surface_descriptor &descriptor ) {
+        descriptors.push_back( descriptor );
+    } );
+    manager.set_receipt_observer( [&receipts]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+
+    std::optional<semantic_surface_scope> main_menu;
+    main_menu.emplace( manager, "main_menu", "Main menu", std::map<std::string, std::string>{},
+    std::vector<semantic_action_descriptor>{ { "main_menu.quit", "", "Quit", true } },
+    [&manager]( const semantic_action_request &request ) {
+        if( !manager.withhold_parent_authority_until_recreated( request.surface_id ) ) {
+            return semantic_action_dispatch_result{ false, "native_parent_withhold_failed", "" };
+        }
+        return semantic_action_dispatch_result{ true, "", "", true };
+    } );
+    const semantic_surface_descriptor main_menu_frame = *manager.top();
+    REQUIRE( manager.submit_request( { "test-run", main_menu_frame.surface_id,
+                                       main_menu_frame.frame_id, "quit", "main_menu.quit", "", {} } ) );
+    REQUIRE( main_menu->consume_request() );
+
+    // This matches the current-iteration quit path: no stale main-menu
+    // descriptor may stand between the accepted action and query_yn's prompt.
+    main_menu.reset();
+    semantic_surface_scope confirmation( manager, "prompt", "YESNO", {
+        { "text", "Really quit?" }
+    }, { { "prompt.choose", "yes", "YES", true } } );
+
+    REQUIRE( manager.top() );
+    CHECK( manager.top()->kind == "prompt" );
+    CHECK( manager.top()->breadcrumbs == std::vector<std::string>{ "YESNO" } );
+    REQUIRE( receipts.size() == 1 );
+    CHECK( receipts.front().request_id == "quit" );
+    CHECK( receipts.front().resulting_frame_id == manager.top()->frame_id );
+    CHECK( std::none_of( descriptors.begin() + 1, descriptors.end(),
+    []( const semantic_surface_descriptor &descriptor ) {
+        return descriptor.kind == "main_menu";
+    } ) );
+}
+
 TEST_CASE( "uilist rejects disabled and duplicate stable semantic choices",
            "[semantic_surface]" )
 {

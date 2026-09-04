@@ -5533,6 +5533,7 @@ def execute_semantic_act(
                     "surface_request": request, "detail": str(exc)}
 
         deadline = time.monotonic() + transition_timeout_seconds
+        transition_event: Optional[Dict[str, Any]] = None
         # Always inspect the trace once after the last scheduled poll.  A
         # native wake can publish its receipt during the final sleep; testing
         # the deadline at the top of the loop would discard that already
@@ -5581,10 +5582,11 @@ def execute_semantic_act(
                             "mismatched_fields": mismatched,
                             "next_frame": None,
                         }
-                    transition_event = append_semantic_surface_transition_event(
-                        run_dir, run_id, request, native_receipt,
-                        proof_step_label=proof_step_label, proof_step_index=proof_step_index,
-                    )
+                    if transition_event is None:
+                        transition_event = append_semantic_surface_transition_event(
+                            run_dir, run_id, request, native_receipt,
+                            proof_step_label=proof_step_label, proof_step_index=proof_step_index,
+                        )
                     if native_receipt.get("accepted") is not True:
                         return {"accepted": False,
                                 "reason": str(native_receipt.get("rejection_reason", "native_rejected")),

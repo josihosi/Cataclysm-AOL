@@ -2993,15 +2993,17 @@ def reload_selection_token_for_launch(
 
         if authority_kind == "coordinator_brief_charter":
             current_routes = _current_route_evidence(connection, expected_manifest_id)
-            lifecycle, _ = _current_lifecycle_state(
+            lifecycle, lifecycle_reason = _current_lifecycle_state(
                 connection, manifest_id=expected_manifest_id, present=bool(manifest["present"]),
                 route_evidence=current_routes,
             )
-            if declaration.get("name") == "cannibal.r029_natural_route_roof_mcw" and current_routes and \
-                    all(str(route.get("evidence_state", "")) == "stale" for route in current_routes):
+            if declaration.get("name") == "cannibal.r029_natural_route_roof_mcw" and current_routes and (\
+                    all(str(route.get("evidence_state", "")) == "stale" for route in current_routes) or
+                    lifecycle_reason in {"route_contradicted", "route_stale", "quarantine_history"}):
                 # The charter is authorizing this current manifest revision;
-                # stale runs remain audit history rather than preventing its
-                # first fresh lifecycle witness from being launched.
+                # stale or contradicted prior runs remain audit history rather
+                # than preventing its first fresh lifecycle witness from
+                # being launched.
                 lifecycle = "active"
             review = _exclusive_source_review_state(
                 connection, manifest_id=expected_manifest_id, source_path=str(source_path),

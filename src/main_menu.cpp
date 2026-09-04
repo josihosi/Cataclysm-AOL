@@ -757,12 +757,9 @@ bool main_menu::opening_screen()
             std::map<std::string, std::string>{},
             std::vector<semantic_action_descriptor>{
                 { "main_menu.quit", "", _( "Quit" ), true }
-            }, [semantic_manager]( const semantic_action_request &request ) {
+            }, [semantic_manager, &semantic_action]( const semantic_action_request &request ) {
                 if( request.action_id != "main_menu.quit" || request.stable_id.has_value() ) {
                     return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
-                }
-                if( !semantic_manager->queue_native_intent( request, "main_menu.quit" ) ) {
-                    return semantic_action_dispatch_result{ false, "native_intent_unavailable", "" };
                 }
                 // A confirmed quit has no successor main-menu frame: query_yn
                 // returns into this owner and the process exits.  Withhold the
@@ -771,9 +768,12 @@ bool main_menu::opening_screen()
                 // relay may mistake for a live replacement process.
                 if( !semantic_manager->withhold_parent_authority_until_recreated(
                         request.surface_id ) ) {
-                    semantic_manager->take_native_intent( "main_menu.quit" );
                     return semantic_action_dispatch_result{ false, "native_parent_withhold_failed", "" };
                 }
+                // Keep the semantic choice in the same main-menu iteration.
+                // A queued second intent can otherwise outlive its bound
+                // descriptor while the confirmation child is being created.
+                semantic_action = "QUIT";
                 if( std::getenv( "OPENCLAW_HARNESS_UI_TRACE" ) != nullptr ) {
                     DebugLog( D_INFO, DC_ALL )
                             << "openclaw_harness_ui_trace: component=semantic_ui"
@@ -784,27 +784,15 @@ bool main_menu::opening_screen()
             } );
             semantic_scope->consume_request();
         }
-        if( semantic_manager != nullptr && semantic_manager->take_native_intent( "main_menu.quit" ) ) {
-#if !defined(EMSCRIPTEN)
-            if( std::getenv( "OPENCLAW_HARNESS_UI_TRACE" ) != nullptr ) {
-                DebugLog( D_INFO, DC_ALL )
-                        << "openclaw_harness_ui_trace: component=semantic_ui"
-                        << " event=main_menu_quit_before_confirmation";
-            }
-            const bool confirmed = query_yn( _( "Really quit?" ) );
-            if( std::getenv( "OPENCLAW_HARNESS_UI_TRACE" ) != nullptr ) {
-                DebugLog( D_INFO, DC_ALL )
-                        << "openclaw_harness_ui_trace: component=semantic_ui"
-                        << " event=main_menu_quit_after_confirmation"
-                        << " confirmed=" << ( confirmed ? "true" : "false" );
-            }
-            if( confirmed ) {
-                return false;
-            }
-#endif
-            continue;
-        }
         const bool semantic_action_consumed = !semantic_action.empty();
+        if( semantic_action_consumed ) {
+            // The request was consumed by this main-menu scope, but QUIT's
+            // actual native successor is query_yn.  Release the withheld
+            // parent before constructing that child: otherwise the parent
+            // redraw can become the next published frame and prevent the
+            // confirmation owner from ever being entered.
+            semantic_scope.reset();
+        }
         std::string action = semantic_action_consumed ? semantic_action : ctxt.handle_input();
         input_event sInput = ctxt.get_raw_input();
 
@@ -899,7 +887,19 @@ bool main_menu::opening_screen()
         // also check special keys
         if( action == "QUIT" ) {
 #if !defined(EMSCRIPTEN)
-            if( query_yn( _( "Really quit?" ) ) ) {
+            if( semantic_action_consumed && std::getenv( "OPENCLAW_HARNESS_UI_TRACE" ) != nullptr ) {
+                DebugLog( D_INFO, DC_ALL )
+                        << "openclaw_harness_ui_trace: component=semantic_ui"
+                        << " event=main_menu_quit_before_confirmation";
+            }
+            const bool confirmed = query_yn( _( "Really quit?" ) );
+            if( semantic_action_consumed && std::getenv( "OPENCLAW_HARNESS_UI_TRACE" ) != nullptr ) {
+                DebugLog( D_INFO, DC_ALL )
+                        << "openclaw_harness_ui_trace: component=semantic_ui"
+                        << " event=main_menu_quit_after_confirmation"
+                        << " confirmed=" << ( confirmed ? "true" : "false" );
+            }
+            if( confirmed ) {
                 return false;
             }
 #endif
