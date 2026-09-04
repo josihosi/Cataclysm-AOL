@@ -1,11 +1,11 @@
 {
   "manifest_version": 2,
   "name": "cannibal.r029_natural_route_roof_mcw",
-  "description": "Current-source R-029 cannibal natural-route witness.  The disposable fixture supplies only the roof and a nearby cannibal-camp footprint; the player must create the physical fire and retreat through native product actions before any signal, scout, report, rally, response, or contact observation receives credit.",
+  "description": "Current-source R-029 cannibal natural-route witness. The disposable fixture supplies only the roof and a non-colliding in-range cannibal-camp footprint; the player must create the physical fire and retreat through native product actions before any signal, scout, report, rally, response, or contact observation receives credit.",
   "profile": "dev-harness",
   "config_profile": "dev-harness",
   "world": "McWilliams",
-  "fixture": "r008_fire_signal_roof_cannibal_v1",
+  "fixture": "r029_fire_signal_roof_cannibal_in_range_v2",
   "fixture_profile": "live-debug",
   "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
   "replace_existing_worlds": true,
@@ -15,7 +15,7 @@
   "capabilities": {
     "capabilities.r029.cannibal_natural_route": "physical_fire_staffed_observer_scout_report_rally_response",
     "runtime.entry_mode": "cockpit_live_session",
-    "runtime.r029.source_binding": "r008_fire_signal_roof_cannibal_v1:dev-harness"
+    "runtime.r029.source_binding": "r029_fire_signal_roof_cannibal_in_range_v2:dev-harness"
   },
   "runtime_contract": {
     "permitted_input": ["ordinary-player-ui:deploy-brazier", "ordinary-player-ui:ignite-with-charged-lighter", "cockpit:game.guarded_move_relative", "cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.keep_watch", "cockpit:run.continue", "cockpit:run.witness", "cockpit:run.finish"],
@@ -27,11 +27,11 @@
     "platform": ["macos"],
     "profile": "dev-harness",
     "config_profile": "dev-harness",
-    "fixture": "r008_fire_signal_roof_cannibal_v1",
-    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r008_fire_signal_roof_cannibal_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["ordinary fire setup and worker-owned live cockpit"], "cleanup": true},
+    "fixture": "r029_fire_signal_roof_cannibal_in_range_v2",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r029_fire_signal_roof_cannibal_in_range_v2", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["ordinary fire setup and worker-owned live cockpit"], "cleanup": true},
     "grants_gameplay_proof": true
   },
-  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r008_fire_signal_roof_cannibal_v1/manifest.json", "native_source": "src/do_turn.cpp", "native_executable": "cataclysm-tiles"},
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r029_fire_signal_roof_cannibal_in_range_v2/manifest.json", "native_source": "src/do_turn.cpp", "native_executable": "cataclysm-tiles"},
   "proof_gates": [{"id": "r029_cannibal_natural_route_bound", "label": "R-029 cannibal route reaches one current source-bound live session", "boundary_step": "operate_r029_cannibal_natural_route", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
   "proof_route": {"gates": ["r029_cannibal_natural_route_bound"], "terminal": ["r029_cannibal_natural_route_bound"], "capability_gates": {"capabilities.r029.cannibal_natural_route": {"terminal": ["r029_cannibal_natural_route_bound"]}}},
   "steps": [
@@ -47,7 +47,7 @@
     "terminal_exit_timeout_seconds": 30.0,
     "steps": [
       {"kind": "audit_saved_map_tile_near_player", "label": "audit_persisted_r029_player_fire", "offsets": [[1, 1, 0]], "required_furniture": ["f_brazier"], "required_fields": ["fd_fire"], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r029_post_retreat_save_missing_player_fire", "abort_reason": "The native save did not preserve the player-created brazier fire; no fixture may be reinstalled after the retreat checkpoint."},
-      {"kind": "cockpit_live_session", "label": "operate_r029_cannibal_post_retreat_keep_watch", "objective": "Continue only from the persisted player-created fire and guarded retreat.  Cross the next five-minute production signal cadence once and preserve the first staffed-observer receipt or first causal divergence; do not create or edit ecology state.", "proof_targets": ["persisted f_brazier and fd_fire checkpoint", "native keep_watch receipts and elapsed world minutes", "first shared natural staffed-observer or divergence fact", "source, executable, actor, receipt, and cleanup binding"], "authority": ["game.keep_watch through advertised native menu choices", "advertised native actions and worker-chosen waits", "run.continue", "run.witness", "run.finish"], "invariants": ["no fixture installation or save transform occurs after the native save boundary", "the preceding fire and retreat are setup evidence only and are not replayed", "the signal, scout, report, operation, and contact must be production-created", "do not reuse consumed authority", "preserve the first divergence and retain unaffected observations"], "live_operations": ["game.keep_watch", "game.raw_wait", "game.wait"], "keep_watch": {"enabled": true, "danger_handling": "handle_classified_non_dangerous", "target_delta_game_minutes": 4, "bound": {"basis": "scheduler_boundary", "source": "do_turn.cpp signals staffed camps every five minutes; the production bootstrap committed at minute 8220 and the persisted post-relaunch checkpoint is minute 8221, so minute 8225 is the next cadence", "unit": "game_minutes", "maximum": 4, "progress_required": true}, "recipe": ["world.wait", {"action_id": "menu.choose", "stable_id": "wait-mode:wait-a-while", "label": "Wait a while"}, "wait.1m"], "duration_stable_id": "wait-duration:wait.1m"}, "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+      {"kind": "cockpit_live_session", "label": "operate_r029_cannibal_post_retreat_keep_watch", "objective": "Continue only from the persisted player-created fire and guarded retreat. The first cadence may register the zero-credit cannibal footprint; cross the immediately following five-minute cadence and preserve the first staffed-observer receipt or first causal divergence. Do not create or edit ecology state.", "proof_targets": ["persisted f_brazier and fd_fire checkpoint", "native keep_watch receipts and elapsed world minutes", "zero-credit production registration followed by the first shared natural staffed-observer or divergence fact", "source, executable, actor, receipt, and cleanup binding"], "authority": ["game.keep_watch through advertised native menu choices", "advertised native actions and worker-chosen waits", "run.continue", "run.witness", "run.finish"], "invariants": ["no fixture installation or save transform occurs after the native save boundary", "the preceding fire and retreat are setup evidence only and are not replayed", "the signal, scout, report, operation, and contact must be production-created", "do not reuse consumed authority", "preserve the first divergence and retain unaffected observations"], "live_operations": ["game.keep_watch", "game.raw_wait", "game.wait"], "keep_watch": {"enabled": true, "danger_handling": "handle_classified_non_dangerous", "target_delta_game_minutes": 9, "bound": {"basis": "scheduler_boundary", "source": "do_turn.cpp registers a newly seeded zero-credit special at the first due signal cadence and intentionally defers its staffed observation until the following five-minute cadence; the persisted checkpoint is minute 8221, so minute 8230 is the first independent observer opportunity", "unit": "game_minutes", "maximum": 9, "progress_required": true}, "recipe": ["world.wait", "wait.1m"], "duration_stable_id": "wait-duration:wait.1m"}, "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
     ]
   },
   "evidence_contract": {"claim": "one source-bound R-029 cannibal witness supplies only independently observed natural-route facts", "failure_rule": "fixture fire, injected camp state, missing source/executable identity, missing guarded-retreat receipt, or fabricated report/contact leaves the affected R-029 path unproved"}

@@ -1065,15 +1065,59 @@ Mechanism:
 Implementation status:
 
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-030 -->
-- [ ] 🔴 R-030 — Phase-3 now has guarded compact worker receipts, exact terminal gating, narrow
-  receipt queries, progressive packets, and backfilled R-026/R-029 continuation. The repository CAOL
-  command surfaces still emit bulk payloads by default and lack the cross-surface pinpoint retrieval
-  needed for lossless continuation.
+- [x] R-030 — Make CAOL and DE67 worker evidence quiet by default without losing any full-fidelity
+  artifact: compact command receipts, indexed journal lookup, outcome-sized progressive briefs, and
+  durable successor continuation must preserve exact identity and binding while the full digest-bound
+  payload remains explicitly retrievable.
   - DFS slices: `R-030-S001`
-  - Reproduced cause: current `registry-status` emitted one 4,236,128-character JSON line containing
-    223 complete entries; prior continuation depended on 151 and 6 free-text checkpoints.
-  - First open boundary: implement one representative CAOL quiet/artifact status route and exact
-    indexed query, then generalize only to the other named evidence surfaces needed by this claim.
+  - Known footing: the guarded Phase-3 method now validates and stores identity-bound worker receipts,
+    queries compact projections by exact continuation/evidence identities, and generates successor
+    packets from the current frontier plus a reasoned read plan. Backfilled receipts preserve R-026
+    and R-029 without replaying their accepted work.
+  - Current evidence: `registry-status` is quiet by default and keeps its complete result in a
+    digest-bound artifact. `runtime-status` now does the same and supports exact executable binding
+    selection, explicit full output, and exact artifact retrieval. A live missing-executable check
+    returned receipt `6bdf85e5…2202`, and exact retrieval recovered `build_required`. Two focused
+    tests, Python compilation, and diff validation passed. Receipt `5e3ed2b8…eae9` preserves this
+    worker result. The earlier 4,236,128-character output remains the counterexample that this route
+    fixes.
+  - Current uncertainty: exact cross-surface selectors, the remaining CAOL skill contract, and a
+    fresh successor continuation remain unproved. Two unrelated full CLI startup tests still fail
+    because the canonical `cli.json` file is absent. The full cockpit bridge suite also has existing
+    intermittent asynchronous ready and cleanup races outside the focused receipt proof.
+  - Latest result: the remaining CAOL surface gap is closed by task `R-030-closure-001`. The shared
+    cockpit bridge keeps compact status and exact slices, recovers full cockpit, witness, and
+    diagnostic responses only through the receipt digest, and rejects digest mismatch, tampering,
+    and response-namespace path escape. Tasks `R-030-closure-002` and `R-030-closure-003` then reached
+    the same W1 clock-only wait before selector work began. Tasks `R-030-closure-004` and
+    `R-030-closure-005` targeted the separate skill-and-contract gap but received the same clock-only
+    wait before any repository work. Receipt `d271124b…c859c` preserves the latest attempt. It proves
+    that the old dispatch packet blocked the assigned repository route. It does not judge any open
+    product gap.
+  - Route change: the owner approved recovery after correcting the worker routing loop. A fresh
+    neutral worker may now inspect and change the repository for its assigned outcome. The completed
+    registry, runtime, and shared cockpit receipt work must not be replayed.
+  - Closed gap: task `R-030-closure-006` aligned the CAOL skill and focused contract test with the
+    implemented compact, full, query, and digest-bound recovery routes. Four focused tests and
+    `git diff --check` passed. Receipt `731f21ca…d4822` preserves the exact result. The missing
+    `tools/openclaw_harness/scenarios/cli.json` file still blocks two unrelated broad startup tests.
+  - Closed gap: task `R-030-closure-007` proved all 14 required exact receipt selectors. Each
+    positive filter returned the bound compact receipt, and a wrong-actor control returned none.
+    Ninety harness tests and focused CAOL checks passed. Receipt `54e16f59…d2258c` preserves the
+    result.
+  - Closed gap: task `R-030-closure-008` used a fresh packet, verified its digest, recovered the
+    exact prior selector receipt, and continued without replaying accepted work. Receipt
+    `0e2afae0…a96625` preserves the result. Every required R-030 closure gap is now closed. The claim
+    still requires its separate acceptance transition.
+  - Subtasks:
+    - [done] measure-existing-context-path :: Preserve the 4,236,128-character/223-entry registry counterexample and the 151/6 checkpoint continuity evidence as diagnostics, not limits.
+    - [done] generate-progressive-worker-packet :: Phase-3 worker packets now carry the outcome, current frontier, compact receipt, exact bindings/entrypoints, and a reasoned progressive read plan.
+    - [done] persist-query-worker-continuation :: Identity-bound worker receipts are artifact-validated, durably stored, terminal-gated, and narrowly queryable; R-026 and R-029 have backfilled continuations.
+    - [done] make-caol-command-output-quiet :: Registry, runtime, cockpit, witness, and diagnostic commands now return compact receipts and preserve verified full artifacts.
+    - [done] index-pinpoint-evidence :: Fourteen exact worker-receipt filters return only the bound receipt, and a wrong-actor control returns no result.
+    - [done] align-caol-skill-and-contract-tests :: The CAOL skill and focused test now describe and enforce the implemented registry, runtime, and shared cockpit quiet, full, query, and recovery behavior.
+    - [done] prove-lossless-successor-route :: A fresh worker verified its packet digest, recovered the exact prior receipt, and continued from the recorded boundary without replay or log archaeology.
+  - Durable acceptance: #1 via `R-030-closure-008`; SQLite evidence is authoritative.
 <!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-030-S001 claim=R-030 -->
 

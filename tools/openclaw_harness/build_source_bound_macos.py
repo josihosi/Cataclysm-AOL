@@ -36,6 +36,13 @@ def main() -> int:
         if not build_prefix.endswith("/"):
             build_prefix += "/"
         command.append(f"BUILD_PREFIX={build_prefix}")
+    # The direct product target does not depend on Makefile's phony ``version``
+    # target.  Refresh it first so the executable's embedded revision cannot
+    # remain at a prior checkout while its build receipt claims current source.
+    version_command = [*command, "version"]
+    completed = subprocess.run(version_command, cwd=ROOT, check=False)
+    if completed.returncode != 0:
+        return completed.returncode
     command.append(f"{build_prefix}{'cataclysm-tiles' if tiles else 'cataclysm'}")
     completed = subprocess.run(command, cwd=ROOT, check=False)
     if completed.returncode != 0:
@@ -56,6 +63,7 @@ def main() -> int:
         "product_source_sha256": source["sha256"],
         "built_at": datetime.now(timezone.utc).isoformat(),
         "command": command,
+        "version_command": version_command,
     }
     receipt_path = startup_harness.product_build_receipt_path(executable)
     receipt_path.parent.mkdir(parents=True, exist_ok=True)

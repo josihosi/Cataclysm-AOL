@@ -284,6 +284,35 @@ class CockpitRunChannel:
         return None
 
     @staticmethod
+    def _semantic_damage_ignore_choice(
+        frame: Mapping[str, Any],
+    ) -> Optional[tuple[str, str]]:
+        """Return the exact advertised ignore choice for native damage waits.
+
+        The native activity-distraction owner normally advertises
+        ``activity.ignore``.  The semantic bridge can instead expose the
+        same ordinary player prompt as a ``prompt`` surface.  It may only be
+        continued when the caller explicitly selected the permissive danger
+        mode and this exact descriptor advertises its named ``IGNORE``
+        choice; arbitrary prompts never inherit that authority.
+        """
+        descriptor = CockpitRunChannel._surface_descriptor(frame)
+        if descriptor is None or descriptor["kind"] != "prompt":
+            return None
+        facts = descriptor["facts"]
+        if facts.get("title") != "CANCEL_ACTIVITY_OR_IGNORE_QUERY" or \
+                "something hurts" not in facts.get("text", "").lower():
+            return None
+        matches = [
+            action for action in descriptor["actions"]
+            if action["enabled"] is True and action["id"] == "prompt.choose" and
+            action["label"] == "IGNORE" and action["stable_id"]
+        ]
+        if len(matches) != 1:
+            return None
+        return "prompt.choose", matches[0]["stable_id"]
+
+    @staticmethod
     def _frame(frame: Mapping[str, Any]) -> tuple[str, str, Optional[int], Mapping[str, Any], tuple[str, ...]]:
         descriptor = CockpitRunChannel._surface_descriptor(frame)
         if descriptor is not None:
@@ -998,6 +1027,34 @@ class CockpitRunChannel:
             recipe_entry = normalized_recipe[recipe_index % len(normalized_recipe)]
             surface_actions = raw.get("valid_actions") if isinstance(raw, Mapping) else None
             if isinstance(surface_actions, list) and any(isinstance(item, Mapping) for item in surface_actions):
+                semantic_damage_ignore = self._semantic_damage_ignore_choice(raw)
+                if semantic_damage_ignore is not None:
+                    if danger_handling != "ignore_danger_and_interruptions":
+                        return self._fail_closed("keep_watch_unsafe_condition", {
+                            "classification": "damage_detected",
+                            "observation_id": observed.get("observation_id", ""),
+                            "unused_authority": "revoked",
+                        })
+                    action_id, stable_id = semantic_damage_ignore
+                    outcome = self.act(
+                        observation_id=str(observed["observation_id"]), action_id=action_id,
+                        stable_id=stable_id,
+                    )
+                    tool_round_trips += 1
+                    if outcome.get("ok") is not True:
+                        return outcome
+                    handled_interruptions.append({
+                        "classification": "damage_detected",
+                        "decision": "ignore_explicit_damage_prompt",
+                        "observation_id": observed.get("observation_id", ""),
+                        "action_id": action_id,
+                        "stable_id": stable_id,
+                    })
+                    next_observation = outcome.get("observation")
+                    observed = dict(next_observation) if isinstance(
+                        next_observation, Mapping
+                    ) else self.observe()
+                    continue
                 semantic_wait_choice = self._semantic_wait_menu_choice(raw, normalized_recipe)
                 if semantic_wait_choice is not None:
                     action_id, stable_id = semantic_wait_choice
@@ -1028,10 +1085,22 @@ class CockpitRunChannel:
                                 )
                             continue
                         return outcome
-                    next_observation = outcome.get("observation")
-                    observed = dict(next_observation) if isinstance(
-                        next_observation, Mapping
-                    ) else self.observe()
+                    if action_id != "menu.choose":
+                        # A duration can be exposed as a direct semantic
+                        # action on the menu owner.  It consumes the matching
+                        # recipe primitive just as the non-semantic branch
+                        # does; retaining its cursor would try that expired
+                        # duration again on the successor World surface.
+                        recipe_index = (
+                            next(index for index, entry in enumerate(normalized_recipe)
+                                 if entry["action_id"] == action_id) + 1
+                        )
+                    # Choosing the native "Wait a while" parent can report a
+                    # transient World frame before its duration descriptor is
+                    # emitted.  This is after an accepted native dispatch,
+                    # not an authority-free retry: obtain the fresh owner so
+                    # the next recipe primitive is checked against that owner.
+                    observed = self.observe()
                     continue
                 if recipe_entry["action_id"] != "menu.choose":
                     # The initial semantic world owner is already the exact
@@ -1094,18 +1163,33 @@ class CockpitRunChannel:
                         next_observation = outcome.get("observation")
                         observed = dict(next_observation) if isinstance(next_observation, Mapping) else self.observe()
                         continue
-                    # A semantic parent can synchronously open its concrete
-                    # uilist.  It grants no action authority by itself.
-                    observed = self.observe()
-                    continue
+                    # A descriptor is an immutable action owner.  Without an
+                    # advertised primitive it cannot synchronously advance to
+                    # a concrete child: re-observing this same owner would
+                    # spin forever without ever submitting a native request.
+                    return self._fail_closed("keep_watch_recipe_action_not_advertised", {
+                        "observation_id": observed.get("observation_id", ""),
+                        "state": str(raw.get("state", "")),
+                        "action_id": primitive,
+                        "advertised_actions": sorted(
+                            str(item.get("id", "")) for item in surface_actions
+                            if isinstance(item, Mapping) and item.get("enabled") is True
+                        ),
+                        "recipe_cursor": recipe_index,
+                        "unused_authority": "revoked",
+                    })
                 matches = [item for item in surface_actions if isinstance(item, Mapping) and
                            item.get("enabled") is True and item.get("id") == "menu.choose" and
                            item.get("stable_id") == recipe_entry["stable_id"] and
                            item.get("label") == recipe_entry["label"]]
                 if not any(isinstance(item, Mapping) and item.get("id") == "menu.choose"
                            for item in surface_actions):
-                    observed = self.observe()
-                    continue
+                    return self._fail_closed("keep_watch_menu_choice_not_advertised", {
+                        "observation_id": observed.get("observation_id", ""),
+                        "stable_id": recipe_entry["stable_id"], "label": recipe_entry["label"],
+                        "match_count": 0,
+                        "unused_authority": "revoked",
+                    })
                 if len(matches) != 1:
                     return self._fail_closed("keep_watch_menu_choice_not_advertised", {
                         "observation_id": observed.get("observation_id", ""),

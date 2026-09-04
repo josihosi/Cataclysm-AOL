@@ -9531,6 +9531,7 @@ def ingest_token_linked_report_reference(
     report_path: Path,
     *,
     adapters: BindingAdapters,
+    witness_charter: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Ingest one durable report and retain its selected-token verification link."""
     canonical_path, report_bytes = _report_path_and_bytes(report_path)
@@ -9565,7 +9566,9 @@ def ingest_token_linked_report_reference(
             "report_id": report_id,
         }
 
-    selection = reload_selection_token_for_launch(connection, token_id)
+    selection = reload_selection_token_for_launch(
+        connection, token_id, witness_charter=witness_charter,
+    )
     if not selection.accepted:
         return {
             "status": "rejected_token",

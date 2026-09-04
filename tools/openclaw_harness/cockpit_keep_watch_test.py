@@ -115,19 +115,142 @@ class KeepWatchTest(unittest.TestCase):
         duration["valid_actions"] = [{
             "id": "wait.1m", "stable_id": "", "label": "wait.1m", "enabled": True,
         }]
-        target = self.menu_frame(4, stable_id="world-wait", label="Wait")
-        target.update({
+        after_first_minute = self.menu_frame(4, stable_id="world-wait", label="Wait")
+        after_first_minute.update({
             "kind": "world", "game_minutes": 101,
             "valid_actions": [{
                 "id": "world.wait", "stable_id": "world-wait", "label": "Wait", "enabled": True,
             }],
         })
-        service, dispatched = self.service([start, mode, duration, target])
+        next_mode = self.menu_frame(
+            5, stable_id="wait-mode:wait-a-while", label="Wait a while",
+        )
+        next_duration = self.menu_frame(6, stable_id="", label="wait.1m")
+        next_duration["valid_actions"] = [{
+            "id": "wait.1m", "stable_id": "", "label": "wait.1m", "enabled": True,
+        }]
+        target = self.menu_frame(7, stable_id="world-wait", label="Wait")
+        target.update({
+            "kind": "world", "game_minutes": 102,
+            "valid_actions": [{
+                "id": "world.wait", "stable_id": "world-wait", "label": "Wait", "enabled": True,
+            }],
+        })
+        service, dispatched = self.service([
+            start, mode, duration, after_first_minute, next_mode, next_duration, target,
+        ])
+
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 102, "bound": bound(),
+            "recipe": ["world.wait", "wait.1m"],
+        }})
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, [
+            "world.wait", "menu.choose", "wait.1m",
+            "world.wait", "menu.choose", "wait.1m",
+        ])
+
+    def test_permissive_watch_receipts_the_explicit_semantic_damage_ignore_prompt(self) -> None:
+        safety = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, safety)
+        damage_prompt = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "keep-watch-proof",
+            "frame_id": "keep-watch-proof:2", "surface_id": "surface:2", "kind": "prompt",
+            "breadcrumbs": ["Activity distraction", "CANCEL_ACTIVITY_OR_IGNORE_QUERY"],
+            "payload": {
+                "title": "CANCEL_ACTIVITY_OR_IGNORE_QUERY",
+                "text": "Ouch, something hurts! Stop waiting? (Case Sensitive)",
+            },
+            "valid_actions": [
+                {"id": "prompt.choose", "stable_id": "prompt-option:1", "label": "YES", "enabled": True},
+                {"id": "prompt.choose", "stable_id": "prompt-option:2", "label": "NO", "enabled": True},
+                {"id": "prompt.choose", "stable_id": "prompt-option:3", "label": "MANAGER", "enabled": True},
+                {"id": "prompt.choose", "stable_id": "prompt-option:4", "label": "IGNORE", "enabled": True},
+            ],
+        }
+        target = self.menu_frame(3, stable_id="world-wait", label="Wait")
+        target.update({
+            "kind": "world", "breadcrumbs": ["World"], "game_minutes": 101,
+            "valid_actions": [{
+                "id": "world.wait", "stable_id": "world-wait", "label": "Wait", "enabled": True,
+            }],
+        })
+        service, dispatched = self.service([start, damage_prompt, target])
 
         result = service.call({"action": "game.keep_watch", "keep_watch": {
             "enabled": True, "target_game_minutes": 101, "bound": bound(),
-            "recipe": ["world.wait", "wait.1m"],
+            "recipe": ["world.wait"], "danger_handling": "ignore_danger_and_interruptions",
         }})
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "prompt.choose"])
+        self.assertEqual(result["result"]["handled_interruptions"], [{
+            "classification": "damage_detected",
+            "decision": "ignore_explicit_damage_prompt",
+            "observation_id": "keep-watch-proof:2",
+            "action_id": "prompt.choose",
+            "stable_id": "prompt-option:4",
+        }])
+
+    def test_wait_menu_choice_reobserves_past_a_transient_world_successor(self) -> None:
+        safety = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, safety)
+        mode = self.menu_frame(2, stable_id="wait-mode:wait-a-while", label="Wait a while")
+        transient = self.menu_frame(3, stable_id="world-wait", label="Wait")
+        transient.update({
+            "kind": "world", "breadcrumbs": ["World"],
+            "valid_actions": [{"id": "world.wait", "stable_id": "", "label": "world.wait",
+                               "enabled": True}],
+        })
+        duration = self.menu_frame(4, stable_id="", label="wait.1m")
+        duration["valid_actions"] = [{
+            "id": "wait.1m", "stable_id": "", "label": "wait.1m", "enabled": True,
+        }]
+        target = self.menu_frame(5, stable_id="world-wait", label="Wait")
+        target.update({
+            "kind": "world", "breadcrumbs": ["World"], "game_minutes": 101,
+            "valid_actions": [{"id": "world.wait", "stable_id": "", "label": "world.wait",
+                               "enabled": True}],
+        })
+        frames = [start, mode, transient, duration, target]
+        index = [0]
+        dispatched: list[str] = []
+
+        def read_frame() -> dict[str, object]:
+            return frames[index[0]]
+
+        def dispatch(issuing: dict[str, object], action_id: str,
+                     stable_id: str | None = None) -> dict[str, object]:
+            dispatched.append(action_id)
+            if action_id == "world.wait":
+                index[0] = 1
+                successor = mode
+            elif action_id == "menu.choose":
+                # The native receipt can expose World before the duration
+                # descriptor is emitted; the next observation owns wait.1m.
+                index[0] = 3
+                successor = transient
+            else:
+                index[0] = 4
+                successor = target
+            receipt = {"accepted": True, "action_id": action_id, "frame_id": issuing["frame_id"]}
+            if "surface_id" in issuing:
+                receipt.update({"requested_frame_id": issuing["frame_id"],
+                                "requested_surface_id": issuing["surface_id"],
+                                "consuming_surface_id": issuing["surface_id"]})
+            return {"native_receipt": receipt,
+                    "next_frame": successor, "_next_frame": successor}
+
+        channel = cockpit.CockpitRunChannel(
+            read_frame, dispatch, binding_id="binding-a", read_binding_id=lambda: "binding-a",
+        )
+        result = cockpit.CockpitService(run_channel=channel).call({
+            "action": "game.keep_watch", "keep_watch": {
+                "enabled": True, "target_game_minutes": 101, "bound": bound(),
+                "recipe": ["world.wait", "wait.1m"],
+            },
+        })
 
         self.assertTrue(result["ok"], result)
         self.assertEqual(dispatched, ["world.wait", "menu.choose", "wait.1m"])
@@ -164,6 +287,37 @@ class KeepWatchTest(unittest.TestCase):
         }})
         self.assertEqual(result["error"], "keep_watch_menu_choice_not_advertised")
         self.assertEqual(dispatched, ["world.wait"])
+
+    def test_descriptor_without_authorized_recipe_action_fails_closed_without_reobserving(self) -> None:
+        unavailable = frame(1, 100, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        unavailable.update({
+            "schema_version": 1, "event": "surface_descriptor", "surface_id": "surface:1",
+            "kind": "world", "breadcrumbs": ["World"], "payload": {}, "valid_actions": [{
+                "id": "menu.choose", "stable_id": "unrelated-choice",
+                "label": "Set an alarm", "enabled": True,
+            }],
+        })
+        reads = [0]
+
+        def read_frame() -> dict[str, object]:
+            reads[0] += 1
+            return unavailable
+
+        channel = cockpit.CockpitRunChannel(
+            read_frame, lambda *_: self.fail("a non-advertised action must not dispatch"),
+            binding_id="binding-a", read_binding_id=lambda: "binding-a",
+        )
+        result = cockpit.CockpitService(run_channel=channel).call({
+            "action": "game.keep_watch", "keep_watch": {
+                "enabled": True, "target_game_minutes": 101, "bound": bound(),
+                "recipe": ["world.wait"],
+            },
+        })
+
+        self.assertEqual(result["error"], "keep_watch_recipe_action_not_advertised")
+        self.assertEqual(reads[0], 1)
 
     def test_stale_primitive_retries_only_when_the_fresh_owner_declares_it(self) -> None:
         safety = {"classification": "clear", "monster": False, "danger": False, "damage": False}

@@ -32,7 +32,7 @@ the package pending another owner design pass.
 
 ## Active package frontier
 
-- [ ] R-030 — Make CAOL and DE67 worker evidence quiet by default without losing any full-fidelity
+- [x] R-030 — Make CAOL and DE67 worker evidence quiet by default without losing any full-fidelity
   artifact: compact command receipts, indexed journal lookup, outcome-sized progressive briefs, and
   durable successor continuation must preserve exact identity and binding while the full digest-bound
   payload remains explicitly retrievable.
@@ -56,25 +56,34 @@ the package pending another owner design pass.
     cockpit bridge keeps compact status and exact slices, recovers full cockpit, witness, and
     diagnostic responses only through the receipt digest, and rejects digest mismatch, tampering,
     and response-namespace path escape. Tasks `R-030-closure-002` and `R-030-closure-003` then reached
-    the same W1 clock-only wait before selector work began. Task `R-030-closure-004` used the separate
-    skill-and-contract gap but received the same stale selector-oriented wait. Receipts
-    `348c4a23…bed0`, `060a5671…4f86`, and `a7a8f19c…def0` preserve these no-evidence attempts without
-    turning them into findings.
-  - Route change: three fresh attempts inherited the same selector-oriented W1 clock-only wait, even
-    when the third task targeted the separate skill-and-contract gap. This disproves that dispatch
-    strategy only. The selector gap stays open, and another unchanged selector dispatch is forbidden.
-  - First open boundary: align the CAOL skill and focused contract tests with the already implemented
-    registry, runtime, and shared cockpit receipt behavior. This is independent repository work and
-    must not query or replay the waiting selector route. After this gap is judged, the coordinator
-    must choose a materially different selector strategy or obtain a new policy affordance.
+    the same W1 clock-only wait before selector work began. Tasks `R-030-closure-004` and
+    `R-030-closure-005` targeted the separate skill-and-contract gap but received the same clock-only
+    wait before any repository work. Receipt `d271124b…c859c` preserves the latest attempt. It proves
+    that the old dispatch packet blocked the assigned repository route. It does not judge any open
+    product gap.
+  - Route change: the owner approved recovery after correcting the worker routing loop. A fresh
+    neutral worker may now inspect and change the repository for its assigned outcome. The completed
+    registry, runtime, and shared cockpit receipt work must not be replayed.
+  - Closed gap: task `R-030-closure-006` aligned the CAOL skill and focused contract test with the
+    implemented compact, full, query, and digest-bound recovery routes. Four focused tests and
+    `git diff --check` passed. Receipt `731f21ca…d4822` preserves the exact result. The missing
+    `tools/openclaw_harness/scenarios/cli.json` file still blocks two unrelated broad startup tests.
+  - Closed gap: task `R-030-closure-007` proved all 14 required exact receipt selectors. Each
+    positive filter returned the bound compact receipt, and a wrong-actor control returned none.
+    Ninety harness tests and focused CAOL checks passed. Receipt `54e16f59…d2258c` preserves the
+    result.
+  - Closed gap: task `R-030-closure-008` used a fresh packet, verified its digest, recovered the
+    exact prior selector receipt, and continued without replaying accepted work. Receipt
+    `0e2afae0…a96625` preserves the result. Every required R-030 closure gap is now closed. The claim
+    still requires its separate acceptance transition.
   - Subtasks:
     - [done] measure-existing-context-path :: Preserve the 4,236,128-character/223-entry registry counterexample and the 151/6 checkpoint continuity evidence as diagnostics, not limits.
     - [done] generate-progressive-worker-packet :: Phase-3 worker packets now carry the outcome, current frontier, compact receipt, exact bindings/entrypoints, and a reasoned progressive read plan.
     - [done] persist-query-worker-continuation :: Identity-bound worker receipts are artifact-validated, durably stored, terminal-gated, and narrowly queryable; R-026 and R-029 have backfilled continuations.
-    - [active] make-caol-command-output-quiet :: Registry status now prints a compact receipt and preserves a verified full artifact. Build and runtime status, cockpit, witness, and diagnostic commands still need the same behavior.
-    - [finding] index-pinpoint-evidence :: Exact registry manifest selection works, but three fresh tasks received the same W1 clock-only wait before broader selector work. Preserve their receipts and require a materially different route.
-    - [active] align-caol-skill-and-contract-tests :: Update the CAOL skill and tests to describe and enforce the implemented registry, runtime, and shared cockpit quiet/full/query behavior without querying the blocked selector route or documenting nonexistent flags.
-    - [open] prove-lossless-successor-route :: Reproduce the former bulk route, prove compact default output plus exact full retrieval, and show a fresh worker can continue from a receipt without replay or log archaeology.
+    - [done] make-caol-command-output-quiet :: Registry, runtime, cockpit, witness, and diagnostic commands now return compact receipts and preserve verified full artifacts.
+    - [done] index-pinpoint-evidence :: Fourteen exact worker-receipt filters return only the bound receipt, and a wrong-actor control returns no result.
+    - [done] align-caol-skill-and-contract-tests :: The CAOL skill and focused test now describe and enforce the implemented registry, runtime, and shared cockpit quiet, full, query, and recovery behavior.
+    - [done] prove-lossless-successor-route :: A fresh worker verified its packet digest, recovered the exact prior receipt, and continued from the recorded boundary without replay or log archaeology.
 
 - [ ] R-026 — Build and qualify one current-source package on the audited established-base footing,
   covering living-base behavior, controlled hostile-ecology lifecycles, flesh raptors, independent
@@ -237,10 +246,23 @@ the package pending another owner design pass.
     product evidence. This matters because R-029 is still unfinished and the next worker must use
     receipt `513ff62a…07a65` instead of replaying setup. The abandoned attempt is already terminal in
     the deadline clock and must not receive a second terminal transition.
-  - First open boundary: `r029-dispatch-keep-watch-4m` has no preserved response receipt. Diagnose the
-    live executor after minute 8222, then continue from the first fresh production event. Later proof
-    still needs both natural profile routes, cannibal daylight crossing, pre-demand/refusal/player-attack
-    controls, Fight terminal behavior, rolling ambush, persistence, cleanup, and independent verdicts.
+  - Latest result: task `R-029-exploration-033` repaired the Keep Watch livelock, delayed owner
+    handoff, duration cursor, explicit damage prompt, stale build version, witness finalization, and
+    final receipt poll. It replaced the invalid ten-overmap-tile geometry with a zero-credit fixture
+    that places a non-colliding cannibal camp three overmap tiles from the physical source. Fresh
+    runs proved physical smoke and light, bounded out-of-range controls, and ordinary fire creation.
+    Receipt `2ee20a63…9143a2` preserves these changes, tests, runs, evidence limits, and no-replay work.
+  - Latest finding: the current natural-route manifest cannot launch because it requires an exclusive
+    source-bound review and no accepted review exists for manifest `166ff492…3844`, revision 7, SHA
+    `732c4158…8379e`. This matters because the worker and coordinator cannot grant or bypass that
+    external review. The exact attempted route remains unfinished rather than disproved.
+  - First open boundary: an external reviewer must accept the exact revision-7 source-bound manifest.
+    After that review, a fresh task must create the in-range fire through ordinary UI, retreat through
+    the repaired native path, save and quit through the game, and exit the original process. A
+    separate post-relaunch task must then validate observation and the natural camp response without
+    crediting bootstrap setup. Later proof still needs both natural profile routes, cannibal daylight
+    crossing, pre-demand, refusal, player-attack, Fight-terminal, rolling-ambush, persistence, cleanup,
+    and independent verdicts.
   - Subtasks:
     - [active] unify-natural-discovery-route :: The production cannibal shortcut call is removed. The continuation receipt preserves the current launch and first World cadence; after the open Keep Watch executor boundary, a current witness must prove both profiles use staffed observation, camp memory, scout travel, a returned report, authorization, and response travel.
     - [open] preserve-night-raid-commitment :: Prove daylight rally hold, night departure, a transition to daylight before contact, continued approach, and attack.

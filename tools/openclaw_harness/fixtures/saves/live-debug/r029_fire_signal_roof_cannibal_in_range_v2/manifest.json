@@ -1,0 +1,21 @@
+{
+  "name": "r029_fire_signal_roof_cannibal_in_range_v2",
+  "source_fixture": "r008_fire_signal_roof_bandit_v1",
+  "source_profile": "live-debug",
+  "description": "R-029 in-range cannibal natural-route footing. Setup supplies only the existing exposed roof, ordinary fire tools/logs, stabilizer traits, and a non-colliding cannibal_camp footprint at the native player-created-fire signal distance. It does not write hostile roster, actor, signal, target knowledge, scout, report, rally, response, or contact state. Fixture preparation remains zero-credit; all ecology facts require a fresh production observation.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"]
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [0, -3, -1]
+    }
+  ]
+}

@@ -1622,6 +1622,19 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertNotIn("entries", compact_stdout.getvalue())
             self.assertEqual(calls, [((), ("only-this",))])
 
+            direct_full_stdout = io.StringIO()
+            with mock.patch.object(scenario_registry_cli, "registry_status", side_effect=status), \
+                    redirect_stdout(direct_full_stdout):
+                self.assertEqual(scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-status", "--full",
+                    "--manifest-id", "only-this",
+                ]), 0)
+            direct_full = json.loads(direct_full_stdout.getvalue())
+            self.assertEqual(
+                direct_full["result"]["entries"][0]["manifest"]["manifest_id"], "only-this",
+            )
+            self.assertEqual(calls, [((), ("only-this",)), ((), ("only-this",))])
+
             full_stdout = io.StringIO()
             with redirect_stdout(full_stdout):
                 self.assertEqual(scenario_registry_cli.main([

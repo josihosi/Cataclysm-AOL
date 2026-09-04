@@ -1116,6 +1116,10 @@ def _registry_post_finalize_ingest(receipt: str) -> Any:
                     token_id,
                     report_path,
                     adapters=production_binding_adapters(),
+                    witness_charter=(
+                        payload.get("witness_charter")
+                        if isinstance(payload.get("witness_charter"), Mapping) else None
+                    ),
                 )
             finally:
                 connection.close()

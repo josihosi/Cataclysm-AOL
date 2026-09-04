@@ -222,6 +222,8 @@ class R008FireSignalFamilyTest(unittest.TestCase):
         self.assertIn("product_source_sha256", source)
         self.assertIn("PRODUCT_BUILD_RECEIPT_SCHEMA", builder)
         self.assertIn('"make"', builder)
+        self.assertIn("version_command", builder)
+        self.assertIn('[*command, "version"]', builder)
         harness_source = (HARNESS / "startup_harness.py").read_text(encoding="utf-8")
         self.assertIn('action.get("id") == "world.wait"', harness_source)
         self.assertIn('"advertised_world_wait_unavailable"', harness_source)

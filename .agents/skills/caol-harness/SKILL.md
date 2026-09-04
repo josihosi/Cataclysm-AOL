@@ -77,13 +77,21 @@ capability-gap history for missing reusable observation, action, or setup interf
 `registry-record-witness` persists the witness and `registry-review-witness` records the
 coordinator's separate causal judgment.
 
-Inspect continuity with:
+Inspect registry continuity with a compact, artifact-backed receipt by default.  Pass one or more
+exact `--manifest-id` values when those identities are already known; `--include-state` is an
+explicit lifecycle projection, not a prose search:
 
 ```sh
-python3 tools/openclaw_harness/scenario_registry_cli.py registry-status
+python3 tools/openclaw_harness/scenario_registry_cli.py registry-status \
+  --manifest-id <exact-manifest-id>
 ```
 
-For a file-backed live cockpit, request collection is compact by default:
+The receipt's digest is the only full-recovery handle.  Retrieve its complete registry payload
+with `registry-artifact --sha256 <receipt-digest>`, or use `--full` only when this invocation
+itself needs the complete status payload.  `runtime-status` has the same default receipt and
+explicit routes through `runtime-status-artifact --sha256 <receipt-digest>` and `--full`.
+
+For a file-backed live cockpit, request collection is likewise compact by default:
 
 ```sh
 python3 tools/openclaw_harness/cockpit_file_bridge.py response-status \
@@ -91,9 +99,9 @@ python3 tools/openclaw_harness/cockpit_file_bridge.py response-status \
 ```
 
 The receipt binds the request identity, binding, response artifact, and SHA-256. Use
-`response-slice --selector <exact.dot.path>` for a known field, or explicitly recover the full
-response only with `response-artifact --request-id <request-id> --sha256 <receipt-digest>`.
+`response-slice --selector <exact.dot.path>` for a known object field, or explicitly recover the
+full response only with `response-artifact --request-id <request-id> --sha256 <receipt-digest>`.
 Both retrievals verify the retained artifact; do not reopen a whole response merely to locate an
-already-known identity.
+already-known field.
 
 Report startup, feature outcome, contradictions, evidence ceiling, and cleanup separately.

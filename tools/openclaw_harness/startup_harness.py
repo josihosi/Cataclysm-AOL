@@ -5533,13 +5533,20 @@ def execute_semantic_act(
                     "surface_request": request, "detail": str(exc)}
 
         deadline = time.monotonic() + transition_timeout_seconds
-        while time.monotonic() <= deadline:
+        # Always inspect the trace once after the last scheduled poll.  A
+        # native wake can publish its receipt during the final sleep; testing
+        # the deadline at the top of the loop would discard that already
+        # durable receipt and falsely report a transport timeout.
+        while True:
             try:
                 source, owned = refresh_semantic_step_trace(
                     profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
                 )
             except OSError:
-                time.sleep(observe_interval_seconds)
+                remaining = deadline - time.monotonic()
+                if remaining <= 0:
+                    break
+                time.sleep(min(observe_interval_seconds, remaining))
                 continue
             events, status = read_semantic_step_trace(owned, run_dir, run_id)
             if status == "ok":
@@ -5730,7 +5737,10 @@ def execute_semantic_act(
                         return {"accepted": True, "surface_request": request,
                                 "native_receipt": durable_native_receipt, "transition_event": transition_event,
                                 "next_frame": next_frame}
-            time.sleep(observe_interval_seconds)
+            remaining = deadline - time.monotonic()
+            if remaining <= 0:
+                break
+            time.sleep(min(observe_interval_seconds, remaining))
         return {"accepted": False, "reason": "native_surface_receipt_timeout",
                 "surface_request": request, "native_receipt": None, "next_frame": None}
 
