@@ -19,6 +19,11 @@ import sys
 import time
 from typing import Any, Mapping, Sequence
 
+try:
+    from . import cockpit_evidence
+except ImportError:
+    import cockpit_evidence
+
 
 SCHEMA = "caol-cockpit-file-bridge-v1"
 TERMINALIZATION_SIGNAL = "cockpit.bridge.safe_to_cleanup.json"
@@ -569,12 +574,33 @@ class FileBackedCockpitBridge:
         return {"ok": True, "request_id": request_id}
 
     @staticmethod
-    def response_status(session_dir: Path, request_id: str) -> dict[str, Any]:
+    def response_status(session_dir: Path, request_id: str, *, summary: bool = True) -> dict[str, Any]:
         path = Path(session_dir) / "responses" / (request_id + ".receipt.json")
         if not path.is_file():
             return {"ok": False, "error": "response_not_available_or_stale"}
-        receipt = json.loads(path.read_text(encoding="utf-8"))
-        return {"ok": True, "receipt": receipt}
+        try:
+            receipt = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, ValueError):
+            return {"ok": False, "error": "response_receipt_unavailable_or_invalid"}
+        if not isinstance(receipt, dict) or receipt.get("request_id") != request_id:
+            return {"ok": False, "error": "response_receipt_identity_mismatch"}
+        if not isinstance(receipt.get("response_sha256"), str) or not receipt.get("response_artifact"):
+            return {"ok": False, "error": "response_receipt_unavailable_or_invalid"}
+        result = {"ok": True, "receipt": receipt}
+        if summary:
+            recovered = FileBackedCockpitBridge.response_artifact(
+                session_dir, request_id, receipt["response_sha256"])
+            if not recovered.get("ok"):
+                return {**recovered, "receipt": receipt}
+            result["response"] = cockpit_evidence.compact(recovered["response"])
+            result["retrieval"] = {
+                "fields": "response-slice --session-dir SESSION --request-id REQUEST --selector FIELD [--contains TEXT] [--offset N --limit N]",
+                "full": ["response-artifact", "--session-dir", str(session_dir),
+                         "--request-id", request_id, "--sha256", receipt["response_sha256"]],
+                "logs": "log-query (--path EXACT_LOG | --session-dir SESSION) [--run-id RUN] [--request-id REQUEST] [--event EVENT] [--where FIELD=JSON] [--select FIELD]",
+                "omissions": "Omitted values carry selectors, types and sizes. Explicit fields/full retrieval preserve exact values; transport ok is separate from response ok and native acceptance.",
+            }
+        return result
 
     @staticmethod
     def response_artifact(session_dir: Path, request_id: str, sha256: str) -> dict[str, Any]:
@@ -582,7 +608,7 @@ class FileBackedCockpitBridge:
         expected = str(sha256).strip().lower()
         if len(expected) != 64 or any(char not in "0123456789abcdef" for char in expected):
             return {"ok": False, "error": "response SHA-256 must be a lowercase hexadecimal digest"}
-        receipt_result = FileBackedCockpitBridge.response_status(session_dir, request_id)
+        receipt_result = FileBackedCockpitBridge.response_status(session_dir, request_id, summary=False)
         if not receipt_result.get("ok"):
             return receipt_result
         receipt = receipt_result["receipt"]
@@ -621,23 +647,39 @@ class FileBackedCockpitBridge:
         return {"ok": True, "cleanup": "requested"}
 
     @staticmethod
-    def response_slice(session_dir: Path, request_id: str, selector: str) -> dict[str, Any]:
+    def response_slice(session_dir: Path, request_id: str, selector: str,
+                       offset: int = 0, limit: int | None = None, contains: str | None = None) -> dict[str, Any]:
         if not str(selector).strip():
             return {"ok": False, "error": "selected_response_slice_is_required"}
-        receipt_result = FileBackedCockpitBridge.response_status(session_dir, request_id)
+        receipt_result = FileBackedCockpitBridge.response_status(session_dir, request_id, summary=False)
         if not receipt_result.get("ok"):
             return receipt_result
         receipt = receipt_result["receipt"]
-        artifact = Path(session_dir) / str(receipt["response_artifact"])
-        raw = artifact.read_bytes()
-        if _digest(raw) != receipt["response_sha256"]:
-            return {"ok": False, "error": "response_artifact_hash_mismatch"}
-        value: Any = json.loads(raw)
-        for part in (piece for piece in selector.split(".") if piece):
-            if not isinstance(value, Mapping) or part not in value:
-                return {"ok": False, "error": "selected_response_slice_is_unavailable"}
-            value = value[part]
-        return {"ok": True, "request_id": request_id, "slice": value}
+        recovered = FileBackedCockpitBridge.response_artifact(session_dir, request_id, receipt["response_sha256"])
+        if not recovered.get("ok"):
+            return recovered
+        try:
+            value = cockpit_evidence.select(recovered["response"], selector)
+        except (KeyError, IndexError):
+            return {"ok": False, "error": "selected_response_slice_is_unavailable"}
+        result = {"ok": True, "request_id": request_id, "response_sha256": receipt["response_sha256"],
+                  "selector": selector}
+        if contains is not None:
+            if not isinstance(value, list):
+                return {"ok": False, "error": "slice_filter_requires_array"}
+            total = len(value)
+            indices = [i for i, row in enumerate(value) if contains.casefold() in json.dumps(row, ensure_ascii=False).casefold()]
+            value = [value[i] for i in indices]
+            result["filter"] = {"contains": contains, "total": total, "matched": len(value)}
+            result["source_indices"] = indices[offset:None if limit is None else offset + limit]
+        if limit is not None or offset:
+            if not isinstance(value, list) or offset < 0 or (limit is not None and limit <= 0):
+                return {"ok": False, "error": "slice_paging_requires_array_and_valid_range"}
+            end = len(value) if limit is None else offset + limit
+            result["page"] = {"offset": offset, "total": len(value),
+                              "next_offset": end if end < len(value) else None}
+            value = value[offset:end]
+        return {**result, "slice": value}
 
 
 class FileBackedCockpitClient:
@@ -745,21 +787,67 @@ def main(argv: Sequence[str] | None = None) -> int:
     request.add_argument("--binding-id", required=True)
     request.add_argument("--request-id", required=True)
     request.add_argument("--request-json", required=True)
-    status = commands.add_parser("response-status")
+    status = commands.add_parser("response-status", help="Verified compact observation, action availability, outcomes and field discovery")
     status.add_argument("--session-dir", required=True)
     status.add_argument("--request-id", required=True)
     response = commands.add_parser("response-slice")
     response.add_argument("--session-dir", required=True)
     response.add_argument("--request-id", required=True)
     response.add_argument("--selector", required=True)
+    response.add_argument("--offset", type=int, default=0)
+    response.add_argument("--limit", type=int)
+    response.add_argument("--contains", help="Filter a selected array by case-insensitive text before paging; source indices are preserved")
     artifact = commands.add_parser("response-artifact")
     artifact.add_argument("--session-dir", required=True)
     artifact.add_argument("--request-id", required=True)
     artifact.add_argument("--sha256", required=True)
+    logs = commands.add_parser("log-query", help="Filter exact JSONL/debug logs before compact rendering; retain raw record handles")
+    log_source = logs.add_mutually_exclusive_group(required=True)
+    log_source.add_argument("--path", action="append")
+    log_source.add_argument("--session-dir", help="Query retained response artifacts in this exact bridge session")
+    for field in ("run-id", "request-id", "frame-id", "event"):
+        logs.add_argument("--" + field)
+    logs.add_argument("--where", action="append", default=[], metavar="FIELD=JSON")
+    logs.add_argument("--select", action="append", default=[], metavar="FIELD")
+    logs.add_argument("--contains", help="Case-insensitive text filter within records already selected by semantic identities/fields")
+    logs.add_argument("--offset", type=int, default=0)
+    logs.add_argument("--limit", type=int, default=20, help="Rows per page; all matches are counted and pageable")
+    record = commands.add_parser("record-artifact", help="Verify and retrieve an exact retained log record or selected fields")
+    record.add_argument("--path", required=True)
+    record.add_argument("--offset", type=int, required=True)
+    record.add_argument("--length", type=int, required=True)
+    record.add_argument("--sha256", required=True)
+    record.add_argument("--select", action="append", default=[], metavar="FIELD")
     cleanup = commands.add_parser("cleanup")
     cleanup.add_argument("--session-dir", required=True)
     cleanup.add_argument("--binding-id", required=True)
     args = parser.parse_args(argv)
+    if args.command == "log-query":
+        if args.offset < 0 or args.limit <= 0:
+            parser.error("offset must be nonnegative and limit positive")
+        filters = {k: getattr(args, k) for k in ("run_id", "request_id", "frame_id", "event")
+                   if getattr(args, k) is not None}
+        try:
+            for expression in args.where:
+                key, value = expression.split("=", 1)
+                filters[key] = json.loads(value)
+        except (ValueError, json.JSONDecodeError):
+            parser.error("--where requires FIELD=JSON (quote string values as JSON)")
+        if args.session_dir:
+            responses_dir = Path(args.session_dir) / "responses"
+            if not responses_dir.is_dir():
+                print(json.dumps({"ok": False, "error": "session_responses_unavailable"}))
+                return 1
+            paths = sorted(p for p in responses_dir.glob("*.json") if not p.name.endswith(".receipt.json"))
+        else:
+            paths = [Path(p) for p in args.path]
+        result = cockpit_evidence.query(paths, filters, args.select, args.offset, args.limit, args.contains)
+        print(json.dumps(result))
+        return 0 if result["ok"] else 1
+    if args.command == "record-artifact":
+        result = cockpit_evidence.record_artifact(Path(args.path), args.offset, args.length, args.sha256, args.select)
+        print(json.dumps(result))
+        return 0 if result["ok"] else 1
     if args.command == "start":
         try:
             prefix = json.loads(args.pre_descriptor_prefix_json)
@@ -824,7 +912,8 @@ def main(argv: Sequence[str] | None = None) -> int:
             Path(args.session_dir), args.request_id, args.sha256,
         )))
         return 0
-    print(json.dumps(FileBackedCockpitBridge.response_slice(Path(args.session_dir), args.request_id, args.selector)))
+    print(json.dumps(FileBackedCockpitBridge.response_slice(Path(args.session_dir), args.request_id,
+                                                          args.selector, args.offset, args.limit, args.contains)))
     return 0
 
 

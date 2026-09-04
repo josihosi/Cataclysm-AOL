@@ -239,58 +239,34 @@ the package pending another owner design pass.
     artifacts without replaying the completed route. No current natural witness proves both camp
     profiles from physical signal through response and contact, and the night, refusal or incomplete
     payment, player-attack, Fight-terminal, and rolling-travel branches remain open.
-  - Durable continuation: receipt `513ff62a…07a65` binds run `6c14bd27…b73913`, cockpit binding
-    `e50d51ce…f35ea9`, its charter, exact observation/Keep Watch identities, and six digest-bound
-    artifacts. It preserves the current build and first one-minute cycle through minute 8222 while
-    explicitly withholding ecology credit. Do not replay selection, launch, the World pair, or that
-    duration cycle.
-  - Latest attempt: `R-029-exploration-032` ended before delegation, so it produced no worker or
-    product evidence. This matters because R-029 is still unfinished and the next worker must use
-    receipt `513ff62a…07a65` instead of replaying setup. The abandoned attempt is already terminal in
-    the deadline clock and must not receive a second terminal transition.
-  - Latest result: task `R-029-exploration-033` repaired the Keep Watch livelock, delayed owner
-    handoff, duration cursor, explicit damage prompt, stale build version, witness finalization, and
-    final receipt poll. It replaced the invalid ten-overmap-tile geometry with a zero-credit fixture
-    that places a non-colliding cannibal camp three overmap tiles from the physical source. Fresh
-    runs proved physical smoke and light, bounded out-of-range controls, and ordinary fire creation.
-    Receipt `2ee20a63…9143a2` preserves these changes, tests, runs, evidence limits, and no-replay work.
-  - Latest result: task `R-029-exploration-034` proved that revision 7 does not require a source
-    review and is eligible for a token. It repaired the actual registry retry mismatch, required the
-    executable to match current source before launch, and made native movement write an exact trace
-    receipt. It then created an ordinary in-range fire, moved north from `[3372,996,1]` to
-    `[3372,995,1]`, and completed the in-game save. The original process did not exit because the
-    withheld main-menu owner replaced the quit confirmation. The worker implemented an owner-release
-    repair, but its context ended before a reliable rebuild and focused native test could prove it.
-    Receipt `6169e0a0…e41b` preserves the result and all no-replay work. This is an unfinished repair
-    boundary, not a product finding.
-  - Current handoff: the focused quit tests and source-bound Tiles build are already proved.
-    Keep `.userdata/task_r029_tiles_source_bound_rebuild.log` and
-    `.userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1.json` as the exact
-    build evidence. The next unresolved step is native exit. Inspect the existing detached session at
-    `.userdata/r029-cannibal-native-exit-e06ed0d6-60d0-4f38-a6dd-ab17c48fa05e` through the
-    file-bridge status and semantic observation route. Its bridge, launch child, and game process
-    were verified live after the administrative restart; status reports `ready` and
-    `startup_hud_ready`, with zero requests. Startup is not native-exit or ecology proof. Continue
-    this existing bound run if usable; do not issue another selection or replay its launch token.
-    Prove the native quit boundary, then use the declared post-relaunch route for saved fire,
-    staffed observation, and natural response. If inspection disproves continuity, preserve the
-    exact divergence and use the existing cleanup and fresh-authority route.
-  - Current handoff update: task `R-029-exploration-038` found that the input loop discarded a
+  - Accepted repair footing: receipts `513ff62a…07a65`, `2ee20a63…9143a2`, and
+    `6169e0a0…e41b` retain the prior launch/World/Keep Watch cycle, repaired duration and owner
+    handoffs, registry retry/current-source validation, exact movement traces, witness/poll fixes,
+    physical smoke/light controls, ordinary in-range fire, movement, and in-game save. The corrected
+    zero-credit fixture puts the non-colliding cannibal camp three overmap tiles from its physical
+    source. Preserve this evidence at its original bindings and ceilings; it does not prove the
+    remaining native exit or natural ecology. Old process status and pending-build instructions in
+    those artifacts are historical, not current continuation.
+  - Current handoff: task `R-029-exploration-038` found that the input loop discarded a
     main-menu quit action after its old pre-wait snapshot. Commits `1dd1eb83db` and `99ca9c4947`
     preserve that action and write the terminal confirmation receipt before exit. Seventeen focused
     checks pass, and one diagnostic run exited exact PID `35479`. This matters because native exit is
     now implemented, but the final source-bound rerun did not exercise its last confirmation after
     malformed stale-observation requests. The current Tiles binary is source-bound at commit
     `99ca9c4947` with SHA `9244c3bb…6509c0`. The incomplete second run was safely cleaned and earns
-    no native-exit or ecology credit. The first unresolved step is one fresh detached run using each
-    exact `.receipt.next_frame` successor and a fresh `game.observe` observation ID. It must prove
-    the immediate final receipt and exact process exit before post-relaunch ecology validation.
+    no native-exit or ecology credit. The first unresolved step is independent native-exit validation
+    with exact current observation and request identities, followed by post-relaunch ecology
+    validation. The worker owns the route.
+    `cockpit_file_bridge.py response-status` now exposes a verified compact decision view;
+    `response-slice` retrieves advertised omitted fields such as `receipt.next_frame`.
+    `log-query --session-dir <session>` or `--path <exact-log> --run-id <run>` filters evidence
+    before rendering and returns exact digest-bound records. Review evidence is retained in
+    `.de67/state/reviews/42d8997a3df0/review.md`; this interface proof earns no gameplay credit.
     Receipt `R-029-exploration-038` preserves the full continuation and no-replay facts. A fresh task
     must continue from it because the previous worker context is exhausted.
-  - Continuation evidence: task `R-029-exploration-035` proved the focused quit repair in Python
-    and native tests; receipt `0846913f…eb6b0` preserves those no-replay facts. Its PID 89842 and
-    running-build description are historical. Task `R-029-exploration-037` subsequently completed
-    the source-bound Tiles rebuild and obtained runtime `ready`; the binding artifact is
+  - Build evidence: receipt `0846913f…eb6b0` preserves focused Python and native quit proof.
+    Its pending-build instruction is superseded by the completed source-bound Tiles rebuild and
+    runtime `ready`; the binding artifact is
     `.userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1.json` and the build
     log is `.userdata/task_r029_tiles_source_bound_rebuild.log`. Preserve completed tests and build
     evidence; check current source/executable identity before making new product claims.
@@ -302,7 +278,7 @@ the package pending another owner design pass.
     `c09f57890dc0418ecc4c83833d53eb0ac179ef55fbf0cf3b1ed71f6f1ee9692d`. This handoff is available
     evidence, not an external permission wait or a restriction on current policy-authorized reads.
   - Subtasks:
-    - [active] unify-natural-discovery-route :: The shortcut is removed, revision 7 is token-eligible, and the registry, launch, and movement paths are repaired. The quit-owner repair passes clean Python and native tests. The source-bound build completed. Inspect and continue the existing detached native-exit session before separate production validation.
+    - [active] unify-natural-discovery-route :: The shortcut is removed, revision 7 is token-eligible, and the registry, launch, and movement paths are repaired. The quit-owner repair passes clean Python and native tests. The source-bound build completed and exploration-038 preserved the terminal quit repair and diagnostic exit. Independently prove native exit from current bound footing before separate production validation; the prior incomplete run was cleaned.
     - [open] preserve-night-raid-commitment :: Prove daylight rally hold, night departure, a transition to daylight before contact, continued approach, and attack.
     - [active] enforce-shakedown-first-demand :: Fresh source-bound runs show the exact demand and Pay or Fight choices before either selection and preserve exact members through the chosen response. The pre-demand no-offense control plus refusal or incomplete-payment behavior still need direct verdicts.
     - [done] enforce-paid-departure-safety :: Run `20260903_161237_7fd03f6fb598406cb816b6871df080c4` proves exact members 4 and 5 are paid and returning home across native process replacement, reach abstract epoch 2, and make no renewed demand, Fight, or attack during 120 post-reload ordinary turns. Preserve this closure; do not replay it to repair report declarations.
@@ -315,8 +291,8 @@ the package pending another owner design pass.
 R-030's quiet-output and pinpoint-retrieval implementation precedes further expensive R-026 or R-029
 playtests because it changes how their evidence and continuation are preserved. Its repository work
 must not replay either claim's accepted footing. After that interface is proved, R-026 and R-029 may
-continue independently from receipts `ecbd0fc3…b355c` and `0846913f…eb6b0`; R-026 may reuse accepted
-R-027 observation/response without promoting zero-credit bootstrap. R-028 remains accepted.
+continue independently from receipt `ecbd0fc3…b355c` and the latest `R-029-exploration-038`
+continuation; R-026 may reuse accepted R-027 observation/response without promoting zero-credit bootstrap. R-028 remains accepted.
 
 ## Evidence that cannot close the frontier
 

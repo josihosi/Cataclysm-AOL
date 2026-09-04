@@ -98,17 +98,43 @@ with `registry-artifact --sha256 <receipt-digest>`, or use `--full` only when th
 itself needs the complete status payload.  `runtime-status` has the same default receipt and
 explicit routes through `runtime-status-artifact --sha256 <receipt-digest>` and `--full`.
 
-For a file-backed live cockpit, request collection is likewise compact by default:
+For a file-backed live cockpit, request collection returns a verified decision view by default:
 
 ```sh
 python3 tools/openclaw_harness/cockpit_file_bridge.py response-status \
   --session-dir <session-dir> --request-id <request-id>
 ```
 
-The receipt binds the request identity, binding, response artifact, and SHA-256. Use
-`response-slice --selector <exact.dot.path>` for a known object field, or explicitly recover the
-full response only with `response-artifact --request-id <request-id> --sha256 <receipt-digest>`.
-Both retrievals verify the retained artifact; do not reopen a whole response merely to locate an
-already-known field.
+The response preserves run/request/frame identities, native acceptance or failure, surface kind,
+scalar facts, action availability, and contradictions. Transport `ok` does not mean the native
+action succeeded or its gameplay postcondition holds. Bulky fields carry selectors, types, and
+sizes instead of repeated messages, maps, or nested frames. `response-slice --selector <dot.path>`
+retrieves a field; paths also traverse numeric array indices and JSON-string native facts.
+`--contains <text>` filters a selected array before `--offset`/`--limit` paging and preserves
+original indices (for example, search decoded messages for save failures among repeated flavour).
+`response-artifact` with the receipt SHA-256
+recovers the full response. Both routes verify the retained artifact.
+
+Query evidence before rendering it. The same bridge CLI provides:
+
+```sh
+python3 tools/openclaw_harness/cockpit_file_bridge.py log-query \
+  --session-dir <session-dir> --request-id <bridge-request-id>
+python3 tools/openclaw_harness/cockpit_file_bridge.py log-query \
+  --path <exact-debug-or-jsonl-log> --run-id <run-id> --event surface_receipt
+```
+
+Session queries inspect retained responses; `--path` queries an exact log and may be repeated.
+Filter with `--frame-id`, native `--request-id` on logs, or `--where 'field="value"'` (JSON values);
+`--select <dot.path>` retrieves only selected semantic fields; `--contains <text>` narrows matching
+records before rendering. Default pages contain 20 records;
+counts and `page.next_offset` disclose every remaining match. These are presentation choices, not
+proof limits. Parse failures and records lacking run identity are counted separately, never silently
+attributed to a run; query `--event unparsed` or `--event text` to inspect them.
+Every returned row has a path, byte offset, length, and SHA-256 for `record-artifact`; it verifies
+that exact range before returning raw text and parsed evidence, or selected fields. Rotation or
+replacement produces a hash error. Raw files remain unchanged. The CLI help and response retrieval
+metadata expose these routes; whole-record text searches and line tails are unnecessary for field
+discovery.
 
 Report startup, feature outcome, contradictions, evidence ceiling, and cleanup separately.

@@ -24,9 +24,18 @@ outcome visible with its accepted frontier, material uncertainty, and truthful n
 When an attempt closes, merge only its surviving proof, no-replay boundary, and first open causal
 boundary into the affected subtask rows or current evidence; never append an attempt-by-attempt
 chronology. SQLite and immutable artifacts retain the full history. Replace superseded tactics, and
-show dependency-gated work with its exact wake condition. Split work only where incompatible
-authority, start state, or proof requires it; otherwise keep one outcome-sized item with meaningful
-progress spokes.
+show dependency-gated work with its exact wake condition. Freely split or merge independently
+actionable work, including simultaneous entries for one red DFS claim. Choose subdivisions when
+they help execution or explain progress; four to seven meaningful plot spokes are a presentation
+preference, not a task constraint. Nested `  - Subtasks:` rows use
+`    - [STATE] stable-lowercase-id :: description` with open, active, done, or finding. They are
+progress subdivisions, not workers, deadlines, closure gaps, or acceptance gates. Preserve closed
+diagnostic evidence and use existing durable transitions to project unfinished product proof.
+Repository implementation, tooling, fixtures, scenarios, bindings, and executable proof routes are
+ordinary recoverable work. A retry fuse retires a strategy, not the remaining outcome; the worker
+and coordinator may invent a materially different route. Split a prerequisite that depends on its
+own output into non-credit bootstrap followed by independent validation, without querying it again
+unchanged.
 
 Record durable acceptance once. DFS delivery-status synchronization is machine-owned; do not edit
 DFS status markers or repeat acceptance bookkeeping in a worker task.
@@ -46,7 +55,9 @@ and exact entrypoints, then open complete digest-bound artifacts or broader sour
 causal decision needs them. Do not paste full histories, registry dumps, manuals, guessed command
 sequences, action order, retry counts, or a guessed implementation. The worker owns its strategy and
 may inspect, repair, improvise, rerun, or change approach within the outcome. For a live playtest,
-provide the compact witness charter and point to the CAOL harness skill.
+provide the compact witness charter and point to the CAOL harness skill. Name the relevant bridge
+`response-status` or `log-query` entrypoint with the known session/run/request binding so the
+worker can discover semantic fields and exact artifact retrieval from the interface itself.
 
 ## Durable worker lifecycle
 
@@ -101,10 +112,20 @@ capability gaps with implementation bugs.
 
 ## Mutate guidance
 
-The exclusive reviewer reads the complete mutation ledger. User-authored entries require their
-outcome or an exact preserved conflict. Automatic and lesser-authority proposals may end with no
-change justified. Repair the earliest supported systemic cause, prefer deletion or generalization,
-and prove it with a counterexample that could reproduce the failure.
+The exclusive reviewer consumes the complete pending mutation queue. User-authored entries require
+their outcome or an exact preserved conflict. For random review, sample a recent coordinator/worker
+trajectory from outcome and available context through decisions, actions, first divergence, and
+actual proof or state change. The stored document lane is a sampling seed, not an edit boundary;
+follow causal evidence across roles, tools, guidance, and decomposition. Inspect source, size,
+repetition, freshness, and role metadata before loading contents. Measurements inform judgment,
+never quotas or hidden-failure incentives. No finding or change is compulsory.
+
+Separate immediate recovery from repeatable method correction. Repair the earliest supported
+systemic cause through deletion or generalization and a reproduction or counterexample. The random
+guard permits combined local guideline changes and same-outcome DFS refinements; broader method
+candidates retain their existing guard boundary. Preserve accepted proof, owner intent, accounting,
+exclusive reviewer ownership, and lifecycle. Remove completed queue entries; immutable review
+artifacts and durable receipts keep the evidence, rather than consumed-history sections.
 
 Promote policy source and compiled bytecode only after the kernel guard passes. Refreeze any changed
 DFS outcome, disposition every reviewed ledger entry, resolve the durable gate, and request exactly

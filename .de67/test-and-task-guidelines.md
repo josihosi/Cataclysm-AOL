@@ -53,6 +53,12 @@ or ignore danger/interruption prompts. The permissive mode needs no approval or 
 must show what it continued through. Debug setup or exact-identity creature zapping is allowed when
 useful and remains zero-credit for natural route, ecology, combat, lifecycle, or certification.
 
+The CAOL harness skill and bridge CLI expose compact `response-status` and field-filtered
+`log-query` for session responses and exact debug/JSONL logs. These retain identities, outcomes,
+action availability, omissions, and verified retrieval handles. Use semantic selectors or exact
+record retrieval for the decision at hand; an accepted native request alone does not establish its
+gameplay postcondition. Unparsed or unscoped diagnostics remain visible separately.
+
 Finish with the smallest supported conclusion, its causal evidence, contradictions, and remaining
 unknowns. Use independent claim verdicts when a combined run has mixed outcomes; route an ordinary
 defect without erasing unaffected evidence, and reserve capability gaps for missing reusable

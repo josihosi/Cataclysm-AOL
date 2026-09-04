@@ -100,7 +100,9 @@ class CockpitFileBridgeTest(unittest.TestCase):
             self.assertTrue(status["ok"])
             artifact = directory / status["receipt"]["response_artifact"]
             self.assertGreater(artifact.stat().st_size, 1000000)
-            self.assertNotIn("observation", json.dumps(status))
+            self.assertTrue(status["response"]["result"]["observation"]["omitted"])
+            self.assertEqual(status["response"]["result"]["observation"]["count"], 2000000)
+            self.assertNotIn("x" * 1000, json.dumps(status))
             recovered = bridge.response_artifact(
                 directory, "observe-1", status["receipt"]["response_sha256"],
             )
@@ -462,7 +464,7 @@ class CockpitFileBridgeTest(unittest.TestCase):
             thread.start()
             while not (directory / "status.json").is_file():
                 time.sleep(0.01)
-            while json.loads((directory / "status.json").read_text())["state"] == "starting":
+            while json.loads((directory / "status.json").read_text())["state"] in {"starting", "preparing"}:
                 time.sleep(0.01)
             status = json.loads((directory / "status.json").read_text())
             self.assertEqual(status["state"], "ready")
