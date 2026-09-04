@@ -211,7 +211,6 @@ the package pending another owner design pass.
     that projection defect without creating a second acceptance.
 
 - [ ] R-029 — Make both hostile camp profiles use one natural signal, scout, report, and response
-  - Waiting work: Administrative restart to load the agent autonomy consolidation; resume from `.de67/state/supervisor-service/autonomy-restart.json` and current durable evidence. The prior worker reported a fresh source-bound Tiles build and progressed through rejected launch routes to detached-launch path validation. Inspect its latest messages, current run state, and token state before any launch; do not replay an issued or invalidated token.
   route. Keep cannibal raids committed after night departure. Keep normal bandit shakedowns peaceful
   until the player chooses combat, and keep paid groups peaceful until they return home.
   - DFS slices: `R-029-S001`
@@ -264,30 +263,31 @@ the package pending another owner design pass.
     repair, but its context ended before a reliable rebuild and focused native test could prove it.
     Receipt `6169e0a0…e41b` preserves the result and all no-replay work. This is an unfinished repair
     boundary, not a product finding.
-  - First open boundary: force a current native rebuild containing the main-menu owner-release repair
-    and run the focused C++ semantic-owner test plus the Python quit-confirmation tests. Do not request
-    another launch token before those checks pass. Then use fresh authority to prove the original
-    process exits through the game. A separate post-relaunch task must validate the saved fire,
-    staffed observation, and natural camp response without crediting bootstrap setup. Later proof
-    still needs both natural profile routes, cannibal daylight crossing, pre-demand, refusal,
-    player-attack, Fight-terminal, rolling-ambush, persistence, cleanup, and independent verdicts.
-  - Continuation update: task `R-029-exploration-035` refreshed stale build headers and proved the
-    quit-owner repair in both test layers. The Python suite passed 16 of 16, and the focused native
-    case passed 9 assertions. Source readiness correctly rejected the old Tiles binary without
-    issuing a token. A current Tiles rebuild is still running under PID 89842. The worker context
-    ended while that build remained active, so receipt `0846913f…eb6b0` preserves the result and the
-    no-replay boundary. A fresh worker must observe that build to completion, bind the resulting
-    executable, and continue to native-exit proof. This is not a product finding.
-  - Waiting work: the external supervisor ended `R-029-exploration-036` during restart normalization
-    after delegation and before the worker returned repository evidence. This matters because that
-    task proves no new R-029 outcome and must not receive another terminal transition. The clock has
-    no identity-bound worker result receipt for this attempt. Preserve receipt `0846913f…eb6b0` as
-    the last usable no-replay frontier. A restart note exists at
-    `.de67/state/supervisor-service/consolidation-restart.md`, but the current compiled decision
-    permits only ledger and clock reads. Do not dispatch from that note unless a later policy
-    decision names it as a source.
+  - First open boundary: inspect the existing detached native-exit session at
+    `.userdata/r029-cannibal-native-exit-e06ed0d6-60d0-4f38-a6dd-ab17c48fa05e` through the
+    file-bridge status and semantic observation route. Its bridge, launch child, and game process
+    were verified live after the administrative restart; status reports `ready` and
+    `startup_hud_ready`, with zero requests. Startup is not native-exit or ecology proof. Continue
+    this existing bound run if usable; do not issue another selection or replay its launch token.
+    Prove the native quit boundary, then use the declared post-relaunch route for saved fire,
+    staffed observation, and natural response. If inspection disproves continuity, preserve the
+    exact divergence and use the existing cleanup and fresh-authority route.
+  - Continuation evidence: task `R-029-exploration-035` proved the focused quit repair in Python
+    and native tests; receipt `0846913f…eb6b0` preserves those no-replay facts. Its PID 89842 and
+    running-build description are historical. Task `R-029-exploration-037` subsequently completed
+    the source-bound Tiles rebuild and obtained runtime `ready`; the binding artifact is
+    `.userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1.json` and the build
+    log is `.userdata/task_r029_tiles_source_bound_rebuild.log`. Preserve completed tests and build
+    evidence; check current source/executable identity before making new product claims.
+  - Restart handoff: the external restart is complete. Attempts 036 and 037 are already
+    administratively terminal; neither receives another terminal transition. Their durable receipts
+    retain their original evidence ceilings. `.de67/state/supervisor-service/autonomy-restart.json`
+    and the exact worker journal it names preserve the interrupted continuation; later journal
+    entries record successful detached launch with binding
+    `c09f57890dc0418ecc4c83833d53eb0ac179ef55fbf0cf3b1ed71f6f1ee9692d`. This handoff is available
+    evidence, not an external permission wait or a restriction on current policy-authorized reads.
   - Subtasks:
-    - [active] unify-natural-discovery-route :: The shortcut is removed, revision 7 is token-eligible, and the registry, launch, and movement paths are repaired. The quit-owner repair passes clean Python and native tests. Observe the active Tiles rebuild, bind its executable, and prove native exit before separate production validation.
+    - [active] unify-natural-discovery-route :: The shortcut is removed, revision 7 is token-eligible, and the registry, launch, and movement paths are repaired. The quit-owner repair passes clean Python and native tests. The source-bound build completed. Inspect and continue the existing detached native-exit session before separate production validation.
     - [open] preserve-night-raid-commitment :: Prove daylight rally hold, night departure, a transition to daylight before contact, continued approach, and attack.
     - [active] enforce-shakedown-first-demand :: Fresh source-bound runs show the exact demand and Pay or Fight choices before either selection and preserve exact members through the chosen response. The pre-demand no-offense control plus refusal or incomplete-payment behavior still need direct verdicts.
     - [done] enforce-paid-departure-safety :: Run `20260903_161237_7fd03f6fb598406cb816b6871df080c4` proves exact members 4 and 5 are paid and returning home across native process replacement, reach abstract epoch 2, and make no renewed demand, Fight, or attack during 120 post-reload ordinary turns. Preserve this closure; do not replay it to repair report declarations.
