@@ -60,17 +60,20 @@ the package pending another owner design pass.
     skill-and-contract gap but received the same stale selector-oriented wait. Receipts
     `348c4a23…bed0`, `060a5671…4f86`, and `a7a8f19c…def0` preserve these no-evidence attempts without
     turning them into findings.
-  - First open boundary: the policy or dispatch projection must provide a worker-authorized
-    repository route instead of the repeated W1 clock-only wait. Exact selectors, skill and contract
-    alignment, and fresh successor continuation remain open. Preserve the registry, runtime, and
-    shared cockpit response proof and do not replay it.
+  - Route change: three fresh attempts inherited the same selector-oriented W1 clock-only wait, even
+    when the third task targeted the separate skill-and-contract gap. This disproves that dispatch
+    strategy only. The selector gap stays open, and another unchanged selector dispatch is forbidden.
+  - First open boundary: align the CAOL skill and focused contract tests with the already implemented
+    registry, runtime, and shared cockpit receipt behavior. This is independent repository work and
+    must not query or replay the waiting selector route. After this gap is judged, the coordinator
+    must choose a materially different selector strategy or obtain a new policy affordance.
   - Subtasks:
     - [done] measure-existing-context-path :: Preserve the 4,236,128-character/223-entry registry counterexample and the 151/6 checkpoint continuity evidence as diagnostics, not limits.
     - [done] generate-progressive-worker-packet :: Phase-3 worker packets now carry the outcome, current frontier, compact receipt, exact bindings/entrypoints, and a reasoned progressive read plan.
     - [done] persist-query-worker-continuation :: Identity-bound worker receipts are artifact-validated, durably stored, terminal-gated, and narrowly queryable; R-026 and R-029 have backfilled continuations.
     - [active] make-caol-command-output-quiet :: Registry status now prints a compact receipt and preserves a verified full artifact. Build and runtime status, cockpit, witness, and diagnostic commands still need the same behavior.
-    - [active] index-pinpoint-evidence :: Exact registry manifest selection now works. Add narrow selectors for scenario/run/binding, event/evidence class, actor/action, native receipt, first divergence, and verdict on the remaining evidence surfaces.
-    - [open] align-caol-skill-and-contract-tests :: Update the CAOL skill and tests to describe and enforce real implemented quiet/full/query behavior without documenting nonexistent flags.
+    - [finding] index-pinpoint-evidence :: Exact registry manifest selection works, but three fresh tasks received the same W1 clock-only wait before broader selector work. Preserve their receipts and require a materially different route.
+    - [active] align-caol-skill-and-contract-tests :: Update the CAOL skill and tests to describe and enforce the implemented registry, runtime, and shared cockpit quiet/full/query behavior without querying the blocked selector route or documenting nonexistent flags.
     - [open] prove-lossless-successor-route :: Reproduce the former bulk route, prove compact default output plus exact full retrieval, and show a fresh worker can continue from a receipt without replay or log archaeology.
 
 - [ ] R-026 — Build and qualify one current-source package on the audited established-base footing,
