@@ -263,7 +263,10 @@ the package pending another owner design pass.
     repair, but its context ended before a reliable rebuild and focused native test could prove it.
     Receipt `6169e0a0…e41b` preserves the result and all no-replay work. This is an unfinished repair
     boundary, not a product finding.
-  - First open boundary: inspect the existing detached native-exit session at
+  - Current handoff: the focused quit tests and source-bound Tiles build are already proved.
+    Keep `.userdata/task_r029_tiles_source_bound_rebuild.log` and
+    `.userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1.json` as the exact
+    build evidence. The next unresolved step is native exit. Inspect the existing detached session at
     `.userdata/r029-cannibal-native-exit-e06ed0d6-60d0-4f38-a6dd-ab17c48fa05e` through the
     file-bridge status and semantic observation route. Its bridge, launch child, and game process
     were verified live after the administrative restart; status reports `ready` and
