@@ -211,6 +211,7 @@ the package pending another owner design pass.
     that projection defect without creating a second acceptance.
 
 - [ ] R-029 — Make both hostile camp profiles use one natural signal, scout, report, and response
+  - Waiting work: Administrative restart to load the agent autonomy consolidation; resume from `.de67/state/supervisor-service/autonomy-restart.json` and current durable evidence. The prior worker reported a fresh source-bound Tiles build and progressed through rejected launch routes to detached-launch path validation. Inspect its latest messages, current run state, and token state before any launch; do not replay an issued or invalidated token.
   route. Keep cannibal raids committed after night departure. Keep normal bandit shakedowns peaceful
   until the player chooses combat, and keep paid groups peaceful until they return home.
   - DFS slices: `R-029-S001`
@@ -277,6 +278,14 @@ the package pending another owner design pass.
     ended while that build remained active, so receipt `0846913f…eb6b0` preserves the result and the
     no-replay boundary. A fresh worker must observe that build to completion, bind the resulting
     executable, and continue to native-exit proof. This is not a product finding.
+  - Waiting work: the external supervisor ended `R-029-exploration-036` during restart normalization
+    after delegation and before the worker returned repository evidence. This matters because that
+    task proves no new R-029 outcome and must not receive another terminal transition. The clock has
+    no identity-bound worker result receipt for this attempt. Preserve receipt `0846913f…eb6b0` as
+    the last usable no-replay frontier. A restart note exists at
+    `.de67/state/supervisor-service/consolidation-restart.md`, but the current compiled decision
+    permits only ledger and clock reads. Do not dispatch from that note unless a later policy
+    decision names it as a source.
   - Subtasks:
     - [active] unify-natural-discovery-route :: The shortcut is removed, revision 7 is token-eligible, and the registry, launch, and movement paths are repaired. The quit-owner repair passes clean Python and native tests. Observe the active Tiles rebuild, bind its executable, and prove native exit before separate production validation.
     - [open] preserve-night-raid-commitment :: Prove daylight rally hold, night departure, a transition to daylight before contact, continued approach, and attack.
@@ -307,11 +316,3 @@ R-027 observation/response without promoting zero-credit bootstrap. R-028 remain
   outcomes remain independent, and an ordinary repository defect remains recoverable work.
 - A compact receipt without its digest-bound full artifact, or a full artifact without pinpoint
   retrieval and stable identity, cannot close R-030.
-  - Waiting work: the external supervisor ended `R-029-exploration-036` during restart normalization
-    after delegation and before the worker returned repository evidence. This matters because that
-    task proves no new R-029 outcome and must not receive another terminal transition. The clock has
-    no identity-bound worker result receipt for this attempt. Preserve receipt `0846913f…eb6b0` as
-    the last usable no-replay frontier. A restart note exists at
-    `.de67/state/supervisor-service/consolidation-restart.md`, but the current compiled decision
-    permits only ledger and clock reads. Do not dispatch from that note unless a later policy
-    decision names it as a source.
