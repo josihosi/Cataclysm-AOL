@@ -72,10 +72,10 @@ the package pending another owner design pass.
     positive filter returned the bound compact receipt, and a wrong-actor control returned none.
     Ninety harness tests and focused CAOL checks passed. Receipt `54e16f59…d2258c` preserves the
     result.
-  - Closed gap: task `R-030-closure-008` used a fresh packet, verified its digest, recovered the
+  - Accepted claim: task `R-030-closure-008` used a fresh packet, verified its digest, recovered the
     exact prior selector receipt, and continued without replaying accepted work. Receipt
-    `0e2afae0…a96625` preserves the result. Every required R-030 closure gap is now closed. The claim
-    still requires its separate acceptance transition.
+    `0e2afae0…a96625` preserves the result. Every required R-030 closure gap is closed. Durable
+    acceptance 1 now settles R-030.
   - Subtasks:
     - [done] measure-existing-context-path :: Preserve the 4,236,128-character/223-entry registry counterexample and the 151/6 checkpoint continuity evidence as diagnostics, not limits.
     - [done] generate-progressive-worker-packet :: Phase-3 worker packets now carry the outcome, current frontier, compact receipt, exact bindings/entrypoints, and a reasoned progressive read plan.
@@ -102,10 +102,12 @@ the package pending another owner design pass.
     assigned-camp selector repair, and typed `basecamp_mission_resolution` implementation. It binds
     the first open boundary to exposing that result in `world.basecamp_missions`, compiling, and then
     using one fresh isolated target-2 witness. Do not replay the accepted footing.
-  - Clock contradiction: the restart says mutation cycle 5 retired every earlier claim deadline,
-    but the deadline harness still limits R-026 to the earlier 64,800-second claim window. A fresh
-    172,800-second whole-item estimate was rejected before any worker was opened. Do not reduce the
-    estimate to fit that stale window; the clock state needs an authoritative policy route.
+  - Waiting work: random mutation cycle 5 retired R-026's original 64,800-second claim clock. No
+    fresh R-026 clock generation exists, so the deadline harness rejected a truthful 172,800-second
+    estimate before opening a worker. This matters because the unfinished repository work cannot be
+    dispatched against a retired deadline. Keep receipt `ecbd0fc3…b355c` and the first open semantic
+    result-exposure boundary visible. The policy must provide a fresh claim-clock route before the
+    next worker opens. Do not shrink the estimate to fit the retired window.
   - Subtasks:
     - [done] audit-current-package-footing :: The source-bound package footing loads to the gameplay HUD, validates its manifest, appears as an active registry candidate, and cleans up without claiming feature behavior.
     - [active] operate-living-npc-branches :: Current-source evidence proves follower free text, API-backed ambient response, camp request routing, exact save/reload continuity, and an unaddressed control. Ambient actor identity and gameplay feel still need an honest verdict.
@@ -305,5 +307,11 @@ R-027 observation/response without promoting zero-credit bootstrap. R-028 remain
   outcomes remain independent, and an ordinary repository defect remains recoverable work.
 - A compact receipt without its digest-bound full artifact, or a full artifact without pinpoint
   retrieval and stable identity, cannot close R-030.
-  - Waiting work: Owner-authorized method/runtime restart interrupted R-029-exploration-036. Read `.de67/state/supervisor-service/consolidation-restart.md` for the unconsumed build/binding boundary before dispatch; preserve the current dirty frontier and prior receipts.
-
+  - Waiting work: the external supervisor ended `R-029-exploration-036` during restart normalization
+    after delegation and before the worker returned repository evidence. This matters because that
+    task proves no new R-029 outcome and must not receive another terminal transition. The clock has
+    no identity-bound worker result receipt for this attempt. Preserve receipt `0846913f…eb6b0` as
+    the last usable no-replay frontier. A restart note exists at
+    `.de67/state/supervisor-service/consolidation-restart.md`, but the current compiled decision
+    permits only ledger and clock reads. Do not dispatch from that note unless a later policy
+    decision names it as a source.
