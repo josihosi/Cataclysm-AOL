@@ -19,3 +19,13 @@ applicable policy's stored target, scope, authority, and evidence limits; a guar
 more than its inputs.
 
 ## Pending suggestions
+
+- A fresh coordinator could not open the required whole-item deadline after mutation review.
+  Generation 21 acknowledged successfully, but `R-029-exploration-039` rejected the independently
+  estimated 345,600-second window because the clock still enforced the retired 259,200-second
+  generation. This matters because repository work remains authorized and recoverable, but no
+  truthful worker task can start. Change the post-mutation clock route so the first new task arms a
+  fresh claim generation from its evidence-based estimate without inheriting the retired duration.
+  Preserve the rejected start as a nonterminal routing counterexample. A falsifying check is a fresh
+  restart where a changed honest estimate opens one new generation and binds its first task without
+  altering any retired deadline.

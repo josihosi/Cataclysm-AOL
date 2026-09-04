@@ -1105,10 +1105,10 @@ Implementation status:
     positive filter returned the bound compact receipt, and a wrong-actor control returned none.
     Ninety harness tests and focused CAOL checks passed. Receipt `54e16f59…d2258c` preserves the
     result.
-  - Closed gap: task `R-030-closure-008` used a fresh packet, verified its digest, recovered the
+  - Accepted claim: task `R-030-closure-008` used a fresh packet, verified its digest, recovered the
     exact prior selector receipt, and continued without replaying accepted work. Receipt
-    `0e2afae0…a96625` preserves the result. Every required R-030 closure gap is now closed. The claim
-    still requires its separate acceptance transition.
+    `0e2afae0…a96625` preserves the result. Every required R-030 closure gap is closed. Durable
+    acceptance 1 now settles R-030.
   - Subtasks:
     - [done] measure-existing-context-path :: Preserve the 4,236,128-character/223-entry registry counterexample and the 151/6 checkpoint continuity evidence as diagnostics, not limits.
     - [done] generate-progressive-worker-packet :: Phase-3 worker packets now carry the outcome, current frontier, compact receipt, exact bindings/entrypoints, and a reasoned progressive read plan.

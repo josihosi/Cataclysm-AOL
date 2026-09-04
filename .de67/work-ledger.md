@@ -247,16 +247,24 @@ the package pending another owner design pass.
     source. Preserve this evidence at its original bindings and ceilings; it does not prove the
     remaining native exit or natural ecology. Old process status and pending-build instructions in
     those artifacts are historical, not current continuation.
-  - Current handoff: task `R-029-exploration-038` found that the input loop discarded a
-    main-menu quit action after its old pre-wait snapshot. Commits `1dd1eb83db` and `99ca9c4947`
-    preserve that action and write the terminal confirmation receipt before exit. Seventeen focused
-    checks pass, and one diagnostic run exited exact PID `35479`. This matters because native exit is
-    now implemented, but the final source-bound rerun did not exercise its last confirmation after
-    malformed stale-observation requests. The current Tiles binary is source-bound at commit
-    `99ca9c4947` with SHA `9244c3bb…6509c0`. The incomplete second run was safely cleaned and earns
-    no native-exit or ecology credit. The first unresolved step is independent native-exit validation
-    with exact current observation and request identities, followed by post-relaunch ecology
-    validation. The worker owns the route.
+  - Current handoff: task `R-029-exploration-038` ended because its worker context was exhausted.
+    This is an attempt exit, not a product finding. Receipt `324cb8c0…5232d1` preserves the result
+    and the no-replay boundary. The input loop had discarded a main-menu quit action after its old
+    pre-wait snapshot. Commits `1dd1eb83db` and `99ca9c4947` now preserve that action and write the
+    terminal confirmation receipt before exit. Seventeen focused checks pass, and one diagnostic run
+    exited exact PID `35479`. The current Tiles binary is source-bound at commit `99ca9c4947` with
+    SHA `9244c3bb…6509c0`. The incomplete second run was safely cleaned and earns no native-exit or
+    ecology credit. No worker or game process remains live from this attempt. The first unresolved
+    step is one independent native-exit validation using each fresh observation and receipt successor.
+    After that proof, the next worker continues the post-relaunch natural ecology route without
+    replaying the quit diagnosis, focused checks, source-bound build, or paid-departure proof.
+    Query the continuation with `worker-receipts --task R-029-exploration-038 --latest`; use
+    `response-status`, `response-slice`, or exact `log-query` selectors for run evidence.
+  - Waiting work: generation 21 acknowledged, but the clock rejected task
+    `R-029-exploration-039` with its honest 345,600-second whole-item estimate because it still
+    enforced the retired 259,200-second generation. This is a routing defect, not a hostile-ecology
+    finding. No worker was dispatched. The compact continuation and every unfinished R-029 branch
+    remain visible while the external mutation reviewer repairs the fresh-generation route.
     `cockpit_file_bridge.py response-status` now exposes a verified compact decision view;
     `response-slice` retrieves advertised omitted fields such as `receipt.next_frame`.
     `log-query --session-dir <session>` or `--path <exact-log> --run-id <run>` filters evidence
