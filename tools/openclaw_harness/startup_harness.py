@@ -4907,6 +4907,8 @@ def open_cockpit_game_service(
     # still rejects an overfull unconsumed window.
     semantic_cursor = {"offset": trace_start_offset}
     latest_frame: Dict[str, Mapping[str, Any]] = {}
+    performance = None
+    performance_error = None
 
     def read_frame() -> Mapping[str, Any]:
         source = semantic_step_source_trace(profile, run_dir)
@@ -4967,18 +4969,25 @@ def open_cockpit_game_service(
             frame: Mapping[str, Any], action_id: str, stable_id: Optional[str] = None,
             parameters: Optional[Mapping[str, str]] = None,
         ) -> Mapping[str, Any]:
-            outcome = execute_semantic_act(
-                run_dir=run_dir, profile=profile, run_id=run_id,
-                trace_start_offset=int(frame.get(
-                    "dispatch_descriptor_event_offset", semantic_cursor["offset"]
-                )), pid=pid, session_id=session_id,
-                frame_id=str(frame.get("frame_id", "")), action_id=action_id,
-                transition_timeout_seconds=transition_timeout_seconds,
-                observe_interval_seconds=observe_interval_seconds, observed_frame=frame,
-                stable_id=stable_id, parameters=parameters,
-                proof_step_label=proof_step_label, proof_step_index=proof_step_index,
-                read_process_state=read_process_state,
-            )
+            if performance is not None:
+                performance.begin_action(frame, action_id)
+            outcome = {"error": "native_dispatch_exception"}
+            try:
+                outcome = execute_semantic_act(
+                    run_dir=run_dir, profile=profile, run_id=run_id,
+                    trace_start_offset=int(frame.get(
+                        "dispatch_descriptor_event_offset", semantic_cursor["offset"]
+                    )), pid=pid, session_id=session_id,
+                    frame_id=str(frame.get("frame_id", "")), action_id=action_id,
+                    transition_timeout_seconds=transition_timeout_seconds,
+                    observe_interval_seconds=observe_interval_seconds, observed_frame=frame,
+                    stable_id=stable_id, parameters=parameters,
+                    proof_step_label=proof_step_label, proof_step_index=proof_step_index,
+                    read_process_state=read_process_state,
+                )
+            finally:
+                if performance is not None:
+                    performance.end_action(frame, outcome)
             successor = outcome.get("next_frame") if isinstance(outcome, Mapping) else None
             if outcome.get("accepted") is True and isinstance(successor, Mapping):
                 # The native receipt already bound this exact successor to the
@@ -5055,9 +5064,18 @@ def open_cockpit_game_service(
         }
 
     def read_evidence() -> Mapping[str, Any]:
-        return compact_cockpit_live_evidence(
+        if performance is not None:
+            performance.observe(latest_frame.get("value", {}))
+        evidence = compact_cockpit_live_evidence(
             Path( run_dir ), run_id, profile=profile, pid=pid or 0,
+            child_resources=(performance.latest["resources"]
+                             if performance is not None and performance.latest else None),
         )
+        if performance is not None:
+            evidence["performance"] = performance.brief()
+        elif performance_error:
+            evidence["performance"] = {"status": "unavailable", "reason": performance_error}
+        return evidence
 
     finalizer = None
     if live_session:
@@ -5066,6 +5084,8 @@ def open_cockpit_game_service(
         final_path = cockpit_live_final_path( Path( run_dir ), proof_step_label )
 
         def finalizer(report: Mapping[str, Any]) -> Mapping[str, Any]:
+            if performance is not None:
+                performance.stop()
             return finalize_cockpit_live_session(
                 Path( run_dir ), pid, report, cleanup_process=cleanup_on_finish,
                 final_path=final_path,
@@ -5089,7 +5109,20 @@ def open_cockpit_game_service(
                     state.update(recorded, evidence_ref=str(path))
             except (OSError, ValueError):
                 pass
+        if state.get("alive") is False and performance is not None:
+            performance.stop()
         return state
+
+    if live_session and pid and read_process_state().get("alive"):
+        from process_performance import ProcessPerformance
+        performance_directory = Path(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR") or run_dir)
+        try:
+            performance = ProcessPerformance(
+                performance_directory, pid=pid, run_id=run_id, binding_id=binding_id,
+                source_binding={"runtime_binding_sha256": runtime_binding_id},
+            )
+        except (OSError, ValueError) as error:
+            performance_error = str(error)
 
     channel = CockpitRunChannel(
         read_frame, dispatch,
@@ -5154,6 +5187,7 @@ def _read_jsonl_objects(path: Path) -> List[Dict[str, Any]]:
 
 def compact_cockpit_live_evidence(
     run_dir: Path, run_id: str, *, profile: str = "", pid: int = 0,
+    child_resources: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Return bounded semantic facts, never raw logs, for one live decision."""
     from r008_indoor_channel_observation import read_r008_indoor_channel_observation
@@ -5223,7 +5257,7 @@ def compact_cockpit_live_evidence(
             "reason": str( first_rejected.get( "reason", "" ) ),
         })
     scheduler_trace = read_scheduler_trace(profile, run_id) if profile else []
-    child_resources = sample_child_resources(pid) if pid > 0 else {
+    child_resources = dict(child_resources) if child_resources is not None else sample_child_resources(pid) if pid > 0 else {
         "pid": None,
         "platform": r009_host_platform(),
         "cpu_percent": {"status": "unavailable", "value": None,

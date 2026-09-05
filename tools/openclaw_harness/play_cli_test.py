@@ -54,6 +54,46 @@ class PlayerCliTest(unittest.TestCase):
         self.cli("collect")
         return pending["request_id"]
 
+    def test_performance_is_readable_under_pending_request_lock(self):
+        self.cli("look")
+        before = (self.session / "play-client.json").read_bytes()
+        self.write("performance.latest.json", {"record_id": "p1", "owner": {"binding_id": "bound-a"}})
+        with session_lock(self.session / "play-client.lock"):
+            result = self.cli("performance")
+        self.assertEqual(result["latest"]["record_id"], "p1")
+        self.assertEqual(result["comparison"]["status"], "unavailable")
+        self.assertEqual((self.session / "play-client.json").read_bytes(), before)
+        self.assertEqual(len(self.requests()), 1)
+
+    def test_performance_samples_actual_owned_process_under_request_lock(self):
+        import os
+        from r009_technical_witness import sample_child_resources
+        initial = sample_child_resources(os.getpid())
+        owner = {"pid": os.getpid(), "run_id": "test-process", "binding_id": "bound-a",
+                 "process_identity": initial["process_identity"], "platform": initial["platform"]}
+        self.write("performance-owner.json", owner)
+        self.write("performance-context.json", {"owner": owner, "context_id": "c1",
+                   "context": {"phase": "unknown", "source": "test_process_fixture"}})
+        self.cli("look")
+        before = (self.session / "play-client.json").read_bytes()
+        with session_lock(self.session / "play-client.lock"):
+            result = self.cli("performance", "--sample-seconds", "0.05")
+        resources = result["latest"]["resources"]
+        self.assertEqual(resources["cpu_percent"]["status"], "available")
+        self.assertGreater(resources["interval_wall_seconds"], 0)
+        self.assertGreater(resources["resident_memory"]["value"], 0)
+        self.assertEqual(result["latest"]["owner"]["pid"], os.getpid())
+        self.assertEqual((self.session / "play-client.json").read_bytes(), before)
+        self.assertEqual(len(self.requests()), 1)
+
+    def test_performance_baseline_is_explicit_and_does_not_overwrite(self):
+        self.write("performance.latest.json", {"record_id": "p1", "owner": {"binding_id": "bound-a"}})
+        baseline = self.session / "baseline.json"
+        self.cli("performance", "--save-baseline", str(baseline), ok=False)
+        self.cli("performance", "--tag", "camp idle", "--save-baseline", str(baseline))
+        self.assertEqual(json.loads(baseline.read_text())["comparison_tag"], "camp idle")
+        self.cli("performance", "--tag", "camp idle", "--save-baseline", str(baseline), ok=False)
+
     def test_controls_preserves_pending_and_observation_authority(self):
         self.observe()
         self.write("play-client.json", {**json.loads((self.session / "play-client.json").read_text()),

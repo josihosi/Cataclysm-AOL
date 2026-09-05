@@ -34,7 +34,7 @@ class R009MacosWitnessCharterTest( unittest.TestCase ):
         )
         self.assertEqual(
             contract["supported_platform_routes"]["macos"]["resource_sampler"],
-            "ps %cpu and rss",
+            "ps cumulative time and rss (interval CPU)",
         )
         self.assertEqual( contract["continuous_final_certification_credit"], 0 )
         self.assertFalse( contract["starts_selected_run"] )

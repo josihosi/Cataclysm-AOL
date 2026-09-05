@@ -21,7 +21,7 @@ FOCUSED_EVIDENCE_CLASS = "focused-qualification"
 SUPPORTED_PLATFORM_ROUTES = {
     "macos": {
         "executable_names": ["Cataclysm-AOL", "cataclysm-tlg-tiles", "cataclysm-tiles"],
-        "resource_sampler": "ps %cpu and rss",
+        "resource_sampler": "ps cumulative time and rss (interval CPU)",
     },
     "linux-wsl": {
         "executable_names": ["cataclysm-tlg-tiles", "cataclysm-tiles"],
@@ -87,17 +87,25 @@ def _linux_resource_sample(pid: int) -> dict[str, Any]:
     stat_path = f"/proc/{pid}/stat"
     statm_path = f"/proc/{pid}/statm"
     try:
-        stat_fields = open(stat_path, encoding="utf-8").read().split()
-        cpu_ticks = int(stat_fields[13]) + int(stat_fields[14])
+        with open(stat_path, encoding="utf-8") as source:
+            # comm may contain spaces or parentheses; fields after its final
+            # closing parenthesis start at field 3 (state).
+            stat_fields = source.read().rsplit(")", 1)[1].split()
+        cpu_ticks = int(stat_fields[11]) + int(stat_fields[12])
+        process_identity = stat_fields[19]
     except (OSError, IndexError, ValueError):
         cpu_ticks = None
+        process_identity = None
     try:
-        resident_pages = int(open(statm_path, encoding="utf-8").read().split()[1])
+        with open(statm_path, encoding="utf-8") as source:
+            resident_pages = int(source.read().split()[1])
         resident_bytes = resident_pages * os.sysconf("SC_PAGE_SIZE")
     except (OSError, IndexError, ValueError):
         resident_bytes = None
     return {
         "cpu_ticks": cpu_ticks,
+        "process_identity": process_identity,
+        "cpu_counter_resolution_seconds": 1 / os.sysconf("SC_CLK_TCK"),
         "resident_memory": (
             available_metric(resident_bytes, "bytes", "/proc/<pid>/statm")
             if resident_bytes is not None else
@@ -106,24 +114,41 @@ def _linux_resource_sample(pid: int) -> dict[str, Any]:
     }
 
 
+def parse_ps_cpu_time(value: str) -> float:
+    """BSD ps cumulative time: [[days-]hours:]minutes:seconds.fraction."""
+    days = 0
+    if "-" in value:
+        day, value = value.split("-", 1)
+        days = int(day)
+    parts = value.split(":")
+    if len(parts) not in (2, 3):
+        raise ValueError("unrecognized ps CPU time")
+    seconds = float(parts[-1]) + 60 * int(parts[-2])
+    return days * 86400 + (3600 * int(parts[0]) if len(parts) == 3 else 0) + seconds
+
+
 def _macos_resource_sample(pid: int) -> dict[str, Any]:
     try:
         result = subprocess.run(
-            ["ps", "-o", "%cpu=", "-o", "rss=", "-p", str(pid)],
-            capture_output=True, text=True, check=False,
+            ["ps", "-o", "time=", "-o", "rss=", "-o", "lstart=", "-p", str(pid)],
+            capture_output=True, text=True, check=False, timeout=5,
         )
         fields = result.stdout.split()
-        if result.returncode != 0 or len(fields) < 2:
+        if result.returncode != 0 or len(fields) < 7:
             raise ValueError("ps did not return a process row")
-        cpu_percent = float(fields[0])
+        cpu_seconds = parse_ps_cpu_time(fields[0])
         resident_bytes = int(fields[1]) * 1024
-    except (OSError, ValueError):
+        process_identity = " ".join(fields[2:])
+    except (OSError, ValueError, subprocess.TimeoutExpired):
         return {
             "cpu_percent": unavailable_metric("the macOS ps process sample was not available"),
             "resident_memory": unavailable_metric("the macOS ps resident-memory sample was not available"),
         }
     return {
-        "cpu_percent": available_metric(cpu_percent, "percent", "ps %cpu"),
+        "cpu_seconds": cpu_seconds,
+        "process_identity": process_identity,
+        "cpu_counter_resolution_seconds": 0.01,
+        "cpu_percent": unavailable_metric("interval CPU needs two cumulative samples"),
         "resident_memory": available_metric(resident_bytes, "bytes", "ps rss"),
     }
 
@@ -131,19 +156,19 @@ def _macos_resource_sample(pid: int) -> dict[str, Any]:
 def _windows_resource_sample(pid: int) -> dict[str, Any]:
     command = (
         f"Get-Process -Id {pid} -ErrorAction Stop | "
-        "Select-Object CPU,WorkingSet64 | ConvertTo-Json -Compress"
+        "Select-Object CPU,WorkingSet64,@{Name='ProcessIdentity';Expression={$_.StartTime.ToUniversalTime().Ticks.ToString()}} | ConvertTo-Json -Compress"
     )
     try:
         result = subprocess.run(
             ["powershell", "-NoProfile", "-NonInteractive", "-Command", command],
-            capture_output=True, text=True, check=False,
+            capture_output=True, text=True, check=False, timeout=5,
         )
         fields = json.loads(result.stdout)
         if result.returncode != 0 or not isinstance(fields, dict):
             raise ValueError("PowerShell did not return a process row")
         cpu_seconds = float(fields["CPU"])
         resident_bytes = int(fields["WorkingSet64"])
-    except (KeyError, OSError, TypeError, ValueError):
+    except (KeyError, OSError, TypeError, ValueError, subprocess.TimeoutExpired):
         return {
             "cpu_seconds": None,
             "cpu_percent": unavailable_metric("the Windows process sample was not available"),
@@ -151,6 +176,8 @@ def _windows_resource_sample(pid: int) -> dict[str, Any]:
         }
     return {
         "cpu_seconds": cpu_seconds,
+        "process_identity": fields.get("ProcessIdentity"),
+        "cpu_counter_resolution_seconds": 0.0000001,
         "cpu_percent": unavailable_metric("a Windows CPU interval needs two direct samples"),
         "resident_memory": available_metric(resident_bytes, "bytes", "Get-Process WorkingSet64"),
     }
@@ -164,7 +191,15 @@ def sample_child_resources(
 ) -> dict[str, Any]:
     """Sample the child without inventing a numeric metric on unsupported hosts."""
     platform_name = platform_name or host_platform()
-    sampled_at = time.monotonic() if monotonic_seconds is None else monotonic_seconds
+    acquisition_start = time.monotonic()
+    sampled_at = acquisition_start if monotonic_seconds is None else monotonic_seconds
+
+    def finish_sample(sample):
+        acquisition_end = time.monotonic()
+        sample["sample_acquisition_seconds"] = acquisition_end - acquisition_start
+        if monotonic_seconds is None:
+            sample["sampled_monotonic_seconds"] = (acquisition_start + acquisition_end) / 2
+        return sample
     sample: dict[str, Any] = {
         "pid": int(pid),
         "platform": platform_name,
@@ -174,19 +209,18 @@ def sample_child_resources(
     }
     if platform_name in {"linux", "linux-wsl"}:
         linux = _linux_resource_sample(pid)
-        sample["cpu_ticks"] = linux["cpu_ticks"]
-        sample["resident_memory"] = linux["resident_memory"]
+        sample.update(linux)
         if linux["cpu_ticks"] is None:
             sample["cpu_percent"] = unavailable_metric("the Linux CPU tick source was not readable")
-        return sample
+        return finish_sample(sample)
     if platform_name == "macos":
         sample.update(_macos_resource_sample(pid))
-        return sample
+        return finish_sample(sample)
     if platform_name == "windows":
         sample.update(_windows_resource_sample(pid))
-        return sample
+        return finish_sample(sample)
     sample["cpu_percent"] = unavailable_metric("this host is outside the supported platform witness set")
-    return sample
+    return finish_sample(sample)
 
 
 def complete_child_resource_interval(
@@ -196,7 +230,9 @@ def complete_child_resource_interval(
     """Attach an interval CPU value only when two direct samples exist."""
     completed = dict(after)
     platform_name = str(after.get("platform", ""))
-    if platform_name == "macos":
+    if before.get("pid") != after.get("pid") or before.get("platform") != after.get("platform") or \
+            before.get("process_identity") != after.get("process_identity"):
+        completed["cpu_percent"] = unavailable_metric("process identity changed between samples")
         return completed
     counter_name = "cpu_ticks" if platform_name in {"linux", "linux-wsl"} else "cpu_seconds"
     before_counter = before.get(counter_name)
@@ -219,10 +255,17 @@ def complete_child_resource_interval(
         (after_counter - before_counter) / clock_ticks_per_second
         if platform_name in {"linux", "linux-wsl"} else after_counter - before_counter
     )
+    if cpu_seconds < 0:
+        completed["cpu_percent"] = unavailable_metric("cumulative process CPU counter decreased")
+        return completed
+    completed["interval_wall_seconds"] = elapsed
+    completed["interval_cpu_seconds"] = cpu_seconds
     completed["cpu_percent"] = available_metric(
-        cpu_seconds * 100.0 / elapsed,
-        "percent", "/proc/<pid>/stat interval" if platform_name in {"linux", "linux-wsl"} else "Get-Process CPU interval",
+        cpu_seconds * 100.0 / elapsed, "percent_of_one_cpu_core",
+        "/proc/<pid>/stat interval" if platform_name in {"linux", "linux-wsl"} else
+        "ps cumulative time interval" if platform_name == "macos" else "Get-Process CPU interval",
     )
+    completed["cpu_percent"]["interpretation"] = "Process core equivalents: 100% is one core; multithreaded work may exceed 100%. Not host utilization."
     return completed
 
 

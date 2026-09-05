@@ -75,6 +75,33 @@ class PlayerClient:
         # refresh the frame, enqueue traffic, or save client ownership state.
         return {"ok": True, "result": player_controls(self.state.get("operation_availability"))}
 
+    def performance(self, args):
+        from process_performance import (read_json, read_records, sample_owned_session,
+                                         compare_records)
+        if args.sample_seconds is not None:
+            record = sample_owned_session(self.session, self.binding, args.sample_seconds)
+        else:
+            record = read_json(self.session / "performance.latest.json")
+        if record and record.get("owner", {}).get("binding_id") != self.binding:
+            raise ValueError("performance_binding_mismatch")
+        result = {"ok": True, "latest": record or None,
+                  "comparison": {"status": "unavailable", "reason": "no baseline selected"},
+                  "note": "Read-only game telemetry, independent of pending requests. --sample-seconds 1 measures the owned process now. --offset 0 --limit 5 pages exact retained records. --tag labels your workload, not a native fact."}
+        if args.offset is not None:
+            page = read_records(self.session, args.offset, args.limit)
+            if any(item.get("owner", {}).get("binding_id") != self.binding for item in page["records"]):
+                raise ValueError("performance_record_binding_mismatch")
+            result.update(page)
+        if args.baseline:
+            result["comparison"] = compare_records(record, read_json(args.baseline), args.tag)
+        if args.save_baseline:
+            if not record or not args.tag.strip():
+                raise ValueError("saving_baseline_requires_a_record_and_explicit_workload_tag")
+            with args.save_baseline.open("x") as destination:
+                json.dump({"comparison_tag": args.tag, "record": record}, destination)
+            result["baseline_saved"] = str(args.save_baseline)
+        return result
+
     def collect(self, wait_seconds: float = 0) -> dict[str, Any]:
         pending = self.state.get("pending")
         if not pending:
@@ -255,6 +282,13 @@ def main(argv=None):
     act.add_argument("action")
     act.add_argument("--target", help="Exact advertised stable ID")
     act.add_argument("--param", action="append", default=[], metavar="KEY=VALUE")
+    performance = commands.add_parser("performance", help="Read CPU/RSS/action intervals, including while a request is pending")
+    performance.add_argument("--sample-seconds", type=float, help="Measure a fresh owned-process CPU interval without bridge input")
+    performance.add_argument("--offset", type=int, help="Page exact retained records from this zero-based offset")
+    performance.add_argument("--limit", type=int, default=5)
+    performance.add_argument("--tag", default="", help="Explicit comparable-workload annotation; never a native fact")
+    performance.add_argument("--baseline", type=Path, help="Compare latest/sample with a previously saved tagged record")
+    performance.add_argument("--save-baseline", type=Path, help="Save latest/sample as a tagged baseline; refuses overwrite")
     commands.add_parser("controls", help="Read wait/movement request examples, permissions and interruption behavior without sending input")
     call = commands.add_parser("call", help="Submit an existing structured game.* request; service authorization still applies")
     call.add_argument("--request", type=Path, required=True,
@@ -274,32 +308,37 @@ def main(argv=None):
     try:
         if not math.isfinite(args.wait_seconds) or args.wait_seconds < 0:
             raise ValueError("wait_seconds_must_be_finite_and_nonnegative")
-        with session_lock(args.session / "play-client.lock"):
-            client = PlayerClient(args.session)
-            if args.command == "look":
-                if client.state.get("sealed_terminal"):
-                    raise ValueError("journal_is_sealed: submit finish --witness FILE")
-                result = client.submit({"action": "game.observe"}, args.wait_seconds)
-            elif args.command == "collect":
-                result = client.collect(args.wait_seconds)
-            elif args.command == "act":
-                params = {}
-                for item in args.param:
-                    key, separator, value = item.partition("=")
-                    if not separator or not key or key in params:
-                        raise ValueError("parameters_need_unique_KEY=VALUE")
-                    params[key] = value
-                result = client.act(args.action, args.target, params, args.wait_seconds)
-            elif args.command == "controls":
-                result = client.controls()
-            elif args.command == "call":
-                result = client.call(json.loads(args.request.read_text()), args.wait_seconds)
-            elif args.command == "inspect":
-                result = client.inspect(args.selector, args.offset, args.limit, args.contains, args.request_id)
-            elif args.command == "journal":
-                result = client.journal(args.reason, args.unused_authority, args.wait_seconds)
-            else:
-                result = client.finish(json.loads(args.witness.read_text()), args.wait_seconds)
+        if args.command == "performance":
+            # Independent telemetry must remain readable while another CLI is
+            # waiting with the request-ownership lock. It never edits that state.
+            result = PlayerClient(args.session).performance(args)
+        else:
+            with session_lock(args.session / "play-client.lock"):
+                client = PlayerClient(args.session)
+                if args.command == "look":
+                    if client.state.get("sealed_terminal"):
+                        raise ValueError("journal_is_sealed: submit finish --witness FILE")
+                    result = client.submit({"action": "game.observe"}, args.wait_seconds)
+                elif args.command == "collect":
+                    result = client.collect(args.wait_seconds)
+                elif args.command == "act":
+                    params = {}
+                    for item in args.param:
+                        key, separator, value = item.partition("=")
+                        if not separator or not key or key in params:
+                            raise ValueError("parameters_need_unique_KEY=VALUE")
+                        params[key] = value
+                    result = client.act(args.action, args.target, params, args.wait_seconds)
+                elif args.command == "controls":
+                    result = client.controls()
+                elif args.command == "call":
+                    result = client.call(json.loads(args.request.read_text()), args.wait_seconds)
+                elif args.command == "inspect":
+                    result = client.inspect(args.selector, args.offset, args.limit, args.contains, args.request_id)
+                elif args.command == "journal":
+                    result = client.journal(args.reason, args.unused_authority, args.wait_seconds)
+                else:
+                    result = client.finish(json.loads(args.witness.read_text()), args.wait_seconds)
     except (OSError, ValueError, KeyError, TypeError) as error:
         result = {"ok": False, "error": str(error)}
     print(json.dumps(result, ensure_ascii=False))
