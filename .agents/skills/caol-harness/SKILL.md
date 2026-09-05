@@ -100,8 +100,12 @@ action needs `collect`, never resubmission. Choose from the current surface's ac
 `--target` only when that action advertises a stable ID. A rejected stale owner needs a fresh
 `look` before deciding what to do. Nested menus are game state, not necessarily failures.
 
-The default view includes the player, all immediate neighbouring tiles, a terrain map, nearby
-entities and grouped recent messages. Omitted detail retains exact selectors and paging.
+The default view names the current input owner and its available navigation. Large action catalogs
+show five distinct targets plus controls; use the supplied selector to search or page further targets.
+It includes player health, needs, stamina, named effects and weapon state, immediate neighbouring
+tiles, a terrain map, nearby entities and grouped recent messages. Omitted detail retains exact
+selectors and paging. Archived history remains retrievable; references are storage handles, not
+missing evidence.
 Saving and returning to the main menu differs from quitting the application. An actionless
 `process_exited` observation reports the bound process outcome, not save durability or feature
 success. After `finish`, `collect` reports actual cleanup separately.

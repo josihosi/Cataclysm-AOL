@@ -8,6 +8,8 @@ it deliberately does not encode a claim-specific interaction matrix.
 
 from __future__ import annotations
 
+from cockpit_archive import ArchiveSequence, is_sequence, value_digest
+
 import copy
 import hashlib
 import json
@@ -35,7 +37,7 @@ def _canonical(value: Any) -> str:
 
 
 def _digest(label: str, value: Any) -> str:
-    return hashlib.sha256((label + ":" + _canonical(value)).encode("utf-8")).hexdigest()
+    return value_digest(label, value)
 
 
 def normalize_witness_charter(value: Mapping[str, Any]) -> dict[str, Any]:
@@ -187,7 +189,7 @@ def build_evidence_journal(
                          "run_id", "binding_id")
     if any(not str(identity.get(key, "")).strip() for key in required_identity):
         raise WitnessError("journal_incomplete_identity")
-    entries: list[dict[str, Any]] = []
+    entries = transcript.archive.sequence() if isinstance(transcript, ArchiveSequence) else []
 
     def append(kind: str, value: Mapping[str, Any]) -> None:
         sequence = len(entries) + 1
@@ -297,7 +299,8 @@ def compose_evidence_journals(
     normalized_charter = normalize_witness_charter(charter)
     if len(journals) < 2:
         raise WitnessError("journal_set_requires_multiple_runs")
-    entries: list[dict[str, Any]] = []
+    first_entries = journals[0].get("entries")
+    entries = first_entries.archive.sequence() if isinstance(first_entries, ArchiveSequence) else []
     identities: list[dict[str, Any]] = []
     source_digests: list[str] = []
     ceilings: list[str] = []
@@ -355,7 +358,7 @@ def _path_value(value: Any, path: str) -> Any:
                 pass
         if isinstance(current, Mapping) and part in current:
             current = current[part]
-        elif isinstance(current, list) and part.isdecimal() and int(part) < len(current):
+        elif is_sequence(current) and part.isdecimal() and int(part) < len(current):
             current = current[int(part)]
         else:
             raise WitnessError("witness_citation_path_missing:" + path)
@@ -382,12 +385,14 @@ def validate_witness_statement(
     if not supported_claim or not causal_account:
         raise WitnessError("witness_missing_claim_or_causal_account")
     entries = journal.get("entries")
-    if not isinstance(entries, list):
+    if not is_sequence(entries):
         raise WitnessError("witness_journal_entries_missing")
-    by_id = {
+    by_id = None if isinstance(entries, ArchiveSequence) else {
         str(entry.get("citation_id", "")): entry
         for entry in entries if isinstance(entry, Mapping)
     }
+    def find_entry(citation_id):
+        return entries.lookup(citation_id) if by_id is None else by_id.get(citation_id)
     citations = statement.get("citations")
     if not isinstance(citations, list) or not citations:
         raise WitnessError("witness_requires_citations")
@@ -398,13 +403,14 @@ def validate_witness_statement(
             raise WitnessError("witness_citation_must_be_an_object")
         citation_id = str(citation.get("citation_id", "")).strip()
         meaning = str(citation.get("meaning", "")).strip()
-        if citation_id not in by_id or not meaning:
+        cited_entry = find_entry(citation_id)
+        if cited_entry is None or not meaning:
             raise WitnessError("witness_citation_missing_or_unknown:" + citation_id)
         checks = citation.get("checks", {})
         if not isinstance(checks, Mapping):
             raise WitnessError("witness_citation_checks_must_be_an_object")
         for path, expected in checks.items():
-            actual = _path_value(by_id[citation_id].get("value"), str(path))
+            actual = _path_value(cited_entry.get("value"), str(path))
             if actual != expected:
                 raise WitnessError("witness_citation_value_mismatch:" + citation_id + ":" + str(path))
         cited.add(citation_id)
@@ -412,8 +418,8 @@ def validate_witness_statement(
             "citation_id": citation_id, "meaning": meaning, "checks": dict(checks),
         })
     contradictions = {
-        citation_id for citation_id, entry in by_id.items()
-        if entry.get("kind") == "contradiction"
+        str(entry.get("citation_id", "")) for entry in entries
+        if isinstance(entry, Mapping) and entry.get("kind") == "contradiction"
     }
     disclosed = statement.get("contradictions", [])
     if isinstance(disclosed, (str, bytes)) or not isinstance(disclosed, list):
@@ -492,7 +498,7 @@ def validate_witness_bundle(
         })
 
     entries = journal.get("entries")
-    if not isinstance(entries, list):
+    if not is_sequence(entries):
         raise WitnessError("witness_journal_entries_missing")
     citation_ids = {
         str(entry.get("citation_id", ""))

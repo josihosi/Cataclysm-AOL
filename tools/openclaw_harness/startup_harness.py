@@ -16,6 +16,8 @@ window focus, key presses, and screenshots when not in --dry-run mode.
 
 from __future__ import annotations
 
+from cockpit_archive import Archive, ArchiveSequence, is_sequence, json_chunks, write_json_stream, resolve_wire, find_archive
+
 import argparse
 import copy
 import contextlib
@@ -3166,7 +3168,10 @@ def asdict_world(world: WorldInfo) -> Dict[str, Any]:
 
 def write_json(path: Path, data: Dict[str, Any]) -> None:
     ensure_dir(path.parent)
-    path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    if find_archive(data) is not None:
+        write_json_stream(path, data, exclusive=False)
+    else:
+        path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
 
 
 def seal_r027_signal_cleanup_sidecar(run_dir: Path, cleanup: Mapping[str, Any]) -> None:
@@ -5124,8 +5129,12 @@ def open_cockpit_game_service(
         except (OSError, ValueError) as error:
             performance_error = str(error)
 
+    archive = Archive(
+        Path(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR") or run_dir) / "cockpit-evidence.sqlite",
+        run_id=run_id, binding_id=binding_id,
+    ) if live_session else None
     channel = CockpitRunChannel(
-        read_frame, dispatch,
+        read_frame, dispatch, archive=archive,
         read_evidence=read_evidence,
         read_process_state=read_process_state if pid else None,
         binding_id=binding_id,
@@ -5309,9 +5318,10 @@ def finalize_cockpit_live_session(
     }
     payload = {**dict( report ), "cleanup": cleanup}
     ensure_dir( final_path.parent )
-    with final_path.open( "x", encoding="utf-8" ) as stream:
-        json.dump( payload, stream, indent=2, ensure_ascii=False )
-        stream.write( "\n" )
+    exported = write_json_stream(final_path, payload)
+    transcript = payload.get("action_observation_sequence")
+    if isinstance(transcript, ArchiveSequence):
+        write_json_stream(final_path.with_suffix(".ref.json"), transcript.archive.wire(payload, exported=exported))
     return {
         "cleanup": cleanup,
         "final_report_ref": final_path.name,
@@ -5330,14 +5340,24 @@ def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> i
             result = service.call( request ) if isinstance( request, Mapping ) else {
                 "ok": False, "error": "request must be an object",
             }
-        print( json.dumps( result, ensure_ascii=False ), file=output_stream, flush=True )
+        archive = getattr(service.run_channel, "archive", None)
+        wire_result = archive.wire(result) if archive is not None else result
+        for chunk in json_chunks(wire_result):
+            output_stream.write(chunk)
+        output_stream.write("\n")
+        output_stream.flush()
         state = service.run_channel.status()
         if state["state"] == "finished":
             finished = True
             break
     if not finished:
         result = service.run_channel.close_unfinished()
-        print( json.dumps( result, ensure_ascii=False ), file=output_stream, flush=True )
+        archive = getattr(service.run_channel, "archive", None)
+        wire_result = archive.wire(result) if archive is not None else result
+        for chunk in json_chunks(wire_result):
+            output_stream.write(chunk)
+        output_stream.write("\n")
+        output_stream.flush()
         return 1
     return 0
 
@@ -17949,24 +17969,29 @@ def r014_cockpit_live_session_metadata(
     final_run_id = str(final.get("run_id", "")).strip()
     final_binding_id = str(final.get("binding_id", "")).strip()
     transcript = final.get("action_observation_sequence")
-    actions = [entry for entry in transcript if isinstance(entry, Mapping) and entry.get("kind") == "action"] \
-        if isinstance(transcript, list) else []
-    observations = [entry for entry in transcript if isinstance(entry, Mapping) and entry.get("kind") == "observation"] \
-        if isinstance(transcript, list) else []
-    accepted_actions = [entry for entry in actions if isinstance(entry.get("result"), Mapping) and entry["result"].get("ok") is True]
+    action_count = observation_count = accepted_action_count = 0
+    for entry in transcript if is_sequence(transcript) else ():
+        if not isinstance(entry, Mapping):
+            continue
+        if entry.get("kind") == "action":
+            action_count += 1
+            if isinstance(entry.get("result"), Mapping) and entry["result"].get("ok") is True:
+                accepted_action_count += 1
+        elif entry.get("kind") == "observation":
+            observation_count += 1
     metadata.update({
         "final_run_id": final_run_id,
         "final_binding_id": final_binding_id,
         "state": str(final.get("state", "")),
-        "action_count": len(actions),
-        "accepted_action_count": len(accepted_actions),
-        "observation_count": len(observations),
+        "action_count": action_count,
+        "accepted_action_count": accepted_action_count,
+        "observation_count": observation_count,
     })
     if final_run_id != str(run_id) or final_binding_id != str(binding_id):
         return {**metadata, "status": "scanned", "reason": "wrong_run_or_binding"}
     if metadata["state"] != "finished":
         return {**metadata, "status": "scanned", "reason": "unfinished_session"}
-    if not accepted_actions or len(observations) < 2:
+    if not accepted_action_count or observation_count < 2:
         return {**metadata, "status": "scanned", "reason": "incomplete_live_transaction"}
     return {**metadata, "status": "required_state_present"}
 
@@ -18436,25 +18461,26 @@ def r023_relative_movement_step_verdict(
     failures: List[str] = []
     transcript = final.get("action_observation_sequence")
     movement_result: Mapping[str, Any] = {}
-    if not isinstance(transcript, list):
+    if not is_sequence(transcript):
         failures.append("r023_missing_ordered_transcript")
     else:
-        matching = [entry for entry in transcript if isinstance(entry, Mapping) and
-                    entry.get("kind") == operation and isinstance(entry.get("result"), Mapping)]
-        native_actions = [entry for entry in transcript if isinstance(entry, Mapping) and
-                          entry.get("kind") == "action" and isinstance(entry.get("result"), Mapping)]
-        sibling = [entry for entry in transcript if isinstance(entry, Mapping) and
-                   entry.get("kind") in {"raw_move_relative", "guarded_move_relative"} and
-                   entry.get("kind") != operation]
-        if not matching and native_actions and not sibling:
-            # The live bridge records each native cardinal dispatch as an
-            # action entry; the selected descriptor is the sole owner of its
-            # enclosing relative operation.
-            matching = native_actions
-        if not matching or sibling:
+        matching = None
+        native_action = False
+        sibling = False
+        for entry in transcript:
+            if not isinstance(entry, Mapping):
+                continue
+            kind = entry.get("kind")
+            if kind == operation and isinstance(entry.get("result"), Mapping) and matching is None:
+                matching = entry
+            if kind == "action" and isinstance(entry.get("result"), Mapping):
+                native_action = True
+            if kind in {"raw_move_relative", "guarded_move_relative"} and kind != operation:
+                sibling = True
+        if (matching is None and not native_action) or sibling:
             failures.append("r023_operation_not_exactly_selected")
-        elif isinstance(matching[0].get("result"), Mapping) and matching[0].get("kind") == operation:
-            movement_result = matching[0]["result"]
+        elif matching is not None:
+            movement_result = matching["result"]
     if descriptor.get("live_operations") != [expected_action]:
         failures.append("r023_live_authority_allows_fallback")
     detail = final.get("stop_detail")
@@ -18466,7 +18492,7 @@ def r023_relative_movement_step_verdict(
     terminal = packet.get("terminal_absolute_ms") if isinstance(packet, Mapping) else None
     valid_position = lambda value: isinstance(value, list) and len(value) == 3 and all(
         isinstance(component, int) and not isinstance(component, bool) for component in value)
-    if not isinstance(receipts, list) or not isinstance(partial, int) or isinstance(partial, bool) or \
+    if not is_sequence(receipts) or not isinstance(partial, int) or isinstance(partial, bool) or \
             not isinstance(planned, int) or isinstance(planned, bool) or partial != len(receipts) or \
             partial < 0 or planned < partial:
         failures.append("r023_partial_progress_or_receipts_unbound")
@@ -18628,7 +18654,7 @@ def cockpit_live_session_step_verdict(
             ).strip() ):
         failures.append( "cockpit_target_receipt_not_bound_to_run_and_step" )
     transcript = final.get( "action_observation_sequence" )
-    if not isinstance( transcript, list ) or not any(
+    if not is_sequence( transcript ) or not any(
             isinstance( entry, Mapping ) and entry.get( "kind" ) == "action" and
             isinstance( entry.get( "result" ), Mapping ) and entry["result"].get( "ok" ) is True
             for entry in transcript ) or sum(
@@ -27997,8 +28023,14 @@ def execute_probe_steps(
                 continue
             live_status = serve_cockpit_live( service, sys.stdin, sys.stdout )
             final_path = cockpit_live_final_path( run_dir, label )
-            final = json.loads( final_path.read_text( encoding="utf-8" ) ) \
-                if final_path.is_file() else {}
+            reference_path = final_path.with_suffix(".ref.json")
+            if reference_path.is_file():
+                wire = json.loads(reference_path.read_text(encoding="utf-8"))
+                archive_directory = service.run_channel.archive.path.parent
+                final = resolve_wire(wire, directory=archive_directory,
+                                     binding_id=str(service.run_channel._binding_id), exported_path=final_path)
+            else:
+                final = json.loads(final_path.read_text(encoding="utf-8")) if final_path.is_file() else {}
             report["cockpit_live_session"] = {
                 "descriptor": descriptor,
                 "final": final,
@@ -33947,6 +33979,9 @@ def finalize_probe_report(
         run_dir=run_dir,
         report_filename=report_filename,
     ) if compact_stdout else report
+    archive = find_archive(stdout_payload)
+    if archive is not None:
+        stdout_payload = archive.wire(stdout_payload)
     print(json.dumps(stdout_payload, indent=2, ensure_ascii=False))
 
 

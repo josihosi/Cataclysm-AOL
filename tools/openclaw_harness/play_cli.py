@@ -17,6 +17,7 @@ import time
 from typing import Any
 import uuid
 
+from cockpit_archive import json_chunks
 from cockpit import player_controls
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge, _atomic_json
 
@@ -341,7 +342,9 @@ def main(argv=None):
                     result = client.finish(json.loads(args.witness.read_text()), args.wait_seconds)
     except (OSError, ValueError, KeyError, TypeError) as error:
         result = {"ok": False, "error": str(error)}
-    print(json.dumps(result, ensure_ascii=False))
+    for chunk in json_chunks(result):
+        print(chunk, end="")
+    print()
     return 0 if result.get("ok") else 1
 
 

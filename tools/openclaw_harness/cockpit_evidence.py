@@ -7,6 +7,8 @@ import json
 from pathlib import Path
 from typing import Any
 
+from cockpit_archive import ArchiveSequence
+
 
 def decode(value: Any) -> Any:
     if isinstance(value, str) and value.lstrip().startswith(("{", "[")):
@@ -23,7 +25,7 @@ def select(value: Any, selector: str) -> Any:
         value = decode(value)
         if isinstance(value, dict):
             value = value[part]
-        elif isinstance(value, list) and part.isdecimal():
+        elif isinstance(value, (list, ArchiveSequence)) and part.isdecimal():
             value = value[int(part)]
         else:
             raise KeyError(selector)
@@ -31,6 +33,9 @@ def select(value: Any, selector: str) -> Any:
 
 
 def describe(value: Any, path: str) -> dict[str, Any]:
+    if isinstance(value, ArchiveSequence):
+        return {"omitted": True, "selector": path, "type": "list",
+                "count": len(value), "json_bytes": value.json_bytes}
     decoded = decode(value)
     result = {"omitted": True, "selector": path, "type": type(decoded).__name__,
               "json_bytes": len(json.dumps(value, ensure_ascii=False).encode())}
@@ -48,8 +53,16 @@ def gameplay_fact(value: Any, path: str) -> Any:
     if not isinstance(decoded, (dict, list)):
         return compact(value, path)
     result = describe(value, path)
-    if key == "avatar" and isinstance(decoded, dict):
+    if key in {"avatar", "avatar_status"} and isinstance(decoded, dict):
         result.update(preview=decoded, omitted=False)
+    elif key == "avatar_effects" and isinstance(decoded, dict):
+        entries = decoded.get("entries", {})
+        if isinstance(entries, dict):
+            names = [{"effect_id": effect_id, "body_part_id": part, "name": facts.get("name")}
+                     for effect_id, parts in entries.items() if isinstance(parts, dict)
+                     for part, facts in parts.items() if isinstance(facts, dict)]
+            result.update(named_effects=names, effect_count=len(names),
+                          detail="Exact descriptions and modifier sources remain at this selector.")
     elif key == "messages" and isinstance(decoded, list):
         groups = {}
         for index, message in enumerate(decoded):
@@ -88,17 +101,65 @@ def gameplay_fact(value: Any, path: str) -> Any:
     return result
 
 
+def action_catalog(actions: list, path: str) -> Any:
+    """Keep navigation visible while paging large native target catalogs."""
+    targets = {}
+    controls = []
+    for index, action in enumerate(actions):
+        if not isinstance(action, dict):
+            return None
+        identity = str(action.get("stable_id", ""))
+        if not identity or identity == action.get("id"):
+            controls.append(action)
+        else:
+            row = targets.setdefault(identity, {"target": identity, "actions": [], "source_indices": []})
+            row["actions"].append(action)
+            row["source_indices"].append(index)
+    if len(targets) <= 5:
+        return None
+    rows = list(targets.values())
+    preview = rows[:5]
+    next_index = rows[5]["source_indices"][0]
+    return {**describe(actions, path), "controls": controls, "target_count": len(rows),
+            "targets_preview": preview, "next_offset": next_index,
+            "paging": "inspect this selector with --contains NAME to find a target, or --offset/--limit to page original action rows. Controls remain visible; preview is five distinct targets."}
+
+
+def current_input(value: dict, path: str) -> Any:
+    for key in ("observation", "terminal_observation", "result"):
+        observed = value.get(key)
+        if not isinstance(observed, dict) or not isinstance(observed.get("surface"), dict):
+            continue
+        surface = observed["surface"]
+        base = f"{path}.{key}" if path else key
+        actions = surface.get("actions", [])
+        navigation = [action for action in actions if isinstance(action, dict) and
+                      action.get("enabled") is True and
+                      str(action.get("id", "")).rsplit(".", 1)[-1] in {"cancel", "close", "back", "done"}]
+        return {"owner": surface.get("kind"), "frame_id": observed.get("observation_id"),
+                "breadcrumbs": surface.get("breadcrumbs", observed.get("breadcrumbs", [])),
+                "navigation": navigation, "actions_selector": base + ".surface.actions",
+                "source_selector": base,
+                "action_rule": "Choose actions from this current owner. World actions become usable after returning to World."}
+    return None
+
+
 def compact(value: Any, path: str = "") -> Any:
     """Keep decision scalars and action availability; expose bulky values as selectors.
 
     The string preview is a presentation default, not an evidence or acceptance limit.
     Structured native facts are discoverable without rendering maps or repeated messages.
     """
+    if isinstance(value, ArchiveSequence):
+        return describe(value, path)
     if isinstance(value, dict):
-        result = {}
+        active = current_input(value, path)
+        result = {"current_input": active} if active is not None else {}
         for key, child in value.items():
             child_path = f"{path}.{key}" if path else key
-            if key in {"advertised_action_details", "next_frame", "transition_event"}:
+            if key == "advertised_actions" and isinstance(value.get("surface"), dict):
+                result[key] = {**describe(child, child_path), "available_in": (f"{path}.surface.actions" if path else "surface.actions")}
+            elif key in {"advertised_action_details", "next_frame", "transition_event"}:
                 result[key] = describe(child, child_path)
             elif key in {"facts", "payload"} and isinstance(child, dict):
                 result[key] = {
@@ -109,6 +170,10 @@ def compact(value: Any, path: str = "") -> Any:
                 result[key] = compact(child, child_path)
         return result
     if isinstance(value, list):
+        if path.rsplit(".", 1)[-1] in {"actions", "valid_actions"}:
+            catalog = action_catalog(value, path)
+            if catalog is not None:
+                return catalog
         # These lists carry available operations or contradictions, not map payloads.
         if path.rsplit(".", 1)[-1] in {
             "actions", "advertised_actions", "valid_actions", "breadcrumbs",

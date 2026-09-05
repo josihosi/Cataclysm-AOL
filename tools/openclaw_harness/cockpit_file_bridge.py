@@ -8,6 +8,8 @@ This keeps a large native observation out of an execution tool's stdout pipe.
 """
 from __future__ import annotations
 
+from cockpit_archive import ArchiveSequence, is_sequence, json_chunks, resolve_wire
+
 import argparse
 import hashlib
 import json
@@ -720,6 +722,10 @@ class FileBackedCockpitBridge:
             return {"ok": False, "error": "response_artifact_is_not_json"}
         if not isinstance(value, Mapping):
             return {"ok": False, "error": "response_artifact_is_not_an_object"}
+        try:
+            value = resolve_wire(value, directory=session_dir, binding_id=receipt["binding_id"])
+        except (OSError, ValueError, KeyError) as error:
+            return {"ok": False, "error": str(error)}
         return {"ok": True, "request_id": request_id, "response": value}
 
     @staticmethod
@@ -754,6 +760,27 @@ class FileBackedCockpitBridge:
             return {"ok": False, "error": "selected_response_slice_is_unavailable"}
         result = {"ok": True, "request_id": request_id, "response_sha256": receipt["response_sha256"],
                   "selector": selector}
+        if isinstance(value, ArchiveSequence):
+            if offset < 0 or (limit is not None and limit <= 0):
+                return {"ok": False, "error": "slice_paging_requires_array_and_valid_range"}
+            if contains is None:
+                end = len(value) if limit is None else min(len(value), offset + limit)
+                page = value if offset == 0 and limit is None else value[offset:end]
+                return {**result, "page": {"offset": offset, "total": len(value),
+                        "next_offset": end if end < len(value) else None}, "slice": page}
+            matched, selected, indices = 0, [], []
+            for index, row in enumerate(value):
+                text = "".join(json_chunks(row))
+                if contains.casefold() not in text.casefold():
+                    continue
+                if matched >= offset and (limit is None or len(selected) < limit):
+                    selected.append(row)
+                    indices.append(index)
+                matched += 1
+            return {**result, "filter": {"contains": contains, "total": len(value), "matched": matched},
+                    "source_indices": indices, "page": {"offset": offset, "total": matched,
+                    "next_offset": offset + len(selected) if offset + len(selected) < matched else None},
+                    "slice": selected}
         if contains is not None:
             if not isinstance(value, list):
                 return {"ok": False, "error": "slice_filter_requires_array"}
@@ -1001,12 +1028,14 @@ def main(argv: Sequence[str] | None = None) -> int:
         print(json.dumps(FileBackedCockpitBridge.cleanup(Path(args.session_dir), args.binding_id)))
         return 0
     if args.command == "response-artifact":
-        print(json.dumps(FileBackedCockpitBridge.response_artifact(
-            Path(args.session_dir), args.request_id, args.sha256,
-        )))
-        return 0
-    print(json.dumps(FileBackedCockpitBridge.response_slice(Path(args.session_dir), args.request_id,
-                                                          args.selector, args.offset, args.limit, args.contains)))
+        result = FileBackedCockpitBridge.response_artifact(
+            Path(args.session_dir), args.request_id, args.sha256)
+    else:
+        result = FileBackedCockpitBridge.response_slice(
+            Path(args.session_dir), args.request_id, args.selector, args.offset, args.limit, args.contains)
+    for chunk in json_chunks(result):
+        sys.stdout.write(chunk)
+    sys.stdout.write("\n")
     return 0
 
 

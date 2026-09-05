@@ -53,6 +53,62 @@ class CockpitEvidenceTest(unittest.TestCase):
     def status(self):
         return self.cli("response-status", "--session-dir", self.session, "--request-id", "confirm")
 
+    def test_large_action_catalog_keeps_navigation_and_exact_original_rows(self):
+        actions = []
+        for i in range(12):
+            actions.extend([{"id": "inventory.select", "stable_id": str(i), "label": f"item {i}", "enabled": True},
+                            {"id": "inventory.inspect", "stable_id": str(i), "label": "Details", "enabled": True}])
+        actions.append({"id": "inventory.cancel", "stable_id": "", "label": "Cancel", "enabled": True})
+        self.response["observation"]["surface"] = {"kind": "inventory", "facts": {"title": "Inventory"}, "actions": actions}
+        self.response["observation"]["advertised_actions"] = [a["id"] for a in actions]
+        self.persist(self.response)
+        status = self.status()["response"]
+        self.assertEqual(status["current_input"]["owner"], "inventory")
+        self.assertEqual(status["current_input"]["navigation"], [actions[-1]])
+        catalog = status["observation"]["surface"]["actions"]
+        self.assertEqual(catalog["target_count"], 12)
+        self.assertEqual(len(catalog["targets_preview"]), 5)
+        self.assertEqual(catalog["controls"], [actions[-1]])
+        self.assertEqual(catalog["next_offset"], 10)
+        row = self.cli("response-slice", "--session-dir", self.session, "--request-id", "confirm",
+                       "--selector", catalog["selector"], "--offset", catalog["next_offset"], "--limit", 2)
+        self.assertEqual(row["slice"], actions[10:12])
+        self.assertTrue(status["observation"]["advertised_actions"]["omitted"])
+
+    def test_current_owner_comes_from_observation_not_the_previous_receipt(self):
+        self.response["observation"]["surface"] = {"kind": "string_prompt", "facts": {"title": "How many?"},
+            "actions": [{"id": "prompt.cancel", "enabled": True}]}
+        projected = cockpit_evidence.compact(self.response)
+        self.assertEqual(projected["current_input"]["owner"], "string_prompt")
+        self.assertEqual(projected["current_input"]["actions_selector"], "observation.surface.actions")
+        self.assertEqual(projected["receipt"], self.response["receipt"])
+
+    def test_archived_sequence_metadata_and_old_index_retrieval(self):
+        from cockpit_archive import Archive
+        archive = Archive(self.root / "evidence.sqlite3", run_id="run-a", binding_id="bound-a")
+        self.addCleanup(archive.close)
+        sequence = archive.sequence()
+        for i in range(12):
+            sequence.append({"index": i, "text": "retained evidence"})
+        projected = cockpit_evidence.compact({"entries": sequence})["entries"]
+        self.assertEqual(projected["type"], "list")
+        self.assertEqual(projected["count"], 12)
+        self.assertEqual(projected["selector"], "entries")
+        self.assertGreater(projected["json_bytes"], 0)
+        self.assertEqual(cockpit_evidence.select({"entries": sequence}, "entries.7.index"), 7)
+
+    def test_player_status_and_named_effects_are_readable_without_losing_details(self):
+        status = {"health": {"unit": "hp", "body_parts": {"torso": {"current": 37, "maximum": 84}}},
+                  "stamina": {"current": 1234, "maximum": 10000}, "weapon": {"ammo": "7/15"}}
+        effects = {"entries": {"bleed": {"arm_l": {"name": "Bleeding", "description": "exact left description"},
+                                          "arm_r": {"name": "Bleeding", "description": "exact right description"}}}}
+        facts = {"avatar_status": json.dumps(status), "avatar_effects": json.dumps(effects)}
+        projected = cockpit_evidence.compact({"surface": {"facts": facts}})["surface"]["facts"]
+        self.assertEqual(projected["avatar_status"]["preview"], status)
+        self.assertEqual(projected["avatar_effects"]["effect_count"], 2)
+        self.assertEqual({v["body_part_id"] for v in projected["avatar_effects"]["named_effects"]}, {"arm_l", "arm_r"})
+        self.assertEqual(cockpit_evidence.select(facts, "avatar_effects.entries.bleed.arm_l.description"), "exact left description")
+
     def test_playable_facts_preview_keeps_identity_and_discloses_paging(self):
         facts = {"avatar": json.dumps({"name": "Ada", "absolute_ms": [1, 2, 0]}),
                  "visible_entities": json.dumps([{"id": n, "name": "bandit"} for n in range(7)]),

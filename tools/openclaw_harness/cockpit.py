@@ -6,6 +6,8 @@ the typed registry CLI.
 """
 from __future__ import annotations
 
+from cockpit_archive import ArchiveMap, ArchiveSequence
+
 import json
 import secrets
 from typing import Any, Callable, Dict, Mapping, Optional
@@ -60,7 +62,7 @@ class CockpitRunChannel:
     def __init__(
         self, read_native_frame: Callable[[], Mapping[str, Any]],
         dispatch_advertised_action: Optional[Callable[[Mapping[str, Any], str, Optional[str]], Mapping[str, Any]]] = None,
-        *, read_evidence: Optional[Callable[[], Mapping[str, Any]]] = None,
+        *, archive=None, read_evidence: Optional[Callable[[], Mapping[str, Any]]] = None,
         read_process_state: Optional[Callable[[], Mapping[str, Any]]] = None,
         binding_id: str = "",
         read_binding_id: Optional[Callable[[], str]] = None,
@@ -81,8 +83,13 @@ class CockpitRunChannel:
         self._read_native_frame = read_native_frame
         self._dispatch_advertised_action = dispatch_advertised_action
         self._run_id = ""
-        self._handles: Dict[str, Dict[str, Any]] = {}
-        self._observations: Dict[str, Dict[str, Any]] = {}
+        self.archive = archive
+        self._handles = ArchiveMap(archive, "handles") if archive is not None else {}
+        self._observations = ArchiveMap(archive, "observations") if archive is not None else {}
+        if archive is not None:
+            # A fresh controller may read old evidence, never inherit its input grants.
+            self._handles.clear()
+            self._observations.clear()
         self._next_handle = 0
         self._read_evidence = read_evidence
         self._read_process_state = read_process_state
@@ -102,7 +109,7 @@ class CockpitRunChannel:
         self._continuation: Optional[Dict[str, Any]] = None
         self._safe_activity_bridge: Optional[Dict[str, Any]] = None
         self._last_public_state: Optional[Dict[str, Any]] = None
-        self._transcript: list[Dict[str, Any]] = []
+        self._transcript = archive.sequence() if archive is not None else []
         self._final_report: Optional[Dict[str, Any]] = None
         self._witness_charter = normalize_witness_charter(witness_charter) \
             if isinstance(witness_charter, Mapping) else None
@@ -171,9 +178,11 @@ class CockpitRunChannel:
         run_id = descriptor["run_id"]
         frame_id = descriptor["frame_id"]
         if self._run_id and self._run_id != run_id:
-            self._handles = {}
-            self._observations = {}
+            self._handles.clear()
+            self._observations.clear()
             self._next_handle = 0
+        if self.archive is not None and run_id != self.archive.run_id:
+            raise ValueError("archive_frame_run_mismatch")
         self._run_id = run_id
         evidence = dict(self._read_evidence()) if self._read_evidence is not None else {}
         raw_receipt = issuing_raw.get("native_receipt")
@@ -478,7 +487,7 @@ class CockpitRunChannel:
             "state": "finished",
             "stop_reason": str(reason),
             "stop_detail": dict(detail),
-            "action_observation_sequence": list(self._transcript),
+            "action_observation_sequence": self._transcript if self.archive is not None else list(self._transcript),
             "bound_derivation": dict(self._continuation or {}),
             "unused_authority": str(detail.get("unused_authority", "none")),
         }
@@ -559,6 +568,8 @@ class CockpitRunChannel:
                 raise ValueError("process_exit_pid_identity_mismatch")
             if prior.get("exit_code") is not None or process.get("exit_code") is None:
                 return cached
+        if self.archive is not None and run_id != self.archive.run_id:
+            raise ValueError("archive_frame_run_mismatch")
         self._run_id = run_id
         suffix = ":confirmed" if cached is not None else ""
         observation_id = f"{run_id}:process-exit:{pid}{suffix}"
@@ -584,8 +595,11 @@ class CockpitRunChannel:
             "next_calls": ["run.witness", "run.finish"],
             "note": "The bound game process ended. Its cached native frame is no longer actionable. Exit alone establishes neither saving nor gameplay success.",
         }
-        for observed in self._observations.values():
-            observed["used"] = True
+        if isinstance(self._observations, ArchiveMap):
+            self._observations.revoke_all()
+        else:
+            for observed in self._observations.values():
+                observed["used"] = True
         self._observations[observation_id] = {
             "run_id": run_id, "actions": set(), "action_stable_ids": {}, "handles": set(),
             "used": False, "public_state": result, "issuing_frame": {}, "native_interruption": False,
@@ -642,9 +656,11 @@ class CockpitRunChannel:
             })
             raise ValueError("continuation belongs to a different run")
         if self._run_id and self._run_id != run_id:
-            self._handles = {}
-            self._observations = {}
+            self._handles.clear()
+            self._observations.clear()
             self._next_handle = 0
+        if self.archive is not None and run_id != self.archive.run_id:
+            raise ValueError("archive_frame_run_mismatch")
         self._run_id = run_id
         facts = []
         for fact in observation["visible_local"]:
@@ -653,8 +669,8 @@ class CockpitRunChannel:
             identity = self._identity(fact)
             if identity is None:
                 continue
-            handle = next((key for key, value in self._handles.items()
-                           if value["identity"] == identity), None)
+            handle = self._handles.find_identity(identity) if isinstance(self._handles, ArchiveMap) else next(
+                (key for key, value in self._handles.items() if value["identity"] == identity), None)
             if handle is None:
                 self._next_handle += 1
                 handle = f"visible:{run_id}:{self._next_handle}"
@@ -669,8 +685,8 @@ class CockpitRunChannel:
                 identity = self._identity(fact)
                 if identity is None:
                     continue
-                handle = next((key for key, value in self._handles.items()
-                               if value["identity"] == identity), None)
+                handle = self._handles.find_identity(identity) if isinstance(self._handles, ArchiveMap) else next(
+                    (key for key, value in self._handles.items() if value["identity"] == identity), None)
                 if handle is None:
                     self._next_handle += 1
                     handle = f"visible:{run_id}:{self._next_handle}"
@@ -1083,7 +1099,7 @@ class CockpitRunChannel:
         last_game_minutes = float(start)
         tool_round_trips = 0
         safety_frames = 0
-        handled_interruptions: list[Dict[str, Any]] = []
+        handled_interruptions = self.archive.sequence() if self.archive is not None else []
         rejected_owners: set[tuple[str, str]] = set()
         def interrupt(reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
             current = self._signal_value(observed, "game_minutes")
@@ -1092,7 +1108,7 @@ class CockpitRunChannel:
                 "partial_progress": None if current is None else current - start,
                 "last_observed_game_minutes": last_game_minutes,
                 "native_action_count": tool_round_trips, "danger_handling": danger_handling,
-                "handled_interruptions": list(handled_interruptions),
+                "handled_interruptions": handled_interruptions if isinstance(handled_interruptions, ArchiveSequence) else list(handled_interruptions),
             })
 
         while True:
@@ -1558,7 +1574,7 @@ class CockpitRunChannel:
         start = self._signal_value(observed, "game_minutes")
         if start is None or target <= start:
             return {"ok": False, "error": "raw_wait_target_invalid"}
-        receipts: list[Mapping[str, Any]] = []
+        receipts = self.archive.sequence() if self.archive is not None else []
         recipe_index = 0
 
         def stop(reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
@@ -1568,7 +1584,7 @@ class CockpitRunChannel:
                 "target_game_minutes": target,
                 "start_game_minutes": start,
                 "partial_progress": None if current is None else current - start,
-                "native_receipts": [dict(receipt) for receipt in receipts],
+                "native_receipts": receipts if isinstance(receipts, ArchiveSequence) else [dict(receipt) for receipt in receipts],
                 "guarded_handling_count": 0,
                 "unused_authority": "revoked",
             }
@@ -1593,7 +1609,7 @@ class CockpitRunChannel:
                 result = {
                     "stop_reason": "target_reached",
                     "terminal_observation": observed,
-                    "native_receipts": [dict(receipt) for receipt in receipts],
+                    "native_receipts": receipts if isinstance(receipts, ArchiveSequence) else [dict(receipt) for receipt in receipts],
                     "partial_progress": current - start,
                     "derived_bound": dict(bound),
                     "guarded_handling_count": 0,
@@ -1809,8 +1825,8 @@ class CockpitRunChannel:
             return self._fail_closed(f"{route}_position_unavailable", {"unused_authority": "revoked"})
         plan = self._relative_action_plan(offset)
         target = [origin[0] + offset[0], origin[1] + offset[1], origin[2]]
-        receipts: list[Mapping[str, Any]] = []
-        handled_interruptions: list[Dict[str, Any]] = []
+        receipts = self.archive.sequence() if self.archive is not None else []
+        handled_interruptions = self.archive.sequence() if self.archive is not None else []
         completed_steps = 0
 
         def stop(reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
@@ -1819,8 +1835,8 @@ class CockpitRunChannel:
                 **dict(detail), "offset_ms": list(offset), "origin_absolute_ms": origin,
                 "target_absolute_ms": target, "terminal_absolute_ms": current,
                 "partial_progress": completed_steps, "planned_steps": len(plan),
-                "native_receipts": [dict(receipt) for receipt in receipts],
-                "handled_interruptions": list(handled_interruptions),
+                "native_receipts": receipts if isinstance(receipts, ArchiveSequence) else [dict(receipt) for receipt in receipts],
+                "handled_interruptions": handled_interruptions if isinstance(handled_interruptions, ArchiveSequence) else list(handled_interruptions),
                 "derived_bound": dict(bound),
                 "guarded_handling_count": len(handled_interruptions),
                 "unused_authority": "revoked",
@@ -2021,7 +2037,7 @@ class CockpitRunChannel:
             "stop_reason": "target_reached", "offset_ms": list(offset),
             "origin_absolute_ms": origin, "target_absolute_ms": target,
             "terminal_absolute_ms": terminal,
-            "terminal_observation": observed, "native_receipts": [dict(receipt) for receipt in receipts],
+            "terminal_observation": observed, "native_receipts": receipts if isinstance(receipts, ArchiveSequence) else [dict(receipt) for receipt in receipts],
             "partial_progress": len(receipts), "planned_steps": len(plan), "derived_bound": dict(bound),
             "guarded_handling_count": len(handled_interruptions),
             "danger_handling": danger_handling,
