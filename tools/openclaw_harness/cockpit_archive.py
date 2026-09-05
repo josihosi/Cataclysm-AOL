@@ -114,6 +114,14 @@ class Archive:
             self.connection.execute("INSERT INTO streams VALUES (?,0)", (stream,))
         return ArchiveSequence(self, stream)
 
+    def derived(self, purpose):
+        """Own derived evidence separately, including when sources are read-only."""
+        identity = purpose + "-" + uuid.uuid4().hex
+        directory = self.path.parent / identity
+        directory.mkdir()
+        return Archive(directory / "cockpit-evidence.sqlite",
+                       run_id=identity, binding_id=identity)
+
     def pack(self, value):
         # Tag every container internally so native dictionaries cannot forge
         # sequence references by resembling an implementation marker.

@@ -25,6 +25,7 @@ from scenario_registry import (
     relation_contract_likely_subsumes,
     validate_manifest,
 )
+from cockpit_report_reference import file_identity, load_report, store_journal_reference
 from wec_evidence import derive_final_gate_eligibility, validate_authority_fact
 from identity_binding import (
     RoundManifestError,
@@ -6529,6 +6530,21 @@ def _report_path_and_bytes(report_path: Path) -> Tuple[str, bytes]:
         raise ScenarioRegistryStoreError(f"Could not read report reference {canonical_path}: {exc}") from exc
 
 
+def _report_path_and_sha256(report_path: Path) -> Tuple[str, str]:
+    try:
+        identity = file_identity(report_path)
+        return identity["path"], identity["sha256"]
+    except OSError as exc:
+        raise ScenarioRegistryStoreError(f"Could not read report reference {report_path}: {exc}") from exc
+
+
+def _read_report_reference(report_path: Path) -> Tuple[str, str, Dict[str, Any]]:
+    try:
+        return load_report(report_path)
+    except (OSError, ValueError, KeyError, TypeError, sqlite3.Error) as exc:
+        raise ScenarioRegistryStoreError(f"Could not verify report reference {report_path}: {exc}") from exc
+
+
 def _object(value: Any, field: str) -> Mapping[str, Any]:
     if not isinstance(value, dict):
         raise ScenarioRegistryStoreError(f"Report field {field} must be an object")
@@ -8515,10 +8531,9 @@ def record_playtest_witness(
         if row is None:
             raise ScenarioRegistryStoreError("playtest witness report verification identity is missing")
         try:
-            report_path, report_bytes = _report_path_and_bytes(Path(str(row["report_path"])))
-            if hashlib.sha256(report_bytes).hexdigest() != str(row["report_sha256"]):
+            report_path, report_sha, report_value = _read_report_reference(Path(str(row["report_path"])))
+            if report_sha != str(row["report_sha256"]):
                 raise ScenarioRegistryStoreError("playtest witness report identity is stale")
-            report_value = json.loads(report_bytes.decode("utf-8"))
             details = _json_object(str(row["details_json"]), "playtest witness verification")
         except (OSError, UnicodeDecodeError, json.JSONDecodeError) as exc:
             raise ScenarioRegistryStoreError("playtest witness report identity is unreadable") from exc
@@ -8571,7 +8586,7 @@ def record_playtest_witness(
             "INSERT OR IGNORE INTO playtest_witness_history( witness_id, manifest_id, charter_json, "
             "journal_json, statement_json, validation_json, verdict, evidence_ceiling ) "
             "VALUES( ?, ?, ?, ?, ?, ?, ?, ? )",
-            (witness_id, manifest_id, _json_text(dict(charter)), _json_text(dict(journal)),
+            (witness_id, manifest_id, _json_text(dict(charter)), _json_text(store_journal_reference(journal)),
              _json_text(dict(statement)), _json_text(validation), str(normalized["verdict"]),
              str(normalized["evidence_ceiling"])),
         )
@@ -8732,10 +8747,9 @@ def _r019_aggregation_pair(
         raise ScenarioRegistryStoreError("r019_aggregation_not_r019")
     reports: Dict[str, Any] = {}
     for report_id, row in by_id.items():
-        canonical_path, report_bytes = _report_path_and_bytes(Path(str(row["report_path"])))
-        if hashlib.sha256(report_bytes).hexdigest() != str(row["report_sha256"]):
+        canonical_path, report_sha, value = _read_report_reference(Path(str(row["report_path"])))
+        if report_sha != str(row["report_sha256"]):
             raise ScenarioRegistryStoreError("r019_aggregation_report_stale")
-        value = json.loads(report_bytes.decode("utf-8"))
         if not isinstance(value, Mapping):
             raise ScenarioRegistryStoreError("r019_aggregation_report_malformed")
         packet = value.get("r019_acceptance_matrix")
@@ -8886,8 +8900,7 @@ def ingest_report_reference(
     adapters: BindingAdapters,
 ) -> Dict[str, Any]:
     """Ingest a full report by reference/hash, never by copying its body."""
-    canonical_path, report_bytes = _report_path_and_bytes(report_path)
-    report_sha256 = hashlib.sha256(report_bytes).hexdigest()
+    canonical_path, report_sha256 = _report_path_and_sha256(report_path)
     report_id = _identity("caol-scenario-report-v1", canonical_path, report_sha256)
     existing = connection.execute(
         "SELECT report_id, report_kind, ingestion_status, error_text FROM report_ingestion_history "
@@ -8906,7 +8919,9 @@ def ingest_report_reference(
             "idempotent": True,
         }
     try:
-        report = json.loads(report_bytes.decode("utf-8"))
+        _, verified_sha256, report = _read_report_reference(report_path)
+        if verified_sha256 != report_sha256:
+            raise ScenarioRegistryStoreError("report changed during ingestion")
         if not isinstance(report, dict):
             raise ScenarioRegistryStoreError("Report top level must be an object")
         facts = _extract_report_facts(report)
@@ -9536,11 +9551,11 @@ def ingest_token_linked_report_reference(
     witness_charter: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Ingest one durable report and retain its selected-token verification link."""
-    canonical_path, report_bytes = _report_path_and_bytes(report_path)
+    canonical_path, report_sha256 = _report_path_and_sha256(report_path)
     report_id = _identity(
         "caol-scenario-report-v1",
         canonical_path,
-        hashlib.sha256(report_bytes).hexdigest(),
+        report_sha256,
     )
     prior = connection.execute(
         "SELECT details_json FROM token_history WHERE token_id = ? "
@@ -9685,8 +9700,8 @@ def ingest_bootstrap_token_linked_report_reference(
     selection = reload_bootstrap_token_for_launch(connection, token_id, require_claimed=True)
     if not selection.accepted:
         return {"status": "rejected_token", "reason": selection.reason, "token_id": selection.token_id}
-    canonical_path, report_bytes = _report_path_and_bytes(report_path)
-    report_id = _identity("caol-scenario-report-v1", canonical_path, hashlib.sha256(report_bytes).hexdigest())
+    canonical_path, report_sha256 = _report_path_and_sha256(report_path)
+    report_id = _identity("caol-scenario-report-v1", canonical_path, report_sha256)
     prior = connection.execute(
         "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'bootstrap_verification_run'",
         (selection.token_id,),
@@ -9726,8 +9741,8 @@ def ingest_repair_token_linked_report_reference(
     selection = reload_repair_token_for_launch(connection, token_id, require_claimed=True)
     if not selection.accepted:
         return {"status": "rejected_token", "reason": selection.reason, "token_id": selection.token_id}
-    canonical_path, report_bytes = _report_path_and_bytes(report_path)
-    report_id = _identity("caol-scenario-report-v1", canonical_path, hashlib.sha256(report_bytes).hexdigest())
+    canonical_path, report_sha256 = _report_path_and_sha256(report_path)
+    report_id = _identity("caol-scenario-report-v1", canonical_path, report_sha256)
     prior = connection.execute(
         "SELECT 1 FROM token_history WHERE token_id = ? AND event_kind = 'repair_verification_run'",
         (selection.token_id,),
@@ -10044,8 +10059,8 @@ def reconcile_report_bindings(connection: sqlite3.Connection, *, adapters: Bindi
         reason = ""
         facts: Optional[Dict[str, Any]] = None
         try:
-            canonical_path, report_bytes = _report_path_and_bytes(Path(str(reference["report_path"])))
-            if canonical_path != str(reference["report_path"]) or hashlib.sha256(report_bytes).hexdigest() != str(reference["report_sha256"]):
+            canonical_path, report_sha256 = _report_path_and_sha256(Path(str(reference["report_path"])))
+            if canonical_path != str(reference["report_path"]) or report_sha256 != str(reference["report_sha256"]):
                 raise ScenarioRegistryStoreError("report reference is missing or its content hash changed")
             facts = facts_by_report.get(report_id)
             if facts is None:

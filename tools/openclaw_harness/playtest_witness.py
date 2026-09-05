@@ -8,7 +8,7 @@ it deliberately does not encode a claim-specific interaction matrix.
 
 from __future__ import annotations
 
-from cockpit_archive import ArchiveSequence, is_sequence, value_digest
+from cockpit_archive import ArchiveSequence, is_sequence, value_digest, find_archive
 
 import copy
 import hashlib
@@ -299,8 +299,8 @@ def compose_evidence_journals(
     normalized_charter = normalize_witness_charter(charter)
     if len(journals) < 2:
         raise WitnessError("journal_set_requires_multiple_runs")
-    first_entries = journals[0].get("entries")
-    entries = first_entries.archive.sequence() if isinstance(first_entries, ArchiveSequence) else []
+    source_archive = find_archive(journals)
+    entries = source_archive.derived("journal-composition").sequence() if source_archive is not None else []
     identities: list[dict[str, Any]] = []
     source_digests: list[str] = []
     ceilings: list[str] = []

@@ -17,6 +17,7 @@ window focus, key presses, and screenshots when not in --dry-run mode.
 from __future__ import annotations
 
 from cockpit_archive import Archive, ArchiveSequence, is_sequence, json_chunks, write_json_stream, resolve_wire, find_archive
+from cockpit_report_reference import write_report_reference
 
 import argparse
 import copy
@@ -3170,8 +3171,10 @@ def write_json(path: Path, data: Dict[str, Any]) -> None:
     ensure_dir(path.parent)
     if find_archive(data) is not None:
         write_json_stream(path, data, exclusive=False)
+        write_report_reference(path, data)
     else:
         path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+        path.with_suffix(".ref.json").unlink(missing_ok=True)
 
 
 def seal_r027_signal_cleanup_sidecar(run_dir: Path, cleanup: Mapping[str, Any]) -> None:
