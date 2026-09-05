@@ -123,6 +123,12 @@ It includes player health, needs, stamina, named effects and weapon state, immed
 tiles, a terrain map, nearby entities and grouped recent messages. Omitted detail retains exact
 selectors and paging. Archived history remains retrievable; references are storage handles, not
 missing evidence.
+Trade panes can include nearby ground, vehicle, camp or companion items as well as carried items.
+An item listed on one party's side does not prove that actor is carrying it. Follow placement
+prompts through their actual outcome and inspect inventory or pickup/location facts before claiming
+possession. Item UIDs can change after transfer or process reload; compare item type, count, location
+and actor identity. Disabled zones may be absent from visible World zones; inspect the zone manager
+to distinguish a disabled zone from a missing one.
 Saving and returning to the main menu differs from quitting the application. An actionless
 `process_exited` observation reports the bound process outcome, not save durability or feature
 success. After `finish`, `collect` reports actual cleanup separately.

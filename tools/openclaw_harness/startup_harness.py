@@ -35791,7 +35791,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     runtime_blockers = probe_runtime_blockers(profile, resolved_artifact_source)
     runtime_warnings = probe_runtime_warnings(profile, resolved_artifact_source)
     if runtime_blockers:
-        blocked_screen = capture_screenshot(pid, run_dir, f"{mode}_blocked")
+        blocked_screen = capture_screenshot(
+            pid, run_dir, f"{mode}_blocked",
+            semantic_only=("--semantic-only-startup" in start_cmd),
+        )
         startup_classification = start_result.get("proof_classification") if isinstance(start_result.get("proof_classification"), dict) else {}
         proof_classification = probe_proof_classification(
             verdict="blocked_runtime_prereqs",
@@ -35926,7 +35929,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             post_finalize_hook=post_finalize_hook,
         )
         return 2
-    screen_before = capture_screenshot(pid, run_dir, f"{mode}_before")
+    screen_before = capture_screenshot(
+        pid, run_dir, f"{mode}_before",
+        semantic_only=("--semantic-only-startup" in start_cmd),
+    )
     bridge_binding_id = os.environ.get( "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "" ).strip()
     if bridge_binding_id:
         startup_screen_probe = start_result.get( "screen", {} )
@@ -36131,7 +36137,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 report["phase"] = "post_relaunch"
             step_reports.extend(post_reports)
     derived_screen_reports = render_derived_screens(run_dir, derived_screens)
-    screen_after = capture_screenshot(final_pid, run_dir, f"{mode}_after")
+    screen_after = capture_screenshot(
+        final_pid, run_dir, f"{mode}_after",
+        semantic_only=("--semantic-only-startup" in start_cmd),
+    )
     world_snapshot_report: Dict[str, Any] = {}
     if capture_world_after:
         try:
@@ -36170,8 +36179,10 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             if isinstance(scenario.get("runtime_contract", {}), Mapping) else []
         ),
         require_screen_observability=(
-            bool(scenario.get("runtime_contract", {}).get("require_screen_observability", True))
-            if isinstance(scenario.get("runtime_contract", {}), Mapping) else True
+            bool(scenario.get("runtime_contract", {}).get(
+                "require_screen_observability", "--semantic-only-startup" not in start_cmd))
+            if isinstance(scenario.get("runtime_contract", {}), Mapping)
+            else "--semantic-only-startup" not in start_cmd
         ),
         expected_clean_terminal_exit=expected_clean_terminal_exit,
     )
