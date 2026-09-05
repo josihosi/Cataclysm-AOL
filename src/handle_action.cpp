@@ -1,4 +1,5 @@
-#include "game.h" // IWYU pragma: associated
+#include "game.h"
+#include "harness_creature_debug.h" // IWYU pragma: associated
 
 #include <algorithm>
 #include <chrono>
@@ -672,15 +673,11 @@ static std::string openclaw_harness_visible_entities( avatar &viewer )
             continue;
         }
         std::string kind = "creature";
-        std::string identity;
-        if( const Character *character = creature->as_character() ) {
+        const std::string identity = harness_creature_identity( *creature );
+        if( creature->as_character() ) {
             kind = creature->as_npc() != nullptr ? "npc" : "character";
-            identity = string_format( "character:%d", character->getID().get_value() );
         } else if( creature->as_monster() != nullptr ) {
             kind = "monster";
-            std::ostringstream process_identity;
-            process_identity << "process:" << static_cast<const void *>( creature );
-            identity = process_identity.str();
         }
         if( identity.empty() ) {
             continue;
@@ -976,7 +973,9 @@ static std::map<std::string, std::string> openclaw_harness_world_payload()
         { "visible_zones", openclaw_harness_visible_zones( here, avatar_pos ) },
         { "messages", openclaw_harness_world_messages() },
         { "world_mode", player.current_movement_mode().str() },
-        { "last_save_result", g == nullptr ? "unavailable" : g->last_save_result() }
+        { "last_save_result", g == nullptr ? "unavailable" : g->last_save_result() },
+        { "last_debug_intervention", harness_last_debug_creature_intervention(
+                openclaw_harness_bound_semantic_run_id() ) }
     };
 }
 
@@ -4400,6 +4399,7 @@ bool game::handle_action()
     bool semantic_action_consumed = false;
     std::optional<character_id> semantic_basecamp_mission_actor;
     std::optional<character_id> semantic_npc_inspection_actor;
+    bool semantic_debug_creature_killed = false;
     // Check if we have an auto-move destination
     if( player_character.has_destination() ) {
         act = player_character.get_next_auto_move_direction();
@@ -4450,13 +4450,15 @@ bool game::handle_action()
                                                       string_format( _( "Open Base Missions with %s" ), actor->name ), true } );
                     }
                 }
+                const auto debug_actions = harness_creature_debug_actions( player_character );
+                semantic_actions.insert( semantic_actions.end(), debug_actions.begin(), debug_actions.end() );
                 const auto inspection_actions = npc_inspection_world_actions( player_character );
                 semantic_actions.insert( semantic_actions.end(), inspection_actions.begin(),
                                          inspection_actions.end() );
                 world_semantic_scope.emplace( semantic_manager, "world", "World",
                                               openclaw_harness_world_payload(),
                                               semantic_actions,
-                [ &act, &semantic_manager, &semantic_basecamp_mission_actor, &semantic_npc_inspection_actor, basecamp_mission_candidates ]( const semantic_action_request &request ) {
+                [ &act, &semantic_manager, &semantic_basecamp_mission_actor, &semantic_npc_inspection_actor, &semantic_debug_creature_killed, basecamp_mission_candidates ]( const semantic_action_request &request ) {
                     if( request.action_id == "world.pause" ) {
                         // Pause is an ordinary native one-turn action.  It
                         // reaches do_turn without opening the alarm-clock
@@ -4483,6 +4485,13 @@ bool game::handle_action()
                         act = ACTION_PICKUP;
                     } else if( request.action_id == "world.zone_manager" ) {
                         act = ACTION_ZONES;
+                    } else if( request.action_id == "world.debug_kill_creature" ) {
+                        const std::string result = harness_debug_kill_creature( get_avatar(),
+                                                   request.stable_id.value_or( "" ), request.request_id, request.run_id );
+                        if( result.empty() ) {
+                            return semantic_action_dispatch_result{ false, "stale_or_unavailable_creature", "" };
+                        }
+                        semantic_debug_creature_killed = true;
                     } else if( request.action_id == "world.inspect_npc" ) {
                         npc *const actor = resolve_npc_inspection_actor( get_avatar(),
                                            request.stable_id.value_or( "" ) );
@@ -4574,6 +4583,9 @@ bool game::handle_action()
         openclaw_harness_semantic_step_receipt(
             openclaw_harness_pending_world_frame, "world.wait", true );
         openclaw_harness_pending_world_frame.clear();
+    }
+    if( semantic_debug_creature_killed ) {
+        return false;
     }
     if( semantic_npc_inspection_actor ) {
         show_npc_inspection( *semantic_npc_inspection_actor );
