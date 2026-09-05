@@ -94,7 +94,13 @@ quit, `run.quit`, `run.finish`, or requested bridge cleanup ends it.
 `messages` reads the displayed observation as JSON, including quoted speech; it defaults to the
 latest matching page and does not send game input. `controls` also identifies the central NPC
 prompt, response and runner logs, which are shared across runs and need exact event correlation.
-A declared save/reload continuation is reported as `reentered`; use `look` for its new owner.
+Scripted Dialogue choices and free-text speech are different native routes. A model request needs
+its utterance, hearer, time and resulting reply or error correlated; automatic `prewarm` requests
+only load the model and do not establish an NPC conversation.
+When the scenario declares a save/reload continuation, finish the saved segment with `finish`;
+`collect` reports `reentered`, then `look` exposes the restored world's new owner. The bridge handles
+the declared process replacement without reinstalling the fixture. `quit` ends the entire scenario
+and skips that continuation. Saving alone does not establish new-process persistence.
 `performance` reads retained CPU/RSS and action intervals; `performance --sample-seconds 1`
 works even while game input is pending. `--offset 0 --limit 5` pages exact records.
 Use `--tag "comparable workload" --save-baseline FILE`, then `--tag "comparable workload"
