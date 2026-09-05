@@ -980,7 +980,9 @@ static std::vector<semantic_action_descriptor> semantic_surface_actions(
     std::vector<semantic_action_descriptor> result;
     result.reserve( actions.size() );
     for( const std::pair<std::string, std::string> &action : actions ) {
-        result.push_back( { action.first, "", action.first, true } );
+        const std::string label = action.first == "world.fire" ? _( "Fire wielded weapon" ) :
+                                  action.first;
+        result.push_back( { action.first, "", label, true } );
     }
     return result;
 }
@@ -4431,7 +4433,7 @@ bool game::handle_action()
                 world_semantic_scope.emplace( semantic_manager, "world", "World",
                                               openclaw_harness_world_payload(),
                                               semantic_actions,
-                [ &act, &semantic_basecamp_mission_actor, &semantic_npc_inspection_actor, basecamp_mission_candidates ]( const semantic_action_request &request ) {
+                [ &act, &semantic_manager, &semantic_basecamp_mission_actor, &semantic_npc_inspection_actor, basecamp_mission_candidates ]( const semantic_action_request &request ) {
                     if( request.action_id == "world.pause" ) {
                         // Pause is an ordinary native one-turn action.  It
                         // reaches do_turn without opening the alarm-clock
@@ -4503,6 +4505,11 @@ bool game::handle_action()
                     } else {
                         return semantic_action_dispatch_result{ false, "no_native_binding", "" };
                     }
+                    // This World scope owns exactly one handle_action input.
+                    // Once it accepts an action, nested menus may return only
+                    // to continue executing that action.  Keep this retired
+                    // owner private until the next handle_action recreates it.
+                    semantic_manager.withhold_parent_authority_until_recreated( request.surface_id );
                     return semantic_action_dispatch_result{ true, "", "",
                                                             act == ACTION_INVENTORY || act == ACTION_MAP ||
                                                             act == ACTION_FIRE || act == ACTION_CHAT ||
