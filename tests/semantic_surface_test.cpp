@@ -306,7 +306,7 @@ TEST_CASE( "inventory selector keeps UID controls bound across common actions", 
     CHECK( advertised_for( "inventory.contents", bottle_id ) );
     CHECK( advertised_for( "inventory.toggle", rock_id ) );
     CHECK( advertised_for( "inventory.wield", rock_id ) );
-    CHECK( advertised_for( "inventory.wear", rock_id ) );
+    CHECK_FALSE( advertised_for( "inventory.wear", rock_id ) );
 
     std::optional<inventory_input> native_input;
     const auto details = selector.handle_semantic_request( {

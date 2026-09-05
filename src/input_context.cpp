@@ -615,7 +615,8 @@ const std::string &input_context::handle_input( const int timeout )
         // context can inspect another physical event.
         if( take_active_semantic_surface_wake() ) {
             if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
-                if( !manager->consume_top_request() ) {
+                const bool request_pending = manager->has_pending_request();
+                if( !manager->consume_top_request() && !request_pending ) {
                     // A child may consume its request before the outer loop
                     // wakes again.  That stale transport notification is not
                     // native input for the newly restored owner.

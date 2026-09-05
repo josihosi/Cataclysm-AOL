@@ -1158,6 +1158,12 @@ void uilist::query_once( input_context &ctxt, int timeout,
                          bool allow_unfiltered_hotkeys )
 {
     ret_act = ctxt.handle_input( timeout );
+    // A semantic transport wake returns ERROR after its callback has already
+    // set the native result.  It is not an unbound key: allow_anykey must not
+    // overwrite a chosen value or cancellation with UILIST_UNBOUND.
+    if( ret_act == "ERROR" ) {
+        return;
+    }
     const input_event event = ctxt.get_raw_input();
     ret_evt = event;
     const auto iter = keymap.find( ret_evt );
