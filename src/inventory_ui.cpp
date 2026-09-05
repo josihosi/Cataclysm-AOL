@@ -4609,27 +4609,68 @@ void ammo_inventory_selector::mod_chosen_count( inventory_entry &entry, int valu
     on_change( entry );
 }
 
+static std::map<std::string, std::string> inventory_selected_payload(
+    const inventory_selector &selector, const std::vector<drop_location> &selection, const char *source )
+{
+    std::ostringstream selected;
+    JsonOut json( selected );
+    json.start_object();
+    for( const drop_location &entry : selection ) {
+        json.member( std::to_string( entry.first->uid().get_value() ) );
+        json.start_object();
+        json.member( "count", entry.second );
+        json.member( "unit", entry.first->count_by_charges() ? "charges" : "items" );
+        json.end_object();
+    }
+    json.end_object();
+    return {
+        { "title", selector.get_title() }, { "filter", selector.get_filter() },
+        { "selected_items", selected.str() }, { "selection_source", source }
+    };
+}
+
 drop_location ammo_inventory_selector::execute()
 {
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
     std::optional<inventory_input> semantic_input;
+    bool semantic_quantity_changed = false;
+    const auto semantic_payload = [this]() {
+        std::vector<drop_location> selection;
+        const inventory_entry &highlighted = get_active_column().get_highlighted();
+        if( highlighted && highlighted.is_item() ) {
+            selection.emplace_back( highlighted.any_item(), static_cast<int>( highlighted.chosen_count ) );
+        }
+        return inventory_selected_payload( *this, selection, "ammo_inventory_selector::highlighted" );
+    };
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
         semantic_scope.emplace( *manager, "inventory", get_title(),
-        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_payload(),
         semantic_actions( {
             { "inventory.commit", "", _( "Reload" ), true },
             { "inventory.increase_quantity", "", _( "Increase quantity" ), true },
             { "inventory.decrease_quantity", "", _( "Decrease quantity" ), true }
-        } ), [this, &semantic_input]( const semantic_action_request &request ) {
-            return handle_semantic_request( request, semantic_input );
+        } ), [this, &semantic_input, &semantic_quantity_changed]( const semantic_action_request &request ) {
+            const semantic_action_dispatch_result result = handle_semantic_request( request, semantic_input );
+            if( result.accepted && semantic_input &&
+                ( semantic_input->action == "INCREASE_COUNT" || semantic_input->action == "DECREASE_COUNT" ) ) {
+                inventory_entry &highlighted = get_active_column().get_highlighted();
+                const size_t before = highlighted.chosen_count;
+                mod_chosen_count( highlighted, semantic_input->action == "INCREASE_COUNT" ? 1 : -1 );
+                semantic_input.reset();
+                if( highlighted.chosen_count == before ) {
+                    return semantic_action_dispatch_result{ false, "quantity_unchanged", "" };
+                }
+                semantic_quantity_changed = true;
+            }
+            return result;
         } );
     }
     while( true ) {
         ui_manager::redraw();
         if( semantic_scope ) {
-            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_scope->publish( semantic_payload(),
             semantic_actions( {
                 { "inventory.commit", "", _( "Reload" ), true },
                 { "inventory.increase_quantity", "", _( "Increase quantity" ), true },
@@ -4637,12 +4678,17 @@ drop_location ammo_inventory_selector::execute()
             } ) );
             semantic_scope->consume_request();
         }
+        if( semantic_quantity_changed ) {
+            semantic_quantity_changed = false;
+            continue;
+        }
         inventory_input input;
+        if( !semantic_input ) {
+            input = get_input();
+        }
         if( semantic_input ) {
             input = *semantic_input;
             semantic_input.reset();
-        } else {
-            input = get_input();
         }
 
         if( input.entry != nullptr ) {
@@ -4939,10 +4985,13 @@ drop_locations inventory_multiselector::execute( bool allow_empty )
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
     std::optional<inventory_input> semantic_input;
+    const auto semantic_payload = [this]() {
+        return inventory_selected_payload( *this, to_use, "inventory_multiselector::to_use" );
+    };
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
         semantic_scope.emplace( *manager, "inventory", get_title(),
-        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_payload(),
         semantic_actions( {
             { "inventory.toggle", "", _( "Toggle selection" ), true },
             { "inventory.commit", "", _( "Confirm selection" ), true }
@@ -4953,7 +5002,7 @@ drop_locations inventory_multiselector::execute( bool allow_empty )
     while( true ) {
         ui_manager::redraw();
         if( semantic_scope ) {
-            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_scope->publish( semantic_payload(),
             semantic_actions( {
                 { "inventory.toggle", "", _( "Toggle selection" ), true },
                 { "inventory.commit", "", _( "Confirm selection" ), true }
@@ -4961,11 +5010,12 @@ drop_locations inventory_multiselector::execute( bool allow_empty )
             semantic_scope->consume_request();
         }
         inventory_input input;
+        if( !semantic_input ) {
+            input = get_input();
+        }
         if( semantic_input ) {
             input = *semantic_input;
             semantic_input.reset();
-        } else {
-            input = get_input();
         }
 
         if( input.action == "CONFIRM" ) {
@@ -5278,10 +5328,13 @@ drop_locations inventory_drop_selector::execute()
     debug_print_timer( tp_start );
     openclaw_harness_trace_drop_selector( "open", get_title(), get_filter(), "", to_use );
     std::optional<inventory_input> semantic_input;
+    const auto semantic_payload = [this]() {
+        return inventory_selected_payload( *this, to_use, "inventory_drop_selector::to_use" );
+    };
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
         semantic_scope.emplace( *manager, "inventory", get_title(),
-        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_payload(),
         semantic_actions( {
             { "inventory.toggle", "", _( "Toggle selection" ), true },
             { "inventory.commit", "", _( "Drop selected items" ), true }
@@ -5296,7 +5349,7 @@ drop_locations inventory_drop_selector::execute()
                 "drop_highlight_after_redraw", "inventory_drop_selector" );
 
         if( semantic_scope ) {
-            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_scope->publish( semantic_payload(),
             semantic_actions( {
                 { "inventory.toggle", "", _( "Toggle selection" ), true },
                 { "inventory.commit", "", _( "Drop selected items" ), true }
@@ -5304,11 +5357,12 @@ drop_locations inventory_drop_selector::execute()
             semantic_scope->consume_request();
         }
         inventory_input input;
+        if( !semantic_input ) {
+            input = get_input();
+        }
         if( semantic_input ) {
             input = *semantic_input;
             semantic_input.reset();
-        } else {
-            input = get_input();
         }
         if( input.action == "CONFIRM" ) {
             for( drop_location &stuff : to_use ) {
@@ -5486,11 +5540,17 @@ drop_locations pickup_selector::execute()
 {
     shared_ptr_fast<ui_adaptor> ui = create_or_get_ui_adaptor();
     debug_print_timer( tp_start );
+    // Selection changes must publish a new native frame before the accepted
+    // toggle receipt can complete.  Title and available actions alone do not
+    // describe the multiselector's changed state.
+    const auto semantic_payload = [this]() {
+        return inventory_selected_payload( *this, to_use, "pickup_selector::to_use" );
+    };
     std::optional<inventory_input> semantic_input;
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
         semantic_scope.emplace( *manager, "inventory", get_title(),
-        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_payload(),
         semantic_actions( {
             { "inventory.toggle", "", _( "Toggle selection" ), true },
             { "inventory.wield", "", _( "Wield" ), true },
@@ -5504,7 +5564,7 @@ drop_locations pickup_selector::execute()
     while( true ) {
         ui_manager::redraw();
         if( semantic_scope ) {
-            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_scope->publish( semantic_payload(),
             semantic_actions( {
                 { "inventory.toggle", "", _( "Toggle selection" ), true },
                 { "inventory.wield", "", _( "Wield" ), true },
@@ -5514,11 +5574,12 @@ drop_locations pickup_selector::execute()
             semantic_scope->consume_request();
         }
         inventory_input input;
+        if( !semantic_input ) {
+            input = get_input();
+        }
         if( semantic_input ) {
             input = *semantic_input;
             semantic_input.reset();
-        } else {
-            input = get_input();
         }
 
         if( input.action == "CONFIRM" ) {
@@ -5940,10 +6001,13 @@ void trade_selector::execute()
     bool exit = false;
     std::optional<std::string> semantic_input;
     std::optional<inventory_input> semantic_inventory_input;
+    const auto semantic_payload = [this]() {
+        return inventory_selected_payload( *this, to_use, "trade_selector::to_use" );
+    };
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
         semantic_scope.emplace( *manager, "inventory", get_title(),
-        std::map<std::string, std::string>{ { "title", get_title() }, { "filter", get_filter() } },
+        semantic_payload(),
         semantic_actions( {
             { "inventory.toggle", "", _( "Toggle trade item" ), true },
             { "inventory.commit", "", _( "Confirm trade" ), true }
@@ -5969,16 +6033,24 @@ void trade_selector::execute()
         openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", "redraw",
                 "trade_highlight_after_redraw", "trade_selector" );
         if( semantic_scope ) {
-            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_scope->publish( semantic_payload(),
             semantic_actions( {
                 { "inventory.toggle", "", _( "Toggle trade item" ), true },
                 { "inventory.commit", "", _( "Confirm trade" ), true }
             } ) );
             semantic_scope->consume_request();
         }
-        const std::string action = semantic_input ? *semantic_input :
-                                   semantic_inventory_input ? semantic_inventory_input->action :
-                                   _ctxt_trade.handle_input();
+        std::string action;
+        if( !semantic_input && !semantic_inventory_input ) {
+            action = _ctxt_trade.handle_input();
+        }
+        // handle_input may consume a transport request before returning ERROR.
+        // Read its stored native choice after the wait, before clearing it.
+        if( semantic_input ) {
+            action = *semantic_input;
+        } else if( semantic_inventory_input ) {
+            action = semantic_inventory_input->action;
+        }
         const bool use_semantic_input = semantic_input || semantic_inventory_input;
         const item_location semantic_target = semantic_inventory_input ?
                                             semantic_inventory_input->semantic_target : item_location();

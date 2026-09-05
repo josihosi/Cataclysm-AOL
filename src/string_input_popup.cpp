@@ -503,7 +503,11 @@ const std::string &string_input_popup::query_string( const bool loop, const bool
             return _text;
         }
 
-        if( semantic_scope && semantic_scope->consume_request() ) {
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+            // The input context may already have consumed the request while
+            // waiting for its transport wake.  Apply that stored result even
+            // when this iteration has no new request to consume.
             if( semantic_canceled ) {
                 _text.clear();
                 _position = -1;

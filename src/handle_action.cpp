@@ -835,6 +835,7 @@ static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_a
         { "world.quicksave", "quicksave" },
         { "world.save_quit", "save" },
         { "world.inventory", "inventory" },
+        { "world.pickup", "pickup" },
         { "world.zone_manager", "zones" },
         { "world.overmap", "map" },
         { "world.chat", "chat" },
@@ -4449,6 +4450,8 @@ bool game::handle_action()
                         act = ACTION_SAVE;
                     } else if( request.action_id == "world.inventory" ) {
                         act = ACTION_INVENTORY;
+                    } else if( request.action_id == "world.pickup" ) {
+                        act = ACTION_PICKUP;
                     } else if( request.action_id == "world.zone_manager" ) {
                         act = ACTION_ZONES;
                     } else if( request.action_id == "world.inspect_npc" ) {
@@ -4499,6 +4502,7 @@ bool game::handle_action()
                     return semantic_action_dispatch_result{ true, "", "",
                                                             act == ACTION_INVENTORY || act == ACTION_MAP ||
                                                             act == ACTION_FIRE || act == ACTION_CHAT ||
+                                                            act == ACTION_PICKUP ||
                                                             semantic_basecamp_mission_actor.has_value() ||
                                                             semantic_npc_inspection_actor.has_value() };
                 } );
