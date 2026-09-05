@@ -6036,16 +6036,31 @@ void trade_selector::execute()
     std::optional<std::string> semantic_input;
     std::optional<inventory_input> semantic_inventory_input;
     const auto semantic_payload = [this]() {
-        return inventory_selected_payload( *this, to_use, "trade_selector::to_use" );
+        auto payload = inventory_selected_payload( *this, to_use, "trade_selector::to_use" );
+        for( const auto &entry : _parent->semantic_payload() ) {
+            payload[entry.first] = entry.second;
+        }
+        return payload;
+    };
+    const auto semantic_trade_actions = [this]() {
+        auto actions = semantic_actions( {
+            { "inventory.toggle", "", _( "Toggle trade item" ), true },
+            { "inventory.increase_quantity", "", _( "Increase quantity" ), true },
+            { "inventory.decrease_quantity", "", _( "Decrease quantity" ), true },
+            { "inventory.commit", "", _( "Confirm trade" ), true }
+        } );
+        actions.push_back( { "trade.switch_pane", "", _( "Switch trader inventory" ), true } );
+        return actions;
     };
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
-        semantic_scope.emplace( *manager, "inventory", get_title(),
-        semantic_payload(),
-        semantic_actions( {
-            { "inventory.toggle", "", _( "Toggle trade item" ), true },
-            { "inventory.commit", "", _( "Confirm trade" ), true }
-        } ), [this, &semantic_input, &semantic_inventory_input]( const semantic_action_request &request ) {
+        semantic_scope.emplace( *manager, "inventory", semantic_payload().at( "title" ),
+        semantic_payload(), semantic_trade_actions(),
+        [this, &semantic_input, &semantic_inventory_input]( const semantic_action_request &request ) {
+            if( request.action_id == "trade.switch_pane" ) {
+                semantic_input = ACTION_SWITCH_PANES;
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
             if( request.action_id == "inventory.commit" ) {
                 semantic_input = ACTION_TRADE_OK;
                 return semantic_action_dispatch_result{ true, "", "" };
@@ -6067,11 +6082,7 @@ void trade_selector::execute()
         openclaw_harness_trace_inventory_entries( *this, get_all_columns(), "state", "redraw",
                 "trade_highlight_after_redraw", "trade_selector" );
         if( semantic_scope ) {
-            semantic_scope->publish( semantic_payload(),
-            semantic_actions( {
-                { "inventory.toggle", "", _( "Toggle trade item" ), true },
-                { "inventory.commit", "", _( "Confirm trade" ), true }
-            } ) );
+            semantic_scope->publish( semantic_payload(), semantic_trade_actions() );
             semantic_scope->consume_request();
         }
         std::string action;

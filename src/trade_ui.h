@@ -4,6 +4,7 @@
 
 #include <array>
 #include <cstddef>
+#include <map>
 #include <memory>
 #include <queue>
 #include <string>
@@ -97,6 +98,7 @@ class trade_ui
         void pushevent( event const &ev );
 
         trade_result_t perform_trade();
+        std::map<std::string, std::string> semantic_payload() const;
         void recalc_values_cpane();
         void autobalance();
         void bank_balance();

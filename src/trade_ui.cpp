@@ -262,6 +262,30 @@ trade_ui::trade_result_t trade_ui::perform_trade()
     return { false, 0, 0, 0, 0, {}, {} };
 }
 
+std::map<std::string, std::string> trade_ui::semantic_payload() const
+{
+    const npc &trader = *_parties[_trader]->as_npc();
+    const Character &active = *_parties[_cpane];
+    const auto actor_id = []( const Character &actor ) {
+        return "character:" + std::to_string( actor.getID().get_value() );
+    };
+    return {
+        { "title", string_format( _( "Trade: %s's items" ), active.get_name() ) },
+        { "deal", _title },
+        { "active_party", _cpane == _you ? "player" : "npc" },
+        { "active_actor_id", actor_id( active ) },
+        { "player_actor_id", actor_id( *_parties[_you] ) },
+        { "player_name", _parties[_you]->get_name() },
+        { "trader_actor_id", actor_id( trader ) },
+        { "trader_name", trader.get_name() },
+        { "exchange_items_freely", trader.will_exchange_items_freely() ? "true" : "false" },
+        { "balance", format_money( _balance ) },
+        { "player_offer_value", format_money( _trade_values[_you] ) },
+        { "trader_offer_value", format_money( _trade_values[_trader] ) },
+        { "trade_values_source", "trade_ui native parties, offers and balance" }
+    };
+}
+
 void trade_ui::recalc_values_cpane()
 {
     _trade_values[_cpane] = 0;
