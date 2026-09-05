@@ -3089,7 +3089,16 @@ target_handler::trajectory target_ui::run()
                     ( ( stable_id == "up" || stable_id == "down" ) && fov_3d_z_range <= 0 ) ) {
                     return semantic_action_dispatch_result{ false, "invalid_target", "" };
                 }
-                semantic_native_action = direction->second;
+                // Use the same cursor movement as native input, and receipt
+                // an unchanged boundary immediately instead of waiting for a
+                // successor descriptor which cannot change.
+                const tripoint_bub_ms previous_cursor = dst;
+                const tripoint_rel_ms previous_view = you->view_offset;
+                bool skip_redraw = false;
+                handle_cursor_movement( direction->second, skip_redraw );
+                if( dst == previous_cursor && you->view_offset == previous_view ) {
+                    return semantic_action_dispatch_result{ false, "cursor_at_boundary", "" };
+                }
                 return semantic_action_dispatch_result{ true, "", "" };
             }
             if( request.action_id == "target.choose" ) {
