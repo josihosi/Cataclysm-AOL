@@ -260,11 +260,12 @@ the package pending another owner design pass.
     replaying the quit diagnosis, focused checks, source-bound build, or paid-departure proof.
     Query the continuation with `worker-receipts --task R-029-exploration-038 --latest`; use
     `response-status`, `response-slice`, or exact `log-query` selectors for run evidence.
-  - Waiting work: generation 21 acknowledged, but the clock rejected task
-    `R-029-exploration-039` with its honest 345,600-second whole-item estimate because it still
-    enforced the retired 259,200-second generation. This is a routing defect, not a hostile-ecology
-    finding. No worker was dispatched. The compact continuation and every unfinished R-029 branch
-    remain visible while the external mutation reviewer repairs the fresh-generation route.
+  - Ready continuation: the CLI retirement route is repaired and proved in review
+    `.de67/state/reviews/834222b1576d/review.md`. The rejected `R-029-exploration-039` start
+    remains a nonterminal routing counterexample; no worker was dispatched. An isolated replay of
+    the actual state now arms generation 8 at the honest 345,600-second estimate and binds its first
+    task, preserving all retired deadlines. Live state remains unarmed until the supervisor's fresh
+    coordinator starts work from the preserved continuation and unfinished R-029 branches.
     `cockpit_file_bridge.py response-status` now exposes a verified compact decision view;
     `response-slice` retrieves advertised omitted fields such as `receipt.next_frame`.
     `log-query --session-dir <session>` or `--path <exact-log> --run-id <run>` filters evidence
