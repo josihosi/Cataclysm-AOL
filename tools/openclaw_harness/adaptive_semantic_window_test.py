@@ -283,13 +283,13 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
         self.assertEqual(report["cleanup"]["status"], "deferred_pending_adaptive_recovery")
         self.assertEqual(report["cleanup"]["pending_recovery"]["issuing_frame_id"], "activity:772170")
 
-    def test_finalization_cleans_up_after_accepted_recovery_receipt(self) -> None:
+    def test_finalization_does_not_treat_recovery_as_player_quit(self) -> None:
         report = {"mode": "probe", "steps": [self.report(interruption_proved=True)]}
         with tempfile.TemporaryDirectory() as root, \
                 mock.patch("startup_harness.cleanup_game_process", return_value={"status": "terminated"}) as cleanup:
             finalize_probe_report(Path(root), report, cleanup_pid=49972)
 
-        cleanup.assert_called_once_with(49972)
+        cleanup.assert_called_once_with(49972, explicit_quit=False)
         self.assertEqual(report["cleanup"]["status"], "terminated")
 
     def test_activity_distraction_recovery_requires_matching_native_return(self) -> None:

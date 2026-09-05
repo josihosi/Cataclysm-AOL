@@ -137,15 +137,16 @@ class ArchiveTest(unittest.TestCase):
         startup_harness.write_json(output, scenario)  # Existing mutable report writer may overwrite.
         self.assertEqual(json.loads(output.read_text()), json.loads("".join(json_chunks(scenario))))
 
-    def test_live_eof_exports_actionless_finished_response_without_materializing(self):
+    def test_live_eof_records_disconnect_without_finalizing_or_materializing(self):
         service = self.service()
         service.call({"action": "game.observe"})
         output = io.StringIO()
         self.assertEqual(startup_harness.serve_cockpit_live(service, io.StringIO(), output), 1)
         wire = json.loads(output.getvalue())
-        self.assertIn("artifact_reference_envelope", wire)
-        restored = resolve_wire(wire, directory=self.directory, binding_id="binding-a")
-        self.assertIn("finished", str(restored.get("state", restored.get("final", {}))))
+        self.assertEqual(wire["error"], "client_disconnected")
+        self.assertEqual(wire["session_state"], "active")
+        self.assertIsNone(service.run_channel.status()["final"])
+        self.assertEqual(service.run_channel._transcript[-1]["kind"], "operation_failure")
 
     def test_live_envelope_authenticates_scalar_cleanup_and_export_identity(self):
         sequence = self.archive.sequence()

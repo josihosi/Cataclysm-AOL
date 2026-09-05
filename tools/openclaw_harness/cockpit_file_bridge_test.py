@@ -89,7 +89,9 @@ class CockpitFileBridgeTest(unittest.TestCase):
         child = "import json; print(json.dumps(" + repr(failure) + "), flush=True)"
         with tempfile.TemporaryDirectory() as tmp:
             session = Path(tmp) / "session"
-            bridge = FileBackedCockpitBridge(session, [sys.executable, "-c", child],
+            child_path = Path(tmp) / "startup_failure.py"
+            child_path.write_text(child, encoding="utf-8")
+            bridge = FileBackedCockpitBridge(session, [sys.executable, str(child_path)],
                                             binding_id="bound", require_session_ready=True)
             self.assertEqual(bridge.serve(), 1)
             status = json.loads((session / "status.json").read_text())
@@ -403,7 +405,7 @@ class CockpitFileBridgeTest(unittest.TestCase):
             )
             thread = threading.Thread(target=bridge.serve, daemon=True)
             thread.start()
-            while not (directory / "status.json").is_file():
+            while not (directory / "status.json").is_file() or json.loads((directory / "status.json").read_text())["state"] != "ready":
                 time.sleep(0.01)
             self.assertTrue(bridge.send_request(
                 directory, request_id="dies", binding_id="bound-a", request={"action": "game.observe"},
@@ -641,19 +643,72 @@ class CockpitFileBridgeTest(unittest.TestCase):
             # bridge must admit that exact post-reentry identity once, rather
             # than requiring or accepting a FIFO replay.
             self.assertTrue(bridge.send_request(
-                directory, request_id="keep-watch-after-relaunch", binding_id="bound-a",
-                request={"action": "game.keep_watch"},
+                directory, request_id="finish-after-relaunch", binding_id="bound-a",
+                request={"action": "run.finish"},
             )["ok"])
-            while not (directory / "responses" / "keep-watch-after-relaunch.receipt.json").is_file():
+            while not (directory / "responses" / "finish-after-relaunch.receipt.json").is_file():
                 time.sleep(0.01)
             receipt = json.loads((directory / "responses" /
-                                  "keep-watch-after-relaunch.receipt.json").read_text())
-            self.assertEqual(receipt["request_id"], "keep-watch-after-relaunch")
+                                  "finish-after-relaunch.receipt.json").read_text())
+            self.assertEqual(receipt["request_id"], "finish-after-relaunch")
             thread.join(2)
             self.assertFalse(thread.is_alive())
             self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
 
-    def test_fail_closed_final_under_error_also_terminalizes_the_scenario(self):
+    def test_real_cockpit_operation_failure_can_observe_then_explicitly_quit(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            child = "\n".join([
+                "import json, os, sys",
+                "sys.path.insert(0, " + repr(str(Path(__file__).resolve().parent)) + ")",
+                "import cockpit, startup_harness",
+                "frame = {'run_id':'run-a','frame_id':'frame-a','event':'surface_descriptor','schema_version':1,'surface_id':'world-a','kind':'world','breadcrumbs':['World'],'payload':{},'valid_actions':[{'id':'world.pause','stable_id':'','label':'Pause','enabled':True}]}",
+                "def finalize(report):",
+                "    path = os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'], 'cockpit.bridge.safe_to_cleanup.json')",
+                "    with open(path, 'w') as sink: json.dump({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'},sink)",
+                "    return {}",
+                "channel = cockpit.CockpitRunChannel(lambda:frame, binding_id='native-a',read_binding_id=lambda:'native-a',finalize_session=finalize)",
+                "print(json.dumps({'cockpit_live_session':{'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}}),flush=True)",
+                "startup_harness.serve_cockpit_live(cockpit.CockpitService(run_channel=channel),sys.stdin,sys.stdout)",
+            ])
+            bridge = FileBackedCockpitBridge(directory, [sys.executable, "-u", "-c", child],
+                                             binding_id="bound-a", require_session_ready=True)
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            try:
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    if (directory / "status.json").exists() and json.loads((directory / "status.json").read_text())["state"] == "ready":
+                        break
+                    time.sleep(.01)
+                requests = [
+                    ("failed-move", {"action":"game.raw_move_relative","raw_move_relative":{"enabled":True,"offset_ms":[1,0],"bound":{"basis":"path_progress","source":"one requested square","unit":"steps","maximum":1,"progress_required":True}}}),
+                    ("fresh-look", {"action":"game.observe"}),
+                    ("quit", {"action":"run.quit"}),
+                ]
+                for request_id, request in requests:
+                    self.assertTrue(bridge.send_request(directory,request_id=request_id,binding_id="bound-a",request=request)["ok"])
+                    deadline = time.monotonic() + 5
+                    receipt = directory / "responses" / (request_id + ".json")
+                    while not receipt.exists() and time.monotonic() < deadline:
+                        time.sleep(.01)
+                    response = json.loads(receipt.read_text())
+                    if request_id == "failed-move":
+                        self.assertEqual(response["error"], "raw_move_relative_position_unavailable")
+                        self.assertEqual(response["session_state"], "active")
+                        self.assertIsNone(bridge._child.poll())
+                        self.assertFalse(bridge._terminal_request_id)
+                    else:
+                        self.assertTrue(response["ok"], response)
+                thread.join(5)
+                self.assertFalse(thread.is_alive())
+                self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
+            finally:
+                if bridge._child is not None and bridge._child.poll() is None:
+                    bridge.cleanup(directory,"bound-a")
+                    thread.join(5)
+
+    def test_legacy_error_final_does_not_authorize_game_cleanup(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp) / "session"
             child = (
@@ -675,7 +730,8 @@ class CockpitFileBridgeTest(unittest.TestCase):
             )["ok"])
             thread.join(2)
             self.assertFalse(thread.is_alive())
-            self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
+            self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "process_dead")
+            self.assertFalse(bridge._terminal_request_id)
 
     def test_live_finish_drains_terminal_stdout_before_waiting_for_child_exit(self):
         with tempfile.TemporaryDirectory() as temp:

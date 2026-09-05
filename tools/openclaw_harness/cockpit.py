@@ -111,6 +111,7 @@ class CockpitRunChannel:
         self._last_public_state: Optional[Dict[str, Any]] = None
         self._transcript = archive.sequence() if archive is not None else []
         self._final_report: Optional[Dict[str, Any]] = None
+        self._last_failure: Optional[Dict[str, Any]] = None
         self._witness_charter = normalize_witness_charter(witness_charter) \
             if isinstance(witness_charter, Mapping) else None
         self._witness_identity = dict(witness_identity or {})
@@ -433,7 +434,7 @@ class CockpitRunChannel:
         if self._continuation is None or self._continuation.get("observation_id") != str(observation_id):
             return {"ok": False, "error": "continuation_bound_required"}
         if self._mutate_binding_for_control is None or not self._binding_matches():
-            return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+            return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
         role = str(r019_acceptance_matrix.get("role", "")).strip()
         if role != "off:enabled" or not str(attempted_action).strip():
             return {"ok": False, "error": "r019_binding_drift_control_requires_disabled_recipe_and_action"}
@@ -458,7 +459,7 @@ class CockpitRunChannel:
             "guarded_handling_count": 0,
             "hidden_batching": False,
         }
-        return self._fail_closed("binding_drift", {
+        return self._fail_operation("binding_drift", {
             "observation_id": str(observation_id), "unused_authority": "revoked",
             "r019_acceptance_matrix": packet, "binding_drift_receipt": receipt,
         })
@@ -485,6 +486,7 @@ class CockpitRunChannel:
             "run_id": self._run_id,
             "binding_id": self._binding_id,
             "state": "finished",
+            "termination_requested": True,
             "stop_reason": str(reason),
             "stop_detail": dict(detail),
             "action_observation_sequence": self._transcript if self.archive is not None else list(self._transcript),
@@ -501,9 +503,26 @@ class CockpitRunChannel:
         self._final_report = report
         return report
 
-    def _fail_closed(self, reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
-        report = self._stop(reason, detail)
-        return {"ok": False, "error": reason, "final": report}
+    def _fail_operation(self, reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
+        """Stop this operation and revoke its grants; only the player ends a session."""
+        released = dict(self._continuation or {})
+        self._continuation = None
+        self._safe_activity_bridge = None
+        if isinstance(self._observations, ArchiveMap):
+            self._observations.revoke_all()
+        else:
+            for observed in self._observations.values():
+                observed["used"] = True
+        failure = {
+            "reason": reason, "detail": dict(detail),
+            "released_continuation": released, "unused_authority": "revoked",
+            "session_state": self._state,
+        }
+        self._last_failure = failure
+        self._transcript.append({"kind": "operation_failure", "value": failure})
+        return {"ok": False, "error": reason, "failure": failure,
+                "session_state": self._state,
+                "next_action": "Observe the current game before choosing another action, or use run.quit to end the session. Do not replay the failed operation automatically."}
 
     def _native_receipt_run_matches(
         self, native: Mapping[str, Any], run_id: str, *, surface_owned: bool,
@@ -523,13 +542,13 @@ class CockpitRunChannel:
         if self._state != "active":
             return {"ok": False, "error": reason, "final": self._final_report}
         if not self._binding_matches():
-            return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+            return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
         record = self._observations.get(str(observed.get("observation_id", "")))
         if not isinstance(record, Mapping) or record.get("used") or \
                 record.get("run_id") != self._run_id:
-            return self._fail_closed("macro_stop_owner_unavailable", {"unused_authority": "revoked"})
+            return self._fail_operation("macro_stop_owner_unavailable", {"unused_authority": "revoked"})
         if observed.get("surface", {}).get("kind") == "process_exited":
-            return self._fail_closed("game_process_exited", {"unused_authority": "revoked"})
+            return self._fail_operation("game_process_exited", {"unused_authority": "revoked"})
         released = dict(self._continuation or {})
         self._continuation = None
         self._safe_activity_bridge = None
@@ -610,11 +629,20 @@ class CockpitRunChannel:
         return result
 
     def observe(self) -> Dict[str, Any]:
+        previous_failure = self._last_failure
+        try:
+            return self._observe()
+        except Exception as exc:
+            if self._state == "active" and self._last_failure is previous_failure:
+                self._fail_operation(str(exc), {"exception_type": type(exc).__name__})
+            raise
+
+    def _observe(self) -> Dict[str, Any]:
         if self._state != "active":
             raise ValueError("live session is finished")
         if not self._binding_matches():
-            self._fail_closed("binding_drift", {"unused_authority": "revoked"})
-            raise ValueError("binding drift stopped the live session")
+            self._fail_operation("binding_drift", {"unused_authority": "revoked"})
+            raise ValueError("binding_drift")
         ended = self.observe_process_exit()
         if ended is not None:
             return ended
@@ -649,7 +677,7 @@ class CockpitRunChannel:
             self._safe_activity_bridge = None
         if self._continuation is not None and \
                 run_id != str(self._continuation.get("run_id", run_id)):
-            self._fail_closed("continuation_wrong_run", {
+            self._fail_operation("continuation_wrong_run", {
                 "expected_run_id": self._continuation.get("run_id", ""),
                 "observed_run_id": run_id,
                 "unused_authority": "revoked",
@@ -902,29 +930,29 @@ class CockpitRunChannel:
             return {"state": "awaiting_native_completion"}
         self._continuation = None
         if after is None:
-            self._fail_closed("continuation_completion_signal_missing", {
+            self._fail_operation("continuation_completion_signal_missing", {
                 "expected_signal": continuation["expected_signal"],
                 "unused_authority": "revoked",
             })
-            return None
+            raise ValueError("continuation_completion_signal_missing")
         # A public bound permits the advertised action to consume its declared
         # maximum exactly.  Only progress beyond that evidence-derived span is
         # an exhaustion; equality is the ordinary completion boundary from
         # which a fresh observation may authorize an independent continuation.
         if after > before + float(continuation["maximum"]):
-            self._fail_closed("derived_bound_exhausted", {
+            self._fail_operation("derived_bound_exhausted", {
                 "expected_signal": continuation["expected_signal"],
                 "observed": after, "bound": continuation,
                 "unused_authority": "none",
             })
-            return None
+            raise ValueError("derived_bound_exhausted")
         if continuation["progress_required"] and after == before:
-            self._fail_closed("proved_no_progress", {
+            self._fail_operation("proved_no_progress", {
                 "expected_signal": continuation["expected_signal"],
                 "before": before, "after": after,
                 "unused_authority": "revoked",
             })
-            return None
+            raise ValueError("proved_no_progress")
         self._transcript.append({
             "kind": "continuation_completion", "value": {
                 "expected_signal": continuation["expected_signal"],
@@ -940,6 +968,7 @@ class CockpitRunChannel:
             "state": self._state,
             "continuation": dict(self._continuation or {}),
             "final": self._final_report,
+            "last_failure": self._last_failure,
         }
         return status
 
@@ -958,12 +987,12 @@ class CockpitRunChannel:
                     "next_action": "run.finish",
                 }
         if not self._binding_matches():
-            return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+            return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
         observed = self._observations.get(str(observation_id))
         if observed is None or observed["used"]:
             return {"ok": False, "error": "unknown_or_stale_observation"}
         if observed["public_state"].get("compact_log", {}).get("unsafe") is True:
-            return self._fail_closed("unsafe_divergence", {
+            return self._fail_operation("unsafe_divergence", {
                 "first_divergence": observed["public_state"]["compact_log"].get(
                     "first_divergence"
                 ),
@@ -994,7 +1023,7 @@ class CockpitRunChannel:
             return {"ok": False, "error": "bound_start_does_not_match_current_signal"}
         start = current
         if current >= start + float(maximum):
-            return self._fail_closed("derived_bound_exhausted", {
+            return self._fail_operation("derived_bound_exhausted", {
                 "expected_signal": signal, "bound": dict(bound),
                 "unused_authority": "none",
             })
@@ -1134,7 +1163,7 @@ class CockpitRunChannel:
                 self._transcript.append({"kind": "keep_watch", "result": result})
                 return {"ok": True, "result": result}
             if current is not None and current > float(target):
-                return self._fail_closed("target_crossed", {
+                return self._fail_operation("target_crossed", {
                     "target_game_minutes": target, "observed_game_minutes": current,
                     "unused_authority": "revoked",
                 })
@@ -1146,7 +1175,7 @@ class CockpitRunChannel:
                     "wait_activity", "activity_resumed", "wait_activity_complete",
             }:
                 if self._await_native_completion is None:
-                    return self._fail_closed("native_wait_completion_unavailable", {
+                    return self._fail_operation("native_wait_completion_unavailable", {
                         "observation_id": observed.get("observation_id", ""),
                         "unused_authority": "revoked",
                     })
@@ -1156,7 +1185,7 @@ class CockpitRunChannel:
                     )))
                     observed = self.observe()
                 except ValueError as exc:
-                    return self._fail_closed("native_wait_completion_unavailable", {
+                    return self._fail_operation("native_wait_completion_unavailable", {
                         "detail": str(exc), "unused_authority": "revoked",
                     })
                 continue
@@ -1218,12 +1247,12 @@ class CockpitRunChannel:
                                 owner = (str(observed.get("surface_id", "")),
                                          str(observed.get("frame_id", observed.get("observation_id", ""))))
                                 if owner in rejected_owners:
-                                    return self._fail_closed("keep_watch_rejected_owner_unchanged", {
+                                    return self._fail_operation("keep_watch_rejected_owner_unchanged", {
                                         "surface_id": owner[0], "frame_id": owner[1],
                                         "action_id": action_id, "unused_authority": "revoked",
                                     })
                             except ValueError as exc:
-                                return self._fail_closed(
+                                return self._fail_operation(
                                     "keep_watch_fresh_owner_recovery_unavailable", {
                                         "detail": str(exc), "unused_authority": "revoked",
                                     }
@@ -1278,12 +1307,12 @@ class CockpitRunChannel:
                                 owner = (str(observed.get("surface_id", "")),
                                          str(observed.get("frame_id", observed.get("observation_id", ""))))
                                 if owner in rejected_owners:
-                                    return self._fail_closed("keep_watch_rejected_owner_unchanged", {
+                                    return self._fail_operation("keep_watch_rejected_owner_unchanged", {
                                         "surface_id": owner[0], "frame_id": owner[1],
                                         "action_id": primitive, "unused_authority": "revoked",
                                     })
                             except ValueError as exc:
-                                return self._fail_closed("keep_watch_stale_action_recovery_unavailable", {
+                                return self._fail_operation("keep_watch_stale_action_recovery_unavailable", {
                                     "detail": str(exc), "action_id": primitive,
                                     "unused_authority": "revoked",
                                 })
@@ -1300,7 +1329,7 @@ class CockpitRunChannel:
                                              item.get("enabled") is True and item.get("id") == primitive] \
                                             if isinstance(fresh_actions, list) else []
                             if len(fresh_matches) != 1:
-                                return self._fail_closed("keep_watch_stale_action_declaration_changed", {
+                                return self._fail_operation("keep_watch_stale_action_declaration_changed", {
                                     "action_id": primitive,
                                     "observation_id": observed.get("observation_id", ""),
                                     "match_count": len(fresh_matches),
@@ -1384,13 +1413,13 @@ class CockpitRunChannel:
             safety_frames += 1
             if classification == "clear":
                 if observed_current is None:
-                    return self._fail_closed("keep_watch_progress_signal_missing", {
+                    return self._fail_operation("keep_watch_progress_signal_missing", {
                         "unused_authority": "revoked",
                     })
                 state = str(raw.get("state", "")) if isinstance(raw, Mapping) else ""
                 advertised = record.get("actions") if isinstance(record, Mapping) else None
                 if not isinstance(advertised, set):
-                    return self._fail_closed("keep_watch_advertised_actions_missing", {
+                    return self._fail_operation("keep_watch_advertised_actions_missing", {
                         "observation_id": observed.get("observation_id", ""),
                         "unused_authority": "revoked",
                     })
@@ -1590,7 +1619,7 @@ class CockpitRunChannel:
             }
             if reason == "native_wait_interrupted":
                 return self._interrupt_macro(reason, observed, detail)
-            return self._fail_closed(reason, detail)
+            return self._fail_operation(reason, detail)
 
         while True:
             current = self._signal_value(observed, "game_minutes")
@@ -1848,7 +1877,7 @@ class CockpitRunChannel:
             }
             if reason in recoverable:
                 return self._interrupt_macro(reason, observed, detail)
-            return self._fail_closed(reason, detail)
+            return self._fail_operation(reason, detail)
 
         if origin is None:
             record = self._observations.get(str(observed.get("observation_id", "")))
@@ -1879,7 +1908,7 @@ class CockpitRunChannel:
                     except ValueError as exc:
                         return stop("guarded_move_relative_fresh_frame_missing", {"detail": str(exc)})
                     if self._run_id != previous_run:
-                        return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+                        return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
                     record = self._observations.get(str(observed.get("observation_id", "")))
                     raw = record.get("issuing_frame") if isinstance(record, Mapping) else None
                     if not isinstance(raw, Mapping):
@@ -1980,7 +2009,7 @@ class CockpitRunChannel:
                 receipts.append(receipt)
             if outcome.get("ok") is not True:
                 if "binding drift" in str(outcome.get("error", "")):
-                    return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+                    return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
                 native = receipt.get("native_receipt") if isinstance(receipt, Mapping) else None
                 failure = str(native.get("outcome", "native_dispatch_failed")) if isinstance(native, Mapping) else \
                           str(outcome.get("error", "native_dispatch_failed"))
@@ -2005,7 +2034,7 @@ class CockpitRunChannel:
                     except ValueError as exc:
                         return stop(f"{route}_fresh_frame_missing", {"detail": str(exc)})
                     if self._run_id != previous_run:
-                        return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+                        return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
                     position = self._relative_position(observed)
                     successor = self._observations.get(str(observed.get("observation_id", "")), {}).get("issuing_frame", {})
                     if position is not None and position != before:
@@ -2096,21 +2125,21 @@ class CockpitRunChannel:
         if not self._r019_timed_entry:
             return {"ok": False, "error": "r019_live_timed_entry_qualification_not_declared"}
         if not self._binding_matches():
-            return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+            return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
         observed = self._observations.get(str(observation_id))
         if observed is None or observed["used"]:
             return {"ok": False, "error": "unknown_or_stale_observation"}
         expected_offset = self._r019_timed_entry.get("target_offset_ms")
         if not isinstance(expected_offset, list) or len(expected_offset) != 3 or \
                 any(isinstance(value, bool) or not isinstance(value, int) for value in expected_offset):
-            return self._fail_closed("r019_live_timed_entry_contract_malformed", {
+            return self._fail_operation("r019_live_timed_entry_contract_malformed", {
                 "unused_authority": "revoked",
             })
         dangerous_proximity = self._r019_timed_entry.get("dangerous_proximity")
         maximum_steps = self._r019_timed_entry.get("maximum_boundary_entry_steps")
         if isinstance(dangerous_proximity, bool) or not isinstance(dangerous_proximity, int) or \
                 isinstance(maximum_steps, bool) or not isinstance(maximum_steps, int) or maximum_steps <= 0:
-            return self._fail_closed("r019_live_timed_entry_contract_malformed", {
+            return self._fail_operation("r019_live_timed_entry_contract_malformed", {
                 "unused_authority": "revoked",
             })
         candidates = [
@@ -2125,7 +2154,7 @@ class CockpitRunChannel:
                 if all(entity.get(key) == value for key, value in required_actor.items())
             ]
         if len(candidates) != 1:
-            return self._fail_closed("r019_live_timed_entry_unqualified", {
+            return self._fail_operation("r019_live_timed_entry_unqualified", {
                 "observation_id": str(observation_id),
                 "expected_offset_ms": list(expected_offset),
                 "required_attitude": "hostile",
@@ -2145,7 +2174,7 @@ class CockpitRunChannel:
                 "declared_live_offset_ms": list(expected_offset),
             }
         if projection.get("status") not in {"accepted", "not_declared"}:
-            return self._fail_closed("r019_live_timed_entry_unqualified", {
+            return self._fail_operation("r019_live_timed_entry_unqualified", {
                 "observation_id": str(observation_id),
                 "projection": projection,
                 "unused_authority": "revoked",
@@ -2153,7 +2182,7 @@ class CockpitRunChannel:
         initial_distance = max(abs(expected_offset[0]), abs(expected_offset[1]))
         boundary_entry_steps = initial_distance - dangerous_proximity
         if initial_distance <= dangerous_proximity or boundary_entry_steps > maximum_steps:
-            return self._fail_closed("r019_live_timed_entry_unqualified", {
+            return self._fail_operation("r019_live_timed_entry_unqualified", {
                 "observation_id": str(observation_id), "initial_distance": initial_distance,
                 "dangerous_proximity": dangerous_proximity,
                 "boundary_entry_steps": boundary_entry_steps,
@@ -2266,7 +2295,7 @@ class CockpitRunChannel:
                     "next_action": "run.finish",
                 }
         if not self._binding_matches():
-            return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+            return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
         observed = self._observations.get(str(observation_id))
         if observed is None:
             return {"ok": False, "error": "unknown_or_stale_observation"}
@@ -2405,7 +2434,7 @@ class CockpitRunChannel:
                                      "observation_id": str(observation_id), "result": result})
             return result
         if not isinstance(receipt, Mapping):
-            return self._fail_closed("native_receipt_missing", {"action_id": action_id})
+            return self._fail_operation("native_receipt_missing", {"action_id": action_id})
         native = receipt.get("native_receipt")
         next_frame = receipt.get("_next_frame") or receipt.get("next_frame")
         if not isinstance(native, Mapping):
@@ -2420,7 +2449,7 @@ class CockpitRunChannel:
                     "error": "native_action_rejected",
                     "receipt": dict(receipt),
                 }
-            return self._fail_closed("native_receipt_missing", {"action_id": action_id})
+            return self._fail_operation("native_receipt_missing", {"action_id": action_id})
         if is_macro_stop_decision:
             # A valid native rejection may name a different consuming owner
             # (stale frame/child takeover). Authenticate its requested identity,
@@ -2432,7 +2461,7 @@ class CockpitRunChannel:
                     not is_surface_action or native.get("requested_surface_id") == issuing_raw.get("surface_id")
                 )
             if not request_matches:
-                return {**self._fail_closed("native_receipt_mismatch", {
+                return {**self._fail_operation("native_receipt_mismatch", {
                     "action_id": action_id, "observation_id": str(observation_id),
                     "native_receipt": dict(native), "unused_authority": "revoked",
                 }), "receipt": dict(receipt)}
@@ -2447,7 +2476,7 @@ class CockpitRunChannel:
         ))
         if native_frame_id != str(observation_id) or \
                 str(native.get("action_id", "")) != str(action_id):
-            return {**self._fail_closed("native_receipt_mismatch", {
+            return {**self._fail_operation("native_receipt_mismatch", {
                 "action_id": action_id, "observation_id": str(observation_id),
                 "native_receipt": dict(native), "unused_authority": "revoked",
             }), "receipt": dict(receipt)}
@@ -2455,7 +2484,7 @@ class CockpitRunChannel:
             surface_id = str(issuing_raw.get("surface_id", ""))
             if str(native.get("requested_surface_id", "")) != surface_id or \
                     str(native.get("consuming_surface_id", "")) != surface_id:
-                return {**self._fail_closed("native_receipt_mismatch", {
+                return {**self._fail_operation("native_receipt_mismatch", {
                     "action_id": action_id, "observation_id": str(observation_id),
                     "native_receipt": dict(native), "unused_authority": "revoked",
                 }), "receipt": dict(receipt)}
@@ -2464,9 +2493,9 @@ class CockpitRunChannel:
                                str( next_frame.get( "frame_id", "" ) ) == str( observation_id )
         if not isinstance(next_frame, Mapping) or ( not same_frame_selection and
                 str(next_frame.get("frame_id", "")) == str(observation_id) ):
-            return self._fail_closed("fresh_observation_missing", {"action_id": action_id})
+            return self._fail_operation("fresh_observation_missing", {"action_id": action_id})
         if is_surface_action and self._surface_descriptor(next_frame) is None:
-            return self._fail_closed("fresh_observation_missing", {"action_id": action_id})
+            return self._fail_operation("fresh_observation_missing", {"action_id": action_id})
         if str(action_id) in {"activity.ignore", "activity.continue"} and \
                 issuing_raw.get("state") == "activity_distraction" and \
                 ( issuing_raw.get("provenance") == "native_activity_distraction_query" or
@@ -2508,7 +2537,7 @@ class CockpitRunChannel:
                     issuing_raw.get("state") != "activity_distraction" or \
                     ( issuing_raw.get("provenance") != "native_activity_distraction_query" and
                       issuing_raw.get("producer") != "activity_distraction_query" ):
-                return self._fail_closed("unexpected_native_activity_return", {
+                return self._fail_operation("unexpected_native_activity_return", {
                     "action_id": action_id,
                     "unused_authority": "revoked",
                 })
@@ -2544,7 +2573,8 @@ class CockpitRunChannel:
             else:
                 fresh = self.observe()
         except ValueError as exc:
-            return {"ok": False, "error": str(exc), "receipt": dict(receipt)}
+            return {**self._fail_operation(str(exc), {"exception_type": type(exc).__name__}),
+                    "receipt": dict(receipt)}
         result: Dict[str, Any] = {
             "ok": True, "receipt": {key: value for key, value in receipt.items() if not key.startswith("_")},
             "expected_postcondition": "matching_native_receipt_and_fresh_observation",
@@ -2602,13 +2632,13 @@ class CockpitRunChannel:
             before = self._signal_value(observed["public_state"], continuation["expected_signal"])
             after = self._signal_value(fresh, continuation["expected_signal"])
             if continuation["progress_required"] and before == after:
-                return self._fail_closed("proved_no_progress", {
+                return self._fail_operation("proved_no_progress", {
                     "expected_signal": continuation["expected_signal"],
                     "before": before, "after": after,
                     "unused_authority": "revoked",
                 })
             if after is not None and after > continuation["start"] + continuation["maximum"]:
-                return self._fail_closed("derived_bound_exhausted", {
+                return self._fail_operation("derived_bound_exhausted", {
                     "expected_signal": continuation["expected_signal"],
                     "observed": after, "bound": continuation,
                     "unused_authority": "none",
@@ -2627,7 +2657,7 @@ class CockpitRunChannel:
         if self._state != "active":
             return {"ok": False, "error": "live_session_finished", "final": self._final_report}
         if not self._binding_matches():
-            return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+            return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
         observed = self._observations.get(str(observation_id))
         if observed is None or observed["used"]:
             return {"ok": False, "error": "unknown_or_stale_observation"}
@@ -2645,7 +2675,7 @@ class CockpitRunChannel:
         observed["used"] = True
         receipt = self._dispatch_player_fire_setup(current_raw)
         if not isinstance(receipt, Mapping):
-            return self._fail_closed("player_fire_setup_receipt_missing", {})
+            return self._fail_operation("player_fire_setup_receipt_missing", {})
         native = receipt.get("native_receipt")
         next_frame = receipt.get("next_frame")
         if not isinstance(native, Mapping) or native.get("accepted") is not True or \
@@ -2654,11 +2684,12 @@ class CockpitRunChannel:
             return {"ok": False, "error": "player_fire_setup_rejected", "receipt": dict(receipt)}
         if not isinstance(next_frame, Mapping) or \
                 str(next_frame.get("frame_id", "")) == str(observation_id):
-            return self._fail_closed("player_fire_setup_fresh_result_missing", {})
+            return self._fail_operation("player_fire_setup_fresh_result_missing", {})
         try:
             fresh = self.observe()
         except ValueError as exc:
-            return {"ok": False, "error": str(exc), "receipt": dict(receipt)}
+            return {**self._fail_operation(str(exc), {"exception_type": type(exc).__name__}),
+                    "receipt": dict(receipt)}
         result = {
             "ok": True,
             "receipt": dict(receipt),
@@ -2820,7 +2851,7 @@ class CockpitRunChannel:
         if self._continuation is not None:
             return {"ok": False, "error": "continuation_incomplete"}
         if not self._binding_matches():
-            return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+            return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
         terminal = {
             "observation_id": str(observation_id),
             "stop_reason": reason,
@@ -2871,7 +2902,7 @@ class CockpitRunChannel:
         if not reason or not disposition:
             return {"ok": False, "error": "finish_requires_reason_and_unused_authority"}
         if not self._binding_matches():
-            return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+            return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
         if r019_acceptance_matrix is not None and not isinstance(r019_acceptance_matrix, Mapping):
             return {"ok": False, "error": "r019_acceptance_matrix must be an object"}
         witness_validation: Optional[Dict[str, Any]] = None
@@ -2944,7 +2975,7 @@ class CockpitRunChannel:
                 interruption_minutes - pre_wait_minutes <= maximum
             )
             if not valid_times:
-                return self._fail_closed("r019_hostile_partial_progress_unproved", {
+                return self._fail_operation("r019_hostile_partial_progress_unproved", {
                     "observation_id": str(observation_id),
                     "pre_wait_game_minutes": pre_wait_minutes,
                     "interruption_game_minutes": interruption_minutes,
@@ -2990,8 +3021,15 @@ class CockpitRunChannel:
                if witness_validation is not None else {}),
         })}
 
+    def quit(self, reason: str = "player_quit") -> Dict[str, Any]:
+        """Explicitly end the owned session without requiring a gameplay claim."""
+        return {"ok": True, "result": self._stop(reason or "player_quit", {
+            "unused_authority": "released", "explicit_player_quit": True,
+            "gameplay_credit": False,
+        })}
+
     def close_unfinished(self) -> Dict[str, Any]:
-        return self._fail_closed("client_disconnected", {"unused_authority": "revoked"})
+        return self._fail_operation("client_disconnected", {"unused_authority": "revoked"})
 
 
 def _public(value: Any, key: str = "") -> Any:
@@ -3031,7 +3069,7 @@ def player_controls(availability: Optional[Mapping[str, bool]] = None) -> Dict[s
             "handle_classified_non_dangerous": "Handle only recognized non-dangerous native interruptions. Stop for danger, damage, unknown safety, or unavailable recovery. Movement also checks visible next-tile terrain and occupants.",
             "ignore_danger_and_interruptions": "Explicitly continue through classified in-game danger/damage where a supported native continuation exists; not permission to bypass unknown owners, unavailable recovery, or blocked movement.",
         },
-        "interruption_caveat": "An ordinary interruption stops only the macro and releases its unused continuation. Inspect result.terminal_observation and partial progress, then choose a native action or observe again; do not replay the recipe automatically. Identity, receipt integrity, and missing authoritative state failures still finish the session.",
+        "interruption_caveat": "An ordinary interruption stops only the macro and releases its unused continuation. Inspect result.terminal_observation and partial progress, then choose a native action or observe again; do not replay the recipe automatically. All action and observation failures leave the game running. Failed ownership or receipt checks revoke the current grants; observe again before choosing another action. Only explicit run.quit or run.finish ends the session.",
         "wait": {
             "example_request": {"action": "game.wait", "wait": {
                 "enabled": True, "target_delta_game_minutes": 1,
@@ -3078,6 +3116,18 @@ class CockpitService:
                 for action in ("game.wait", "game.move_relative")}
 
     def call(self, request: Mapping[str, Any]) -> Dict[str, Any]:
+        try:
+            return self._call(request)
+        except Exception as exc:
+            # A failed adapter or observation is a request failure, never an
+            # implicit instruction to close the game or replay native input.
+            if self.run_channel is not None:
+                return self.run_channel._fail_operation(str(exc), {
+                    "exception_type": type(exc).__name__,
+                })
+            return {"ok": False, "error": str(exc)}
+
+    def _call(self, request: Mapping[str, Any]) -> Dict[str, Any]:
         if not isinstance(request, Mapping):
             return {"ok": False, "error": "request must be an object"}
         unknown = set(request) - _ALLOWED
@@ -3204,6 +3254,8 @@ class CockpitService:
                 attempted_action=str(request.get("action_id", "")),
                 r019_acceptance_matrix=matrix,
             )
+        if action == "run.quit" and self.run_channel is not None:
+            return self.run_channel.quit(str(request.get("stop_reason", "player_quit")))
         if action == "run.status" and self.run_channel is not None:
             return {"ok": True, "result": self.run_channel.status()}
         if action == "run.witness" and self.run_channel is not None:

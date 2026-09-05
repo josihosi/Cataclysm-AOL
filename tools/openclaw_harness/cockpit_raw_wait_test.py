@@ -186,7 +186,7 @@ class RawWaitTest(unittest.TestCase):
             "enabled": True, "target_game_minutes": 102, "bound": bound(1), "recipe": ["world.wait"],
         }})
         self.assertEqual(exhausted["error"], "derived_bound_exhausted")
-        self.assertEqual(exhausted["final"]["stop_detail"]["partial_progress"], 1.0)
+        self.assertEqual(exhausted["failure"]["detail"]["partial_progress"], 1.0)
         self.assertEqual(dispatched, ["world.wait"])
 
     def test_raw_route_stops_on_no_progress_after_preserving_native_receipt(self) -> None:
@@ -194,7 +194,7 @@ class RawWaitTest(unittest.TestCase):
         result = service.call(self.request(target=101, maximum=1))
         self.assertEqual(result["error"], "proved_no_progress")
         self.assertEqual(dispatched, ["world.wait"])
-        actions = [entry for entry in result["final"]["action_observation_sequence"]
+        actions = [entry for entry in service.run_channel._transcript
                    if entry.get("kind") == "action"]
         self.assertEqual(actions[-1]["result"]["receipt"]["native_receipt"]["action_id"], "world.wait")
 

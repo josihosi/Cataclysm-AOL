@@ -934,7 +934,7 @@ class KeepWatchTest(unittest.TestCase):
                 self.assertEqual(receipt["primitive_native_dispatch_count"], 1)
                 self.assertEqual(receipt["native_receipt_actions"], ["world.wait"])
 
-    def test_disabled_recipe_binding_drift_records_the_terminal_without_dispatch(self) -> None:
+    def test_disabled_recipe_binding_drift_records_failure_without_dispatch(self) -> None:
         clean = [
             frame(1, 100, {"classification": "clear", "monster": False, "danger": False, "damage": False}),
             frame(2, 101, {"classification": "clear", "monster": False, "danger": False, "damage": False}),
@@ -965,7 +965,7 @@ class KeepWatchTest(unittest.TestCase):
                                     "clean_start_identity": "fixture:clean:100",
                                     "source_identity": "fixture:source"}})
         self.assertEqual(stopped["error"], "binding_drift")
-        receipt = stopped["final"]["stop_detail"]["binding_drift_receipt"]
+        receipt = stopped["failure"]["detail"]["binding_drift_receipt"]
         self.assertEqual(receipt["before"]["identity"], "runtime_binding")
         self.assertNotEqual(receipt["before"]["hash"], receipt["after"]["hash"])
         self.assertEqual(receipt["attempted_action"], "world.wait")

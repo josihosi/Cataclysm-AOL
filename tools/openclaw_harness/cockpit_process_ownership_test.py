@@ -1,4 +1,6 @@
 import json
+import io
+from contextlib import redirect_stdout
 import os
 import subprocess
 import sys
@@ -11,7 +13,7 @@ import startup_harness as harness
 from cockpit_file_bridge import FileBackedCockpitBridge
 
 class ProcessOwnershipTest(unittest.TestCase):
-    def test_early_identity_is_persisted_and_reclaimed_before_hud(self):
+    def test_early_identity_is_persisted_and_retained_before_hud(self):
         with tempfile.TemporaryDirectory() as tmp:
             session = Path(tmp) / "session"
             bridge = FileBackedCockpitBridge(session, ["unused"], binding_id="bound")
@@ -28,12 +30,51 @@ class ProcessOwnershipTest(unittest.TestCase):
                 self.assertEqual(record["run_id"], "run")
                 with patch.object(harness, "cleanup_game_process", return_value={"status": "terminated"}) as cleanup:
                     bridge._emergency_cleanup()
-                    cleanup.assert_called_once_with(123)
+                    cleanup.assert_called_once_with(123, explicit_quit=False)
             with patch.object(harness, "pid_command", return_value="unrelated process"), patch.object(harness, "cleanup_game_process") as cleanup:
                 bridge._startup_progress = {"pid": 123}
                 result = bridge._emergency_cleanup()
                 cleanup.assert_not_called()
                 self.assertEqual(result["ownership"], "process_exited_or_identity_changed")
+
+    def test_deferred_scenario_cleanup_requires_the_player_quit_record(self):
+        process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", "cataclysm-tiles"])
+        try:
+            with tempfile.TemporaryDirectory() as temp, redirect_stdout(io.StringIO()):
+                run_dir = Path(temp)
+                disconnected = {"mode":"probe", "steps":[]}
+                harness.finalize_probe_report(run_dir, disconnected, cleanup_pid=process.pid)
+                self.assertEqual(disconnected["cleanup"]["status"], "retained_waiting_for_player_quit")
+                self.assertIsNone(process.poll())
+                report = {"termination_requested":True, "run_id":"test-run", "binding_id":"test-binding",
+                          "stop_reason":"player_quit", "state":"finished"}
+                harness.finalize_cockpit_live_session(run_dir, process.pid, report, cleanup_process=False)
+                self.assertIsNone(process.poll())
+                ended = {"mode":"probe", "steps":[]}
+                with patch.object(harness, "pending_adaptive_semantic_recovery", return_value={"unresolved":"test"}):
+                    harness.finalize_probe_report(run_dir, ended, cleanup_pid=process.pid,
+                                                 report_filename="explicit-quit.report.json")
+                self.assertEqual(ended["cleanup"]["status"], "terminated")
+                process.wait(timeout=3)
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=3)
+
+    def test_live_process_survives_cleanup_until_explicit_player_quit(self):
+        process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", "cataclysm-tiles"])
+        try:
+            retained = harness.cleanup_game_process(process.pid)
+            self.assertEqual(retained["status"], "retained_waiting_for_player_quit")
+            self.assertIsNone(process.poll())
+            ended = harness.cleanup_game_process(process.pid, explicit_quit=True)
+            self.assertEqual(ended["status"], "terminated")
+            process.wait(timeout=3)
+            self.assertFalse(ended["native_exit_credit"])
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=3)
 
     def test_progress_pid_without_owned_identity_is_not_killed(self):
         with tempfile.TemporaryDirectory() as tmp:
@@ -88,24 +129,24 @@ class ProcessOwnershipTest(unittest.TestCase):
                              ("bound", "run", 123, 0))
             self.assertTrue(record["exit_observed_at"])
 
-    def test_missing_process_identity_stops_and_reaps_before_startup(self):
+    def test_missing_process_identity_reports_failure_and_retains_game(self):
         process = Mock(pid=123)
         with tempfile.TemporaryDirectory() as tmp, patch.object(harness, "pid_command", return_value=""):
             with self.assertRaisesRegex(OSError, "process identity unavailable"):
                 harness.record_bridge_game_process(process, {
                     "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": tmp,
                     "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "bound"})
-            process.terminate.assert_called_once()
-            process.wait.assert_called_once_with(timeout=2)
+            process.terminate.assert_not_called()
+            process.wait.assert_not_called()
             self.assertFalse((Path(tmp) / "game-process.json").exists())
 
-    def test_ownership_write_failure_stops_the_new_child(self):
+    def test_ownership_write_failure_retains_the_new_game(self):
         process = Mock(pid=123)
         with tempfile.TemporaryDirectory() as tmp, patch.object(harness, "pid_command", return_value="game"):
             with self.assertRaises(OSError):
                 harness.record_bridge_game_process(process, {
                     "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": str(Path(tmp) / "missing"),
                     "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "bound"})
-            process.terminate.assert_called_once()
+            process.terminate.assert_not_called()
 
 if __name__ == "__main__": unittest.main()

@@ -5315,7 +5315,14 @@ def finalize_cockpit_live_session(
     final_path = final_path or cockpit_live_final_path( run_dir )
     if final_path.exists():
         return {"cleanup": {"status": "rejected_existing_final_report"}}
-    cleanup = cleanup_game_process( pid ) if cleanup_process else {
+    explicit_quit = report.get("termination_requested") is True
+    if explicit_quit:
+        write_json(run_dir / "cockpit.player_quit.json", {
+            "schema": "caol-cockpit-player-quit-v1", "pid": pid,
+            "command": pid_command(pid), "run_id": report.get("run_id"),
+            "binding_id": report.get("binding_id"), "stop_reason": report.get("stop_reason"),
+        })
+    cleanup = cleanup_game_process( pid, explicit_quit=explicit_quit ) if cleanup_process else {
         "status": "deferred_to_scenario_terminalization",
         "pid": pid,
     }
@@ -5366,7 +5373,7 @@ def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> i
 
 
 def run_cockpit_live(args: argparse.Namespace) -> int:
-    """Serve one live worker-owned JSONL session until explicit finish or fail-closed EOF."""
+    """Serve one live worker-owned JSONL session until explicit finish or client disconnect."""
     run_dir = Path( args.run_dir )
     service = open_cockpit_game_service(
         profile=args.profile,
@@ -20511,14 +20518,8 @@ def record_bridge_game_process(process: subprocess.Popen, env: Mapping[str, str]
         temporary = target.with_suffix(".tmp")
         temporary.write_text(json.dumps(value), encoding="utf-8")
         os.replace(temporary, target)
-    except OSError:
-        process.terminate()
-        try:
-            process.wait(timeout=2)
-        except subprocess.TimeoutExpired:
-            process.kill()
-            process.wait(timeout=2)
-        raise
+    except OSError as exc:
+        raise OSError(f"{exc}; game pid {process.pid} retained for the player's decision") from exc
 
 
 def record_bridge_game_exit(process: subprocess.Popen, env: Mapping[str, str], exit_code: int) -> None:
@@ -20731,15 +20732,17 @@ def terminal_native_startup_identity(
 
 
 def pid_command(pid: int) -> str:
+    if os.name == "nt":
+        command = ["powershell.exe", "-NoLogo", "-NoProfile", "-NonInteractive", "-Command",
+                   f"(Get-CimInstance Win32_Process -Filter 'ProcessId={int(pid)}').CommandLine"]
+    else:
+        command = ["ps", "-p", str(pid), "-o", "command="]
     try:
         proc = subprocess.run(
-            ["ps", "-p", str(pid), "-o", "command="],
-            capture_output=True,
-            text=True,
-            check=False,
-            timeout=2.0,
+            command, capture_output=True, text=True, check=False, timeout=2.0,
+            **({"creationflags": subprocess.CREATE_NO_WINDOW} if os.name == "nt" else {}),
         )
-    except (PermissionError, subprocess.TimeoutExpired):
+    except (OSError, subprocess.TimeoutExpired):
         return ""
     return proc.stdout.strip()
 
@@ -20919,7 +20922,8 @@ def wait_for_pid_exit(pid: int, timeout_seconds: float) -> bool:
     return not pid_is_alive(pid)
 
 
-def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, Any]:
+def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0,
+                         explicit_quit: bool = False) -> Dict[str, Any]:
     cleanup_started_epoch = time.time()
     info: Dict[str, Any] = {
         "pid": pid,
@@ -20940,12 +20944,19 @@ def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0) -> Dict[str, A
             info["status"] = "already_exited"
             info["cleanup_finished_at"] = _utc_timestamp(time.time())
             return info
-        info["command_lookup"] = "unavailable"
+        info["status"] = "retained_process_identity_unavailable"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
+        return info
     elif not re.search(
             r"(?:Cataclysm-AOL|cataclysm(?:-(?:tiles|tlg-tiles))?|r_surface_008_curses/cataclysm|r027-(?:closure|exploration)-[0-9]+-tiles)(?:\.exe)?(?:\s|$)",
             command,
     ):
         info["status"] = "skipped_non_cataclysm_process"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
+        return info
+
+    if not explicit_quit:
+        info["status"] = "retained_waiting_for_player_quit"
         info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
 
@@ -27988,12 +27999,12 @@ def execute_probe_steps(
                 "bound_bases": sorted(["game_mechanic", "scheduler_boundary", "path_progress",
                                        "measured_rate"]),
                 "termination": (
-                    "run.witness then run.finish after the target or another valid terminal condition; client EOF, "
+                    "run.witness then run.finish to conclude the evidence, or run.quit to end without a claim. "
                     if witness_charter is not None else
-                    "run.finish after the target or another valid terminal condition; client EOF, "
+                    "run.finish or run.quit explicitly ends the session. "
                 ) + (
-                    "binding drift, unsafe divergence, missing receipts, proved no-progress, and "
-                    "derived-bound exhaustion stop fail-closed"
+                    "Action failures, binding drift, missing receipts, no progress, and client disconnects "
+                    "stop only the current operation and leave the game running."
                 ),
             }
             descriptor_path = run_dir / f"{label}.cockpit_live_session.json"
@@ -33927,8 +33938,18 @@ def finalize_probe_report(
             report["verdict"] = "certification_capture_failed"
             report["certification_capture_error"] = str(exc)
     if cleanup_pid > 0 and "cleanup" not in report:
+        quit_request = {}
+        if run_dir is not None:
+            try:
+                quit_request = json.loads((Path(run_dir) / "cockpit.player_quit.json").read_text(encoding="utf-8"))
+            except (OSError, ValueError):
+                pass
+        explicit_quit = isinstance(quit_request, Mapping) and \
+            quit_request.get("schema") == "caol-cockpit-player-quit-v1" and \
+            quit_request.get("pid") == cleanup_pid and \
+            quit_request.get("command") == pid_command(cleanup_pid)
         pending_recovery = pending_adaptive_semantic_recovery(report)
-        if pending_recovery is not None:
+        if pending_recovery is not None and not explicit_quit:
             # A report can describe an incomplete transaction, but it cannot
             # destroy the process that still owns the advertised native return.
             # Leave both registry ingestion and cleanup closed until a later
@@ -33943,7 +33964,7 @@ def finalize_probe_report(
                 "reason": "owned_game_process_retained_until_recovery_receipt_is_accepted",
             }
         else:
-            report["cleanup"] = cleanup_game_process(cleanup_pid)
+            report["cleanup"] = cleanup_game_process(cleanup_pid, explicit_quit=explicit_quit)
     if run_dir is not None and isinstance(report.get("cleanup"), Mapping):
         seal_r027_signal_cleanup_sidecar(run_dir, report["cleanup"])
         report["wait_diagnostic"] = seal_wait_diagnostic_ledger(

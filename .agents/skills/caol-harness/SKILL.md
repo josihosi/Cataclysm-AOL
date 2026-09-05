@@ -83,7 +83,12 @@ python3 tools/openclaw_harness/play_cli.py --session SESSION finish --witness FI
 `controls` is read-only, even while a request is pending. It provides copyable wait/movement
 requests, native recipe semantics, danger choices, and session permissions after `look`/`collect`.
 An ordinary interruption stops only the macro: inspect its terminal observation and partial
-progress, then choose the next native action. Identity or receipt failures still finish the session.
+progress, then choose the next native action. All action and observation failures leave the game
+running. Ownership or receipt failures revoke stale input grants: `look` again before choosing an
+action. A failed command does not authorize quitting, cleanup, replay, or a replacement game.
+To end without making a gameplay claim, send `{"action":"run.quit","stop_reason":"your reason"}`
+through `call --request`. A client disconnect also leaves the game running. Only explicit native
+quit, `run.quit`, `run.finish`, or requested bridge cleanup ends it.
 `performance` reads retained CPU/RSS and action intervals; `performance --sample-seconds 1`
 works even while game input is pending. `--offset 0 --limit 5` pages exact records.
 Use `--tag "comparable workload" --save-baseline FILE`, then `--tag "comparable workload"

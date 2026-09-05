@@ -115,6 +115,69 @@ def r019_fixture_actor(**overrides: object) -> dict[str, object]:
 
 
 class LiveSessionTest(unittest.TestCase):
+    def test_missing_receipt_then_fresh_observation_can_act_and_explicitly_quit(self):
+        service, finals = self.service([frame(1, 100), frame(2, 101)])
+        channel = service.run_channel
+        dispatch = channel._dispatch_advertised_action
+        channel._dispatch_advertised_action = lambda *args: {}
+        observed = service.call({"action": "game.observe"})["result"]
+        service.call({"action": "run.continue", "observation_id": observed["observation_id"],
+                      "expected_signal": "game_minutes", "bound": bound(100)})
+        failed = service.call({"action": "game.act", "observation_id": observed["observation_id"],
+                               "action_id": "world.wait"})
+        self.assertEqual(failed["error"], "native_receipt_missing")
+        self.assertEqual(finals, [])
+        self.assertEqual(channel.status()["continuation"], {})
+        replay = service.call({"action": "game.act", "observation_id": observed["observation_id"],
+                               "action_id": "world.wait"})
+        self.assertEqual(replay["error"], "duplicate_submission")
+        channel._dispatch_advertised_action = dispatch
+        fresh = service.call({"action": "game.observe"})["result"]
+        self.assertTrue(service.call({"action": "run.continue", "observation_id": fresh["observation_id"],
+                      "expected_signal": "game_minutes", "bound": bound(100)})["ok"])
+        self.assertTrue(service.call({"action": "game.act", "observation_id": fresh["observation_id"],
+                                     "action_id": "world.wait"})["ok"])
+        self.assertEqual(finals, [])
+        quit_result = service.call({"action": "run.quit", "stop_reason": "player ends recovery trial"})
+        self.assertTrue(quit_result["ok"])
+        self.assertEqual(len(finals), 1)
+        self.assertTrue(finals[0]["stop_detail"]["explicit_player_quit"])
+
+    def test_binding_drift_withholds_input_until_restored_and_quit_needs_no_frame(self):
+        binding = ["binding-a"]
+        service, finals = self.service([frame(1, 100)], binding=binding)
+        observed = service.call({"action": "game.observe"})["result"]
+        binding[0] = "wrong-binding"
+        for action in ("game.observe", "game.act", "game.observe"):
+            result = service.call({"action": action, "observation_id": observed["observation_id"],
+                                   "action_id": "world.wait"})
+            self.assertEqual(result["error"], "binding_drift")
+        self.assertEqual(finals, [])
+        self.assertEqual(service._test_frame_index[0], 0)
+        binding[0] = "binding-a"
+        self.assertTrue(service.call({"action": "game.observe"})["ok"])
+        binding[0] = "wrong-binding"
+        self.assertTrue(service.call({"action": "run.quit"})["ok"])
+        self.assertEqual(len(finals), 1)
+
+    def test_adapter_exception_is_request_failure_and_next_request_recovers(self):
+        service, finals = self.service([frame(1, 100), frame(2, 101)])
+        channel = service.run_channel
+        dispatch = channel._dispatch_advertised_action
+        def broken(*args):
+            raise OSError("test transport interrupted")
+        channel._dispatch_advertised_action = broken
+        observed = service.call({"action": "game.observe"})["result"]
+        service.call({"action": "run.continue", "observation_id": observed["observation_id"],
+                      "expected_signal": "game_minutes", "bound": bound(100)})
+        result = service.call({"action": "game.act", "observation_id": observed["observation_id"],
+                               "action_id": "world.wait"})
+        self.assertEqual(result["error"], "test transport interrupted")
+        self.assertEqual(result["failure"]["detail"]["exception_type"], "OSError")
+        self.assertEqual(finals, [])
+        channel._dispatch_advertised_action = dispatch
+        self.assertTrue(service.call({"action": "game.observe"})["ok"])
+
     def service(
         self, frames: list[dict[str, object]], *, evidence: dict[str, object] | None = None,
         binding: list[str] | None = None, missing_receipt: bool = False,
@@ -270,7 +333,7 @@ class LiveSessionTest(unittest.TestCase):
         })
         self.assertFalse(rejected["ok"])
         self.assertEqual(rejected["error"], "r019_live_timed_entry_unqualified")
-        self.assertEqual(finals[0]["stop_reason"], "r019_live_timed_entry_unqualified")
+        self.assertEqual(rejected["failure"]["reason"], "r019_live_timed_entry_unqualified")
 
     def test_r019_timed_entry_rejects_fixture_identity_drift(self) -> None:
         initial = frame(1, 100)
@@ -288,7 +351,7 @@ class LiveSessionTest(unittest.TestCase):
             "action": "game.qualify_r019_timed_entry", "observation_id": observed["observation_id"],
         })
         self.assertEqual(rejected["error"], "r019_live_timed_entry_unqualified")
-        self.assertEqual(finals[0]["stop_reason"], "r019_live_timed_entry_unqualified")
+        self.assertEqual(rejected["failure"]["reason"], "r019_live_timed_entry_unqualified")
 
     def test_r019_timed_entry_rejects_fixture_coordinate_drift(self) -> None:
         initial = frame(1, 100)
@@ -306,7 +369,7 @@ class LiveSessionTest(unittest.TestCase):
             "action": "game.qualify_r019_timed_entry", "observation_id": observed["observation_id"],
         })
         self.assertEqual(rejected["error"], "r019_live_timed_entry_unqualified")
-        self.assertEqual(finals[0]["stop_reason"], "r019_live_timed_entry_unqualified")
+        self.assertEqual(rejected["failure"]["reason"], "r019_live_timed_entry_unqualified")
 
     def test_r019_projection_receipt_accepts_only_the_saved_to_live_chain(self) -> None:
         initial = frame(1, 100)
@@ -351,7 +414,7 @@ class LiveSessionTest(unittest.TestCase):
                 "observation_id": control_observed["observation_id"],
             })
             self.assertEqual(rejected["error"], "r019_live_timed_entry_unqualified")
-            self.assertIn(error, finals[0]["stop_detail"]["projection"]["errors"])
+            self.assertIn(error, rejected["failure"]["detail"]["projection"]["errors"])
 
         for owner, value in (
             ("avatar", None),
@@ -376,7 +439,7 @@ class LiveSessionTest(unittest.TestCase):
                 "observation_id": control_observed["observation_id"],
             })
             self.assertEqual(rejected["error"], "r019_live_timed_entry_unqualified")
-            self.assertEqual(finals[0]["stop_detail"]["projection"], {
+            self.assertEqual(rejected["failure"]["detail"]["projection"], {
                 "status": "rejected", "reason": "missing_or_malformed_projection_input",
             })
 
@@ -410,7 +473,7 @@ class LiveSessionTest(unittest.TestCase):
         self.assertEqual(results[3]["result"]["stop_reason"], "target_predicate_proved")
         self.assertEqual(len(finals), 1)
 
-    def test_eof_persists_an_explicit_fail_closed_terminal(self) -> None:
+    def test_eof_records_disconnect_and_preserves_session(self) -> None:
         service, finals = self.service([frame(1, 100)])
         output = io.StringIO()
 
@@ -419,9 +482,9 @@ class LiveSessionTest(unittest.TestCase):
 
         self.assertEqual(status, 1)
         self.assertEqual(results[-1]["error"], "client_disconnected")
-        self.assertEqual(len(finals), 1)
-        self.assertEqual(finals[0]["stop_reason"], "client_disconnected")
-        self.assertEqual(service.run_channel.status()["state"], "finished")
+        self.assertEqual(finals, [])
+        self.assertEqual(results[-1]["failure"]["reason"], "client_disconnected")
+        self.assertEqual(service.run_channel.status()["state"], "active")
 
     def test_continuation_derives_start_from_its_current_observation(self) -> None:
         service, _ = self.service([frame(1, 8460), frame(2, 8461)])
@@ -460,7 +523,7 @@ class LiveSessionTest(unittest.TestCase):
             "action_id": "world.wait",
         })
         self.assertEqual(stopped["error"], "proved_no_progress")
-        self.assertEqual(len(finals), 1)
+        self.assertEqual(finals, [])
 
         exhausted, exhausted_finals = self.service([frame(1, 100), frame(2, 102)])
         observed = exhausted.call({"action": "game.observe"})["result"]
@@ -473,7 +536,7 @@ class LiveSessionTest(unittest.TestCase):
             "action_id": "world.wait",
         })
         self.assertEqual(stopped["error"], "derived_bound_exhausted")
-        self.assertEqual(len(exhausted_finals), 1)
+        self.assertEqual(exhausted_finals, [])
 
     def test_exact_bound_completion_permits_a_fresh_independent_continuation(self) -> None:
         service, finals = self.service([frame(1, 100), frame(2, 101), frame(3, 102)])
@@ -1078,9 +1141,9 @@ class LiveSessionTest(unittest.TestCase):
         self.assertEqual(service.call({"action": "game.observe"}), {
             "ok": False, "error": "continuation belongs to a different run",
         })
-        self.assertEqual(service.call({"action": "run.status"})["result"]["final"]["stop_reason"],
+        self.assertEqual(service.call({"action": "run.status"})["result"]["last_failure"]["reason"],
                          "continuation_wrong_run")
-        self.assertEqual(len(finals), 1)
+        self.assertEqual(finals, [])
 
     def test_wait_menu_navigation_carries_bound_until_native_wait_dispatch(self) -> None:
         first = frame(1, 100)
@@ -1120,7 +1183,7 @@ class LiveSessionTest(unittest.TestCase):
         })
         self.assertEqual(finals, [])
 
-    def test_delayed_native_completion_without_progress_fails_closed(self) -> None:
+    def test_delayed_native_completion_without_progress_fails_operation(self) -> None:
         service, finals = self.service([
             frame(1, 100), wait_activity_frame(2, 100), frame(3, 100), frame(4, 100),
         ])
@@ -1137,12 +1200,12 @@ class LiveSessionTest(unittest.TestCase):
         self.assertTrue(service.call({"action": "game.observe"})["ok"])
         service._test_frame_index[0] = 3
         self.assertEqual(service.call({"action": "game.observe"}), {
-            "ok": False, "error": "live session is finished",
+            "ok": False, "error": "proved_no_progress",
         })
-        self.assertEqual(service.call({"action": "run.status"})["result"]["final"]["stop_reason"], "proved_no_progress")
-        self.assertEqual(len(finals), 1)
+        self.assertEqual(service.call({"action": "run.status"})["result"]["last_failure"]["reason"], "proved_no_progress")
+        self.assertEqual(finals, [])
 
-    def test_binding_receipt_and_unsafe_failures_are_terminal(self) -> None:
+    def test_binding_receipt_and_unsafe_failures_preserve_session(self) -> None:
         binding = ["binding-a"]
         drifted, finals = self.service([frame(1, 100)], binding=binding)
         observed = drifted.call({"action": "game.observe"})["result"]
@@ -1152,7 +1215,7 @@ class LiveSessionTest(unittest.TestCase):
             "expected_signal": "game_minutes", "bound": bound(100),
         })
         self.assertEqual(stopped["error"], "binding_drift")
-        self.assertEqual(len(finals), 1)
+        self.assertEqual(finals, [])
 
         missing, missing_finals = self.service(
             [frame(1, 100), frame(2, 101)], missing_receipt=True,
@@ -1167,7 +1230,7 @@ class LiveSessionTest(unittest.TestCase):
             "action_id": "world.wait",
         })
         self.assertEqual(stopped["error"], "native_receipt_missing")
-        self.assertEqual(len(missing_finals), 1)
+        self.assertEqual(missing_finals, [])
 
         unsafe, unsafe_finals = self.service([frame(1, 100)], evidence={
             "unsafe": True,
@@ -1182,7 +1245,7 @@ class LiveSessionTest(unittest.TestCase):
             "expected_signal": "game_minutes", "bound": bound(100),
         })
         self.assertEqual(stopped["error"], "unsafe_divergence")
-        self.assertEqual(len(unsafe_finals), 1)
+        self.assertEqual(unsafe_finals, [])
 
     def test_stale_frame_cannot_authorize_continuation_or_action(self) -> None:
         service, _ = self.service([frame(1, 100), frame(2, 101)])

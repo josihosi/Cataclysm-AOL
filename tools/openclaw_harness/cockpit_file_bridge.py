@@ -157,8 +157,8 @@ class FileBackedCockpitBridge:
     def _termination_signal(self, signum: int, _frame: Any) -> None:
         raise SystemExit(128 + signum)
 
-    def _emergency_cleanup(self) -> dict[str, Any]:
-        """Release this bridge's owned processes without claiming native exit proof."""
+    def _emergency_cleanup(self, *, explicit_quit: bool = False) -> dict[str, Any]:
+        """Reap the failed controller; preserve the game unless the player quits."""
         cleanup: dict[str, Any] = {"native_exit_credit": False}
         if self._child is not None and self._child.poll() is None:
             self._child.terminate()
@@ -183,7 +183,7 @@ class FileBackedCockpitBridge:
         else:
             cleanup["ownership"] = "unconfirmed_missing_process_record"
         if game_pid:
-            cleanup["game"] = cleanup_game_process(game_pid)
+            cleanup["game"] = cleanup_game_process(game_pid, explicit_quit=explicit_quit)
         self._close_child_streams()
         return cleanup
 
@@ -372,19 +372,24 @@ class FileBackedCockpitBridge:
                 if str(envelope.get("binding_id", "")) != self.binding_id:
                     raise ValueError("request_binding_drift")
                 if self.require_session_ready:
-                    # EOF is the only bridge-owned abort route.  It lets the
-                    # cockpit emit its fail-closed immutable final result and
-                    # lets the scenario own report ingestion and game cleanup.
+                    # Cleanup is an explicit player decision, unlike losing
+                    # a client connection. Send that decision as a real request.
                     assert self._child is not None and self._child.stdin is not None
-                    self._child.stdin.close()
+                    self._child.stdin.write(json.dumps({"action": "run.quit",
+                        "stop_reason": "explicit_bridge_cleanup"}) + "\n")
+                    self._child.stdin.flush()
                     terminal_line = self._read_complete_response()
                     terminal = json.loads(terminal_line) if terminal_line else {}
-                    final = terminal.get("final") if isinstance(terminal, Mapping) else None
+                    final = terminal.get("result") if isinstance(terminal, Mapping) else None
                     if not isinstance(final, Mapping) or final.get("schema") != "caol-cockpit-live-final-v1":
-                        raise ValueError("cleanup_failed_to_produce_terminal_result")
+                        cleanup = self._emergency_cleanup(explicit_quit=True)
+                        self._write_status("cleaned", reason="explicit_quit_without_terminal_report", cleanup=cleanup)
+                        return True
                     self._terminal_request_id = "bridge_cleanup"
                     self._write_status("terminalizing", terminal_request_id=self._terminal_request_id,
                                        cleanup={"status": "deferred_to_scenario_terminalization"})
+                else:
+                    self._write_status("cleaned", cleanup=self._emergency_cleanup(explicit_quit=True))
                 return True
             request_id = str(envelope.get("request_id", "")).strip()
             request = envelope.get("request")
@@ -413,23 +418,16 @@ class FileBackedCockpitBridge:
                 return False
             response = json.loads(response_line)
             if isinstance(response, Mapping) and "cockpit_live_session" in response:
-                if self._child.poll() is None:
-                    self._child.terminate()
-                    self._child.wait()
-                self._write_status("process_dead", failed_request_id=request_id,
-                                   child_exit_code=self._child.returncode,
-                                   reason="duplicate_cockpit_session_descriptor",
-                                   cleanup={"status": "accepted"})
-                return False
+                response = {"ok": False, "error": "duplicate_cockpit_session_descriptor",
+                            "action_outcome": "unknown", "next_action": "game.observe"}
+                response_line = json.dumps(response)
+
             self._persist_response(request_id, request_bytes, response_line.encode("utf-8"))
             terminal = response.get("result") if isinstance(response, Mapping) else None
-            # A fail-closed cockpit action returns its immutable final under
-            # ``final`` alongside the public error.  It is just as terminal
-            # as a successful ``run.finish`` result: retain the reply, then
-            # let the scenario complete ingestion and owned cleanup.
-            if not isinstance(terminal, Mapping) and isinstance(response, Mapping):
-                terminal = response.get("final")
-            if isinstance(terminal, Mapping) and terminal.get("schema") == "caol-cockpit-live-final-v1" and \
+            # Only a successful explicit player finish/quit can terminalize
+            # the controller. An error response cannot authorize game cleanup.
+            if request.get("action") in {"run.finish", "run.quit"} and response.get("ok") is True and \
+                    isinstance(terminal, Mapping) and terminal.get("schema") == "caol-cockpit-live-final-v1" and \
                     terminal.get("state") == "finished":
                 if self.session_reentries:
                     self.session_reentries -= 1
@@ -463,7 +461,12 @@ class FileBackedCockpitBridge:
             self._write_status("process_dead", failed_request_id=locals().get("request_id", ""),
                                child_exit_code=exit_code)
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
-            self._write_status("rejected", reason=str(exc))
+            if "request_bytes" in locals():
+                response = {"ok": False, "error": str(exc), "action_outcome": "unknown",
+                            "next_action": "Observe the current game; do not replay the request."}
+                self._persist_response(request_id, request_bytes, json.dumps(response).encode("utf-8"))
+            else:
+                self._write_status("rejected", reason=str(exc))
         return False
 
     def _await_scenario_terminalization(self) -> int:
@@ -638,9 +641,7 @@ class FileBackedCockpitBridge:
                 key: value for key, value in previous.items()
                 if key not in {"schema", "binding_id", "state", "request_count", "child_exit_code", "cleanup"}
             }
-            cleanup = previous.get("cleanup") if terminal_state in {
-                "safe_to_cleanup", "terminalization_failed",
-            } else {"status": "accepted"}
+            cleanup = previous.get("cleanup", {"status": "controller_stopped_game_retained"})
             self._write_status(terminal_state, **terminal_details,
                                child_exit_code=self._child.returncode, cleanup=cleanup)
             self._close_child_streams()
@@ -737,6 +738,13 @@ class FileBackedCockpitBridge:
             return {"ok": True, "cleanup": "already_accepted"}
         if status.get("state") == "terminalizing":
             return {"ok": False, "error": "cleanup_requires_scenario_terminalization", "status": status}
+        if status.get("state") in {"process_dead", "bridge_failed", "terminalization_failed"}:
+            bridge = FileBackedCockpitBridge(Path(session_dir), [], binding_id=binding_id)
+            cleanup = bridge._emergency_cleanup(explicit_quit=True)
+            _atomic_json(Path(session_dir) / "status.json", {**status, "cleanup": cleanup})
+            return {"ok": cleanup.get("game", {}).get("status") in {
+                "terminated", "already_exited", "killed", "terminated_during_kill_escalation",
+            }, "cleanup": cleanup}
         with (Path(session_dir) / "requests.fifo").open("w", encoding="utf-8") as sink:
             sink.write(json.dumps({"control": "cleanup", "binding_id": binding_id}) + "\n")
             sink.flush()

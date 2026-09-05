@@ -130,7 +130,40 @@ class MacroInterruptionTest(unittest.TestCase):
                 self.assertEqual(channel.status()["state"], "active")
                 self.assertEqual(finals, [])
 
-    def test_world_without_position_still_fails_closed(self):
+    def test_malformed_observation_revokes_surface_grants_then_fresh_look_recovers(self):
+        current = {"run_id":"run-a", "frame_id":"frame-a", "event":"surface_descriptor",
+                   "schema_version":1, "surface_id":"world-a", "kind":"world", "breadcrumbs":["World"],
+                   "payload":{}, "valid_actions":[{"id":"world.pause", "stable_id":"", "label":"Pause", "enabled":True}]}
+        frames, actions, finals = [current], [], []
+        def dispatch(issuing, action):
+            actions.append(action)
+            successor = {**current, "frame_id":"frame-b", "surface_id":"world-b"}
+            frames[0] = successor
+            return {"native_receipt":{"run_id":"run-a", "requested_run_id":"run-a",
+                    "requested_frame_id":issuing["frame_id"], "action_id":action,
+                    "requested_surface_id":issuing["surface_id"], "consuming_surface_id":issuing["surface_id"],
+                    "accepted":True}, "_next_frame":successor}
+        channel = cockpit.CockpitRunChannel(lambda:frames[0], dispatch,
+                    binding_id="binding-a", read_binding_id=lambda:"binding-a",
+                    finalize_session=lambda report:finals.append(report) or {})
+        service = cockpit.CockpitService(run_channel=channel)
+        observed = service.call({"action":"game.observe"})["result"]
+        frames[0] = {**current, "valid_actions":[{"id":"world.pause", "enabled":"untrusted"}]}
+        failed = service.call({"action":"game.observe"})
+        self.assertFalse(failed["ok"])
+        self.assertEqual(len([entry for entry in channel._transcript if entry["kind"] == "operation_failure"]), 1)
+        self.assertEqual(channel.status()["state"], "active")
+        self.assertEqual(finals, [])
+        frames[0] = current
+        stale = service.call({"action":"game.act", "observation_id":observed["observation_id"], "action_id":"world.pause"})
+        self.assertEqual(stale["error"], "duplicate_submission")
+        self.assertEqual(actions, [])
+        fresh = service.call({"action":"game.observe"})["result"]
+        self.assertTrue(service.call({"action":"game.act", "observation_id":fresh["observation_id"], "action_id":"world.pause"})["ok"])
+        self.assertEqual(actions, ["world.pause"])
+        self.assertEqual(finals, [])
+
+    def test_world_without_position_fails_without_ending_session(self):
         current = {"event": "surface_descriptor", "schema_version": 1,
                    "run_id": "missing-position-run", "surface_id": "world", "frame_id": "world:1",
                    "kind": "world", "breadcrumbs": ["World"], "payload": {},
@@ -142,7 +175,7 @@ class MacroInterruptionTest(unittest.TestCase):
             "enabled": True, "offset_ms": [1, 0], "bound": move_bound(1)}})
         self.assertEqual(stopped["error"], "raw_move_relative_position_unavailable")
         self.assertEqual(actions, [])
-        self.assertEqual(len(finals), 1)
+        self.assertEqual(finals, [])
 
     def test_blocked_move_is_zero_progress_and_another_direction_works(self):
         helper = movement.RelativeMovementTest()
@@ -197,7 +230,7 @@ class MacroInterruptionTest(unittest.TestCase):
         self.assertTrue(decided["ok"], decided)
         self.assertEqual(finals, [])
 
-    def test_identity_change_after_interruption_still_finalizes_without_input(self):
+    def test_identity_change_after_interruption_revokes_without_input(self):
         helper = movement.RelativeMovementTest()
         binding = ["binding-a"]
         service, actions, finals = helper.service([move_frame(1, [1, 1, 0], damage=True)], binding=binding)
@@ -208,10 +241,10 @@ class MacroInterruptionTest(unittest.TestCase):
         decided = service.call({"action": "game.act", "observation_id": stopped["result"]["terminal_observation"]["observation_id"],
                                 "action_id": "world.move.east"})
         self.assertEqual(decided["error"], "binding_drift")
-        self.assertEqual(len(finals), 1)
+        self.assertEqual(finals, [])
         self.assertEqual(actions, [])
 
-    def test_corrupt_explicit_decision_receipt_finalizes_for_each_owner_identity(self):
+    def test_corrupt_explicit_decision_receipt_revokes_for_each_owner_identity(self):
         fields = ("requested_frame_id", "action_id", "requested_surface_id", "consuming_surface_id",
                   "run_id", "requested_run_id", "missing_run_id", "missing_requested_run_id")
         for accepted, corrupt_field in [(accepted, field) for accepted in (True, False) for field in fields
@@ -248,11 +281,11 @@ class MacroInterruptionTest(unittest.TestCase):
                     self.assertNotIn(corrupt_field.removeprefix("missing_"), decided["receipt"]["native_receipt"])
                 else:
                     self.assertEqual(decided["receipt"]["native_receipt"][corrupt_field], "wrong-identity")
-                self.assertEqual(channel.status()["state"], "finished")
-                self.assertEqual(len(finals), 1)
+                self.assertEqual(channel.status()["state"], "active")
+                self.assertEqual(finals, [])
                 again = service.call({"action": "game.act", "observation_id": current["frame_id"],
                                       "action_id": "world.move.east"})
-                self.assertEqual(again["error"], "live_session_finished")
+                self.assertEqual(again["error"], "duplicate_submission")
 
     def test_released_surface_decision_accepts_real_composite_movement_run_identity(self):
         current = move_frame(1, [1, 1, 0], damage=True)
@@ -286,9 +319,9 @@ class MacroInterruptionTest(unittest.TestCase):
         stopped = service.call({"action": "game.raw_move_relative", "raw_move_relative": {
             "enabled": True, "offset_ms": [2, 0], "bound": move_bound(2)}})
         self.assertEqual(stopped["error"], "raw_move_relative_unexpected_displacement")
-        self.assertEqual(stopped["final"]["stop_detail"]["partial_progress"], 1)
-        self.assertEqual(len(stopped["final"]["stop_detail"]["native_receipts"]), 2)
-        self.assertEqual(len(finals), 1)
+        self.assertEqual(stopped["failure"]["detail"]["partial_progress"], 1)
+        self.assertEqual(len(stopped["failure"]["detail"]["native_receipts"]), 2)
+        self.assertEqual(finals, [])
 
     def test_blocked_surface_receipt_requires_both_run_identities_before_granting_control(self):
         for corrupted in ("run_id", "requested_run_id", "missing_run_id", "missing_requested_run_id"):
@@ -318,10 +351,10 @@ class MacroInterruptionTest(unittest.TestCase):
                 stopped = cockpit.CockpitService(run_channel=channel).call({"action": "game.raw_move_relative", "raw_move_relative": {
                     "enabled": True, "offset_ms": [1, 0], "bound": move_bound(1)}})
                 self.assertEqual(stopped["error"], "raw_move_relative_receipt_mismatch")
-                self.assertEqual(len(finals), 1)
-                self.assertEqual(channel.status()["state"], "finished")
+                self.assertEqual(finals, [])
+                self.assertEqual(channel.status()["state"], "active")
 
-    def test_blocked_receipt_with_contradictory_successor_is_terminal(self):
+    def test_blocked_receipt_with_contradictory_successor_is_unproved(self):
         helper = movement.RelativeMovementTest()
         service, _, finals = helper.service([
             move_frame(1, [1, 1, 0]), move_frame(2, [2, 1, 0])
@@ -329,8 +362,8 @@ class MacroInterruptionTest(unittest.TestCase):
         stopped = service.call({"action": "game.raw_move_relative", "raw_move_relative": {
             "enabled": True, "offset_ms": [1, 0], "bound": move_bound(1)}})
         self.assertEqual(stopped["error"], "raw_move_relative_unexpected_displacement")
-        self.assertEqual(stopped["final"]["stop_detail"]["partial_progress"], 0)
-        self.assertEqual(len(finals), 1)
+        self.assertEqual(stopped["failure"]["detail"]["partial_progress"], 0)
+        self.assertEqual(finals, [])
 
     def test_multistep_move_recognizes_successor_world_descriptors_without_legacy_state(self):
         # Shape retained by live selected-7edb3bacf34e4cdba81bbd810f3d62e6:
@@ -378,7 +411,7 @@ class MacroInterruptionTest(unittest.TestCase):
             self.assertEqual(actions, ["world.move.east", "world.move.east"])
             self.assertEqual(finals, [])
 
-    def test_corrupt_blocked_receipt_finalizes_instead_of_granting_decision(self):
+    def test_corrupt_blocked_receipt_requires_fresh_observation(self):
         current = move_frame(1, [1, 1, 0])
         finals = []
         def dispatch(issuing, action):
@@ -392,7 +425,7 @@ class MacroInterruptionTest(unittest.TestCase):
         stopped = cockpit.CockpitService(run_channel=channel).call({"action": "game.raw_move_relative", "raw_move_relative": {
             "enabled": True, "offset_ms": [1, 0], "bound": move_bound(1)}})
         self.assertEqual(stopped["error"], "raw_move_relative_receipt_mismatch")
-        self.assertEqual(len(finals), 1)
+        self.assertEqual(finals, [])
 
 
 if __name__ == "__main__":
