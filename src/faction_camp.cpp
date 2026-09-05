@@ -780,7 +780,6 @@ void talk_function::start_camp( npc &p )
 talk_function::basecamp_mission_resolution talk_function::basecamp_mission( npc &p )
 {
     const std::string title = _( "Base Missions" );
-    const tripoint_abs_omt omt_pos = p.pos_abs_omt();
     mission_data mission_key;
 
     std::optional<basecamp *> temp_camp;
@@ -792,6 +791,7 @@ talk_function::basecamp_mission_resolution talk_function::basecamp_mission( npc 
     }
     if( !temp_camp ) {
         DebugLog( D_INFO, DC_ALL ) << "openclaw_basecamp_mission: no_resolved_camp";
+        popup( _( "%s has no available camp to manage." ), p.name );
         return basecamp_mission_resolution::no_camp;
     }
     basecamp *bcp = *temp_camp;
@@ -803,14 +803,16 @@ talk_function::basecamp_mission_resolution talk_function::basecamp_mission( npc 
     }
     bcp->set_by_radio( get_avatar().dialogue_by_radio );
     map &here = bcp->get_camp_map();
-    bcp->form_storage_zones( here, p.pos_abs() );
+    bcp->validate_bb_pos( project_to<coords::ms>( bcp->camp_omt_pos() ) );
+    bcp->form_storage_zones( here, bcp->get_bb_pos() );
     bcp->get_available_missions( mission_key, here );
     if( mission_key.entries.empty() ) {
         DebugLog( D_INFO, DC_ALL ) << "openclaw_basecamp_mission: no_available_missions camp=" <<
                                    bcp->camp_omt_pos().to_string();
+        popup( _( "There are no available missions at %s." ), bcp->camp_name() );
         return basecamp_mission_resolution::no_available_missions;
     }
-    if( display_and_choose_opts( mission_key, omt_pos, base_camps::id, title ) ) {
+    if( display_and_choose_opts( mission_key, bcp->camp_omt_pos(), base_camps::id, title ) ) {
         bcp->handle_mission( mission_key.cur_key.id );
     }
     here.save();

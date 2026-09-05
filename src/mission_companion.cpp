@@ -1057,11 +1057,16 @@ bool talk_function::display_and_choose_opts(
             };
             const std::vector<semantic_action_descriptor> actions = {
                 { "camp.distribute_food", expected_camp_id, _( "Distribute camp food" ), food_available },
-                { "camp.start_looting_sorting", expected_camp_id, _( "Start camp looting and sorting" ), looting_available }
+                { "camp.start_looting_sorting", expected_camp_id, _( "Start camp looting and sorting" ), looting_available },
+                { "camp.close", "", _( "Close Base Missions" ), true }
             };
             semantic_scope.emplace( *manager, "basecamp_mission_selector", _( "Base Missions" ), payload, actions,
             [ &mission_key, &semantic_native_action, expected_camp, expected_camp_id, expected_faction,
               food_available, looting_available ]( const semantic_action_request &request ) {
+                if( request.action_id == "camp.close" ) {
+                    semantic_native_action = "QUIT";
+                    return semantic_action_dispatch_result{ true, "", "" };
+                }
                 if( request.stable_id.value_or( "" ) != expected_camp_id ) {
                     return semantic_action_dispatch_result{ false, "wrong_camp", "" };
                 }
@@ -1226,11 +1231,19 @@ bool talk_function::display_and_choose_opts(
             mission_key.cur_key = cur_key_list[sel];
         }
         ui_manager::redraw();
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+        }
         std::string action;
-        if( semantic_scope && semantic_scope->consume_request() && !semantic_native_action.empty() ) {
-            action = semantic_native_action;
-        } else {
+        if( semantic_native_action.empty() ) {
             action = ctxt.handle_input();
+        }
+        // A request can arrive while handle_input blocks.  Its wake consumes
+        // the native request and returns ERROR; dispatch the selected action
+        // here so the actual successor can settle its deferred receipt.
+        if( !semantic_native_action.empty() ) {
+            action = std::move( semantic_native_action );
+            semantic_native_action.clear();
         }
         const int recmax = static_cast<int>( cur_key_list.size() );
         const int scroll_rate = recmax > 20 ? 10 : 3;

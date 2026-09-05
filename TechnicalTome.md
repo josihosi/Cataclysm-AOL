@@ -687,3 +687,10 @@ is republished as usable input; a recreated owner restores authority. Ordinary c
 returns to its live parent. Follower rule toggles and resets share the physical UI mutation helper,
 including disabling an active false override on reset. Zone consumers check the state of their
 current published frame, and item details expose the same formatted text as the native item UI.
+
+NPC diagnostic inspection is a native child window selected by the visible actor's character ID.
+It separates avatar-visible condition/equipment from exact internal health, orders, rules and physical
+inventory across pocket types. Item details revalidate the UID against that same NPC and use native
+item formatting; they do not imply avatar knowledge or NPC-specific effectiveness. Both prequeued
+and blocked-input requests must execute their selected action after the input loop returns before
+a deferred successor receipt can settle.
