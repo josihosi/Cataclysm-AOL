@@ -27163,6 +27163,8 @@ def run_probe_post_relaunch(
     terminal_exit_timeout_seconds: float,
     startup_dismiss_blocking_overlay: bool = False,
     wait_input_trace: bool = False,
+    semantic_only_startup: bool = False,
+    suppress_profile_startup_input: bool = False,
     artifact_run_dir: Optional[Path] = None,
     transition_event_run_id: str = "",
     transition_event_path: str = "",
@@ -27250,6 +27252,10 @@ def run_probe_post_relaunch(
         start_cmd.append("--startup-dismiss-blocking-overlay")
     if wait_input_trace:
         start_cmd.append("--wait-input-trace")
+    if semantic_only_startup:
+        start_cmd.append("--semantic-only-startup")
+    if suppress_profile_startup_input:
+        start_cmd.append("--suppress-profile-startup-input")
     if registry_launch_receipt:
         start_cmd.extend(["--registry-launch-receipt", registry_launch_receipt])
     if artifact_run_dir is not None:
@@ -36001,6 +36007,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 terminal_exit_timeout_seconds=post_relaunch["terminal_exit_timeout_seconds"],
                 startup_dismiss_blocking_overlay=post_relaunch_dismisses_first_step,
                 wait_input_trace=bool(scenario.get("wait_input_trace", False)),
+                semantic_only_startup=("--semantic-only-startup" in start_cmd),
+                suppress_profile_startup_input=("--suppress-profile-startup-input" in start_cmd),
                 artifact_run_dir=run_dir,
                 transition_event_run_id=transition_event_run_id,
                 transition_event_path=str(transition_event_path),

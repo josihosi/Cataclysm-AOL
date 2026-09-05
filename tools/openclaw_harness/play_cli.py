@@ -155,12 +155,14 @@ class PlayerClient:
                 terminal = status.get("terminalization", {})
                 cleanup = terminal.get("cleanup", status.get("cleanup"))
                 state = status.get("state")
-                failed = state in {"bridge_failed", "terminalization_failed", "process_dead"}
+                failed = state in {"bridge_failed", "terminalization_failed", "process_dead", "reentry_failed"}
                 complete = state == "safe_to_cleanup"
                 return {"ok": not failed, "state": "finished" if complete else "cleanup_failed" if failed else "finishing",
                         "bridge_state": state, "cleanup": cleanup,
                         "bridge_cleanup": status.get("cleanup"), "terminalization": terminal,
                         "reason": status.get("reason", status.get("error")),
+                        **({"reentry_failure": status["reentry_failure"]}
+                           if isinstance(status.get("reentry_failure"), dict) else {}),
                         "next": "inspect retained evidence" if complete or failed else "collect",
                         "note": "Cleanup disposition is reported by the scenario owner; it is separate from native exit or save proof."}
             return {"ok": False, "error": "no_pending_request", "next": "look"}
@@ -172,7 +174,7 @@ class PlayerClient:
                 break
             if time.monotonic() >= deadline:
                 status = json.loads((self.session / "status.json").read_text())
-                if status.get("state") in {"process_dead", "bridge_failed", "terminalization_failed", "safe_to_cleanup"} or status.get("child_exit_code") is not None:
+                if status.get("state") in {"process_dead", "bridge_failed", "terminalization_failed", "reentry_failed", "safe_to_cleanup"} or status.get("child_exit_code") is not None:
                     return {"ok": False, "state": "session_ended_without_response",
                             "error": "bridge_ended_before_response", "request_id": request_id,
                             "bridge_state": status.get("state"),

@@ -309,10 +309,16 @@ class AdvanceTurnInputContractTest(unittest.TestCase):
             terminal_exit_timeout_seconds=1.0,
             startup_dismiss_blocking_overlay=True,
             wait_input_trace=True,
+            semantic_only_startup=True,
+            suppress_profile_startup_input=True,
         )
         self.assertEqual(result["status"], "ready")
         self.assertIn("--startup-dismiss-blocking-overlay", command_mock.call_args.args[0])
         self.assertIn("--wait-input-trace", command_mock.call_args.args[0])
+        self.assertIn("--semantic-only-startup", command_mock.call_args.args[0])
+        self.assertIn("--suppress-profile-startup-input", command_mock.call_args.args[0])
+        self.assertNotIn("--fixture", command_mock.call_args.args[0])
+        self.assertNotIn("--profile-snapshot", command_mock.call_args.args[0])
 
     @patch("startup_harness.time.sleep")
     @patch("startup_harness.peekaboo_press_sequence")
@@ -610,6 +616,7 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
         with (
             patch("startup_harness.subprocess.run", return_value=version),
             patch("startup_harness.current_head_short", return_value="adb27ff46d"),
+            patch("startup_harness.product_source_binding", return_value={"ok": False}),
             patch(
                 "startup_harness.runtime_relevant_changes_since",
                 return_value=(["src/bandit_live_world.h", "src/game.h"], ""),

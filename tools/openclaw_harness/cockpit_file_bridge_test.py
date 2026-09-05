@@ -147,7 +147,8 @@ class CockpitFileBridgeTest(unittest.TestCase):
             self.assertEqual(json.loads((directory / "status.json").read_text())["last_response"]["request_id"], "observe-1")
             receipt = json.loads((directory / "responses" / "observe-1.receipt.json").read_text())
             self.assertEqual(receipt["request_identity"], {"action": "game.observe"})
-            self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
+            cleanup = bridge.cleanup(directory, "bound-a")
+            self.assertEqual(cleanup, {"ok": True, "cleanup": "requested"})
             thread.join(2)
             self.assertFalse(thread.is_alive())
 
@@ -286,7 +287,8 @@ for line in sys.stdin:
             )["ok"])
             time.sleep(0.05)
             self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "rejected")
-            self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
+            cleanup = bridge.cleanup(directory, "bound-a")
+            self.assertTrue(cleanup["ok"], cleanup)
             thread.join(2)
             self.assertFalse(thread.is_alive())
 
@@ -863,6 +865,118 @@ for line in sys.stdin:
             bridge.send_request(directory, request_id="finish", binding_id="bound-a", request={"action":"run.finish"})
             thread.join(2)
             self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "terminalization_failed")
+
+
+    def test_failed_reentry_preserves_finish_receipt_and_retains_replacement_until_cleanup(self):
+        """A valid finish remains immutable when reentry emits no live descriptor."""
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            child = (
+                "import json,os,sys,time; "
+                "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
+                "print(json.dumps({'cockpit_live_session':d}),flush=True); "
+                "sys.stdin.readline(); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "print(json.dumps({'ok':True,'final':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "time.sleep(0.3)"
+            )
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", child], binding_id="bound-a",
+                require_session_ready=True, session_reentries=1,
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            while not (directory / "status.json").is_file() or \
+                    json.loads((directory / "status.json").read_text())["state"] != "ready":
+                time.sleep(0.01)
+            game = subprocess.Popen([os.path.realpath(sys.executable), "-u", "-c", "import time; time.sleep(5)", "Cataclysm-AOL"])
+            from startup_harness import pid_command
+            time.sleep(0.05)
+            game_command = pid_command(game.pid)
+            self.assertTrue(game_command)
+            (directory / "game-process.json").write_text(json.dumps({
+                "pid": game.pid, "binding_id": "bound-a", "command": game_command,
+            }))
+            self.assertTrue(bridge.send_request(
+                directory, request_id="finish", binding_id="bound-a", request={"action": "run.finish"}
+            )["ok"])
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                status = json.loads((directory / "status.json").read_text())
+                if status.get("state") == "reentry_failed":
+                    break
+                time.sleep(0.01)
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["state"], "reentry_failed")
+            self.assertEqual(status["admission"], "closed_until_explicit_cleanup")
+            self.assertEqual(status["reentry_failure"]["cause"], "missing_cockpit_session_descriptor")
+            self.assertEqual(status["reentry_failure"]["replacement"]["status"], "retained", status["reentry_failure"])
+            self.assertEqual(status["reentry_failure"]["replacement"]["game_process"]["status"], "alive")
+            self.assertEqual(status["reentry_failure"]["replacement"]["game_process"]["pid"], game.pid)
+            receipt_path = directory / "responses" / "finish.receipt.json"
+            original_receipt = receipt_path.read_bytes()
+            receipt = json.loads(original_receipt)
+            self.assertEqual(receipt["request_id"], "finish")
+            self.assertEqual(status["last_response"], "finish.receipt.json")
+            self.assertFalse(bridge.send_request(
+                directory, request_id="ordinary-after-failure", binding_id="bound-a",
+                request={"action": "game.observe"}
+            )["ok"])
+            self.assertEqual(receipt_path.read_bytes(), original_receipt)
+            cleanup = bridge.cleanup(directory, "bound-a")
+            self.assertTrue(cleanup["ok"], cleanup)
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+            game.wait(timeout=2)
+            self.assertIsNotNone(game.returncode)
+
+
+    def test_failed_reentry_after_child_exit_offline_cleanup_retains_registered_game(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            child = (
+                "import json,os,sys; "
+                "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
+                "print(json.dumps({'cockpit_live_session':d}),flush=True); sys.stdin.readline(); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "print(json.dumps({'ok':True,'final':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); sys.exit(0)"
+            )
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", child], binding_id="bound-a",
+                require_session_ready=True, session_reentries=1,
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            while not (directory / "status.json").is_file() or \
+                    json.loads((directory / "status.json").read_text())["state"] != "ready":
+                time.sleep(0.01)
+            game = subprocess.Popen([os.path.realpath(sys.executable), "-u", "-c", "import time; time.sleep(5)", "Cataclysm-AOL"])
+            from startup_harness import pid_command
+            time.sleep(0.05)
+            game_command = pid_command(game.pid)
+            self.assertTrue(game_command)
+            (directory / "game-process.json").write_text(json.dumps({
+                "pid": game.pid, "binding_id": "bound-a", "command": game_command,
+            }))
+            self.assertTrue(bridge.send_request(
+                directory, request_id="finish", binding_id="bound-a", request={"action": "run.finish"}
+            )["ok"])
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["state"], "reentry_failed")
+            self.assertEqual(status["child_exit_code"], 0)
+            self.assertEqual(status["reentry_failure"]["replacement"]["game_process"]["status"], "alive")
+            # This in-process unittest bridge has no separate controller PID;
+            # model the already-ended controller before exercising offline cleanup.
+            status["bridge_pid"] = 0
+            (directory / "status.json").write_text(json.dumps(status))
+            receipt = (directory / "responses" / "finish.receipt.json").read_bytes()
+            cleanup = bridge.cleanup(directory, "bound-a")
+            self.assertTrue(cleanup["ok"], cleanup)
+            self.assertEqual((directory / "responses" / "finish.receipt.json").read_bytes(), receipt)
+            game.wait(timeout=2)
+            self.assertIsNotNone(game.returncode)
 
 
 if __name__ == "__main__":

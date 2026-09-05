@@ -395,6 +395,15 @@ class PlayerCliTest(unittest.TestCase):
         self.assertEqual(result["state"], "cleanup_failed")
         self.assertEqual(result["reason"], "owned cleanup failed")
         self.assertEqual(self.requests(), [])
+        self.write("status.json", {"binding_id": "bound-a", "state": "reentry_failed",
+                   "reason": "missing_cockpit_session_descriptor",
+                   "admission": "closed_until_explicit_cleanup",
+                   "reentry_failure": {"replacement": {"status": "retained", "game_process": {"status": "alive", "pid": 96450}}}})
+        result = self.cli("collect", ok=False)
+        self.assertEqual(result["state"], "cleanup_failed")
+        self.assertEqual(result["bridge_state"], "reentry_failed")
+        self.assertEqual(result["next"], "inspect retained evidence")
+        self.assertEqual(result["reentry_failure"]["replacement"]["status"], "retained")
 
     def test_rejected_action_without_successor_requires_new_look(self):
         self.observe()

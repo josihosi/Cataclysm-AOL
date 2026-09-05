@@ -96,6 +96,7 @@ class FileBackedCockpitBridge:
         self._startup_progress: dict[str, Any] = {}
         self._startup_failure: dict[str, Any] = {}
         self._active_session_descriptor: dict[str, Any] = {}
+        self._reentry_failure: dict[str, Any] | None = None
 
     def _bootstrap_receipt(self, *, sequence: int, stage: Mapping[str, Any],
                            descriptor: Mapping[str, Any]) -> None:
@@ -160,6 +161,26 @@ class FileBackedCockpitBridge:
 
     def _termination_signal(self, signum: int, _frame: Any) -> None:
         raise SystemExit(128 + signum)
+
+    def _owned_game_process_evidence(self) -> dict[str, Any]:
+        """Observe the registered game identity independently of the bridge child."""
+        from startup_harness import pid_command
+        ownership_path = self.session_dir / "game-process.json"
+        if not ownership_path.exists():
+            return {"status": "unconfirmed_missing_process_record", "pid": 0}
+        try:
+            ownership = json.loads(ownership_path.read_text(encoding="utf-8"))
+            pid = int(ownership.get("pid", 0) or 0)
+            expected_command = str(ownership.get("command", ""))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, TypeError, ValueError):
+            return {"status": "unconfirmed_invalid_process_record", "pid": 0}
+        if ownership.get("binding_id") != self.binding_id or pid <= 0 or not expected_command:
+            return {"status": "identity_mismatch", "pid": pid}
+        observed_command = pid_command(pid)
+        if observed_command != expected_command:
+            return {"status": "exited_or_identity_changed", "pid": pid,
+                    "expected_command": expected_command, "observed_command": observed_command}
+        return {"status": "alive", "pid": pid, "command": observed_command}
 
     def _emergency_cleanup(self, *, explicit_quit: bool = False) -> dict[str, Any]:
         """Reap the failed controller; preserve the game unless the player quits."""
@@ -381,6 +402,15 @@ class FileBackedCockpitBridge:
             if envelope.get("control") == "cleanup":
                 if str(envelope.get("binding_id", "")) != self.binding_id:
                     raise ValueError("request_binding_drift")
+                if self._reentry_failure is not None:
+                    cleanup = self._emergency_cleanup(explicit_quit=True)
+                    self._write_status(
+                        "cleaned",
+                        reason="explicit_cleanup_after_reentry_failure",
+                        reentry_failure=self._reentry_failure,
+                        cleanup=cleanup,
+                    )
+                    return True
                 if self.require_session_ready:
                     # Cleanup is an explicit player decision, unlike losing
                     # a client connection. Send that decision as a real request.
@@ -401,6 +431,13 @@ class FileBackedCockpitBridge:
                 else:
                     self._write_status("cleaned", cleanup=self._emergency_cleanup(explicit_quit=True))
                 return True
+            if self._reentry_failure is not None:
+                self._write_status(
+                    "reentry_failed",
+                    reentry_failure=self._reentry_failure,
+                    admission="closed_until_explicit_cleanup",
+                )
+                return False
             request_id = str(envelope.get("request_id", "")).strip()
             request = envelope.get("request")
             if not request_id or not isinstance(request, Mapping) or request_id in self._seen:
@@ -455,9 +492,33 @@ class FileBackedCockpitBridge:
                         remaining_session_reentries=self.session_reentries,
                         phase="awaiting_declared_reentry_descriptor",
                     )
-                    descriptor = self._await_session_descriptor(
-                        consume_pre_descriptor_prefix=False,
-                    )
+                    try:
+                        descriptor = self._await_session_descriptor(
+                            consume_pre_descriptor_prefix=False,
+                        )
+                    except ValueError as exc:
+                        child_exit_code = self._child.poll() if self._child is not None else None
+                        game_process = self._owned_game_process_evidence()
+                        self._reentry_failure = {
+                            "cause": str(exc),
+                            "replacement": {
+                                "status": "retained" if game_process.get("status") == "alive" else "unconfirmed",
+                                "child_pid": self._child.pid if self._child is not None else 0,
+                                "child_exit_code": child_exit_code,
+                                "game_process": game_process,
+                            },
+                            "original_finish_request_id": request_id,
+                            "original_finish_receipt": (
+                                self.responses_dir / (request_id + ".receipt.json")
+                            ).name,
+                        }
+                        self._write_status(
+                            "reentry_failed",
+                            last_response=(self.responses_dir / (request_id + ".receipt.json")).name,
+                            reentry_failure=self._reentry_failure,
+                            admission="closed_until_explicit_cleanup",
+                        )
+                        return False
                     self._session_generation += 1
                     self._write_status(
                         "ready",
@@ -643,8 +704,10 @@ class FileBackedCockpitBridge:
                         key: value for key, value in prior.items()
                         if key not in {"schema", "binding_id", "state", "request_count", "child_exit_code"}
                     }
-                    self._write_status("process_dead", child_exit_code=self._child.returncode,
-                                       child_stderr="child.stderr.log", **details)
+                    self._write_status(
+                        "reentry_failed" if self._reentry_failure is not None else "process_dead",
+                        child_exit_code=self._child.returncode,
+                        child_stderr="child.stderr.log", **details)
                     return 1
         finally:
             os.close(descriptor)
@@ -792,7 +855,15 @@ class FileBackedCockpitBridge:
             return {"ok": True, "cleanup": "already_accepted"}
         if status.get("state") == "terminalizing":
             return {"ok": False, "error": "cleanup_requires_scenario_terminalization", "status": status}
-        if status.get("state") in {"process_dead", "bridge_failed", "terminalization_failed"}:
+        if status.get("state") == "reentry_failed":
+            from startup_harness import pid_is_alive
+            bridge_pid = int(status.get("bridge_pid", 0) or 0)
+            if bridge_pid > 0 and pid_is_alive(bridge_pid):
+                with (Path(session_dir) / "requests.fifo").open("w", encoding="utf-8") as sink:
+                    sink.write(json.dumps({"control": "cleanup", "binding_id": binding_id}) + "\n")
+                    sink.flush()
+                return {"ok": True, "cleanup": "requested"}
+        if status.get("state") in {"process_dead", "bridge_failed", "terminalization_failed", "reentry_failed"}:
             bridge = FileBackedCockpitBridge(Path(session_dir), [], binding_id=binding_id)
             cleanup = bridge._emergency_cleanup(explicit_quit=True)
             _atomic_json(Path(session_dir) / "status.json", {**status, "cleanup": cleanup})
