@@ -23,6 +23,31 @@ from npc_harness import (  # noqa: E402
 
 
 class NpcHarnessParsingTest(unittest.TestCase):
+    def test_reasoning_cannot_be_recovered_as_speech_or_actions(self) -> None:
+        for raw in (
+            "<|channel>thought\nThinking Process: request follow_close",
+            '<|channel>thought\n"Holding here"|hold_position',
+            "<|channel>thought\nReasoning only<channel|>",
+            '<think>"Holding here"|hold_position',
+            "<think>Reasoning only</think>",
+            "<|channel>thought\nLeaked reasoning<channel|>Holding.|hold_position",
+            "<think>Leaked reasoning</think>Holding.|hold_position",
+        ):
+            with self.subTest(raw=raw):
+                result = validate_response_like_game(raw)
+                self.assertFalse(result["ok"])
+                self.assertEqual(result["parsed_speech"], "")
+                self.assertEqual(result["parsed_actions"], [])
+
+    def test_empty_thinking_delimiters_preserve_final_action_line(self) -> None:
+        for trace in ("<|channel>thought\n<channel|>", "<think></think>"):
+            with self.subTest(trace=trace):
+                result = validate_response_like_game(trace + "Holding here.|hold_position")
+                self.assertTrue(result["ok"])
+                self.assertEqual(result["mode"], "strict")
+                self.assertEqual(result["parsed_speech"], "Holding here.")
+                self.assertEqual(result["parsed_actions"], ["hold_position"])
+
     def test_prompt_and_parser_share_delta_move_grammar(self) -> None:
         prompt = render_prompt("{{action_list_with_target}}\n{{snapshot}}", "snapshot")
 

@@ -23,6 +23,8 @@ from dataclasses import dataclass
 from pathlib import Path
 from typing import Dict, Iterable, List, Optional, Tuple
 
+from runner import strip_think_tags
+
 PROMPT_DIRNAME = "llm_prompts"
 NPC_ACTION_PROMPT_FILENAME = "npc_action_prompt.txt"
 DEFAULT_TIMEOUT_SECONDS = 60.0
@@ -702,6 +704,9 @@ def strip_speaker_prefix(text: str) -> str:
 
 
 def validate_response_like_game(payload: str) -> Dict[str, object]:
+    # The production runner rejects reasoning before the native action parser.
+    # Do this before lenient recovery too: Gemma's channel marker contains '|'.
+    payload = strip_think_tags(payload)
     ok, error, parsed_actions = validate_csv_payload(payload)
     parsed_payload = payload
     if not ok:

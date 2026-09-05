@@ -15,10 +15,32 @@ REPETITION_PENALTY = 1.0
 
 
 def strip_think_tags(text: str) -> str:
-    if "<think>" in text and "</think>" in text:
-        head, rest = text.split("<think>", 1)
-        _think, tail = rest.split("</think>", 1)
-        return f"{head}{tail}"
+    """Reject reasoning and unwrap only empty, documented thinking delimiters.
+
+    Gemma 4 uses <|channel>thought...<channel|>; other supported runners
+    use <think>...</think>. NPC output must not contain internal reasoning,
+    even when followed by final text. Some models emit empty blocks with
+    thinking disabled, so those delimiters alone do not invalidate the answer.
+    """
+    markers = (("<think>", "</think>"), ("<|channel>", "<channel|>"))
+    while True:
+        starts = [(text.find(begin), begin, end) for begin, end in markers
+                  if begin in text]
+        if not starts:
+            break
+        start, begin, end = min(starts)
+        finish = text.find(end, start + len(begin))
+        if finish < 0:
+            return ""
+        content = text[start + len(begin):finish]
+        if begin == "<|channel>":
+            content = content.removeprefix("thought")
+        if content.strip():
+            return ""
+        text = text[:start] + text[finish + len(end):]
+    # An orphaned closing delimiter is also not an NPC speech field.
+    if any(end in text for _, end in markers):
+        return ""
     return text
 
 
@@ -416,6 +438,8 @@ def ollama_generate(ollama_url: str, model: str, prompt: str, max_tokens: int, t
         "model": model,
         "prompt": prompt,
         "stream": False,
+        # NPC requests need a final action line, not a reasoning-token budget.
+        "think": False,
         "options": {
             "temperature": float(temperature),
             "num_predict": int(max_tokens),
@@ -445,6 +469,14 @@ def ollama_unload(ollama_url: str, model: str, log_fp: Optional[TextIO]) -> None
         log_line(log_fp, f"ollama unload exception: {exc}")
 
 
+def ollama_final_text(response: Dict[str, Any]) -> str:
+    # Thinking is disabled at the API boundary; leaked reasoning is a failure,
+    # not an alternate source of NPC speech or an accepted stripped answer.
+    if sanitize_text(response.get("thinking", "")).strip():
+        return ""
+    return strip_think_tags(sanitize_text(response.get("response", "")))
+
+
 def run_ollama_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
     model = (args.ollama_model or "").strip()
     if not model:
@@ -452,7 +484,8 @@ def run_ollama_self_test(args: argparse.Namespace, log_fp: Optional[TextIO]) -> 
         return 1
     try:
         response = ollama_generate(args.ollama_url, model, args.self_test_prompt, min(args.max_tokens, 16), 0.2)
-        text = strip_think_tags(sanitize_text(response.get("response", "")))
+        log_line(log_fp, "ollama raw response: " + json.dumps(response, ensure_ascii=True))
+        text = ollama_final_text(response)
         if not text.strip():
             print("self-test failed: empty Ollama response", file=sys.stderr)
             return 1
@@ -697,9 +730,12 @@ def run_ollama_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
         start_time = time.perf_counter()
         try:
             response = ollama_generate(args.ollama_url, model, prompt, max_tokens, temperature)
+            log_line(log_fp, "ollama raw response: " + json.dumps(response, ensure_ascii=True))
             elapsed_ms = (time.perf_counter() - start_time) * 1000.0
-            text = strip_think_tags(sanitize_text(response.get("response", "")))
-            payload = {"request_id": request_id, "ok": True, "text": text}
+            text = ollama_final_text(response)
+            payload = {"request_id": request_id, "ok": bool(text.strip()), "text": text}
+            if not payload["ok"]:
+                payload["error"] = "Ollama returned no acceptable final text (empty, leaked reasoning, or incomplete reasoning)."
             payload["metrics"] = {
                 "gen_time_ms": elapsed_ms,
                 "max_new_tokens": max_tokens,
