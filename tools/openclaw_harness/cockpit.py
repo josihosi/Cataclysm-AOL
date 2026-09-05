@@ -1821,10 +1821,8 @@ class CockpitRunChannel:
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
         origin = self._relative_position(observed)
-        if origin is None:
-            return self._fail_closed(f"{route}_position_unavailable", {"unused_authority": "revoked"})
         plan = self._relative_action_plan(offset)
-        target = [origin[0] + offset[0], origin[1] + offset[1], origin[2]]
+        target = [origin[0] + offset[0], origin[1] + offset[1], origin[2]] if origin is not None else None
         receipts = self.archive.sequence() if self.archive is not None else []
         handled_interruptions = self.archive.sequence() if self.archive is not None else []
         completed_steps = 0
@@ -1851,6 +1849,19 @@ class CockpitRunChannel:
             if reason in recoverable:
                 return self._interrupt_macro(reason, observed, detail)
             return self._fail_closed(reason, detail)
+
+        if origin is None:
+            record = self._observations.get(str(observed.get("observation_id", "")))
+            raw = record.get("issuing_frame") if isinstance(record, Mapping) else None
+            if isinstance(raw, Mapping) and raw.get("state", raw.get("kind")) != "world":
+                # A current item menu or prompt has no World position.  A
+                # premature movement request must leave that owner usable,
+                # just like reaching the same menu partway through a macro.
+                return stop("guarded_move_relative_prompt_or_unknown_event" if guarded else
+                            "raw_move_relative_interrupted", {
+                                "native_stop_reason": raw.get("state", raw.get("kind", "unknown_event")),
+                            })
+            return stop(f"{route}_position_unavailable", {})
 
         for index, action_id in enumerate(plan):
             while True:

@@ -80,6 +80,70 @@ class MacroInterruptionTest(unittest.TestCase):
         self.assertEqual(actions, ["world.wait"])
         self.assertEqual(finals, [])
 
+    def test_move_from_item_menu_without_position_preserves_native_cancel(self):
+        # Live selected-1c3ab1bca1a74f48b7aa5bdce817f5fa cancelled Light where?
+        # back to the lighter menu, then requested movement. No World owner
+        # or coordinate existed, but that ordinary misuse terminated the game.
+        for operation in ("move_relative", "raw_move_relative", "guarded_move_relative"):
+            with self.subTest(operation=operation):
+                menu = {"event": "surface_descriptor", "schema_version": 1,
+                        "run_id": "menu-start-run", "surface_id": "item-menu", "frame_id": "menu:1",
+                        "kind": "inventory_item_menu", "breadcrumbs": ["World", "Inventory", "lighter"],
+                        "payload": {"item_name": "lighter", "item_uid": "70463"},
+                        "valid_actions": [{"id": "inventory.item_menu.cancel", "stable_id": "",
+                                           "label": "Cancel", "enabled": True}]}
+                world = {**menu, "surface_id": "world", "frame_id": "world:2", "kind": "world",
+                         "breadcrumbs": ["World"], "payload": {"avatar": '{"absolute_ms":[1,1,0]}'},
+                         "valid_actions": [{"id": "world.move.east", "stable_id": "",
+                                            "label": "East", "enabled": True}]}
+                frames, index, actions, finals = [menu, world], [0], [], []
+
+                def dispatch(issuing, action):
+                    actions.append(action)
+                    index[0] += 1
+                    return {"native_receipt": {
+                        "run_id": issuing["run_id"], "requested_run_id": issuing["run_id"],
+                        "requested_frame_id": issuing["frame_id"], "action_id": action,
+                        "requested_surface_id": issuing["surface_id"],
+                        "consuming_surface_id": issuing["surface_id"], "accepted": True,
+                    }, "_next_frame": frames[index[0]]}
+
+                channel = cockpit.CockpitRunChannel(lambda: frames[index[0]], dispatch,
+                    binding_id="binding-a", read_binding_id=lambda: "binding-a",
+                    enforce_continuation_bounds=True, finalize_session=lambda report: finals.append(report) or {})
+                service = cockpit.CockpitService(run_channel=channel)
+                stopped = service.call({"action": "game." + operation, operation: {
+                    "enabled": True, "offset_ms": [1, 0], "bound": move_bound(1)}})
+                self.assertNotIn("final", stopped)
+                self.assertEqual(stopped["result"]["partial_progress"], 0)
+                self.assertIsNone(stopped["result"]["origin_absolute_ms"])
+                self.assertIsNone(stopped["result"]["target_absolute_ms"])
+                self.assertEqual(stopped["result"]["native_receipts"], [])
+                self.assertEqual(actions, [])
+                self.assertEqual(channel.status()["state"], "active")
+                self.assertEqual(finals, [])
+                current = stopped["result"]["terminal_observation"]
+                self.assertEqual(current["surface"]["kind"], "inventory_item_menu")
+                self.assertTrue(service.call({"action": "game.act", "observation_id": current["observation_id"],
+                                             "action_id": "inventory.item_menu.cancel"})["ok"])
+                self.assertEqual(actions, ["inventory.item_menu.cancel"])
+                self.assertEqual(channel.status()["state"], "active")
+                self.assertEqual(finals, [])
+
+    def test_world_without_position_still_fails_closed(self):
+        current = {"event": "surface_descriptor", "schema_version": 1,
+                   "run_id": "missing-position-run", "surface_id": "world", "frame_id": "world:1",
+                   "kind": "world", "breadcrumbs": ["World"], "payload": {},
+                   "valid_actions": [{"id": "world.move.east", "stable_id": "",
+                                      "label": "East", "enabled": True}]}
+        helper = movement.RelativeMovementTest()
+        service, actions, finals = helper.service([current])
+        stopped = service.call({"action": "game.raw_move_relative", "raw_move_relative": {
+            "enabled": True, "offset_ms": [1, 0], "bound": move_bound(1)}})
+        self.assertEqual(stopped["error"], "raw_move_relative_position_unavailable")
+        self.assertEqual(actions, [])
+        self.assertEqual(len(finals), 1)
+
     def test_blocked_move_is_zero_progress_and_another_direction_works(self):
         helper = movement.RelativeMovementTest()
         service, actions, finals = helper.service([
