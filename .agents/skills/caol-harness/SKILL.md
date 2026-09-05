@@ -72,12 +72,17 @@ For a registry-launched file-backed session, use the persistent player client:
 ```sh
 python3 tools/openclaw_harness/play_cli.py --session SESSION look
 python3 tools/openclaw_harness/play_cli.py --session SESSION act ACTION [--target STABLE_ID]
+python3 tools/openclaw_harness/play_cli.py --session SESSION controls
 python3 tools/openclaw_harness/play_cli.py --session SESSION call --request REQUEST.json
 python3 tools/openclaw_harness/play_cli.py --session SESSION collect
 python3 tools/openclaw_harness/play_cli.py --session SESSION inspect SELECTOR --limit 5
 python3 tools/openclaw_harness/play_cli.py --session SESSION journal --reason "What this run established"
 python3 tools/openclaw_harness/play_cli.py --session SESSION finish --witness FILE
 ```
+
+`controls` is read-only, even while a request is pending. It provides copyable wait/movement
+requests, native recipe semantics, danger choices, and session permissions after `look`/`collect`.
+Read its interruption caveat: a stopped macro may currently finish the session.
 
 For an existing structured `game.*` macro, put its complete request object (including `action`
 and its recipe) in `REQUEST.json` and use `call --request`. The client preserves the request;

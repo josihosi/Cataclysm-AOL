@@ -2833,6 +2833,51 @@ def _frontier(connection: Any) -> Dict[str, Any]:
     ]}
 
 
+
+def player_controls(availability: Optional[Mapping[str, bool]] = None) -> Dict[str, Any]:
+    """Read-only request examples shared by the service and persistent client.
+
+    These describe existing validators; they neither observe nor grant authority.
+    Example distances/durations are editable illustrations, not session limits.
+    """
+    return {
+        "usage": "Save an example_request as JSON, edit it for your intent, then call --request FILE and collect. Native actions must be advertised by their current owner.",
+        "availability": dict(availability) if availability is not None else {
+            "game.wait": None, "game.move_relative": None,
+        },
+        "availability_note": "Session permission only, not current-surface readiness. null means unknown: look and collect first. The service rechecks permission on every call.",
+        "danger_handling": {
+            "stop_on_interruption": "Default. Stop the macro at a native interruption; movement requires World but does not perform the guarded danger/terrain checks.",
+            "handle_classified_non_dangerous": "Handle only recognized non-dangerous native interruptions. Stop for danger, damage, unknown safety, or unavailable recovery. Movement also checks visible next-tile terrain and occupants.",
+            "ignore_danger_and_interruptions": "Explicitly continue through classified in-game danger/damage where a supported native continuation exists; not permission to bypass unknown owners, unavailable recovery, or blocked movement.",
+        },
+        "interruption_caveat": "Current implementation fail-closes many macro interruptions, revoking authority and finishing the session. This is different from successful macro completion: inspect error/final and partial receipts; do not replay. A primitive act lets you decide at each native owner.",
+        "wait": {
+            "example_request": {"action": "game.wait", "wait": {
+                "enabled": True, "target_delta_game_minutes": 1,
+                "danger_handling": "handle_classified_non_dangerous", "recipe": ["world.pause"],
+                "bound": {"basis": "scheduler_boundary", "source": "chosen target is one game minute after the starting observation", "unit": "game_minutes", "maximum": 1, "progress_required": True},
+            }},
+            "target": "Choose either a positive target_delta_game_minutes or an absolute target_game_minutes greater than the observed game_minutes. stop_on_interruption supports only the absolute form; set target_game_minutes to observed game_minutes plus your intended duration and remove target_delta_game_minutes.",
+            "recipe": "Ordered native action IDs, repeated until the target is observed. world.pause is one native turn; it may require many actions for a minute. world.wait opens the native wait chooser, not a one-turn pause. Never guess menu choices: inspect their owner first.",
+            "menu_entry": {"action_id": "menu.choose", "stable_id": "COPY_CURRENT_CHOICE_ID", "label": "COPY_EXACT_CURRENT_LABEL"},
+            "menu_entry_note": "The two non-default danger modes also accept this exact object in recipe. Both ID and label must match the current native menu. stop_on_interruption accepts only action ID strings.",
+            "bound": "maximum is a positive game-minute allowance covering the chosen target. basis is game_mechanic, scheduler_boundary, path_progress, or measured_rate; source explains the real derivation; unit is game_minutes; progress_required is boolean. Missing progress, overshoot, or a mismatching owner is not success.",
+        },
+        "move_relative": {
+            "example_request": {"action": "game.move_relative", "move_relative": {
+                "enabled": True, "offset_ms": [1, 0],
+                "danger_handling": "handle_classified_non_dangerous",
+                "bound": {"basis": "path_progress", "source": "Manhattan distance of the chosen relative offset", "unit": "steps", "maximum": 1},
+            }},
+            "offset": "Two integer map-square offsets [east, south]; negatives mean west/north. Nonzero offset, same z-level. Native cardinal steps run horizontally then vertically; this is not pathfinding or obstacle avoidance.",
+            "bound": "maximum is a positive integer at least abs(dx)+abs(dy); unit must be steps; basis and source are nonempty strings explaining the path bound.",
+            "outcome": "Each step requires the current World action and a native movement receipt proving expected displacement. Movement consumes game time and may encounter creatures, terrain, or prompts; inspect partial progress on interruption.",
+        },
+        "completion": "Success returns result.terminal_observation. Wait in the two non-default modes returns native_action_count with individual receipts in the transcript/journal; cautious wait and movement also return native_receipts. CLI adopts that observation; continue with look/act/call. Macro success proves only the recorded wait or displacement, not the feature being tested.",
+    }
+
+
 class CockpitService:
     """Stateless request/response boundary for human-facing exploration."""
 
@@ -2848,6 +2893,10 @@ class CockpitService:
         return action in {"game.observe", "game.look"} or self._allowed_live_operations is None or \
                action in self._allowed_live_operations
 
+    def _player_operation_availability(self) -> Dict[str, bool]:
+        return {action: self.run_channel is not None and self._live_operation_is_allowed(action)
+                for action in ("game.wait", "game.move_relative")}
+
     def call(self, request: Mapping[str, Any]) -> Dict[str, Any]:
         if not isinstance(request, Mapping):
             return {"ok": False, "error": "request must be an object"}
@@ -2855,6 +2904,8 @@ class CockpitService:
         if unknown:
             return {"ok": False, "error": "unsupported fields", "fields": sorted(map(str, unknown))}
         action = str(request.get("action", "")).strip().lower()
+        if action == "game.controls":
+            return {"ok": True, "result": player_controls(self._player_operation_availability())}
         if action.startswith("game.") and not self._live_operation_is_allowed(action):
             return {"ok": False, "error": "operation_not_authorized_for_live_session"}
         if action.startswith("game.") and action not in {"game.observe", "game.look"} and self.run_channel is not None:
@@ -2918,7 +2969,8 @@ class CockpitService:
             if self.run_channel is None:
                 return {"ok": False, "error": "native game observation is unavailable"}
             try:
-                return {"ok": True, "result": self.run_channel.observe()}
+                return {"ok": True, "result": self.run_channel.observe(),
+                        "operation_availability": self._player_operation_availability()}
             except ValueError as exc:
                 return {"ok": False, "error": str(exc)}
         if action == "game.look":

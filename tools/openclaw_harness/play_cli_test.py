@@ -54,6 +54,33 @@ class PlayerCliTest(unittest.TestCase):
         self.cli("collect")
         return pending["request_id"]
 
+    def test_controls_preserves_pending_and_observation_authority(self):
+        self.observe()
+        self.write("play-client.json", {**json.loads((self.session / "play-client.json").read_text()),
+                   "operation_availability": {"game.wait": True, "game.move_relative": False}})
+        self.cli("act", "world.wait")
+        before = (self.session / "play-client.json").read_bytes()
+        requests = self.requests()
+        result = self.cli("controls")["result"]
+        self.assertEqual(result["availability"], {"game.wait": True, "game.move_relative": False})
+        self.assertEqual(result["wait"]["example_request"]["action"], "game.wait")
+        self.assertEqual((self.session / "play-client.json").read_bytes(), before)
+        self.assertEqual(self.requests(), requests)
+
+    def test_controls_before_observation_reports_unknown_permission(self):
+        result = self.cli("controls")["result"]
+        self.assertIsNone(result["availability"]["game.wait"])
+        self.assertFalse((self.session / "play-client.json").exists())
+        self.assertFalse(self.requests())
+
+    def test_collect_remembers_service_macro_permission_metadata(self):
+        pending = self.cli("look")
+        availability = {"game.wait": False, "game.move_relative": True}
+        self.reply(pending["request_id"], {"ok": True, "result": {"observation_id": "f1"},
+                                         "operation_availability": availability})
+        self.cli("collect")
+        self.assertEqual(self.cli("controls")["result"]["availability"], availability)
+
     def test_persistent_pending_never_replays_and_action_uses_fresh_successor(self):
         pending = self.cli("look")
         self.assertEqual(pending["state"], "pending")

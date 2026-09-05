@@ -17,6 +17,7 @@ import time
 from typing import Any
 import uuid
 
+from cockpit import player_controls
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge, _atomic_json
 
 
@@ -69,6 +70,11 @@ class PlayerClient:
     def save(self):
         _atomic_json(self.state_path, self.state)
 
+    def controls(self) -> dict[str, Any]:
+        # Local metadata only: safe while a native request is pending. Do not
+        # refresh the frame, enqueue traffic, or save client ownership state.
+        return {"ok": True, "result": player_controls(self.state.get("operation_availability"))}
+
     def collect(self, wait_seconds: float = 0) -> dict[str, Any]:
         pending = self.state.get("pending")
         if not pending:
@@ -114,6 +120,8 @@ class PlayerClient:
         if not full.get("ok"):
             return full
         response = full["response"]
+        if isinstance(response.get("operation_availability"), dict):
+            self.state["operation_availability"] = response["operation_availability"]
         observation = response.get("observation", response.get("result", {}))
         if isinstance(observation, dict) and not observation.get("observation_id"):
             observation = observation.get("terminal_observation", observation)
@@ -247,6 +255,7 @@ def main(argv=None):
     act.add_argument("action")
     act.add_argument("--target", help="Exact advertised stable ID")
     act.add_argument("--param", action="append", default=[], metavar="KEY=VALUE")
+    commands.add_parser("controls", help="Read wait/movement request examples, permissions and interruption behavior without sending input")
     call = commands.add_parser("call", help="Submit an existing structured game.* request; service authorization still applies")
     call.add_argument("--request", type=Path, required=True,
                       help="JSON request object, including action and its existing recipe; no defaults are invented")
@@ -281,6 +290,8 @@ def main(argv=None):
                         raise ValueError("parameters_need_unique_KEY=VALUE")
                     params[key] = value
                 result = client.act(args.action, args.target, params, args.wait_seconds)
+            elif args.command == "controls":
+                result = client.controls()
             elif args.command == "call":
                 result = client.call(json.loads(args.request.read_text()), args.wait_seconds)
             elif args.command == "inspect":
