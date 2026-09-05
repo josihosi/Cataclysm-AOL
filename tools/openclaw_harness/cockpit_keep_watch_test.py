@@ -798,7 +798,7 @@ class KeepWatchTest(unittest.TestCase):
                 }})
 
                 self.assertEqual(result["error"], "keep_watch_recipe_action_not_advertised")
-                self.assertEqual(result["final"]["stop_detail"]["duration_action_resolution"], resolution)
+                self.assertEqual(result["result"]["duration_action_resolution"], resolution)
                 self.assertEqual(dispatched, [])
 
     def test_guarded_recipe_rejects_wrong_intermediate_advertisement_without_dispatch(self) -> None:
@@ -819,7 +819,7 @@ class KeepWatchTest(unittest.TestCase):
         }})
 
         self.assertEqual(result["error"], "keep_watch_recipe_action_not_advertised")
-        self.assertEqual(result["final"]["stop_detail"]["action_id"], "wait.duration_menu")
+        self.assertEqual(result["result"]["action_id"], "wait.duration_menu")
         self.assertEqual(dispatched, ["world.wait"])
 
     def test_guarded_recipe_rejects_open_duration_chooser_without_a_recipe_duration(self) -> None:
@@ -837,7 +837,7 @@ class KeepWatchTest(unittest.TestCase):
         }})
 
         self.assertEqual(result["error"], "keep_watch_recipe_action_not_advertised")
-        self.assertEqual(result["final"]["stop_detail"]["duration_action_resolution"], "absent")
+        self.assertEqual(result["result"]["duration_action_resolution"], "absent")
         self.assertEqual(dispatched, [])
 
     def test_guarded_recipe_reobserves_stale_intermediate_frame_before_dispatch(self) -> None:

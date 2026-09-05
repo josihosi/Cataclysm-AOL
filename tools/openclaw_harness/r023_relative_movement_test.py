@@ -79,7 +79,7 @@ class RelativeMovementTest(unittest.TestCase):
             if action_id not in ACTIONS:
                 index[0] += 1
                 return {"native_receipt": {
-                    "frame_id": issuing["frame_id"], "action_id": action_id,
+                    "run_id": issuing["run_id"], "frame_id": issuing["frame_id"], "action_id": action_id,
                     "accepted": True, "outcome": "recovered_interruption",
                 }, "_next_frame": frames[index[0]]}
             before = issuing["observation"]["avatar"]["absolute_ms"]
@@ -92,7 +92,7 @@ class RelativeMovementTest(unittest.TestCase):
             index[0] += 1
             after = expected if outcome == "moved" else before
             return {"native_receipt": {
-                "frame_id": issuing["frame_id"], "action_id": action_id,
+                "run_id": issuing["run_id"], "frame_id": issuing["frame_id"], "action_id": action_id,
                 "accepted": outcome == "moved", "outcome": outcome,
                 "coordinate_space": "absolute_ms",
                 "before_absolute_ms": before, "expected_absolute_ms": expected,
@@ -149,7 +149,7 @@ class RelativeMovementTest(unittest.TestCase):
         }})
         self.assertEqual(stopped["error"], "raw_move_relative_blocked")
         self.assertEqual(actions, ["world.move.west"])
-        self.assertEqual(stopped["final"]["stop_detail"]["partial_progress"], 1)
+        self.assertEqual(stopped["result"]["partial_progress"], 0)
 
     def test_independent_route_authority_rejects_the_other_relative_operation(self) -> None:
         service, actions, _ = self.service([frame(1, [1, 1, 0])])

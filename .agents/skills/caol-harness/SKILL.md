@@ -82,7 +82,13 @@ python3 tools/openclaw_harness/play_cli.py --session SESSION finish --witness FI
 
 `controls` is read-only, even while a request is pending. It provides copyable wait/movement
 requests, native recipe semantics, danger choices, and session permissions after `look`/`collect`.
-Read its interruption caveat: a stopped macro may currently finish the session.
+An ordinary interruption stops only the macro: inspect its terminal observation and partial
+progress, then choose the next native action. Identity or receipt failures still finish the session.
+`performance` reads retained CPU/RSS and action intervals; `performance --sample-seconds 1`
+works even while game input is pending. `--offset 0 --limit 5` pages exact records.
+Use `--tag "comparable workload" --save-baseline FILE`, then `--tag "comparable workload"
+--baseline FILE` to compare. Tags assert comparability; CPU is process core percentage,
+not host load, and high CPU during simulation is not itself a regression.
 
 For an existing structured `game.*` macro, put its complete request object (including `action`
 and its recipe) in `REQUEST.json` and use `call --request`. The client preserves the request;

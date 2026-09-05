@@ -219,7 +219,9 @@ class CockpitRunChannel:
             stable_id = action["stable_id"]
             if stable_id and stable_id != action["id"]:
                 action_stable_ids.setdefault(action["id"], set()).add(stable_id)
+        previous_record = self._observations.get(frame_id, {})
         self._observations[frame_id] = {
+            "macro_stop_decision": previous_record.get("macro_stop_decision") is True and not previous_record.get("used"),
             "run_id": run_id,
             "actions": {action["id"] for action in enabled_actions},
             "action_stable_ids": action_stable_ids,
@@ -494,6 +496,49 @@ class CockpitRunChannel:
         report = self._stop(reason, detail)
         return {"ok": False, "error": reason, "final": report}
 
+    def _native_receipt_run_matches(
+        self, native: Mapping[str, Any], run_id: str, *, surface_owned: bool,
+    ) -> bool:
+        surface_receipt = native.get("surface_receipt", {})
+        requested_run_id = native.get("requested_run_id")
+        if requested_run_id is None and isinstance(surface_receipt, Mapping):
+            requested_run_id = surface_receipt.get("requested_run_id")
+        return native.get("run_id") == run_id == self._run_id and (
+            not surface_owned or requested_run_id == self._run_id
+        )
+
+    def _interrupt_macro(
+        self, reason: str, observed: Mapping[str, Any], detail: Mapping[str, Any],
+    ) -> Dict[str, Any]:
+        """Release automation authority while preserving the current native decision."""
+        if self._state != "active":
+            return {"ok": False, "error": reason, "final": self._final_report}
+        if not self._binding_matches():
+            return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+        record = self._observations.get(str(observed.get("observation_id", "")))
+        if not isinstance(record, Mapping) or record.get("used") or \
+                record.get("run_id") != self._run_id:
+            return self._fail_closed("macro_stop_owner_unavailable", {"unused_authority": "revoked"})
+        if observed.get("surface", {}).get("kind") == "process_exited":
+            return self._fail_closed("game_process_exited", {"unused_authority": "revoked"})
+        released = dict(self._continuation or {})
+        self._continuation = None
+        self._safe_activity_bridge = None
+        # This is one advertised native decision, not permission to resume the
+        # abandoned recipe. Legacy modal frames need the same grant as surfaces.
+        record["macro_stop_decision"] = True
+        terminal = dict(observed)
+        terminal["continuation"] = {"state": "released"}
+        record["public_state"] = terminal
+        result = {
+            **dict(detail), "stop_reason": reason, "state": "interrupted",
+            "terminal_observation": terminal, "unused_authority": "released",
+            "released_continuation": released, "session_state": "active",
+        }
+        self._transcript.append({"kind": "macro_interruption", "result": result})
+        return {"ok": False, "error": reason, "result": result,
+                "next_action": "Choose from terminal_observation actions, or observe again; the macro has stopped."}
+
     def observe_process_exit(self) -> Optional[Dict[str, Any]]:
         """Expose bound process death, never replay the last native World frame."""
         cached = self._process_exit_observation
@@ -765,7 +810,9 @@ class CockpitRunChannel:
                     },
                 }
         self._last_public_state = current_public_state
+        previous_record = self._observations.get(frame_id, {})
         self._observations[frame_id] = {
+            "macro_stop_decision": previous_record.get("macro_stop_decision") is True and not previous_record.get("used"),
             "run_id": run_id, "actions": set(actions),
             "action_stable_ids": {
                 str(action["id"]): {str(candidate["stable_id"]) for candidate in action_details
@@ -977,8 +1024,8 @@ class CockpitRunChannel:
 
         The recipe is deliberately made from advertised primitive actions.  Either
         the master or recipe off switch performs no action, and a frame that does
-        not carry a native, explicit keep-watch classification is terminal rather
-        than guessed at.
+        not carry a native, explicit keep-watch classification stops this macro
+        and returns the native decision to the player rather than guessing.
         """
         master_enabled = request.get("master_enabled", True)
         if master_enabled is not True:
@@ -1038,6 +1085,16 @@ class CockpitRunChannel:
         safety_frames = 0
         handled_interruptions: list[Dict[str, Any]] = []
         rejected_owners: set[tuple[str, str]] = set()
+        def interrupt(reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
+            current = self._signal_value(observed, "game_minutes")
+            return self._interrupt_macro(reason, observed, {
+                **dict(detail), "target_game_minutes": target, "start_game_minutes": start,
+                "partial_progress": None if current is None else current - start,
+                "last_observed_game_minutes": last_game_minutes,
+                "native_action_count": tool_round_trips, "danger_handling": danger_handling,
+                "handled_interruptions": list(handled_interruptions),
+            })
+
         while True:
             if self._state != "active":
                 return {"ok": False, "error": "live_session_finished", "final": self._final_report}
@@ -1093,7 +1150,7 @@ class CockpitRunChannel:
                 semantic_damage_ignore = self._semantic_damage_ignore_choice(raw)
                 if semantic_damage_ignore is not None:
                     if danger_handling != "ignore_danger_and_interruptions":
-                        return self._fail_closed("keep_watch_unsafe_condition", {
+                        return interrupt("keep_watch_unsafe_condition", {
                             "classification": "damage_detected",
                             "observation_id": observed.get("observation_id", ""),
                             "unused_authority": "revoked",
@@ -1248,7 +1305,7 @@ class CockpitRunChannel:
                     # advertised primitive it cannot synchronously advance to
                     # a concrete child: re-observing this same owner would
                     # spin forever without ever submitting a native request.
-                    return self._fail_closed("keep_watch_recipe_action_not_advertised", {
+                    return interrupt("keep_watch_recipe_action_not_advertised", {
                         "observation_id": observed.get("observation_id", ""),
                         "state": str(raw.get("state", "")),
                         "action_id": primitive,
@@ -1265,14 +1322,14 @@ class CockpitRunChannel:
                            item.get("label") == recipe_entry["label"]]
                 if not any(isinstance(item, Mapping) and item.get("id") == "menu.choose"
                            for item in surface_actions):
-                    return self._fail_closed("keep_watch_menu_choice_not_advertised", {
+                    return interrupt("keep_watch_menu_choice_not_advertised", {
                         "observation_id": observed.get("observation_id", ""),
                         "stable_id": recipe_entry["stable_id"], "label": recipe_entry["label"],
                         "match_count": 0,
                         "unused_authority": "revoked",
                     })
                 if len(matches) != 1:
-                    return self._fail_closed("keep_watch_menu_choice_not_advertised", {
+                    return interrupt("keep_watch_menu_choice_not_advertised", {
                         "observation_id": observed.get("observation_id", ""),
                         "stable_id": recipe_entry["stable_id"], "label": recipe_entry["label"],
                         "match_count": len(matches), "unused_authority": "revoked",
@@ -1288,7 +1345,7 @@ class CockpitRunChannel:
                 continue
             safety = raw.get("keep_watch_safety") if isinstance(raw, Mapping) else None
             if not isinstance(safety, Mapping):
-                return self._fail_closed("keep_watch_unknown_safety_frame", {
+                return interrupt("keep_watch_unknown_safety_frame", {
                     "observation_id": observed.get("observation_id", ""),
                     "unused_authority": "revoked",
                 })
@@ -1298,7 +1355,7 @@ class CockpitRunChannel:
             if safety.get("monster") is True or safety.get("danger") is True or \
                     safety.get("damage") is True:
                 if danger_handling != "ignore_danger_and_interruptions":
-                    return self._fail_closed("keep_watch_unsafe_condition", {
+                    return interrupt("keep_watch_unsafe_condition", {
                         "classification": classification,
                         "unused_authority": "revoked",
                     })
@@ -1339,7 +1396,7 @@ class CockpitRunChannel:
                         entry["action_id"] for entry in normalized_recipe if entry["action_id"] in advertised
                     })
                     if len(duration_actions) != 1:
-                        return self._fail_closed("keep_watch_recipe_action_not_advertised", {
+                        return interrupt("keep_watch_recipe_action_not_advertised", {
                             "observation_id": observed.get("observation_id", ""),
                             "state": state,
                             "action_id": (
@@ -1376,7 +1433,7 @@ class CockpitRunChannel:
                     action_id = recipe_entry["action_id"]
                     recipe_index += 1
                 if action_id not in advertised:
-                    return self._fail_closed("keep_watch_recipe_action_not_advertised", {
+                    return interrupt("keep_watch_recipe_action_not_advertised", {
                         "observation_id": observed.get("observation_id", ""),
                         "state": state,
                         "action_id": action_id,
@@ -1389,11 +1446,11 @@ class CockpitRunChannel:
                 action_id = str(safety.get("action_id", "")).strip()
                 recovery = safety.get("recovery")
                 if not action_id or not isinstance(recovery, Mapping):
-                    return self._fail_closed("keep_watch_safe_interruption_unbound", {
+                    return interrupt("keep_watch_safe_interruption_unbound", {
                         "classification": classification, "unused_authority": "revoked",
                     })
             else:
-                return self._fail_closed("keep_watch_meaningful_or_unknown_event", {
+                return interrupt("keep_watch_meaningful_or_unknown_event", {
                     "classification": classification, "unused_authority": "revoked",
                 })
             if observed_current is None:
@@ -1506,7 +1563,7 @@ class CockpitRunChannel:
 
         def stop(reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
             current = self._signal_value(observed, "game_minutes")
-            report = self._fail_closed(reason, {
+            detail = {
                 **dict(detail),
                 "target_game_minutes": target,
                 "start_game_minutes": start,
@@ -1514,12 +1571,23 @@ class CockpitRunChannel:
                 "native_receipts": [dict(receipt) for receipt in receipts],
                 "guarded_handling_count": 0,
                 "unused_authority": "revoked",
-            })
-            return report
+            }
+            if reason == "native_wait_interrupted":
+                return self._interrupt_macro(reason, observed, detail)
+            return self._fail_closed(reason, detail)
 
         while True:
             current = self._signal_value(observed, "game_minutes")
             if current is None:
+                record = self._observations.get(str(observed.get("observation_id", "")), {})
+                raw = record.get("issuing_frame", {})
+                if raw.get("provenance") in {
+                        "native_activity_distraction_query", "native_semantic_ui_trace",
+                } or raw.get("state") == "activity_distraction":
+                    return stop("native_wait_interrupted", {
+                        "native_stop_reason": str(raw.get("activity_type", raw.get("state", "native_interruption"))),
+                        "native_frame_id": observed.get("observation_id", ""),
+                    })
                 return stop("raw_wait_progress_signal_missing", {})
             if current == float(target):
                 result = {
@@ -1677,7 +1745,7 @@ class CockpitRunChannel:
     def _relative_guard_reason(
         self, observed: Mapping[str, Any], raw: Mapping[str, Any], action_id: str,
     ) -> Optional[str]:
-        if str(raw.get("state", "")) != "world" or raw.get("provenance") not in {
+        if str(raw.get("state", raw.get("kind", ""))) != "world" or raw.get("provenance", "") not in {
                 "native_semantic_step_trace", "",
         }:
             return "guarded_move_relative_prompt_or_unknown_event"
@@ -1743,20 +1811,30 @@ class CockpitRunChannel:
         target = [origin[0] + offset[0], origin[1] + offset[1], origin[2]]
         receipts: list[Mapping[str, Any]] = []
         handled_interruptions: list[Dict[str, Any]] = []
+        completed_steps = 0
 
         def stop(reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
             current = self._relative_position(observed)
-            completed = len(receipts)
-            return self._fail_closed(reason, {
+            detail = {
                 **dict(detail), "offset_ms": list(offset), "origin_absolute_ms": origin,
                 "target_absolute_ms": target, "terminal_absolute_ms": current,
-                "partial_progress": completed, "planned_steps": len(plan),
+                "partial_progress": completed_steps, "planned_steps": len(plan),
                 "native_receipts": [dict(receipt) for receipt in receipts],
                 "handled_interruptions": list(handled_interruptions),
                 "derived_bound": dict(bound),
                 "guarded_handling_count": len(handled_interruptions),
                 "unused_authority": "revoked",
-            })
+            }
+            recoverable = {
+                "raw_move_relative_interrupted", "guarded_move_relative_prompt_or_unknown_event",
+                "guarded_move_relative_creature_or_danger", "guarded_move_relative_damage",
+                "guarded_move_relative_creature", "guarded_move_relative_unknown_event",
+                "guarded_move_relative_terrain_unknown", f"{route}_action_not_advertised",
+                f"{route}_blocked", f"{route}_no_progress", f"{route}_interrupted",
+            }
+            if reason in recoverable:
+                return self._interrupt_macro(reason, observed, detail)
+            return self._fail_closed(reason, detail)
 
         for index, action_id in enumerate(plan):
             while True:
@@ -1764,7 +1842,22 @@ class CockpitRunChannel:
                 raw = record.get("issuing_frame") if isinstance(record, Mapping) else None
                 if not isinstance(raw, Mapping):
                     return stop(f"{route}_stale_frame", {})
-                if not guarded or str(raw.get("state", "")) == "world":
+                if guarded and raw.get("kind") == "world" and not isinstance(raw.get("keep_watch_safety"), Mapping):
+                    # Receipt successors may be bare descriptors. The normal
+                    # native reader pairs the same-cycle World safety/avatar
+                    # facts to their exact owner; refresh once before guarding.
+                    previous_run = self._run_id
+                    try:
+                        observed = self.observe()
+                    except ValueError as exc:
+                        return stop("guarded_move_relative_fresh_frame_missing", {"detail": str(exc)})
+                    if self._run_id != previous_run:
+                        return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+                    record = self._observations.get(str(observed.get("observation_id", "")))
+                    raw = record.get("issuing_frame") if isinstance(record, Mapping) else None
+                    if not isinstance(raw, Mapping):
+                        return stop("guarded_move_relative_fresh_frame_missing", {})
+                if not guarded or str(raw.get("state", raw.get("kind", ""))) == "world":
                     break
                 safety = raw.get("keep_watch_safety")
                 classification = str(safety.get("classification", "")) \
@@ -1833,11 +1926,11 @@ class CockpitRunChannel:
                     guard_reason = None
                 if guard_reason is not None:
                     return stop(guard_reason, {"step_index": index})
-            elif str(raw.get("state", "")) != "world" or raw.get("provenance") not in {
+            elif str(raw.get("state", raw.get("kind", ""))) != "world" or raw.get("provenance", "") not in {
                     "native_semantic_step_trace", "",
             }:
                 return stop("raw_move_relative_interrupted", {
-                    "step_index": index, "native_stop_reason": str(raw.get("state", "unknown_event")),
+                    "step_index": index, "native_stop_reason": str(raw.get("state", raw.get("kind", "unknown_event"))),
                 })
             advertised = record.get("actions") if isinstance(record, Mapping) else None
             if not isinstance(advertised, set) or action_id not in advertised:
@@ -1864,6 +1957,36 @@ class CockpitRunChannel:
                 native = receipt.get("native_receipt") if isinstance(receipt, Mapping) else None
                 failure = str(native.get("outcome", "native_dispatch_failed")) if isinstance(native, Mapping) else \
                           str(outcome.get("error", "native_dispatch_failed"))
+                if failure in {"blocked", "no_progress", "interrupted"}:
+                    # A native refusal is an ordinary game result only when
+                    # its exact request and stationary coordinates agree.
+                    if str(native.get("requested_frame_id", native.get("frame_id", ""))) != str(observed["observation_id"]) or \
+                            native.get("action_id") != action_id or \
+                            not self._native_receipt_run_matches(native, str(observed["run_id"]),
+                                    surface_owned=bool(raw.get("surface_id"))) or \
+                            (raw.get("surface_id") and (
+                                native.get("requested_surface_id") != raw["surface_id"] or
+                                native.get("consuming_surface_id") != raw["surface_id"])) or \
+                            native.get("coordinate_space") != "absolute_ms" or \
+                            native.get("before_absolute_ms") != before or \
+                            native.get("expected_absolute_ms") != expected or \
+                            native.get("after_absolute_ms") != before:
+                        return stop(f"{route}_receipt_mismatch", {"step_index": index})
+                    previous_run = self._run_id
+                    try:
+                        observed = self.observe()
+                    except ValueError as exc:
+                        return stop(f"{route}_fresh_frame_missing", {"detail": str(exc)})
+                    if self._run_id != previous_run:
+                        return self._fail_closed("binding_drift", {"unused_authority": "revoked"})
+                    position = self._relative_position(observed)
+                    successor = self._observations.get(str(observed.get("observation_id", "")), {}).get("issuing_frame", {})
+                    if position is not None and position != before:
+                        return stop(f"{route}_unexpected_displacement", {
+                            "step_index": index, "expected_absolute_ms": before,
+                        })
+                    if position is None and successor.get("state", successor.get("kind")) == "world":
+                        return stop(f"{route}_position_unavailable", {"step_index": index})
                 return stop(f"{route}_{failure}", {"step_index": index, "action_id": action_id})
             native = receipt.get("native_receipt") if isinstance(receipt, Mapping) else None
             if not isinstance(native, Mapping):
@@ -1878,9 +2001,17 @@ class CockpitRunChannel:
             if not isinstance(next_observation, Mapping):
                 return stop(f"{route}_fresh_frame_missing", {"step_index": index})
             observed = dict(next_observation)
-            if self._relative_position(observed) != expected:
+            position = self._relative_position(observed)
+            successor = self._observations.get(str(observed.get("observation_id", "")), {}).get("issuing_frame", {})
+            if position is None and successor.get("state", successor.get("kind")) != "world":
+                completed_steps += 1  # The receipt proves movement; this prompt has no position fact.
+                return stop("guarded_move_relative_prompt_or_unknown_event" if guarded else "raw_move_relative_interrupted", {
+                    "step_index": index, "last_confirmed_absolute_ms": expected,
+                })
+            if position != expected:
                 return stop(f"{route}_unexpected_displacement", {"step_index": index,
                             "expected_absolute_ms": expected})
+            completed_steps += 1
             if index + 1 > int(bound["maximum"]):
                 return stop("derived_bound_exhausted", {"step_index": index})
         terminal = self._relative_position(observed)
@@ -2130,8 +2261,9 @@ class CockpitRunChannel:
         # a time-advancing continuation, so applying the wait-progress guard
         # would falsely reject finite menu and prompt transactions.
         is_surface_action = bool( observed["issuing_frame"].get( "surface_id" ) )
+        is_macro_stop_decision = observed.get("macro_stop_decision") is True
         if self._enforce_continuation_bounds and not self._relative_recipe_active and \
-                not is_surface_action and (
+                not is_surface_action and not is_macro_stop_decision and (
                 self._continuation is None or
                 self._continuation.get("observation_id") != str(observation_id) or
                 self._continuation.get("run_id") != observed["run_id"]
@@ -2262,6 +2394,21 @@ class CockpitRunChannel:
                     "receipt": dict(receipt),
                 }
             return self._fail_closed("native_receipt_missing", {"action_id": action_id})
+        if is_macro_stop_decision:
+            # A valid native rejection may name a different consuming owner
+            # (stale frame/child takeover). Authenticate its requested identity,
+            # but do not mislabel that honest rejection as receipt corruption.
+            request_matches = self._native_receipt_run_matches(
+                native, str(observed["run_id"]), surface_owned=is_surface_action
+            ) and str(native.get("requested_frame_id", native.get("frame_id", ""))) == str(observation_id) and \
+                native.get("action_id") == action_id and (
+                    not is_surface_action or native.get("requested_surface_id") == issuing_raw.get("surface_id")
+                )
+            if not request_matches:
+                return {**self._fail_closed("native_receipt_mismatch", {
+                    "action_id": action_id, "observation_id": str(observation_id),
+                    "native_receipt": dict(native), "unused_authority": "revoked",
+                }), "receipt": dict(receipt)}
         if native.get("accepted") is not True:
             # A rejected native semantic request leaves its frame authoritative.
             # Permit a distinct advertised request on that unchanged frame;
@@ -2273,12 +2420,18 @@ class CockpitRunChannel:
         ))
         if native_frame_id != str(observation_id) or \
                 str(native.get("action_id", "")) != str(action_id):
-            return {"ok": False, "error": "native_receipt_mismatch", "receipt": dict(receipt)}
+            return {**self._fail_closed("native_receipt_mismatch", {
+                "action_id": action_id, "observation_id": str(observation_id),
+                "native_receipt": dict(native), "unused_authority": "revoked",
+            }), "receipt": dict(receipt)}
         if is_surface_action:
             surface_id = str(issuing_raw.get("surface_id", ""))
             if str(native.get("requested_surface_id", "")) != surface_id or \
                     str(native.get("consuming_surface_id", "")) != surface_id:
-                return {"ok": False, "error": "native_receipt_mismatch", "receipt": dict(receipt)}
+                return {**self._fail_closed("native_receipt_mismatch", {
+                    "action_id": action_id, "observation_id": str(observation_id),
+                    "native_receipt": dict(native), "unused_authority": "revoked",
+                }), "receipt": dict(receipt)}
         same_frame_selection = str( action_id ) == "menu.select" and \
                                isinstance( next_frame, Mapping ) and \
                                str( next_frame.get( "frame_id", "" ) ) == str( observation_id )
@@ -2323,8 +2476,8 @@ class CockpitRunChannel:
             # turning this receipt into an empty observation would fabricate
             # sight while treating it as a failed action strands the wait.
             continuation = self._continuation
-            if continuation is None or \
-                    continuation.get("phase") != "awaiting_native_completion" or \
+            if (not is_macro_stop_decision and (continuation is None or
+                    continuation.get("phase") != "awaiting_native_completion")) or \
                     issuing_raw.get("state") != "activity_distraction" or \
                     ( issuing_raw.get("provenance") != "native_activity_distraction_query" and
                       issuing_raw.get("producer") != "activity_distraction_query" ):
@@ -2339,7 +2492,7 @@ class CockpitRunChannel:
                 },
                 "expected_postcondition": "accepted_native_return_then_later_avatar_observation",
                 "evidence_effect": "native_transition_receipt_persisted",
-                "continuation": {"state": "awaiting_native_completion"},
+                "continuation": {"state": "released" if is_macro_stop_decision else "awaiting_native_completion"},
             }
             self._transcript.append({
                 "kind": "action", "action_id": str(action_id),
@@ -2851,7 +3004,7 @@ def player_controls(availability: Optional[Mapping[str, bool]] = None) -> Dict[s
             "handle_classified_non_dangerous": "Handle only recognized non-dangerous native interruptions. Stop for danger, damage, unknown safety, or unavailable recovery. Movement also checks visible next-tile terrain and occupants.",
             "ignore_danger_and_interruptions": "Explicitly continue through classified in-game danger/damage where a supported native continuation exists; not permission to bypass unknown owners, unavailable recovery, or blocked movement.",
         },
-        "interruption_caveat": "Current implementation fail-closes many macro interruptions, revoking authority and finishing the session. This is different from successful macro completion: inspect error/final and partial receipts; do not replay. A primitive act lets you decide at each native owner.",
+        "interruption_caveat": "An ordinary interruption stops only the macro and releases its unused continuation. Inspect result.terminal_observation and partial progress, then choose a native action or observe again; do not replay the recipe automatically. Identity, receipt integrity, and missing authoritative state failures still finish the session.",
         "wait": {
             "example_request": {"action": "game.wait", "wait": {
                 "enabled": True, "target_delta_game_minutes": 1,

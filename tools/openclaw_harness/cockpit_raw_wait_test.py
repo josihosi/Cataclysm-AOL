@@ -135,8 +135,8 @@ class RawWaitTest(unittest.TestCase):
 
         self.assertFalse(result["ok"])
         self.assertEqual(result["error"], "native_wait_interrupted")
-        self.assertEqual(result["final"]["stop_detail"]["native_stop_reason"], "semantic_ui")
-        self.assertEqual(result["final"]["stop_detail"]["guarded_handling_count"], 0)
+        self.assertEqual(result["result"]["native_stop_reason"], "semantic_ui")
+        self.assertEqual(result["result"]["guarded_handling_count"], 0)
         self.assertEqual(dispatched, [])
 
     def test_raw_route_stops_on_interpretive_activity_and_stale_frame(self) -> None:
@@ -149,7 +149,7 @@ class RawWaitTest(unittest.TestCase):
         interrupted = service.call(self.request(target=101))
         self.assertEqual(interrupted["error"], "native_wait_interrupted")
         self.assertEqual(
-            interrupted["final"]["stop_detail"]["native_stop_reason"],
+            interrupted["result"]["native_stop_reason"],
             "requires_player_interpretation",
         )
         self.assertEqual(dispatched, [])
@@ -178,7 +178,7 @@ class RawWaitTest(unittest.TestCase):
         service, dispatched = self.service([monster])
         interrupted = service.call(self.request(target=101))
         self.assertEqual(interrupted["error"], "native_wait_interrupted")
-        self.assertEqual(interrupted["final"]["stop_detail"]["native_stop_reason"], "monster_spotted")
+        self.assertEqual(interrupted["result"]["native_stop_reason"], "monster_spotted")
         self.assertEqual(dispatched, [])
 
         service, dispatched = self.service([frame(1, 100), frame(2, 101)])
