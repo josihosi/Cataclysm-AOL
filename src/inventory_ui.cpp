@@ -3758,6 +3758,10 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
             if( entry == nullptr || !entry->is_item() ) {
                 continue;
             }
+            // The first semantic frame may precede a redraw.  Initialize the
+            // same denial cache the native row renderer uses before exposing
+            // selection availability and its explanation.
+            entry->cache_denial( preset );
             for( const item_location &location : entry->locations ) {
                 if( !location || !location->uid().is_valid() ) {
                     continue;
@@ -3767,8 +3771,14 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
                 if( enabled ) {
                     selectable_items.emplace_back( stable_id, location->tname() );
                 }
-                actions.push_back( { "inventory.select", stable_id, location->tname(), enabled } );
-                actions.push_back( { "inventory.details", stable_id, _( "Details" ), enabled } );
+                std::string label = location->tname();
+                if( !enabled && entry->denial && !entry->denial->empty() ) {
+                    // Project the same cached restriction shown beside the
+                    // native row, without guessing why selection is disabled.
+                    label += " — " + *entry->denial;
+                }
+                actions.push_back( { "inventory.select", stable_id, label, enabled } );
+                actions.push_back( { "inventory.details", stable_id, _( "Details" ), true } );
                 if( location->is_container() ) {
                     actions.push_back( { "inventory.contents", stable_id, _( "Contents" ), enabled } );
                 }
@@ -3825,7 +3835,8 @@ semantic_action_dispatch_result inventory_selector::handle_semantic_request(
     }
     for( inventory_column *column : get_all_columns() ) {
         for( inventory_entry *entry : column->get_entries( return_item, true ) ) {
-            if( entry == nullptr || !entry->is_selectable() || !entry->is_item() ) {
+            if( entry == nullptr || !entry->is_item() ||
+                ( !entry->is_selectable() && request.action_id != "inventory.details" ) ) {
                 continue;
             }
             for( const item_location &location : entry->locations ) {
@@ -3838,6 +3849,12 @@ semantic_action_dispatch_result inventory_selector::handle_semantic_request(
                                                inventory_selector_hint_from_location( location ) );
                 if( !resolved || resolved != location ) {
                     return { false, "stale_stable_id", "" };
+                }
+                if( !entry->is_selectable() && request.action_id == "inventory.details" ) {
+                    // A disabled pickup row can still be examined natively.
+                    // Preserve selection and address only this validated item.
+                    native_input = inventory_input{ "EXAMINE", 0, nullptr, resolved };
+                    return { true, "", "", true };
                 }
                 if( !highlight( resolved ) ) {
                     return { false, "invalid_stable_id", "" };
@@ -3960,7 +3977,7 @@ void inventory_selector::on_input( const inventory_input &input )
         }
     } else if( input.action == "EXAMINE" ) {
         const inventory_entry &selected = get_active_column().get_highlighted();
-        if( selected ) {
+        if( input.semantic_target || selected ) {
             const item_location &sitem = input.semantic_target ? input.semantic_target : selected.any_item();
             action_examine( sitem );
         }

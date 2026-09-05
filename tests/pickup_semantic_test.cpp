@@ -22,6 +22,8 @@ TEST_CASE( "pickup selection publishes native quantities before completing toggl
     clear_avatar();
     clear_map();
     avatar &you = get_avatar();
+    you.wear_item( item( itype_id( "pants" ) ) );
+    REQUIRE( you.is_wearing( itype_id( "pants" ) ) );
     map &here = get_map();
     const tripoint_bub_ms position = you.pos_bub();
     std::string item_type;
