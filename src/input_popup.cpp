@@ -340,7 +340,7 @@ std::string string_input_popup_imgui::query()
     bool semantic_cancelled = false;
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
-        semantic_scope.emplace( *manager, "string_prompt", "Text input",
+        semantic_scope.emplace( *manager, "string_prompt", label.empty() ? "Text input" : label,
         std::map<std::string, std::string>{ { "text", text } },
         std::vector<semantic_action_descriptor>{
             { "prompt.submit", "", _( "Submit" ), true },

@@ -6508,6 +6508,17 @@ look_around_result game::look_around(
     }
     mark_main_ui_adaptor_resize();
 #endif
+    std::optional<semantic_surface_scope> semantic_scope;
+    std::string semantic_native_action;
+    bool semantic_input = false;
+    const std::map<std::string, std::string> cursor_actions = {
+        { "cursor.north", "UP" }, { "cursor.south", "DOWN" },
+        { "cursor.west", "LEFT" }, { "cursor.east", "RIGHT" },
+        { "cursor.northwest", "LEFTUP" }, { "cursor.northeast", "RIGHTUP" },
+        { "cursor.southwest", "LEFTDOWN" }, { "cursor.southeast", "RIGHTDOWN" },
+        { "cursor.level_up", "LEVEL_UP" }, { "cursor.level_down", "LEVEL_DOWN" },
+        { "cursor.confirm", "CONFIRM" }, { "cursor.cancel", "QUIT" }
+    };
     do {
         u.view_offset = center - u.pos_bub();
         if( select_zone ) {
@@ -6543,16 +6554,67 @@ look_around_result game::look_around(
             ctxt.set_timeout( get_option<int>( "BLINK_SPEED" ) );
         }
 
+        if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+            const tripoint_abs_ms absolute = here.get_abs( lp );
+            const tripoint_rel_ms relative = lp - u.pos_bub();
+            const auto coordinates = []( const auto &position ) {
+                return string_format( "[%d,%d,%d]", position.x(), position.y(), position.z() );
+            };
+            const std::map<std::string, std::string> payload = {
+                { "cursor", coordinates( absolute ) }, { "relative_to_avatar", coordinates( relative ) },
+                { "mode", is_moving_zone ? "move_zone" : select_zone ? "zone_bounds" : "look" },
+                { "selection_stage", has_first_point ? "second_corner" : "first_point" },
+                { "first_point", has_first_point ? coordinates( here.get_abs( start_point ) ) : "" },
+                { "movement_step", "1" }
+            };
+            std::vector<semantic_action_descriptor> actions;
+            for( const auto &entry : cursor_actions ) {
+                bool enabled = true;
+                if( entry.second == "LEVEL_UP" ) {
+                    enabled = change_lv && fov_3d_z_range > 0 && lz < max_levz;
+                } else if( entry.second == "LEVEL_DOWN" ) {
+                    enabled = change_lv && fov_3d_z_range > 0 && lz > min_levz;
+                }
+                actions.push_back( { entry.first, "", entry.first.substr( 7 ), enabled } );
+            }
+            if( !semantic_scope ) {
+                semantic_scope.emplace( *manager, "look_cursor", _( "Select map position" ), payload,
+                actions, [&]( const semantic_action_request &request ) {
+                    const auto requested = cursor_actions.find( request.action_id );
+                    if( requested == cursor_actions.end() || !request.stable_id.value_or( "" ).empty() ||
+                        !request.parameters.empty() ) {
+                        return semantic_action_dispatch_result{ false, "invalid_parameters", "" };
+                    }
+                    if( ( requested->second == "LEVEL_UP" &&
+                          ( !change_lv || fov_3d_z_range <= 0 || lz >= max_levz ) ) ||
+                        ( requested->second == "LEVEL_DOWN" &&
+                          ( !change_lv || fov_3d_z_range <= 0 || lz <= min_levz ) ) ) {
+                        return semantic_action_dispatch_result{ false, "cursor_boundary", "" };
+                    }
+                    semantic_native_action = requested->second;
+                    return semantic_action_dispatch_result{ true, "", "" };
+                } );
+            } else {
+                semantic_scope->publish( payload, actions );
+            }
+        }
+
         //Wait for input
         // only specify a timeout here if "EDGE_SCROLL" is enabled
         // otherwise use the previously set timeout
         const tripoint_rel_ms edge_scroll = mouse_edge_scrolling_terrain( ctxt );
         const int scroll_timeout = get_option<int>( "EDGE_SCROLL" );
         const bool edge_scrolling = edge_scroll != tripoint_rel_ms::zero && scroll_timeout >= 0;
-        if( edge_scrolling ) {
-            action = ctxt.handle_input( scroll_timeout );
-        } else {
-            action = ctxt.handle_input();
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+        }
+        if( semantic_native_action.empty() ) {
+            action = edge_scrolling ? ctxt.handle_input( scroll_timeout ) : ctxt.handle_input();
+        }
+        semantic_input = !semantic_native_action.empty();
+        if( semantic_input ) {
+            action = std::move( semantic_native_action );
+            semantic_native_action.clear();
         }
         if( ( action == "LEVEL_UP" || action == "LEVEL_DOWN" || action == "MOUSE_MOVE" ||
               ctxt.get_direction_rel_ms( action ) ) && ( ( select_zone && has_first_point ) ||
@@ -6632,7 +6694,7 @@ look_around_result game::look_around(
                 }
             }
         } else if( std::optional<tripoint_rel_ms> vec = ctxt.get_direction_rel_ms( action ) ) {
-            if( fast_scroll ) {
+            if( fast_scroll && !semantic_input ) {
                 vec->x() *= soffset;
                 vec->y() *= soffset;
             }

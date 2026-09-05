@@ -12,6 +12,7 @@
 #include "game.h"
 #include "line.h"
 #include "input_context.h"
+#include "json.h"
 #include "map.h"
 #include "messages.h"
 #include "options.h"
@@ -634,10 +635,16 @@ void zone_manager_ui::display_zone_manager()
     faction_id expected_faction;
     bool expected_enabled = false;
     std::optional<int64_t> expected_revision;
+    std::map<std::string, std::optional<int64_t>> listed_revisions;
     std::optional<semantic_surface_scope> semantic_scope;
+    bool recreate_semantic_scope = false;
     g->set_zones_manager_open( true );
     zone_manager::get_manager().save_zones( "zmgr-temp" );
     while( !quit ) {
+        if( recreate_semantic_scope ) {
+            semantic_scope.reset();
+            recreate_semantic_scope = false;
+        }
         if( zone_cnt > 0 ) {
             blink = !blink;
             const zone_data &zone = zones[active_index].get();
@@ -661,84 +668,116 @@ void zone_manager_ui::display_zone_manager()
         std::string action;
         semantic_native_action.clear();
         if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
-            std::map<std::string, std::string> semantic_payload;
-            std::vector<semantic_action_descriptor> semantic_actions;
+            std::ostringstream rows;
+            JsonOut row_json( rows );
+            row_json.start_array();
+            listed_revisions.clear();
+            std::vector<semantic_action_descriptor> semantic_actions = {
+                { "zone.close", "", _( "Close Zone Manager" ), true },
+                { "zone.create", "", _( "Create zone" ), true },
+                { "zone.filter_faction", "", _( "Show zones for faction" ), debug_mode },
+                { "zone.show_all", "", _( "Toggle distant zones" ), true }
+            };
+            for( int index = 0; index < zone_cnt; ++index ) {
+                const zone_data &zone = zones[index].get();
+                const std::string id = zone.get_identity();
+                listed_revisions[id] = zone.get_semantic_revision();
+                row_json.start_object();
+                row_json.member( "id", id );
+                row_json.member( "name", zone.get_name() );
+                row_json.member( "type", zone.get_type().str() );
+                row_json.member( "faction", zone.get_faction().str() );
+                row_json.member( "start", zone.get_start_point().raw() );
+                row_json.member( "end", zone.get_end_point().raw() );
+                row_json.member( "enabled", zone.get_enabled() );
+                row_json.member( "selected", index == active_index );
+                row_json.end_object();
+                semantic_actions.push_back( { "zone.select", id, zone.get_name(), index != active_index } );
+            }
+            row_json.end_array();
+            zone_identity.clear();
+            expected_faction = zones_faction;
             if( zone_cnt > 0 ) {
                 const zone_data &active_zone = zones[active_index].get();
                 zone_identity = active_zone.get_identity();
-                expected_faction = zones_faction;
                 expected_enabled = active_zone.get_enabled();
                 expected_revision = active_zone.get_semantic_revision();
-                semantic_payload = {
-                    { "zone_id", zone_identity },
-                    { "faction", expected_faction.str() },
-                    { "enabled", expected_enabled ? "true" : "false" },
-                    { "revision", expected_revision ? std::to_string( *expected_revision ) : "unknown" }
-                };
-                semantic_actions = {
-                    { "zone.enable", zone_identity, _( "Enable zone" ), !expected_enabled },
-                    { "zone.disable", zone_identity, _( "Disable zone" ), expected_enabled },
-                    { "zone.close", "", _( "Close Zone Manager" ), true }
-                };
-                if( !semantic_scope ) {
-                    semantic_scope.emplace( *manager, "zone_manager", _( "Zone Manager" ), semantic_payload,
-                semantic_actions,
-                [ &mgr, &semantic_native_action, &zone_identity, &expected_faction, &expected_enabled,
-                  &expected_revision ]( const semantic_action_request &request ) {
-                    if( request.action_id == "zone.close" ) {
-                        if( request.stable_id.has_value() && !request.stable_id->empty() ) {
-                            return semantic_action_dispatch_result{ false, "invalid_close_target", "" };
+                semantic_actions.push_back( { "zone.enable", zone_identity, _( "Enable zone" ), !expected_enabled } );
+                semantic_actions.push_back( { "zone.disable", zone_identity, _( "Disable zone" ), expected_enabled } );
+                semantic_actions.push_back( { "zone.edit", zone_identity, _( "Edit zone" ), true } );
+                semantic_actions.push_back( { "zone.delete", zone_identity, _( "Delete zone" ), true } );
+            }
+            const std::map<std::string, std::string> semantic_payload = {
+                { "zone_id", zone_identity }, { "faction", expected_faction.str() },
+                { "faction_role", "display_filter; new zones belong to player faction" },
+                { "zones", rows.str() }, { "show_all", show_all_zones ? "true" : "false" },
+                { "enabled", zone_cnt > 0 && expected_enabled ? "true" : "false" },
+                { "revision", zone_cnt > 0 && expected_revision ? std::to_string( *expected_revision ) : "unknown" }
+            };
+            if( !semantic_scope ) {
+                semantic_scope.emplace( *manager, "zone_manager", _( "Zone Manager" ), semantic_payload,
+                semantic_actions, [&]( const semantic_action_request &request ) {
+                    const std::map<std::string, std::string> global_actions = {
+                        { "zone.close", "QUIT" }, { "zone.create", "ADD_ZONE" },
+                        { "zone.filter_faction", "CHANGE_FACTION" }, { "zone.show_all", "SHOW_ALL_ZONES" }
+                    };
+                    const auto global = global_actions.find( request.action_id );
+                    if( global != global_actions.end() ) {
+                        if( !request.stable_id.value_or( "" ).empty() ) {
+                            return semantic_action_dispatch_result{ false, "invalid_target", "" };
                         }
-                        semantic_native_action = "QUIT";
+                        if( request.action_id == "zone.filter_faction" && !debug_mode ) {
+                            return semantic_action_dispatch_result{ false, "unavailable", "" };
+                        }
+                        semantic_native_action = global->second;
                         return semantic_action_dispatch_result{ true, "", "" };
                     }
-                    if( request.stable_id.value_or( "" ) != zone_identity ) {
+                    const std::string target = request.stable_id.value_or( "" );
+                    const auto listed = listed_revisions.find( target );
+                    const auto current = std::find_if( zones.begin(), zones.end(),
+                    [&]( const zone_manager::ref_zone_data &entry ) {
+                        return entry.get().get_identity() == target;
+                    } );
+                    if( listed == listed_revisions.end() || current == zones.end() ) {
                         return semantic_action_dispatch_result{ false, "invalid_zone_id", "" };
                     }
-                    if( request.action_id != "zone.enable" && request.action_id != "zone.disable" ) {
-                        return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
-                    }
-                    const std::vector<zone_manager::ref_zone_data> current_zones = mgr.get_zones( expected_faction );
-                    const auto current = std::find_if( current_zones.begin(), current_zones.end(),
-                    [ &zone_identity ]( const zone_manager::ref_zone_data &entry ) {
-                        return entry.get().get_identity() == zone_identity;
-                    } );
-                    if( current == current_zones.end() ) {
-                        return semantic_action_dispatch_result{ false, "stale_zone_id", "" };
-                    }
-                    zone_data &zone = current->get();
+                    const zone_data &zone = current->get();
                     if( zone.get_faction() != expected_faction ) {
                         return semantic_action_dispatch_result{ false, "wrong_faction", "" };
                     }
-                    if( zone.get_semantic_revision() != expected_revision ) {
+                    if( zone.get_semantic_revision() != listed->second ) {
                         return semantic_action_dispatch_result{ false, "stale_revision", "" };
+                    }
+                    if( request.action_id == "zone.select" ) {
+                        const int selected = std::distance( zones.begin(), current );
+                        if( selected == active_index ) {
+                            return semantic_action_dispatch_result{ false, "selection_unchanged", "" };
+                        }
+                        active_index = selected;
+                        semantic_native_action = "SEMANTIC_SELECTION";
+                        return semantic_action_dispatch_result{ true, "", "" };
+                    }
+                    if( target != zone_identity ) {
+                        return semantic_action_dispatch_result{ false, "zone_not_selected", "" };
                     }
                     if( zone.get_enabled() != expected_enabled ) {
                         return semantic_action_dispatch_result{ false, "stale_enabled_state", "" };
                     }
-                    if( request.action_id == "zone.enable" ) {
-                        if( expected_enabled ) {
-                            return semantic_action_dispatch_result{ false, "unavailable", "" };
-                        }
+                    if( request.action_id == "zone.enable" && !expected_enabled ) {
                         semantic_native_action = "ENABLE_ZONE";
-                    } else {
-                        if( !expected_enabled ) {
-                            return semantic_action_dispatch_result{ false, "unavailable", "" };
-                        }
+                    } else if( request.action_id == "zone.disable" && expected_enabled ) {
                         semantic_native_action = "DISABLE_ZONE";
+                    } else if( request.action_id == "zone.edit" ) {
+                        semantic_native_action = "CONFIRM";
+                    } else if( request.action_id == "zone.delete" ) {
+                        semantic_native_action = "REMOVE_ZONE";
+                    } else {
+                        return semantic_action_dispatch_result{ false, "unavailable", "" };
                     }
                     return semantic_action_dispatch_result{ true, "", "" };
-                    } );
-                } else {
-                    semantic_scope->publish( semantic_payload, semantic_actions );
-                }
+                } );
             } else {
-                if( !semantic_scope ) {
-                    semantic_scope.emplace( *manager, "zone_manager", _( "Zone Manager" ), semantic_payload,
-                    semantic_actions );
-                } else {
-                    semantic_scope->publish( semantic_payload, semantic_actions );
-                }
+                semantic_scope->publish( semantic_payload, semantic_actions );
             }
         }
 
@@ -751,6 +790,16 @@ void zone_manager_ui::display_zone_manager()
             if( !semantic_native_action.empty() ) {
                 action = semantic_native_action;
             }
+        }
+
+        if( semantic_scope && ( action == "ADD_ZONE" || action == "ADD_PERSONAL_ZONE" ||
+                                action == "CONFIRM" || action == "CHANGE_FACTION" ||
+                                ( action == "QUIT" && stuff_changed ) ) ) {
+            // Child dialogs can return only to open another child.  The list
+            // does not own input again until its native branch has completed.
+            active_semantic_surface_manager()->withhold_parent_authority_until_recreated(
+                semantic_scope->surface_id() );
+            recreate_semantic_scope = true;
         }
 
         if( action == "ADD_ZONE" ) {
@@ -877,6 +926,7 @@ void zone_manager_ui::display_zone_manager()
             .edit( facname );
             zones_faction = faction_id( facname );
             zones = get_zones();
+            active_index = 0;
         } else if( action == "QUIT" ) {
             if( stuff_changed ) {
                 const query_ynq_result res = query_ynq( _( "Save changes?" ) );
