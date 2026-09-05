@@ -189,6 +189,47 @@ class CockpitFileBridgeTest(unittest.TestCase):
                 {"ok": False, "error": "response_artifact_path_invalid"},
             )
 
+    def test_out_of_band_cancel_preserves_bridge_and_next_request(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            child = "exec(" + repr("""import json, os, sys, time
+print(json.dumps({"cockpit_live_session":{"schema":"caol-cockpit-live-session-v1","entry_mode":"cockpit_live_session","run_id":"run-a","binding_id":"native-a","bridge_binding_id":"bound-a"}}), flush=True)
+for line in sys.stdin:
+    request = json.loads(line)
+    controls = os.path.join(os.environ["OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR"], "controls")
+    deadline = time.time() + 5
+    while request.get("action") == "game.wait" and time.time() < deadline and not any(name.startswith("cancel-") for name in os.listdir(controls)):
+        time.sleep(0.01)
+    if request.get("action") == "game.wait" and any(name.startswith("cancel-") for name in os.listdir(controls)):
+        print(json.dumps({"ok": False, "error": "player_cancelled", "action_outcome": "unknown"}), flush=True)
+    else:
+        print(json.dumps({"ok": True, "result": {"observation_id": "uncancelled"}}), flush=True)
+""") + ")"
+            bridge = FileBackedCockpitBridge(directory, [sys.executable, "-u", "-c", child], binding_id="bound-a", require_session_ready=True)
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            while not (directory / "status.json").is_file() or json.loads((directory / "status.json").read_text())["state"] != "ready":
+                time.sleep(.01)
+            self.assertTrue(bridge.send_request(directory, request_id="wait-1", binding_id="bound-a", request={"action":"game.wait"})["ok"])
+            while json.loads((directory / "status.json").read_text())["state"] != "awaiting_response":
+                time.sleep(.01)
+            cancel = bridge.send_cancel(directory, request_id="wait-1", binding_id="bound-a", run_id="run-a")
+            self.assertTrue(cancel["ok"], cancel)
+            while not (directory / "responses" / "wait-1.receipt.json").exists():
+                time.sleep(.01)
+            response = json.loads((directory / "responses" / "wait-1.json").read_text())
+            self.assertEqual(response["error"], "player_cancelled")
+            self.assertEqual(response["action_outcome"], "unknown")
+            self.assertIsNone(bridge._child.poll())
+            for marker in (directory / "controls").glob("cancel-*.json"):
+                marker.unlink()
+            self.assertTrue(bridge.send_request(directory, request_id="look-1", binding_id="bound-a", request={"action":"game.observe"})["ok"])
+            while not (directory / "responses" / "look-1.receipt.json").exists():
+                time.sleep(.01)
+            self.assertEqual(json.loads((directory / "responses" / "look-1.json").read_text())["result"]["observation_id"], "uncancelled")
+            bridge.cleanup(directory, "bound-a")
+            thread.join(2)
+
     def test_request_identity_order_stale_rejection_and_complete_artifacts(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp) / "session"

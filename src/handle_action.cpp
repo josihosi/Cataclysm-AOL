@@ -696,6 +696,10 @@ static std::string openclaw_harness_visible_entities( avatar &viewer )
                  << openclaw_harness_quote_action_value( openclaw_harness_attitude( viewer, *creature ) )
                  << ",\"dx\":" << relative.x() << ",\"dy\":" << relative.y();
         entities << ",\"absolute_ms\":[" << absolute.x() << ',' << absolute.y() << ',' << absolute.z() << ']';
+        entities << ",\"health\":{\"hp\":" << creature->get_hp()
+                 << ",\"maximum_hp\":" << creature->get_hp_max()
+                 << ",\"dead\":" << ( creature->is_dead_state() ? "true" : "false" )
+                 << ",\"provenance\":\"diagnostic_visible_creature_state\"}";
         if( const monster *monster = creature->as_monster() ) {
             // The process address is only a run-local handle.  A fixture tag
             // binds this visible monster back to its applied save receipt.
@@ -987,10 +991,14 @@ static std::vector<semantic_action_descriptor> semantic_surface_actions(
     for( const std::pair<std::string, std::string> &action : actions ) {
         const std::map<std::string, std::string> labels = {
             { "world.fire", _( "Fire wielded weapon" ) },
-            { "world.move.northwest", _( "Move northwest" ) },
-            { "world.move.northeast", _( "Move northeast" ) },
-            { "world.move.southwest", _( "Move southwest" ) },
-            { "world.move.southeast", _( "Move southeast" ) },
+            { "world.move.north", _( "Move north (interact or attack if occupied)" ) },
+            { "world.move.south", _( "Move south (interact or attack if occupied)" ) },
+            { "world.move.west", _( "Move west (interact or attack if occupied)" ) },
+            { "world.move.east", _( "Move east (interact or attack if occupied)" ) },
+            { "world.move.northwest", _( "Move northwest (interact or attack if occupied)" ) },
+            { "world.move.northeast", _( "Move northeast (interact or attack if occupied)" ) },
+            { "world.move.southwest", _( "Move southwest (interact or attack if occupied)" ) },
+            { "world.move.southeast", _( "Move southeast (interact or attack if occupied)" ) },
             { "world.level_up", _( "Go up (stairs or climb)" ) },
             { "world.level_down", _( "Go down (stairs or descend)" ) }
         };
@@ -1047,14 +1055,17 @@ static void openclaw_harness_semantic_movement_receipt( const std::string &frame
         const std::string &action_id, const tripoint_abs_ms &before,
         const tripoint_abs_ms &expected, const tripoint_abs_ms &after, const map &here,
         const tripoint_bub_ms &after_bub,
-        bool move_handled )
+        bool move_handled, bool melee_performed )
 {
     if( frame_id.empty() || !openclaw_harness_semantic_step_trace_enabled() ) {
         return;
     }
     const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
-    const char *const outcome = !move_handled ? "blocked" : after == expected ? "moved" :
-                                after == before ? "no_progress" : "unexpected_displacement";
+    // move() returns false after melee to stop auto-travel, even for a performed
+    // attack. Preserve that distinct native outcome instead of calling it blocked.
+    const char *const outcome = melee_performed ? "melee_attack" : !move_handled ? "blocked" :
+                                after == expected ? "moved" : after == before ? "no_progress" :
+                                "unexpected_displacement";
     // Movement may shift the map bubble.  Capture receipt coordinates in
     // absolute map-square space at their own side of that shift, matching the
     // semantic frame contract rather than translating pre-move bubble points
@@ -1065,7 +1076,8 @@ static void openclaw_harness_semantic_movement_receipt( const std::string &frame
           << openclaw_harness_quote_action_value( run_id )
           << ",\"frame_id\":" << openclaw_harness_quote_action_value( frame_id )
           << ",\"action_id\":" << openclaw_harness_quote_action_value( action_id )
-          << ",\"accepted\":" << ( std::strcmp( outcome, "moved" ) == 0 ? "true" : "false" )
+          << ",\"accepted\":" << ( melee_performed || std::strcmp( outcome, "moved" ) == 0 ?
+                                   "true" : "false" )
           << ",\"outcome\":" << openclaw_harness_quote_action_value( outcome )
           << ",\"coordinate_space\":\"absolute_ms\""
           << ",\"before_absolute_ms\":[" << before.x() << ',' << before.y() << ',' << before.z()
@@ -3581,8 +3593,9 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
                     veh_door_part_before = ovp->vehicle().next_part_to_open(
                                                ovp->part_index(), true );
                 }
+                bool melee_performed = false;
                 const bool move_handled = avatar_action::move(
-                                              player_character, here, tripoint_rel_ms( dest_delta, 0 ) );
+                                              player_character, here, tripoint_rel_ms( dest_delta, 0 ), &melee_performed );
                 const tripoint_bub_ms pos_after = player_character.pos_bub();
                 const tripoint_abs_ms pos_after_abs = player_character.pos_abs();
                 std::string movement_semantic_action = semantic_action;
@@ -3615,7 +3628,7 @@ bool game::do_regular_action( action_id &act, avatar &player_character,
                                                        openclaw_harness_pending_world_frame;
                     openclaw_harness_semantic_movement_receipt(
                         movement_frame, movement_semantic_action, pos_before_abs, expected_abs,
-                        pos_after_abs, here, pos_after, move_handled );
+                        pos_after_abs, here, pos_after, move_handled, melee_performed );
                     openclaw_harness_pending_world_frame = openclaw_harness_semantic_step_frame(
                                 "world", {}, "post_step" );
                 }

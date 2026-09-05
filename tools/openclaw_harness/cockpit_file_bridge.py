@@ -83,6 +83,8 @@ class FileBackedCockpitBridge:
         self.status_path = self.session_dir / "status.json"
         self.requests_dir = self.session_dir / "requests"
         self.responses_dir = self.session_dir / "responses"
+        self.controls_dir = self.session_dir / "controls"
+        self.active_request_path = self.session_dir / "active-request.json"
         self._seen: set[str] = set()
         self._spooled_request_ids: set[str] = set()
         self._sequence = 0
@@ -210,6 +212,7 @@ class FileBackedCockpitBridge:
         self.session_dir.mkdir(parents=True)
         self.requests_dir.mkdir()
         self.responses_dir.mkdir()
+        self.controls_dir.mkdir()
         os.mkfifo(self.input_path, 0o600)
         _atomic_json(self.session_dir / "bridge.manifest.json", {
             "schema": SCHEMA,
@@ -414,6 +417,13 @@ class FileBackedCockpitBridge:
                 **({"session_descriptor": self._active_session_descriptor}
                    if self._active_session_descriptor else {}),
             )
+            _atomic_json(self.active_request_path, {
+                "schema": "caol-cockpit-active-request-v1",
+                "request_id": request_id, "binding_id": self.binding_id,
+                "run_id": str(self._active_session_descriptor.get("run_id", "")),
+                "request_identity": _request_identity(request_bytes),
+                "session_generation": self._session_generation,
+            })
             self._child.stdin.write(request_bytes.decode("utf-8"))
             self._child.stdin.flush()
             response_line = self._read_complete_response()
@@ -428,6 +438,7 @@ class FileBackedCockpitBridge:
                 response_line = json.dumps(response)
 
             self._persist_response(request_id, request_bytes, response_line.encode("utf-8"))
+            self.active_request_path.unlink(missing_ok=True)
             terminal = response.get("result") if isinstance(response, Mapping) else None
             # Only a successful explicit player finish/quit can terminalize
             # the controller. An error response cannot authorize game cleanup.
@@ -463,10 +474,12 @@ class FileBackedCockpitBridge:
                                    cleanup={"status": "deferred_to_scenario_terminalization"})
                 return True
         except (BrokenPipeError, OSError):
+            self.active_request_path.unlink(missing_ok=True)
             exit_code = self._child.poll() if self._child is not None else None
             self._write_status("process_dead", failed_request_id=locals().get("request_id", ""),
                                child_exit_code=exit_code)
         except (ValueError, TypeError, json.JSONDecodeError) as exc:
+            self.active_request_path.unlink(missing_ok=True)
             if "request_bytes" in locals():
                 response = {"ok": False, "error": str(exc), "action_outcome": "unknown",
                             "next_action": "Observe the current game; do not replay the request."}
@@ -671,6 +684,39 @@ class FileBackedCockpitBridge:
         envelope = {"request_id": request_id, "binding_id": binding_id, "request": dict(request)}
         _atomic_json(request_path, envelope)
         return {"ok": True, "request_id": request_id}
+
+    @staticmethod
+    def send_cancel(session_dir: Path, *, request_id: str, binding_id: str,
+                    run_id: str = "", reason: str = "player_cancelled") -> dict[str, Any]:
+        session_dir = Path(session_dir)
+        try:
+            status = json.loads((session_dir / "status.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {"ok": False, "error": "session_status_unavailable"}
+        if status.get("binding_id") != binding_id:
+            return {"ok": False, "error": "request_binding_drift"}
+        if status.get("state") != "awaiting_response" or status.get("inflight_request_id") != request_id:
+            return {"ok": False, "error": "request_not_in_flight", "request_id": request_id}
+        active = session_dir / "active-request.json"
+        if not active.is_file():
+            return {"ok": False, "error": "active_request_unavailable", "request_id": request_id}
+        try:
+            identity = json.loads(active.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return {"ok": False, "error": "active_request_unavailable", "request_id": request_id}
+        if identity.get("request_id") != request_id or identity.get("binding_id") != binding_id:
+            return {"ok": False, "error": "active_request_identity_mismatch", "request_id": request_id}
+        if not run_id or identity.get("run_id") != run_id:
+            return {"ok": False, "error": "cancel_run_mismatch", "request_id": request_id}
+        generation = status.get("session_generation", 0)
+        if identity.get("session_generation", 0) != generation:
+            return {"ok": False, "error": "cancel_generation_mismatch", "request_id": request_id}
+        cancel_id = "cancel-" + hashlib.sha256(request_id.encode("utf-8")).hexdigest()
+        marker = session_dir / "controls" / (cancel_id + ".json")
+        _atomic_json(marker, {"schema": "caol-cockpit-cancel-v1", "cancel_id": cancel_id,
+                              "request_id": request_id, "binding_id": binding_id,
+                              "run_id": run_id, "session_generation": generation, "reason": reason})
+        return {"ok": True, "cancel_id": cancel_id, "request_id": request_id}
 
     @staticmethod
     def response_status(session_dir: Path, request_id: str, *, summary: bool = True) -> dict[str, Any]:

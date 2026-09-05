@@ -185,8 +185,11 @@ static bool check_water_affect_items( avatar &you )
     return true;
 }
 
-bool avatar_action::move( avatar &you, map &m, const tripoint_rel_ms &d )
+bool avatar_action::move( avatar &you, map &m, const tripoint_rel_ms &d, bool *melee_performed )
 {
+    if( melee_performed != nullptr ) {
+        *melee_performed = false;
+    }
     map &here = get_map();
 
     bool in_shell = you.has_active_mutation( trait_SHELL2 ) ||
@@ -403,7 +406,10 @@ bool avatar_action::move( avatar &you, map &m, const tripoint_rel_ms &d )
                          msg_safe_mode );
                 return false;
             }
-            you.melee_attack( critter, true );
+            const bool performed = you.melee_attack( critter, true );
+            if( melee_performed != nullptr ) {
+                *melee_performed = performed;
+            }
             if( critter.is_hallucination() ) {
                 critter.die( &m, &you );
             }
@@ -431,7 +437,10 @@ bool avatar_action::move( avatar &you, map &m, const tripoint_rel_ms &d )
             return false;
         }
 
-        you.melee_attack( np, true );
+        const bool performed = you.melee_attack( np, true );
+        if( melee_performed != nullptr ) {
+            *melee_performed = performed;
+        }
         np.make_angry();
         return false;
     }

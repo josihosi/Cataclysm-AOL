@@ -312,7 +312,7 @@ class SemanticStepChannelTest(unittest.TestCase):
             original_stat = Path.stat
 
             def sampled_stat(path: Path):
-                if Path(path).resolve() == source.resolve():
+                if Path(path).absolute() == source.absolute():
                     return type("Stat", (), {"st_size": sampled_size})()
                 return original_stat(path)
 

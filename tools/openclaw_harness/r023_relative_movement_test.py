@@ -67,7 +67,7 @@ def bound(maximum: int) -> dict[str, object]:
 
 class RelativeMovementTest(unittest.TestCase):
     def service(self, frames: list[dict[str, object]], *, outcomes: list[str] | None = None,
-                binding: list[str] | None = None) -> tuple[cockpit.CockpitService, list[str], list[dict[str, object]]]:
+                binding: list[str] | None = None, melee_after: list[int] | None = None, native_overrides: dict | None = None) -> tuple[cockpit.CockpitService, list[str], list[dict[str, object]]]:
         index = [0]
         dispatched: list[str] = []
         finals: list[dict[str, object]] = []
@@ -90,13 +90,14 @@ class RelativeMovementTest(unittest.TestCase):
             expected = [before[item] + delta[item] for item in range(3)]
             outcome = outcomes[index[0]]
             index[0] += 1
-            after = expected if outcome == "moved" else before
+            after = expected if outcome == "moved" else (melee_after if outcome == "melee_attack" and melee_after is not None else before)
             return {"native_receipt": {
                 "run_id": issuing["run_id"], "frame_id": issuing["frame_id"], "action_id": action_id,
-                "accepted": outcome == "moved", "outcome": outcome,
+                "accepted": outcome in {"moved", "melee_attack"}, "outcome": outcome,
                 "coordinate_space": "absolute_ms",
                 "before_absolute_ms": before, "expected_absolute_ms": expected,
                 "after_absolute_ms": after, "after_terrain": "t_pavement",
+                **(native_overrides or {}),
             }, "_next_frame": frames[index[0]]}
 
         channel = cockpit.CockpitRunChannel(
@@ -150,6 +151,44 @@ class RelativeMovementTest(unittest.TestCase):
         self.assertEqual(stopped["error"], "raw_move_relative_blocked")
         self.assertEqual(actions, ["world.move.west"])
         self.assertEqual(stopped["result"]["partial_progress"], 0)
+
+    def test_melee_attack_is_an_authenticated_stationary_interruption(self) -> None:
+        service, actions, _ = self.service([
+            frame(1, [1, 1, 0]), frame(2, [1, 1, 0]),
+        ], outcomes=["melee_attack"])
+        result = service.call({"action": "game.raw_move_relative", "raw_move_relative": {
+            "enabled": True, "offset_ms": [1, 0], "bound": bound(1),
+        }})
+        self.assertEqual(result["error"], "raw_move_relative_interrupted")
+        self.assertEqual(result["result"]["native_stop_reason"], "melee_attack")
+        self.assertEqual(result["result"]["partial_progress"], 0)
+        self.assertEqual(actions, ["world.move.east"])
+
+    def test_melee_cannot_promote_rejected_or_wrong_destination_receipts(self) -> None:
+        for changed, error in (({"accepted": False}, "native_action_rejected"),
+                               ({"expected_absolute_ms": [9, 9, 0]}, "raw_move_relative_receipt_mismatch")):
+            with self.subTest(changed=changed):
+                service, actions, finals = self.service([
+                    frame(1, [1, 1, 0]), frame(2, [1, 1, 0]),
+                ], outcomes=["melee_attack"], native_overrides=changed)
+                result = service.call({"action": "game.raw_move_relative", "raw_move_relative": {
+                    "enabled": True, "offset_ms": [1, 0], "bound": bound(1)}})
+                self.assertEqual(result["error"], error)
+                self.assertEqual(actions, ["world.move.east"])
+                self.assertEqual(finals, [])
+
+    def test_displaced_melee_attack_is_an_authenticated_interruption(self) -> None:
+        service, actions, _ = self.service([
+            frame(1, [1, 1, 0]), frame(2, [0, 1, 0]),
+        ], outcomes=["melee_attack"], melee_after=[0, 1, 0])
+        result = service.call({"action": "game.raw_move_relative", "raw_move_relative": {
+            "enabled": True, "offset_ms": [1, 0], "bound": bound(1),
+        }})
+        self.assertEqual(result["error"], "raw_move_relative_interrupted")
+        self.assertEqual(result["result"]["native_stop_reason"], "melee_attack")
+        self.assertEqual(result["result"]["terminal_absolute_ms"], [0, 1, 0])
+        self.assertEqual(result["result"]["partial_progress"], 0)
+        self.assertEqual(actions, ["world.move.east"])
 
     def test_independent_route_authority_rejects_the_other_relative_operation(self) -> None:
         service, actions, _ = self.service([frame(1, [1, 1, 0])])

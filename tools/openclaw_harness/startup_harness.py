@@ -4965,6 +4965,10 @@ def open_cockpit_game_service(
     def await_native_completion(activity_frame_id: str) -> None:
         deadline = time.monotonic() + transition_timeout_seconds
         while time.monotonic() <= deadline:
+            if read_cancel_request is not None:
+                cancellation = read_cancel_request()
+                if isinstance(cancellation, Mapping) and cancellation.get("cancelled") is True:
+                    raise ValueError("player_cancelled")
             frame = read_frame()
             if str(frame.get("paired_raw_frame_id", frame.get("frame_id", ""))) != activity_frame_id:
                 return
@@ -4992,6 +4996,7 @@ def open_cockpit_game_service(
                     stable_id=stable_id, parameters=parameters,
                     proof_step_label=proof_step_label, proof_step_index=proof_step_index,
                     read_process_state=read_process_state,
+                    cancel_requested=read_cancel_request,
                 )
             finally:
                 if performance is not None:
@@ -5036,6 +5041,27 @@ def open_cockpit_game_service(
         bridge_binding_id=bridge_binding_id,
         runtime_binding_id=runtime_binding_id,
     )
+
+    def read_cancel_request() -> Mapping[str, Any]:
+        session = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "")
+        if not session:
+            return {}
+        try:
+            active = json.loads((Path(session) / "active-request.json").read_text(encoding="utf-8"))
+            request_id = active.get("request_id")
+            if not isinstance(request_id, str) or not request_id or \
+                    active.get("binding_id") != binding_id or active.get("run_id") != run_id:
+                return {}
+            name = "cancel-" + hashlib.sha256(request_id.encode("utf-8")).hexdigest() + ".json"
+            path = Path(session) / "controls" / name
+            marker = json.loads(path.read_text(encoding="utf-8"))
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError, AttributeError):
+            return {}
+        if not isinstance(marker, Mapping) or marker.get("schema") != "caol-cockpit-cancel-v1" or \
+                any(marker.get(key) != active.get(key) for key in
+                    ("request_id", "binding_id", "run_id", "session_generation")):
+            return {}
+        return {**marker, "cancelled": True, "evidence_ref": str(path)}
 
     def read_binding_id() -> str:
         if live_session and bridge_binding_id:
@@ -5155,6 +5181,7 @@ def open_cockpit_game_service(
         witness_evidence_ceiling=witness_evidence_ceiling,
         causal_boundary_precondition=causal_boundary_precondition,
         dispatch_player_fire_setup=player_fire_setup,
+        cancel_request=read_cancel_request if live_session else None,
     )
     service = CockpitService( run_channel=channel, allowed_live_operations=allowed_live_operations )
     service.live_channel = channel
@@ -5462,6 +5489,7 @@ def execute_semantic_act(
     declared_action_id: Optional[str] = None,
     allow_terminal_exit: bool = False,
     read_process_state: Optional[Callable[[], Mapping[str, Any]]] = None,
+    cancel_requested: Optional[Callable[[], Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Apply one advertised action from its issuing run-bound frame."""
     run_dir = Path(run_dir).resolve()
@@ -5580,6 +5608,11 @@ def execute_semantic_act(
                     "reason": "missing_stable_id" if expects_stable_id and stable_id is None else
                     "unadvertised_stable_id",
                     "surface_request": request}
+        cancellation = cancel_requested() if cancel_requested is not None else None
+        if isinstance(cancellation, Mapping) and cancellation.get("cancelled") is True:
+            return {"accepted": False, "reason": "player_cancelled",
+                    "action_outcome": "not_dispatched", "cancellation": dict(cancellation),
+                    "surface_request": request, "native_receipt": None, "next_frame": None}
         request_path = run_dir / "semantic.requests.jsonl"
         try:
             with request_path.open("a", encoding="utf-8") as stream:
@@ -5625,12 +5658,26 @@ def execute_semantic_act(
         # native wake can publish its receipt during the final sleep; testing
         # the deadline at the top of the loop would discard that already
         # durable receipt and falsely report a transport timeout.
+        last_native_receipt = None
+
+        def cancelled_dispatch() -> Optional[Dict[str, Any]]:
+            cancellation = cancel_requested() if cancel_requested is not None else None
+            if isinstance(cancellation, Mapping) and cancellation.get("cancelled") is True:
+                return {"accepted": False, "reason": "player_cancelled",
+                        "action_outcome": "unknown", "cancellation": dict(cancellation),
+                        "surface_request": request, "native_receipt": last_native_receipt,
+                        "next_frame": None}
+            return None
+
         while True:
             try:
                 source, owned = refresh_semantic_step_trace(
                     profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
                 )
             except OSError:
+                cancelled = cancelled_dispatch()
+                if cancelled is not None:
+                    return cancelled
                 remaining = deadline - time.monotonic()
                 if remaining <= 0:
                     break
@@ -5669,6 +5716,7 @@ def execute_semantic_act(
                             "mismatched_fields": mismatched,
                             "next_frame": None,
                         }
+                    last_native_receipt = dict(native_receipt)
                     if transition_event is None:
                         transition_event = append_semantic_surface_transition_event(
                             run_dir, run_id, request, native_receipt,
@@ -5797,7 +5845,13 @@ def execute_semantic_act(
                         # The successor world frame can be drawn between the
                         # semantic acknowledgement and this receipt.
                         if action_id.startswith("world.move.") and movement_receipt is None:
-                            time.sleep(observe_interval_seconds)
+                            cancelled = cancelled_dispatch()
+                            if cancelled is not None:
+                                return cancelled
+                            remaining = deadline - time.monotonic()
+                            if remaining <= 0:
+                                break
+                            time.sleep(min(observe_interval_seconds, remaining))
                             continue
                         durable_native_receipt = movement_receipt or bound_surface_receipt
                         if movement_receipt is not None:
@@ -5836,6 +5890,9 @@ def execute_semantic_act(
                         return {"accepted": True, "surface_request": request,
                                 "native_receipt": durable_native_receipt, "transition_event": transition_event,
                                 "next_frame": next_frame}
+            cancelled = cancelled_dispatch()
+            if cancelled is not None:
+                return cancelled
             remaining = deadline - time.monotonic()
             if remaining <= 0:
                 break

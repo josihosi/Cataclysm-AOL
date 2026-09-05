@@ -79,6 +79,7 @@ class CockpitRunChannel:
         witness_evidence_ceiling: str = "focused",
         causal_boundary_precondition: Optional[Callable[[], Mapping[str, Any]]] = None,
         dispatch_player_fire_setup: Optional[Callable[[Mapping[str, Any]], Mapping[str, Any]]] = None,
+        cancel_request: Optional[Callable[[], Mapping[str, Any]]] = None,
     ) -> None:
         self._read_native_frame = read_native_frame
         self._dispatch_advertised_action = dispatch_advertised_action
@@ -120,6 +121,7 @@ class CockpitRunChannel:
         self._sealed_witness_terminal: Optional[Dict[str, Any]] = None
         self._causal_boundary_precondition = causal_boundary_precondition
         self._dispatch_player_fire_setup = dispatch_player_fire_setup
+        self._cancel_request = cancel_request
         self._relative_recipe_active = False
 
     @staticmethod
@@ -502,6 +504,20 @@ class CockpitRunChannel:
         self._state = "finished"
         self._final_report = report
         return report
+
+    def _cancel_result(self, action_outcome: str = "not_dispatched", **detail: Any) -> Optional[Dict[str, Any]]:
+        if self._cancel_request is None:
+            return None
+        try:
+            marker = self._cancel_request()
+        except Exception:
+            marker = {}
+        if not isinstance(marker, Mapping) or marker.get("cancelled") is not True:
+            return None
+        return self._fail_operation("player_cancelled", {
+            **dict(marker), **detail, "action_outcome": action_outcome,
+            "unused_authority": "revoked",
+        })
 
     def _fail_operation(self, reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
         """Stop this operation and revoke its grants; only the player ends a session."""
@@ -1141,6 +1157,10 @@ class CockpitRunChannel:
             })
 
         while True:
+            cancelled = self._cancel_result("not_dispatched", native_action_count=tool_round_trips,
+                                            terminal_game_minutes=self._signal_value(observed, "game_minutes"))
+            if cancelled is not None:
+                return cancelled
             if self._state != "active":
                 return {"ok": False, "error": "live_session_finished", "final": self._final_report}
             observed_current = self._signal_value(observed, "game_minutes")
@@ -1622,6 +1642,10 @@ class CockpitRunChannel:
             return self._fail_operation(reason, detail)
 
         while True:
+            cancelled = self._cancel_result("not_dispatched",
+                                            terminal_game_minutes=self._signal_value(observed, "game_minutes"))
+            if cancelled is not None:
+                return cancelled
             current = self._signal_value(observed, "game_minutes")
             if current is None:
                 record = self._observations.get(str(observed.get("observation_id", "")), {})
@@ -1677,6 +1701,9 @@ class CockpitRunChannel:
                     self._await_native_completion(str(observed.get("observation_id", "")))
                     observed = self.observe()
                 except ValueError as exc:
+                    if str(exc) == "player_cancelled":
+                        return self._cancel_result("unknown", action_id="world.wait") or stop(
+                            "native_wait_completion_unavailable", {"detail": str(exc)})
                     return stop("native_wait_completion_unavailable", {"detail": str(exc)})
                 continue
             advertised = record.get("actions") if isinstance(record, Mapping) else None
@@ -1894,6 +1921,12 @@ class CockpitRunChannel:
 
         for index, action_id in enumerate(plan):
             while True:
+                cancelled = self._cancel_result("not_dispatched", step_index=index,
+                    partial_progress=completed_steps, origin_absolute_ms=origin,
+                    terminal_absolute_ms=self._relative_position(observed),
+                    native_receipts=receipts)
+                if cancelled is not None:
+                    return cancelled
                 record = self._observations.get(str(observed.get("observation_id", "")))
                 raw = record.get("issuing_frame") if isinstance(record, Mapping) else None
                 if not isinstance(raw, Mapping):
@@ -2007,6 +2040,45 @@ class CockpitRunChannel:
             receipt = outcome.get("receipt")
             if isinstance(receipt, Mapping):
                 receipts.append(receipt)
+            # Preserve session and player control failures before interpreting
+            # any native receipt that may describe an earlier leg.
+            if outcome.get("ok") is not True and outcome.get("error") in {
+                    "binding_drift", "player_cancelled",
+            }:
+                return outcome
+            if isinstance(receipt, Mapping) and isinstance(receipt.get("native_receipt"), Mapping) and \
+                    receipt["native_receipt"].get("outcome") == "melee_attack":
+                if outcome.get("ok") is not True:
+                    return outcome
+                native = receipt["native_receipt"]
+                if native.get("accepted") is not True or \
+                        native.get("coordinate_space") != "absolute_ms" or \
+                        native.get("before_absolute_ms") != before or \
+                        native.get("expected_absolute_ms") != expected or \
+                        native.get("after_absolute_ms") is None or \
+                        (raw.get("surface_id") and (
+                            native.get("requested_surface_id") != raw["surface_id"] or
+                            native.get("consuming_surface_id") != raw["surface_id"])) or \
+                        native.get("requested_frame_id", native.get("frame_id", "")) != str(observed["observation_id"]) or \
+                        native.get("action_id") != action_id or \
+                        not self._native_receipt_run_matches(native, str(observed["run_id"]), \
+                                                            surface_owned=bool(raw.get("surface_id"))):
+                    return stop(f"{route}_receipt_mismatch", {"step_index": index, "action_id": action_id})
+                next_observation = outcome.get("observation")
+                if isinstance(next_observation, Mapping):
+                    observed = dict(next_observation)
+                else:
+                    try:
+                        observed = self.observe()
+                    except ValueError as exc:
+                        return stop(f"{route}_fresh_frame_missing", {"detail": str(exc), "step_index": index})
+                if self._relative_position(observed) != native.get("after_absolute_ms"):
+                    return stop(f"{route}_receipt_mismatch", {"step_index": index,
+                                  "expected_absolute_ms": native.get("after_absolute_ms"),
+                                  "terminal_absolute_ms": self._relative_position(observed)})
+                return stop(f"{route}_interrupted", {"step_index": index,
+                                  "native_stop_reason": "melee_attack",
+                                  "action_outcome": "melee_attack"})
             if outcome.get("ok") is not True:
                 if "binding drift" in str(outcome.get("error", "")):
                     return self._fail_operation("binding_drift", {"unused_authority": "revoked"})
@@ -2394,6 +2466,10 @@ class CockpitRunChannel:
                 return {"ok": False, "error": "unauthorized_recovery_action"}
         if self._dispatch_advertised_action is None:
             return {"ok": False, "error": "native_action_dispatch_unavailable"}
+        cancelled = self._cancel_result("not_dispatched", action_id=str(action_id),
+                                        observation_id=str(observation_id))
+        if cancelled is not None:
+            return cancelled
         observed["used"] = True
         if parameters:
             receipt = self._dispatch_advertised_action(
@@ -2433,6 +2509,12 @@ class CockpitRunChannel:
             self._transcript.append({"kind": "action", "action_id": str(action_id),
                                      "observation_id": str(observation_id), "result": result})
             return result
+        if isinstance(receipt, Mapping) and receipt.get("reason") == "player_cancelled":
+            return {**self._fail_operation("player_cancelled", {
+                "action_id": str(action_id), "observation_id": str(observation_id),
+                "action_outcome": receipt.get("action_outcome", "unknown"),
+                "cancellation": dict(receipt.get("cancellation", {})),
+            }), "receipt": dict(receipt)}
         if not isinstance(receipt, Mapping):
             return self._fail_operation("native_receipt_missing", {"action_id": action_id})
         native = receipt.get("native_receipt")
@@ -3069,7 +3151,7 @@ def player_controls(availability: Optional[Mapping[str, bool]] = None) -> Dict[s
             "handle_classified_non_dangerous": "Handle only recognized non-dangerous native interruptions. Stop for danger, damage, unknown safety, or unavailable recovery. Movement also checks visible next-tile terrain and occupants.",
             "ignore_danger_and_interruptions": "Explicitly continue through classified in-game danger/damage where a supported native continuation exists; not permission to bypass unknown owners, unavailable recovery, or blocked movement.",
         },
-        "interruption_caveat": "An ordinary interruption stops only the macro and releases its unused continuation. Inspect result.terminal_observation and partial progress, then choose a native action or observe again; do not replay the recipe automatically. All action and observation failures leave the game running. Failed ownership or receipt checks revoke the current grants; observe again before choosing another action. Only explicit run.quit or run.finish ends the session.",
+        "interruption_caveat": "An ordinary interruption stops only the macro and releases its unused continuation. Inspect result.terminal_observation and partial progress, then choose a native action or observe again; do not replay the recipe automatically. Cancellation is cooperative: an input already emitted may have an unknown outcome, so collect the original request and perform a fresh look. All action and observation failures leave the game running. Failed ownership or receipt checks revoke the current grants; observe again before choosing another action. Only explicit run.quit or run.finish ends the session.",
         "wait": {
             "example_request": {"action": "game.wait", "wait": {
                 "enabled": True, "target_delta_game_minutes": 1,

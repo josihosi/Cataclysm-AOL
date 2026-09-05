@@ -76,6 +76,7 @@ python3 tools/openclaw_harness/play_cli.py --session SESSION controls
 python3 tools/openclaw_harness/play_cli.py --session SESSION messages --contains TEXT
 python3 tools/openclaw_harness/play_cli.py --session SESSION call --request REQUEST.json
 python3 tools/openclaw_harness/play_cli.py --session SESSION collect
+python3 tools/openclaw_harness/play_cli.py --session SESSION cancel --reason "stop this pending request"
 python3 tools/openclaw_harness/play_cli.py --session SESSION inspect SELECTOR --limit 5
 python3 tools/openclaw_harness/play_cli.py --session SESSION journal --reason "What this run established"
 python3 tools/openclaw_harness/play_cli.py --session SESSION finish --witness FILE
@@ -106,7 +107,7 @@ the cockpit checks the operation and recipe against the session. It supplies no 
 Collect the response once and continue from its terminal observation, or use `look` to reassess.
 
 The client owns request IDs, binding, pending responses and the last displayed frame. A pending
-action needs `collect`, never resubmission. Choose from the current surface's actions; supply
+action needs `collect`, never resubmission. Use `cancel` to stop a pending request cooperatively; it remains available while another CLI is waiting. Then collect the original request and look again. Cancellation leaves the game running. Input already emitted can have an unknown outcome, and a native receipt already written remains evidence. Choose from the current surface's actions; supply
 `--target` only when that action advertises a stable ID. A rejected stale owner needs a fresh
 `look` before deciding what to do. Nested menus are game state, not necessarily failures.
 

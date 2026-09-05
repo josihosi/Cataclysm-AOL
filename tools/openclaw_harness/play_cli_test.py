@@ -54,6 +54,40 @@ class PlayerCliTest(unittest.TestCase):
         self.cli("collect")
         return pending["request_id"]
 
+    def test_cancel_is_out_of_band_and_preserves_pending_identity(self):
+        self.write("play-client.json", {"binding_id": "bound-a", "pending": {
+            "request_id": "pending-1", "request": {"action": "game.wait"}}})
+        self.write("status.json", {"binding_id": "bound-a", "state": "awaiting_response",
+                                    "inflight_request_id": "pending-1"})
+        self.write("active-request.json", {"request_id": "pending-1", "binding_id": "bound-a",
+                                            "run_id": "run-a"})
+        (self.session / "controls").mkdir()
+        with session_lock(self.session / "play-client.lock"):
+            result = self.cli("cancel", "--reason", "user stopped waiting")
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["request_id"], "pending-1")
+        self.assertEqual(json.loads((self.session / "play-client.json").read_text())["pending"]["request_id"], "pending-1")
+        markers = list((self.session / "controls").glob("cancel-*.json"))
+        self.assertEqual(len(markers), 1)
+        marker = json.loads(markers[0].read_text())
+        self.assertEqual(marker["request_id"], "pending-1")
+        self.assertEqual(marker["binding_id"], "bound-a")
+        self.assertEqual(marker["run_id"], "run-a")
+
+    def test_cancel_collection_revokes_old_frame_and_preserves_unknown_outcome(self):
+        self.observe()
+        pending = self.cli("act", "world.wait")
+        self.reply(pending["request_id"], {"ok": False, "error": "player_cancelled",
+            "failure": {"unused_authority": "revoked", "detail": {"action_outcome": "unknown"}}})
+        result = self.cli("collect", ok=False)
+        self.assertEqual(result["next"], "look")
+        state = json.loads((self.session / "play-client.json").read_text())
+        self.assertNotIn("pending", state)
+        self.assertNotIn("observation_id", state)
+        self.assertFalse(state.get("finished", False))
+        self.assertEqual(state["cancellation"]["action_outcome"], "unknown")
+        self.assertEqual(self.cli("look")["state"], "pending")
+
     def test_performance_is_readable_under_pending_request_lock(self):
         self.cli("look")
         before = (self.session / "play-client.json").read_bytes()

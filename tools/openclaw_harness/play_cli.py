@@ -124,6 +124,24 @@ class PlayerClient:
             result["baseline_saved"] = str(args.save_baseline)
         return result
 
+    def cancel(self, reason: str) -> dict[str, Any]:
+        pending = self.state.get("pending")
+        if not isinstance(pending, dict) or not pending.get("request_id"):
+            return {"ok": False, "error": "no_pending_request", "next": "look"}
+        status = json.loads((self.session / "status.json").read_text(encoding="utf-8"))
+        run_id = str(status.get("session_descriptor", {}).get("run_id", ""))
+        if not run_id:
+            try:
+                active = json.loads((self.session / "active-request.json").read_text(encoding="utf-8"))
+                run_id = str(active.get("run_id", ""))
+            except (OSError, json.JSONDecodeError):
+                pass
+        if not run_id:
+            request = pending.get("request", {})
+            run_id = str(request.get("run_id", "")) if isinstance(request, dict) else ""
+        return Bridge.send_cancel(self.session, request_id=str(pending["request_id"]),
+                                  binding_id=self.binding, run_id=run_id, reason=reason)
+
     def collect(self, wait_seconds: float = 0) -> dict[str, Any]:
         pending = self.state.get("pending")
         if not pending:
@@ -174,6 +192,18 @@ class PlayerClient:
         if not full.get("ok"):
             return full
         response = full["response"]
+        if isinstance(response.get("failure"), dict) and response["failure"].get("unused_authority") == "revoked" or \
+                response.get("error") == "player_cancelled" or response.get("reason") == "player_cancelled":
+            # Cancellation revokes the displayed frame. Require a fresh look
+            # before the player can choose another action.
+            self.state.pop("observation_id", None)
+            self.state.pop("observation_request_id", None)
+            self.state["cancellation"] = {
+                "request_id": request_id,
+                "reason": response.get("reason", response.get("error")),
+                "action_outcome": response.get("failure", {}).get("detail", {}).get(
+                    "action_outcome", response.get("action_outcome", "unknown")),
+            }
         if isinstance(response.get("operation_availability"), dict):
             self.state["operation_availability"] = response["operation_availability"]
         observation = response.get("observation", response.get("result", {}))
@@ -352,6 +382,8 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("look", help="Observe the current input owner and its legal actions")
     commands.add_parser("collect", help="Collect the outstanding response without replaying input")
+    cancel = commands.add_parser("cancel", help="Request cooperative cancellation of the outstanding request")
+    cancel.add_argument("--reason", default="player_cancelled")
     quit_command = commands.add_parser("quit", help="Explicitly end the owned run without a gameplay claim")
     quit_command.add_argument("--reason", required=True)
     messages = commands.add_parser("messages", help="Read native messages from the displayed observation; latest matching page by default")
@@ -392,6 +424,10 @@ def main(argv=None):
             # Independent telemetry must remain readable while another CLI is
             # waiting with the request-ownership lock. It never edits that state.
             result = PlayerClient(args.session).performance(args)
+        elif args.command == "cancel":
+            # Cancellation is an out-of-band control and must remain usable
+            # while the submitting client owns the request lock.
+            result = PlayerClient(args.session).cancel(args.reason)
         else:
             with session_lock(args.session / "play-client.lock"):
                 client = PlayerClient(args.session)

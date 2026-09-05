@@ -27,7 +27,9 @@ void eat_or_use( avatar &you, item_location loc );
 
 // Standard movement; handles attacks, traps, &c. Returns false if auto move
 // should be canceled
-bool move( avatar &you, map &m, const tripoint_rel_ms &d );
+// Optional observation distinguishes a performed melee attack (including a miss)
+// from movement refusal without changing the auto-move return contract.
+bool move( avatar &you, map &m, const tripoint_rel_ms &d, bool *melee_performed = nullptr );
 /** Handles swimming by the player. Called by avatar_action::move(). */
 void swim( map &m, avatar &you, const tripoint_bub_ms &p );
 
