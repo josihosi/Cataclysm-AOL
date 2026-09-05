@@ -28133,6 +28133,12 @@ def execute_probe_steps(
                 report["stop_after_step"] = True
                 reports.append( report )
                 return reports
+            if cockpit_step_explicitly_quit(report):
+                # run.quit ends the whole scenario. Do not execute later
+                # ordinary steps after the player's terminal decision.
+                report["stop_after_step"] = True
+                reports.append(report)
+                return reports
             if step.get("stop_after_live_session") is True:
                 reports.append( report )
                 return reports
@@ -35062,6 +35068,18 @@ def run_controlled_camp_setup_probe(
     return 0 if accepted else 1
 
 
+def cockpit_step_explicitly_quit(step: Mapping[str, Any]) -> bool:
+    """Identify a terminal live-session report that ended by player quit."""
+    live = step.get("cockpit_live_session") if isinstance(step, Mapping) else None
+    final = live.get("final") if isinstance(live, Mapping) else None
+    detail = final.get("stop_detail") if isinstance(final, Mapping) else None
+    return (isinstance(final, Mapping) and
+            final.get("schema") == "caol-cockpit-live-final-v1" and
+            final.get("state") == "finished" and
+            isinstance(detail, Mapping) and
+            detail.get("explicit_player_quit") is True)
+
+
 def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     scenario = load_scenario(args.scenario)
     if bool(getattr(args, "cockpit_live_session", False)):
@@ -35955,7 +35973,17 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
              if str(report.get("label", "") or "").strip() == post_relaunch["terminal_save_step_label"]),
             None,
         )
-        if terminal_step is None or terminal_step.get("stop_after_step"):
+        explicit_player_quit = cockpit_step_explicitly_quit(terminal_step)
+        if explicit_player_quit:
+            # A declared post-relaunch contract belongs to a successful saved
+            # world finish. Explicit run.quit ends the whole scenario and has
+            # no native save-quit boundary to validate or reload.
+            relaunch = {
+                "status": "skipped_explicit_player_quit",
+                "initial_pid": pid,
+                "reason": "explicit_player_quit_ends_scenario_without_saved_world_reentry",
+            }
+        elif terminal_step is None or terminal_step.get("stop_after_step"):
             relaunch = {
                 "status": "terminal_save_step_not_completed",
                 "initial_pid": pid,
@@ -36263,7 +36291,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     verdict = "inconclusive_no_artifact_match"
     screen_summary = start_result.get("screen", {}) if isinstance(start_result.get("screen"), dict) else {}
     version_matches_runtime = screen_summary.get("version_matches_runtime_paths")
-    if post_relaunch is not None and relaunch.get("status") != "ready":
+    if post_relaunch is not None and relaunch.get("status") not in {
+            "ready", "skipped_explicit_player_quit"}:
         verdict = "blocked_" + str(relaunch.get("status", "relaunch_failed"))
     elif abort_report is not None:
         verdict = str(abort_report.get("verdict", "inconclusive_screen_text_guard"))

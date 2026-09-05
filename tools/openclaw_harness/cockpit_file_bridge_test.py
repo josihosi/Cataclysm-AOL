@@ -702,6 +702,44 @@ for line in sys.stdin:
             self.assertFalse(thread.is_alive())
             self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
 
+    def test_declared_reentry_run_quit_terminalizes_without_reentry(self):
+        """A player quit ends the scenario even when finish supports reentry."""
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            child = (
+                "import json,os,sys; "
+                "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
+                "'run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
+                "print(json.dumps({'cockpit_live_session':d}),flush=True); "
+                "sys.stdin.readline(); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'}))"
+            )
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", child], binding_id="bound-a",
+                require_session_ready=True, session_reentries=1,
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            while not (directory / "status.json").is_file() or \
+                    json.loads((directory / "status.json").read_text())["state"] != "ready":
+                time.sleep(0.01)
+            self.assertTrue(bridge.send_request(
+                directory, request_id="quit-first", binding_id="bound-a",
+                request={"action": "run.quit", "stop_reason": "player_cancelled"},
+            )["ok"])
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+            response = json.loads((directory / "responses" / "quit-first.json").read_text())
+            self.assertTrue(response["ok"])
+            self.assertEqual(response["result"]["state"], "finished")
+            receipt = json.loads((directory / "responses" / "quit-first.receipt.json").read_text())
+            self.assertEqual(receipt["session_generation"], 0)
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["state"], "safe_to_cleanup")
+            self.assertEqual(status["terminal_request_id"], "quit-first")
+            self.assertNotIn("remaining_session_reentries", status)
+
     def test_real_cockpit_operation_failure_can_observe_then_explicitly_quit(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp) / "session"

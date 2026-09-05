@@ -250,7 +250,9 @@ class FileBackedCockpitBridge:
             receipt["request_identity"].get("action") in {"run.finish", "run.quit"} and \
             isinstance(terminal, Mapping) and terminal.get("schema") == "caol-cockpit-live-final-v1" and \
             terminal.get("state") == "finished"
-        next_state = ("transitioning" if self.session_reentries else "terminalizing") if is_terminal else "ready"
+        terminal_action = receipt["request_identity"].get("action")
+        next_state = ("transitioning" if self.session_reentries and terminal_action == "run.finish"
+                      else "terminalizing") if is_terminal else "ready"
         # Publish admission state before making the response collectible. A
         # client may submit its next action immediately after seeing a receipt.
         # Final responses must never briefly reopen ordinary admission.
@@ -445,7 +447,7 @@ class FileBackedCockpitBridge:
             if request.get("action") in {"run.finish", "run.quit"} and response.get("ok") is True and \
                     isinstance(terminal, Mapping) and terminal.get("schema") == "caol-cockpit-live-final-v1" and \
                     terminal.get("state") == "finished":
-                if self.session_reentries:
+                if request.get("action") == "run.finish" and self.session_reentries:
                     self.session_reentries -= 1
                     self._write_status(
                         "transitioning",
