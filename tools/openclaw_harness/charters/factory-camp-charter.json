@@ -1,0 +1,14 @@
+{
+  "claim": "Explore the living camp as a player: understand the nearby NPCs and what they carry or do, try a useful conversation or follow/stay instruction, and investigate camp or zone controls. Choose the order and useful follow-up actions from what the game shows. Report actual outcomes, confusing information and missing operations; setup is not product proof.",
+  "material_proof": "Cite native actor identities, chosen actions and what subsequently changes. Explain a missing observation or action without guessing its outcome. This baseline is harness usability diagnosis, not a complete product verdict.",
+  "current_uncertainty": "Can a fresh Luna understand and operate the camp through the CLI without source-code archaeology?",
+  "forbidden_shortcuts": [
+    "raw physical input or parent-surface fallback",
+    "manufacturing game outcomes"
+  ],
+  "honest_stop_conditions": [
+    "useful outcomes or concrete capability gaps are established",
+    "binding is unavailable"
+  ],
+  "requested_evidence_ceiling": "zero-credit"
+}

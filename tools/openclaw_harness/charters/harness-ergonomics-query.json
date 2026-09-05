@@ -1,0 +1,11 @@
+{
+  "requirements": [
+    {
+      "key": "capabilities.playtest.ergonomics",
+      "op": "eq",
+      "value": "native_free_play",
+      "minimum_evidence": "declared"
+    }
+  ],
+  "preferences": []
+}

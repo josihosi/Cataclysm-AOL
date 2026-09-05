@@ -1,0 +1,15 @@
+{
+  "outcome": "Have an ordinary spoken exchange with a nearby NPC through the configured local Gemma runner. Discover who heard the sentence, whether a real model request and reply occurred, and any visible consequence of an ordinary follow or stay instruction. Use actor-bound inspection and exact logs when needed. This qualifies harness access and observability, not model quality or all CAOL dialogue behavior.",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.playtest.factory",
+        "op": "eq",
+        "value": "npc-llm",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  },
+  "scenario_id": "harness.npc_llm_freeplay_mcw"
+}

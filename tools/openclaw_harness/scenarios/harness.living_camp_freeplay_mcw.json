@@ -1,0 +1,150 @@
+{
+  "manifest_version": 2,
+  "name": "harness.living_camp_freeplay_mcw",
+  "description": "Explore the living camp as a player: understand the nearby NPCs and what they carry or do, try a useful conversation or follow/stay instruction, and investigate camp or zone controls. Choose the order and useful follow-up actions from what the game shows. Report actual outcomes, confusing information and missing operations; setup is not product proof.",
+  "profile": "harness-camp-freeplay",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.playtest.factory": "camp"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "cockpit:game.move_relative"
+    ],
+    "forbidden_input": [
+      "guessed-key",
+      "physical-key",
+      "keyboard",
+      "mouse",
+      "focus",
+      "ocr",
+      "screen-coordinate",
+      "direct-state-mutation"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "harness-camp-freeplay",
+    "config_profile": "dev-harness",
+    "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "harness-camp-freeplay",
+      "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_living_camp",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_living_camp",
+      "cleanup_on_finish": true,
+      "objective": "Explore the living camp as a player: understand the nearby NPCs and what they carry or do, try a useful conversation or follow/stay instruction, and investigate camp or zone controls. Choose the order and useful follow-up actions from what the game shows. Report actual outcomes, confusing information and missing operations; setup is not product proof.",
+      "proof_targets": [
+        "understandable player and NPC state",
+        "useful native interaction and observed consequence",
+        "specific usability gaps and honest cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "run.witness",
+        "run.finish",
+        "game.move_relative"
+      ],
+      "invariants": [
+        "fixture setup and all diagnostic results earn zero feature credit",
+        "no fabricated game state or gameplay result",
+        "native input ownership remains authoritative",
+        "preserve contradictions and distinguish receipt acceptance from game outcomes"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.move_relative"
+      ],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_gates": [
+    {
+      "id": "living_camp_session",
+      "label": "Bound living camp session",
+      "boundary_step": "operate_living_camp",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "worker_controlled_live_cockpit_session",
+            "gameplay_credit": false
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:"
+        ]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": [
+      "living_camp_session"
+    ],
+    "terminal": [
+      "living_camp_session"
+    ]
+  },
+  "semantic_only_startup": true,
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides": {
+    "LLM_INTENT_ENABLE": "false"
+  }
+}

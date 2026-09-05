@@ -1,0 +1,14 @@
+{
+  "claim": "Use ordinary inventory, pickup and item activation to prepare and light a small fire, observe its real effects and resource use, then finish through native menus. Diagnose reusable control gaps rather than certify faction responses. Missing lighter or fuel may be created through explicitly recorded native debug setup; manufactured items earn no product credit.",
+  "material_proof": "Cite item UIDs, native drop/pickup/use and targeting receipts, subsequent ownership/charges/fire fields, contradictions and actual cleanup. Setup is zero-credit; distinguish menu acceptance from completed action.",
+  "current_uncertainty": "Can fresh Luna perform ordinary item handling and fire setup through native CLI owners?",
+  "forbidden_shortcuts": [
+    "raw physical input or parent-surface fallback",
+    "creating fire through a debug command and calling it ordinary ignition"
+  ],
+  "honest_stop_conditions": [
+    "useful outcomes or concrete reusable capability gaps established",
+    "binding unavailable"
+  ],
+  "requested_evidence_ceiling": "zero-credit"
+}

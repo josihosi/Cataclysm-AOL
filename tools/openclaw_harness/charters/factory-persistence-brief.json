@@ -1,0 +1,15 @@
+{
+  "outcome": "Live in the prepared camp: complete an ordinary item exchange, compare cancellation, observe follow/stay behavior, and preserve identifiable item, order and zone changes across a native save and process reload. Choose your trajectory and evidence, then continue useful play in the restored world. This qualifies reusable harness access and persistence, not all camp behavior. The local NPC language model is disabled in this scene.",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.playtest.factory",
+        "op": "eq",
+        "value": "living-persistence",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  },
+  "scenario_id": "harness.living_persistence_freeplay_mcw"
+}

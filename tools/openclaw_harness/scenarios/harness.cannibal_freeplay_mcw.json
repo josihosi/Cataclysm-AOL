@@ -1,0 +1,228 @@
+{
+  "manifest_version": 2,
+  "name": "harness.cannibal_freeplay_mcw",
+  "description": "Explore the exposed roof and nearby ecology as a player. Qualify sustained native waiting and useful time/distance observation, deliberately cancel a pending operation and continue in the same game, and retrieve the identities or transitions needed to explain developing signals or faction state. Choose a meaningful game-time boundary from the current scene and observed rate. Ordinary fire tools and roof fuel are supplied as zero-credit setup. This qualifies reusable control, observation and resource behavior; a full cannibal raid verdict is later product work.",
+  "profile": "harness-cannibal-freeplay",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r029_fire_signal_roof_cannibal_in_range_v2",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.playtest.factory": "cannibal"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit structured native action/wait/movement operations"
+    ],
+    "forbidden_input": [
+      "guessed-key",
+      "physical-key",
+      "keyboard",
+      "mouse",
+      "focus",
+      "ocr",
+      "screen-coordinate",
+      "direct-state-mutation"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "harness-cannibal-freeplay",
+    "config_profile": "dev-harness",
+    "fixture": "r029_fire_signal_roof_cannibal_in_range_v2",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "harness-cannibal-freeplay",
+      "fixture": "r029_fire_signal_roof_cannibal_in_range_v2",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r029_fire_signal_roof_cannibal_in_range_v2/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r029_cannibal_roof_laboratory",
+      "seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "audit_saved_player_items",
+      "label": "audit_r029_cannibal_fire_tools",
+      "required_items": [
+        "brazier",
+        "lighter"
+      ],
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_r029_cannibal_roof_surface",
+      "offsets": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_tile_flat_roof"
+      ],
+      "required_items": [
+        "log"
+      ],
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_r029_cannibal_has_no_fixture_fire",
+      "offsets": [
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ]
+      ],
+      "forbidden_fields": [
+        "fd_fire",
+        "fd_smoke"
+      ],
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r029_cannibal_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_freeplay",
+      "cleanup_on_finish": true,
+      "objective": "Explore the exposed roof and nearby ecology as a player. Qualify sustained native waiting and useful time/distance observation, deliberately cancel a pending operation and continue in the same game, and retrieve the identities or transitions needed to explain developing signals or faction state. Choose a meaningful game-time boundary from the current scene and observed rate. Ordinary fire tools and roof fuel are supplied as zero-credit setup. This qualifies reusable control, observation and resource behavior; a full cannibal raid verdict is later product work.",
+      "proof_targets": [
+        "native observations and action outcomes",
+        "independent behavioral verdicts and diagnostic gaps",
+        "honest saving, process exit and cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "declared cockpit native macros",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture manufacture and diagnostic interventions receive no natural-gameplay credit",
+        "do not fabricate behavior, identity or causal conclusions",
+        "continue useful observation after a defect when the remaining causal footing is clean"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.keep_watch",
+        "game.raw_wait",
+        "game.move_relative",
+        "game.guarded_move_relative"
+      ],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_gates": [
+    {
+      "id": "bound_freeplay",
+      "label": "Current bound player-controlled scenario",
+      "boundary_step": "operate_freeplay",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "worker_controlled_live_cockpit_session",
+            "gameplay_credit": false
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:"
+        ]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": [
+      "bound_freeplay"
+    ],
+    "terminal": [
+      "bound_freeplay"
+    ]
+  },
+  "semantic_only_startup": true,
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION"
+  ],
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides": {
+    "LLM_INTENT_ENABLE": "false"
+  }
+}

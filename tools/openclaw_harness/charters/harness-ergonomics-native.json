@@ -1,0 +1,15 @@
+{
+  "claim": "Determine whether a fresh LLM can understand and operate the current native game interface with the player CLI.",
+  "material_proof": "Cite current native observations, action receipts, resulting player state, and any missing information or contradictions encountered during freely chosen waiting and nested-interface interaction. Report save and exit outcomes honestly. This is harness usability diagnosis only, with zero product-feature credit.",
+  "current_uncertainty": "Whether current state presentation, action discovery, transport bookkeeping and witness retrieval suffice without source-code archaeology.",
+  "forbidden_shortcuts": [
+    "raw keys or screen-coordinate input",
+    "manufacturing game state or gameplay results",
+    "treating accepted input as its unobserved game outcome"
+  ],
+  "honest_stop_conditions": [
+    "the usability question is settled with cited observations or a concrete missing capability",
+    "native input ownership or binding is unavailable"
+  ],
+  "requested_evidence_ceiling": "zero-credit"
+}

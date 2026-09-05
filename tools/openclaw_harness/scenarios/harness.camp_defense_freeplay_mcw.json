@@ -1,0 +1,154 @@
+{
+  "manifest_version": 2,
+  "name": "harness.camp_defense_freeplay_mcw",
+  "description": "Qualify ordinary melee and ranged combat, weapon/reload interaction, damage observation and exact visible-creature debug removal in a disposable prepared camp. Choose useful targets and setup from the native controls. Record debug setup separately from ordinary combat and preserve identities and before/after state. This scene does not stage a bandit shakedown or prove its lifecycle. The camp fixture supplies an empty six-shooter and compatible ammunition; these items are setup only. A nearby NPC uses local Gemma 4 E4B; include a useful spoken exchange and inspect its real reply while preparing or recovering from the encounter.",
+  "profile": "harness-camp-defense",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "harness_prepared_camp_revolver_2026-09-05",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.playtest.factory": "camp-defense"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit structured native action/wait/movement operations"
+    ],
+    "forbidden_input": [
+      "guessed-key",
+      "physical-key",
+      "keyboard",
+      "mouse",
+      "focus",
+      "ocr",
+      "screen-coordinate",
+      "direct-state-mutation"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": [
+      "macos"
+    ],
+    "profile": "harness-camp-defense",
+    "config_profile": "dev-harness",
+    "fixture": "harness_prepared_camp_revolver_2026-09-05",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "harness-camp-defense",
+      "fixture": "harness_prepared_camp_revolver_2026-09-05",
+      "helper": "none",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/harness_prepared_camp_revolver_2026-09-05/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_freeplay_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_freeplay",
+      "cleanup_on_finish": true,
+      "objective": "Qualify ordinary melee and ranged combat, weapon/reload interaction, damage observation and exact visible-creature debug removal in a disposable prepared camp. Choose useful targets and setup from the native controls. Record debug setup separately from ordinary combat and preserve identities and before/after state. This scene does not stage a bandit shakedown or prove its lifecycle. The camp fixture supplies an empty six-shooter and compatible ammunition; these items are setup only. A nearby NPC uses local Gemma 4 E4B; include a useful spoken exchange and inspect its real reply while preparing or recovering from the encounter.",
+      "proof_targets": [
+        "native observations and action outcomes",
+        "independent behavioral verdicts and diagnostic gaps",
+        "honest saving, process exit and cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "declared cockpit native macros",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture manufacture and diagnostic interventions receive no natural-gameplay credit",
+        "do not fabricate behavior, identity or causal conclusions",
+        "continue useful observation after a defect when the remaining causal footing is clean"
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.keep_watch",
+        "game.raw_wait",
+        "game.move_relative",
+        "game.guarded_move_relative"
+      ],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_gates": [
+    {
+      "id": "bound_freeplay",
+      "label": "Current bound player-controlled scenario",
+      "boundary_step": "operate_freeplay",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "worker_controlled_live_cockpit_session",
+            "gameplay_credit": false
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:"
+        ]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": [
+      "bound_freeplay"
+    ],
+    "terminal": [
+      "bound_freeplay"
+    ]
+  },
+  "semantic_only_startup": true,
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "profile_option_overrides": {
+    "LLM_INTENT_ENABLE": "true",
+    "LLM_INTENT_BACKEND": "ollama",
+    "LLM_INTENT_OLLAMA_URL": "http://127.0.0.1:11434",
+    "LLM_INTENT_OLLAMA_MODEL": "hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest",
+    "LLM_INTENT_PYTHON": "/opt/homebrew/bin/python3",
+    "LLM_INTENT_RANDOM_CALL": "0",
+    "DEBUG_LLM_INTENT": "true",
+    "DEBUG_LLM_INTENT_UI": "true",
+    "DEBUG_LLM_INTENT_LOG": "true"
+  }
+}

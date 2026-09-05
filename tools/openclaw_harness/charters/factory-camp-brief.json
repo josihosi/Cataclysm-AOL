@@ -1,0 +1,15 @@
+{
+  "outcome": "Explore the living camp as a player: understand the nearby NPCs and what they carry or do, try a useful conversation or follow/stay instruction, and investigate camp or zone controls. Choose the order and useful follow-up actions from what the game shows. Report actual outcomes, confusing information and missing operations; setup is not product proof.",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.playtest.factory",
+        "op": "eq",
+        "value": "camp",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  },
+  "scenario_id": "harness.living_camp_freeplay_mcw"
+}

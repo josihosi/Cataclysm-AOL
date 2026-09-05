@@ -1,0 +1,15 @@
+{
+  "outcome": "Determine whether a fresh LLM can understand and operate the current native game interface with the player CLI.",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.playtest.ergonomics",
+        "op": "eq",
+        "value": "native_free_play",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  },
+  "scenario_id": "harness.ergonomics_native_mcw"
+}

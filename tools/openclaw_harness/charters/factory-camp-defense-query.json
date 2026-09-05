@@ -1,0 +1,11 @@
+{
+  "requirements": [
+    {
+      "key": "capabilities.playtest.factory",
+      "op": "eq",
+      "value": "camp-defense",
+      "minimum_evidence": "declared"
+    }
+  ],
+  "preferences": []
+}

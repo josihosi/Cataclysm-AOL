@@ -1,0 +1,15 @@
+{
+  "outcome": "Use ordinary inventory, pickup and item activation to prepare and light a small fire, observe its real effects and resource use, then finish through native menus. Diagnose reusable control gaps rather than certify faction responses. Missing lighter or fuel may be created through explicitly recorded native debug setup; manufactured items earn no product credit.",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.playtest.factory",
+        "op": "eq",
+        "value": "camp",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  },
+  "scenario_id": "harness.living_camp_freeplay_mcw"
+}

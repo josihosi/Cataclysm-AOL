@@ -1,0 +1,32 @@
+{
+  "name": "harness_prepared_camp_revolver_2026-09-05",
+  "source_fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Disposable harness qualification setup: the working prepared camp with an empty six-shot model_10_revolver wielded and two cylinder loads (12 rounds) of compatible .38 Special in a worn pocket. Equipment is manufactured setup only; ordinary loading, firing, trading and persistence must be observed through native play. No faction or combat outcome is manufactured.",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [
+        {
+          "typeid": "model_10_revolver",
+          "count": 1
+        }
+      ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        {
+          "typeid": "38_special",
+          "count": 1,
+          "charges": 12
+        }
+      ]
+    }
+  ]
+}

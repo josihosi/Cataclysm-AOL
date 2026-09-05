@@ -1,0 +1,15 @@
+{
+  "claim": "Prepare for and fight a short encounter in the disposable camp: use the supplied unloaded revolver and compatible ammunition, observe actual melee and firearm damage with target identity and ammo changes, and exercise a useful retreat. Include a spoken exchange with a nearby NPC using local Gemma 4 E4B and identify its actual reply or failure. Choose the order and any useful native debug setup; label setup separately from ordinary combat. This scene does not stage a bandit shakedown. Exact debug removal is available if useful, but already qualified and need not be repeated.",
+  "material_proof": "Cite native target identities, weapon and ammo state, reload and attack receipts, resulting damage and retreat position facts. Correlate a real E4B NPC request with its hearer and reply/error. Separate setup, input acceptance and actual consequences. Preserve contradictions; if a control is absent, identify the current owner and missing route.",
+  "current_uncertainty": "Can a fresh Luna use real combat and exact-target debug controls, distinguish their consequences, and report the native evidence?",
+  "forbidden_shortcuts": [
+    "raw physical input or parent-surface fallback",
+    "manufacturing a claimed outcome",
+    "crediting fixture pressure as natural discovery"
+  ],
+  "honest_stop_conditions": [
+    "the reusable controls have meaningful observed outcomes",
+    "a concrete missing capability prevents further useful play"
+  ],
+  "requested_evidence_ceiling": "zero-credit"
+}

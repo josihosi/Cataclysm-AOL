@@ -1,0 +1,15 @@
+{
+  "outcome": "Prepare for and fight a short encounter in the disposable camp: use the supplied unloaded revolver and compatible ammunition, observe actual melee and firearm damage with target identity and ammo changes, and exercise a useful retreat. Include a spoken exchange with a nearby NPC using local Gemma 4 E4B and identify its actual reply or failure. Choose the order and any useful native debug setup; label setup separately from ordinary combat. This scene does not stage a bandit shakedown. Exact debug removal is available if useful, but already qualified and need not be repeated.",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.playtest.factory",
+        "op": "eq",
+        "value": "camp-defense",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  },
+  "scenario_id": "harness.camp_defense_freeplay_mcw"
+}
