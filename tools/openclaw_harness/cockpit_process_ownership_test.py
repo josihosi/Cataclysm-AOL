@@ -59,6 +59,24 @@ class ProcessOwnershipTest(unittest.TestCase):
                 process.kill()
                 process.wait()
 
+    def test_liveness_probe_leaves_running_child_alive_and_preserves_exit(self):
+        process = subprocess.Popen([sys.executable, "-u", "-c",
+            "import sys; print('ready',flush=True); sys.stdin.readline(); sys.exit(17)"],
+            stdin=subprocess.PIPE, stdout=subprocess.PIPE, text=True)
+        try:
+            self.assertEqual(process.stdout.readline().strip(), "ready")
+            self.assertTrue(harness.pid_is_alive(process.pid))
+            self.assertIsNone(process.poll())
+            process.communicate("finish\n", timeout=5)
+            self.assertEqual(process.returncode, 17)
+            self.assertFalse(harness.pid_is_alive(process.pid))
+        finally:
+            if process.poll() is None:
+                process.kill()
+                process.wait()
+            process.stdin.close()
+            process.stdout.close()
+
     def test_exit_receipt_binds_observed_return_code_to_owned_run(self):
         with tempfile.TemporaryDirectory() as tmp:
             harness.record_bridge_game_exit(Mock(pid=123), {
