@@ -1,6 +1,7 @@
 #include <imgui/imgui.h>
 #include <algorithm>
 #include <memory>
+#include <optional>
 
 #include "avatar.h"
 #include "ascii_art.h"
@@ -15,6 +16,7 @@
 #include "imgui/imgui_stdlib.h"
 #include "input_context.h"
 #include "npc.h" // for parse_tags()! Why!
+#include "semantic_surface.h"
 #include "talker.h"
 #include "ui_manager.h"
 
@@ -64,8 +66,42 @@ void end_screen_data::draw_end_screen_ui( bool actually_dead )
     ctxt.register_action( "TEXT.CONFIRM" );
     ctxt.set_timeout( 50 );
     end_screen_ui_impl p_impl;
+    avatar &u = get_avatar();
+    const bool suicide = g->uquit == QUIT_SUICIDE;
+    bool semantic_confirmed = false;
+    std::optional<semantic_surface_manager_session> semantic_session;
+    std::optional<semantic_surface_scope> semantic_scope;
+    semantic_surface_manager *manager = active_semantic_surface_manager();
+    if( manager == nullptr && openclaw_harness_semantic_session_active() ) {
+        manager = &openclaw_harness_semantic_surface_manager();
+        semantic_session.emplace( *manager );
+    }
+    if( manager != nullptr ) {
+        const tripoint_abs_ms position = u.pos_abs();
+        const std::map<std::string, std::string> payload = {
+            { "terminal_phase", "end_screen" },
+            { "avatar_id", "character:" + std::to_string( u.getID().get_value() ) },
+            { "avatar_name", u.get_name() },
+            { "avatar_dead", u.is_dead_state() ? "true" : "false" },
+            { "actual_death", actually_dead &&( u.is_dead_state() || suicide ) ? "true" : "false" },
+            { "preview", actually_dead ? "false" : "true" },
+            { "suicide", suicide ? "true" : "false" },
+            { "absolute_position", string_format( "[%d,%d,%d]", position.x(), position.y(), position.z() ) }
+        };
+        semantic_scope.emplace( *manager, "terminal", "The End", payload,
+        std::vector<semantic_action_descriptor> {
+            { "terminal.confirm", "", "Confirm", true }
+        }, [ &semantic_confirmed ]( const semantic_action_request & request ) {
+            if( request.action_id != "terminal.confirm" ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            semantic_confirmed = true;
+            return semantic_action_dispatch_result{ true, "", "", false, false };
+        } );
+        semantic_scope->consume_request();
+    }
 
-    while( true ) {
+    while( !semantic_confirmed ) {
         ui_manager::redraw_invalidated();
         std::string action = ctxt.handle_input();
         if( action == "TEXT.CONFIRM" || !p_impl.get_is_open() ) {
@@ -73,9 +109,7 @@ void end_screen_data::draw_end_screen_ui( bool actually_dead )
         }
     }
     if( actually_dead ) {
-        avatar &u = get_avatar();
-        const bool is_suicide = g->uquit == QUIT_SUICIDE;
-        get_event_bus().send<event_type::game_avatar_death>( u.getID(), u.name, is_suicide, p_impl.text );
+        get_event_bus().send<event_type::game_avatar_death>( u.getID(), u.name, suicide, p_impl.text );
     }
 }
 
