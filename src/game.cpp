@@ -3113,6 +3113,14 @@ bool game::try_get_right_click_action( action_id &act, const tripoint_bub_ms &mo
 
 bool game::is_game_over()
 {
+    // Death can be detected after the World input scope has unwound.  Keep
+    // its harness manager active through both the end screen and the native
+    // death-camera choice that follows it.
+    std::optional<semantic_surface_manager_session> death_semantic_session;
+    if( ( u.is_dead_state() || uquit == QUIT_SUICIDE ) &&
+        active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        death_semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
     map &here = get_map();
 
     if( uquit == QUIT_DIED || uquit == QUIT_WATCH ) {

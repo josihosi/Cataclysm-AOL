@@ -1250,6 +1250,39 @@ class KeepWatchTest(unittest.TestCase):
             "world.wait", "wait.duration_menu", "wait.1m",
         ])
 
+    def test_player_api_reports_accepted_native_receipt_without_successor(self) -> None:
+        issuing = self.menu_frame(1, stable_id="wait-choice", label="Wait")
+
+        def dispatch(_issuing: dict[str, object], action_id: str,
+                     _stable_id: str | None = None) -> dict[str, object]:
+            return {
+                "accepted": False, "reason": "native_surface_successor_timeout",
+                "native_receipt": {
+                    "run_id": "keep-watch-proof", "requested_run_id": "keep-watch-proof",
+                    "requested_surface_id": issuing["surface_id"],
+                    "requested_frame_id": issuing["frame_id"],
+                    "consuming_surface_id": issuing["surface_id"],
+                    "consuming_frame_id": issuing["frame_id"],
+                    "frame_id": issuing["frame_id"], "action_id": action_id, "accepted": True,
+                },
+                "next_frame": None,
+            }
+
+        channel = cockpit.CockpitRunChannel(
+            lambda: issuing, dispatch, binding_id="binding-a", read_binding_id=lambda: "binding-a",
+        )
+        service = cockpit.CockpitService(run_channel=channel)
+        observed = service.call({"action": "game.observe"})["result"]
+        result = service.call({
+            "action": "game.act", "observation_id": observed["observation_id"],
+            "action_id": "menu.choose", "stable_id": "wait-choice",
+        })
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"], "native_surface_successor_timeout")
+        self.assertTrue(result["failure"]["detail"]["native_receipt"]["accepted"])
+        self.assertEqual(result["failure"]["unused_authority"], "revoked")
+
 
 if __name__ == "__main__":
     unittest.main()

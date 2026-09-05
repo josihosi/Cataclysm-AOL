@@ -2575,6 +2575,12 @@ class CockpitRunChannel:
                                str( next_frame.get( "frame_id", "" ) ) == str( observation_id )
         if not isinstance(next_frame, Mapping) or ( not same_frame_selection and
                 str(next_frame.get("frame_id", "")) == str(observation_id) ):
+            if receipt.get("reason") == "native_surface_successor_timeout":
+                return self._fail_operation("native_surface_successor_timeout", {
+                    "action_id": str(action_id),
+                    "native_receipt": dict(native),
+                    "receipt": dict(receipt),
+                })
             return self._fail_operation("fresh_observation_missing", {"action_id": action_id})
         if is_surface_action and self._surface_descriptor(next_frame) is None:
             return self._fail_operation("fresh_observation_missing", {"action_id": action_id})

@@ -67,6 +67,8 @@ human request.
 
 ## Operate and finish
 
+Native gameplay here means dispatch through the game's own semantic owners. Run the player CLI
+in the game worktree, locally or over SSH; it does not require a desktop-control connection.
 For a registry-launched file-backed session, use the persistent player client:
 
 ```sh

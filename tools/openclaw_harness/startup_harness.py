@@ -5897,6 +5897,14 @@ def execute_semantic_act(
             if remaining <= 0:
                 break
             time.sleep(min(observe_interval_seconds, remaining))
+        if isinstance(last_native_receipt, Mapping) and last_native_receipt.get("accepted") is True:
+            # The native owner accepted the request, but its semantic successor
+            # never appeared before the observation deadline. Preserve that
+            # receipt so the caller can identify the first divergence without
+            # promoting the action to a completed transition.
+            return {"accepted": False, "reason": "native_surface_successor_timeout",
+                    "surface_request": request, "native_receipt": last_native_receipt,
+                    "next_frame": None}
         return {"accepted": False, "reason": "native_surface_receipt_timeout",
                 "surface_request": request, "native_receipt": None, "next_frame": None}
 

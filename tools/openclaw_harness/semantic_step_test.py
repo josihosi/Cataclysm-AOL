@@ -883,6 +883,50 @@ class SemanticStepChannelTest(unittest.TestCase):
         wake.assert_called_once_with(Path(temp).resolve(), self.run_id)
         self.assertNotIn("dispatch_semantic_input", inspect.getsource(startup_harness.execute_semantic_act))
 
+    def test_surface_descriptor_preserves_accepted_receipt_when_successor_is_missing(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [{
+                "id": "world.wait", "stable_id": "world.wait", "label": "Wait", "enabled": True,
+            }],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            request_id = (
+                "cockpit:worker:surface-frame:world.wait:" +
+                hashlib.sha256(json.dumps({"stable_id": None, "parameters": {}},
+                                           sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+            )
+            receipt = {
+                "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+                "requested_run_id": self.run_id, "requested_surface_id": "surface-world",
+                "requested_frame_id": "surface-frame", "consuming_surface_id": "surface-world",
+                "consuming_frame_id": "surface-frame", "action_id": "world.wait", "accepted": True,
+                "rejection_reason": "", "resulting_frame_id": "",
+            }
+            trace.write_text("\n".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event)
+                for event in (descriptor, receipt)
+            ) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="surface-frame",
+                    action_id="world.wait", transition_timeout_seconds=0.1,
+                    observe_interval_seconds=0.01, observed_frame=descriptor,
+                )
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["reason"], "native_surface_successor_timeout")
+        self.assertEqual(result["native_receipt"]["request_id"], request_id)
+        self.assertTrue(result["native_receipt"]["accepted"])
+        self.assertIsNone(result["next_frame"])
+
     def test_surface_descriptor_request_preserves_native_receipt_identity(self) -> None:
         descriptor = {
             "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
