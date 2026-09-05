@@ -61,6 +61,7 @@ class CockpitRunChannel:
         self, read_native_frame: Callable[[], Mapping[str, Any]],
         dispatch_advertised_action: Optional[Callable[[Mapping[str, Any], str, Optional[str]], Mapping[str, Any]]] = None,
         *, read_evidence: Optional[Callable[[], Mapping[str, Any]]] = None,
+        read_process_state: Optional[Callable[[], Mapping[str, Any]]] = None,
         binding_id: str = "",
         read_binding_id: Optional[Callable[[], str]] = None,
         mutate_binding_for_control: Optional[Callable[[], Mapping[str, Any]]] = None,
@@ -84,6 +85,8 @@ class CockpitRunChannel:
         self._observations: Dict[str, Dict[str, Any]] = {}
         self._next_handle = 0
         self._read_evidence = read_evidence
+        self._read_process_state = read_process_state
+        self._process_exit_observation: Optional[Dict[str, Any]] = None
         self._binding_id = str(binding_id)
         self._read_binding_id = read_binding_id
         self._mutate_binding_for_control = mutate_binding_for_control
@@ -491,12 +494,71 @@ class CockpitRunChannel:
         report = self._stop(reason, detail)
         return {"ok": False, "error": reason, "final": report}
 
+    def observe_process_exit(self) -> Optional[Dict[str, Any]]:
+        """Expose bound process death, never replay the last native World frame."""
+        cached = self._process_exit_observation
+        if self._read_process_state is None or self._state != "active":
+            return cached
+        process = dict(self._read_process_state())
+        if process.get("alive") is not False:
+            return cached  # A known dead process cannot regain native authority.
+        run_id = str(process.get("run_id", "")).strip()
+        pid = process.get("pid")
+        if not run_id or type(pid) is not int or pid <= 0:
+            raise ValueError("process_exit_identity_unavailable")
+        if self._run_id and run_id != self._run_id:
+            raise ValueError("process_exit_run_identity_mismatch")
+        if cached is not None:
+            prior = cached["surface"]["facts"]
+            if prior["pid"] != pid:
+                raise ValueError("process_exit_pid_identity_mismatch")
+            if prior.get("exit_code") is not None or process.get("exit_code") is None:
+                return cached
+        self._run_id = run_id
+        suffix = ":confirmed" if cached is not None else ""
+        observation_id = f"{run_id}:process-exit:{pid}{suffix}"
+        previous = self._last_public_state or {}
+        facts = {**process, "gameplay_credit": False,
+                 "save_outcome": "not_established_by_process_exit"}
+        if self._continuation is not None:
+            facts["interrupted_continuation"] = dict(self._continuation)
+            self._continuation = None
+        result = {
+            "schema": "caol-cockpit-process-observation-v1",
+            "observation_id": observation_id, "run_id": run_id,
+            "provenance": "bound_process_observer", "game_minutes": None,
+            "surface": {"family": "Process", "kind": "process_exited", "facts": facts,
+                        "breadcrumbs": ["process exited"], "actions": []},
+            "breadcrumbs": ["process exited"], "advertised_actions": [],
+            "advertised_action_details": [],
+            "last_native_observation_id": cached.get("last_native_observation_id") if cached else previous.get("observation_id"),
+            "delta": {"kind": "process_exited"},
+            "compact_log": {"persistence": "not_established_by_process_exit",
+                            "evidence_refs": [process["evidence_ref"]] if process.get("evidence_ref") else [],
+                            "contradictory_evidence": []},
+            "next_calls": ["run.witness", "run.finish"],
+            "note": "The bound game process ended. Its cached native frame is no longer actionable. Exit alone establishes neither saving nor gameplay success.",
+        }
+        for observed in self._observations.values():
+            observed["used"] = True
+        self._observations[observation_id] = {
+            "run_id": run_id, "actions": set(), "action_stable_ids": {}, "handles": set(),
+            "used": False, "public_state": result, "issuing_frame": {}, "native_interruption": False,
+        }
+        self._process_exit_observation = result
+        self._last_public_state = {"observation_id": observation_id}
+        self._transcript.append({"kind": "observation", "value": result})
+        return result
+
     def observe(self) -> Dict[str, Any]:
         if self._state != "active":
             raise ValueError("live session is finished")
         if not self._binding_matches():
             self._fail_closed("binding_drift", {"unused_authority": "revoked"})
             raise ValueError("binding drift stopped the live session")
+        ended = self.observe_process_exit()
+        if ended is not None:
+            return ended
         issuing_raw = dict(self._read_native_frame())
         if self._surface_descriptor(issuing_raw) is not None:
             return self._observe_surface(issuing_raw)
@@ -975,6 +1037,7 @@ class CockpitRunChannel:
         tool_round_trips = 0
         safety_frames = 0
         handled_interruptions: list[Dict[str, Any]] = []
+        rejected_owners: set[tuple[str, str]] = set()
         while True:
             if self._state != "active":
                 return {"ok": False, "error": "live_session_finished", "final": self._final_report}
@@ -1075,8 +1138,17 @@ class CockpitRunChannel:
                             # completes.  Re-observe the native surface and
                             # restart selection from that exact owner; never
                             # carry the stale frame or advance the recipe.
+                            rejected_owners.add((str(observed.get("surface_id", "")),
+                                                 str(observed.get("frame_id", observed.get("observation_id", "")))))
                             try:
                                 observed = self.observe()
+                                owner = (str(observed.get("surface_id", "")),
+                                         str(observed.get("frame_id", observed.get("observation_id", ""))))
+                                if owner in rejected_owners:
+                                    return self._fail_closed("keep_watch_rejected_owner_unchanged", {
+                                        "surface_id": owner[0], "frame_id": owner[1],
+                                        "action_id": action_id, "unused_authority": "revoked",
+                                    })
                             except ValueError as exc:
                                 return self._fail_closed(
                                     "keep_watch_fresh_owner_recovery_unavailable", {
@@ -1126,8 +1198,17 @@ class CockpitRunChannel:
                                 outcome.get("receipt", {}).get("native_receipt", {}).get(
                                     "rejection_reason"
                                 ) == "wrong_surface":
+                            rejected_owners.add((str(observed.get("surface_id", "")),
+                                                 str(observed.get("frame_id", observed.get("observation_id", "")))))
                             try:
                                 observed = self.observe()
+                                owner = (str(observed.get("surface_id", "")),
+                                         str(observed.get("frame_id", observed.get("observation_id", ""))))
+                                if owner in rejected_owners:
+                                    return self._fail_closed("keep_watch_rejected_owner_unchanged", {
+                                        "surface_id": owner[0], "frame_id": owner[1],
+                                        "action_id": primitive, "unused_authority": "revoked",
+                                    })
                             except ValueError as exc:
                                 return self._fail_closed("keep_watch_stale_action_recovery_unavailable", {
                                     "detail": str(exc), "action_id": primitive,
@@ -2013,6 +2094,10 @@ class CockpitRunChannel:
         """
         if self._state != "active":
             return {"ok": False, "error": "live_session_finished", "final": self._final_report}
+        ended = self.observe_process_exit()
+        if ended is not None:
+            return {"ok": False, "error": "game_process_exited", "observation": ended,
+                    "next_action": "run.witness"}
         if self._causal_boundary_precondition is not None:
             boundary = self._causal_boundary_precondition()
             if boundary.get("status") == "matched":
@@ -2130,6 +2215,36 @@ class CockpitRunChannel:
             receipt = self._dispatch_advertised_action(issuing_raw, str(action_id))
         else:
             receipt = self._dispatch_advertised_action(issuing_raw, str(action_id), stable_id)
+        ended = self.observe_process_exit()
+        if ended is not None:
+            native = receipt.get("native_receipt") if isinstance(receipt, Mapping) else None
+            matched = isinstance(native, Mapping) and native.get("accepted") is True and \
+                native.get("run_id") == self._run_id and \
+                str(native.get("requested_frame_id", native.get("frame_id", ""))) == str(observation_id) and \
+                str(native.get("action_id", "")) == str(action_id)
+            if matched and is_surface_action:
+                matched = native.get("requested_run_id") == self._run_id and \
+                    native.get("requested_surface_id") == issuing_raw.get("surface_id") and \
+                    native.get("consuming_surface_id") == issuing_raw.get("surface_id") and \
+                    native.get("consuming_frame_id", native.get("frame_id")) == str(observation_id)
+            request = receipt.get("surface_request") if isinstance(receipt, Mapping) else None
+            if matched and (stable_id is not None or parameters):
+                matched = isinstance(request, Mapping) and request.get("stable_id", "") == str(stable_id or "") and \
+                    dict(request.get("parameters", {})) == dict(parameters or {})
+            exit_code = ended["surface"]["facts"].get("exit_code")
+            exited_normally = type(exit_code) is int and exit_code == 0
+            confirmed = bool(matched and exited_normally)
+            result = {"ok": confirmed, "state": "process_exited" if confirmed else "process_exit_unconfirmed",
+                      "observation": ended, "native_receipt_matched": bool(matched),
+                      "receipt": {key: value for key, value in receipt.items() if not key.startswith("_")}
+                                 if isinstance(receipt, Mapping) else None,
+                      "next_action": "run.witness",
+                      "note": "Inspect the retained receipt separately; process exit does not establish saving or gameplay success."}
+            if not confirmed:
+                result["error"] = "game_process_exit_action_unconfirmed"
+            self._transcript.append({"kind": "action", "action_id": str(action_id),
+                                     "observation_id": str(observation_id), "result": result})
+            return result
         if not isinstance(receipt, Mapping):
             return self._fail_closed("native_receipt_missing", {"action_id": action_id})
         native = receipt.get("native_receipt")
@@ -2236,7 +2351,10 @@ class CockpitRunChannel:
             # not leave its owner.  Its same-frame receipt is therefore the
             # exact postcondition; demanding a fabricated successor would
             # turn a valid native selection into a false failure.
-            if same_frame_selection:
+            ended = self.observe_process_exit()
+            if ended is not None:
+                fresh = ended
+            elif same_frame_selection:
                 fresh = dict( observed["public_state"] )
             # A native receipt names its immediate successor.  Preserve that
             # exact descriptor rather than rereading a trace that may already
@@ -2739,6 +2857,11 @@ class CockpitService:
         action = str(request.get("action", "")).strip().lower()
         if action.startswith("game.") and not self._live_operation_is_allowed(action):
             return {"ok": False, "error": "operation_not_authorized_for_live_session"}
+        if action.startswith("game.") and action not in {"game.observe", "game.look"} and self.run_channel is not None:
+            ended = self.run_channel.observe_process_exit()
+            if ended is not None:
+                return {"ok": False, "error": "game_process_exited", "observation": ended,
+                        "next_action": "run.witness"}
         if action == "game.keep_watch":
             if self.run_channel is None:
                 return {"ok": False, "error": "native live session is unavailable"}

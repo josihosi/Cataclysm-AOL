@@ -12,6 +12,7 @@ from pathlib import Path
 import sqlite3
 import subprocess
 import sys
+import traceback
 import uuid
 from typing import Any, Dict, Mapping, Optional, Sequence
 
@@ -2748,6 +2749,31 @@ def main(argv: Sequence[str] | None = None) -> int:
             os.environ["OPENCLAW_CERTIFICATION_SAVE_CAPABILITY"] = capability
         try:
             return startup_harness.run_probe_mode(probe_namespace)
+        except (Exception, SystemExit) as error:
+            # A native launch may already have happened before the report owner
+            # exists. Revoke ordinary selection authority instead of leaving the
+            # same token silently reusable after an unreported adapter failure.
+            failure = {"ok": False, "command": args.command,
+                       "error": str(error), "error_type": type(error).__name__,
+                       "cleanup": "unconfirmed by this exception boundary; inspect retained process ownership"}
+            if args.command in {"registry-launch", "certification-launch"}:
+                failure["token_id"] = args.selection_token
+                try:
+                    with open_registry(str(registry_path), writable=True) as failed_connection:
+                        failure["selection_invalidated"] = record_selection_token_rejection(
+                            failed_connection, args.selection_token,
+                            reason="adapter_failed_before_report",
+                            details={"error": str(error), "error_type": type(error).__name__,
+                                     "scenario": str(getattr(probe_namespace, "scenario", "")),
+                                     "cleanup": "unconfirmed", "gameplay_credit": False},
+                        )
+                except Exception as invalidation_error:
+                    failure["selection_invalidation_error"] = str(invalidation_error)
+            # Retain exception chains, including cleanup failures; no successful
+            # cleanup or gameplay outcome is inferred from a caught exception.
+            traceback.print_exc(file=sys.stderr)
+            _write_result(failure, stream=sys.stderr)
+            return 1
         finally:
             if capability:
                 if prior_capability is None:

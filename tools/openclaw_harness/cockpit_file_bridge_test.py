@@ -5,6 +5,9 @@ from __future__ import annotations
 import json
 import io
 import hashlib
+import signal
+import os
+import subprocess
 import sys
 import tempfile
 import threading
@@ -77,6 +80,26 @@ OBSERVATION_CHAIN_CHILD = (
 
 
 class CockpitFileBridgeTest(unittest.TestCase):
+    def test_startup_failure_exposes_preflight_cause_without_dumping_fixture(self):
+        failure = {"ok": False, "reason": "startup_failed", "startup": {
+            "reason": "contract_preflight_rejected", "contract_preflight": {
+                "status": "rejected_installed_save_policy",
+                "installed_save_audit": {"status": "required_state_missing", "missing_traits": ["DEBUG_LS"]},
+                "fixture": {"large": "x" * 200000}}}}
+        child = "import json; print(json.dumps(" + repr(failure) + "), flush=True)"
+        with tempfile.TemporaryDirectory() as tmp:
+            session = Path(tmp) / "session"
+            bridge = FileBackedCockpitBridge(session, [sys.executable, "-c", child],
+                                            binding_id="bound", require_session_ready=True)
+            self.assertEqual(bridge.serve(), 1)
+            status = json.loads((session / "status.json").read_text())
+            self.assertEqual(status["reason"], "contract_preflight_rejected")
+            detail = status["startup_failure"]
+            self.assertEqual(detail["installed_save_audit"]["missing_traits"], ["DEBUG_LS"])
+            self.assertNotIn("fixture", detail)
+            raw = json.loads((session / detail["artifact"]).read_text())
+            self.assertEqual(raw, failure)
+
     def start(self, directory: Path):
         bridge = FileBackedCockpitBridge(directory, [sys.executable, "-u", "-c", CHILD], binding_id="bound-a")
         thread = threading.Thread(target=bridge.serve, daemon=True)
@@ -223,6 +246,23 @@ class CockpitFileBridgeTest(unittest.TestCase):
             self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
             thread.join(2)
             self.assertFalse(thread.is_alive())
+
+    def test_collectible_receipt_has_matching_admission_state(self):
+        from unittest.mock import patch
+        import cockpit_file_bridge as module
+        for terminal in (False, True):
+            with self.subTest(terminal=terminal), tempfile.TemporaryDirectory() as temp:
+                bridge = FileBackedCockpitBridge(Path(temp) / "session", ["unused"], binding_id="bound")
+                bridge.prepare()
+                response = {"ok": True, "result": {"schema": "caol-cockpit-live-final-v1", "state": "finished"}} if terminal else {"ok": True}
+                original = module._atomic_json
+                def publish(path, value):
+                    if str(path).endswith(".receipt.json"):
+                        status = json.loads(bridge.status_path.read_text())
+                        self.assertEqual(status["state"], "terminalizing" if terminal else "ready")
+                    return original(path, value)
+                with patch.object(module, "_atomic_json", side_effect=publish):
+                    bridge._persist_response("request", b"{}", json.dumps(response).encode())
 
     def test_final3_style_five_step_observe_act_chain_keeps_ids_and_observations_unique(self):
         """Regression: no extra status observe or retry may reuse a pause id."""
@@ -400,6 +440,47 @@ class CockpitFileBridgeTest(unittest.TestCase):
             thread.join(2)
             self.assertFalse(thread.is_alive())
 
+    def test_real_detached_termination_reaps_child_and_records_failure(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = subprocess.Popen([sys.executable, str(Path(__file__).with_name("cockpit_file_bridge.py")),
+                "serve", "--session-dir", str(directory), "--binding-id", "bound-a",
+                "--", sys.executable, "-u", "-c", "import time; time.sleep(60)"],
+                stdout=subprocess.DEVNULL, stderr=subprocess.PIPE, text=True)
+            child_pid = None
+            try:
+                deadline = time.monotonic() + 5
+                while time.monotonic() < deadline:
+                    if (directory / "status.json").exists():
+                        state = json.loads((directory / "status.json").read_text())
+                        if state.get("state") == "ready":
+                            child_pid = state["child_pid"]
+                            break
+                    time.sleep(.01)
+                self.assertIsNotNone(child_pid)
+                bridge.terminate()
+                bridge.communicate(timeout=5)
+                state = json.loads((directory / "status.json").read_text())
+                self.assertEqual(state["state"], "bridge_failed")
+                self.assertIn("SystemExit", state["reason"])
+                self.assertFalse(state["cleanup"]["native_exit_credit"])
+                with self.assertRaises(ProcessLookupError):
+                    os.kill(child_pid, 0)
+            finally:
+                if bridge.poll() is None:
+                    bridge.kill()
+                    bridge.communicate(timeout=5)
+                if child_pid:
+                    try: os.kill(child_pid, signal.SIGKILL)
+                    except ProcessLookupError: pass
+
+    def test_termination_signal_interrupts_instead_of_ignoring_shutdown(self):
+        with tempfile.TemporaryDirectory() as temp:
+            bridge = FileBackedCockpitBridge(Path(temp) / "session", [sys.executable], binding_id="a")
+            with self.assertRaises(SystemExit):
+                bridge._termination_signal(signal.SIGTERM, None)
+
+
     def test_bound_startup_hud_progress_transitions_to_ready_before_requests(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp) / "session"
@@ -448,7 +529,7 @@ class CockpitFileBridgeTest(unittest.TestCase):
             )
             self.assertEqual(bridge.serve(), 1)
             status = json.loads((directory / "status.json").read_text())
-            self.assertEqual(status["reason"], "missing_cockpit_session_descriptor")
+            self.assertEqual(status["reason"], "contract_preflight_rejected")
             retained = [json.loads(line) for line in
                         (directory / "child.startup.stdout.jsonl").read_text().splitlines()]
             self.assertEqual(retained, [{"ok": False, "reason": "contract_preflight_rejected"}])

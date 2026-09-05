@@ -4977,6 +4977,7 @@ def open_cockpit_game_service(
                 observe_interval_seconds=observe_interval_seconds, observed_frame=frame,
                 stable_id=stable_id, parameters=parameters,
                 proof_step_label=proof_step_label, proof_step_index=proof_step_index,
+                read_process_state=read_process_state,
             )
             successor = outcome.get("next_frame") if isinstance(outcome, Mapping) else None
             if outcome.get("accepted") is True and isinstance(successor, Mapping):
@@ -5070,9 +5071,30 @@ def open_cockpit_game_service(
                 final_path=final_path,
             )
 
+    original_process_command = pid_command(pid) if pid else ""
+
+    def read_process_state() -> Mapping[str, Any]:
+        alive = pid_is_alive(pid) if pid else False
+        if alive and original_process_command and pid_command(pid) != original_process_command:
+            alive = False
+        state: Dict[str, Any] = {"run_id": run_id, "pid": pid, "alive": alive,
+                                 "exit_code": None}
+        session = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "")
+        if session:
+            path = Path(session) / "game-process-exit.json"
+            try:
+                recorded = json.loads(path.read_text(encoding="utf-8"))
+                if recorded.get("pid") == pid and recorded.get("run_id") == run_id and \
+                        recorded.get("binding_id") == os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID"):
+                    state.update(recorded, evidence_ref=str(path))
+            except (OSError, ValueError):
+                pass
+        return state
+
     channel = CockpitRunChannel(
         read_frame, dispatch,
         read_evidence=read_evidence,
+        read_process_state=read_process_state if pid else None,
         binding_id=binding_id,
         read_binding_id=read_binding_id if binding_id else None,
         mutate_binding_for_control=mutate_binding_for_control if binding_id else None,
@@ -5375,6 +5397,7 @@ def execute_semantic_act(
     proof_step_index: Optional[int] = None,
     declared_action_id: Optional[str] = None,
     allow_terminal_exit: bool = False,
+    read_process_state: Optional[Callable[[], Mapping[str, Any]]] = None,
 ) -> Dict[str, Any]:
     """Apply one advertised action from its issuing run-bound frame."""
     run_dir = Path(run_dir).resolve()
@@ -5646,7 +5669,17 @@ def execute_semantic_act(
                             next_frame = dict(read_frame())
                         except ValueError:
                             next_frame = None
-                    if next_frame is None and allow_terminal_exit:
+                    process_ended = False
+                    if read_process_state is not None:
+                        process = read_process_state()
+                        process_ended = process.get("alive") is False and \
+                            process.get("run_id") == run_id and process.get("pid") == pid
+                        if process_ended:
+                            # A terminal native owner can receipt its choice
+                            # without publishing a successor. The last cached
+                            # descriptor cannot restore authority after death.
+                            next_frame = None
+                    if next_frame is None and (allow_terminal_exit or process_ended):
                         durable_receipt = {
                             "schema": "caol-semantic-step-receipt-v1",
                             "run_id": run_id,
@@ -20399,6 +20432,47 @@ def registry_authority_transition_run_id(registry_launch_receipt: str) -> str:
     return str(authority.get("run_id", "")).strip()
 
 
+def record_bridge_game_process(process: subprocess.Popen, env: Mapping[str, str]) -> None:
+    """Persist ownership before HUD/screenshots can fail and orphan the game."""
+    session = env.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "")
+    bridge = env.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")
+    if not session or not bridge:
+        return
+    target = Path(session) / "game-process.json"
+    value = {"binding_id": bridge, "pid": process.pid,
+             "run_id": env.get("OPENCLAW_HARNESS_RUN_ID", ""),
+             "command": pid_command(process.pid)}
+    try:
+        if not value["command"]:
+            raise OSError("game process identity unavailable before startup")
+        temporary = target.with_suffix(".tmp")
+        temporary.write_text(json.dumps(value), encoding="utf-8")
+        os.replace(temporary, target)
+    except OSError:
+        process.terminate()
+        try:
+            process.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            process.kill()
+            process.wait(timeout=2)
+        raise
+
+
+def record_bridge_game_exit(process: subprocess.Popen, env: Mapping[str, str], exit_code: int) -> None:
+    session = env.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "")
+    bridge = env.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "")
+    if not session or not bridge:
+        return
+    target = Path(session) / "game-process-exit.json"
+    temporary = target.with_suffix(".tmp")
+    temporary.write_text(json.dumps({
+        "binding_id": bridge, "pid": process.pid,
+        "run_id": env.get("OPENCLAW_HARNESS_RUN_ID", ""),
+        "exit_code": exit_code, "exit_observed_at": _utc_timestamp(time.time()),
+    }), encoding="utf-8")
+    os.replace(temporary, target)
+
+
 def launch_game(
     profile: str,
     target_world: str,
@@ -20452,6 +20526,7 @@ def launch_game(
                 preexec_fn=CursesTerminalTransport.make_controlling_terminal,
                 pass_fds=(read_fd,),
             )
+            record_bridge_game_process(process, env)
         except BaseException:
             os.close(read_fd)
             if write_fd >= 0:
@@ -20478,6 +20553,7 @@ def launch_game(
 
         def release_terminal_after_exit() -> None:
             exit_code = process.wait()
+            record_bridge_game_exit(process, env, exit_code)
             append_semantic_wake_observation(run_dir, {
                 "schema": "caol-semantic-wake-observation-v1",
                 "event": "child_exit",
@@ -20510,6 +20586,7 @@ def launch_game(
             cmd, cwd=str(repo_root()), stdout=stdout_log, stderr=stderr_log,
             text=True, env=env, start_new_session=True, pass_fds=(read_fd,),
         )
+        record_bridge_game_process(process, env)
     except BaseException:
         os.close(read_fd)
         if write_fd >= 0:
@@ -20529,7 +20606,8 @@ def launch_game(
     })
 
     def release_wake_pipe_after_exit() -> None:
-        process.wait()
+        exit_code = process.wait()
+        record_bridge_game_exit(process, env, exit_code)
         stdout_log.close()
         stderr_log.close()
 
@@ -20718,16 +20796,18 @@ def derive_terminal_exit_observation_window(
 def pid_is_alive(pid: int) -> bool:
     if pid <= 0:
         return False
-    # The harness owns its launched game process.  On POSIX, an exited child
-    # remains addressable until reaped, so kill(pid, 0) alone mistakes a
-    # native save-and-quit zombie for a live process and blocks relaunch.
+    # Only Popen's waiter owns the exit status. Reaping here races with it
+    # and can turn an actual nonzero exit into a fabricated zero result.
+    # A zombie is no longer running, but leave it for that waiter to reap.
     if os.name == "posix":
         try:
-            reaped_pid, _ = os.waitpid(pid, os.WNOHANG)
-            if reaped_pid == pid:
+            result = subprocess.run(["ps", "-o", "stat=", "-p", str(pid)],
+                                    capture_output=True, text=True, timeout=1)
+            if result.returncode == 0 and result.stdout.strip():
+                return not result.stdout.strip().startswith("Z")
+            if result.returncode == 1 and not result.stdout.strip():
                 return False
-        except ChildProcessError:
-            # A non-child PID is still checked with the portable probe below.
+        except (OSError, subprocess.TimeoutExpired):
             pass
     try:
         os.kill(pid, 0)
@@ -32574,31 +32654,27 @@ def load_checkpoint_contract(path_text: str, *, scenario_identity: str) -> Dict[
 
 
 def checkpoint_contract_trait_policy(contract: Mapping[str, Any]) -> Dict[str, Any]:
-    """Derive the frozen stabilizer policy only from an opted-in v2 contract."""
+    """Require scenario-declared setup facts, never a universal stabilizer set."""
     if contract.get("manifest_version") != CHECKPOINT_CHAIN_MANIFEST_VERSION:
         return {
             "applicable": False,
             "required_traits": [],
             "forbidden_traits": [],
         }
-    required_traits = ["DEBUG_LS", "DEBUG_NOTEMP"]
-    if contract.get("run_class") == "non_combat":
-        required_traits.extend(["DEBUG_STAMINA", "DEBUG_CARDIO"])
-    if contract.get("observer_character") is True:
-        required_traits.extend(["DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"])
-    if contract.get("observer_safety_mode") == "invisible":
-        required_traits.append("DEBUG_CLOAK")
+    required_traits = []
     declared_traits_raw = contract.get("required_stabilizer_traits")
     declaration_error = ""
-    if declared_traits_raw is not None:
+    if "required_stabilizer_traits" in contract:
         if not isinstance(declared_traits_raw, list) or any(
-                not isinstance(value, str) or not value.strip() for value in declared_traits_raw):
-            declaration_error = "required_stabilizer_traits must be a non-empty string list"
-        elif list(dict.fromkeys(declared_traits_raw)) != required_traits:
-            declaration_error = (
-                "required_stabilizer_traits must exactly match derived policy: "
-                + json.dumps(required_traits, ensure_ascii=False)
-            )
+                not isinstance(value, str) or not value.strip() or value != value.strip()
+                for value in declared_traits_raw):
+            declaration_error = "required_stabilizer_traits must be a list of non-empty trait IDs without surrounding whitespace"
+        else:
+            required_traits = list(dict.fromkeys(declared_traits_raw))
+    # Invisibility is an explicit scenario requirement, unlike the broad
+    # observer/non-combat labels, which do not prescribe character mutations.
+    if contract.get("observer_safety_mode") == "invisible" and "DEBUG_CLOAK" not in required_traits:
+        required_traits.append("DEBUG_CLOAK")
     return {
         "applicable": True,
         "required_traits": required_traits,

@@ -14,8 +14,10 @@ import json
 import os
 from pathlib import Path
 import select
+import signal
 import subprocess
 import sys
+import threading
 import time
 from typing import Any, Mapping, Sequence
 
@@ -87,6 +89,7 @@ class FileBackedCockpitBridge:
         self._bootstrap_run_id = ""
         self._terminal_request_id = ""
         self._startup_progress: dict[str, Any] = {}
+        self._startup_failure: dict[str, Any] = {}
         self._active_session_descriptor: dict[str, Any] = {}
 
     def _bootstrap_receipt(self, *, sequence: int, stage: Mapping[str, Any],
@@ -142,11 +145,45 @@ class FileBackedCockpitBridge:
             "bridge_pid": os.getpid(),
             "state": state,
             "request_count": self._sequence,
+            **({"startup_failure": self._startup_failure} if self._startup_failure else {}),
             **extra,
         }
 
     def _write_status(self, state: str, **extra: Any) -> None:
         _atomic_json(self.status_path, self._status(state, **extra))
+
+    def _termination_signal(self, signum: int, _frame: Any) -> None:
+        raise SystemExit(128 + signum)
+
+    def _emergency_cleanup(self) -> dict[str, Any]:
+        """Release this bridge's owned processes without claiming native exit proof."""
+        cleanup: dict[str, Any] = {"native_exit_credit": False}
+        if self._child is not None and self._child.poll() is None:
+            self._child.terminate()
+            try:
+                self._child.wait(timeout=2)
+            except subprocess.TimeoutExpired:
+                self._child.kill()
+                self._child.wait(timeout=2)
+        # Progress is diagnostic, not process ownership authority.
+        game_pid = 0
+        from startup_harness import cleanup_game_process, pid_command
+        ownership_path = self.session_dir / "game-process.json"
+        if ownership_path.exists():
+            ownership = json.loads(ownership_path.read_text(encoding="utf-8"))
+            owned_pid = int(ownership.get("pid", 0) or 0)
+            if ownership.get("binding_id") == self.binding_id and owned_pid > 0 and \
+                    ownership.get("command") and pid_command(owned_pid) == ownership["command"]:
+                game_pid = owned_pid
+            else:
+                game_pid = 0
+                cleanup["ownership"] = "process_exited_or_identity_changed"
+        else:
+            cleanup["ownership"] = "unconfirmed_missing_process_record"
+        if game_pid:
+            cleanup["game"] = cleanup_game_process(game_pid)
+        self._close_child_streams()
+        return cleanup
 
     def _close_child_streams(self) -> None:
         if self._child is not None:
@@ -197,13 +234,23 @@ class FileBackedCockpitBridge:
             "response_sha256": _digest(response_bytes),
             "response_artifact": str(artifact.relative_to(self.session_dir)),
         }
-        _atomic_json(self.responses_dir / (request_id + ".receipt.json"), receipt)
+        response = json.loads(response_bytes)
+        terminal = response.get("result") if isinstance(response, Mapping) else None
+        if not isinstance(terminal, Mapping) and isinstance(response, Mapping):
+            terminal = response.get("final")
+        is_terminal = isinstance(terminal, Mapping) and \
+            terminal.get("schema") == "caol-cockpit-live-final-v1" and terminal.get("state") == "finished"
+        next_state = ("transitioning" if self.session_reentries else "terminalizing") if is_terminal else "ready"
+        # Publish admission state before making the response collectible. A
+        # client may submit its next action immediately after seeing a receipt.
+        # Final responses must never briefly reopen ordinary admission.
         self._write_status(
-            "ready",
+            next_state,
             last_response=receipt,
             **({"session_descriptor": self._active_session_descriptor}
                if self._active_session_descriptor else {}),
         )
+        _atomic_json(self.responses_dir / (request_id + ".receipt.json"), receipt)
         return receipt
 
     def _read_complete_response(self) -> str:
@@ -289,6 +336,23 @@ class FileBackedCockpitBridge:
                 raise ValueError("malformed_pre_descriptor_output") from exc
             if not isinstance(envelope, Mapping):
                 raise ValueError("malformed_pre_descriptor_output")
+            if envelope.get("ok") is False:
+                startup = envelope.get("startup")
+                startup = startup if isinstance(startup, Mapping) else envelope
+                preflight = startup.get("contract_preflight", {})
+                preflight = preflight if isinstance(preflight, Mapping) else {}
+                audit = preflight.get("installed_save_audit", {})
+                self._startup_failure = {
+                    "reason": startup.get("reason", envelope.get("reason", envelope.get("error", "child_startup_failed"))),
+                    "preflight_status": preflight.get("status"),
+                    "artifact": "child.startup.stdout.jsonl",
+                }
+                if isinstance(audit, Mapping):
+                    self._startup_failure["installed_save_audit"] = {
+                        key: audit[key] for key in ("status", "missing_traits", "missing_needs",
+                                                   "observed_forbidden_traits") if key in audit
+                    }
+                raise ValueError(str(self._startup_failure["reason"]))
             if self._consume_startup_progress( envelope ):
                 continue
             if consume_pre_descriptor_prefix and prefix_index < len(self.pre_descriptor_prefix):
@@ -436,6 +500,28 @@ class FileBackedCockpitBridge:
         return 0
 
     def serve(self) -> int:
+        prior_handler = None
+        main_thread = threading.current_thread() is threading.main_thread()
+        if main_thread:
+            prior_handler = signal.signal(signal.SIGTERM, self._termination_signal)
+        try:
+            result = self._serve()
+            if result != 0:
+                previous = json.loads(self.status_path.read_text(encoding="utf-8"))
+                previous["emergency_cleanup"] = self._emergency_cleanup()
+                _atomic_json(self.status_path, previous)
+            return result
+        except BaseException as exc:
+            cleanup = self._emergency_cleanup()
+            if self.status_path.exists():
+                self._write_status("bridge_failed", reason=f"{type(exc).__name__}: {exc}",
+                                   cleanup=cleanup, child_stderr="child.stderr.log")
+            raise
+        finally:
+            if main_thread:
+                signal.signal(signal.SIGTERM, prior_handler)
+
+    def _serve(self) -> int:
         self.prepare()
         environment = dict(os.environ)
         environment["OPENCLAW_COCKPIT_BRIDGE_BINDING_ID"] = self.binding_id
@@ -539,7 +625,11 @@ class FileBackedCockpitBridge:
             os.close(anchor_writer)
             if self._child.poll() is None:
                 self._child.terminate()
-                self._child.wait()
+                try:
+                    self._child.wait(timeout=2)
+                except subprocess.TimeoutExpired:
+                    self._child.kill()
+                    self._child.wait(timeout=2)
             previous = json.loads(self.status_path.read_text(encoding="utf-8"))
             terminal_state = str(previous.get("state", "cleaned"))
             terminal_details = {
@@ -869,9 +959,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             "--session-reentries", str(args.session_reentries),
             "--", *command,
         ]
-        child = subprocess.Popen(bridge_command, stdin=subprocess.DEVNULL,
-                                 stdout=subprocess.DEVNULL, stderr=subprocess.DEVNULL,
-                                 start_new_session=True)
+        error_path = Path(str(args.session_dir) + ".bridge.stderr.log")
+        error_path.parent.mkdir(parents=True, exist_ok=True)
+        with error_path.open("a", encoding="utf-8") as error_log:
+            child = subprocess.Popen(bridge_command, stdin=subprocess.DEVNULL,
+                                     stdout=subprocess.DEVNULL, stderr=error_log,
+                                     start_new_session=True)
         print(json.dumps({"ok": True, "schema": SCHEMA, "bridge_pid": child.pid,
                           "session_dir": args.session_dir, "binding_id": args.binding_id}))
         return 0

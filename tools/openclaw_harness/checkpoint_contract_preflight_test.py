@@ -82,27 +82,54 @@ class CheckpointContractPreflightTest(unittest.TestCase):
             },
         }
 
-    def test_trait_policy_is_exact_for_combat_and_observer_contracts(self) -> None:
-        observer = startup_harness.checkpoint_contract_trait_policy(self.contract())
-        self.assertEqual(
-            observer["required_traits"],
-            [
-                "DEBUG_LS",
-                "DEBUG_NOTEMP",
-                "DEBUG_STAMINA",
-                "DEBUG_CARDIO",
-                "DEBUG_CLAIRVOYANCE",
-                "DEBUG_NIGHTVISION",
-            ],
-        )
+    def test_only_declared_traits_are_required_regardless_of_run_class(self) -> None:
+        for run_class, observer in (("combat", False), ("non_combat", True)):
+            contract = self.contract()
+            contract.update(run_class=run_class, observer_character=observer,
+                            required_stabilizer_traits=["DEBUG_NIGHTVISION"])
+            policy = startup_harness.checkpoint_contract_trait_policy(contract)
+            self.assertEqual(policy["required_traits"], ["DEBUG_NIGHTVISION"])
+            self.assertEqual(policy["declaration_error"], "")
+            del contract["required_stabilizer_traits"]
+            self.assertEqual(startup_harness.checkpoint_contract_trait_policy(contract)["required_traits"], [])
 
-        combat = self.contract()
-        combat["run_class"] = "combat"
-        combat["observer_character"] = False
-        self.assertEqual(
-            startup_harness.checkpoint_contract_trait_policy(combat)["required_traits"],
-            ["DEBUG_LS", "DEBUG_NOTEMP"],
-        )
+    def test_malformed_declared_traits_reject_before_save_audit(self) -> None:
+        for declared in (None, "DEBUG_LS", [True], [""], [" DEBUG_LS"]):
+            with self.subTest(declared=declared):
+                contract = self.contract()
+                contract["required_stabilizer_traits"] = declared
+                with mock.patch.object(startup_harness, "audit_saved_player_condition") as audit:
+                    result = startup_harness.run_checkpoint_contract_preflight(
+                        contract, source={}, validation={}, profile="test-profile", world="World", fixture_install={})
+                self.assertFalse(result["accepted"])
+                self.assertEqual(result["status"], "rejected_static_trait_policy")
+                audit.assert_not_called()
+
+    def test_installed_ordinary_camp_needs_no_blanket_traits_but_explicit_constraints_hold(self) -> None:
+        cases = ((None, None, [], True), ([], None, [], True),
+                 (["DEBUG_NIGHTVISION"], None, [], False),
+                 (None, "invisible", [], False),
+                 (None, "invisible", ["DEBUG_CLOAK"], True))
+        for declared, safety, saved_traits, accepted in cases:
+            with self.subTest(declared=declared, safety=safety, saved_traits=saved_traits), tempfile.TemporaryDirectory() as tmp:
+                contract = self.contract()
+                contract.pop("required_stabilizer_traits")
+                if declared is not None:
+                    contract["required_stabilizer_traits"] = declared
+                if safety is not None:
+                    contract["observer_safety_mode"] = safety
+                world = Path(tmp) / "Camp"
+                world.mkdir()
+                def extract(path):
+                    path.with_suffix("").write_text(json.dumps({"player": {"traits": saved_traits}}))
+                with (mock.patch.object(startup_harness, "save_dir_for_profile", return_value=Path(tmp)),
+                      mock.patch.object(startup_harness, "run_zzip", side_effect=extract)):
+                    result = startup_harness.run_checkpoint_contract_preflight(
+                        contract, source={}, validation={}, profile="camp", world="Camp", fixture_install={})
+                self.assertEqual(result["accepted"], accepted)
+                self.assertEqual(result["installed_save_audit"]["observed_traits"], saved_traits)
+                if not accepted:
+                    self.assertTrue(result["installed_save_audit"]["missing_traits"])
 
     def test_invisible_observer_contract_requires_cloak(self) -> None:
         contract = self.contract()

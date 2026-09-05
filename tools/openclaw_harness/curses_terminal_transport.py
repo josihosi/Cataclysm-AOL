@@ -10,11 +10,8 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import errno
-import fcntl
 import os
 from pathlib import Path
-import pty
-import termios
 import threading
 from typing import IO
 
@@ -31,6 +28,9 @@ class CursesTerminalTransport:
     @classmethod
     def open(cls, transcript_path: Path) -> tuple["CursesTerminalTransport", int]:
         """Create a PTY pair; the caller passes the returned slave to Popen."""
+        if os.name != "posix":
+            raise OSError("curses PTY transport requires POSIX; use the native tiles route on Windows")
+        import pty
         master_fd, slave_fd = pty.openpty()
         transcript_path.parent.mkdir(parents=True, exist_ok=True)
         transport = cls(master_fd, transcript_path, transcript_path.open("wb"))
@@ -39,6 +39,8 @@ class CursesTerminalTransport:
     @staticmethod
     def make_controlling_terminal() -> None:
         """Run in the child after setsid so curses sees its own terminal."""
+        import fcntl
+        import termios
         fcntl.ioctl(0, termios.TIOCSCTTY, 0)
 
     def start_reader(self) -> None:

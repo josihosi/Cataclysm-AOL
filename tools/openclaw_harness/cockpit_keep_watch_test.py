@@ -319,6 +319,24 @@ class KeepWatchTest(unittest.TestCase):
         self.assertEqual(result["error"], "keep_watch_recipe_action_not_advertised")
         self.assertEqual(reads[0], 1)
 
+    def test_rejected_owner_must_change_before_retry(self) -> None:
+        raw = frame(8, 100, {"classification": "clear", "monster": False,
+                             "danger": False, "damage": False})
+        raw.update({"surface_id": "surface:8", "valid_actions": [
+            {"id": "wait.1m", "stable_id": "", "label": "wait.1m", "enabled": True}]})
+        dispatched = []
+        def dispatch(*args):
+            dispatched.append(args)
+            if len(dispatched) > 1:
+                self.fail("redispatched an already rejected native frame")
+            return {"native_receipt": {"accepted": False, "rejection_reason": "wrong_surface"}}
+        channel = cockpit.CockpitRunChannel(lambda: raw, dispatch, binding_id="a",
+                                            read_binding_id=lambda: "a")
+        result = channel.keep_watch({"enabled": True, "target_game_minutes": 101,
+                                     "bound": bound(), "recipe": ["wait.1m"]})
+        self.assertEqual(result["error"], "keep_watch_rejected_owner_unchanged")
+        self.assertEqual(len(dispatched), 1)
+
     def test_stale_primitive_retries_only_when_the_fresh_owner_declares_it(self) -> None:
         safety = {"classification": "clear", "monster": False, "danger": False, "damage": False}
         start = frame(8, 100, safety)

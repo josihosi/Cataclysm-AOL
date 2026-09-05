@@ -662,3 +662,21 @@ Upstream portability note:
 ## Zone semantic identity
 
 - Zones carry a durable identity and semantic revision for native UI receipts. New zones generate an identity; serialized zones retain it, while legacy saves receive an identity with an unknown revision. Semantic-relevant zone mutations advance the revision so an action bound to a displayed zone cannot silently apply to a changed successor.
+
+
+### LLM player transport and process lifetime (2026-09-05)
+
+The file-backed cockpit has a persistent `play_cli.py` client. It owns request/binding IDs and the
+last displayed native frame, persists an in-flight request before submitting it, and collects
+instead of replaying after interruption. OS file locks prevent two clients from consuming the same
+local state. Compact observations expose player identity, immediate neighbours, terrain/visibility,
+nearby entities and grouped messages; full immutable responses remain retrievable by selector.
+The witness journal preserves v2 native facts and compares nested JSON values without converting
+booleans or inventing gameplay postconditions.
+
+Game ownership is recorded immediately after launch, before HUD or screenshot checks can fail.
+Bridge termination reaps its child and cleans up only the exact owned game identity. Native process
+exit is a separate actionless observation with PID/run and recorded return code where available;
+it does not fabricate a successor native frame or establish saving. A repeated rejected input owner
+in keep-watch cannot be retried unchanged indefinitely. These are harness lifecycle and usability
+changes; a fixture launch, debug setup, or diagnostic wait is not product-feature proof.

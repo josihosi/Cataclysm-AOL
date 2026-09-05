@@ -409,6 +409,41 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             ])
         return result, run_probe
 
+    def test_unreported_native_launch_exception_revokes_selection_authority(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            registry_path, scenarios, token_id = self.issue_selection_token(root)
+            executable = root / "selected-runtime"
+            executable.write_bytes(b"selected runtime")
+            runtime_binding = {"ok": True, "schema": 1,
+                               "executable_path": str(executable.resolve()),
+                               "executable_sha256": hashlib.sha256(executable.read_bytes()).hexdigest(),
+                               "runtime_source_sha256": "test-runtime-source"}
+            errors = io.StringIO()
+            with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                    mock.patch.object(startup_harness, "detect_executable", return_value=executable), \
+                    mock.patch.object(startup_harness, "build_runtime_binding", return_value=runtime_binding), \
+                    mock.patch.object(scenario_registry_cli, "_current_source_executable_readiness",
+                                      return_value={"status": "ready"}), \
+                    mock.patch.object(startup_harness, "run_probe_mode",
+                                      side_effect=FileNotFoundError("peekaboo missing after game launch")) as probe, \
+                    redirect_stdout(io.StringIO()), redirect_stderr(errors):
+                result = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-launch", token_id,
+                ])
+            self.assertEqual(result, 1)
+            probe.assert_called_once()
+            self.assertIn("FileNotFoundError", errors.getvalue())
+            self.assertIn("peekaboo missing after game launch", errors.getvalue())
+            self.assertIn('"selection_invalidated": true', errors.getvalue())
+            self.assertIn('"cleanup": "unconfirmed', errors.getvalue())
+            self.assertIn(("invalidated", "registry_launch_adapter_failed_before_report"),
+                          self.token_events(registry_path, token_id))
+            with open_registry(str(registry_path)) as connection:
+                reused = reload_selection_token_for_launch(connection, token_id)
+            self.assertFalse(reused.accepted)
+            self.assertEqual(reused.reason, "token_invalidated")
+
     def bootstrap_runtime(self, executable: Path) -> dict:
         source = runtime_source_binding()
         self.assertTrue(source.get("ok"), source.get("error"))
@@ -1263,7 +1298,9 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             fixture="",
             run_dir=str(root / "run"),
         )
-        with mock.patch.object(startup_harness, "load_profile_config", return_value={"startup": {}}), \
+        with mock.patch.object(startup_harness, "scenarios_root",
+                               return_value=Path(json.loads(receipt)["source_path"]).parent), \
+                mock.patch.object(startup_harness, "load_profile_config", return_value={"startup": {}}), \
                 mock.patch.object(startup_harness, "purge_profile_flexbuffer_cache", return_value={}), \
                 mock.patch.object(startup_harness, "build_plan", return_value=plan), \
                 mock.patch.object(startup_harness, "game_child_environment", return_value={}), \

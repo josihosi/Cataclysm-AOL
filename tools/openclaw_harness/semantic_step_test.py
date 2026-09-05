@@ -45,7 +45,7 @@ class SemanticStepChannelTest(unittest.TestCase):
             "action_inputs": actions,
         }
 
-    def test_anonymous_wake_pipe_contract_and_writer_are_run_bound(self) -> None:
+    def test_named_wake_pipe_contract_and_writer_are_run_bound(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
             read_fd, write_fd, environment = startup_harness.open_semantic_wake_pipe(root, self.run_id)
@@ -53,15 +53,11 @@ class SemanticStepChannelTest(unittest.TestCase):
                 self.assertTrue(environment["OPENCLAW_HARNESS_SEMANTIC_WAKE_READ_FD"].isdigit())
                 self.assertFalse(os.get_blocking(read_fd))
                 self.assertEqual(startup_harness.semantic_wake_pipe_contract(root, self.run_id)["status"], "bound")
-                with startup_harness.semantic_wake_pipe_writers_lock:
-                    startup_harness.semantic_wake_pipe_writers[(str(root.resolve()), self.run_id)] = write_fd
+                self.assertEqual(write_fd, -1)  # Named FIFO writers are opened per submission.
                 self.assertEqual(startup_harness.write_semantic_wake_pipe(root, self.run_id), 1)
                 self.assertEqual(os.read(read_fd, 1), b"w")
             finally:
-                with startup_harness.semantic_wake_pipe_writers_lock:
-                    startup_harness.semantic_wake_pipe_writers.pop((str(root.resolve()), self.run_id), None)
                 os.close(read_fd)
-                os.close(write_fd)
 
     def test_adaptive_session_identity_generates_when_no_supervisor_value_exists(self) -> None:
         with patch.dict("os.environ", {"OPENCLAW_ADAPTIVE_SESSION_ID": ""}):
@@ -1137,6 +1133,55 @@ class SemanticStepChannelTest(unittest.TestCase):
         self.assertTrue(result["accepted"])
         self.assertEqual(result["native_receipt"]["resulting_frame_id"], "")
         self.assertEqual(result["next_frame"]["frame_id"], "rules-frame")
+
+    def test_bound_process_exit_retains_only_matching_actual_terminal_receipt(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "quit-prompt", "frame_id": "quit-frame", "kind": "prompt",
+            "breadcrumbs": ["Main menu", "Quit?"], "payload": {}, "valid_actions": [{
+                "id": "prompt.choose", "stable_id": "prompt-option:3", "label": "YES", "enabled": True,
+            }],
+        }
+        request_id = "cockpit:worker:quit-frame:prompt.choose:" + hashlib.sha256(json.dumps({
+            "stable_id": "prompt-option:3", "parameters": {},
+        }, sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16]
+        native = {"event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+                  "requested_run_id": self.run_id, "requested_surface_id": "quit-prompt",
+                  "requested_frame_id": "quit-frame", "consuming_surface_id": "quit-prompt",
+                  "consuming_frame_id": "quit-frame", "action_id": "prompt.choose", "accepted": True,
+                  "rejection_reason": "", "resulting_frame_id": ""}
+        for present, alive, wrong_run, wrong_receipt in ((True, False, False, False),
+                (False, False, False, False), (True, True, False, False),
+                (True, False, True, False), (True, False, False, True)):
+            with self.subTest(present=present, alive=alive, wrong_run=wrong_run, wrong_receipt=wrong_receipt), \
+                    tempfile.TemporaryDirectory() as temp, \
+                    patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={"status": "bound", "path": "pipe-contract"}), \
+                    patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+                root = Path(temp)
+                trace = root / "semantic.native.log"
+                receipt = {**native, **({"consuming_frame_id": "other-frame"} if wrong_receipt else {})}
+                trace.write_text("\n".join("openclaw_harness_semantic_step: " + json.dumps(event)
+                                           for event in ([descriptor, receipt] if present else [descriptor])) + "\n")
+                with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                    result = execute_semantic_act(
+                        run_dir=root, profile="ignored", run_id=self.run_id, trace_start_offset=0,
+                        pid=17, session_id="worker", frame_id="quit-frame", action_id="prompt.choose",
+                        stable_id="prompt-option:3", observed_frame=descriptor,
+                        transition_timeout_seconds=0.02, observe_interval_seconds=0.001,
+                        read_process_state=lambda: {"run_id": "wrong-run" if wrong_run else self.run_id,
+                                                    "pid": 17, "alive": alive, "exit_code": 0},
+                    )
+                expected = present and not alive and not wrong_run and not wrong_receipt
+                self.assertEqual(result["accepted"], expected)
+                if expected:
+                    self.assertEqual(result["native_receipt"]["request_id"], request_id)
+                    self.assertIsNone(result["next_frame"])
+                    durable = json.loads((root / "semantic.steps.jsonl").read_text())
+                    self.assertTrue(durable["native_receipt"]["accepted"])
+                elif not present:
+                    self.assertIsNone(result["native_receipt"])
+                elif wrong_receipt:
+                    self.assertEqual(result["reason"], "native_surface_receipt_correlation_mismatch")
 
     def test_surface_descriptor_serializes_the_advertised_stable_id(self) -> None:
         descriptor = {

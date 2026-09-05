@@ -67,6 +67,40 @@ human request.
 
 ## Operate and finish
 
+For a registry-launched file-backed session, use the persistent player client:
+
+```sh
+python3 tools/openclaw_harness/play_cli.py --session SESSION look
+python3 tools/openclaw_harness/play_cli.py --session SESSION act ACTION [--target STABLE_ID]
+python3 tools/openclaw_harness/play_cli.py --session SESSION call --request REQUEST.json
+python3 tools/openclaw_harness/play_cli.py --session SESSION collect
+python3 tools/openclaw_harness/play_cli.py --session SESSION inspect SELECTOR --limit 5
+python3 tools/openclaw_harness/play_cli.py --session SESSION journal --reason "What this run established"
+python3 tools/openclaw_harness/play_cli.py --session SESSION finish --witness FILE
+```
+
+For an existing structured `game.*` macro, put its complete request object (including `action`
+and its recipe) in `REQUEST.json` and use `call --request`. The client preserves the request;
+the cockpit checks the operation and recipe against the session. It supplies no recipe defaults.
+Collect the response once and continue from its terminal observation, or use `look` to reassess.
+
+The client owns request IDs, binding, pending responses and the last displayed frame. A pending
+action needs `collect`, never resubmission. Choose from the current surface's actions; supply
+`--target` only when that action advertises a stable ID. A rejected stale owner needs a fresh
+`look` before deciding what to do. Nested menus are game state, not necessarily failures.
+
+The default view includes the player, all immediate neighbouring tiles, a terrain map, nearby
+entities and grouped recent messages. Omitted detail retains exact selectors and paging.
+Saving and returning to the main menu differs from quitting the application. An actionless
+`process_exited` observation reports the bound process outcome, not save durability or feature
+success. After `finish`, `collect` reports actual cleanup separately.
+
+The journal returns citation IDs and exact witness fields. Preserve JSON types in checks:
+`false` differs from `"false"`. Inspect the cited entry to obtain its actual field paths.
+The cockpit exposes structured movement/wait macros through `call --request` and diagnostic
+retrieval through `inspect`; use those when the proof question needs them rather than reconstructing transport bookkeeping
+for ordinary native actions.
+
 Observe current native state, choose actions, and preserve receipts and contradictions. A first
 divergence is a diagnostic anchor, not an automatic stop: inspect it, repair, improvise, rerun, or
 finish according to the outcome. Stop only when the claim is settled or continuation requires a
