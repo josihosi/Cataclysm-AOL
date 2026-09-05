@@ -18,12 +18,24 @@
 #include "player_helpers.h"
 #include "semantic_surface.h"
 #include "translations.h"
+#include "uistate.h"
 
 TEST_CASE( "pickup explains a native pocket denial and permits read-only details",
            "[semantic_surface][pickup_denial]" )
 {
+    std::string operation = "select";
+    SECTION( "details and storage selection" ) {}
+    SECTION( "wield an item that cannot be stored" ) {
+        operation = "inventory.wield";
+    }
+    SECTION( "wear an item that cannot be stored" ) {
+        operation = "inventory.wear";
+    }
     clear_avatar();
     clear_map();
+    on_out_of_scope clear_reopened_menu( []() {
+        uistate.open_menu.reset();
+    } );
     restore_on_out_of_scope<int> restore_width( TERMX );
     restore_on_out_of_scope<int> restore_height( TERMY );
     restore_on_out_of_scope<int> restore_full_width( FULL_SCREEN_WIDTH );
@@ -53,7 +65,8 @@ TEST_CASE( "pickup explains a native pocket denial and permits read-only details
     REQUIRE( you.is_wearing( itype_id( "pants" ) ) );
     map &here = get_map();
     const tripoint_bub_ms position = you.pos_bub();
-    item &log = here.add_item_or_charges( position, item( itype_id( "log" ) ) );
+    const itype_id large_type( operation == "inventory.wear" ? "backpack" : "log" );
+    item &log = here.add_item_or_charges( position, item( large_type ) );
     const std::string log_uid = std::to_string( log.uid().get_value() );
     const std::string log_name = log.tname();
     REQUIRE_FALSE( you.can_pickVolume_partial( log, false, nullptr, false, true ) );
@@ -91,8 +104,14 @@ TEST_CASE( "pickup explains a native pocket denial and permits read-only details
             CHECK_FALSE( blocked.enabled );
             CHECK( blocked.label == log_name + " — " + _( "Does not fit in any pocket!" ) );
             CHECK( advertised( "inventory.details", log_uid ).enabled );
+            CHECK( advertised( "inventory.wield", log_uid ).enabled );
+            CHECK( advertised( "inventory.wear", log_uid ).enabled == ( operation == "inventory.wear" ) );
             CHECK( advertised( "inventory.select", small_uid ).enabled );
-            if( state == 0 ) {
+            if( operation != "select" ) {
+                REQUIRE( state == 0 );
+                state = 4;
+                submit( operation, log_uid );
+            } else if( state == 0 ) {
                 CHECK( descriptor.payload.at( "selected_items" ) == "{}" );
                 state = 1;
                 submit( "inventory.details", log_uid );
@@ -117,6 +136,23 @@ TEST_CASE( "pickup explains a native pocket denial and permits read-only details
         }
     } );
     const drop_locations selected = game_menus::inv::pickup( { position } );
+    if( operation != "select" ) {
+        CHECK( selected.empty() );
+        CHECK( state == 4 );
+        REQUIRE( receipts.size() == 1 );
+        CHECK( receipts.front().accepted );
+        REQUIRE_FALSE( you.activity.is_null() );
+        process_activity( you );
+        if( operation == "inventory.wield" ) {
+            REQUIRE( you.get_wielded_item() );
+            CHECK( you.get_wielded_item()->typeId() == large_type );
+        } else {
+            CHECK( you.is_wearing( large_type ) );
+        }
+        REQUIRE( here.i_at( position ).size() == 1 );
+        CHECK( here.i_at( position ).begin()->uid() == small.uid() );
+        return;
+    }
     REQUIRE( selected.size() == 1 );
     CHECK( std::to_string( selected.front().first->uid().get_value() ) == small_uid );
     CHECK( selected.front().second == 1 );

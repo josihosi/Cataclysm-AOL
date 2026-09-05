@@ -1227,8 +1227,8 @@ class pickup_selector : public inventory_multiselector
         header_stats get_raw_stats() const override;
         void reassign_custom_invlets() override;
     private:
-        bool wield( int &count );
-        bool wear();
+        bool wield( int &count, const item_location &target );
+        bool wear( const item_location &target );
         void remove_from_to_use( item_location &it );
         void reopen_menu( const item_location &next_item );
         const std::set<tripoint_bub_ms> where;

@@ -3753,6 +3753,7 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
 {
     std::vector<semantic_action_descriptor> actions;
     std::vector<std::pair<std::string, std::string>> selectable_items;
+    std::vector<std::pair<item_location, std::string>> all_items;
     for( inventory_column *column : get_all_columns() ) {
         for( inventory_entry *entry : column->get_entries( return_item, true ) ) {
             if( entry == nullptr || !entry->is_item() ) {
@@ -3768,6 +3769,7 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
                 }
                 const std::string stable_id = std::to_string( location->uid().get_value() );
                 const bool enabled = entry->is_selectable();
+                all_items.emplace_back( location, stable_id );
                 if( enabled ) {
                     selectable_items.emplace_back( stable_id, location->tname() );
                 }
@@ -3790,6 +3792,17 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
     for( const semantic_action_descriptor &mode_action : mode_actions ) {
         if( !mode_action.stable_id.empty() || mode_action.id == "inventory.commit" ) {
             actions.push_back( mode_action );
+            continue;
+        }
+        if( mode_action.id == "inventory.wield" || mode_action.id == "inventory.wear" ) {
+            for( const auto &item : all_items ) {
+                const auto permission = mode_action.id == "inventory.wield" ?
+                                        u.can_wield( *item.first ) : u.can_wear( *item.first );
+                const std::string label = permission.success() ? mode_action.label :
+                                          mode_action.label + " — " + permission.c_str();
+                actions.push_back( { mode_action.id, item.second, label,
+                                     mode_action.enabled && permission.success() } );
+            }
             continue;
         }
         for( const auto &item : selectable_items ) {
@@ -3836,7 +3849,8 @@ semantic_action_dispatch_result inventory_selector::handle_semantic_request(
     for( inventory_column *column : get_all_columns() ) {
         for( inventory_entry *entry : column->get_entries( return_item, true ) ) {
             if( entry == nullptr || !entry->is_item() ||
-                ( !entry->is_selectable() && request.action_id != "inventory.details" ) ) {
+                ( !entry->is_selectable() && request.action_id != "inventory.details" &&
+                  request.action_id != "inventory.wield" && request.action_id != "inventory.wear" ) ) {
                 continue;
             }
             for( const item_location &location : entry->locations ) {
@@ -3849,6 +3863,17 @@ semantic_action_dispatch_result inventory_selector::handle_semantic_request(
                                                inventory_selector_hint_from_location( location ) );
                 if( !resolved || resolved != location ) {
                     return { false, "stale_stable_id", "" };
+                }
+                if( request.action_id == "inventory.wield" || request.action_id == "inventory.wear" ) {
+                    const bool wielding = request.action_id == "inventory.wield";
+                    const auto permission = wielding ? u.can_wield( *resolved ) : u.can_wear( *resolved );
+                    if( !permission.success() ) {
+                        return { false, wielding ? "cannot_wield" : "cannot_wear", "" };
+                    }
+                    // Wield/wear do not require a storage pocket. Keep the
+                    // validated target even when navigation skips denied rows.
+                    native_input = inventory_input{ wielding ? "WIELD" : "WEAR", 0, nullptr, resolved };
+                    return { true, "", "" };
                 }
                 if( !entry->is_selectable() && request.action_id == "inventory.details" ) {
                     // A disabled pickup row can still be examined natively.
@@ -3881,14 +3906,6 @@ semantic_action_dispatch_result inventory_selector::handle_semantic_request(
                 }
                 if( request.action_id == "inventory.decrease_quantity" ) {
                     native_input = inventory_input{ "DECREASE_COUNT", 0, nullptr, resolved };
-                    return { true, "", "" };
-                }
-                if( request.action_id == "inventory.wield" ) {
-                    native_input = inventory_input{ "WIELD", 0, nullptr, resolved };
-                    return { true, "", "" };
-                }
-                if( request.action_id == "inventory.wear" ) {
-                    native_input = inventory_input{ "WEAR", 0, nullptr, resolved };
                     return { true, "", "" };
                 }
                 return { false, "unadvertised_action", "" };
@@ -5607,11 +5624,11 @@ drop_locations pickup_selector::execute()
             }
             break;
         } else if( input.action == "WIELD" ) {
-            if( wield( count ) ) {
+            if( wield( count, input.semantic_target ) ) {
                 return drop_locations();
             }
         } else if( input.action == "WEAR" ) {
-            if( wear() ) {
+            if( wear( input.semantic_target ) ) {
                 return drop_locations();
             }
         } else if( input.action == "QUIT" ) {
@@ -5645,14 +5662,14 @@ static item_location get_item_to_highlight_after_use( inventory_column &column,
     return item_location::nowhere;
 }
 
-bool pickup_selector::wield( int &count )
+bool pickup_selector::wield( int &count, const item_location &target )
 {
     inventory_entry &selected = get_active_column().get_highlighted();
-    if( !selected.is_item() ) {
+    if( !target && !selected.is_item() ) {
         return false;
     }
 
-    item_location it = selected.any_item();
+    item_location it = target ? target : selected.any_item();
     if( count == 0 ) {
         count = INT_MAX;
     }
@@ -5671,14 +5688,14 @@ bool pickup_selector::wield( int &count )
     return false;
 }
 
-bool pickup_selector::wear()
+bool pickup_selector::wear( const item_location &target )
 {
     inventory_entry &selected = get_active_column().get_highlighted();
-    if( !selected.is_item() ) {
+    if( !target && !selected.is_item() ) {
         return false;
     }
 
-    std::vector<item_location> items{ selected.any_item() };
+    std::vector<item_location> items{ target ? target : selected.any_item() };
     std::vector<int> quantities{ 0 };
 
     if( u.can_wear( *items.front() ).success() ) {
