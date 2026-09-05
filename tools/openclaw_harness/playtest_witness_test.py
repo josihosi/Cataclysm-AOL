@@ -4,6 +4,7 @@
 from __future__ import annotations
 
 import copy
+import json
 import sys
 import unittest
 from pathlib import Path
@@ -105,6 +106,58 @@ def current_journal(*, charter: dict[str, object], run_id: str) -> dict[str, obj
 
 
 class PlaytestWitnessTest(unittest.TestCase):
+    def test_native_surface_facts_survive_sealing_retrieval_and_citation(self) -> None:
+        from cockpit_evidence import compact, select
+
+        surface = {
+            "family": "World", "kind": "world",
+            "facts": {
+                "last_save_result": "unattempted",
+                "messages": json.dumps([{"text": "Save failed: disk full", "time": 101}]),
+                "visible_entities": json.dumps([{"name": "bandit", "dx": 3, "attitude": "hostile"}]),
+            },
+            "actions": [{"id": "world.save_quit", "stable_id": "", "enabled": True}],
+        }
+        original = copy.deepcopy(surface)
+        sealed = build_evidence_journal(
+            charter=CHARTER,
+            identity={"scenario_id": "native-world", "source_identity": "source-a",
+                      "executable_identity": "exe-a", "run_id": "run-a", "binding_id": "binding-a"},
+            transcript=[{"kind": "observation", "value": {
+                "run_id": "run-a", "observation_id": "run-a:2", "frame_id": "run-a:2",
+                "surface_id": "world-2", "surface": surface, "breadcrumbs": ["world"],
+                "compact_log": {"latest_receipt": {"accepted": True}},
+            }}],
+            terminal={"stop_reason": "save_failed"}, evidence_ceiling="focused",
+        )
+        surface["facts"]["last_save_result"] = "succeeded"
+        surface["actions"].clear()
+        stored = sealed["entries"][1]["value"]["value"]
+        self.assertEqual(stored["surface"], original)
+        self.assertEqual(stored["frame_id"], "run-a:2")
+        projected = compact(stored)
+        self.assertTrue(projected["surface"]["facts"]["messages"]["omitted"])
+        selector = projected["surface"]["facts"]["messages"]["selector"]
+        self.assertEqual(select(stored, selector)[0]["text"], "Save failed: disk full")
+        self.assertEqual(select(stored, "surface.facts.visible_entities.0.dx"), 3)
+        witness = {
+            "verdict": "contradicted", "recommended_disposition": "repair",
+            "smallest_supported_claim": "Accepted input did not establish a save.",
+            "causal_account": "The native world retained an unattempted save and a save failure message.",
+            "citations": [{"citation_id": "J0002", "meaning": "Native save postcondition failed",
+                           "checks": {"value.surface.facts.last_save_result": "unattempted",
+                                      "value.surface.facts.messages.0.text": "Save failed: disk full",
+                                      "value.surface.facts.visible_entities.0.dx": 3}}],
+        }
+        self.assertEqual(validate_witness_statement(
+            charter=CHARTER, journal=sealed, statement=witness)["status"], "mechanically_valid")
+        witness["citations"][0]["checks"]["value.surface.facts.last_save_result"] = "succeeded"
+        with self.assertRaisesRegex(WitnessError, "witness_citation_value_mismatch"):
+            validate_witness_statement(charter=CHARTER, journal=sealed, statement=witness)
+        sealed["entries"][1]["value"]["value"]["surface"]["facts"]["last_save_result"] = "succeeded"
+        with self.assertRaises(WitnessError):
+            validate_witness_statement(charter=CHARTER, journal=sealed, statement=witness)
+
     def test_mixed_run_routes_one_defect_without_erasing_other_claims(self) -> None:
         transcript = [
             {"kind": "observation", "value": {

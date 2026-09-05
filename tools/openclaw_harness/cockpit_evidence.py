@@ -41,6 +41,53 @@ def describe(value: Any, path: str) -> dict[str, Any]:
     return result
 
 
+def gameplay_fact(value: Any, path: str) -> Any:
+    """Expose playable facts with pageable previews; full source stays retrievable."""
+    decoded = decode(value)
+    key = path.rsplit(".", 1)[-1]
+    if not isinstance(decoded, (dict, list)):
+        return compact(value, path)
+    result = describe(value, path)
+    if key == "avatar" and isinstance(decoded, dict):
+        result.update(preview=decoded, omitted=False)
+    elif key == "messages" and isinstance(decoded, list):
+        groups = {}
+        for index, message in enumerate(decoded):
+            text = message.get("text") if isinstance(message, dict) else str(message)
+            group = groups.setdefault(text, {"text": text, "count": 0, "first_index": index})
+            group.update(count=group["count"] + 1, last_index=index,
+                         last_time=message.get("time") if isinstance(message, dict) else None)
+        ordered = sorted(groups.values(), key=lambda row: row["last_index"])
+        result.update(preview=ordered[-5:], unique_messages=len(ordered),
+                      preview_order="latest occurrences; identical text grouped",
+                      omitted_groups=max(0, len(ordered) - 5))
+    elif key == "visible_local" and isinstance(decoded, list):
+        # These are the native immediate neighbours, needed to choose movement.
+        result.update(preview=decoded, omitted=False)
+    elif key in {"visible_entities", "visible_zones"} and isinstance(decoded, list):
+        result.update(preview=decoded[:5], omitted=len(decoded) > 5,
+                      next_offset=5 if len(decoded) > 5 else None)
+    elif key == "minimap" and isinstance(decoded, dict) and isinstance(decoded.get("cells"), list):
+        cells = decoded["cells"]
+        if cells and all(isinstance(c, dict) and isinstance(c.get("dx"), int) and
+                         isinstance(c.get("dy"), int) for c in cells):
+            terrain_keys = sorted({(str(c.get("visibility", "unknown")), str(c.get("terrain", "unknown")))
+                                   for c in cells})
+            symbols = {key: str(index) for index, key in enumerate(terrain_keys)}
+            grid = {(c["dx"], c["dy"]): symbols[(str(c.get("visibility", "unknown")),
+                                                str(c.get("terrain", "unknown")))] for c in cells}
+            xs = sorted({c["dx"] for c in cells}); ys = sorted({c["dy"] for c in cells})
+            result["terrain_view"] = {
+                "coordinate_system": "avatar-relative tiles; x east, y south",
+                "x_offsets": xs, "y_offsets": ys,
+                "rows": [" ".join(grid.get((x, y), "?") for x in xs) for y in ys],
+                "legend": {symbol: {"visibility": key[0], "terrain": key[1]}
+                           for key, symbol in symbols.items()},
+                "details": "Terrain and visibility only; inspect the full cells for other fields. This does not assert passability.",
+            }
+    return result
+
+
 def compact(value: Any, path: str = "") -> Any:
     """Keep decision scalars and action availability; expose bulky values as selectors.
 
@@ -55,8 +102,7 @@ def compact(value: Any, path: str = "") -> Any:
                 result[key] = describe(child, child_path)
             elif key in {"facts", "payload"} and isinstance(child, dict):
                 result[key] = {
-                    k: describe(v, f"{child_path}.{k}")
-                    if isinstance(decode(v), (dict, list)) else compact(v, f"{child_path}.{k}")
+                    k: gameplay_fact(v, f"{child_path}.{k}")
                     for k, v in child.items()
                 }
             else:

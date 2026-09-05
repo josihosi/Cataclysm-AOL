@@ -8,6 +8,7 @@ it deliberately does not encode a claim-specific interaction matrix.
 
 from __future__ import annotations
 
+import copy
 import hashlib
 import json
 from typing import Any, Mapping, Sequence
@@ -137,6 +138,14 @@ def _compact_observation(value: Mapping[str, Any]) -> dict[str, Any]:
         ),
         "child_resources": log.get("child_resources", {}),
     }
+    # The v2 native surface owns the gameplay facts. Keep its exact payload in
+    # the sealed journal; CLI evidence projection pages bulky fields separately.
+    # Do not retain references to a mutable live frame after sealing.
+    if isinstance(value.get("surface"), Mapping):
+        result["surface"] = copy.deepcopy(dict(value["surface"]))
+        for key in ("frame_id", "surface_id", "breadcrumbs"):
+            if key in value:
+                result[key] = copy.deepcopy(value[key])
     return result
 
 
@@ -337,6 +346,13 @@ def compose_evidence_journals(
 def _path_value(value: Any, path: str) -> Any:
     current = value
     for part in path.split(".") if path else ():
+        # Native surface facts may encode structured values as JSON strings.
+        # Decode only while traversing, retaining exact raw leaf comparisons.
+        if isinstance(current, str) and current.lstrip().startswith(("{", "[")):
+            try:
+                current = json.loads(current)
+            except ValueError:
+                pass
         if isinstance(current, Mapping) and part in current:
             current = current[part]
         elif isinstance(current, list) and part.isdecimal() and int(part) < len(current):

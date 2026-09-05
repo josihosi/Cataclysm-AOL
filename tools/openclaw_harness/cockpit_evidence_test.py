@@ -7,6 +7,7 @@ import subprocess
 import sys
 import tempfile
 import unittest
+import cockpit_evidence
 
 CLI = Path(__file__).with_name("cockpit_file_bridge.py")
 
@@ -52,13 +53,41 @@ class CockpitEvidenceTest(unittest.TestCase):
     def status(self):
         return self.cli("response-status", "--session-dir", self.session, "--request-id", "confirm")
 
+    def test_playable_facts_preview_keeps_identity_and_discloses_paging(self):
+        facts = {"avatar": json.dumps({"name": "Ada", "absolute_ms": [1, 2, 0]}),
+                 "visible_entities": json.dumps([{"id": n, "name": "bandit"} for n in range(7)]),
+                 "messages": json.dumps([{"text": "hit", "time": n} for n in range(20)]),
+                 "minimap": json.dumps({"cells": [0] * 100})}
+        result = cockpit_evidence.compact({"surface": {"facts": facts}})["surface"]["facts"]
+        self.assertEqual(result["avatar"]["preview"]["absolute_ms"], [1, 2, 0])
+        self.assertEqual(result["visible_entities"]["count"], 7)
+        self.assertEqual(result["visible_entities"]["next_offset"], 5)
+        self.assertEqual(result["messages"]["preview"][0]["count"], 20)
+        self.assertEqual(result["messages"]["selector"], "surface.facts.messages")
+        self.assertNotIn("preview", result["minimap"])
+
+    def test_terrain_grid_preserves_directions_and_unknown_cells(self):
+        cells = [{"dx": 1, "dy": 0, "terrain": "wall", "visibility": "clear"},
+                 {"dx": 0, "dy": 0, "terrain": "floor", "visibility": "clear"},
+                 {"dx": 0, "dy": 1, "terrain": "grass", "visibility": "dim"}]
+        result = cockpit_evidence.gameplay_fact(json.dumps({"cells": cells}), "surface.facts.minimap")
+        view = result["terrain_view"]
+        self.assertEqual(view["x_offsets"], [0, 1])
+        self.assertEqual(view["y_offsets"], [0, 1])
+        symbols = [row.split() for row in view["rows"]]
+        self.assertEqual(view["legend"][symbols[0][1]]["terrain"], "wall")
+        self.assertEqual(view["legend"][symbols[1][0]]["terrain"], "grass")
+        self.assertEqual(symbols[1][1], "?")
+        self.assertNotIn("passable", view["legend"][symbols[0][1]])
+        self.assertEqual(result["selector"], "surface.facts.minimap")
+
     def test_default_identifies_divergence_and_full_retrieval_agrees(self):
         status = self.status()
         projected = status["response"]
         self.assertTrue(projected["receipt"]["accepted"])
         self.assertEqual(projected["observation"]["surface"]["facts"]["last_save_result"], "unattempted")
         self.assertEqual(projected["observation"]["surface"]["actions"], self.response["observation"]["surface"]["actions"])
-        self.assertNotIn("warm arm", json.dumps(status))
+        self.assertEqual(json.dumps(status).count("warm arm"), 1)
         full = self.cli(*status["retrieval"]["full"])
         self.assertEqual(full["response"], self.response)
         self.assertEqual(projected["receipt"]["native_receipt"], full["response"]["receipt"]["native_receipt"])
@@ -131,7 +160,7 @@ class CockpitEvidenceTest(unittest.TestCase):
         self.assertEqual(page["unparsed_records"], 1)
         self.assertEqual(page["records_without_run_id"], 2)
         self.assertEqual(page["page"]["next_offset"], 1)
-        self.assertNotIn("warm arm", json.dumps(page))
+        self.assertEqual(json.dumps(page).count("warm arm"), 1)
         self.assertEqual(page["rows"][0]["record"]["payload"]["last_save_result"], "unattempted")
         handle = page["rows"][0]["artifact"]
         args = [part for key, value in handle.items() for part in ("--" + key, value)]
