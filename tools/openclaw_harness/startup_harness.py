@@ -16317,7 +16317,18 @@ def capture_screenshot(
     run_dir: Path,
     label: str,
     crop: Optional[Dict[str, int]] = None,
+    *,
+    semantic_only: bool = False,
 ) -> Dict[str, Any]:
+    if semantic_only:
+        return {
+            "label": label,
+            "screen_summary": {
+                "capture_success": False,
+                "capture_status": "not_requested_native_semantic",
+                "capture_process_pid": pid,
+            },
+        }
     png_path = run_dir / f"{label}.png"
     json_path = run_dir / f"{label}.peekaboo.json"
     surface = bound_surface_identity(run_dir, pid)
@@ -16704,6 +16715,12 @@ def capture_startup_screen_probe(
     debug_delta_path: Path,
     gameplay_hud_run_id: str = "",
 ) -> Dict[str, Any]:
+    if screen_summary.get("capture_status") == "not_requested_native_semantic":
+        return {
+            "classification": "not_requested_native_semantic",
+            "native_run_id": gameplay_hud_run_id,
+            "visible_error_popup": False,
+        }
     png_path = Path(str(screen_summary.get("png_path", "")))
     if png_path.is_file():
         ocr_payload = run_screen_ocr(png_path)
@@ -32533,6 +32550,31 @@ def startup_proof_classification(
             "debug_errors_recorded": error_count,
             "rule": "A failed startup cannot support feature proof.",
         }
+    if native_semantic_startup_ready:
+        # The validated live native World descriptor supplies input ownership
+        # and process/run identity without a screenshot, OCR, or OS focus.
+        # Preserve log failures even when that descriptor is available.
+        screen_probe = screen_summary.get("startup_screen_probe", {})
+        screen_probe = screen_probe if isinstance(screen_probe, dict) else {}
+        gate = "startup_clean"
+        if popup_count or screen_probe.get("visible_error_popup"):
+            gate = "debug_popups_recorded"
+        elif error_count or screen_probe.get("startup_error_logged"):
+            gate = "startup_error_logged"
+        return {
+            "evidence_class": "startup/load",
+            "status": "green" if gate == "startup_clean" else "red",
+            "verdict": "startup_load_only" if gate == "startup_clean" else "startup_load_only_" + gate,
+            "feature_proof": False,
+            "startup_clean_for_feature_steps": gate == "startup_clean",
+            "feature_gate": gate,
+            "focus_proven": False,
+            "native_semantic_startup_ready": True,
+            "screen_gate": str(screen_probe.get("classification", "not_requested_native_semantic")),
+            "debug_popups_recorded": popup_count,
+            "debug_errors_recorded": error_count,
+            "rule": "A validated live native World descriptor and classified clean log prove startup/load only; later actions require fresh native ownership and step-local evidence.",
+        }
     status = "green"
     verdict = "startup_load_only"
     clean_for_feature_steps = True
@@ -33431,7 +33473,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 write_json(run_dir / "startup.result.json", result)
                 print(json.dumps(result, indent=2, ensure_ascii=False))
                 return 0 if ready else 1
-            screen = capture_screenshot(proc.pid, run_dir, "failure_process_exit")
+            screen = capture_screenshot(proc.pid, run_dir, "failure_process_exit", semantic_only=semantic_only_startup)
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             screen_summary = screen.get("screen_summary", {})
             final_evidence = capture_final_startup_evidence(
@@ -33596,7 +33638,7 @@ def run_startup(args: argparse.Namespace) -> int:
                     "requested": bool(getattr(args, "startup_dismiss_blocking_overlay", False)),
                     "status": "not_requested",
                 }
-            screen = capture_screenshot(proc.pid, run_dir, "success")
+            screen = capture_screenshot(proc.pid, run_dir, "success", semantic_only=semantic_only_startup)
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             screen_summary = screen.get("screen_summary", {})
             native_semantic_startup = {}
@@ -33804,7 +33846,7 @@ def run_startup(args: argparse.Namespace) -> int:
         print(json.dumps(result, indent=2, ensure_ascii=False))
         return 1
 
-    screen = capture_screenshot(proc.pid, run_dir, "failure_timeout")
+    screen = capture_screenshot(proc.pid, run_dir, "failure_timeout", semantic_only=semantic_only_startup)
     copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
     screen_summary = screen.get("screen_summary", {})
     final_evidence = capture_final_startup_evidence(

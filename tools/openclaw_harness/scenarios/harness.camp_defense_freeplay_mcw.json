@@ -40,13 +40,13 @@
     ],
     "profile": "harness-camp-defense",
     "config_profile": "dev-harness",
-    "fixture": "harness_prepared_camp_revolver_2026-09-05",
+    "fixture": "harness_prepared_camp_revolver_no_giuseppe_2026-09-05",
     "requirements": {
       "os": "macos",
       "source": "current-worktree",
       "executable": "cataclysm-tiles",
       "profile": "harness-camp-defense",
-      "fixture": "harness_prepared_camp_revolver_2026-09-05",
+      "fixture": "harness_prepared_camp_revolver_no_giuseppe_2026-09-05",
       "helper": "none",
       "peekaboo": false,
       "input": [
@@ -58,7 +58,7 @@
     "grants_gameplay_proof": false
   },
   "source_binding": {
-    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/harness_prepared_camp_revolver_2026-09-05/manifest.json",
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/harness_prepared_camp_revolver_no_giuseppe_2026-09-05/manifest.json",
     "profile": "tools/openclaw_harness/profiles/dev-harness.json",
     "profile_snapshot": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
   },
