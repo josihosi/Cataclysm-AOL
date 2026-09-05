@@ -846,6 +846,12 @@ static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_a
         { "world.move.south", "DOWN" },
         { "world.move.west", "LEFT" },
         { "world.move.east", "RIGHT" },
+        { "world.move.northwest", "LEFTUP" },
+        { "world.move.northeast", "RIGHTUP" },
+        { "world.move.southwest", "LEFTDOWN" },
+        { "world.move.southeast", "RIGHTDOWN" },
+        { "world.level_up", "LEVEL_UP" },
+        { "world.level_down", "LEVEL_DOWN" },
     };
     std::vector<std::pair<std::string, std::string>> result;
     for( const std::pair<std::string, std::string> &action : action_ids ) {
@@ -980,8 +986,17 @@ static std::vector<semantic_action_descriptor> semantic_surface_actions(
     std::vector<semantic_action_descriptor> result;
     result.reserve( actions.size() );
     for( const std::pair<std::string, std::string> &action : actions ) {
-        const std::string label = action.first == "world.fire" ? _( "Fire wielded weapon" ) :
-                                  action.first;
+        const std::map<std::string, std::string> labels = {
+            { "world.fire", _( "Fire wielded weapon" ) },
+            { "world.move.northwest", _( "Move northwest" ) },
+            { "world.move.northeast", _( "Move northeast" ) },
+            { "world.move.southwest", _( "Move southwest" ) },
+            { "world.move.southeast", _( "Move southeast" ) },
+            { "world.level_up", _( "Go up (stairs or climb)" ) },
+            { "world.level_down", _( "Go down (stairs or descend)" ) }
+        };
+        const auto named = labels.find( action.first );
+        const std::string label = named == labels.end() ? action.first : named->second;
         result.push_back( { action.first, "", label, true } );
     }
     return result;
@@ -1075,6 +1090,14 @@ static std::string openclaw_harness_semantic_movement_action_id( action_id actio
             return "world.move.west";
         case ACTION_MOVE_RIGHT:
             return "world.move.east";
+        case ACTION_MOVE_FORTH_LEFT:
+            return "world.move.northwest";
+        case ACTION_MOVE_FORTH_RIGHT:
+            return "world.move.northeast";
+        case ACTION_MOVE_BACK_LEFT:
+            return "world.move.southwest";
+        case ACTION_MOVE_BACK_RIGHT:
+            return "world.move.southeast";
         default:
             return {};
     }
@@ -4502,6 +4525,18 @@ bool game::handle_action()
                         act = ACTION_MOVE_LEFT;
                     } else if( request.action_id == "world.move.east" ) {
                         act = ACTION_MOVE_RIGHT;
+                    } else if( request.action_id == "world.move.northwest" ) {
+                        act = ACTION_MOVE_FORTH_LEFT;
+                    } else if( request.action_id == "world.move.northeast" ) {
+                        act = ACTION_MOVE_FORTH_RIGHT;
+                    } else if( request.action_id == "world.move.southwest" ) {
+                        act = ACTION_MOVE_BACK_LEFT;
+                    } else if( request.action_id == "world.move.southeast" ) {
+                        act = ACTION_MOVE_BACK_RIGHT;
+                    } else if( request.action_id == "world.level_up" ) {
+                        act = ACTION_MOVE_UP;
+                    } else if( request.action_id == "world.level_down" ) {
+                        act = ACTION_MOVE_DOWN;
                     } else {
                         return semantic_action_dispatch_result{ false, "no_native_binding", "" };
                     }
