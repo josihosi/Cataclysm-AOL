@@ -17,10 +17,12 @@ exercise belongs here; exhaustive model comparison does not.
 ## Current handover (2026-09-05, active qualification)
 
 The active source is `/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev`,
-branch `dev`, checkpoint `9d4c69cef8`. Windows remains behind and has only portable scratch tests.
-DE67 campaign state is unchanged. Live games remain sequential. A fresh persistence trial is active;
-actual combat damage/reload, the E4B route and sustained operation remain open. Named E2B endpoint
-failure/recovery has current live evidence.
+branch `dev`, pushed checkpoint `1c982cc432`, with the reload/terminal/setup repair described below pending.
+Windows remains behind and has only portable scratch tests. DE67 campaign state is unchanged.
+Live games remain sequential. The persistence trial saved and exited natively, then exposed a reload
+startup defect; its replacement was explicitly quit after preserving the saved world. No game is
+currently running. Saved-state comparison, actual combat damage/reload, E4B and sustained operation
+remain open. Named E2B endpoint failure/recovery has current live evidence.
 
 Recent checkpoints: `913e01acf7` makes Ollama requests nonthinking and rejects leaked reasoning;
 `945df62038` exposes native pickup denials and exact item details; `1fe6f52b31` preserves nested-owner
@@ -63,6 +65,43 @@ Windows/Linux game build of this frontier has not been claimed. One broader lega
 invocation still has four pre-existing call-signature failures, retained in its log. Relevant narrow
 finalization checks passed. Structured reviews found real stale-grant and malformed-quit gaps;
 both were repaired and the final reviews were clean.
+
+### Reload, terminal and setup repair (2026-09-05)
+
+The initial persistence session `selected-0823524f76cd479fb3c87a648c8b3b35` saved and exited
+PID 93389 natively (exit 0). The configured relaunch omitted `semantic_only_startup` and
+`suppress_profile_startup_input`, letting legacy startup input open Actions in PID 96450.
+The bridge then attempted to overwrite its already valid finish receipt while reporting missing
+reentry. The startup helper now forwards both effective flags, and the bridge preserves finish
+receipts and reports the registered replacement game separately from its controller child.
+The client reports failed reentry instead of waiting indefinitely for it.
+
+Engineering attachment `recovery-persistence-20260905-2329` preserved the same game and original
+artifacts. Initial missing wake/request endpoints were attached by exact native launch identity;
+the native cancel reached an unsupported Action-menu owner. Luna explicitly quit that instance.
+This attachment is zero-credit engineering recovery, not successful saved-state qualification.
+The original saved world remains available for a native-only continuation; no fixture was reinstalled.
+
+The death/end-screen owner now exposes actor identity, native HP-death state, preview versus actual
+death, suicide and position, with a native confirmation action. Its focused native test passed
+56 assertions in one case (four situations). The live delayed request/terminal route remains open.
+Native Linux compilation passed for the owner and test translation unit. This is not a full Linux
+runtime test. Reload forwarding passed 148 Mac classification tests and 14 targeted Windows/WSL
+tests. Player/reentry validation passed 30 Mac and WSL bridge tests and 25 CLI tests. The Windows
+CLI/startup selection passed 39 tests. Review found and repaired live-controller cleanup after
+failed reentry; both still-alive and exited controller shapes now have subprocess coverage.
+
+At Josef's request, derived harness fixtures remove only Giuseppe Bachman, NPC ID 4. The four
+scenes inheriting him use those manifests; cannibal and ergonomics scenes have different fixtures.
+Historical fixture bytes remain unchanged. Exact removal and bystander checks were performed on a
+disposable copy; `giuseppe-setup-validation.json` retains the full bystander payload hashes and
+unchanged source hashes. This is setup intervention and supplies no combat or faction-behavior credit.
+
+The initial persistence cost artifact is `persistence-initial-reload-costs.json`: 744 seconds of
+owned-game samples, peak RSS 989,954,048 bytes; 49 native-action samples with median 0.138 seconds
+and a 15.03-second failure maximum. Reconstructed verified response views had median 7,785 and
+maximum 19,104 bytes; retained responses 3,785,234 bytes and SQLite/WAL 11,210,752 bytes. These are
+observed finite-run costs, not player-model token counts or a stability threshold.
 
 ## Evidence handles
 

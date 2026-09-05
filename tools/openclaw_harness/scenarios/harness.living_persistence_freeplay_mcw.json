@@ -5,7 +5,7 @@
   "profile": "harness-living-persistence",
   "config_profile": "dev-harness",
   "world": "McWilliams",
-  "fixture": "harness_prepared_camp_revolver_2026-09-05",
+  "fixture": "harness_prepared_camp_revolver_no_giuseppe_2026-09-05",
   "fixture_profile": "live-debug",
   "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
   "replace_existing_worlds": true,

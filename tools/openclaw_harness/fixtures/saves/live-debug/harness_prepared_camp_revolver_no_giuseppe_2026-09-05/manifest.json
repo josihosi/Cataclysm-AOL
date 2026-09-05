@@ -1,0 +1,16 @@
+{
+  "name": "harness_prepared_camp_revolver_no_giuseppe_2026-09-05",
+  "source_fixture": "harness_prepared_camp_revolver_2026-09-05",
+  "source_profile": "live-debug",
+  "description": "Owned derived harness fixture for the six qualification scenes; removes only Giuseppe Bachman (NPC id 4) while preserving the prepared camp and equipment chain.",
+  "save_transforms": [
+    {
+      "kind": "remove_overmap_npcs",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": true,
+      "npc_ids": [
+        4
+      ]
+    }
+  ]
+}

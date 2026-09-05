@@ -5,7 +5,7 @@
   "profile": "harness-npc-llm-freeplay",
   "config_profile": "dev-harness",
   "world": "McWilliams",
-  "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "fixture": "harness_basecamp_no_giuseppe_2026-09-05",
   "fixture_profile": "live-debug",
   "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
   "replace_existing_worlds": true,
