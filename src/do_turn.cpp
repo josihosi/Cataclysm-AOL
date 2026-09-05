@@ -96,6 +96,7 @@
 #include "regional_settings.h"
 #include "scent_map.h"
 #include "sdlsound.h"
+#include "semantic_surface.h"
 #include "simple_pathfinding.h"
 #include "sounds.h"
 #include "stats_tracker.h"
@@ -9268,6 +9269,13 @@ namespace turn_handler
 {
 bool cleanup_at_end()
 {
+    // Keep post-death viewers and prompts inside the native harness lifetime.
+    // An unsupported viewer must publish its own owner, not leave the final
+    // death-camera question and its deferred receipt visible after it closed.
+    std::optional<semantic_surface_manager_session> cleanup_semantic_session;
+    if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        cleanup_semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
     avatar &u = get_avatar();
     if( g->uquit == QUIT_DIED || g->uquit == QUIT_SUICIDE ) {
         // Put (non-hallucinations) into the overmap so they are not lost.

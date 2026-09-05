@@ -1262,7 +1262,7 @@ std::optional<tripoint_rel_ms> choose_direction( const std::string &message,
                 { "direction.choose", "northeast", _( "Northeast" ), true },
                 { "direction.choose", "southwest", _( "Southwest" ), true },
                 { "direction.choose", "southeast", _( "Southeast" ), true },
-                { "direction.choose", "pause", _( "Pause" ), true },
+                { "direction.choose", "pause", _( "Here (current tile)" ), true },
                 { "direction.cancel", "", _( "Cancel" ), true }
             };
             if( allow_vertical ) {
