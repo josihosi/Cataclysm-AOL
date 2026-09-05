@@ -42,6 +42,14 @@ class QuitConfirmationSemanticTest(unittest.TestCase):
         self.assertIn('const bool receipt_before_native_exit =', source)
         self.assertIn('!receipt_before_native_exit', source)
 
+    def test_semantic_yes_does_not_republish_a_terminal_prompt_as_a_timeout(self) -> None:
+        source = (Path(__file__).resolve().parents[2] / "src" / "popup.cpp").read_text(
+            encoding="utf-8"
+        )
+        semantic_selection = source.index('semantic_option_selected = true;')
+        timeout_guard = source.index('( res.evt.type == input_event_t::timeout && !semantic_option_selected )')
+        self.assertLess(semantic_selection, timeout_guard)
+
     def test_m095_uses_semantic_quit_gate_and_keeps_normal_relaunch_route(self) -> None:
         scenario_path = Path(__file__).resolve().parent / "scenarios" / (
             "bandit.r009_m095_current_route_safe_watch_mcw.json"

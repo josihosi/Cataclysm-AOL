@@ -485,7 +485,11 @@ query_popup::result query_popup::query_once()
           res.evt.get_first_input() == static_cast<int>( MouseInput::Move ) ) ||
         // Ignore window losing focus in SDL
         ( res.evt.type == input_event_t::keyboard_char && res.evt.sequence.empty() ) ||
-        res.evt.type == input_event_t::timeout
+        // A semantic option has no physical input event.  Its default event
+        // consequently looks like a timeout, but the option was already
+        // accepted by the bound native owner.  Do not re-enter the prompt and
+        // republish it (in particular, the terminal main-menu quit YES).
+        ( res.evt.type == input_event_t::timeout && !semantic_option_selected )
     );
 
     if( cancel && res.action == "QUIT" ) {
