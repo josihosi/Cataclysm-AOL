@@ -3752,6 +3752,12 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
         }
     } while( !okay );
 
+    if( semantic_scope ) {
+        // This response is committed: effects may open child owners, but
+        // this dialogue frame will never accept another choice. Keep its
+        // unwind private until the next dialogue or World owner is created.
+        semantic_manager->withhold_parent_authority_until_recreated( semantic_scope->surface_id() );
+    }
     d_win.add_history_separator();
     d_win.add_to_history( response_lines[response_ind].text, _( "You" ), c_light_blue );
 

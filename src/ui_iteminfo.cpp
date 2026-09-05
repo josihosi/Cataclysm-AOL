@@ -1,6 +1,7 @@
 #include "ui_iteminfo.h"
 
 #include <imgui/imgui.h>
+#include <map>
 #include <optional>
 #include <string>
 #include <vector>
@@ -72,12 +73,19 @@ void iteminfo_window::execute()
 
     std::optional<std::string> semantic_input;
     std::optional<semantic_surface_scope> semantic_scope;
+    std::map<std::string, std::string> semantic_facts;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
-        semantic_scope.emplace( *manager, "item_info", _( "Item info" ),
-        std::map<std::string, std::string>{
+        // Format only the native display/compare data used by draw_controls.  Keep the
+        // full text (including comparison colors) stable throughout this modal owner.
+        semantic_facts = {
             { "item_name", data.get_item_name() },
-            { "type_name", data.get_type_name() }
-        }, std::vector<semantic_action_descriptor>{
+            { "type_name", data.get_type_name() },
+            { "item_info_text", format_item_info( data.get_item_display(), data.get_item_compare() ) },
+            { "item_info_text_source",
+              "format_item_info(item_info_data::get_item_display(), item_info_data::get_item_compare())" }
+        };
+        semantic_scope.emplace( *manager, "item_info", _( "Item info" ),
+        semantic_facts, std::vector<semantic_action_descriptor>{
             { "item_info.close", "", _( "Close" ), true }
         }, [&semantic_input]( const semantic_action_request &request ) {
             if( request.action_id != "item_info.close" ) {
@@ -91,10 +99,7 @@ void iteminfo_window::execute()
     while( true ) {
         ui_manager::redraw();
         if( semantic_scope ) {
-            semantic_scope->publish( std::map<std::string, std::string>{
-                { "item_name", data.get_item_name() },
-                { "type_name", data.get_type_name() }
-            }, std::vector<semantic_action_descriptor>{
+            semantic_scope->publish( semantic_facts, std::vector<semantic_action_descriptor>{
                 { "item_info.close", "", _( "Close" ), true }
             } );
             semantic_scope->consume_request();

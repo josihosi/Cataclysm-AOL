@@ -8,6 +8,7 @@
 
 #include "cata_imgui.h"
 #include "game_constants.h"
+#include "semantic_surface.h"
 #include "imgui/imgui.h"
 #include "translations.h"
 
@@ -20,6 +21,13 @@ class follower_rules_ui
         friend class follower_rules_ui_impl;
     public:
         void draw_follower_rules_ui( npc *guy );
+        static std::map<std::string, std::string> semantic_labels( npc &guy );
+        static std::map<std::string, std::string> semantic_payload(
+            npc &guy, const std::map<std::string, std::string> &labels );
+        static std::vector<semantic_action_descriptor> semantic_actions(
+            npc &guy, const std::map<std::string, std::string> &labels );
+        static semantic_action_dispatch_result handle_semantic_request(
+            npc &guy, const semantic_action_request &request );
 };
 
 class follower_rules_ui_impl : public cataimgui::window

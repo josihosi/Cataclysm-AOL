@@ -6,6 +6,7 @@
 #include <functional>
 #include <map>
 #include <optional>
+#include <set>
 #include <string>
 #include <vector>
 
@@ -131,7 +132,7 @@ class semantic_surface_manager
         // The item-use path closes its old menu after a child (direction or a
         // confirmation) returns, then enters the same native menu loop anew.
         // Never expose the old menu or World during that handoff.
-        std::optional<std::string> withheld_parent_surface_id_;
+        std::set<std::string> withheld_parent_surface_ids_;
         bool suppress_parent_republish_ = false;
         std::size_t request_transport_offset_ = 0;
         bool transport_wake_pending_ = false;

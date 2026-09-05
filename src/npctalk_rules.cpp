@@ -4,6 +4,7 @@
 #include <map>
 #include <memory>
 #include <set>
+#include <sstream>
 #include <string>
 #include <unordered_map>
 #include <utility>
@@ -20,6 +21,7 @@
 #include "imgui/imgui_internal.h"
 #include "input_context.h"
 #include "input_enums.h"
+#include "json.h"
 #include "npc.h"
 #include "pimpl.h"
 #include "semantic_surface.h"
@@ -60,8 +62,134 @@ static std::map<aim_rule, std::string> aim_rule_map = {
     {aim_rule::STRICTLY_PRECISE, "<ally_rule_aim_strictly_precise>" },
 };
 
+namespace
+{
+
+std::string follower_rule_text( npc &guy, std::string text )
+{
+    parse_tags( text, get_player_character(), guy );
+    return text;
+}
+
+void toggle_follower_rule( npc &guy, const ally_rule rule )
+{
+    const bool enabled = !guy.rules.has_flag( rule );
+    guy.rules.toggle_flag( rule );
+    guy.rules.toggle_specific_override_state( rule, enabled );
+}
+
+void reset_follower_rule( npc &guy, const ally_rule rule )
+{
+    guy.rules.clear_flag( rule );
+    guy.rules.clear_override( rule );
+    guy.rules.disable_override( rule );
+}
+
+} // namespace
+
+std::map<std::string, std::string> follower_rules_ui::semantic_labels( npc &guy )
+{
+    std::map<std::string, std::string> labels;
+    for( const auto &entry : ally_rule_strs ) {
+        labels.emplace( entry.second.rule_true_text, follower_rule_text( guy, entry.second.rule_true_text ) );
+        labels.emplace( entry.second.rule_false_text, follower_rule_text( guy, entry.second.rule_false_text ) );
+    }
+    for( const auto &entry : engagement_rules ) {
+        labels.emplace( entry.second, follower_rule_text( guy, entry.second ) );
+    }
+    for( const auto &entry : aim_rule_map ) {
+        labels.emplace( entry.second, follower_rule_text( guy, entry.second ) );
+    }
+    for( const auto &entry : recharge_map ) {
+        labels.emplace( entry.second, follower_rule_text( guy, entry.second ) );
+    }
+    for( const auto &entry : reserve_map ) {
+        labels.emplace( entry.second, follower_rule_text( guy, entry.second ) );
+    }
+    return labels;
+}
+
+std::map<std::string, std::string> follower_rules_ui::semantic_payload(
+    npc &guy, const std::map<std::string, std::string> &labels )
+{
+    std::ostringstream rows;
+    JsonOut json( rows );
+    json.start_array();
+    const std::map<std::string, ally_rule_data> rules( ally_rule_strs.begin(), ally_rule_strs.end() );
+    for( const auto &entry : rules ) {
+        const bool enabled = guy.rules.has_flag( entry.second.rule );
+        json.start_object();
+        json.member( "id", entry.first );
+        json.member( "enabled", enabled );
+        json.member( "base_enabled", guy.rules.has_flag( entry.second.rule, false ) );
+        json.member( "override_enabled", guy.rules.has_override_enable( entry.second.rule ) );
+        json.member( "label", labels.at( enabled ? entry.second.rule_true_text :
+                                        entry.second.rule_false_text ) );
+        json.end_object();
+    }
+    json.end_array();
+    return {
+        { "title", _( "Rules for your follower" ) },
+        { "speaker_id", std::to_string( guy.getID().get_value() ) },
+        { "speaker_name", guy.disp_name() },
+        { "rules", rows.str() },
+        { "engagement", labels.at( engagement_rules.at( guy.rules.engagement ) ) },
+        { "aim", labels.at( aim_rule_map.at( guy.rules.aim ) ) },
+        { "cbm_recharge", labels.at( recharge_map.at( guy.rules.cbm_recharge ) ) },
+        { "cbm_reserve", labels.at( reserve_map.at( guy.rules.cbm_reserve ) ) }
+    };
+}
+
+std::vector<semantic_action_descriptor> follower_rules_ui::semantic_actions(
+    npc &guy, const std::map<std::string, std::string> &labels )
+{
+    std::vector<semantic_action_descriptor> actions = { { "menu.cancel", "", _( "Done" ), true } };
+    const std::map<std::string, ally_rule_data> rules( ally_rule_strs.begin(), ally_rule_strs.end() );
+    for( const auto &entry : rules ) {
+        const bool enabled = guy.rules.has_flag( entry.second.rule );
+        actions.push_back( { "npc_rules.toggle", entry.first,
+                             labels.at( enabled ? entry.second.rule_false_text :
+                                        entry.second.rule_true_text ), true } );
+        actions.push_back( { "npc_rules.reset", entry.first, _( "Default" ),
+                             guy.rules.has_flag( entry.second.rule, false ) ||
+                             guy.rules.has_override_enable( entry.second.rule ) ||
+                             guy.rules.has_override( entry.second.rule ) } );
+    }
+    return actions;
+}
+
+semantic_action_dispatch_result follower_rules_ui::handle_semantic_request(
+    npc &guy, const semantic_action_request &request )
+{
+    const auto speaker = request.parameters.find( "speaker_id" );
+    if( speaker != request.parameters.end() && speaker->second !=
+        std::to_string( guy.getID().get_value() ) ) {
+        return { false, "wrong_speaker", "" };
+    }
+    const auto rule = ally_rule_strs.find( request.stable_id.value_or( "" ) );
+    if( rule == ally_rule_strs.end() ) {
+        return { false, "invalid_rule_id", "" };
+    }
+    if( request.action_id == "npc_rules.toggle" ) {
+        toggle_follower_rule( guy, rule->second.rule );
+    } else if( request.action_id == "npc_rules.reset" ) {
+        if( !guy.rules.has_flag( rule->second.rule, false ) &&
+            !guy.rules.has_override_enable( rule->second.rule ) &&
+            !guy.rules.has_override( rule->second.rule ) ) {
+            return { false, "already_default", "" };
+        }
+        reset_follower_rule( guy, rule->second.rule );
+    } else {
+        return { false, "unadvertised_action", "" };
+    }
+    return { true, "", "" };
+}
+
 void follower_rules_ui::draw_follower_rules_ui( npc *guy )
 {
+    if( guy == nullptr ) {
+        return;
+    }
     input_context ctxt;
     follower_rules_ui_impl p_impl;
     p_impl.set_npc_pointer_to( guy );
@@ -77,22 +205,20 @@ void follower_rules_ui::draw_follower_rules_ui( npc *guy )
     // This is still bizarrely necessary for imgui
     ctxt.set_timeout( 10 );
 
+    // Snippet rendering can vary. Resolve labels once for this owner so an
+    // unchanged redraw cannot manufacture a new semantic frame.
+    const auto labels = semantic_labels( *guy );
     std::optional<bool> semantic_close_requested;
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
         semantic_scope.emplace( *manager, "npc_rules_menu", _( "Rules for your follower" ),
-        std::map<std::string, std::string> {
-            { "title", _( "Rules for your follower" ) },
-            { "speaker_id", guy ? std::to_string( guy->getID().get_value() ) : "" },
-            { "speaker_name", guy ? guy->disp_name() : "" }
-        },
-        std::vector<semantic_action_descriptor> { { "menu.cancel", "", _( "Done" ), true } },
-        [&semantic_close_requested]( const semantic_action_request &request ) {
-            if( request.action_id != "menu.cancel" ) {
-                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+        semantic_payload( *guy, labels ), semantic_actions( *guy, labels ),
+        [guy, &semantic_close_requested]( const semantic_action_request &request ) {
+            if( request.action_id == "menu.cancel" ) {
+                semantic_close_requested = true;
+                return semantic_action_dispatch_result{ true, "", "" };
             }
-            semantic_close_requested = true;
-            return semantic_action_dispatch_result{ true, "", "" };
+            return handle_semantic_request( *guy, request );
         } );
     }
 
@@ -100,7 +226,14 @@ void follower_rules_ui::draw_follower_rules_ui( npc *guy )
         ui_manager::redraw_invalidated();
 
         if( semantic_scope ) {
-            semantic_scope->consume_request();
+            semantic_scope->publish( semantic_payload( *guy, labels ), semantic_actions( *guy, labels ) );
+            if( semantic_scope->consume_request() && !semantic_close_requested ) {
+                // Publish the actual changed rule state before waiting for
+                // another request; native semantic input needs no keypress.
+                semantic_scope->publish( semantic_payload( *guy, labels ), semantic_actions( *guy, labels ) );
+                p_impl.last_action.clear();
+                continue;
+            }
         }
         if( semantic_close_requested ) {
             p_impl.last_action = "QUIT";
@@ -326,8 +459,7 @@ void follower_rules_ui_impl::checkbox( int rule_number, const T &this_rule,
         rule_enabled = !rule_enabled;
     }
     if( changed ) {
-        guy->rules.toggle_flag( this_rule.rule );
-        guy->rules.toggle_specific_override_state( this_rule.rule, rule_enabled );
+        toggle_follower_rule( *guy, this_rule.rule );
     }
     ImGui::SameLine();
     auto label = _( "Default" );
@@ -335,8 +467,7 @@ void follower_rules_ui_impl::checkbox( int rule_number, const T &this_rule,
              ImGui::GetStyle().WindowPadding.x - ImGui::CalcTextSize( label, nullptr, true ).x;
     ImGui::SetCursorPosX( x );
     if( ImGui::Button( label ) ) {
-        guy->rules.clear_flag( this_rule.rule );
-        guy->rules.clear_override( this_rule.rule );
+        reset_follower_rule( *guy, this_rule.rule );
     }
     ImGui::PopID();
 }

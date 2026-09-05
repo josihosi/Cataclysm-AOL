@@ -42,11 +42,20 @@ std::string semantic_surface_manager::push( const std::string &kind, const std::
         std::vector<semantic_action_descriptor> valid_actions,
         semantic_action_consumer consumer )
 {
-    const bool recreating_withheld_owner = withheld_parent_surface_id_ &&
-                                           std::none_of( stack_.begin(), stack_.end(),
-    [this]( const surface_state &surface ) {
-        return surface.descriptor.surface_id == *withheld_parent_surface_id_;
-    } );
+    bool recreating_withheld_owner = false;
+    for( auto owner = withheld_parent_surface_ids_.begin();
+         owner != withheld_parent_surface_ids_.end(); ) {
+        const bool owner_is_gone = std::none_of( stack_.begin(), stack_.end(),
+        [&owner]( const surface_state &surface ) {
+            return surface.descriptor.surface_id == *owner;
+        } );
+        if( owner_is_gone ) {
+            owner = withheld_parent_surface_ids_.erase( owner );
+            recreating_withheld_owner = true;
+        } else {
+            ++owner;
+        }
+    }
     semantic_surface_descriptor descriptor;
     descriptor.run_id = run_id_;
     descriptor.surface_id = new_surface_id();
@@ -59,7 +68,6 @@ std::string semantic_surface_manager::push( const std::string &kind, const std::
     descriptor.breadcrumbs.push_back( breadcrumb );
     stack_.push_back( { std::move( descriptor ), std::move( consumer ) } );
     if( recreating_withheld_owner ) {
-        withheld_parent_surface_id_.reset();
         suppress_parent_republish_ = false;
     }
     republish_top();
@@ -79,12 +87,13 @@ bool semantic_surface_manager::publish( const std::string &surface_id,
     }
     stack_.back().descriptor.payload = std::move( payload );
     stack_.back().descriptor.valid_actions = std::move( valid_actions );
-    const bool withheld_owner_is_gone = withheld_parent_surface_id_ &&
-                                         std::none_of( stack_.begin(), stack_.end(),
-    [this]( const surface_state &surface ) {
-        return surface.descriptor.surface_id == *withheld_parent_surface_id_;
+    const bool withheld_owner_is_gone = std::any_of( withheld_parent_surface_ids_.begin(),
+                                         withheld_parent_surface_ids_.end(), [this]( const std::string &owner ) {
+        return std::none_of( stack_.begin(), stack_.end(), [&owner]( const surface_state &surface ) {
+            return surface.descriptor.surface_id == owner;
+        } );
     } );
-    if( suppress_parent_republish_ && withheld_owner_is_gone ) {
+    if( withheld_parent_surface_ids_.count( surface_id ) != 0 || withheld_owner_is_gone ) {
         return true;
     }
     republish_top();
@@ -96,11 +105,10 @@ bool semantic_surface_manager::pop( const std::string &surface_id )
     if( !is_top( surface_id ) ) {
         return false;
     }
-    const bool withheld_parent_is_next = stack_.size() > 1 && withheld_parent_surface_id_ &&
-                                         stack_[stack_.size() - 2].descriptor.surface_id ==
-                                         *withheld_parent_surface_id_;
-    const bool popping_withheld_parent = withheld_parent_surface_id_ &&
-                                         *withheld_parent_surface_id_ == surface_id;
+    const bool withheld_parent_is_next = stack_.size() > 1 &&
+                                        withheld_parent_surface_ids_.count(
+                                            stack_[stack_.size() - 2].descriptor.surface_id ) != 0;
+    const bool popping_withheld_parent = withheld_parent_surface_ids_.count( surface_id ) != 0;
     if( withheld_parent_is_next || popping_withheld_parent ) {
         stack_.pop_back();
         // The native item-use path is still unwinding.  Neither the stale
@@ -133,12 +141,12 @@ bool semantic_surface_manager::is_top( const std::string &surface_id ) const
 bool semantic_surface_manager::withhold_parent_authority_until_recreated(
     const std::string &surface_id )
 {
-    if( !is_top( surface_id ) || withheld_parent_surface_id_ ) {
+    if( !is_top( surface_id ) ) {
         return false;
     }
-    withheld_parent_surface_id_ = surface_id;
-    suppress_parent_republish_ = true;
-    return true;
+    // A committed dialogue can open an item menu that also retires while
+    // its own child runs. Track both native owners independently.
+    return withheld_parent_surface_ids_.insert( surface_id ).second;
 }
 
 const std::optional<semantic_surface_descriptor> &semantic_surface_manager::top() const

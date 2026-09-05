@@ -628,6 +628,12 @@ void zone_manager_ui::display_zone_manager()
     bool quit = false;
     bool save = false;
     std::string semantic_native_action;
+    // The consumer outlives an input iteration. Keep its expected state in
+    // sync with each published frame, including native edits and selection.
+    std::string zone_identity;
+    faction_id expected_faction;
+    bool expected_enabled = false;
+    std::optional<int64_t> expected_revision;
     std::optional<semantic_surface_scope> semantic_scope;
     g->set_zones_manager_open( true );
     zone_manager::get_manager().save_zones( "zmgr-temp" );
@@ -659,10 +665,10 @@ void zone_manager_ui::display_zone_manager()
             std::vector<semantic_action_descriptor> semantic_actions;
             if( zone_cnt > 0 ) {
                 const zone_data &active_zone = zones[active_index].get();
-                const std::string zone_identity = active_zone.get_identity();
-                const faction_id expected_faction = zones_faction;
-                const bool expected_enabled = active_zone.get_enabled();
-                const std::optional<int64_t> expected_revision = active_zone.get_semantic_revision();
+                zone_identity = active_zone.get_identity();
+                expected_faction = zones_faction;
+                expected_enabled = active_zone.get_enabled();
+                expected_revision = active_zone.get_semantic_revision();
                 semantic_payload = {
                     { "zone_id", zone_identity },
                     { "faction", expected_faction.str() },
@@ -677,8 +683,8 @@ void zone_manager_ui::display_zone_manager()
                 if( !semantic_scope ) {
                     semantic_scope.emplace( *manager, "zone_manager", _( "Zone Manager" ), semantic_payload,
                 semantic_actions,
-                [ &mgr, &semantic_native_action, zone_identity, expected_faction, expected_enabled,
-                  expected_revision ]( const semantic_action_request &request ) {
+                [ &mgr, &semantic_native_action, &zone_identity, &expected_faction, &expected_enabled,
+                  &expected_revision ]( const semantic_action_request &request ) {
                     if( request.action_id == "zone.close" ) {
                         if( request.stable_id.has_value() && !request.stable_id->empty() ) {
                             return semantic_action_dispatch_result{ false, "invalid_close_target", "" };

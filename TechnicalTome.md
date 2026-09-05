@@ -680,3 +680,10 @@ exit is a separate actionless observation with PID/run and recorded return code 
 it does not fabricate a successor native frame or establish saving. A repeated rejected input owner
 in keep-watch cannot be retried unchanged indefinitely. These are harness lifecycle and usability
 changes; a fixture launch, debug setup, or diagnostic wait is not product-feature proof.
+
+Native dialogue effects retire their completed input owner before unwinding. The semantic manager
+tracks nested retired owners separately, so neither a stale dialogue nor an intermediate item menu
+is republished as usable input; a recreated owner restores authority. Ordinary child inspection still
+returns to its live parent. Follower rule toggles and resets share the physical UI mutation helper,
+including disabling an active false override on reset. Zone consumers check the state of their
+current published frame, and item details expose the same formatted text as the native item UI.

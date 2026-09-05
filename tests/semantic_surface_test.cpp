@@ -3,6 +3,7 @@
 
 #include "cata_catch.h"
 #include "character.h"
+#include "cursesdef.h"
 #include "debug_menu.h"
 #include "imgui/imgui.h"
 #include "inventory_ui.h"
@@ -146,16 +147,40 @@ TEST_CASE( "item info is a semantic child and restores its selector parent",
     REQUIRE( inventory.consume_request() );
     CHECK( receipts.empty() );
 
-    manager.set_descriptor_observer( [&manager]( const semantic_surface_descriptor &descriptor ) {
+    item_info_data data( "rock", "rock", {
+        iteminfo( "BASE", "Weight: ", "<num> kg", iteminfo::lower_is_better, 1 ),
+        iteminfo( "DESCRIPTION", "A palm-sized stone." ),
+        iteminfo( "DESCRIPTION", "Undisplayed description", iteminfo::no_name ),
+        iteminfo( "ARMOR", "Protection;Bash\nTorso;2", iteminfo::is_table )
+    }, {
+        iteminfo( "BASE", "Weight: ", "<num> kg", iteminfo::lower_is_better, 2 ),
+        iteminfo( "DESCRIPTION", "Comparison-only description" )
+    } );
+    std::string details_frame;
+    manager.set_descriptor_observer( [&manager, &data, &details_frame](
+    const semantic_surface_descriptor &descriptor ) {
         if( descriptor.kind != "item_info" ) {
             return;
         }
         REQUIRE( descriptor.breadcrumbs == std::vector<std::string>{ "Inventory", "Item info" } );
         REQUIRE( descriptor.valid_actions.size() == 1 );
+        CHECK( descriptor.valid_actions.front().id == "item_info.close" );
+        REQUIRE( descriptor.payload.count( "item_info_text" ) == 1 );
+        const std::string &text = descriptor.payload.at( "item_info_text" );
+        CHECK( text == format_item_info( data.get_item_display(), data.get_item_compare() ) );
+        CHECK( text.find( "Weight: " ) != std::string::npos );
+        CHECK( text.find( "<color_c_light_green>1</color> kg" ) != std::string::npos );
+        CHECK( text.find( "A palm-sized stone." ) != std::string::npos );
+        CHECK( text.find( "Protection: Bash\n  Torso: 2" ) != std::string::npos );
+        CHECK( text.find( "Undisplayed description" ) == std::string::npos );
+        CHECK( text.find( "Comparison-only description" ) == std::string::npos );
+        CHECK( descriptor.payload.at( "item_info_text_source" ) ==
+               "format_item_info(item_info_data::get_item_display(), item_info_data::get_item_compare())" );
+        REQUIRE( details_frame.empty() );
+        details_frame = descriptor.frame_id;
         REQUIRE( manager.submit_request( { "test-run", descriptor.surface_id, descriptor.frame_id,
                                            "close-details", "item_info.close", std::nullopt, {} } ) );
     } );
-    item_info_data data( "rock", "rock", {}, {} );
     iteminfo_window details( data, point::zero, 80, 0 );
     details.execute();
 
@@ -165,6 +190,8 @@ TEST_CASE( "item info is a semantic child and restores its selector parent",
     CHECK( receipts.front().resulting_frame_id != inventory_descriptor.frame_id );
     CHECK( receipts.back().request_id == "close-details" );
     CHECK( receipts.back().accepted );
+    // The redraw before consumption must retain the frame carrying these facts.
+    CHECK( receipts.back().consuming_frame_id == details_frame );
     REQUIRE( manager.top() );
     CHECK( manager.top()->surface_id == inventory.surface_id() );
     CHECK( manager.top()->frame_id != inventory_descriptor.frame_id );
@@ -1275,8 +1302,10 @@ TEST_CASE( "string prompt accepts constraint-valid structured semantic text",
         }
     } );
 
+    const catacurses::window window = catacurses::newwin( 3, 30, point::zero );
+    REQUIRE( window );
     string_input_popup prompt;
-    prompt.title( "Number" ).text( "" ).max_length( 2 ).only_digits( true );
+    prompt.window( window, point( 1, 1 ), 28 ).title( "Number" ).text( "" ).max_length( 2 ).only_digits( true );
     CHECK( prompt.query_string() == "42" );
     CHECK( prompt.confirmed() );
     CHECK_FALSE( prompt.canceled() );
@@ -1291,6 +1320,12 @@ TEST_CASE( "imgui string prompt owns semantic coordinate submission and rejects 
     bool saw_prompt = false;
     bool rejected_wrong_surface = false;
     bool rejected_stale_frame = false;
+    std::vector<std::string> rejection_reasons;
+    manager.set_receipt_observer( [&rejection_reasons]( const semantic_action_receipt &receipt ) {
+        if( !receipt.accepted ) {
+            rejection_reasons.push_back( receipt.rejection_reason );
+        }
+    } );
     manager.set_descriptor_observer( [&manager, &saw_prompt, &rejected_wrong_surface, &rejected_stale_frame]
     ( const semantic_surface_descriptor &descriptor ) {
         if( descriptor.kind != "string_prompt" ) {
@@ -1298,12 +1333,14 @@ TEST_CASE( "imgui string prompt owns semantic coordinate submission and rejects 
         }
         saw_prompt = true;
         CHECK( descriptor.valid_actions[0].id == "prompt.submit" );
-        rejected_wrong_surface = !manager.submit_request( { "test-run", "wrong-surface", descriptor.frame_id,
-                                                             "wrong", "prompt.submit", std::nullopt,
-                                                             { { "text", "0'152,0'49,0" } } } );
-        rejected_stale_frame = !manager.submit_request( { "test-run", descriptor.surface_id, "stale-frame",
-                                                           "stale", "prompt.submit", std::nullopt,
-                                                           { { "text", "0'152,0'49,0" } } } );
+        REQUIRE( manager.submit_request( { "test-run", "wrong-surface", descriptor.frame_id,
+                                           "wrong", "prompt.submit", std::nullopt,
+                                           { { "text", "0'152,0'49,0" } } } ) );
+        rejected_wrong_surface = !manager.consume_top_request();
+        REQUIRE( manager.submit_request( { "test-run", descriptor.surface_id, "stale-frame",
+                                           "stale", "prompt.submit", std::nullopt,
+                                           { { "text", "0'152,0'49,0" } } } ) );
+        rejected_stale_frame = !manager.consume_top_request();
         REQUIRE( manager.submit_request( { "test-run", descriptor.surface_id, descriptor.frame_id,
                                            "submit", "prompt.submit", std::nullopt,
                                            { { "text", "0'152,0'49,0" } } } ) );
@@ -1314,4 +1351,5 @@ TEST_CASE( "imgui string prompt owns semantic coordinate submission and rejects 
     CHECK( saw_prompt );
     CHECK( rejected_wrong_surface );
     CHECK( rejected_stale_frame );
+    CHECK( rejection_reasons == std::vector<std::string>{ "wrong_surface", "stale_frame" } );
 }

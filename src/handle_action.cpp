@@ -4411,9 +4411,12 @@ bool game::handle_action()
                 const std::vector<character_id> basecamp_mission_candidates =
                     openclaw_harness_basecamp_mission_candidates();
                 for( const character_id candidate : basecamp_mission_candidates ) {
-                    semantic_actions.push_back( { "world.basecamp_missions",
-                                                  std::to_string( candidate.get_value() ),
-                                                  _( "Open Base Missions" ), true } );
+                    const npc *const actor = find_npc( candidate );
+                    if( actor != nullptr ) {
+                        semantic_actions.push_back( { "world.basecamp_missions",
+                                                      std::to_string( candidate.get_value() ),
+                                                      string_format( _( "Open Base Missions with %s" ), actor->name ), true } );
+                    }
                 }
                 world_semantic_scope.emplace( semantic_manager, "world", "World",
                                               openclaw_harness_world_payload(),
