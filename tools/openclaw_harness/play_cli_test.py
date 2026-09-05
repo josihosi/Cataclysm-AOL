@@ -225,7 +225,7 @@ class PlayerCliTest(unittest.TestCase):
         self.assertEqual(request, {"action": "run.finish", "observation_id": "frame-1",
                          "stop_reason": "missing gameplay outcome", "unused_authority": "released",
                          "witness": {"verdict": "inconclusive"}})
-        self.reply(finish["request_id"], {"ok": True, "result": {"state": "finished"}})
+        self.reply(finish["request_id"], {"ok": True, "result": {"schema": "caol-cockpit-live-final-v1", "state": "finished"}})
         self.cli("collect")
         self.cli("finish", "--witness", str(witness_path), ok=False)
         self.assertEqual(len(self.requests()), 3)
@@ -263,16 +263,75 @@ class PlayerCliTest(unittest.TestCase):
         self.cli("look", ok=False)
         self.assertEqual(len(self.requests()), 1)
 
-    def test_native_fail_closed_final_ends_session_even_when_response_is_error(self):
+    def test_error_final_never_turns_an_action_failure_into_client_quit(self):
         self.observe()
         pending = self.cli("act", "world.wait")
         self.reply(pending["request_id"], {"ok": False, "error": "owner_lost",
                     "final": {"schema": "caol-cockpit-live-final-v1", "state": "finished"}})
         result = self.cli("collect", ok=False)
-        self.assertEqual(result["next"], "collect")
+        self.assertEqual(result["next"], "look")
+        self.assertFalse(json.loads((self.session / "play-client.json").read_text()).get("finished"))
+        self.assertEqual(self.cli("look")["state"], "pending")
+        self.assertEqual(len(self.requests()), 3)
+
+    def test_explicit_quit_works_without_a_frame_and_after_journal_sealing(self):
+        for structured in (False, True):
+            with self.subTest(structured=structured):
+                self.write("play-client.json", {"binding_id": "bound-a", "sealed_terminal": {"observation_id": "old"}})
+                if structured:
+                    path = self.session / "quit.json"
+                    path.write_text(json.dumps({"action": "run.quit", "stop_reason": "player chooses to stop"}))
+                    pending = self.cli("call", "--request", str(path))
+                else:
+                    pending = self.cli("quit", "--reason", "player chooses to stop")
+                self.reply(pending["request_id"], {"ok": True, "result": {
+                    "schema": "caol-cockpit-live-final-v1", "state": "finished"}})
+                self.assertEqual(self.cli("collect")["next"], "collect")
+                self.assertTrue(json.loads((self.session / "play-client.json").read_text())["finished"])
+
+    def test_quit_ack_without_terminal_receipt_keeps_client_recoverable(self):
+        self.observe()
+        pending = self.cli("quit", "--reason", "stop")
+        self.reply(pending["request_id"], {"ok": True})
+        result = self.cli("collect", ok=False)
+        self.assertEqual(result["state"], "unconfirmed_terminal_response")
+        self.assertFalse(json.loads((self.session / "play-client.json").read_text()).get("finished"))
+        self.assertEqual(self.cli("look")["state"], "pending")
+
+    def test_declared_reentry_releases_old_grants_before_new_observation(self):
+        self.write("play-client.json", {"binding_id": "bound-a", "finished": True,
+                   "finished_generation": 0, "process_exited": True,
+                   "sealed_terminal": {"observation_id": "old"}, "observation_id": "old"})
+        self.write("status.json", {"binding_id": "bound-a", "state": "ready", "session_generation": 0})
         self.cli("look", ok=False)
-        self.cli("act", "world.wait", ok=False)
-        self.assertEqual(len(self.requests()), 2)
+        self.write("status.json", {"binding_id": "bound-a", "state": "ready", "session_generation": 1})
+        self.assertEqual(self.cli("collect")["state"], "reentered")
+        self.assertIn("look_required", self.cli("act", "world.pause", ok=False)["error"])
+        pending = self.cli("look")
+        self.reply(pending["request_id"], {"ok": True, "result": {"observation_id": "new-process:frame:1"}})
+        self.cli("collect")
+        action = self.cli("act", "world.pause")
+        sent = next(r for r in self.requests() if r["request_id"] == action["request_id"])
+        self.assertEqual(sent["request"]["observation_id"], "new-process:frame:1")
+
+    def test_messages_reads_typed_native_text_from_the_displayed_frame_without_input(self):
+        for direct in (False, True):
+            with self.subTest(direct=direct):
+                self.write("play-client.json", {"binding_id": "bound-a"})
+                pending = self.cli("look")
+                observation = {"observation_id": "reply-frame", "surface": {"kind": "world", "facts": {
+                    "messages": json.dumps([{"text": "old fixture"}, {"text": "Earlier rejection"},
+                                            {"text": 'Katharina says: "Done."', "time": "16:00"}])}}}
+                self.reply(pending["request_id"], {"ok": True, "observation" if direct else "result": observation})
+                self.cli("collect")
+                before = (self.session / "play-client.json").read_bytes()
+                count = len(self.requests())
+                result = self.cli("messages", "--contains", "Katharina", "--limit", "1")
+                self.assertEqual(result["slice"], [{"text": 'Katharina says: "Done."', "time": "16:00"}])
+                self.assertEqual(result["observation_id"], "reply-frame")
+                self.assertEqual(result["source_indices"], [2])
+                self.assertEqual((self.session / "play-client.json").read_bytes(), before)
+                self.assertEqual(len(self.requests()), count)
 
     def test_terminal_process_view_offers_journal_without_another_native_action(self):
         pending = self.cli("look")

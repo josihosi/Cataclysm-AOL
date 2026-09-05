@@ -67,6 +67,18 @@ class PlayerClient:
         }
         if self.state.get("binding_id") != self.binding:
             raise ValueError("play_client_binding_changed")
+        self.reentered = False
+        status_path = self.session / "status.json"
+        status = json.loads(status_path.read_text()) if status_path.exists() else {}
+        generation = status.get("session_generation", 0)
+        if (self.state.get("finished") and status.get("binding_id") == self.binding
+                and status.get("state") == "ready" and isinstance(generation, int)
+                and generation > self.state.get("finished_generation", 0)):
+            for key in ("finished", "finished_generation", "sealed_terminal", "process_exited",
+                        "observation_id", "observation_request_id", "operation_availability"):
+                self.state.pop(key, None)
+            self.state["session_generation"] = generation
+            self.reentered = True
 
     def save(self):
         _atomic_json(self.state_path, self.state)
@@ -74,7 +86,16 @@ class PlayerClient:
     def controls(self) -> dict[str, Any]:
         # Local metadata only: safe while a native request is pending. Do not
         # refresh the frame, enqueue traffic, or save client ownership state.
-        return {"ok": True, "result": player_controls(self.state.get("operation_availability"))}
+        root = Path(__file__).resolve().parents[2]
+        return {"ok": True, "result": player_controls(self.state.get("operation_availability")),
+                "evidence_tools": {
+                    "messages": "messages [--contains TEXT] [--offset N --limit N] reads the displayed frame's native messages as JSON; no game input.",
+                    "npc_logs": [{"path": str(root / "config" / name),
+                                  "present": (root / "config" / name).is_file()}
+                                 for name in ("llm_intent.log", "llm_intent_events.log", "llm_intent_runner.log")],
+                    "log_scope": "These engine logs are shared across runs. Correlate the exact utterance, actor, request and timestamp; file presence or an old reply is not current-run evidence.",
+                    "query": "cockpit_file_bridge.py log-query --path PATH --contains TEXT --limit 5; record-artifact verifies exact returned byte ranges.",
+                }}
 
     def performance(self, args):
         from process_performance import (read_json, read_records, sample_owned_session,
@@ -106,6 +127,11 @@ class PlayerClient:
     def collect(self, wait_seconds: float = 0) -> dict[str, Any]:
         pending = self.state.get("pending")
         if not pending:
+            if self.reentered:
+                self.save()
+                return {"ok": True, "state": "reentered", "next": "look",
+                        "session_generation": self.state["session_generation"],
+                        "note": "The declared saved-world continuation is ready. Old frame grants were released; observe its current owner."}
             if self.state.get("finished"):
                 status = json.loads((self.session / "status.json").read_text())
                 terminal = status.get("terminalization", {})
@@ -163,11 +189,14 @@ class PlayerClient:
                 key: pending["request"][key]
                 for key in ("observation_id", "stop_reason", "unused_authority")
             }
-        final = response.get("final", {})
-        if (response.get("ok") and pending["request"]["action"] == "run.finish") or (
-                isinstance(final, dict) and final.get("schema") == "caol-cockpit-live-final-v1"
-                and final.get("state") == "finished"):
+        terminal_request = response.get("ok") and pending["request"]["action"] in {"run.finish", "run.quit"}
+        terminal = response.get("result")
+        confirmed_terminal = (isinstance(terminal, dict)
+                              and terminal.get("schema") == "caol-cockpit-live-final-v1"
+                              and terminal.get("state") == "finished")
+        if terminal_request and confirmed_terminal:
             self.state["finished"] = True
+            self.state["finished_generation"] = result["receipt"].get("session_generation", 0)
             self.state.pop("observation_id", None)
         self.state["last_request_id"] = request_id
         self.state.pop("pending", None)
@@ -194,6 +223,11 @@ class PlayerClient:
                 "remaining_unknowns": "Optional list of unresolved questions",
                 "evidence_ceiling": "Do not exceed the sealed journal ceiling",
             }
+        if terminal_request and not confirmed_terminal:
+            output.update(ok=False, state="unconfirmed_terminal_response",
+                          error="explicit_finish_or_quit_has_no_terminal_receipt",
+                          next="quit --reason REASON or inspect retained evidence" if self.state.get("sealed_terminal") else "look",
+                          note="The reply did not establish session termination. The client remains available and does not replay the request.")
         return output
 
     def submit(self, request: dict[str, Any], wait_seconds: float) -> dict[str, Any]:
@@ -239,6 +273,8 @@ class PlayerClient:
         return self.submit(request, wait_seconds)
 
     def call(self, request: dict[str, Any], wait_seconds: float):
+        if isinstance(request, dict) and request.get("action") == "run.quit":
+            return self.submit(request, wait_seconds)
         if not isinstance(request, dict) or not isinstance(request.get("action"), str) or not request["action"].strip().lower().startswith("game."):
             raise ValueError("call_requires_a_structured_game_request")
         if self.state.get("sealed_terminal"):
@@ -260,6 +296,43 @@ class PlayerClient:
                     "next": "journal --reason REASON; inspect result.evidence_journal.entries --limit 10"}
         return self.submit({"action": "run.finish", **terminal, "witness": witness}, wait_seconds)
 
+    def messages(self, offset: int | None, limit: int, contains: str | None):
+        from cockpit_evidence import select
+        request_id = self.state.get("observation_request_id")
+        if not request_id:
+            return {"ok": False, "error": "no_displayed_observation", "next": "look or collect"}
+        status = Bridge.response_status(self.session, request_id, summary=False)
+        if not status.get("ok"):
+            return status
+        receipt = status["receipt"]
+        if receipt.get("binding_id") != self.binding:
+            return {"ok": False, "error": "response_binding_mismatch"}
+        result = Bridge.response_artifact(self.session, request_id, receipt["response_sha256"])
+        if not result.get("ok"):
+            return result
+        response = result["response"]
+        base = "observation" if isinstance(response.get("observation"), dict) else "result"
+        observation = response.get(base, {})
+        if not observation.get("observation_id") and isinstance(observation.get("terminal_observation"), dict):
+            base += ".terminal_observation"
+            observation = observation["terminal_observation"]
+        selector = base + ".surface.facts.messages"
+        try:
+            messages = select(response, selector)
+        except KeyError:
+            return {"ok": False, "error": "messages_not_available_on_current_owner",
+                    "owner": observation.get("surface", {}).get("kind"),
+                    "next": "Inspect this owner's facts or return to World when appropriate."}
+        if not isinstance(messages, list) or limit <= 0 or (offset is not None and offset < 0):
+            raise ValueError("invalid_message_page")
+        if offset is None:
+            count = sum(contains is None or contains.casefold() in json.dumps(message, ensure_ascii=False).casefold()
+                        for message in messages)
+            offset = max(0, count - limit)
+        page = Bridge.response_slice(self.session, request_id, selector, offset, limit, contains)
+        return {**page, "observation_id": observation.get("observation_id"),
+                "scope": "Native messages in the displayed frame, including any retained fixture history. Compare the time, actor and action before attributing a message."}
+
     def inspect(self, selector: str, offset: int, limit: int | None, contains: str | None,
                 request_id: str | None = None):
         request_id = request_id or self.state.get("last_request_id")
@@ -279,6 +352,12 @@ def main(argv=None):
     commands = parser.add_subparsers(dest="command", required=True)
     commands.add_parser("look", help="Observe the current input owner and its legal actions")
     commands.add_parser("collect", help="Collect the outstanding response without replaying input")
+    quit_command = commands.add_parser("quit", help="Explicitly end the owned run without a gameplay claim")
+    quit_command.add_argument("--reason", required=True)
+    messages = commands.add_parser("messages", help="Read native messages from the displayed observation; latest matching page by default")
+    messages.add_argument("--contains")
+    messages.add_argument("--offset", type=int)
+    messages.add_argument("--limit", type=int, default=5)
     act = commands.add_parser("act", help="Act on the last displayed frame; native authority remains unchanged")
     act.add_argument("action")
     act.add_argument("--target", help="Exact advertised stable ID")
@@ -332,6 +411,10 @@ def main(argv=None):
                     result = client.act(args.action, args.target, params, args.wait_seconds)
                 elif args.command == "controls":
                     result = client.controls()
+                elif args.command == "messages":
+                    result = client.messages(args.offset, args.limit, args.contains)
+                elif args.command == "quit":
+                    result = client.submit({"action": "run.quit", "stop_reason": args.reason}, args.wait_seconds)
                 elif args.command == "call":
                     result = client.call(json.loads(args.request.read_text()), args.wait_seconds)
                 elif args.command == "inspect":

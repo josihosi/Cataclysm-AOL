@@ -73,6 +73,7 @@ For a registry-launched file-backed session, use the persistent player client:
 python3 tools/openclaw_harness/play_cli.py --session SESSION look
 python3 tools/openclaw_harness/play_cli.py --session SESSION act ACTION [--target STABLE_ID]
 python3 tools/openclaw_harness/play_cli.py --session SESSION controls
+python3 tools/openclaw_harness/play_cli.py --session SESSION messages --contains TEXT
 python3 tools/openclaw_harness/play_cli.py --session SESSION call --request REQUEST.json
 python3 tools/openclaw_harness/play_cli.py --session SESSION collect
 python3 tools/openclaw_harness/play_cli.py --session SESSION inspect SELECTOR --limit 5
@@ -86,9 +87,13 @@ An ordinary interruption stops only the macro: inspect its terminal observation 
 progress, then choose the next native action. All action and observation failures leave the game
 running. Ownership or receipt failures revoke stale input grants: `look` again before choosing an
 action. A failed command does not authorize quitting, cleanup, replay, or a replacement game.
-To end without making a gameplay claim, send `{"action":"run.quit","stop_reason":"your reason"}`
-through `call --request`. A client disconnect also leaves the game running. Only explicit native
+To end without making a gameplay claim, use `quit --reason "your reason"`, or send
+`{"action":"run.quit","stop_reason":"your reason"}` through `call --request`. A client disconnect also leaves the game running. Only explicit native
 quit, `run.quit`, `run.finish`, or requested bridge cleanup ends it.
+`messages` reads the displayed observation as JSON, including quoted speech; it defaults to the
+latest matching page and does not send game input. `controls` also identifies the central NPC
+prompt, response and runner logs, which are shared across runs and need exact event correlation.
+A declared save/reload continuation is reported as `reentered`; use `look` for its new owner.
 `performance` reads retained CPU/RSS and action intervals; `performance --sample-seconds 1`
 works even while game input is pending. `--offset 0 --limit 5` pages exact records.
 Use `--tag "comparable workload" --save-baseline FILE`, then `--tag "comparable workload"
@@ -128,7 +133,10 @@ real external decision, unavailable capability, irreversible user-data risk, bin
 materially different owner outcome.
 
 At the honest boundary, seal `run.witness` and call `run.finish`. State the smallest conclusion
-supported by cited immutable evidence; do not invent facts or promote the evidence ceiling. When
+supported by cited immutable evidence; do not invent facts or promote the evidence ceiling.
+Stop reasons and witness text are your own conclusions, not independent game observations.
+Reconcile them with the resulting native state and any later messages, including outcomes revealed
+when a nested interaction returns to World. When
 one run settles independent claims differently, submit a `caol-playtest-witness-bundle-v1`: each
 claim keeps its own verdict, while bound product or harness defects name affected and explicitly
 unaffected claims. Continue useful observation after a defect when the remaining causal footing is

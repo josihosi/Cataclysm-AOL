@@ -252,11 +252,12 @@ class CockpitFileBridgeTest(unittest.TestCase):
     def test_collectible_receipt_has_matching_admission_state(self):
         from unittest.mock import patch
         import cockpit_file_bridge as module
-        for terminal in (False, True):
-            with self.subTest(terminal=terminal), tempfile.TemporaryDirectory() as temp:
+        for action, ok, terminal in (("game.observe", True, False), ("game.act", False, False),
+                                     ("run.finish", True, True), ("run.quit", True, True)):
+            with self.subTest(action=action), tempfile.TemporaryDirectory() as temp:
                 bridge = FileBackedCockpitBridge(Path(temp) / "session", ["unused"], binding_id="bound")
                 bridge.prepare()
-                response = {"ok": True, "result": {"schema": "caol-cockpit-live-final-v1", "state": "finished"}} if terminal else {"ok": True}
+                response = {"ok": ok, "result": {"schema": "caol-cockpit-live-final-v1", "state": "finished"}}
                 original = module._atomic_json
                 def publish(path, value):
                     if str(path).endswith(".receipt.json"):
@@ -264,7 +265,8 @@ class CockpitFileBridgeTest(unittest.TestCase):
                         self.assertEqual(status["state"], "terminalizing" if terminal else "ready")
                     return original(path, value)
                 with patch.object(module, "_atomic_json", side_effect=publish):
-                    bridge._persist_response("request", b"{}", json.dumps(response).encode())
+                    bridge._persist_response("request", json.dumps({"action": action}).encode(),
+                                             json.dumps(response).encode())
 
     def test_final3_style_five_step_observe_act_chain_keeps_ids_and_observations_unique(self):
         """Regression: no extra status observe or retry may reuse a pause id."""
@@ -639,6 +641,9 @@ class CockpitFileBridgeTest(unittest.TestCase):
             status = json.loads((directory / "status.json").read_text())
             self.assertEqual(status["state"], "ready")
             self.assertEqual(status["remaining_session_reentries"], 0)
+            self.assertEqual(status["session_generation"], 1)
+            first = json.loads((directory / "responses" / "finish-first.receipt.json").read_text())
+            self.assertEqual(first["session_generation"], 0)
             # send_request retains this envelope in the spool only.  The
             # bridge must admit that exact post-reentry identity once, rather
             # than requiring or accepting a FIFO replay.
@@ -651,6 +656,7 @@ class CockpitFileBridgeTest(unittest.TestCase):
             receipt = json.loads((directory / "responses" /
                                   "finish-after-relaunch.receipt.json").read_text())
             self.assertEqual(receipt["request_id"], "finish-after-relaunch")
+            self.assertEqual(receipt["session_generation"], 1)
             thread.join(2)
             self.assertFalse(thread.is_alive())
             self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")

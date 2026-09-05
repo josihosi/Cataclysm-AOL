@@ -86,6 +86,7 @@ class FileBackedCockpitBridge:
         self._seen: set[str] = set()
         self._spooled_request_ids: set[str] = set()
         self._sequence = 0
+        self._session_generation = 0
         self._child: subprocess.Popen[str] | None = None
         self._child_stderr = None
         self._bootstrap_run_id = ""
@@ -147,6 +148,7 @@ class FileBackedCockpitBridge:
             "bridge_pid": os.getpid(),
             "state": state,
             "request_count": self._sequence,
+            "session_generation": self._session_generation,
             **({"startup_failure": self._startup_failure} if self._startup_failure else {}),
             **extra,
         }
@@ -230,6 +232,7 @@ class FileBackedCockpitBridge:
             "schema": SCHEMA,
             "request_id": request_id,
             "sequence": self._sequence,
+            "session_generation": self._session_generation,
             "binding_id": self.binding_id,
             "request_sha256": _digest(request_bytes),
             "request_identity": _request_identity(request_bytes),
@@ -240,8 +243,10 @@ class FileBackedCockpitBridge:
         terminal = response.get("result") if isinstance(response, Mapping) else None
         if not isinstance(terminal, Mapping) and isinstance(response, Mapping):
             terminal = response.get("final")
-        is_terminal = isinstance(terminal, Mapping) and \
-            terminal.get("schema") == "caol-cockpit-live-final-v1" and terminal.get("state") == "finished"
+        is_terminal = response.get("ok") is True and \
+            receipt["request_identity"].get("action") in {"run.finish", "run.quit"} and \
+            isinstance(terminal, Mapping) and terminal.get("schema") == "caol-cockpit-live-final-v1" and \
+            terminal.get("state") == "finished"
         next_state = ("transitioning" if self.session_reentries else "terminalizing") if is_terminal else "ready"
         # Publish admission state before making the response collectible. A
         # client may submit its next action immediately after seeing a receipt.
@@ -440,6 +445,7 @@ class FileBackedCockpitBridge:
                     descriptor = self._await_session_descriptor(
                         consume_pre_descriptor_prefix=False,
                     )
+                    self._session_generation += 1
                     self._write_status(
                         "ready",
                         child_pid=self._child.pid if self._child else 0,
