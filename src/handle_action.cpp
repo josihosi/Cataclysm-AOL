@@ -22,6 +22,7 @@
 #include "auto_pickup.h"
 #include "avatar.h"
 #include "avatar_action.h"
+#include "avatar_status.h"
 #include "bionics.h"
 #include "bodygraph.h"
 #include "bodypart.h"
@@ -957,8 +958,11 @@ static std::map<std::string, std::string> openclaw_harness_world_payload()
             << player.pos_abs_omt().z() << "],\"cells\":"
             << openclaw_harness_overmap_facts( player, overmap_radius, turn ) << '}';
 
+    const std::map<std::string, std::string> status = avatar_status_payload( player );
     return {
         { "avatar", avatar_fact.str() },
+        { "avatar_status", status.at( "avatar_status" ) },
+        { "avatar_effects", status.at( "avatar_effects" ) },
         { "visible_local", openclaw_harness_visible_local_facts( here, avatar_pos, 1, false, true ) },
         { "minimap", minimap.str() },
         { "overmap", overmap.str() },
