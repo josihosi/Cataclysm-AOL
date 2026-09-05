@@ -2177,6 +2177,13 @@ void avatar::talk_to( std::unique_ptr<talker> talk_with, bool radio_contact,
     if( !talk_with->will_talk_to_u( *this, has_mind_control || force_topic ) ) {
         return;
     }
+    // NPC-initiated conversations can open during monmove, after the World
+    // action's manager binding has ended. Keep this real owner reachable too.
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( active_semantic_surface_manager() == nullptr &&
+        openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
     dialogue d( get_talker_for( *this ), std::move( talk_with ), {} );
     if( const npc *npc_actor = d.actor( true )->get_npc() ) {
         DebugLog( D_INFO, DC_ALL ) << "avatar::talk_to: begin npc=" << npc_actor->get_name()
