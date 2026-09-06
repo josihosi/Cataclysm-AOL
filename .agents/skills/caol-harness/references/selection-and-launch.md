@@ -8,8 +8,12 @@ python3 tools/openclaw_harness/scenario_registry_cli.py registry-query --query-j
 
 The result shows five ranked matches by default (`--page-size` changes that presentation). Each
 match gives its fit, evidence, lifecycle, and manifest binding. Follow `page.next` to browse the same
-saved result; paging does not rerun selection or issue another token. `full_result` retrieves the
-complete evaluation when a specific uncertainty needs it. The selected token belongs only to
+saved result; paging does not rerun selection or issue another token. Rejection causes explain
+excluded candidates; their `details_argv` pages the exclusions, and a candidate's `details_argv`
+retrieves its exact saved evidence. `full_result` returns a verified file receipt; use
+`registry-query-artifact --sha256 <digest> --output <path>` to export the complete evaluation.
+`registry-query --full` likewise exports to the reported artifact file instead of printing bulk.
+The selected token belongs only to
 `selected_scenario_id`, not to every displayed candidate. Refine the query to choose a different fit.
 
 Explain the candidate fit, evidence ceiling, lifecycle, binding, and readiness. Querying never

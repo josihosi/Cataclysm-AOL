@@ -62,7 +62,8 @@ class RegistryQueryOutputTest(unittest.TestCase):
         self.assertNotIn("evaluation", first)
         self.assertIsNotNone(first["next_action"])
         digest = first["artifact"]["sha256"]
-        full = self.call("registry-query-artifact", "--sha256", digest)
+        full_receipt = self.call("registry-query-artifact", "--sha256", digest)
+        full = json.loads(Path(full_receipt["result"]["artifact"]["path"]).read_text())
         expected = full["result"]["evaluation"]["evaluation"]["ranked_scenario_ids"]
         # Mutate the catalogue after the query. Browsing must retain the original snapshot.
         (self.scenarios / "6.json").unlink()
@@ -98,8 +99,8 @@ class RegistryQueryOutputTest(unittest.TestCase):
     def test_full_recovery_is_exact_and_tampering_is_rejected(self):
         result = self.query()["result"]
         artifact = Path(result["artifact"]["path"])
-        recovered = self.call(*result["full_result"][4:])
-        self.assertEqual(recovered, json.loads(artifact.read_text()))
+        recovered = self.call(*result["full_result"][4:], "--output", str(self.root / "export.json"))
+        self.assertEqual(Path(recovered["result"]["export"]["path"]).read_bytes(), artifact.read_bytes())
         artifact.write_bytes(artifact.read_bytes() + b" ")
         failure = self.call("registry-query-page", "--sha256", result["artifact"]["sha256"], success=False)
         self.assertIn("digest drift", failure["error"])
@@ -114,6 +115,32 @@ class RegistryQueryOutputTest(unittest.TestCase):
         failure = self.call("registry-query-page", "--sha256", result["artifact"]["sha256"],
                             "--offset", "-1", success=False)
         self.assertIn("nonnegative", failure["error"])
+
+    def test_excluded_candidates_explain_rejection_and_retrieve_exact_evidence(self):
+        result = self.query()["result"]
+        self.assertEqual(result["rejections"]["causes"][0]["candidate_count"], 1)
+        before = self.registry.read_bytes()
+        excluded = self.call(*result["rejections"]["details_argv"][4:])["result"]
+        self.assertEqual(len(excluded["candidates"]), 1)
+        item = excluded["candidates"][0]
+        self.assertIsNone(item["rank"])
+        self.assertFalse(item["matches"][0]["passed"])
+        detail = self.call(*item["details_argv"][4:])["result"]["candidates"][0]
+        full = json.loads(Path(result["artifact"]["path"]).read_text())
+        expected = next(x for x in full["result"]["evaluation"]["candidates"]
+                        if x["scenario_id"] == item["scenario_id"])
+        self.assertEqual(detail["evidence"], expected)
+        self.assertEqual(self.registry.read_bytes(), before)
+        missing = self.call("registry-query-page", "--sha256", result["artifact"]["sha256"],
+                            "--scenario-id", "absent", success=False)
+        self.assertIn("absent from this saved query", missing["error"])
+
+    def test_full_query_exports_without_printing_evaluation(self):
+        result = self.call("registry-query", "--query-json", json.dumps({
+            "requirements": [], "preferences": []}), "--full")["result"]
+        self.assertNotIn("evaluation", result)
+        self.assertEqual(result["export"], result["artifact"])
+        self.assertIn("evaluation", json.loads(Path(result["export"]["path"]).read_text())["result"])
 
     def test_selected_live_route_supplies_charter_and_absent_session_path(self):
         declaration = self.scenarios / "live.json"

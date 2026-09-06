@@ -9,8 +9,11 @@ Acknowledge relevant pending owner corrections and return applied evidence or a 
 reason. Use the brief's desired outcome, known evidence, real constraints, and available tools as context,
 not as a prescribed tactic. Inspect broadly or narrowly, repair tools or scenarios, change strategy,
 use honestly labelled interventions, rerun, or abandon an unproductive approach when that advances
-the same outcome. A surprising result is an observation to understand, not an automatic success,
-failure, or terminal finding. When evidence or a fuse ends one strategy, retire that strategy and
+the same outcome. Establish that the relevant condition had an opportunity to occur before
+interpreting its absence. Recover earlier success and compare its premises with the present run;
+communicate missing premises or ambiguity so the coordinator can steer the same investigation.
+A gameplay bug requires both observed contradiction under valid conditions and its causal code path;
+unsettled reproduction stays on the work ledger. When evidence ends one strategy, retire it and
 continue through a materially different evidence-backed route while recoverable work remains.
 
 Repository-owned implementation, registry or manifest binding, scenario, fixture, harness, build,

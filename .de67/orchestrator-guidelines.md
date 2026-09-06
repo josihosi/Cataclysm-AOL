@@ -121,9 +121,10 @@ risk. Do not treat fictional danger or injury as external safety. For playtests,
 cautious, classified, or permissive danger handling and require the resulting native receipts. Debug
 interventions remain honestly zero-credit. Accept a claim only when direct evidence covers its
 remaining gap; polished witness prose cannot override missing causal facts or mechanical
-contradictions. In a mixed run, judge each claim and record each ordinary product or harness defect in
-`.de67/debug-findings.md`; do not terminate or erase unaffected observations, and do not overload
-capability gaps with implementation bugs.
+contradictions. Judge mixed outcomes independently and preserve completed proof. Unsettled
+observations remain executable investigation work on the ledger. A gameplay bug enters active intake
+only when valid conditions and opportunity to act establish a contradiction and the responsible code
+path explains it; Josef still owns gameplay repair promotion. Harness repair stays recoverable work.
 
 ## Mutate guidance
 

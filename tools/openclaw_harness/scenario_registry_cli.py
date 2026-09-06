@@ -1280,13 +1280,16 @@ def build_parser() -> argparse.ArgumentParser:
     query.add_argument("--witness-charter", help="validated witness charter JSON for explicit playtest authority")
     query.add_argument("--page-size", type=_positive_page_size, default=5,
                        help="matches per page (default: 5; owner-selected presentation preference)")
-    query.add_argument("--full", action="store_true", help="print the complete query evaluation")
+    query.add_argument("--full", action="store_true", help="export the complete query evaluation as a file; return its receipt")
     query_page_parser = commands.add_parser("registry-query-page", help="read another page of one saved query")
     query_page_parser.add_argument("--sha256", required=True)
     query_page_parser.add_argument("--offset", type=int, default=0)
     query_page_parser.add_argument("--page-size", type=_positive_page_size, default=5)
-    query_artifact = commands.add_parser("registry-query-artifact", help="recover one complete query result")
+    query_page_parser.add_argument("--view", choices=("matches", "excluded"), default="matches")
+    query_page_parser.add_argument("--scenario-id", help="exact saved candidate including full evidence")
+    query_artifact = commands.add_parser("registry-query-artifact", help="locate or export one complete query result")
     query_artifact.add_argument("--sha256", required=True)
+    query_artifact.add_argument("--output", help="write the verified artifact to this file")
     status = commands.add_parser("registry-status", help="inspect registry lifecycle, relation, and retirement history")
     status.add_argument("--manifest-id", action="append", default=[],
                         help="exact manifest identity; repeat to retrieve only named current entries")
@@ -2064,15 +2067,22 @@ def main(argv: Sequence[str] | None = None) -> int:
         try:
             payload = read_command_artifact(artifact_root=registry_path.parent / "command-artifacts",
                                             command="registry-query", sha256=args.sha256)
+            artifact = registry_path.parent / "command-artifacts" / "registry-query" / (args.sha256.lower() + ".json")
+            receipt = {"schema": "caol-command-receipt-v1", "command": "registry-query",
+                       "artifact": {"path": str(artifact), "sha256": args.sha256.lower(),
+                                    "bytes": artifact.stat().st_size}}
             if args.command == "registry-query-artifact":
-                _write_result(payload)
+                if args.output:
+                    destination = Path(args.output).expanduser().resolve()
+                    raw = artifact.read_bytes()
+                    if hashlib.sha256(raw).hexdigest() != args.sha256.lower():
+                        raise ValueError("command artifact digest drift before export")
+                    destination.write_bytes(raw)
+                    receipt["export"] = {**receipt["artifact"], "path": str(destination)}
+                _write_result({"ok": True, "command": args.command, "result": receipt})
             else:
-                artifact = registry_path.parent / "command-artifacts" / "registry-query" / (args.sha256.lower() + ".json")
-                receipt = {"schema": "caol-command-receipt-v1", "command": "registry-query",
-                           "artifact": {"path": str(artifact), "sha256": args.sha256.lower(),
-                                        "bytes": artifact.stat().st_size}}
                 result = query_page(payload, receipt, offset=args.offset, page_size=args.page_size,
-                                    cli=[sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path)])
+                                    view=args.view, scenario_id=args.scenario_id, cli=[sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path)])
                 _write_result({"ok": True, "command": args.command, "registry": str(registry_path), "result": result})
             return 0
         except (OSError, ValueError, KeyError) as error:
@@ -2849,10 +2859,11 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "registry-query":
         receipt = write_command_artifact(artifact_root=registry_path.parent / "command-artifacts",
                                          command="registry-query", payload=response)
-        if not args.full:
-            response["result"] = query_page(response, receipt, offset=0, page_size=args.page_size,
-                                           cli=[sys.executable, str(Path(__file__).resolve()),
-                                                "--registry", str(registry_path)])
+        response["result"] = query_page(response, receipt, offset=0, page_size=args.page_size,
+                                       cli=[sys.executable, str(Path(__file__).resolve()),
+                                            "--registry", str(registry_path)])
+        if args.full:
+            response["result"]["export"] = receipt["artifact"]
         _write_result(response)
         return 0
     if args.command in {"registry-status", "runtime-status"} and not bool(args.full):

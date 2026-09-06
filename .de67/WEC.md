@@ -199,7 +199,7 @@ Tests have independent results. A mixed trajectory can support one behavior, con
 
 1. DE67 3 loop: diagnose workflow failures and repair the loop through mutation.
 2. Playtest harness: the coordinator owns getting faults diagnosed, repaired and verified, using repair workers or the mutator as appropriate. Recover the affected interaction after repair.
-3. CAOL gameplay: record a suspected bug in `.de67/debug-findings.md` with expected versus observed behavior, exact evidence, affected tests and any blocking consequence. Josef decides whether to promote it to a finding. A suspected bug does not authorize an automatic gameplay fix or silent finding promotion.
+3. CAOL gameplay: an active bug in `.de67/debug-findings.md` requires observed contradiction under valid relevant conditions and sufficient opportunity to act, plus the implementation path shown to cause it. Preserve exact evidence and affected tests. Unsettled observations remain investigation/retesting on `.de67/work-ledger.md`: recover earlier success, compare conditions, and investigate the first meaningful difference. Josef decides gameplay repair promotion; neither one unsuccessful attempt nor an arbitrary retry count establishes a bug.
 
 Classify by the failed responsibility, not the file's repository or programming language. Native semantic instrumentation inside a CAOL C++ file can be a harness fault. A gameplay behavior such as bandits attacking after completed payment is a CAOL suspected bug. Uncertain responsibility stays explicit while investigated; do not disguise a gameplay change as a harness repair.
 
@@ -207,7 +207,7 @@ Classify by the failed responsibility, not the file's repository or programming 
 
 Josef's promotion turns a CAOL suspected bug into an authorized finding. The mutator then incorporates it into the DFS, revises the plan, and arranges implementation and fresh verification of the affected behavior. Preserve the original observation and its evidence alongside the decision and repair result. Product intent and language remain Josef's authority; ambiguous intended behavior returns to him rather than being invented.
 
-When a suspected CAOL bug blocks one test while awaiting Josef, continue independent tests. Retain the blocked test and evidence so work can resume after the decision. If everything remaining depends on owner decisions, report that waiting state clearly rather than claiming completion.
+When a gameplay-and-code-proven bug needs Josef's repair decision, preserve it and continue independent tests. Ordinary investigation, informative retesting and repository-owned observation/fixture repair do not wait for bug promotion. Report waiting only when the remaining action actually requires an owner decision; preserve its evidence and continuation.
 
 ### Operational boundaries and handoff
 
