@@ -1,0 +1,243 @@
+{
+  "manifest_version": 2,
+  "name": "r029.setup_information_diagnostic_mcw",
+  "description": "Isolated zero-credit setup information and continuation diagnostic: selected smartphone, named brazier, placement and ignition.",
+  "profile": "mutation-setup-ffc9168450f6",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r029_fire_signal_roof_cannibal_in_range_v2",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": [
+    "DEBUG_LS",
+    "DEBUG_NOTEMP",
+    "DEBUG_STAMINA",
+    "DEBUG_CARDIO",
+    "DEBUG_CLAIRVOYANCE",
+    "DEBUG_NIGHTVISION"
+  ],
+  "capabilities": {
+    "capabilities.r029.setup_information_diagnostic": "selection_placement_ignition",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "ordinary-player-ui:deploy-brazier",
+      "ordinary-player-ui:ignite-with-charged-lighter",
+      "cockpit:game.guarded_move_relative",
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:game.raw_wait",
+      "cockpit:game.keep_watch",
+      "cockpit:run.continue",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "hostile-teleport",
+      "debug:inject_signal",
+      "debug:inject_target_knowledge",
+      "debug:inject_dispatch",
+      "debug:inject_local_contact",
+      "raw-save-rewrite-after-install",
+      "fixture-fire-as-proof",
+      "direct-state-mutation"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [
+      "Peekaboo"
+    ],
+    "permissions": [
+      "accessibility",
+      "screen-recording"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "mutation-setup-ffc9168450f6",
+    "config_profile": "dev-harness",
+    "fixture": "r029_fire_signal_roof_cannibal_in_range_v2",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "mutation-setup-ffc9168450f6",
+      "fixture": "r029_fire_signal_roof_cannibal_in_range_v2",
+      "helper": "Peekaboo",
+      "peekaboo": true,
+      "ocr": true,
+      "input": [
+        "ordinary fire setup and worker-owned live cockpit"
+      ],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r029_fire_signal_roof_cannibal_in_range_v2/manifest.json",
+    "native_source": "src/do_turn.cpp",
+    "native_executable": "cataclysm-tiles"
+  },
+  "proof_gates": [
+    {
+      "id": "setup_diagnostic_bound",
+      "label": "Isolated setup information diagnostic",
+      "boundary_step": "operate_setup_diagnostic",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "artifact_kind": "worker_controlled_live_cockpit_session",
+            "gameplay_credit": false
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {
+        "screen_text_contains": [
+          "Move:",
+          "Wield:"
+        ]
+      }
+    }
+  ],
+  "proof_route": {
+    "gates": [
+      "setup_diagnostic_bound"
+    ],
+    "terminal": [
+      "setup_diagnostic_bound"
+    ],
+    "capability_gates": {
+      "capabilities.r029.setup_information_diagnostic": {
+        "terminal": [
+          "setup_diagnostic_bound"
+        ]
+      }
+    }
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "load_r029_cannibal_roof_laboratory",
+      "seconds": 2.0,
+      "capture_after": true
+    },
+    {
+      "kind": "audit_saved_player_items",
+      "label": "audit_r029_cannibal_fire_tools",
+      "required_items": [
+        "brazier",
+        "lighter"
+      ],
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_r029_cannibal_roof_surface",
+      "offsets": [
+        [
+          0,
+          0,
+          0
+        ],
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ]
+      ],
+      "required_terrain": [
+        "t_tile_flat_roof"
+      ],
+      "required_items": [
+        "log"
+      ],
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "audit_saved_map_tile_near_player",
+      "label": "audit_r029_cannibal_has_no_fixture_fire",
+      "offsets": [
+        [
+          1,
+          -1,
+          0
+        ],
+        [
+          1,
+          0,
+          0
+        ],
+        [
+          1,
+          1,
+          0
+        ]
+      ],
+      "forbidden_fields": [
+        "fd_fire",
+        "fd_smoke"
+      ],
+      "abort_on_metadata_failure": true
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r029_cannibal_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_setup_diagnostic",
+      "objective": "Isolated zero-credit setup information and continuation diagnostic: selected smartphone, named brazier, placement and ignition.",
+      "proof_targets": [
+        "selected item and native prompt facts",
+        "native deployed furniture and burning field with result message",
+        "continuation and explicit cleanup"
+      ],
+      "authority": [
+        "ordinary player UI through Peekaboo",
+        "advertised native actions",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "All manufactured setup and this diagnostic receive zero ecology credit."
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.raw_wait",
+        "game.keep_watch"
+      ],
+      "transition_timeout_seconds": 10.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "evidence_contract": {
+    "claim": "Isolated zero-credit setup information and continuation diagnostic: selected smartphone, named brazier, placement and ignition.",
+    "failure_rule": "No ecology credit; unresolved setup stages remain explicit."
+  },
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true
+}

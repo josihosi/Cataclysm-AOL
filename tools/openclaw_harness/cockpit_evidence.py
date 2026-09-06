@@ -136,7 +136,23 @@ def current_input(value: dict, path: str) -> Any:
         navigation = [action for action in actions if isinstance(action, dict) and
                       action.get("enabled") is True and
                       str(action.get("id", "")).rsplit(".", 1)[-1] in {"cancel", "close", "back", "done"}]
+        facts = surface.get("facts", {})
+        facts = facts if isinstance(facts, dict) else {}
+        selection = {key: decode(facts[key]) for key in
+                     ("highlighted_item", "selected_items", "selected", "selected_index")
+                     if key in facts}
+        if selection and "selection_source" in facts:
+            selection["selection_source"] = facts["selection_source"]
+        controls = [action for action in actions if isinstance(action, dict) and
+                    surface.get("kind") != "world" and
+                    (surface.get("kind") in {"direction", "prompt", "string_prompt"} or not action.get("stable_id") or
+                     action.get("stable_id") == action.get("id"))]
         return {"owner": surface.get("kind"), "frame_id": observed.get("observation_id"),
+                "prompt": {key: facts[key] for key in ("title", "prompt", "description", "text", "filter")
+                           if key in facts},
+                "selection": selection or {"available": False,
+                    "reason": "Current native owner supplies no selection fact; do not infer it from action order or filter text."},
+                "controls": controls,
                 "breadcrumbs": surface.get("breadcrumbs", observed.get("breadcrumbs", [])),
                 "navigation": navigation, "actions_selector": base + ".surface.actions",
                 "source_selector": base,

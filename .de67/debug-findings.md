@@ -186,30 +186,11 @@ source before assuming a listed repair remains missing; retain prior valid work 
   rebuild/rebind, then independently submit the same route, quicksave, and relaunch the saved world
   to verify the new request record.
 
-## R029-F001 — native firearm shots are absent from staffed camp sound observation
+## R029-F001 — sound experiment is inconclusive about the intended nearby observer
 
-- Date: 2026-09-06
-- Bound run: `1ceb9ded123614f2fbe6b32982ad7e05077843a9fa774aef94a1dc002605f017`, bridge binding
-  `32243b4c7c414b6081c1962403c19387a3981387dab6e65859bf67d7fdbeb72f`, session
-  `.userdata/openclaw_harness/bridge-sessions/selected-r029-bandit-sound-near-046`, and run-bound
-  transition log `.userdata/dev-harness/harness_runs/20260906_153641_636ea2550bc04adea57c9c48931eaa82/transition.events.jsonl`.
-- Expected behavior: a current native player-created revolver sound from the eligible closer route
-  should be available to `record_staffed_camp_signal_observations` on the five-minute callback,
-  allowing it to read the source and form the source-bound camp signal lead when all other
-  observer/camp prerequisites are eligible.
-- Observed behavior: the semantic inventory reload inserted six `.38 Special JHP` into wielded
-  `six-shooter` uid `3219` (0/6 -> 6/6); semantic fire then produced native `You shoot your
-  six-shooter.  Bang!` messages and reduced ammo 6/6 -> 5/6, then 5/6 -> 4/6.  Yet exact
-  `staffed_camp_signal_read` records at minutes 8225 (artifact sha256
-  `87ee3d364b7f81d79d52c5055950eea6abd3e59cbec69e75c401c53e242968cf`) and 8230
-  (`bb77ebe9ca2cb6ed607ef5f06e34588f53c17f2f2cca99df3063228a49fccffe`) both give
-  `reason=no_signal_source`, `reads=0`, and no lead.  Each binds the same eligible at-home
-  observer id `4` at `(3371,1230,0)` and camp `overmap_special:bandit_camp@140,51,0`.
-- Affected test: R-029 natural bandit source-sound -> staffed observer -> camp-memory boundary.
-  This blocks fresh proof of the required signal-to-scout/report/operation/contact route; it does
-  not establish a defect in independent downstream demand, Fight, paid-return, or cannibal work.
-- Evidence ceiling: CAOL suspected gameplay bug only.  Native semantic input and the two callback
-  observations are proved; no lead, memory, dispatch, contact, or gameplay repair is claimed.
-- Disposition: awaiting Josef's decision on promotion.  Do not repair or promote automatically;
-  preserve the live world and original records.  A later retry needs a changed source-retention or
-  callback-correlation route, not another unchanged physical-input attempt.
+- Review correction, 2026-09-06: the original negative interpretation is superseded at its evidence ceiling, not erased. Exact original record: `.de67/state/review-owner-ffc9168450f6/before-debug-findings.md`; durable receipt `1cb7b56d1eb471a139c5bc017ab3818a137955dbba5815101063b10679c30f55` remains unchanged.
+- Bound run `1ceb9ded123614f2fbe6b32982ad7e05077843a9fa774aef94a1dc002605f017`, binding `32243b4c7c414b6081c1962403c19387a3981387dab6e65859bf67d7fdbeb72f`, session `.userdata/openclaw_harness/bridge-sessions/selected-r029-bandit-sound-near-046`.
+- Preserved observations: reload 0/6 to 6/6, two shots, and staffed callbacks at 8225/8230 with `no_signal_source`, zero reads and no lead. Native callback records retain hashes `87ee3d364b7f81d79d52c5055950eea6abd3e59cbec69e75c401c53e242968cf` and `bb77ebe9ca2cb6ed607ef5f06e34588f53c17f2f2cca99df3063228a49fccffe`.
+- Both callbacks name camp `overmap_special:bandit_camp@140,51,0` and observer 4, home `(3371,1230,0)` absolute map squares. Run-bound World frames put the player at `(3372,996,1)` / OMT `(140,41,1)`. The observed camp is ten OMT away with a vertical difference of one. With SEEX=12 the adapter requires effective volume `(10+1)*24-1+120 = 383`. The intended nearby footprint's calculated threshold 59 does not describe this recipient.
+- The five-minute callbacks did execute. `no_signal_source` is an empty adapter result and can include inaudible/rejected sounds. Retained run debug at 15:45:07.595 and 15:49:54.215 reports `significant_sounds=1`, `sites=2`, `eligible=1`, `callbacks=1`; it supports investigation, not attribution of every shared-log record to this run. Exact native frames and callbacks are retained under `.de67/state/review-owner-ffc9168450f6/`.
+- Supported conclusion: native shots and evaluation of the distant staffed camp are proved; an eligible nearby recipient was not established. The reason that intended nearby camp was not selected is unresolved. Investigate its actual site/roster/readiness, then source age, hearing, weather and range. No missing-sound product bug, automatic gameplay repair or promotion follows from this experiment. Earlier roof-fire observations remain independent. The natural route remains actionable repository-owned proof work, not automatically blocked on owner bug promotion.

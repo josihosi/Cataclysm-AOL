@@ -83,6 +83,33 @@ class CockpitEvidenceTest(unittest.TestCase):
         self.assertEqual(projected["current_input"]["actions_selector"], "observation.surface.actions")
         self.assertEqual(projected["receipt"], self.response["receipt"])
 
+    def test_setup_information_keeps_highlight_prompt_and_controls_together(self):
+        actions = [{"id": "inventory.select", "stable_id": "brazier-id", "label": "brazier", "enabled": True},
+                   {"id": "inventory.filter", "enabled": True},
+                   {"id": "inventory.commit", "enabled": True},
+                   {"id": "inventory.cancel", "enabled": True}]
+        facts = {"title": "Activate item", "filter": "", "highlighted_item":
+                 json.dumps({"available": True, "present": True, "id": "phone-id", "name": "smartphone"})}
+        observed = {"surface": {"kind": "inventory", "facts": facts, "actions": actions}}
+        active = cockpit_evidence.compact({"result": observed})["current_input"]
+        self.assertEqual(active["selection"]["highlighted_item"]["name"], "smartphone")
+        self.assertEqual(active["prompt"], {"title": "Activate item", "filter": ""})
+        self.assertEqual(active["controls"], actions[1:])
+        del facts["highlighted_item"]
+        facts["filter"] = "brazier"
+        facts["selection_source"] = "producer metadata without a selected value"
+        active = cockpit_evidence.compact({"result": observed})["current_input"]
+        self.assertFalse(active["selection"]["available"])
+        observed["surface"]["kind"] = "prompt"
+        observed["surface"]["actions"] = [{"id": "prompt.choose", "stable_id": "yes", "enabled": True}]
+        active = cockpit_evidence.compact({"result": observed})["current_input"]
+        self.assertEqual(active["controls"], observed["surface"]["actions"])
+        observed["surface"] = {"kind": "direction_prompt", "facts": {"prompt": "Place the brazier where?"},
+                               "actions": [{"id": "direction.cancel", "enabled": True}]}
+        active = cockpit_evidence.compact({"terminal_observation": observed})["current_input"]
+        self.assertEqual(active["prompt"]["prompt"], "Place the brazier where?")
+        self.assertFalse(active["selection"]["available"])
+
     def test_archived_sequence_metadata_and_old_index_retrieval(self):
         from cockpit_archive import Archive
         archive = Archive(self.root / "evidence.sqlite3", run_id="run-a", binding_id="bound-a")

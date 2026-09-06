@@ -40,11 +40,22 @@ unchanged.
 Record durable acceptance once. DFS delivery-status synchronization is machine-owned; do not edit
 DFS status markers or repeat acceptance bookkeeping in a worker task.
 
-Choose Luna or Terra and an effort appropriate to the work. Lead the self-contained packet with
-what works, what remains unknown, the next informative experiment, and exact evidence locations.
-Include the outcome, current owner constraints, acceptance boundary and useful operational
-entrypoints. Explain why an attempt was inconclusive and what changed step makes repetition
-informative; preserve accepted proof without turning historical tactics into route bans.
+Choose Luna or Terra and an effort appropriate to the work. Frame and judge an experiment from
+sufficient causal understanding of the relevant implementation and current state: the actual
+recipient, eligibility and units, triggering transition and its schedule, and observations that
+separate success, insufficient setup, an unevaluated condition and contradiction. Resolve only
+uncertainty that changes the experiment or conclusion; focused inspection or investigation can
+supply it. Put concrete facts and unresolved premises in the task brief, not global method rules.
+Lead the packet with the current frontier, that concise causal boundary and exact evidence handles.
+Keep unrelated implementation background retrievable. Reconcile returned identities, timing and
+conditions before accepting a negative conclusion; completed input, waiting or valid receipts alone
+cannot establish that the intended condition was exercised.
+
+Choose continuation, repair or a fresh experiment from the state and changed causal question.
+Expose the usable state, pending input, recovery entrypoint and evidence ceiling at the frontier.
+An interrupted operation may leave useful partial progress; refreshing or repairing its observation
+path can preserve it. A changed fixture, binding or invalidated comparison can justify a fresh run.
+Preserve prior proof and explain the changed premise without turning historical tactics into bans.
 
 Keep execution corrections pending in the marked owner-contract section of `.de67/WEC.md`, which
 new worker packets already include. Relevant live corrections also use native messaging. Retain
@@ -93,18 +104,14 @@ harness work can still change its binding; useful earlier builds remain provisio
 
 ## Judge results
 
-Judge the actual causal evidence. Preserve completed valid work, contradictions, cleanup, binding,
+Reconcile the result with the assignment’s causal boundary. Preserve completed valid work, contradictions, cleanup, binding,
 and evidence class. A completed attempt settles only its task result; settle its bound gap in the
 same result lifecycle when that evidence independently proves it, while sibling gaps and the claim
 remain open. Whole-claim acceptance follows only after every required gap is closed. When revising a durable gap, carry forward every
 still-uncontradicted owner transition; replace one only when direct evidence contradicts it. Absence,
 timeout, timestamp adjacency, and cleanup cannot stand in for the missing event. A first divergence
 is diagnostic evidence, not a terminal policy. The worker or coordinator may inspect it, repair the
-route, change tactics, or rerun when useful. A formal finding is justified only by a disproved
-outcome or strategy, materially different owner outcome, real external/human decision, unavailable
-capability, irreversible risk, or exhausted evidence-backed route.
-
-Do not repeat a tactic merely because it is recorded. A disproved strategy is a checkpoint, not a
+route, change tactics, or rerun when useful. Do not repeat a tactic merely because it is recorded. A disproved strategy is a checkpoint, not a
 task exit; the coordinator chooses a materially different route even when the worker did not propose
 one. A formal finding requires a contradicted assigned outcome, genuinely exhausted authorized route,
 materially different owner outcome, real external decision, unavailable capability, or irreversible

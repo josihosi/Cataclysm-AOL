@@ -1,0 +1,15 @@
+{
+  "outcome": "Setup choices expose the current selection, prompt and available controls, and deployment/ignition are verified independently.",
+  "scenario": "r029.setup_information_diagnostic_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r029.setup_information_diagnostic",
+        "op": "eq",
+        "value": "selection_placement_ignition",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

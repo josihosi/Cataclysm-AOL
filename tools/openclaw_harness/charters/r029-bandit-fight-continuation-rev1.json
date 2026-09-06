@@ -21,9 +21,8 @@
     "preloading a Fight result, terminal receipt, or post-reload replay observation"
   ],
   "honest_stop_conditions": [
-    "the first missing production-owned reopened-demand, Fight, terminal, save/relaunch, or replay-inertness checkpoint",
-    "the first exact causal divergence",
-    "binding drift"
+    "The assigned evidence boundary is settled, or continuation requires a materially different owner outcome, unavailable capability, irreversible risk or source-binding change.",
+    "Record the first divergence and partial progress, then choose useful inspection, repair, continuation or a changed experiment. A bounded scripted sample without a terminal event is inconclusive until its subject, eligibility and triggering conditions are reconciled; it is not by itself a reason to discard useful state."
   ],
   "requested_evidence_ceiling": "focused"
 }

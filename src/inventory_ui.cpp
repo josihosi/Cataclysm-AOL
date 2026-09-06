@@ -4266,6 +4266,27 @@ item_location inventory_pick_selector::execute()
     std::optional<semantic_surface_scope> semantic_scope;
     item_location startDragItem;
     bool dragActive = false;
+    const auto semantic_payload = [this]() {
+        std::map<std::string, std::string> payload = {
+            { "title", get_title() }, { "filter", get_filter() },
+            { "selection_source", "inventory_pick_selector::highlighted" }
+        };
+        const inventory_entry &highlighted = get_active_column().get_highlighted();
+        std::ostringstream selected;
+        JsonOut json( selected );
+        json.start_object();
+        const item_location location = highlighted ? highlighted.any_item() : item_location();
+        json.member( "available", true );
+        json.member( "present", static_cast<bool>( location ) );
+        if( location ) {
+            json.member( "id", std::to_string( location->uid().get_value() ) );
+            json.member( "name", location->tname() );
+            json.member( "selectable", highlighted.is_selectable() );
+        }
+        json.end_object();
+        payload.emplace( "highlighted_item", selected.str() );
+        return payload;
+    };
     while( true ) {
         ui_manager::redraw();
         const inventory_entry &highlighted_after_redraw = get_active_column().get_highlighted();
@@ -4276,17 +4297,14 @@ item_location inventory_pick_selector::execute()
         if( !semantic_scope ) {
             if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
                 semantic_scope.emplace( *manager, "inventory", get_title(),
-                std::map<std::string, std::string>{
-                    { "title", get_title() },
-                    { "filter", get_filter() }
-                }, semantic_actions( { { "inventory.commit", "", _( "Select" ), true } } ),
+                semantic_payload(), semantic_actions( { { "inventory.commit", "", _( "Select" ), true } } ),
                 [this, &semantic_input]( const semantic_action_request &request ) {
                     return handle_semantic_request( request, semantic_input );
                 } );
             }
         }
         if( semantic_scope ) {
-            semantic_scope->publish( { { "title", get_title() }, { "filter", get_filter() } },
+            semantic_scope->publish( semantic_payload(),
             semantic_actions( { { "inventory.commit", "", _( "Select" ), true } } ) );
             semantic_scope->consume_request();
         }

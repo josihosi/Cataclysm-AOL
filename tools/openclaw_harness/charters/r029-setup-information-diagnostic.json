@@ -1,0 +1,23 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Setup choices expose the current selection, prompt and available controls, and deployment/ignition are verified independently.",
+  "material_proof": "Observe smartphone selected while brazier intended, recover through name filtering and current native prompts, verify destination furniture, field and message; preserve the same useful session through recoverable input.",
+  "material_contradiction": [
+    "Selection inferred from action order",
+    "Tool success credited without a native postcondition",
+    "Unnecessary state loss following recoverable input"
+  ],
+  "already_accepted_evidence": [
+    "Previous wait-completion and input/callback proof retain their original scope."
+  ],
+  "current_uncertainty": "Whether the revised information supports real setup interaction.",
+  "forbidden_shortcuts": [
+    "ecology credit for this manufactured diagnostic",
+    "interfering with other sessions",
+    "guessing controls from historical PIDs"
+  ],
+  "honest_stop_conditions": [
+    "Record unresolved stages and explicitly quit the isolated game when finished."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

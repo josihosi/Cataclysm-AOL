@@ -17,7 +17,9 @@ fixtures, debug tools, or repairs that help the assigned outcome. Record every a
 intervention and give manufactured state zero feature credit. Non-combat or observer runs may
 benefit from the debug needs, temperature, stamina, cardio, clairvoyance, nightvision, cloak, or
 invisibility controls, but no blanket set is required. Verify only the setup facts the selected run
-actually depends on.
+actually depends on. For item activation or placement, use the compact `current_input` selection,
+prompt and controls together; [setup interaction](references/setup-interaction.md) gives verified
+Peekaboo examples and a destination-tile/result query.
 
 Fictional spotting, injury, or death is gameplay evidence rather than external safety. Wait and
 movement operations expose three choices:

@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
   "name": "bandit.r029_natural_sound_route_mcw",
-  "description": "Current-source R-029 bandit sound-route witness. The disposable fixture supplies only an unloaded firearm, ammunition, stabilizers, roof, and a nearer non-colliding bandit-camp footprint that makes the revolver's volume-70 sound pass the documented observer threshold. The player must load and fire through ordinary product UI before any staffed observation, signal lead, scout, report, rally, response, or contact receives credit.",
+  "description": "Current-source R-029 bandit sound-route witness. The disposable fixture supplies an unloaded firearm, ammunition, stabilizers, roof and a nearby overmap-special footprint. Placement is zero-credit and does not establish a staffed eligible recipient; verify the actual camp/observer and stimulus geometry before interpreting the callback. The player must load and fire through product UI before any observation, lead or response receives credit.",
   "profile": "dev-harness",
   "config_profile": "dev-harness",
   "world": "McWilliams",
