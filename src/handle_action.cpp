@@ -4413,6 +4413,12 @@ bool game::handle_action()
     std::optional<semantic_surface_scope> world_semantic_scope;
     bool semantic_action_consumed = false;
     std::optional<character_id> semantic_npc_inspection_actor;
+    // A Base Missions selector owns a blocking native modal.  Keep only an
+    // identity here while the semantic World owner receipts its validated
+    // pre-modal dispatch; the selector itself is invoked below, after that
+    // receipt is observable.  Taking and resetting this value makes the
+    // handoff single-use even if transport retries the completed request.
+    std::optional<character_id> semantic_basecamp_mission_actor;
     bool semantic_debug_creature_killed = false;
     // Check if we have an auto-move destination
     if( player_character.has_destination() ) {
@@ -4472,7 +4478,9 @@ bool game::handle_action()
                 world_semantic_scope.emplace( semantic_manager, "world", "World",
                                               openclaw_harness_world_payload(),
                                               semantic_actions,
-                [ &act, &semantic_manager, &semantic_npc_inspection_actor, &semantic_debug_creature_killed, basecamp_mission_candidates ]( const semantic_action_request &request ) {
+                [ &act, &semantic_manager, &semantic_npc_inspection_actor,
+                  &semantic_basecamp_mission_actor, &semantic_debug_creature_killed,
+                  basecamp_mission_candidates ]( const semantic_action_request &request ) {
                     if( request.action_id == "world.pause" ) {
                         // Pause is an ordinary native one-turn action.  It
                         // reaches do_turn without opening the alarm-clock
@@ -4531,31 +4539,15 @@ bool game::handle_action()
                         if( !camp || !( *camp )->allowed_access_by( get_avatar() ) ) {
                             return semantic_action_dispatch_result{ false, "unavailable_basecamp", "" };
                         }
-                        // Base Missions is a synchronous native route: its
-                        // classified result is only known after the selector
-                        // (or its explanatory popup) returns.  Execute it
-                        // under the World owner so that result is carried by
-                        // this exact semantic receipt rather than relegated
-                        // to an uncorrelated debug line.
-                        const talk_function::basecamp_mission_resolution resolution =
-                            talk_function::basecamp_mission( *actor );
-                        std::string outcome;
-                        switch( resolution ) {
-                            case talk_function::basecamp_mission_resolution::selector_entered:
-                                outcome = "selector_entered";
-                                break;
-                            case talk_function::basecamp_mission_resolution::no_camp:
-                                outcome = "no_camp";
-                                break;
-                            case talk_function::basecamp_mission_resolution::access_rejected:
-                                outcome = "access_rejected";
-                                break;
-                            case talk_function::basecamp_mission_resolution::no_available_missions:
-                                outcome = "no_available_missions";
-                                break;
-                        }
+                        // Receipt the validated dispatch before entering the
+                        // synchronous native selector.  The selector remains
+                        // the authoritative owner once it opens, while this
+                        // one-shot identity prevents a replayed receipt from
+                        // invoking a second modal.
+                        semantic_basecamp_mission_actor = actor->getID();
                         semantic_manager.withhold_parent_authority_until_recreated( request.surface_id );
-                        return semantic_action_dispatch_result{ true, "", "", false, false, outcome };
+                        return semantic_action_dispatch_result{ true, "", "", false, false,
+                                                                "modal_dispatch_queued" };
                     } else if( request.action_id == "world.overmap" ) {
                         act = ACTION_MAP;
                     } else if( request.action_id == "world.chat" ) {
@@ -4626,6 +4618,14 @@ bool game::handle_action()
     }
     if( semantic_npc_inspection_actor ) {
         show_npc_inspection( *semantic_npc_inspection_actor );
+        return false;
+    }
+    if( semantic_basecamp_mission_actor ) {
+        const character_id actor_id = *semantic_basecamp_mission_actor;
+        semantic_basecamp_mission_actor.reset();
+        if( npc *const actor = g->find_npc( actor_id ) ) {
+            talk_function::basecamp_mission( *actor );
+        }
         return false;
     }
 

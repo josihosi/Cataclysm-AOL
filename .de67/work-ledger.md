@@ -29,6 +29,36 @@ this active ledger summarizes footing without replacing those records. R-SURFACE
 R-036 retain the corresponding fresh obligations. Qualification is available; no old tooling
 prerequisite blocks the new campaign.
 
+## Owner correction: speech needs game turns (2026-09-06)
+
+Josef's explicit clarification: CDDA is turn based. After submitting NPC speech or another LLM
+request, wait until the LLM calculation has actually finished, then pass a game turn so the game
+can apply the result. If further behavior needs simulation time, pass further turns and observe.
+A fixed shell sleep does not prove calculation completion, and neither sleep nor `look` advances
+game turns. Do not diagnose missing NPC behavior before completing both parts of this sequence.
+
+Live inspection of R-026-exploration-004 confirmed that text run
+`2e0d11359dac2663ca3a03dae6cbe0e4927119a6f73476c3459d9607e36034c9` submitted
+"Katharina, please report your current camp task.", ran shell `sleep 8`, observed the same World
+frame 10, and finished without a subsequent turn-advancing action. Both `world.pause` and
+`world.wait` were advertised. Preserve its inconclusive witness; it does not establish broken
+NPC attribution or failed intent dispatch.
+
+Carry this correction into the active worker brief now. Repeat the speech route, observe actual
+LLM completion through the available request/status evidence, then explicitly pass a turn using
+the current semantic World action and inspect the recipient, reply, applied result and behavior.
+Verify actual game-time/turn advancement. Respect the current input owner if a menu or prompt
+intervenes. Missing completion observability must stay explicit; an arbitrary sleep cannot replace
+it. If request launch itself requires a simulation step, establish that from the live route and
+advance it as needed rather than waiting forever for work that has not started. A rerun supplying
+these missing steps is a corrected test, not forbidden replay of the earlier attempt.
+
+Assess incorporating this completion-then-game-turn sequence into the existing speech/playtest
+macro through its assigned harness owner. Preserve request completion evidence, native action
+receipts and post-turn observations, and verify the real interaction if implemented. This is
+harness/workflow correction, not authorization for a CAOL gameplay fix. Preserve this owner
+instruction when rewriting the current handoff until the corrected route has been verified.
+
 ## Current campaign
 
 - [ ] R-SURFACE-011 — Current input-owner coverage has drifted beyond the accepted checkpoint.
@@ -40,7 +70,7 @@ prerequisite blocks the new campaign.
   footing with independent mechanical, causality, feel, persistence, and cleanup evidence plus a
   usable package guide.
   - DFS slices: `R-026-S001`
-  - Current handoff: Build the current source/scene/charter/package guide and bind independent fresh results for R-029 and R-031 through R-036. Reuse qualified harness capabilities and inspect their current state. An old green is not fresh proof.
+  - Current handoff: Receipt `c5e45987a1c61ca1796086c2d37f16d819715a49237e7076df57ff7b03d8273a` preserves a second harness repair in `src/npctalk.cpp`. Fault run `7d674152a27dad289932a7dcab543757a1606b0812fa93f00fbc36144aa3b48d` proved the advertised “Let's talk” stable choice executed a different player line. Recovery run `2138bd56963815e2e5212f41b3e56600b86b3163f964f0b20c54674cd7f32b6d` proved the same target now emits the advertised line and Katharina's attributable reply. Both runs were sealed and explicitly cleaned up. This settles only harness mapping recovery and does not prove free-text, follow/stay travel, ambient routing, persistence, or R-031 acceptance. The worker attempt ended; R-026 remains open. Start `R-026-exploration-006`, then query it with `deadline_harness.py status --lineage semantic-surface-cockpit --task R-026-exploration-006`. Its first boundary is a fresh independent follow/stay travel or intent-context route with exact actor attribution and an observed gameplay consequence. Preserve both harness repairs and recovery evidence. Do not replay the modal timeout, unattributed prompt submission, or scripted-choice mismatch.
   - Current evidence: Checkpoint `38ff17ef99` preserves the stopped R-026-exploration-002 semantic receipt changes. They add typed outcome propagation and move Base Missions into its World callback. No game ran and no new campaign proof was earned. Assess/build/test this current code before changing it; predecessor `ecbd0fc3…b355c` describes earlier source and cannot require reimplementation.
   - Current uncertainty: The synchronous modal/receipt boundary needs verification, including entry, unavailable outcomes and parent restoration. Its implementation is retained, not accepted as completed gameplay or harness proof.
   - Waiting work: Exclusive owner mutation retires old claim clocks; the successor uses the normal restart acknowledgment and estimates a new whole-outcome clock from this current route. Earlier clock failures are history, not a new policy prerequisite.

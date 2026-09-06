@@ -1,0 +1,34 @@
+{
+  "outcome": "On the current source and established-base footing, native semantic interaction can separately bind a follower free-text route, an ambient LLM route, request snapshots, and basecamp request context to their actual recipients without physical control or synthetic response injection.",
+  "scenario": "r026.living_npc_package_v001_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "runtime.fixture",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "bandit_basecamp_prepared_base_v1_2026-04-22"
+      },
+      {
+        "key": "runtime.world",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "McWilliams"
+      },
+      {
+        "key": "capabilities.r026.living_npc_package",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "follower_ambient_snapshot_basecamp_context"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "runtime.entry_mode",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "cockpit_live_session"
+      }
+    ]
+  }
+}

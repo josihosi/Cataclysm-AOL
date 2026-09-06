@@ -3592,6 +3592,10 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
     semantic_surface_manager *semantic_manager = active_semantic_surface_manager();
     std::optional<semantic_surface_scope> semantic_scope;
     std::optional<size_t> semantic_response_index;
+    // A semantic response is already resolved by its advertised object ID.
+    // Keep that index through the common CONFIRM branch instead of letting a
+    // stale dialogue-window cursor select a different row.
+    bool semantic_response_selected = false;
     const std::string semantic_speaker_id = std::to_string( actor( true )->getID().get_value() );
     const auto semantic_actions = [&]() {
         std::vector<semantic_action_descriptor> actions;
@@ -3687,6 +3691,7 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
                 response_ind = *semantic_response_index;
                 semantic_response_index.reset();
                 action = "CONFIRM";
+                semantic_response_selected = true;
             } else {
                 if( debug_mode ) {
                     d_win.set_responses_debug( build_debug_info( d_win, topic, d_win.sel_response ) );
@@ -3699,6 +3704,7 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
                     response_ind = *semantic_response_index;
                     semantic_response_index.reset();
                     action = "CONFIRM";
+                    semantic_response_selected = true;
                 }
             }
             if( evt.type == input_event_t::error || evt.type == input_event_t::timeout ) {
@@ -3715,7 +3721,9 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
                 // Reallocate hotkeys as keybindings may have changed
                 generate_response_lines();
             } else if( action == "CONFIRM" ) {
-                response_ind = d_win.sel_response;
+                if( !semantic_response_selected ) {
+                    response_ind = d_win.sel_response;
+                }
                 //response condition must be reverified since non-selectable responses can be displayed
                 if( response_condition_exists[response_ind] && ( !response_condition_eval[response_ind] &&
                         !debug_mode ) ) {

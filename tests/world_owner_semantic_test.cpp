@@ -116,6 +116,65 @@ TEST_CASE( "direct World action settles only on the recreated input owner",
     CHECK( receipts.front().resulting_frame_id == manager.top()->frame_id );
 }
 
+TEST_CASE( "pre-modal World dispatch receipts once and cannot replay its native handoff",
+           "[semantic_surface][world_owner]" )
+{
+    semantic_surface_manager manager( "world-run" );
+    std::vector<semantic_action_receipt> receipts;
+    int modal_dispatches = 0;
+    manager.set_receipt_observer( [&]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+    semantic_surface_scope world( manager, "world", "World", {}, {
+        { "world.basecamp_missions", "2", "Open Base Missions", true }
+    }, [&]( const semantic_action_request &request ) {
+        ++modal_dispatches;
+        REQUIRE( manager.withhold_parent_authority_until_recreated( request.surface_id ) );
+        return semantic_action_dispatch_result{ true, "", "", false, false,
+                                                "modal_dispatch_queued" };
+    } );
+    const semantic_surface_descriptor frame = *manager.top();
+    const semantic_action_request request{ "world-run", frame.surface_id, frame.frame_id,
+                                           "base-missions", "world.basecamp_missions", "2", {} };
+    REQUIRE( manager.submit_request( request ) );
+    REQUIRE( world.consume_request() );
+    REQUIRE( receipts.size() == 1 );
+    CHECK( receipts.front().accepted );
+    CHECK( receipts.front().outcome == "modal_dispatch_queued" );
+    CHECK( modal_dispatches == 1 );
+
+    // A transport retry receives its already-recorded receipt and never
+    // becomes another pending request for the native modal handoff.
+    CHECK_FALSE( manager.submit_request( request ) );
+    CHECK( receipts.size() == 2 );
+    CHECK( modal_dispatches == 1 );
+}
+
+TEST_CASE( "unavailable World modal dispatch is rejected without retiring World",
+           "[semantic_surface][world_owner]" )
+{
+    semantic_surface_manager manager( "world-run" );
+    std::vector<semantic_action_receipt> receipts;
+    manager.set_receipt_observer( [&]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+    semantic_surface_scope world( manager, "world", "World", {}, {
+        { "world.basecamp_missions", "2", "Open Base Missions", true }
+    }, []( const semantic_action_request & ) {
+        return semantic_action_dispatch_result{ false, "unavailable_basecamp", "" };
+    } );
+    const semantic_surface_descriptor frame = *manager.top();
+    REQUIRE( manager.submit_request( { "world-run", frame.surface_id, frame.frame_id,
+                                       "unavailable", "world.basecamp_missions", "2", {} } ) );
+    CHECK_FALSE( world.consume_request() );
+    REQUIRE( receipts.size() == 1 );
+    CHECK_FALSE( receipts.front().accepted );
+    CHECK( receipts.front().rejection_reason == "unavailable_basecamp" );
+    REQUIRE( manager.top() );
+    CHECK( manager.top()->surface_id == frame.surface_id );
+    CHECK( manager.top()->frame_id == frame.frame_id );
+}
+
 TEST_CASE( "rejected World action preserves input and persistent parents still restore",
            "[semantic_surface][world_owner]" )
 {
