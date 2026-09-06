@@ -83,7 +83,7 @@ python3 tools/openclaw_harness/play_cli.py --session SESSION messages --contains
 python3 tools/openclaw_harness/play_cli.py --session SESSION call --request REQUEST.json
 python3 tools/openclaw_harness/play_cli.py --session SESSION collect
 python3 tools/openclaw_harness/play_cli.py --session SESSION cancel --reason "stop this pending request"
-python3 tools/openclaw_harness/play_cli.py --session SESSION inspect SELECTOR --limit 5
+python3 tools/openclaw_harness/play_cli.py --session SESSION inspect SELECTOR
 python3 tools/openclaw_harness/play_cli.py --session SESSION journal --reason "What this run established"
 python3 tools/openclaw_harness/play_cli.py --session SESSION finish --witness FILE
 ```
@@ -207,7 +207,71 @@ original indices (for example, search decoded messages for save failures among r
 `response-artifact` with the receipt SHA-256
 recovers the full response. Both routes verify the retained artifact.
 
-Query evidence before rendering it. The same bridge CLI provides:
+When investigating structured output, request the JSON fields that answer your current question.
+Use the returned selectors, `inspect`, or `log-query --select`; filter matching records before
+rendering them. Paging limits record count, not nested content. Expand to parent objects or full
+records whenever the narrower view leaves relevant uncertainty. For flexible transformations of
+retained JSON, use `jq` or Python.
+
+### Search by question
+
+Start from the response you are investigating, not a guessed universal JSON root:
+
+- A collected `look` response has `.response.current_input` and `.response.result` in the CLI
+  output. Other actions can expose `observation` or `terminal_observation` instead of `result`.
+  Copy `current_input.source_selector` and `actions_selector` from that response.
+- `controls` has `.result.availability` and top-level `.evidence_logs`; there is no `.response`
+  wrapper. Availability is session permission, not proof that the current menu accepts an action.
+- `inspect` takes the returned selector relative to the retained inner response, without the CLI's
+  `response.` prefix. Its answer is in `.slice`. Compact `.preview` is a display aid, not part of
+  the retained selector. Follow `.selector` to retrieve omitted or complete data.
+
+In the map below, `SOURCE` means the returned `source_selector`, not literal text to type.
+Field names under World facts are starting points; another input owner exposes its own facts.
+
+| Question | Search starting point |
+| --- | --- |
+| Which menu/prompt owns input, and what can I select? | Read `current_input`; inspect its `actions_selector` with `--contains NAME` for a target or `--limit N` to page. Inspect `SOURCE.surface.facts` for prompt text and owner-specific facts. |
+| What operations are permitted, and where are this run's logs? | `controls`: `.result.availability`; `.evidence_logs.entries` supplies exact paths, scope and query arguments. |
+| What is the player's condition, equipment or position? | Inspect `SOURCE.surface.facts.avatar_status`, `avatar_effects`, or `avatar`; select the relevant child once its fields are known. |
+| What is nearby: characters, terrain, objects, effects or zones? | Inspect World fact selectors `visible_entities`, `visible_local`, `minimap`, `overmap`, or `visible_zones`. Filter a list by name/type, then check identity, coordinates and relevant fields. Use larger map detail when immediate neighbours do not cover the question. |
+| What did the game say? | `messages --contains TEXT` searches the displayed observation. For an earlier response, inspect its messages selector with `--request-id REQUEST --contains TEXT`. Correlate message time and actor; retained fixture history may be present. |
+| What happened in an earlier action or causal event? | Use its request ID with `inspect`; for logs, use the exact query arguments from `controls`, then filter run/event/actor and project relevant fields with repeated `--select`. Follow returned evidence handles for deeper detail. |
+
+For example, after substituting the session, retained request and returned selector:
+
+```sh
+python3 tools/openclaw_harness/play_cli.py --session SESSION inspect ACTIONS_SELECTOR --request-id REQUEST --contains wait
+python3 tools/openclaw_harness/play_cli.py --session SESSION inspect FACTS_SELECTOR --request-id REQUEST
+python3 tools/openclaw_harness/play_cli.py --session SESSION messages --contains "Saving game"
+```
+
+Pin `--request-id` when inspecting earlier evidence: otherwise `inspect` uses the last retained
+response, which may have changed since the observation you meant. Use `--contains` on lists; it
+matches serialized row text case-insensitively, not an exact field predicate. A target-name match
+can return several actions; choose by action ID/label and enabled state, not target name alone. Retrieve that narrow
+list and use `jq`/Python when the question needs an exact coordinate, identity, or numeric condition.
+For example, a retrieved local-tile list can be projected with
+`jq '.slice[] | select(.dx == 1 and .dy == 1) | {terrain, furniture, fields}'`.
+Those coordinates illustrate a destination, not a fixed setup requirement.
+
+`--offset`/`--limit` page lists only: omit them for an object or scalar. A valid filtered list with
+`matched: 0` and `.slice: []` means no match in that selected evidence. An unavailable-selector
+error means the path cannot be retrieved; check the owner and returned selector. For saved JSON,
+inspect `keys` at the relevant parent after a missing-path `null`; it does not prove absence.
+Check `.ok`/`.error` before interpreting `.slice`, and use `page.next_offset` when more matches matter.
+Historical `log-query` can return `field_unavailable` for individual projected fields when records
+have different shapes; narrow the request/event or inspect the matching record's structure.
+
+As the primary worker, when a lookup expands into searching across files or past runs, delegate
+that search to a read-only Luna helper before bringing bulk results into your context. Give Luna
+the question and known references; request the answer, exact evidence pointers, and unresolved
+uncertainty, not a dump. Keep direct reads for a known relevant function or a targeted structured
+query. If a query returns `null` or a schema error, inspect keys or the supplied selector before
+expanding the output. Keep causal judgment, edits, and game interaction with the primary worker.
+Do not delegate a simple lookup just to add another agent.
+
+The same bridge CLI provides:
 
 ```sh
 python3 tools/openclaw_harness/cockpit_file_bridge.py log-query \

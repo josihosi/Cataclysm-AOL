@@ -1,0 +1,34 @@
+{
+  "name": "r029_bandit_gunfire_in_range_v1",
+  "source_fixture": "r008_fire_signal_roof_bandit_v1",
+  "source_profile": "live-debug",
+  "description": "R-029 bandit sound-route footing. Setup supplies a roof, an unloaded revolver with compatible ammunition, stabilizer traits, and a non-colliding nearby bandit camp. It writes no significant sound, lead, scout, report, decision, operation, contact, or hostile actor state. Equipment and camp placement are zero-credit; the player must load and fire through ordinary game UI before production may observe a sound.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [{"typeid": "model_10_revolver", "count": 1}]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [{"typeid": "38_special", "count": 1, "charges": 12}]
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [0, -1, -1]
+    }
+  ]
+}

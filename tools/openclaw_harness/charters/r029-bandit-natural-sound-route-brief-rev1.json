@@ -1,0 +1,15 @@
+{
+  "outcome": "R-029: prove that a bandit camp begins its response through the shared natural significant-sound, staffed-observer, camp-memory, scout, report, authorization, rally, and response route.",
+  "scenario": "bandit.r029_natural_sound_route_mcw",
+  "query": {
+    "preferences": [],
+    "requirements": [
+      {
+        "key": "capabilities.r029.bandit_natural_sound_route",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "player_gunfire_staffed_observer_scout_report_rally_response"
+      }
+    ]
+  }
+}

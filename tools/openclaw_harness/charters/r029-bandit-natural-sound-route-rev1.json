@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-029: prove that a bandit camp begins its response through the shared natural significant-sound, staffed-observer, camp-memory, scout, report, authorization, rally, and response route.",
+  "material_proof": "A current source- and executable-bound run first loads and fires the supplied revolver through ordinary player UI. The resulting production sound must be tied to an eligible staffed observer, a durable camp-signal sound lead, and any later scout/report/operation identities. The fixture contributes neither sound nor downstream response."
+  ,"current_uncertainty": "Whether player-native revolver loading and firing are exposed cleanly by the cockpit/ordinary UI, and whether the subsequent cadence records the source-bound staffed sound observation."
+  ,"material_contradiction": ["missing current source or executable binding", "fixture-created sound or injected lead/report/operation/contact", "sound with no exact staffed observer and source identity", "cleanup or identity drift"]
+  ,"forbidden_shortcuts": ["debug sound/signal injection", "direct camp-memory/report/operation/contact mutation", "crediting fixture equipment or camp placement", "using a preloaded report or direct player opportunity as the signal boundary"]
+  ,"honest_stop_conditions": ["the first source-bound staffed sound observation or first distinct causal divergence", "binding drift"]
+  ,"requested_evidence_ceiling": "focused"
+}

@@ -1,0 +1,45 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r029_natural_sound_route_mcw",
+  "description": "Current-source R-029 bandit sound-route witness. The disposable fixture supplies only an unloaded firearm, ammunition, stabilizers, roof, and a nearer non-colliding bandit-camp footprint that makes the revolver's volume-70 sound pass the documented observer threshold. The player must load and fire through ordinary product UI before any staffed observation, signal lead, scout, report, rally, response, or contact receives credit.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r029_bandit_gunfire_in_range_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r029.bandit_natural_sound_route": "player_gunfire_staffed_observer_scout_report_rally_response",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r029.source_binding": "r029_bandit_gunfire_in_range_v1:dev-harness"
+  },
+  "runtime_contract": {
+    "permitted_input": ["ordinary-player-ui:load-revolver", "ordinary-player-ui:fire-revolver", "cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.keep_watch", "cockpit:run.continue", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:emit_sound", "debug:inject_signal", "debug:inject_target_knowledge", "debug:inject_dispatch", "debug:inject_local_contact", "raw-save-rewrite-after-install", "fixture-sound-as-proof", "direct-state-mutation"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "r029_bandit_gunfire_in_range_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r029_bandit_gunfire_in_range_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["ordinary revolver load/fire and worker-owned live cockpit"], "cleanup": true},
+    "grants_gameplay_proof": true
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r029_bandit_gunfire_in_range_v1/manifest.json", "native_source": "src/do_turn.cpp", "native_executable": "cataclysm-tiles"},
+  "proof_gates": [{"id": "r029_bandit_natural_sound_route_bound", "label": "R-029 bandit route reaches one current source-bound live session", "boundary_step": "operate_r029_bandit_natural_sound_route", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r029_bandit_natural_sound_route_bound"], "terminal": ["r029_bandit_natural_sound_route_bound"], "capability_gates": {"capabilities.r029.bandit_natural_sound_route": {"terminal": ["r029_bandit_natural_sound_route_bound"]}}},
+  "steps": [
+    {"kind": "wait", "label": "load_r029_bandit_sound_laboratory", "seconds": 2.0, "capture_after": true},
+    {"kind": "audit_saved_player_items", "label": "audit_r029_bandit_sound_tools", "required_items": ["model_10_revolver", "38_special"], "abort_on_metadata_failure": true},
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_r029_bandit_sound_roof_surface", "offsets": [[0, 0, 0]], "required_terrain": ["t_tile_flat_roof"], "abort_on_metadata_failure": true},
+    {"kind": "native_semantic_bootstrap", "label": "bind_r029_bandit_sound_native_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "operate_r029_bandit_natural_sound_route", "objective": "First let the zero-credit special registration cadence complete without a sound. Then load and fire the revolver through ordinary player UI, retain its native receipt, and cross the next staffed-observer cadence. Bind the emitted sound, observer, camp, camp-signal lead, and later scout/report/operation/contact identities. Do not fabricate ecology state.", "proof_targets": ["ordinary native firearm load and firing receipt", "production significant-sound record", "first staffed observer receipt or causal divergence", "source, executable, camp, observer, lead, and cleanup binding"], "authority": ["ordinary player UI through Peekaboo", "advertised native actions and worker-chosen waits", "run.continue", "run.witness", "run.finish"], "invariants": ["fixture installation is zero-credit", "the sound must be player-created after the bootstrapped camp is registered", "no direct lead/report/operation/contact mutation", "preserve the first divergence and retain unaffected observations"], "live_operations": ["game.act", "game.keep_watch", "game.raw_wait", "game.wait"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+  ],
+  "evidence_contract": {"claim": "one source-bound R-029 bandit witness supplies only independently observed natural sound-route facts", "failure_rule": "fixture sound, injected camp state, missing source/executable identity, missing firearm receipt, or fabricated report/contact leaves the affected R-029 path unproved"}
+}

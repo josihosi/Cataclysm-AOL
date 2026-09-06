@@ -1,0 +1,27 @@
+{
+  "outcome": "R-029: independently exercise the bandit refusal/Fight downstream contact outcome without claiming natural signal discovery.",
+  "scenario": "bandit.extortion_reopened_fight_continuation_mcw",
+  "query": {
+    "preferences": [],
+    "requirements": [
+      {
+        "key": "capabilities.shakedown.fight_selection",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "visible"
+      },
+      {
+        "key": "capabilities.shakedown.terminal",
+        "minimum_evidence": "declared",
+        "op": "contains",
+        "value": "survivor_return"
+      },
+      {
+        "key": "capabilities.persistence",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "full_save_exit_relaunch_same_world"
+      }
+    ]
+  }
+}

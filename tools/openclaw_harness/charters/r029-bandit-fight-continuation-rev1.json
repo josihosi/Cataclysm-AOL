@@ -1,0 +1,29 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-029: independently exercise the bandit refusal/Fight downstream contact outcome without claiming natural signal discovery.",
+  "material_proof": "A current source- and executable-bound run may begin from the fixture's zero-credit committed-contact reservation only. It must then reach the reopened demand by ordinary turns, visibly select Fight, and observe only production-owned combat, terminal, save/relaunch, and replay facts. The fixture contributes neither the Fight selection, combat release, terminal outcome, save/reload result, nor replay observation.",
+  "current_uncertainty": "Whether the source-bound committed-contact operation releases its exact members into combat after player-selected Fight, reaches an authoritative terminal through ordinary turns, and remains replay-inert after a full native save/relaunch.",
+  "material_contradiction": [
+    "missing current source or executable binding",
+    "fixture state other than the declared zero-credit committed-contact reservation",
+    "missing visible reopened Pay/Fight demand or missing player-selected Fight receipt",
+    "combat, terminal, persistence, or replay facts without the exact operation/member identity",
+    "cleanup or identity drift"
+  ],
+  "already_accepted_evidence": [
+    "Earlier Pay evidence remains at its original ceiling and is not replayed by this refusal/Fight branch.",
+    "This downstream contact fixture cannot prove the required natural physical-signal, staffed-observer, camp-memory, scout, report, rally, or approach route."
+  ],
+  "forbidden_shortcuts": [
+    "debug spawning or direct combat/outcome mutation",
+    "raw save rewrite or fixture transform after installation",
+    "crediting the committed-contact fixture as Fight, combat, terminal, persistence, or natural-discovery evidence",
+    "preloading a Fight result, terminal receipt, or post-reload replay observation"
+  ],
+  "honest_stop_conditions": [
+    "the first missing production-owned reopened-demand, Fight, terminal, save/relaunch, or replay-inertness checkpoint",
+    "the first exact causal divergence",
+    "binding drift"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

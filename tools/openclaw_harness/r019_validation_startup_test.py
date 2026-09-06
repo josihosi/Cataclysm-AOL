@@ -338,6 +338,66 @@ class R019ValidationStartupTest(unittest.TestCase):
         self.assertEqual(paired["game_minutes"], 8222)
         self.assertIsInstance(paired["dispatch_descriptor_event_offset"], int)
 
+    def test_r029_wait_completion_requires_the_later_paired_world_successor(self) -> None:
+        """The retained R-029 wait completed after the former 10-second poll."""
+        activity_id = "fbfd7323:5245262:4"
+        completion_marker = {
+            "event": "frame", "run_id": "fbfd7323", "frame_id": "fbfd7323:5245321:5",
+            "state": "wait_activity_complete", "valid_actions": [],
+        }
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "fbfd7323",
+            "surface_id": "fbfd7323:surface:4", "frame_id": "fbfd7323:frame:4",
+            "kind": "world", "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        }
+        world = {
+            "event": "frame", "run_id": "fbfd7323", "frame_id": "fbfd7323:5245322:6",
+            "state": "world", "game_minutes": 8222, "valid_actions": ["world.wait"],
+            "observation": {"visible_local": []},
+            "keep_watch_safety": {"classification": "clear"},
+        }
+        prefix = b"openclaw_harness_semantic_step: "
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory)
+            trace = run_dir / "semantic.native.events.jsonl"
+            receipt = {
+                "event": "surface_receipt", "run_id": "fbfd7323",
+                "request_id": "r029-wait-1m", "requested_run_id": "fbfd7323",
+                "requested_surface_id": "fbfd7323:surface:3",
+                "requested_frame_id": "fbfd7323:frame:3",
+                "consuming_surface_id": "fbfd7323:surface:3",
+                "consuming_frame_id": "fbfd7323:frame:3", "action_id": "wait.1m",
+                "accepted": True, "rejection_reason": "", "resulting_frame_id": "fbfd7323:frame:4",
+            }
+            trace.write_bytes(b"".join(prefix + json.dumps(event).encode() + b"\n"
+                                      for event in (completion_marker, descriptor, receipt, world)))
+            paired = startup_harness.current_semantic_step_frame(
+                profile="test", run_dir=run_dir, run_id="fbfd7323", start_offset=0,
+            )
+        self.assertFalse(startup_harness.is_native_wait_completion_successor(
+            completion_marker, activity_frame_id=activity_id))
+        self.assertTrue(startup_harness.is_native_wait_completion_successor(
+            paired, activity_frame_id=activity_id))
+
+    def test_empty_native_trace_falls_back_to_live_debug_descriptor_source(self) -> None:
+        """A pre-created request trace must not hide the first HUD descriptor."""
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory) / "run"
+            run_dir.mkdir()
+            (run_dir / "semantic.native.events.jsonl").touch()
+            debug_log = Path(directory) / "debug.log"
+            debug_log.write_text("openclaw_harness_semantic_step: {}\n", encoding="utf-8")
+            with mock.patch("startup_harness.config_dir_for_profile", return_value=debug_log.parent):
+                self.assertEqual(
+                    startup_harness.semantic_step_source_trace("test", run_dir), debug_log
+                )
+            (run_dir / "semantic.native.events.jsonl").write_text(
+                "openclaw_harness_semantic_step: {}\n", encoding="utf-8")
+            self.assertEqual(
+                startup_harness.semantic_step_source_trace("test", run_dir),
+                run_dir / "semantic.native.events.jsonl",
+            )
+
     def test_initial_frame_selector_rejects_counterexamples(self) -> None:
         base = {
             "event": "frame", "run_id": "run-1", "frame_id": "run-1:initial", "state": "world",

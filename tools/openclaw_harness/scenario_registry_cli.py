@@ -2506,7 +2506,11 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     "runtime_binding": runtime_binding,
                                     "wec_authority": wec_authority,
                                     "diagnostic_replay": diagnostic_replay,
-                                    "witness_charter": _witness_charter_from_environment(),
+                                    # The direct launcher has already loaded the charter for
+                                    # token validation above.  Unlike the detached bridge, it
+                                    # has not yet crossed a process boundary, so its environment
+                                    # cannot be the authority source for this receipt.
+                                    "witness_charter": witness_charter,
                                 }, ensure_ascii=False, sort_keys=True, separators=(",", ":"))
                                 probe_namespace.registry_post_finalize_hook = _registry_post_finalize_ingest(
                                     probe_namespace.registry_launch_receipt
@@ -2774,6 +2778,15 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "result": result,
             }, stream=sys.stderr)
             return 1
+        # Detached bridge launches pass the normalized charter to their child
+        # through an explicit environment.  Direct registry launches execute
+        # the probe in this process, so preserve that same authority envelope
+        # here before startup revalidates the selection receipt.
+        launch_environment = _witness_launch_environment(args)
+        prior_witness_charter = os.environ.get("OPENCLAW_PLAYTEST_WITNESS_CHARTER")
+        if "OPENCLAW_PLAYTEST_WITNESS_CHARTER" in launch_environment:
+            os.environ["OPENCLAW_PLAYTEST_WITNESS_CHARTER"] = \
+                launch_environment["OPENCLAW_PLAYTEST_WITNESS_CHARTER"]
         capability = str(getattr(probe_namespace, "certification_save_capability", "") or "")
         prior_capability = os.environ.get("OPENCLAW_CERTIFICATION_SAVE_CAPABILITY")
         if capability:
@@ -2806,6 +2819,10 @@ def main(argv: Sequence[str] | None = None) -> int:
             _write_result(failure, stream=sys.stderr)
             return 1
         finally:
+            if prior_witness_charter is None:
+                os.environ.pop("OPENCLAW_PLAYTEST_WITNESS_CHARTER", None)
+            else:
+                os.environ["OPENCLAW_PLAYTEST_WITNESS_CHARTER"] = prior_witness_charter
             if capability:
                 if prior_capability is None:
                     os.environ.pop("OPENCLAW_CERTIFICATION_SAVE_CAPABILITY", None)

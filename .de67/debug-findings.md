@@ -16,6 +16,35 @@ waiting; preserve blocked tests and report all-blocked work as awaiting the owne
 No new gameplay observation was produced by the stopped R-026-exploration-002 launch. Its semantic
 receipt implementation is preserved at checkpoint `38ff17ef99` pending verification.
 
+## R029-F001 — source-bound staffed observer rejects the persisted roof fire
+
+- Date: 2026-09-06
+- Bound route: scenario `cannibal.r029_natural_route_roof_mcw`, run
+  `e89a4ea4e587d7915a44d00d3b71bd8754dccb9805d3c8fc5a647d02ebb08948`, binding
+  `7b0b80aee7f37d97852eef4c3abd0ab4efcee59ff91e621d62e5875e4fa3d93c`, source
+  `2d06b28f54639940e14836d5be2a9aa193db355ba5ebbebb24964a1222a6f8dc`, executable
+  `8b627165011c76dba636f30b6844695c4587378edc91f1c4fc7863e19db5ff15`.
+- Expected: after the ordinary UI-created, persisted `f_brazier`/`fd_fire` and the exact two-tile
+  north retreat, the first eligible at-home staffed observer at the following five-minute cadence
+  should produce a source-bound lead and camp-memory transition for the configured natural route.
+- Observed: the native keep-watch reached minute `8230` with 27 accepted receipts.  The run-bound
+  transition records `29` and `30` in
+  `.userdata/dev-harness/harness_runs/20260906_150231_d041c9f38fc944d0a0609d0b6db68197/transition.events.jsonl`
+  identify observer `4`, camp `overmap_special:bandit_camp@140,51,0`, and source `(140,41,1)`.
+  Smoke was rejected as `blocked_line_of_sight`; light was rejected as `out_of_range`.  Both retain
+  `lead_id=""`, `lead_count_before=0`, `lead_count_after=0`, and idle camp response, despite the
+  production-channel receipts for source-bound local smoke/light at minutes `8225` and `8230` in
+  `r008.production.channels.jsonl`.
+- Affected claims/tests: the R-029 first staffed-observer, camp-memory, scout/report, and later
+  cannibal-response claims; `tools/openclaw_harness/r029_natural_route_recipe_test.py`'s intended
+  post-relaunch natural-route path.
+- Explicitly unaffected: source/executable binding; native physical-fire creation; guarded retreat;
+  native Save and Quit, original-process exit, and relaunch; the wait-completion repair and its
+  focused counterexample tests.
+- Evidence ceiling: source-bound production observation and native receipt evidence.  This is a
+  suspected CAOL gameplay contradiction, not authorization to change gameplay.
+- Disposition: preserve this first divergence and await owner direction; no gameplay repair made.
+
 ## Historical evidence boundary
 
 The dated entries below retain their original observations and dispositions. Their old finding labels
@@ -156,3 +185,31 @@ source before assuming a listed repair remains missing; retain prior valid work 
 - Disposition: normalize the selected listener's direct-address prefix before camp request parsing,
   rebuild/rebind, then independently submit the same route, quicksave, and relaunch the saved world
   to verify the new request record.
+
+## R029-F001 — native firearm shots are absent from staffed camp sound observation
+
+- Date: 2026-09-06
+- Bound run: `1ceb9ded123614f2fbe6b32982ad7e05077843a9fa774aef94a1dc002605f017`, bridge binding
+  `32243b4c7c414b6081c1962403c19387a3981387dab6e65859bf67d7fdbeb72f`, session
+  `.userdata/openclaw_harness/bridge-sessions/selected-r029-bandit-sound-near-046`, and run-bound
+  transition log `.userdata/dev-harness/harness_runs/20260906_153641_636ea2550bc04adea57c9c48931eaa82/transition.events.jsonl`.
+- Expected behavior: a current native player-created revolver sound from the eligible closer route
+  should be available to `record_staffed_camp_signal_observations` on the five-minute callback,
+  allowing it to read the source and form the source-bound camp signal lead when all other
+  observer/camp prerequisites are eligible.
+- Observed behavior: the semantic inventory reload inserted six `.38 Special JHP` into wielded
+  `six-shooter` uid `3219` (0/6 -> 6/6); semantic fire then produced native `You shoot your
+  six-shooter.  Bang!` messages and reduced ammo 6/6 -> 5/6, then 5/6 -> 4/6.  Yet exact
+  `staffed_camp_signal_read` records at minutes 8225 (artifact sha256
+  `87ee3d364b7f81d79d52c5055950eea6abd3e59cbec69e75c401c53e242968cf`) and 8230
+  (`bb77ebe9ca2cb6ed607ef5f06e34588f53c17f2f2cca99df3063228a49fccffe`) both give
+  `reason=no_signal_source`, `reads=0`, and no lead.  Each binds the same eligible at-home
+  observer id `4` at `(3371,1230,0)` and camp `overmap_special:bandit_camp@140,51,0`.
+- Affected test: R-029 natural bandit source-sound -> staffed observer -> camp-memory boundary.
+  This blocks fresh proof of the required signal-to-scout/report/operation/contact route; it does
+  not establish a defect in independent downstream demand, Fight, paid-return, or cannibal work.
+- Evidence ceiling: CAOL suspected gameplay bug only.  Native semantic input and the two callback
+  observations are proved; no lead, memory, dispatch, contact, or gameplay repair is claimed.
+- Disposition: awaiting Josef's decision on promotion.  Do not repair or promote automatically;
+  preserve the live world and original records.  A later retry needs a changed source-retention or
+  callback-correlation route, not another unchanged physical-input attempt.

@@ -4355,7 +4355,13 @@ def read_latest_activity_query_trace(
 def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> Path:
     if run_dir is not None:
         native_trace = Path(run_dir) / "semantic.native.events.jsonl"
-        if native_trace.exists():
+        # The request transport creates this path before the game has emitted
+        # any native event.  An empty launch-owned file is not a semantic
+        # source: selecting it would hide the current run's descriptor still
+        # being published to debug.log and strand the cockpit before its first
+        # observation.  Once the native stream has content it remains the
+        # preferred, run-owned source.
+        if native_trace.is_file() and native_trace.stat().st_size > 0:
             return native_trace
     return config_dir_for_profile(resolve_profile_name(profile)) / "debug.log"
 
@@ -4676,8 +4682,18 @@ def current_semantic_step_frame(
                 if str(candidate.get("event", "")) != "surface_descriptor" or \
                         str(candidate.get("frame_id", "")).strip() != descriptor_frame_id:
                     continue
-                if index + 1 < len(complete_events):
-                    successor = complete_events[index + 1]
+                successor_index = index + 1
+                # A surface receipt can be emitted after its resulting
+                # descriptor but before that descriptor's compatibility World
+                # frame. It documents the immediately preceding native action,
+                # not a new owner; skip only these same-run metadata records
+                # when pairing the descriptor to its native World facts.
+                while successor_index < len(complete_events) and \
+                        str(complete_events[successor_index].get("event", "")) == "surface_receipt" and \
+                        str(complete_events[successor_index].get("run_id", "")).strip() == run_id:
+                    successor_index += 1
+                if successor_index < len(complete_events):
+                    successor = complete_events[successor_index]
                     if str(successor.get("event", "")) == "frame" and \
                             str(successor.get("run_id", "")).strip() == run_id and \
                             successor.get("state") == "world" and native.get("kind") == "world":
@@ -4895,6 +4911,27 @@ def latest_semantic_game_minutes_marker(
     return latest_semantic_game_minutes(events)
 
 
+def is_native_wait_completion_successor(
+    frame: Mapping[str, Any], *, activity_frame_id: str,
+) -> bool:
+    """Return whether ``frame`` is the World owner after one exact wait activity.
+
+    A duration selection first publishes an actionless ``wait_activity`` raw
+    frame. Completion is not a timer promise: it is the later World surface
+    descriptor paired with a *different* native World frame. Keeping this
+    check here lets the live bridge wait cooperatively for that native fact
+    without treating an elapsed wall-clock budget as a game lifecycle result.
+    """
+    return (
+        bool(activity_frame_id)
+        and str(frame.get("event", "")) == "surface_descriptor"
+        and str(frame.get("kind", "")) == "world"
+        and str(frame.get("paired_raw_state", "")) == "world"
+        and bool(str(frame.get("paired_raw_frame_id", "")))
+        and str(frame.get("paired_raw_frame_id", "")) != activity_frame_id
+    )
+
+
 def open_cockpit_game_service(
     *, profile: str, run_dir: Path, run_id: str, trace_start_offset: int,
     pid: Optional[int] = None, session_id: str = "",
@@ -4967,17 +5004,22 @@ def open_cockpit_game_service(
         return frame
 
     def await_native_completion(activity_frame_id: str) -> None:
-        deadline = time.monotonic() + transition_timeout_seconds
-        while time.monotonic() <= deadline:
+        """Wait for the exact native World successor or a cooperative cancel.
+
+        A live wait can take longer than an action-dispatch observation. Do not
+        fail, terminate, or replace its game process merely because a
+        wall-clock interval elapsed; the caller can cancel the active request.
+        """
+        while True:
             if read_cancel_request is not None:
                 cancellation = read_cancel_request()
                 if isinstance(cancellation, Mapping) and cancellation.get("cancelled") is True:
                     raise ValueError("player_cancelled")
             frame = read_frame()
-            if str(frame.get("paired_raw_frame_id", frame.get("frame_id", ""))) != activity_frame_id:
+            if is_native_wait_completion_successor(
+                    frame, activity_frame_id=activity_frame_id):
                 return
             time.sleep(observe_interval_seconds)
-        raise ValueError("native wait completion did not emit a successor frame")
 
     dispatch = None
     if pid is not None and pid > 0 and session_id:

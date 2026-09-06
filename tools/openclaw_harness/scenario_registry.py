@@ -361,6 +361,7 @@ def _validate_checkpoint_chain_fields(manifest: Mapping[str, Any], *, path: Path
             "r019.primitive_safe_popup_comparison_mcw",
             "r026.living_npc_package_v001_mcw",
             "cannibal.r029_natural_route_roof_mcw",
+            "bandit.r029_natural_sound_route_mcw",
         },
     )
     if manifest["run_class"] not in {"combat", "non_combat"}:
