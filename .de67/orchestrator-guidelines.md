@@ -51,14 +51,18 @@ new worker packets already include. Relevant live corrections also use native me
 them through ledger rewrites until the responsible worker acknowledges and applies them with
 evidence, or deliberately defers with a reason. File preservation alone does not prove delivery.
 
-The read plan is an evidence map, not a quota or prescribed sequence: begin with the compact receipt
-and exact entrypoints, then open complete digest-bound artifacts or broader sources only when a
-causal decision needs them. Do not paste full histories, registry dumps, manuals, guessed command
-sequences, action order, retry counts, or a guessed implementation. The worker owns its strategy and
-may inspect, repair, improvise, rerun, or change approach within the outcome. For a live playtest,
-provide the compact witness charter and point to the CAOL harness skill. Name the relevant bridge
-`response-status` or `log-query` entrypoint with the known session/run/request binding so the
-worker can discover semantic fields and exact artifact retrieval from the interface itself.
+The generated read plan maps evidence without prescribing a sequence. `work_context.py` beside the
+policy kernel provides current tasks, independent task results, dispatch relationships, runner
+metadata and searchable receipt history (`--claim`, `--task`, `--receipt`, `--contains`, `--full`).
+Infrastructure records and indexes what it already knows; workers explain findings and uncertainty.
+Select relevant evidence by exact task, gap, session or artifact references. A newer receipt for a
+claim does not replace other contributions. Open full records when their missing detail can change
+the decision; missing or stale context stays explicit. Use Luna for a specific discovery question
+that requires interpreting scattered evidence, never routine archive cataloguing. For a live
+playtest, provide the compact witness charter and CAOL harness entrypoint. The session context
+provider supplies recorded status, freshness, pending input and exact refresh/query handles; a
+saved status is not live authority. The worker owns strategy and may inspect, repair, improvise or
+rerun within the outcome.
 
 ## Durable worker lifecycle
 
