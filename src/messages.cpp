@@ -9,6 +9,7 @@
 #include <string>
 #include <type_traits>
 #include <unordered_set>
+#include <utility>
 
 #include "cached_options.h"
 #include "calendar.h"
@@ -28,6 +29,7 @@
 #include "panels.h"
 #include "point.h"
 #include "rng.h"
+#include "semantic_surface.h"
 #include "string_formatter.h"
 #include "string_input_popup.h"
 #include "translation.h"
@@ -575,6 +577,10 @@ class dialog
         std::string filter_str;
 
         input_context ctxt;
+        // A semantic request selects one of the same actions handled by the
+        // native context below.  It is deliberately consumed by this owner,
+        // rather than falling through to input_context's actionless boundary.
+        std::string semantic_action;
 
         // Message indices and folded strings
         std::vector<std::pair<size_t, std::string>> folded_all;
@@ -819,7 +825,11 @@ void Messages::dialog::input()
 {
     canceled = false;
     if( filtering ) {
-        filter.query( false );
+        // A semantic prompt is a nested owner.  Keep it alive until its
+        // request is consumed; the old one-iteration query returned to this
+        // parent loop, which could consume prompt.cancel as a wrong-surface
+        // request before the child was next entered.
+        filter.query( active_semantic_surface_manager() != nullptr );
         if( filter.confirmed() || filter.canceled() ) {
             filtering = false;
         }
@@ -834,7 +844,8 @@ void Messages::dialog::input()
             filter.text( filter_str );
         }
     } else {
-        const std::string &action = ctxt.handle_input();
+        const std::string action = semantic_action.empty() ? ctxt.handle_input() :
+                                   std::exchange( semantic_action, "" );
         if( ( action == "DOWN" || action == "SCROLL_DOWN" ) &&
             offset + max_lines < folded_filtered.size() ) {
             ++offset;
@@ -877,8 +888,70 @@ void Messages::dialog::run()
         show();
     } );
 
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        const auto semantic_payload = [this]() {
+            return std::map<std::string, std::string>{
+                { "filter", filter_str },
+                { "filtering", filtering ? "true" : "false" },
+                { "offset", std::to_string( offset ) },
+                { "visible_lines", std::to_string( max_lines ) },
+                { "matching_lines", std::to_string( folded_filtered.size() ) }
+            };
+        };
+        const auto semantic_actions = [this]() {
+            return std::vector<semantic_action_descriptor>{
+                { "message_log.scroll_up", "", _( "Scroll up" ), !filtering && offset > 0 },
+                { "message_log.scroll_down", "", _( "Scroll down" ), !filtering &&
+                  offset + max_lines < folded_filtered.size() },
+                { "message_log.page_up", "", _( "Page up" ), !filtering },
+                { "message_log.page_down", "", _( "Page down" ), !filtering },
+                { "message_log.filter", "", _( "Filter" ), !filtering },
+                { "message_log.reset_filter", "", _( "Reset filter" ), !filtering },
+                { "message_log.close", "", _( "Close" ), !filtering }
+            };
+        };
+        semantic_scope.emplace( *manager, "message_log", _( "Message log" ), semantic_payload(),
+        semantic_actions(), [this]( const semantic_action_request &request ) {
+            static const std::map<std::string, std::string> native_actions = {
+                { "message_log.scroll_up", "UP" },
+                { "message_log.scroll_down", "DOWN" },
+                { "message_log.page_up", "PAGE_UP" },
+                { "message_log.page_down", "PAGE_DOWN" },
+                { "message_log.filter", "FILTER" },
+                { "message_log.reset_filter", "RESET_FILTER" },
+                { "message_log.close", "QUIT" }
+            };
+            const auto action = native_actions.find( request.action_id );
+            if( action == native_actions.end() ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            semantic_action = action->second;
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
+
     while( !errored && !canceled ) {
         ui_manager::redraw();
+        if( semantic_scope ) {
+            semantic_scope->publish( {
+                { "filter", filter_str },
+                { "filtering", filtering ? "true" : "false" },
+                { "offset", std::to_string( offset ) },
+                { "visible_lines", std::to_string( max_lines ) },
+                { "matching_lines", std::to_string( folded_filtered.size() ) }
+            }, {
+                { "message_log.scroll_up", "", _( "Scroll up" ), !filtering && offset > 0 },
+                { "message_log.scroll_down", "", _( "Scroll down" ), !filtering &&
+                  offset + max_lines < folded_filtered.size() },
+                { "message_log.page_up", "", _( "Page up" ), !filtering },
+                { "message_log.page_down", "", _( "Page down" ), !filtering },
+                { "message_log.filter", "", _( "Filter" ), !filtering },
+                { "message_log.reset_filter", "", _( "Reset filter" ), !filtering },
+                { "message_log.close", "", _( "Close" ), !filtering }
+            } );
+            semantic_scope->consume_request();
+        }
         input();
     }
 }

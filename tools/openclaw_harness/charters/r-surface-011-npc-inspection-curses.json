@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On the current source-bound curses route, the native NPC inspection owner can enter for an advertised nearby actor, reject a stale item UID without mutation, open and close the actor-bound item-details child through advertised semantic actions, return to the inspector, close it, and restore the World owner with exact native receipts.",
+  "material_proof": "One selected current-source curses run records the advertised World actor action, inspector descriptor, stale-item rejection, accepted item-details child, accepted child/parent close receipts, fresh World return, and cleanup. Fixture/load/setup facts receive zero gameplay credit.",
+  "material_contradiction": ["owner entry, rejection, child transition, or restoration lacks a matching native receipt", "binding or cleanup changes before finalization"],
+  "already_accepted_evidence": ["The Tiles result is separate renderer evidence.", "MESSAGE_LOG remains an unsupported actionless owner outside this charter."],
+  "current_uncertainty": "Only current curses-advertised actor and item identities may be used.",
+  "forbidden_shortcuts": ["physical or guessed input", "direct-state mutation", "changing MESSAGE_LOG"],
+  "honest_stop_conditions": ["stop on missing current binding, advertised owner, receipt, restoration, or cleanup", "finish once the focused route is settled"],
+  "requested_evidence_ceiling": "focused"
+}

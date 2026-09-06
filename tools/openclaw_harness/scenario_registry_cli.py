@@ -1096,7 +1096,8 @@ def _selected_executable(scenario: str) -> Path:
 
 
 def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
-        *, post_relaunch_continuation: bool = False) -> argparse.Namespace:
+        *, post_relaunch_continuation: bool = False,
+        cockpit_live_session: bool = False) -> argparse.Namespace:
     """Adapt one validated registry selection into the ordinary probe parser."""
     source_path = Path(selection.source_path).resolve()
     canonical_path = startup_harness.scenario_path(selection.scenario).resolve()
@@ -1111,6 +1112,8 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
     scenario = startup_harness.load_scenario(selection.scenario)
     if bool(scenario.get("replace_existing_worlds", False)):
         command.append("--replace-existing-worlds")
+    if cockpit_live_session:
+        command.append("--cockpit-live-session")
     return startup_harness.build_parser().parse_args(command)
 
 
@@ -1344,6 +1347,7 @@ def build_parser() -> argparse.ArgumentParser:
         "--cockpit-bridge-binding-id",
         help="file-bridge identity forwarded to the canonical selected launch",
     )
+    launch.add_argument("--cockpit-live-session", action="store_true", help=argparse.SUPPRESS)
     launch.add_argument("--post-relaunch-continuation", action="store_true", help=argparse.SUPPRESS)
     launch.add_argument(
         "--certification-inputs",
@@ -1764,7 +1768,7 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
     cockpit_command = [
         sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
         "registry-launch", selection.token_id, "--witness-charter", str(witness_charter_path),
-        "--cockpit-bridge-binding-id", bridge_binding_id,
+        "--cockpit-bridge-binding-id", bridge_binding_id, "--cockpit-live-session",
     ]
     reentry_command = [*cockpit_command, "--post-relaunch-continuation"] if session_reentries else []
     bridge_command = [
@@ -2370,6 +2374,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 selection,
                                 post_relaunch_continuation=bool(
                                     getattr(args, "post_relaunch_continuation", False)
+                                ),
+                                cockpit_live_session=bool(
+                                    getattr(args, "cockpit_live_session", False)
                                 ),
                             )
                             # A registry-owned launch is the canonical executor for

@@ -3685,7 +3685,14 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
             input_event evt;
             if( semantic_scope ) {
                 semantic_scope->publish( semantic_payload(), semantic_actions() );
+                const bool semantic_request_pending = semantic_manager->has_pending_request();
                 semantic_scope->consume_request();
+                if( semantic_request_pending && !semantic_response_index ) {
+                    // A rejected semantic request must not fall through into
+                    // DIALOGUE_CHOOSE_RESPONSE input.  Stay on this owner
+                    // until a fresh, advertised request arrives.
+                    continue;
+                }
             }
             if( semantic_response_index ) {
                 response_ind = *semantic_response_index;

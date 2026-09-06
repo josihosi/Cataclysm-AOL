@@ -1,0 +1,11 @@
+{
+  "outcome": "On macOS, the current source- and executable-bound R-SURFACE-007 Tiles route chooses a real NPC dialogue response by its advertised response-object ID and preserves exact native receipts and condition safety.",
+  "scenario": "r_surface_007.dialogue_tiles",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r_surface_007.dialogue_tiles", "op": "eq", "value": "source_bound_tiles_native_dialogue_response", "minimum_evidence": "declared"},
+      {"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}
+    ],
+    "preferences": []
+  }
+}

@@ -1,0 +1,27 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On the current source-bound Tiles route, the native NPC inspection owner can enter for an advertised nearby actor, reject a stale item UID without mutation, open and close the actor-bound item-details child through advertised semantic actions, return to the inspector, close it, and restore the World owner with exact native receipts.",
+  "material_proof": "One selected current-source Tiles run records the advertised World inspect-NPC action and actor identity; the NPC inspection descriptor; a rejected stale item-detail request; an accepted advertised item-detail request and child descriptor; accepted child and parent close receipts; and the fresh restored World descriptor. Fixture/load/setup results have zero feature credit. The run is explicitly finished with accepted cleanup.",
+  "material_contradiction": [
+    "the advertised World action does not enter the NPC inspection owner for its bound actor",
+    "a stale actor or item request mutates or opens the wrong child",
+    "an advertised parent or child close lacks its matching native receipt or does not restore its recorded parent",
+    "the current source/executable binding, selected route, or cleanup receipt drifts before finalization"
+  ],
+  "already_accepted_evidence": [
+    "The source inventory and focused native NPC-inspection tests are implementation evidence, not fresh Tiles runtime proof.",
+    "Historical MESSAGE_LOG observation remains an unsupported actionless owner and is outside this charter."
+  ],
+  "current_uncertainty": "The current source-bound Tiles fixture may expose a different nearby actor or item inventory than historical runs; only current advertised stable identities may be used.",
+  "forbidden_shortcuts": [
+    "physical, guessed, label-derived, or direct-state input",
+    "crediting fixture installation, startup, descriptor publication, or diagnostic item manufacture as gameplay behavior",
+    "changing MESSAGE_LOG or treating this focused inspector proof as broad input-owner completeness"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch if current binding, selected authority, or advertised actor/item is unavailable",
+    "after launch preserve the first owner, receipt, restoration, renderer, or cleanup divergence and finish unaffected observation safely",
+    "seal and finish when the scoped parent/child path is directly settled"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

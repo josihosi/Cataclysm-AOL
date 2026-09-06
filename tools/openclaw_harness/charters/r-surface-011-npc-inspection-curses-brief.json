@@ -1,0 +1,5 @@
+{
+  "outcome": "On the current source-bound curses route, the native NPC inspection owner can enter for an advertised nearby actor, reject a stale item UID without mutation, open and close the actor-bound item-details child through advertised semantic actions, return to the inspector, close it, and restore the World owner with exact native receipts.",
+  "scenario": "r_surface_011.npc_inspection_curses",
+  "query": {"requirements": [{"key": "capabilities.r_surface_011.npc_inspection_curses", "op": "eq", "value": "source_bound_curses_actor_inspector_parent_child_return", "minimum_evidence": "declared"}], "preferences": []}
+}

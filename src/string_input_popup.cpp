@@ -423,7 +423,12 @@ const std::string &string_input_popup::query_string( const bool loop, const bool
     std::optional<std::string> semantic_submitted_text;
     bool semantic_canceled = false;
     std::optional<semantic_surface_scope> semantic_scope;
-    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+    // A draw-only pass is often made by the parent UI immediately before it
+    // enters this prompt for input.  It must not publish a short-lived
+    // semantic owner: a client can bind a request to that descriptor after
+    // the draw pass has returned, while the real input pass owns a successor
+    // surface.  Only the input-owning query may advertise semantic actions.
+    if( semantic_surface_manager *manager = draw_only ? nullptr : active_semantic_surface_manager() ) {
         const std::string semantic_breadcrumb = _title.empty() ? _( "Text input" ) : _title;
         semantic_scope.emplace( *manager, "string_prompt", semantic_breadcrumb,
         std::map<std::string, std::string>{

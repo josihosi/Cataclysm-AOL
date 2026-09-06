@@ -26,10 +26,12 @@ TEST_CASE( "string prompt applies a semantic result consumed before its owner re
         receipts.push_back( receipt );
     } );
     std::string prompt_frame;
+    int prompt_descriptor_count = 0;
     manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
         if( descriptor.kind != "string_prompt" ) {
             return;
         }
+        ++prompt_descriptor_count;
         prompt_frame = descriptor.frame_id;
         const std::string action = cancel ? "prompt.cancel" : "prompt.submit";
         REQUIRE( manager.submit_request( { "prompt-run", descriptor.surface_id,
@@ -61,6 +63,7 @@ TEST_CASE( "string prompt applies a semantic result consumed before its owner re
         CHECK_FALSE( prompt.canceled() );
     }
     REQUIRE( receipts.size() == 1 );
+    CHECK( prompt_descriptor_count == 1 );
     CHECK( receipts.front().accepted );
     CHECK( receipts.front().requested_frame_id == prompt_frame );
     REQUIRE( manager.top() );
@@ -71,4 +74,28 @@ TEST_CASE( "string prompt applies a semantic result consumed before its owner re
         // while publication of that initial descriptor is still in progress.
         CHECK( receipts.front().resulting_frame_id == manager.top()->frame_id );
     }
+}
+
+TEST_CASE( "draw-only string prompt does not advertise a transient semantic owner",
+           "[semantic_surface][string_prompt]" )
+{
+    semantic_surface_manager manager( "prompt-draw-run" );
+    semantic_surface_manager_session session( manager );
+    semantic_surface_scope parent( manager, "message_log", "Message log" );
+    int prompt_descriptor_count = 0;
+    manager.set_descriptor_observer( [&]( const semantic_surface_descriptor &descriptor ) {
+        if( descriptor.kind == "string_prompt" ) {
+            ++prompt_descriptor_count;
+        }
+    } );
+
+    const catacurses::window window = catacurses::newwin( 3, 30, point::zero );
+    REQUIRE( window );
+    string_input_popup prompt;
+    prompt.window( window, point( 1, 1 ), 28 ).title( "Filter" );
+    prompt.query( false, true );
+
+    CHECK( prompt_descriptor_count == 0 );
+    REQUIRE( manager.top() );
+    CHECK( manager.top()->surface_id == parent.surface_id() );
 }

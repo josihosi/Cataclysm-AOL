@@ -859,6 +859,7 @@ static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_a
         { "world.pickup", "pickup" },
         { "world.zone_manager", "zones" },
         { "world.overmap", "map" },
+        { "world.messages", "messages" },
         { "world.chat", "chat" },
         { "world.fire", "fire" },
         { "world.debug_menu", "debug" },
@@ -4567,6 +4568,8 @@ bool game::handle_action()
                                                                 "modal_dispatch_queued" };
                     } else if( request.action_id == "world.overmap" ) {
                         act = ACTION_MAP;
+                    } else if( request.action_id == "world.messages" ) {
+                        act = ACTION_MESSAGES;
                     } else if( request.action_id == "world.chat" ) {
                         act = ACTION_CHAT;
                     } else if( request.action_id == "world.fire" ) {

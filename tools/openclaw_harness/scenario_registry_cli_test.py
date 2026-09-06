@@ -180,6 +180,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             command = run.call_args.args[0]
             self.assertIn("registry-launch", command)
             self.assertIn("selected-token", command)
+            self.assertIn("--cockpit-live-session", command)
             self.assertNotIn("Josef", command)
             registry_index = command.index("--registry")
             charter_index = command.index("--witness-charter")
@@ -194,6 +195,19 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             launched_environment = run.call_args.kwargs["env"]
             self.assertIn("OPENCLAW_PLAYTEST_WITNESS_CHARTER", launched_environment)
             connection.close.assert_called_once()
+
+    def test_selected_live_probe_namespace_forwards_live_session_mode(self) -> None:
+        scenario = "r_surface_011.npc_inspection_curses"
+        selection = scenario_registry_cli.RegistryLaunchToken(
+            "token", True, "current", scenario,
+            str(startup_harness.scenario_path(scenario)),
+        )
+
+        namespace = scenario_registry_cli._registry_launch_probe_namespace(
+            selection, cockpit_live_session=True,
+        )
+
+        self.assertTrue(namespace.cockpit_live_session)
 
     def test_detached_launch_refuses_stale_product_binary_without_starting_bridge(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

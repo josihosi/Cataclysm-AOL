@@ -34,8 +34,7 @@ diagnostic evidence and use existing durable transitions to project unfinished p
 Repository implementation, tooling, fixtures, scenarios, bindings, and executable proof routes are
 ordinary recoverable work. A retry fuse retires a strategy, not the remaining outcome; the worker
 and coordinator may invent a materially different route. Split a prerequisite that depends on its
-own output into non-credit bootstrap followed by independent validation, without querying it again
-unchanged.
+own output into non-credit bootstrap followed by independent validation.
 
 Record durable acceptance once. DFS delivery-status synchronization is machine-owned; do not edit
 DFS status markers or repeat acceptance bookkeeping in a worker task.
@@ -86,9 +85,8 @@ references, accepted no-replay work, active work, first open boundary, useful na
 entrypoints. The terminal transition must cite that receipt. Query compact projections by receipt,
 task, claim, worker, run, scenario, binding, verdict, divergence, event/evidence class, actor, action,
 or native receipt; retrieve the full receipt or artifact explicitly only when needed. A material
-checkpoint stays with the same task and worker while the next turn supplies new evidence, a new
-affordance, or a materially different strategy. If the execution context is exhausted or the next
-message would only repeat an unchanged request, the receipt ends only that attempt. Keep the
+checkpoint stays with the same task and worker. If the execution context is exhausted, the receipt
+ends only that attempt. Keep the
 unfinished ledger outcome visible and project its remaining frontier from the receipt to a fresh
 worker task after any required incident review. Context exhaustion is not a formal finding or a
 product outcome.
@@ -111,7 +109,7 @@ remain open. Whole-claim acceptance follows only after every required gap is clo
 still-uncontradicted owner transition; replace one only when direct evidence contradicts it. Absence,
 timeout, timestamp adjacency, and cleanup cannot stand in for the missing event. A first divergence
 is diagnostic evidence, not a terminal policy. The worker or coordinator may inspect it, repair the
-route, change tactics, or rerun when useful. Do not repeat a tactic merely because it is recorded. A disproved strategy is a checkpoint, not a
+route, change tactics, or rerun when useful. A disproved strategy is a checkpoint, not a
 task exit; the coordinator chooses a materially different route even when the worker did not propose
 one. A formal finding requires a contradicted assigned outcome, genuinely exhausted authorized route,
 materially different owner outcome, real external decision, unavailable capability, or irreversible

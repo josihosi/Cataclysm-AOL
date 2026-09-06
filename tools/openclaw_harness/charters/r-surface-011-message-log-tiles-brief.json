@@ -1,0 +1,5 @@
+{
+  "outcome": "On the current source-bound Tiles route, the World owner enters MESSAGE_LOG through an advertised semantic action; the viewer rejects an unadvertised request, navigates, opens and returns from its filter prompt, closes, and restores World with native receipts.",
+  "scenario": "r_surface_011.message_log_tiles",
+  "query": {"requirements": [{"key": "capabilities.r_surface_011.message_log_tiles", "op": "eq", "value": "source_bound_message_log_parent_child_return", "minimum_evidence": "declared"}], "preferences": []}
+}

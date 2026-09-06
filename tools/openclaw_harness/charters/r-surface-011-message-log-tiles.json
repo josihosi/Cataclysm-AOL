@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On the current source-bound Tiles route, the World owner enters MESSAGE_LOG through an advertised semantic action; the viewer rejects an unadvertised request, navigates, opens and returns from its filter prompt, closes, and restores World with native receipts.",
+  "material_proof": "One live source-bound run records World entry, MESSAGE_LOG controls, rejected unadvertised action, accepted navigation, filter child and parent return, accepted close, restored World and cleanup. Message content and fixture state earn zero gameplay credit.",
+  "material_contradiction": ["entry, child return, close or restoration lacks its native receipt", "binding or cleanup drifts"],
+  "current_uncertainty": "Only currently advertised actions and frames may be used.",
+  "forbidden_shortcuts": ["physical or guessed input", "direct-state mutation", "gameplay claims from messages"],
+  "honest_stop_conditions": ["stop on missing owner, receipt, restoration or cleanup", "finish when this focused harness route is settled"],
+  "requested_evidence_ceiling": "focused"
+}

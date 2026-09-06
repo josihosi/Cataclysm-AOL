@@ -1,0 +1,10 @@
+{
+  "outcome": "On the current source-bound Tiles route, the native NPC inspection owner can enter for an advertised nearby actor, reject a stale item UID without mutation, open and close the actor-bound item-details child through advertised semantic actions, return to the inspector, close it, and restore the World owner with exact native receipts.",
+  "scenario": "harness.living_camp_freeplay_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.playtest.factory", "op": "eq", "value": "camp", "minimum_evidence": "declared"}
+    ],
+    "preferences": []
+  }
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On the current source-bound curses route, World enters MESSAGE_LOG, refreshes authority after a stale-frame control, opens and cancels the filter prompt, closes and restores World with exact native receipts.",
+  "material_proof": "One current-source curses run records entry, the stale-frame authority-refresh control, accepted filter and prompt cancel, accepted close, restored World, and explicit cleanup.",
+  "material_contradiction": ["entry, child return, close or restoration lacks its native receipt", "binding or cleanup drifts"],
+  "current_uncertainty": "Only currently advertised actions and frames may be used.",
+  "forbidden_shortcuts": ["physical or guessed input", "direct-state mutation", "gameplay claims from messages"],
+  "honest_stop_conditions": ["stop on missing owner, receipt, restoration or cleanup", "finish when this focused renderer route is settled"],
+  "requested_evidence_ceiling": "focused"
+}
