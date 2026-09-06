@@ -71,7 +71,8 @@ class FileBackedCockpitBridge:
                  authorization_token_id: str = "",
                  require_session_ready: bool = False,
                  pre_descriptor_prefix: Sequence[Mapping[str, Any]] = (),
-                 session_reentries: int = 0) -> None:
+                 session_reentries: int = 0,
+                 reentry_command: Sequence[str] = ()) -> None:
         self.session_dir = Path(session_dir)
         self.command = [str(part) for part in command]
         self.binding_id = str(binding_id).strip()
@@ -79,6 +80,7 @@ class FileBackedCockpitBridge:
         self.require_session_ready = require_session_ready
         self.pre_descriptor_prefix = tuple(dict(item) for item in pre_descriptor_prefix)
         self.session_reentries = session_reentries
+        self.reentry_command = [str(part) for part in reentry_command]
         self.input_path = self.session_dir / "requests.fifo"
         self.status_path = self.session_dir / "status.json"
         self.requests_dir = self.session_dir / "requests"
@@ -97,6 +99,16 @@ class FileBackedCockpitBridge:
         self._startup_failure: dict[str, Any] = {}
         self._active_session_descriptor: dict[str, Any] = {}
         self._reentry_failure: dict[str, Any] | None = None
+        self._child_environment: dict[str, str] = {}
+
+    def _start_child(self, command: Sequence[str], *, append_stderr: bool) -> None:
+        """Start the declared initial or saved-world continuation owner."""
+        stderr_path = self.session_dir / "child.stderr.log"
+        self._child_stderr = stderr_path.open("a" if append_stderr else "w", encoding="utf-8")
+        self._child = subprocess.Popen(
+            list(command), stdin=subprocess.PIPE, stdout=subprocess.PIPE,
+            stderr=self._child_stderr, text=True, bufsize=1, env=self._child_environment,
+        )
 
     def _bootstrap_receipt(self, *, sequence: int, stage: Mapping[str, Any],
                            descriptor: Mapping[str, Any]) -> None:
@@ -493,6 +505,11 @@ class FileBackedCockpitBridge:
                         phase="awaiting_declared_reentry_descriptor",
                     )
                     try:
+                        if self.reentry_command:
+                            if self._child is None or self._child.poll() is None:
+                                raise ValueError("reentry_child_still_running")
+                            self._close_child_streams()
+                            self._start_child(self.reentry_command, append_stderr=True)
                         descriptor = self._await_session_descriptor(
                             consume_pre_descriptor_prefix=False,
                         )
@@ -615,10 +632,8 @@ class FileBackedCockpitBridge:
         if self.authorization_token_id:
             environment["OPENCLAW_COCKPIT_AUTHORIZATION_TOKEN_ID"] = self.authorization_token_id
         environment["OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR"] = str(self.session_dir)
-        stderr_path = self.session_dir / "child.stderr.log"
-        self._child_stderr = stderr_path.open("w", encoding="utf-8")
-        self._child = subprocess.Popen(self.command, stdin=subprocess.PIPE, stdout=subprocess.PIPE,
-                                       stderr=self._child_stderr, text=True, bufsize=1, env=environment)
+        self._child_environment = environment
+        self._start_child(self.command, append_stderr=False)
         if self.require_session_ready:
             self._write_status( "starting", child_pid=self._child.pid,
                                 phase="awaiting_startup_hud_or_session_descriptor" )
@@ -1023,6 +1038,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     serve.add_argument("--require-session-ready", action="store_true")
     serve.add_argument("--pre-descriptor-prefix-json", default="[]")
     serve.add_argument("--session-reentries", type=int, default=0)
+    serve.add_argument("--reentry-command-json", default="[]")
     serve.add_argument("cockpit_command", nargs=argparse.REMAINDER)
     start = commands.add_parser("start")
     start.add_argument("--session-dir", required=True)
@@ -1031,6 +1047,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     start.add_argument("--require-session-ready", action="store_true")
     start.add_argument("--pre-descriptor-prefix-json", default="[]")
     start.add_argument("--session-reentries", type=int, default=0)
+    start.add_argument("--reentry-command-json", default="[]")
     start.add_argument("cockpit_command", nargs=argparse.REMAINDER)
     request = commands.add_parser("request")
     request.add_argument("--session-dir", required=True)
@@ -1107,6 +1124,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--pre-descriptor-prefix-json must be an array of objects")
         if args.session_reentries < 0:
             parser.error("--session-reentries must be non-negative")
+        try:
+            reentry_command = json.loads(args.reentry_command_json)
+        except json.JSONDecodeError:
+            parser.error("--reentry-command-json must be valid JSON")
+        if not isinstance(reentry_command, list) or any(not isinstance(part, str) for part in reentry_command):
+            parser.error("--reentry-command-json must be an array of strings")
         command = list(args.cockpit_command)
         if command[:1] == ["--"]:
             command = command[1:]
@@ -1117,6 +1140,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             *( ["--require-session-ready"] if args.require_session_ready else [] ),
             "--pre-descriptor-prefix-json", json.dumps(prefix, separators=(",", ":")),
             "--session-reentries", str(args.session_reentries),
+            "--reentry-command-json", json.dumps(reentry_command, separators=(",", ":")),
             "--", *command,
         ]
         error_path = Path(str(args.session_dir) + ".bridge.stderr.log")
@@ -1137,6 +1161,12 @@ def main(argv: Sequence[str] | None = None) -> int:
             parser.error("--pre-descriptor-prefix-json must be an array of objects")
         if args.session_reentries < 0:
             parser.error("--session-reentries must be non-negative")
+        try:
+            reentry_command = json.loads(args.reentry_command_json)
+        except json.JSONDecodeError:
+            parser.error("--reentry-command-json must be valid JSON")
+        if not isinstance(reentry_command, list) or any(not isinstance(part, str) for part in reentry_command):
+            parser.error("--reentry-command-json must be an array of strings")
         command = list(args.cockpit_command)
         if command[:1] == ["--"]:
             command = command[1:]
@@ -1146,6 +1176,7 @@ def main(argv: Sequence[str] | None = None) -> int:
             require_session_ready=args.require_session_ready,
             pre_descriptor_prefix=prefix,
             session_reentries=args.session_reentries,
+            reentry_command=reentry_command,
         ).serve()
     if args.command == "request":
         value = json.loads(args.request_json)

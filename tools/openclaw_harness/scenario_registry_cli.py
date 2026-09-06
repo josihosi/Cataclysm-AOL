@@ -1741,15 +1741,20 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
     bridge_binding_id = _identity_sha256(
         f"caol-selected-cockpit-bridge-v1:{selection.token_id}:{selection.source_path}"
     )
+    cockpit_command = [
+        sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
+        "registry-launch", selection.token_id, "--witness-charter", str(witness_charter_path),
+        "--cockpit-bridge-binding-id", bridge_binding_id,
+    ]
+    reentry_command = [*cockpit_command, "--post-relaunch-continuation"] if session_reentries else []
     bridge_command = [
         sys.executable, str(Path(__file__).with_name("cockpit_file_bridge.py")), "start",
         "--session-dir", str(session_dir), "--binding-id", bridge_binding_id,
         "--require-session-ready",
         "--session-reentries", str(session_reentries),
+        "--reentry-command-json", json.dumps(reentry_command, separators=(",", ":")),
         "--pre-descriptor-prefix-json", json.dumps(pre_descriptor_prefix, separators=(",", ":")),
-        "--", sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path),
-        "registry-launch", selection.token_id, "--witness-charter", str(witness_charter_path),
-        "--cockpit-bridge-binding-id", bridge_binding_id,
+        "--", *cockpit_command,
     ]
     if bool(getattr(args, "post_relaunch_continuation", False)):
         bridge_command.append("--post-relaunch-continuation")
