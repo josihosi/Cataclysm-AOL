@@ -84,7 +84,12 @@ live actions, evidence ceiling, exact bindings, indexed journal identities, dige
 references, accepted no-replay work, active work, first open boundary, useful narrow queries, and
 entrypoints. The terminal transition must cite that receipt. Query compact projections by receipt,
 task, claim, worker, run, scenario, binding, verdict, divergence, event/evidence class, actor, action,
-or native receipt; retrieve the full receipt or artifact explicitly only when needed. Resume the bound worker through `followup_task` while its accumulated understanding remains
+or native receipt; retrieve the full receipt or artifact explicitly only when needed.
+Stay engaged with tests and proof runs through concise summaries of their purpose, procedure,
+current state, and results. Give occasional guidance to keep the bound worker oriented toward the
+assigned outcome and next useful evidence, and request a clearer or more useful summary when needed.
+Progress messages need no quota, periodic report, or automatic ledger entry.
+Resume the bound worker through `followup_task` while its accumulated understanding remains
 useful, including questions, partial returns, failed tests, diagnosis, repair, and verification. A
 changed tactic alone does not require fresh context. Consider a fresh worker for substantially
 different context or concrete evidence that the existing worker cannot continue effectively. Ending
