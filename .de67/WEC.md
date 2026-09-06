@@ -181,6 +181,8 @@ None. DE67-2 can specify the natural gameplay proof for the turn-order concern.
 
 ## Owner refinement: fresh CAOL playtesting with the qualified harness (2026-09-06)
 
+<!-- DE67:OWNER-CONTRACT:BEGIN -->
+
 This owner-authorized refinement preserves compatible earlier product intent and evidence. It supersedes earlier restrictions that would exempt previously accepted CAOL features from fresh testing or allow newly observed CAOL bugs to become repair findings without Josef's decision. The owner explicitly invoked de67 2 after agreeing this brief, authorizing its incorporation into the existing WEC and a revised, code-grounded DFS. An expected difference from the old WEC is the requested update, not an unresolved source-file collision.
 
 ### User outcome
@@ -197,7 +199,7 @@ Tests have independent results. A mixed trajectory can support one behavior, con
 
 1. DE67 3 loop: diagnose workflow failures and repair the loop through mutation.
 2. Playtest harness: the coordinator owns getting faults diagnosed, repaired and verified, using repair workers or the mutator as appropriate. Recover the affected interaction after repair.
-3. CAOL gameplay: record a suspected bug with expected versus observed behavior, exact evidence, affected tests and any blocking consequence. Josef decides whether to promote it to a finding. A suspected bug does not authorize an automatic gameplay fix or silent finding promotion.
+3. CAOL gameplay: record a suspected bug in `.de67/debug-findings.md` with expected versus observed behavior, exact evidence, affected tests and any blocking consequence. Josef decides whether to promote it to a finding. A suspected bug does not authorize an automatic gameplay fix or silent finding promotion.
 
 Classify by the failed responsibility, not the file's repository or programming language. Native semantic instrumentation inside a CAOL C++ file can be a harness fault. A gameplay behavior such as bandits attacking after completed payment is a CAOL suspected bug. Uncertain responsibility stays explicit while investigated; do not disguise a gameplay change as a harness repair.
 
@@ -212,6 +214,8 @@ When a suspected CAOL bug blocks one test while awaiting Josef, continue indepen
 The canonical source is the Mac workspace `/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev`, branch dev. Windows is behind and must not overwrite it. Preserve unrelated dirty work, historical evidence and existing durable DE67 state. Do not access `.de67/no-go-zone/`.
 
 The qualified harness is described by the repository skill `.agents/skills/caol-harness/SKILL.md` and `tools/openclaw_harness/QUALIFICATION.md`; these are current implementation/use documentation, not a replacement product ledger. The latest tested implementation checkpoint is 54d6c00dfefafc3443f80097f5a3bf1664192348, followed by qualification documentation at 1bfcf283417d63ae407bc66fc9950a90a68dd5b5. Recheck current identity. The harness lifecycle keeps games running after failures; only explicit player quit/finish/cleanup ends a trial. Do not introduce automatic time/RSS kill limits.
+
+<!-- DE67:OWNER-CONTRACT:END -->
 
 This invocation authorizes phase 2 specification, its named workspace preparation and checkpointing. It does not launch phase 3 or a playtest campaign. Keep phase-3 coordination policy out of the mechanistic product DFS; preserve the owner's fault responsibilities in the appropriate authorized intent and handoff surfaces. Do not alter unrelated guidance merely to silence a conflict.
 

@@ -1,17 +1,26 @@
-# Claim-scoped debug findings
+# Debug observations and suspected gameplay bugs
 
-This intake records ordinary product, fixture, harness, registry, and observation-path defects
-without granting proof authority.  A finding is not a claim verdict.  It must name its affected
-claims and any independently unaffected claims so a mixed witness can retain valid observations.
+Current intake follows the 2026-09-06 WEC. DE67 loop faults go to method mutation.
+Harness faults may be diagnosed, repaired and verified by the coordinator, mutator or repair worker.
+CAOL gameplay observations are suspected bugs, not authorized findings or repair tasks. Only Josef's
+explicit promotion authorizes a finding, followed by a mutator DFS update and fix/retest plan.
+Classify the failed responsibility rather than the source filename; uncertainty remains explicit.
 
-## Entry format
+Record expected versus observed behavior, exact run/artifact/source evidence, affected and unaffected
+tests, evidence ceiling, blocking consequence and current disposition. Keep the original observation
+and any later owner decision, correction and verification distinct. Continue independent tests while
+waiting; preserve blocked tests and report all-blocked work as awaiting the owner, never complete.
 
-- Finding ID and date
-- Bound run, artifact, or source path
-- Observed defect (fact only)
-- Affected claims; explicitly unaffected claims
-- Evidence ceiling and why the finding does not promote it
-- Disposition and next repository-owned repair or validation
+## Current suspected gameplay bugs
+
+No new gameplay observation was produced by the stopped R-026-exploration-002 launch. Its semantic
+receipt implementation is preserved at checkpoint `38ff17ef99` pending verification.
+
+## Historical evidence boundary
+
+The dated entries below retain their original observations and dispositions. Their old finding labels
+and proposed fixes do not establish Josef's promotion under the current contract. Consult current
+source before assuming a listed repair remains missing; retain prior valid work and its evidence.
 
 ## R026-F001 — prepared-base audit declaration was not registry-selectable
 
