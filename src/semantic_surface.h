@@ -49,9 +49,23 @@ struct semantic_action_receipt {
     bool accepted = false;
     std::string rejection_reason;
     std::string resulting_frame_id;
+    // A native action can have a classified product outcome while still
+    // accepting its semantic request (for example, an empty Base Missions
+    // selector).  Keep that fact separate from transport acceptance.
+    std::string outcome;
 };
 
 struct semantic_action_dispatch_result {
+    semantic_action_dispatch_result( bool accepted = false, std::string rejection_reason = {},
+                                     std::string resulting_frame_id = {}, bool await_child_successor = false,
+                                     bool defer_receipt_to_successor = true, std::string outcome = {} ) :
+        accepted( accepted ),
+        rejection_reason( std::move( rejection_reason ) ),
+        resulting_frame_id( std::move( resulting_frame_id ) ),
+        await_child_successor( await_child_successor ),
+        defer_receipt_to_successor( defer_receipt_to_successor ),
+        outcome( std::move( outcome ) ) {}
+
     bool accepted = false;
     std::string rejection_reason;
     std::string resulting_frame_id;
@@ -62,6 +76,7 @@ struct semantic_action_dispatch_result {
     // A dialogue action can instead enter a native modal immediately; its
     // receipt must be observable before that modal returns control.
     bool defer_receipt_to_successor = true;
+    std::string outcome;
 };
 
 using semantic_action_consumer = std::function<semantic_action_dispatch_result(

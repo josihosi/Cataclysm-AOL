@@ -364,7 +364,9 @@ static void openclaw_harness_semantic_surface_receipt(
           << ",\"rejection_reason\":" << openclaw_harness_quote_action_value(
                 receipt.rejection_reason )
           << ",\"resulting_frame_id\":" << openclaw_harness_quote_action_value(
-                receipt.resulting_frame_id ) << '}';
+                receipt.resulting_frame_id )
+          << ",\"outcome\":" << openclaw_harness_quote_action_value(
+                receipt.outcome ) << '}';
     openclaw_harness_write_semantic_step_event( event.str() );
     DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();
 }
@@ -4410,7 +4412,6 @@ bool game::handle_action()
     std::optional<semantic_surface_manager_session> semantic_session;
     std::optional<semantic_surface_scope> world_semantic_scope;
     bool semantic_action_consumed = false;
-    std::optional<character_id> semantic_basecamp_mission_actor;
     std::optional<character_id> semantic_npc_inspection_actor;
     bool semantic_debug_creature_killed = false;
     // Check if we have an auto-move destination
@@ -4471,7 +4472,7 @@ bool game::handle_action()
                 world_semantic_scope.emplace( semantic_manager, "world", "World",
                                               openclaw_harness_world_payload(),
                                               semantic_actions,
-                [ &act, &semantic_manager, &semantic_basecamp_mission_actor, &semantic_npc_inspection_actor, &semantic_debug_creature_killed, basecamp_mission_candidates ]( const semantic_action_request &request ) {
+                [ &act, &semantic_manager, &semantic_npc_inspection_actor, &semantic_debug_creature_killed, basecamp_mission_candidates ]( const semantic_action_request &request ) {
                     if( request.action_id == "world.pause" ) {
                         // Pause is an ordinary native one-turn action.  It
                         // reaches do_turn without opening the alarm-clock
@@ -4530,7 +4531,31 @@ bool game::handle_action()
                         if( !camp || !( *camp )->allowed_access_by( get_avatar() ) ) {
                             return semantic_action_dispatch_result{ false, "unavailable_basecamp", "" };
                         }
-                        semantic_basecamp_mission_actor = *candidate;
+                        // Base Missions is a synchronous native route: its
+                        // classified result is only known after the selector
+                        // (or its explanatory popup) returns.  Execute it
+                        // under the World owner so that result is carried by
+                        // this exact semantic receipt rather than relegated
+                        // to an uncorrelated debug line.
+                        const talk_function::basecamp_mission_resolution resolution =
+                            talk_function::basecamp_mission( *actor );
+                        std::string outcome;
+                        switch( resolution ) {
+                            case talk_function::basecamp_mission_resolution::selector_entered:
+                                outcome = "selector_entered";
+                                break;
+                            case talk_function::basecamp_mission_resolution::no_camp:
+                                outcome = "no_camp";
+                                break;
+                            case talk_function::basecamp_mission_resolution::access_rejected:
+                                outcome = "access_rejected";
+                                break;
+                            case talk_function::basecamp_mission_resolution::no_available_missions:
+                                outcome = "no_available_missions";
+                                break;
+                        }
+                        semantic_manager.withhold_parent_authority_until_recreated( request.surface_id );
+                        return semantic_action_dispatch_result{ true, "", "", false, false, outcome };
                     } else if( request.action_id == "world.overmap" ) {
                         act = ACTION_MAP;
                     } else if( request.action_id == "world.chat" ) {
@@ -4571,7 +4596,6 @@ bool game::handle_action()
                                                             act == ACTION_INVENTORY || act == ACTION_MAP ||
                                                             act == ACTION_FIRE || act == ACTION_CHAT ||
                                                             act == ACTION_PICKUP ||
-                                                            semantic_basecamp_mission_actor.has_value() ||
                                                             semantic_npc_inspection_actor.has_value() };
                 } );
             }
@@ -4602,22 +4626,6 @@ bool game::handle_action()
     }
     if( semantic_npc_inspection_actor ) {
         show_npc_inspection( *semantic_npc_inspection_actor );
-        return false;
-    }
-    if( semantic_basecamp_mission_actor ) {
-        npc *const actor = find_npc( *semantic_basecamp_mission_actor );
-        if( actor == nullptr ) {
-            return false;
-        }
-        // The World request has only selected the ordinary nearby
-        // companion route.  The actual Base Missions selector owns
-        // facts, mission availability, and dispatch from here.
-        const talk_function::basecamp_mission_resolution resolution =
-            talk_function::basecamp_mission( *actor );
-        if( resolution != talk_function::basecamp_mission_resolution::selector_entered ) {
-            DebugLog( D_INFO, DC_ALL ) << "openclaw_basecamp_mission_resolution=" <<
-                                       static_cast<int>( resolution );
-        }
         return false;
     }
 

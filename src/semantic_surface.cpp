@@ -309,6 +309,7 @@ bool semantic_surface_manager::consume_top_request()
             receipt.accepted = result.accepted;
             receipt.rejection_reason = result.rejection_reason;
             receipt.resulting_frame_id = result.resulting_frame_id;
+            receipt.outcome = result.outcome;
             if( receipt.accepted && receipt.resulting_frame_id.empty() &&
                 result.defer_receipt_to_successor ) {
                 // The consuming callback has selected a native action, but its

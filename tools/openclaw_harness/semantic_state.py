@@ -167,6 +167,7 @@ def read_semantic_step_trace(
             )
             if any(not isinstance(normalized.get(key), str) for key in required) or \
                     not isinstance(normalized.get("accepted"), bool) or \
+                    ("outcome" in normalized and not isinstance(normalized.get("outcome"), str)) or \
                     normalized.get("requested_run_id") != normalized.get("run_id"):
                 return [], "malformed_semantic_surface_receipt"
         else:
