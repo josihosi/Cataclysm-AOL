@@ -137,6 +137,8 @@ Mechanism:
 
 Historical acceptance (full attempt history remains in the prior Git version):
 
+Implementation status:
+
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-001 -->
 - [x] R-SURFACE-001 — The live Tiles and curses routes prove the renderer-neutral semantic surface stack, exact top-owner
   exclusivity, fresh frame IDs, breadcrumbs, and actionless unsupported hard stop through the live
@@ -194,6 +196,8 @@ Mechanism:
 
 Historical acceptance (full attempt history remains in the prior Git version):
 
+Implementation status:
+
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-002 -->
 - [x] R-SURFACE-002 — The source-current native route proves that only the active input owner consumes semantic requests and returns exact receipts without keyboard, mouse, focus, or screenshot control.
   - DFS slices: `R-SURFACE-002-S001`
@@ -238,6 +242,8 @@ Mechanism:
 
 Historical acceptance (full attempt history remains in the prior Git version):
 
+Implementation status:
+
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-003 -->
 - [x] R-SURFACE-003 — The shared native menu and prompt family is proven on the accepted semantic request boundary.
   - DFS slices: `R-SURFACE-003-S001`
@@ -273,6 +279,8 @@ Mechanism:
 
 Historical acceptance (full attempt history remains in the prior Git version):
 
+Implementation status:
+
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-004 -->
 - [x] R-SURFACE-004 — The live Tiles and curses routes prove the renderer-neutral World owner, complete native payload, child exclusivity, and exact child-return receipts.
   - DFS slices: `R-SURFACE-004-S001`
@@ -306,6 +314,8 @@ Mechanism:
   game code. The semantic layer adds no second store.
 
 Historical acceptance (full attempt history remains in the prior Git version):
+
+Implementation status:
 
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-005 -->
 - [x] R-SURFACE-005 — The live Tiles and curses routes prove the renderer-neutral Overmap owner, discovered-only payload, stable targets, exact native receipts, and fail-closed hidden terrain.
@@ -346,6 +356,8 @@ Mechanism:
 
 Historical acceptance (full attempt history remains in the prior Git version):
 
+Implementation status:
+
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-006 -->
 - [x] R-SURFACE-006 — The live Tiles and curses routes prove the renderer-neutral inventory-selector family, stable UID targeting, nested ownership, exact receipts, and fail-closed invalid identities.
   - DFS slices: `R-SURFACE-006-S001`
@@ -380,6 +392,8 @@ Mechanism:
   enter save data. NPC identity and dialogue effects remain owned by existing game state.
 
 Historical acceptance (full attempt history remains in the prior Git version):
+
+Implementation status:
 
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-007 -->
 - [x] R-SURFACE-007 — The focused dialogue-response surface is proven on the accepted native ownership and stable-target foundations.
@@ -416,6 +430,8 @@ Mechanism:
   by their callers.
 
 Historical acceptance (full attempt history remains in the prior Git version):
+
+Implementation status:
 
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-008 -->
 - [x] R-SURFACE-008 — Direction and targeting screens expose and consume their own stable native choices.
@@ -458,6 +474,8 @@ Mechanism:
 
 Historical acceptance (full attempt history remains in the prior Git version):
 
+Implementation status:
+
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-009 -->
 - [x] R-SURFACE-009 — Every required discovered input owner operates semantically, and every new or incomplete owner stops automation without fallback.
   - DFS slices: `R-SURFACE-009-S001`
@@ -494,6 +512,8 @@ Mechanism:
   regression-tested unchanged. The semantic protocol remains presentation independent.
 
 Historical acceptance (full attempt history remains in the prior Git version):
+
+Implementation status:
 
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-010 -->
 - [x] R-SURFACE-010 — The cockpit replaces its active presentation from the exact top descriptor across World, Overmap, Inventory, Dialogue, Menu/Prompt, Direction, Target, and Unsupported surfaces.
@@ -577,6 +597,12 @@ them. Current qualification documentation is implementation/use evidence, not a 
 <!-- DE67:DFS-SLICE:END id=R-026-S001 claim=R-026 -->
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-027-S001 claim=R-027 -->
+Current obligation: R-033 requires fresh observation/control/world-boundary evidence and R-029
+    requires the full natural signal/scout/report/response route. Historical green does not close them.
+
+Implementation status:
+
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-027 -->
 - [x] R-027 — Independently validate the current staffed-camp structural-signal observation and
   memory path from a saved physical source through bounded controls and an ordinary response.
   - DFS slices: `R-027-S001`
@@ -586,11 +612,16 @@ them. Current qualification documentation is implementation/use evidence, not a 
     `bandit_live_world_retained_signal_dispatch_survives_save_round_trip` test passed 23 assertions.
     Combined report SHA `17058a17…328dfb` keeps live and deterministic persistence evidence separate.
     Exact earlier artifacts and acceptance history remain unchanged in the prior DFS/package.
-  - Current obligation: R-033 requires fresh observation/control/world-boundary evidence and R-029
-    requires the full natural signal/scout/report/response route. Historical green does not close them.
+  - Durable acceptance: #1 via `R-027-closure-008`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-027-S001 claim=R-027 -->
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-028-S001 claim=R-028 -->
+Current obligation: R-036 requires fresh integrated comparison with the qualified harness.
+
+Implementation status:
+
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-028 -->
 - [x] R-028 — Qualify the current package's performance under paired combined workloads including
   rendered local transitions, mechanical context, and gameplay feel.
   - DFS slices: `R-028-S001`
@@ -600,7 +631,8 @@ them. Current qualification documentation is implementation/use evidence, not a 
     Tiles executable, rendered transitions, native save/quit and original-process exits. Earlier
     paired raw distributions and native counters remain evidence. The conclusion was only that no
     material difference was observed on that route; it did not establish a universal threshold.
-  - Current obligation: R-036 requires fresh integrated comparison with the qualified harness.
+  - Durable acceptance: #1 via `R-028-closure-008`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-028-S001 claim=R-028 -->
 
 ### 13. Coherent bandit and cannibal discovery and contact
@@ -696,15 +728,6 @@ or resuming aggression after accepted payment contradicts that branch even if di
 ### 14. Lossless CAOL evidence transport
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-030-S001 claim=R-030 -->
-- [x] R-030 — Make CAOL and DE67 worker evidence quiet by default without losing any full-fidelity
-  artifact: compact command receipts, indexed journal lookup, outcome-sized progressive briefs, and
-  durable successor continuation must preserve exact identity and binding while the full digest-bound
-  payload remains explicitly retrievable.
-  - DFS slices: `R-030-S001`
-  - Historical acceptance: #1 via `R-030-closure-008`, receipt `0e2afae0…a96625`. The original broader
-    acceptance and full attempt history remain in the prior Git version and durable evidence.
-    Coordination-side mechanics are outside this product DFS.
-
 For this package, `cockpit_file_bridge.py` retains compact response status, exact `response-slice`,
 full digest-verified `response-artifact`, scoped `log-query` and offset/length/hash `record-artifact`.
 `PlayerClient.controls` discovers launch-published native/transition logs and shared NPC diagnostics.
@@ -723,6 +746,20 @@ Witnesses and later causal judgments are separate append-only facts in `playtest
 unaffected claims. Citations must resolve to exact typed native facts; the witness author's chronology
 or stop reason is not independent evidence. Qualification's corrected fire, clothing and item-location
 interpretations demonstrate why mechanical validation alone cannot establish causality.
+
+Implementation status:
+
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-030 -->
+- [x] R-030 — Make CAOL and DE67 worker evidence quiet by default without losing any full-fidelity
+  artifact: compact command receipts, indexed journal lookup, outcome-sized progressive briefs, and
+  durable successor continuation must preserve exact identity and binding while the full digest-bound
+  payload remains explicitly retrievable.
+  - DFS slices: `R-030-S001`
+  - Historical acceptance: #1 via `R-030-closure-008`, receipt `0e2afae0…a96625`. The original broader
+    acceptance and full attempt history remain in the prior Git version and durable evidence.
+    Coordination-side mechanics are outside this product DFS.
+  - Durable acceptance: #1 via `R-030-closure-008`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-030-S001 claim=R-030 -->
 
 ### 15. Fresh living NPC intent, context and routing

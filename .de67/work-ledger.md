@@ -23,10 +23,11 @@ retired deadlines and full artifacts remain unchanged. Earlier tactics are histo
 
 ## Accepted footing
 
-- [x] R-SURFACE-001 through R-SURFACE-010 — Preserve durable semantic-surface acceptance and exact renderer/owner evidence; R-SURFACE-011 covers current drift.
-- [x] R-027 — Preserve historical signal observation/response evidence. R-033 requires fresh coverage.
-- [x] R-028 — Preserve historical performance evidence. R-036 requires fresh integrated comparison.
-- [x] R-030 — Preserve accepted compact receipts, exact retrieval and successor continuity. Qualification is available; no old tooling prerequisite blocks the new campaign.
+Historical R-SURFACE-001 through R-SURFACE-010, R-027, R-028 and R-030 remain accepted
+at their original scope. Their full status projections and exact durable receipts live in the DFS;
+this active ledger summarizes footing without replacing those records. R-SURFACE-011, R-033 and
+R-036 retain the corresponding fresh obligations. Qualification is available; no old tooling
+prerequisite blocks the new campaign.
 
 ## Current campaign
 
