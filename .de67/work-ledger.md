@@ -29,35 +29,18 @@ this active ledger summarizes footing without replacing those records. R-SURFACE
 R-036 retain the corresponding fresh obligations. Qualification is available; no old tooling
 prerequisite blocks the new campaign.
 
-## Owner correction: speech needs game turns (2026-09-06)
+## Verified speech execution footing
 
-Josef's explicit clarification: CDDA is turn based. After submitting NPC speech or another LLM
-request, wait until the LLM calculation has actually finished, then pass a game turn so the game
-can apply the result. If further behavior needs simulation time, pass further turns and observe.
-A fixed shell sleep does not prove calculation completion, and neither sleep nor `look` advances
-game turns. Do not diagnose missing NPC behavior before completing both parts of this sequence.
-
-Live inspection of R-026-exploration-004 confirmed that text run
-`2e0d11359dac2663ca3a03dae6cbe0e4927119a6f73476c3459d9607e36034c9` submitted
-"Katharina, please report your current camp task.", ran shell `sleep 8`, observed the same World
-frame 10, and finished without a subsequent turn-advancing action. Both `world.pause` and
-`world.wait` were advertised. Preserve its inconclusive witness; it does not establish broken
-NPC attribution or failed intent dispatch.
-
-Carry this correction into the active worker brief now. Repeat the speech route, observe actual
-LLM completion through the available request/status evidence, then explicitly pass a turn using
-the current semantic World action and inspect the recipient, reply, applied result and behavior.
-Verify actual game-time/turn advancement. Respect the current input owner if a menu or prompt
-intervenes. Missing completion observability must stay explicit; an arbitrary sleep cannot replace
-it. If request launch itself requires a simulation step, establish that from the live route and
-advance it as needed rather than waiting forever for work that has not started. A rerun supplying
-these missing steps is a corrected test, not forbidden replay of the earlier attempt.
-
-Assess incorporating this completion-then-game-turn sequence into the existing speech/playtest
-macro through its assigned harness owner. Preserve request completion evidence, native action
-receipts and post-turn observations, and verify the real interaction if implemented. This is
-harness/workflow correction, not authorization for a CAOL gameplay fix. Preserve this owner
-instruction when rewriting the current handoff until the corrected route has been verified.
+The owner correction was acknowledged and applied by the exclusive reviewer. In isolated speech
+run `e120c07a82fa7f543b074e23f527c8b87bb6e4e4b8d394a484942fdfbdfed1a8`, correlated runner
+completion for Katharina `req_0` preceded frame 4; `look` left it unchanged. One native pause
+advanced turn 5241594 to 5241595 and applied her reply in frame 5. Exact response hash, native
+receipt, turns and message: `.de67/state/review-owner-048bd73865c9/speech-proof.json`.
+The harness skill and `controls` now expose this sequence and the completion log query. The
+frame-10 historical attempt remains inconclusive because it omitted the applying turn; a rerun
+with that step is informative. This diagnostic does not settle full R-031/R-026, follow-on
+`look_around` execution, persistence, or native-exit credit. Explicit diagnostic quit cleaned up
+its isolated profile; the retained R-029 run remains separate.
 
 ## Current campaign
 
@@ -70,7 +53,7 @@ instruction when rewriting the current handoff until the corrected route has bee
   footing with independent mechanical, causality, feel, persistence, and cleanup evidence plus a
   usable package guide.
   - DFS slices: `R-026-S001`
-  - Current handoff: Durable receipt `503a754d3b886511b1c323486c3e53f011bc8f25bfcbbd621b07df57bdb9d626` (`.de67/state/r026-exploration-006-worker-receipt.json`) preserves two fresh narrow R-031 results: Katharina followed and moved during native turns in run `b442104b488ef85be85c3c11e720212e84e85d8b5c06d14fe866f298d31d8274`; an independent camp-return order produced CAMP_RESIDENT assignment in run `f593f0b63ce9c4cfae2076257319023b3061d649c0e6bf788f8dbce14b64e62f`. R-026-exploration-006 is terminal, not accepted. Continue with a fresh independent LLM intent/context route correlating actor, request/context, reply and resulting action, or independent sibling campaign work. Preserve both prior harness repairs and their recovery receipts; neither these repairs nor the two native-order results discharge full R-031 or R-026. Both runs have finish witnesses and observed process exits; bridge status reports reentry_failed and no native-exit credit, so native cleanup/reentry proof remains open.
+  - Current handoff: Corrected speech calculation/completion/turn/reply sequence is now proved at the narrow diagnostic ceiling in `.de67/state/review-owner-048bd73865c9/speech-proof.json`; use `controls` and the harness skill for the verified execution model. Continue independent NPC context/action or sibling campaign proof. Durable receipt `503a754d3b886511b1c323486c3e53f011bc8f25bfcbbd621b07df57bdb9d626` (`.de67/state/r026-exploration-006-worker-receipt.json`) preserves two fresh narrow R-031 results: Katharina followed and moved during native turns in run `b442104b488ef85be85c3c11e720212e84e85d8b5c06d14fe866f298d31d8274`; an independent camp-return order produced CAMP_RESIDENT assignment in run `f593f0b63ce9c4cfae2076257319023b3061d649c0e6bf788f8dbce14b64e62f`. R-026-exploration-006 is terminal, not accepted. Continue with a fresh independent LLM intent/context route correlating actor, request/context, reply and resulting action, or independent sibling campaign work. Preserve both prior harness repairs and their recovery receipts; neither these repairs nor the two native-order results discharge full R-031 or R-026. Both runs have finish witnesses and observed process exits; bridge status reports reentry_failed and no native-exit credit, so native cleanup/reentry proof remains open.
   - Subtasks:
     - [done] preserve-qualified-footing :: Existing package, harness qualification and historical proof remain available at their original ceilings.
     - [open] audit-current-package-footing :: Verify current source, executable, fixtures and preparation limits for the fresh campaign.

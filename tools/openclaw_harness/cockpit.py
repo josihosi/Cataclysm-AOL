@@ -3158,6 +3158,13 @@ def player_controls(availability: Optional[Mapping[str, bool]] = None) -> Dict[s
             "ignore_danger_and_interruptions": "Explicitly continue through classified in-game danger/damage where a supported native continuation exists; not permission to bypass unknown owners, unavailable recovery, or blocked movement.",
         },
         "interruption_caveat": "An ordinary interruption stops only the macro and releases its unused continuation. Inspect result.terminal_observation and partial progress, then choose a native action or observe again; do not replay the recipe automatically. Cancellation is cooperative: an input already emitted may have an unknown outcome, so collect the original request and perform a fresh look. All action and observation failures leave the game running. Failed ownership or receipt checks revoke the current grants; observe again before choosing another action. Only explicit run.quit or run.finish ends the session.",
+        "speech": {
+            "sequence": "Submit free text through the current native prompt. Correlate the utterance/hearer and prompt request ID with llm_request_started, then llm_response_emitted in the runner log. The response event proves calculation ended and was emitted, not that the game applied it. Once completion is evidenced, choose world.pause from the current World owner and inspect the reply/action and game-time change. Advance further turns only as the behavior requires.",
+            "launch": "The current npctalk free-text route enqueues the first hearer immediately; later serial hearers can require a turn to apply the prior response and dispatch the next. If no matching request started, inspect launch/queue evidence before waiting.",
+            "evidence": "controls.evidence_logs names exact shared logs. Match request ID, prompt/time and runner process; req_N resets between game processes. prewarm is not speech. Missing completion evidence is unobservable, not failed; fixed sleep, look, and request transport acceptance do not prove calculation completion or advance simulation.",
+            "apply_request": {"action": "game.act", "action_id": "world.pause"},
+            "owner": "Use act world.pause only when advertised by the current owner. If a menu intervenes, inspect and resolve that native owner first. The wait macro advances game time, never waits for an asynchronous calculation. No automatic turn or guessed timeout is supplied by this guidance.",
+        },
         "wait": {
             "example_request": {"action": "game.wait", "wait": {
                 "enabled": True, "target_delta_game_minutes": 1,

@@ -1,0 +1,26 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "A real native speech request has separately observable calculation completion and native-turn application.",
+  "material_proof": "Correlate the submitted utterance, hearer and request with runner completion, then observe a native turn and the applied reply or error without conflating transport acceptance, calculation and gameplay.",
+  "material_contradiction": [
+    "No correlated completion evidence",
+    "Native turn is not observed",
+    "Applied result is inferred from submission or calculation alone"
+  ],
+  "already_accepted_evidence": [
+    "R-SURFACE-001 through R-SURFACE-010 provide native semantic operation and observation only.",
+    "The R-026 prepared-base audit establishes startup/load readiness only."
+  ],
+  "current_uncertainty": "Whether completion can be correlated before applying a native turn in this fixture.",
+  "forbidden_shortcuts": [
+    "physical keys, hotkeys, OCR, screenshots, coordinates, or guessed controls",
+    "synthetic LLM response injection",
+    "direct NPC, camp, snapshot, or save mutation",
+    "crediting fixture installation, startup, debug setup, or semantic-surface acceptance as gameplay proof",
+    "treating one aggregate success or failure as every claim's verdict"
+  ],
+  "honest_stop_conditions": [
+    "Record unavailable or failed stages honestly; quit explicitly after the diagnostic."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

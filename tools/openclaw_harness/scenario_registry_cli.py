@@ -447,6 +447,19 @@ def _current_repair_binding(declaration: Mapping[str, Any]) -> Mapping[str, Any]
     return _current_bootstrap_revalidation_facts(declaration)
 
 
+def _with_build_entrypoint(value: Mapping[str, Any]) -> Mapping[str, Any]:
+    readiness = dict(value)
+    if sys.platform == "darwin":
+        helper = repository_root() / "tools/openclaw_harness/build_source_bound_macos.py"
+        readiness["build_entrypoint"] = {
+            "argv": [sys.executable, str(helper), "--renderer", "tiles"],
+            "cwd": str(repository_root()),
+            "purpose": "Build the default tiles executable and record its source/hash binding; use --renderer curses and --build-prefix for an isolated curses build.",
+            "when": "Use when current binding is insufficient; ready bindings do not require rebuilding. Requery after relevant source changes.",
+        }
+    return readiness
+
+
 def _current_source_executable_readiness(
     *,
     isolated_harness_diagnosis: bool = False,
@@ -460,7 +473,7 @@ def _current_source_executable_readiness(
         try:
             candidate = startup_harness.detect_executable()
         except SystemExit as exc:
-            return {
+            return _with_build_entrypoint({
                 "status": "build_required",
                 "reason": "runnable_executable_absent",
                 "next_action": (
@@ -468,11 +481,12 @@ def _current_source_executable_readiness(
                 ),
                 "evidence_ceiling": "none until source-matching executable revalidation",
                 "comparison_error": str(exc),
-            }
-    return startup_harness.executable_source_readiness(
+            })
+    readiness = dict(startup_harness.executable_source_readiness(
         candidate,
         isolated_harness_diagnosis=isolated_harness_diagnosis,
-    )
+    ))
+    return _with_build_entrypoint(readiness)
 
 
 def _runtime_status(*, executable: str, isolated_harness_diagnosis: bool) -> Mapping[str, Any]:
@@ -2829,11 +2843,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                 "executable_path": runtime_binding["executable_path"],
                 "executable_sha256": runtime_binding["executable_sha256"],
                 "runtime_source_sha256": runtime_binding["runtime_source"].get("sha256", ""),
+                "product_source_sha256": result["build_runtime_status"].get("product_source_sha256", ""),
                 "isolated_harness_diagnosis": bool(args.isolated_harness_diagnosis),
             }
             receipt["result_summary"] = {
                 "status": result["build_runtime_status"].get("status", ""),
                 "evidence_ceiling": result["build_runtime_status"].get("evidence_ceiling", ""),
+                "build_entrypoint": result["build_runtime_status"].get("build_entrypoint"),
             }
         _write_result({"ok": True, "command": args.command, "registry": str(registry_path),
                        "result": receipt})

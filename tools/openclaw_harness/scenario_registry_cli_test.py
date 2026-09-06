@@ -47,6 +47,17 @@ from startup_harness import finalize_probe_report  # noqa: E402
 
 
 class ScenarioRegistryCliTest(unittest.TestCase):
+    def test_build_entrypoint_survives_missing_binary_and_compact_status(self):
+        with mock.patch.object(scenario_registry_cli.sys, "platform", "darwin"), mock.patch.object(startup_harness, "detect_executable", side_effect=SystemExit("missing")):
+            absent = scenario_registry_cli._current_source_executable_readiness()
+        self.assertEqual(absent["status"], "build_required")
+        command = absent["build_entrypoint"]["argv"]
+        self.assertTrue(Path(command[1]).is_file())
+        self.assertEqual(command[-2:], ["--renderer", "tiles"])
+        with mock.patch.object(scenario_registry_cli.sys, "platform", "win32"):
+            self.assertNotIn("build_entrypoint", scenario_registry_cli._with_build_entrypoint({"status": "ready"}))
+
+
     def test_r008_pre_descriptor_prefix_uses_declared_objectives_without_step_duplicates(self) -> None:
         scenario = "bandit.r008_natural_return_validation_mcw"
         declaration = startup_harness.load_scenario(scenario)
@@ -1730,6 +1741,8 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     "status": "ready",
                     "evidence_ceiling": "requested run ceiling",
                     "large_diagnostic": "full-only-payload",
+                    "build_entrypoint": {"argv": ["python", "verified-builder.py"]},
+                    "product_source_sha256": "c" * 64,
                 },
                 "runtime_binding": {
                     "runtime_source": {"sha256": "a" * 64},
@@ -1753,6 +1766,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 "executable_path": "/exact/cataclysm-tiles",
                 "executable_sha256": "b" * 64,
                 "runtime_source_sha256": "a" * 64,
+                "product_source_sha256": "c" * 64,
                 "isolated_harness_diagnosis": False,
             })
             self.assertNotIn("full-only-payload", compact_stdout.getvalue())

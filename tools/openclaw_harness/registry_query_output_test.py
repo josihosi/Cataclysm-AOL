@@ -16,6 +16,15 @@ import scenario_registry_cli_test as fixtures
 
 
 class RegistryQueryOutputTest(unittest.TestCase):
+    def test_query_preserves_build_and_binding_metadata(self):
+        readiness = {"status": "ready", "build_entrypoint": {"argv": ["python", "verified-builder.py"]},
+                     "executable_sha256": "a" * 64, "product_source_sha256": "b" * 64}
+        out = io.StringIO()
+        with redirect_stdout(out), mock.patch.object(cli, "_current_source_executable_readiness", return_value=readiness):
+            self.assertEqual(cli.main(["--registry", str(self.registry), "registry-query", "--query-json", json.dumps({"requirements": [], "preferences": []})]), 0)
+        projected = json.loads(out.getvalue())["result"]["source_executable_readiness"]
+        self.assertEqual(projected, readiness)
+
     def setUp(self):
         self.temp = tempfile.TemporaryDirectory()
         self.addCleanup(self.temp.cleanup)

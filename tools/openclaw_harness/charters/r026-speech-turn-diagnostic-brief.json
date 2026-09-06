@@ -1,0 +1,15 @@
+{
+  "outcome": "A real native speech request has separately observable calculation completion and native-turn application.",
+  "scenario": "r026.speech_turn_diagnostic_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r026.speech_turn_diagnostic",
+        "op": "eq",
+        "value": "request_completion_application",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

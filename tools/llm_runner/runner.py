@@ -1,5 +1,6 @@
 #!/usr/bin/env python3
 import argparse
+import hashlib
 import json
 import os
 import sys
@@ -268,13 +269,29 @@ def read_request(line: str) -> Dict[str, Any]:
     return sanitize_jsonish(json.loads(line))
 
 
-def write_response(payload: Dict[str, Any]) -> None:
+def request_event(log_fp, event: str, payload: Dict[str, Any]) -> None:
+    """Producer evidence only; completion does not assert native application."""
+    if log_fp is None:
+        return
+    record = {"event": event, "timestamp": time.time(), "runner_pid": os.getpid(),
+              "request_id": payload.get("request_id", "unknown")}
+    if event == "llm_request_started":
+        record["prompt_sha256"] = hashlib.sha256(str(payload.get("prompt", "")).encode()).hexdigest()
+    else:
+        record["ok"] = payload.get("ok")
+        record["response_sha256"] = hashlib.sha256(json.dumps(payload, ensure_ascii=True).encode()).hexdigest()
+    log_fp.write(json.dumps(record, sort_keys=True) + "\n")
+    log_fp.flush()
+
+
+def write_response(payload: Dict[str, Any], *, log_fp=None) -> None:
     if "text" in payload:
         payload["text"] = sanitize_text(payload.get("text"))
     if "error" in payload:
         payload["error"] = sanitize_text(payload.get("error"))
     sys.stdout.write(json.dumps(payload, ensure_ascii=True) + "\n")
     sys.stdout.flush()
+    request_event(log_fp, "llm_response_emitted", payload)
 
 
 def handle_request(
@@ -609,9 +626,10 @@ def main() -> int:
             continue
         try:
             request = read_request(line)
+            request_event(log_fp, "llm_request_started", request)
         except Exception as exc:
             log_line(log_fp, f"invalid request: {exc}")
-            write_response({"request_id": "unknown", "ok": False, "error": str(exc)})
+            write_response({"request_id": "unknown", "ok": False, "error": str(exc)}, log_fp=log_fp)
             continue
 
         response = handle_request(
@@ -632,7 +650,7 @@ def main() -> int:
                 snippet = sanitize_text(text)
                 snippet = snippet if len(snippet) <= 4000 else snippet[:4000] + "...[truncated]"
                 log_line(log_fp, f"response raw: {snippet}")
-        write_response(response)
+        write_response(response, log_fp=log_fp)
         if response.get("shutdown"):
             return 0
 
@@ -704,20 +722,21 @@ def run_ollama_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
             continue
         try:
             request = read_request(line)
+            request_event(log_fp, "llm_request_started", request)
         except Exception as exc:
             log_line(log_fp, f"invalid request: {exc}")
-            write_response({"request_id": "unknown", "ok": False, "error": str(exc)})
+            write_response({"request_id": "unknown", "ok": False, "error": str(exc)}, log_fp=log_fp)
             continue
 
         request_id = request.get("request_id", "unknown")
         if request.get("command") == "shutdown":
             ollama_unload(args.ollama_url, model, log_fp)
-            write_response({"request_id": request_id, "ok": True, "shutdown": True})
+            write_response({"request_id": request_id, "ok": True, "shutdown": True}, log_fp=log_fp)
             return 0
 
         prompt = request.get("prompt")
         if not isinstance(prompt, str) or not prompt.strip():
-            write_response({"request_id": request_id, "ok": False, "error": "Missing prompt"})
+            write_response({"request_id": request_id, "ok": False, "error": "Missing prompt"}, log_fp=log_fp)
             continue
 
         max_tokens = request.get("max_tokens")
@@ -745,11 +764,11 @@ def run_ollama_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
                 "eval_count": response.get("eval_count"),
                 "eval_duration": response.get("eval_duration"),
             }
-            write_response(payload)
+            write_response(payload, log_fp=log_fp)
         except Exception as exc:
             log_line(log_fp, f"ollama request exception: {exc}")
             log_line(log_fp, traceback.format_exc())
-            write_response({"request_id": request_id, "ok": False, "error": str(exc)})
+            write_response({"request_id": request_id, "ok": False, "error": str(exc)}, log_fp=log_fp)
     return 0
 
 
@@ -777,20 +796,21 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
             continue
         try:
             request = read_request(line)
+            request_event(log_fp, "llm_request_started", request)
         except Exception as exc:
             log_line(log_fp, f"invalid request: {exc}")
-            write_response({"request_id": "unknown", "ok": False, "error": str(exc)})
+            write_response({"request_id": "unknown", "ok": False, "error": str(exc)}, log_fp=log_fp)
             continue
 
         request_id = request.get("request_id", "unknown")
         if request.get("command") == "shutdown":
             ollama_unload(args.ollama_url, model, log_fp)
-            write_response({"request_id": request_id, "ok": True, "shutdown": True})
+            write_response({"request_id": request_id, "ok": True, "shutdown": True}, log_fp=log_fp)
             return 0
 
         prompt = request.get("prompt")
         if not isinstance(prompt, str) or not prompt.strip():
-            write_response({"request_id": request_id, "ok": False, "error": "Missing prompt"})
+            write_response({"request_id": request_id, "ok": False, "error": "Missing prompt"}, log_fp=log_fp)
             continue
 
         start_time = time.perf_counter()
@@ -813,11 +833,11 @@ def run_api_mode(args: argparse.Namespace, log_fp: Optional[TextIO]) -> int:
                 "gen_time_ms": elapsed_ms,
                 "use_api": True,
             }
-            write_response(payload)
+            write_response(payload, log_fp=log_fp)
         except Exception as exc:
             log_line(log_fp, f"api request exception: {exc}")
             log_line(log_fp, traceback.format_exc())
-            write_response({"request_id": request_id, "ok": False, "error": str(exc)})
+            write_response({"request_id": request_id, "ok": False, "error": str(exc)}, log_fp=log_fp)
     return 0
 
 

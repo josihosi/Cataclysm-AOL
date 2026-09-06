@@ -1900,6 +1900,8 @@ def executable_source_readiness(
         "executable_path": str(executable_path),
         "captured_head": captured_head,
         "repository_head": current_head_short(),
+        "executable_sha256": executable_sha256,
+        "product_source_sha256": product_binding.get("sha256", ""),
         "binary_relevant_committed_changes": committed_changes,
         "binary_relevant_worktree_changes": worktree_changes,
         "comparison_error": comparison_error,

@@ -1,6 +1,7 @@
 """Final-response contract at the real Ollama runner boundary; no inference."""
 import argparse
 import io
+import hashlib
 import json
 from pathlib import Path
 import sys
@@ -35,6 +36,40 @@ class RunnerFinalResponseTest(unittest.TestCase):
         # Exact raw backend evidence survives separately from the playable text.
         self.assertIn(json.dumps(raw, ensure_ascii=True), log.getvalue())
         return result
+
+    def test_lifecycle_separates_pending_emission_and_native_application(self):
+        args = argparse.Namespace(ollama_model="installed-model", ollama_url="http://127.0.0.1:11434")
+        request = {"request_id": "req_42", "prompt": "unique private utterance", "max_tokens": 256}
+        incoming, outgoing, log = io.StringIO(json.dumps(request) + "\n"), io.StringIO(), io.StringIO()
+        def events():
+            return [json.loads(line) for line in log.getvalue().splitlines() if line.startswith("{")]
+        def calculate(*args):
+            self.assertEqual([event["event"] for event in events()], ["llm_request_started"])
+            self.assertEqual(outgoing.getvalue(), "")
+            return {"response": "Ready.|wait_here", "thinking": ""}
+        with patch.object(runner.sys, "stdin", incoming), patch.object(runner.sys, "stdout", outgoing), patch.object(runner, "ollama_generate", side_effect=calculate):
+            self.assertEqual(runner.run_ollama_mode(args, log), 0)
+        started, completed = events()
+        self.assertEqual(completed["event"], "llm_response_emitted")
+        self.assertEqual(completed["request_id"], started["request_id"])
+        self.assertEqual(completed["runner_pid"], started["runner_pid"])
+        self.assertEqual(started["prompt_sha256"], hashlib.sha256(request["prompt"].encode()).hexdigest())
+        self.assertEqual(completed["response_sha256"], hashlib.sha256(outgoing.getvalue().strip().encode()).hexdigest())
+        self.assertNotIn("applied", completed)
+        self.assertNotIn(request["prompt"], json.dumps(events()))
+
+    def test_failed_emission_does_not_log_completion_and_error_is_not_success(self):
+        log = io.StringIO()
+        class Broken(io.StringIO):
+            def flush(self):
+                raise BrokenPipeError("native consumer exited")
+        with patch.object(runner.sys, "stdout", Broken()):
+            with self.assertRaises(BrokenPipeError):
+                runner.write_response({"request_id": "req_1", "ok": True}, log_fp=log)
+        self.assertEqual(log.getvalue(), "")
+        with patch.object(runner.sys, "stdout", io.StringIO()):
+            runner.write_response({"request_id": "req_2", "ok": False, "error": "backend failed"}, log_fp=log)
+        self.assertIs(json.loads(log.getvalue())["ok"], False)
 
     def test_runner_rejects_thought_only_but_retains_raw_evidence(self):
         for raw in (

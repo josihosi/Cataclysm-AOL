@@ -49,7 +49,11 @@ complete evaluation when a specific uncertainty needs it. The selected token bel
 Explain the candidate fit, evidence ceiling, lifecycle, binding, and readiness. Querying never
 launches. If no executable selection exists, use the returned facts to choose whether to build,
 repair, create, rebind, or deliberately run an isolated zero-credit diagnosis. Do not weaken the
-question or combine incompatible footing. A stale executable may support an explicitly isolated
+question or combine incompatible footing. On this Mac, `python3 tools/openclaw_harness/build_source_bound_macos.py --renderer tiles` builds
+and records the exact source/executable binding. `runtime-status` and registry readiness expose the
+current binding and build entrypoint. Use it when the binding is insufficient or contradicted; a
+ready binding needs no rediscovery or rebuild.
+A stale executable may support an explicitly isolated
 harness diagnosis only; current-product conclusions require a source-matching executable.
 
 For a selected playtest, the coordinator brief and matching validated charter are the execution
@@ -98,9 +102,18 @@ latest matching page and does not send game input. `controls` discovers the boun
 and transition logs, profile diagnostics, and shared NPC logs with exact paths, availability,
 scope and copyable query arguments. Missing files or metadata mean unavailable evidence, not
 absence of ecological activity. Shared logs need exact event and identity correlation.
-Scripted Dialogue choices and free-text speech are different native routes. A model request needs
-its utterance, hearer, time and resulting reply or error correlated; automatic `prewarm` requests
-only load the model and do not establish an NPC conversation.
+Scripted Dialogue choices and free-text speech are different native routes. For speech, submit via
+the current native prompt, correlate utterance/hearer and prompt request ID with runner
+`llm_request_started` and `llm_response_emitted`, then pass a native World `world.pause` turn and
+inspect the applied reply/action and game-time change. Calculation completion and native
+application are separate evidence. A fixed sleep or `look` proves neither completion nor a turn.
+`controls` exposes this sequence beside the wait macro and exact log paths. `req_N` resets between
+game processes: correlate prompt/time and runner process, and exclude `prewarm`. Missing producer
+evidence means unobservable completion, not failure. The current free-text route dispatches the
+first hearer immediately; later serial hearers can need a turn to apply a prior response and launch
+the next. Inspect that dependency when no matching request starts. Resolve any intervening input
+owner before choosing a turn; further behavior may require further simulation. Preserve an
+inconclusive attempt and name the changed step that makes a rerun useful.
 When the scenario declares a save/reload continuation, finish the saved segment with `finish`;
 `collect` reports `reentered`, then `look` exposes the restored world's new owner. The bridge handles
 the declared process replacement without reinstalling the fixture. `quit` ends the entire scenario

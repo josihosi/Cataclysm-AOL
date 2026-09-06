@@ -40,15 +40,16 @@ unchanged.
 Record durable acceptance once. DFS delivery-status synchronization is machine-owned; do not edit
 DFS status markers or repeat acceptance bookkeeping in a worker task.
 
-Choose Luna or Terra and an effort appropriate to the work. Give the worker an outcome-sized,
-self-contained packet containing:
+Choose Luna or Terra and an effort appropriate to the work. Lead the self-contained packet with
+what works, what remains unknown, the next informative experiment, and exact evidence locations.
+Include the outcome, current owner constraints, acceptance boundary and useful operational
+entrypoints. Explain why an attempt was inconclusive and what changed step makes repetition
+informative; preserve accepted proof without turning historical tactics into route bans.
 
-- the desired outcome;
-- the compact durable continuation receipt, or only the accepted footing needed when no receipt exists;
-- current uncertainty, first open boundary, and no-replay work;
-- real authority, binding, safety, and credit constraints;
-- exact source/executable/scenario/run bindings and useful entrypoints;
-- a progressive read plan naming each initial source or narrow query and why it may matter.
+Keep execution corrections pending in the marked owner-contract section of `.de67/WEC.md`, which
+new worker packets already include. Relevant live corrections also use native messaging. Retain
+them through ledger rewrites until the responsible worker acknowledges and applies them with
+evidence, or deliberately defers with a reason. File preservation alone does not prove delivery.
 
 The read plan is an evidence map, not a quota or prescribed sequence: begin with the compact receipt
 and exact entrypoints, then open complete digest-bound artifacts or broader sources only when a
@@ -63,7 +64,8 @@ worker can discover semantic fields and exact artifact retrieval from the interf
 
 Open one unique deadline task for each worker before spawning it. Use the task identity and exact
 spawn metadata supplied by the kernel. Before any worker-owned terminal transition, persist one
-identity-bound result receipt carrying the outcome or first divergence, material changes, tests and
+identity-bound result receipt (use `worker_receipt.py prepare` to collect durable identities and
+missing artifact hashes while rejecting supplied mismatches) carrying the outcome or first divergence, material changes, tests and
 live actions, evidence ceiling, exact bindings, indexed journal identities, digest-bound artifact
 references, accepted no-replay work, active work, first open boundary, useful narrow queries, and
 entrypoints. The terminal transition must cite that receipt. Query compact projections by receipt,
@@ -112,10 +114,17 @@ capability gaps with implementation bugs.
 
 ## Mutate guidance
 
+At consequential decisions, ask whether the next act makes meaningful progress or whether missing
+information or unnecessary obligations are causing a detour. Repair and test the earliest supported
+cause within current authority; route DE67 method faults through the existing queue without waiting
+for Josef to diagnose them. This is judgment in the delivery loop, not a new gate or checklist.
+
 The exclusive reviewer consumes the complete pending mutation queue. User-authored entries require
 their outcome or an exact preserved conflict. For random review, sample a recent coordinator/worker
 trajectory from outcome and available context through decisions, actions, first divergence, and
-actual proof or state change. The stored document lane is a sampling seed, not an edit boundary;
+actual proof or state change. Ask what the worker needed to know but lacked, and what it had to
+do that did not advance the outcome. Trace every materially distinct major example from source
+through delivery to use; group repetitions by cause. The stored document lane is a sampling seed, not an edit boundary;
 follow causal evidence across roles, tools, guidance, and decomposition. Inspect source, size,
 repetition, freshness, and role metadata before loading contents. Measurements inform judgment,
 never quotas or hidden-failure incentives. No finding or change is compulsory.
