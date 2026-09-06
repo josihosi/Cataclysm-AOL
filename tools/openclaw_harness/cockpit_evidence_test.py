@@ -48,7 +48,12 @@ class CockpitEvidenceTest(unittest.TestCase):
     def cli(self, *args, success=True):
         result = subprocess.run([sys.executable, str(CLI), *map(str, args)], capture_output=True, text=True)
         self.assertEqual(result.returncode, 0 if success else 1, result.stderr)
-        return json.loads(result.stdout)
+        from evidence_display import DEFAULT_BYTES, recover
+        self.assertLessEqual(len(result.stdout.encode()), DEFAULT_BYTES)
+        shown = json.loads(result.stdout)
+        # The supported CLI now presents handles; verify the complete retained
+        # result as well as the serialized boundary instead of demanding a dump.
+        return recover(shown["presentation"]["full_evidence"]["sha256"])
 
     def status(self):
         return self.cli("response-status", "--session-dir", self.session, "--request-id", "confirm")

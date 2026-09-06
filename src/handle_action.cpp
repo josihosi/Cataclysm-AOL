@@ -281,6 +281,23 @@ static void openclaw_harness_write_semantic_step_event( const std::string &event
     }
 }
 
+static std::string openclaw_harness_semantic_event_clock()
+{
+    // The immediate native successor must carry its own clock. Borrowing a
+    // later compatibility frame loses the input owner; omitting the clock
+    // leaves bounded waits unable to observe their actual progress.
+    static const auto process_instance = std::chrono::system_clock::now().time_since_epoch().count();
+    static std::uint64_t sequence = 0;
+    std::ostringstream fields;
+    fields << ",\"process_instance\":\"" << process_instance << '"'
+           << ",\"sequence\":" << ++sequence
+           << ",\"game_minutes\":" << to_minutes<int>( calendar::turn - calendar::start_of_cataclysm )
+           << ",\"game_turn\":" << to_turns<int>( calendar::turn - calendar::turn_zero )
+           << ",\"wall_time\":" << std::chrono::duration_cast<std::chrono::milliseconds>(
+               std::chrono::system_clock::now().time_since_epoch() ).count();
+    return fields.str();
+}
+
 static void openclaw_harness_semantic_surface_descriptor(
     const semantic_surface_descriptor &descriptor )
 {
@@ -325,7 +342,7 @@ static void openclaw_harness_semantic_surface_descriptor(
 
     std::ostringstream event;
     event << "{\"event\":\"surface_descriptor\",\"schema_version\":"
-          << descriptor.schema_version
+          << descriptor.schema_version << openclaw_harness_semantic_event_clock()
           << ",\"run_id\":" << openclaw_harness_quote_action_value( descriptor.run_id )
           << ",\"surface_id\":" << openclaw_harness_quote_action_value( descriptor.surface_id )
           << ",\"frame_id\":" << openclaw_harness_quote_action_value( descriptor.frame_id )
@@ -347,7 +364,7 @@ static void openclaw_harness_semantic_surface_receipt(
 
     std::ostringstream event;
     event << "{\"event\":\"surface_receipt\",\"run_id\":"
-          << openclaw_harness_quote_action_value( run_id )
+          << openclaw_harness_quote_action_value( run_id ) << openclaw_harness_semantic_event_clock()
           << ",\"request_id\":" << openclaw_harness_quote_action_value( receipt.request_id )
           << ",\"requested_run_id\":" << openclaw_harness_quote_action_value(
                 receipt.requested_run_id )

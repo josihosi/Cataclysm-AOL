@@ -19,6 +19,8 @@ from typing import Any
 import uuid
 
 from cockpit_archive import json_chunks
+from evidence_display import emit, retain, recover, PresentationParser
+from gameplay_display import display
 from cockpit import player_controls
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge, _atomic_json
 
@@ -174,6 +176,29 @@ class PlayerClient:
                     "query": logs["log_query"],
                 }}
 
+    def evidence(self, args):
+        from evidence_events import query
+        logs = self._evidence_logs()
+        sources = [{"path": entry["path"], "producer": entry["name"]}
+                   for entry in logs["entries"] if entry.get("path") and logs["identity_status"] == "bound"]
+        sources.extend({"path": str(path), "producer": "cockpit", "response": True}
+                       for path in sorted((self.session / "responses").glob("*.json"))
+                       if not path.name.endswith(".receipt.json"))
+        filters = {}
+        for key in ("actor_id", "actor_name", "request_id", "run_id", "event", "process_instance"):
+            value = getattr(args, key)
+            if value is not None:
+                filters[key] = value
+        for expression in args.where:
+            key, value = expression.split("=", 1)
+            filters[key] = json.loads(value)
+        if args.limit < 1:
+            raise ValueError("evidence_limit_must_be_positive")
+        selectors = [part.strip() for value in args.select for part in value.split(",") if part.strip()]
+        result = query(sources, filters, args.contains, selectors, args.limit)
+        result["log_identity_status"] = logs["identity_status"]
+        return result
+
     def performance(self, args):
         from process_performance import (read_json, read_records, sample_owned_session,
                                          compare_records)
@@ -307,6 +332,16 @@ class PlayerClient:
             self.state["finished"] = True
             self.state["finished_generation"] = result["receipt"].get("session_generation", 0)
             self.state.pop("observation_id", None)
+        try:
+            previous = recover(self.state["display_sha256"]) if self.state.get("display_sha256") else None
+        except (OSError, ValueError):
+            previous = None  # A lost presentation cache never strands native grants.
+        view, display_state = display(response, previous, refresh=pending["request"]["action"] == "game.observe" or self.reentered or self.state.get("display_generation") != result["receipt"].get("session_generation", 0))
+        self.state["display_generation"] = result["receipt"].get("session_generation", 0)
+        if display_state is not None:
+            self.state["display_sha256"] = retain(display_state)["sha256"]
+        result = {**result, "response": view}
+        result.pop("retrieval", None)
         self.state["last_request_id"] = request_id
         self.state.pop("pending", None)
         self.save()
@@ -454,7 +489,7 @@ class PlayerClient:
 
 
 def main(argv=None):
-    parser = argparse.ArgumentParser(description=__doc__)
+    parser = PresentationParser(description=__doc__)
     parser.add_argument("--session", type=Path, required=True, help="Existing registry-launched session directory")
     parser.add_argument("--wait-seconds", type=float, default=1,
                         help="Wait for this response, then return pending; never resubmit")
@@ -480,6 +515,13 @@ def main(argv=None):
     performance.add_argument("--tag", default="", help="Explicit comparable-workload annotation; never a native fact")
     performance.add_argument("--baseline", type=Path, help="Compare latest/sample with a previously saved tagged record")
     performance.add_argument("--save-baseline", type=Path, help="Save latest/sample as a tagged baseline; refuses overwrite")
+    evidence = commands.add_parser("evidence", help="Query one immutable event snapshot across native, NPC and runner sources")
+    for field in ("actor-id", "actor-name", "request-id", "run-id", "event", "process-instance"):
+        evidence.add_argument("--" + field)
+    evidence.add_argument("--where", action="append", default=[], metavar="FIELD=JSON")
+    evidence.add_argument("--select", action="append", default=[], help="Exact envelope field path; repeat or separate fields with commas")
+    evidence.add_argument("--contains")
+    evidence.add_argument("--limit", type=int, default=20)
     commands.add_parser("controls", help="Read wait/movement request examples, permissions and interruption behavior without sending input")
     call = commands.add_parser("call", help="Submit an existing structured game.* request; service authorization still applies")
     call.add_argument("--request", type=Path, required=True,
@@ -499,7 +541,9 @@ def main(argv=None):
     try:
         if not math.isfinite(args.wait_seconds) or args.wait_seconds < 0:
             raise ValueError("wait_seconds_must_be_finite_and_nonnegative")
-        if args.command == "performance":
+        if args.command == "evidence":
+            result = PlayerClient(args.session).evidence(args)
+        elif args.command == "performance":
             # Independent telemetry must remain readable while another CLI is
             # waiting with the request-ownership lock. It never edits that state.
             result = PlayerClient(args.session).performance(args)
@@ -540,9 +584,7 @@ def main(argv=None):
                     result = client.finish(json.loads(args.witness.read_text()), args.wait_seconds)
     except (OSError, ValueError, KeyError, TypeError) as error:
         result = {"ok": False, "error": str(error)}
-    for chunk in json_chunks(result):
-        print(chunk, end="")
-    print()
+    emit(result)
     return 0 if result.get("ok") else 1
 
 

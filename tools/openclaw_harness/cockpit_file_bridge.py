@@ -1056,7 +1056,8 @@ class FreshObservationSequence:
 
 
 def main(argv: Sequence[str] | None = None) -> int:
-    parser = argparse.ArgumentParser(description=__doc__)
+    from evidence_display import emit, PresentationParser
+    parser = PresentationParser(description=__doc__)
     commands = parser.add_subparsers(dest="command", required=True)
     serve = commands.add_parser("serve")
     serve.add_argument("--session-dir", required=True)
@@ -1104,6 +1105,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     logs.add_argument("--where", action="append", default=[], metavar="FIELD=JSON")
     logs.add_argument("--select", action="append", default=[], metavar="FIELD")
     logs.add_argument("--contains", help="Case-insensitive text filter within records already selected by semantic identities/fields")
+    logs.add_argument("--snapshot", help="Freeze paging to the source ranges and filters of this snapshot digest")
     logs.add_argument("--offset", type=int, default=0)
     logs.add_argument("--limit", type=int, default=20, help="Rows per page; all matches are counted and pageable")
     record = commands.add_parser("record-artifact", help="Verify and retrieve an exact retained log record or selected fields")
@@ -1130,17 +1132,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         if args.session_dir:
             responses_dir = Path(args.session_dir) / "responses"
             if not responses_dir.is_dir():
-                print(json.dumps({"ok": False, "error": "session_responses_unavailable"}))
+                emit({"ok": False, "error": "session_responses_unavailable"})
                 return 1
             paths = sorted(p for p in responses_dir.glob("*.json") if not p.name.endswith(".receipt.json"))
         else:
             paths = [Path(p) for p in args.path]
-        result = cockpit_evidence.query(paths, filters, args.select, args.offset, args.limit, args.contains)
-        print(json.dumps(result))
+        result = cockpit_evidence.query(paths, filters, args.select, args.offset, args.limit, args.contains, args.snapshot)
+        emit(result)
         return 0 if result["ok"] else 1
     if args.command == "record-artifact":
         result = cockpit_evidence.record_artifact(Path(args.path), args.offset, args.length, args.sha256, args.select)
-        print(json.dumps(result))
+        emit(result)
         return 0 if result["ok"] else 1
     if args.command == "start":
         try:
@@ -1213,7 +1215,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                                               binding_id=args.binding_id, request=value)))
         return 0
     if args.command == "response-status":
-        print(json.dumps(FileBackedCockpitBridge.response_status(Path(args.session_dir), args.request_id)))
+        emit(FileBackedCockpitBridge.response_status(Path(args.session_dir), args.request_id))
         return 0
     if args.command == "cleanup":
         print(json.dumps(FileBackedCockpitBridge.cleanup(Path(args.session_dir), args.binding_id)))
@@ -1224,9 +1226,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     else:
         result = FileBackedCockpitBridge.response_slice(
             Path(args.session_dir), args.request_id, args.selector, args.offset, args.limit, args.contains)
-    for chunk in json_chunks(result):
-        sys.stdout.write(chunk)
-    sys.stdout.write("\n")
+    emit(result)
     return 0
 
 

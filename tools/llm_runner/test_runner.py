@@ -56,7 +56,12 @@ class RunnerFinalResponseTest(unittest.TestCase):
         self.assertEqual(started["prompt_sha256"], hashlib.sha256(request["prompt"].encode()).hexdigest())
         self.assertEqual(completed["response_sha256"], hashlib.sha256(outgoing.getvalue().strip().encode()).hexdigest())
         self.assertNotIn("applied", completed)
-        self.assertNotIn(request["prompt"], json.dumps(events()))
+        # Detailed game evidence is retained for exact utterance queries; it is
+        # still scoped to this runner process and proves emission, not application.
+        self.assertEqual(started["payload"], request)
+        self.assertEqual(completed["payload"], json.loads(outgoing.getvalue()))
+        self.assertEqual(started["process_instance"], completed["process_instance"])
+        self.assertGreater(completed["sequence"], started["sequence"])
 
     def test_failed_emission_does_not_log_completion_and_error_is_not_success(self):
         log = io.StringIO()

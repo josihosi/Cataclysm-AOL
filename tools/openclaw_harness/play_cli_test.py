@@ -30,7 +30,12 @@ class PlayerCliTest(unittest.TestCase):
         process = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
                                   "--wait-seconds", "0", *arguments], capture_output=True, text=True)
         self.assertEqual(process.returncode, 0 if ok else 1, process.stderr + process.stdout)
-        return json.loads(process.stdout)
+        from evidence_display import DEFAULT_BYTES, recover
+        self.assertLessEqual(len(process.stdout.encode()), DEFAULT_BYTES)
+        shown = json.loads(process.stdout)
+        # The supported CLI now presents handles; verify the complete retained
+        # result as well as the serialized boundary instead of demanding a dump.
+        return recover(shown["presentation"]["full_evidence"]["sha256"])
 
     def requests(self):
         return [json.loads(p.read_text()) for p in (self.session / "requests").glob("*.json")]

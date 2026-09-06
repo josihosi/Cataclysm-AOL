@@ -1,0 +1,132 @@
+{
+  "manifest_version": 1,
+  "name": "harness.change_display_trial_curses_mcw",
+  "description": "Isolated zero-credit curses route verification for gameplay display and native prompt ownership.",
+  "profile": "mutation-display-curses-78843add986c",
+  "world": "McWilliams",
+  "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "runtime.world": "McWilliams",
+    "capabilities.harness.change_display_trial": "native_actions_and_searchable_evidence_curses"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "physical-key",
+      "guessed-key",
+      "ocr-control",
+      "screen-coordinate",
+      "callback-injection",
+      "direct-state-mutation",
+      "direct-save-edit",
+      "fixture-restage"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "native-semantic-broker"
+    ],
+    "permissions": [
+      "accessibility"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "mutation-display-curses-78843add986c",
+    "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm",
+      "profile": "mutation-display-curses-78843add986c",
+      "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_living_base_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.wait"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_living_npc_package",
+      "cleanup_on_finish": true,
+      "objective": "Independently exercise ordinary native actions, menu/prompt interactions, chained movement/waiting and exact evidence retrieval. This is interface usability evidence only.",
+      "proof_targets": [
+        "valid current controls and owner transitions",
+        "actual chain progress and interruptions",
+        "exact actor/action/time evidence and omitted-value recovery",
+        "explicit cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "game.wait",
+        "game.move_relative",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "No gameplay feature credit from setup or this interface trial.",
+        "Preserve native receipts, interruptions and exact binding.",
+        "Explicit quit or finish owns cleanup."
+      ],
+      "live_operations": [
+        "game.act",
+        "game.wait",
+        "game.move_relative"
+      ],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_living_base_native_world"
+    ],
+    "production_behavior": [
+      "operate_living_npc_package"
+    ],
+    "terminal_persistence": [
+      "operate_living_npc_package"
+    ],
+    "artifact_verdict": [
+      "operate_living_npc_package"
+    ],
+    "disallowed_shortcuts": [
+      "bind_living_base_native_world"
+    ]
+  }
+}

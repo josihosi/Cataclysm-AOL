@@ -209,6 +209,7 @@ class CockpitRunChannel:
             # A World surface may inherit the run-bound native frame clock.
             # Keep that authoritative value when replacing the public view.
             "game_minutes": issuing_raw.get("game_minutes"),
+            **{key: issuing_raw[key] for key in ("game_turn", "wall_time", "process_instance", "sequence") if key in issuing_raw},
             "surface": {
                 "family": descriptor["family"], "kind": descriptor["kind"],
                 "facts": descriptor["facts"], "breadcrumbs": descriptor["breadcrumbs"],
@@ -479,6 +480,16 @@ class CockpitRunChannel:
         if isinstance(value, bool) or not isinstance(value, (int, float)):
             return None
         return float(value)
+
+    @staticmethod
+    def _native_turn(state: Mapping[str, Any]) -> Optional[float]:
+        value = state.get("game_turn", state.get("observed_turn"))
+        return float(value) if isinstance(value, (int, float)) and not isinstance(value, bool) else None
+
+    @classmethod
+    def _finer_clock_progress(cls, before: Mapping[str, Any], after: Mapping[str, Any], signal: str) -> bool:
+        first, last = cls._native_turn(before), cls._native_turn(after)
+        return signal == "game_minutes" and first is not None and last is not None and last > first
 
     def _stop(self, reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
         if self._final_report is not None:
@@ -1616,9 +1627,12 @@ class CockpitRunChannel:
             self._transcript.append({"kind": "raw_wait_off", "switch": "enabled", "result": result})
             return result
         target = request.get("target_game_minutes")
+        target_delta = request.get("target_delta_game_minutes")
         bound = request.get("bound")
         recipe = request.get("recipe")
-        if isinstance(target, bool) or not isinstance(target, (int, float)) or \
+        if (target is None) == (target_delta is None) or \
+                (target is not None and (isinstance(target, bool) or not isinstance(target, (int, float)))) or \
+                (target_delta is not None and (isinstance(target_delta, bool) or not isinstance(target_delta, (int, float)) or target_delta <= 0)) or \
                 not isinstance(bound, Mapping) or isinstance(recipe, (str, bytes)) or \
                 not isinstance(recipe, list) or not recipe or \
                 any(not isinstance(action, str) or not action.strip() for action in recipe):
@@ -1631,6 +1645,8 @@ class CockpitRunChannel:
         except ValueError as exc:
             return {"ok": False, "error": str(exc)}
         start = self._signal_value(observed, "game_minutes")
+        if target is None and start is not None:
+            target = start + target_delta
         if start is None or target <= start:
             return {"ok": False, "error": "raw_wait_target_invalid"}
         receipts = self.archive.sequence() if self.archive is not None else []
@@ -2662,7 +2678,7 @@ class CockpitRunChannel:
             if ended is not None:
                 fresh = ended
             elif same_frame_selection:
-                fresh = dict( observed["public_state"] )
+                fresh = self._observe_surface(next_frame) if self._surface_descriptor(next_frame) else dict(observed["public_state"])
             # A native receipt names its immediate successor.  Preserve that
             # exact descriptor rather than rereading a trace that may already
             # contain a later compatibility frame or nested child surface.
@@ -2729,7 +2745,8 @@ class CockpitRunChannel:
             self._continuation = None
             before = self._signal_value(observed["public_state"], continuation["expected_signal"])
             after = self._signal_value(fresh, continuation["expected_signal"])
-            if continuation["progress_required"] and before == after:
+            if continuation["progress_required"] and before == after and not self._finer_clock_progress(
+                    observed["public_state"], fresh, continuation["expected_signal"]):
                 return self._fail_operation("proved_no_progress", {
                     "expected_signal": continuation["expected_signal"],
                     "before": before, "after": after,
@@ -3181,7 +3198,7 @@ def player_controls(availability: Optional[Mapping[str, bool]] = None) -> Dict[s
                 "danger_handling": "handle_classified_non_dangerous", "recipe": ["world.pause"],
                 "bound": {"basis": "scheduler_boundary", "source": "chosen target is one game minute after the starting observation", "unit": "game_minutes", "maximum": 1, "progress_required": True},
             }},
-            "target": "Choose either a positive target_delta_game_minutes or an absolute target_game_minutes greater than the observed game_minutes. stop_on_interruption supports only the absolute form; set target_game_minutes to observed game_minutes plus your intended duration and remove target_delta_game_minutes.",
+            "target": "All danger modes accept either a positive target_delta_game_minutes or an absolute target_game_minutes greater than the starting observed game_minutes. Choose exactly one; changing danger mode does not change the target shape.",
             "recipe": "Ordered native action IDs, repeated until the target is observed. world.pause is one native turn; it may require many actions for a minute. world.wait opens the native wait chooser, not a one-turn pause. Never guess menu choices: inspect their owner first.",
             "menu_entry": {"action_id": "menu.choose", "stable_id": "COPY_CURRENT_CHOICE_ID", "label": "COPY_EXACT_CURRENT_LABEL"},
             "menu_entry_note": "The two non-default danger modes also accept this exact object in recipe. Both ID and label must match the current native menu. stop_on_interruption accepts only action ID strings.",

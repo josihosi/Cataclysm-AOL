@@ -246,16 +246,37 @@ def record_artifact(path: Path, offset: int, length: int, sha256: str,
 
 
 def query(paths: list[Path], filters: dict[str, Any], selectors: list[str],
-          offset: int, limit: int, contains: str | None = None) -> dict[str, Any]:
+          offset: int, limit: int, contains: str | None = None, snapshot: str | None = None) -> dict[str, Any]:
     """Filter parsed records before projection; pages never cut a JSON record in half."""
+    from evidence_display import retain, recover
+    try:
+        if snapshot:
+            manifest = recover(snapshot)
+            if manifest.get("schema") != "caol-log-snapshot-v1":
+                raise ValueError("invalid_log_snapshot")
+            if manifest["filters"] != filters or manifest["selectors"] != selectors or manifest["contains"] != contains:
+                raise ValueError("snapshot_query_changed")
+        else:
+            entries = []
+            for path in paths:
+                raw = path.read_bytes()
+                entries.append({"path": str(path), "bytes": len(raw), "sha256": hashlib.sha256(raw).hexdigest()})
+            manifest = {"schema": "caol-log-snapshot-v1", "sources": entries,
+                        "filters": filters, "selectors": selectors, "contains": contains}
+            snapshot = retain(manifest)["sha256"]
+        paths = [Path(entry["path"]) for entry in manifest["sources"]]
+    except (OSError, ValueError, KeyError) as error:
+        return {"ok": False, "error": str(error)}
     rows = []
     matched = scanned = unparsed = unscoped = 0
     scanned_bytes = 0
     sources = []
-    for path in paths:
+    for path, bound in zip(paths, manifest["sources"]):
         try:
             with path.open("rb") as source:
-                snapshot_bytes = source.seek(0, 2)
+                snapshot_bytes = bound["bytes"]
+                if hashlib.sha256(source.read(snapshot_bytes)).hexdigest() != bound["sha256"]:
+                    return {"ok": False, "error": "log_snapshot_source_changed", "path": str(path)}
                 scanned_bytes += snapshot_bytes
                 source.seek(0)
                 if path.parent.name == "responses" and path.suffix == ".json":
@@ -318,5 +339,6 @@ def query(paths: list[Path], filters: dict[str, Any], selectors: list[str],
             "omitted_matches": matched - len(rows),
             "next_offset": offset + limit if offset + limit < matched else None},
             "retrieval": "record-artifact --path PATH --offset OFFSET --length LENGTH --sha256 SHA256 [--select FIELD]",
-            "snapshot": "Each page queries current source lengths. Later appends may change counts; record handles bind exact bytes, not a mutable page number.",
+            "snapshot": snapshot,
+            "snapshot_paging": "Repeat this query with --snapshot HASH and --offset next_offset. Appends are excluded; replaced source prefixes fail hash verification.",
             "diagnostics": "Unparsed/unscoped records are counted, not attributed to a run. Query event=unparsed or event=text to inspect them; raw files are unchanged."}

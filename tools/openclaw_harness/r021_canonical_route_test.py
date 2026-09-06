@@ -237,7 +237,6 @@ class R021CanonicalRouteTest(unittest.TestCase):
                 ),
                 mock.patch.object(startup_harness, "game_child_environment", return_value={}),
                 mock.patch.object(startup_harness, "startup_gui_automation_required", return_value=False),
-                mock.patch.object(startup_harness, "kill_existing_game_processes", return_value=[]),
                 mock.patch.object(startup_harness, "config_dir_for_profile", return_value=root / "config"),
                 mock.patch.object(startup_harness, "latest_world_save_marker", return_value={}),
                 mock.patch.object(startup_harness, "copy_file_if_exists"),

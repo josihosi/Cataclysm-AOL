@@ -393,6 +393,13 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         finally:
             connection.close()
 
+    def test_selected_renderer_identity_does_not_use_default_executable(self) -> None:
+        with mock.patch.object(startup_harness, "load_scenario", return_value={
+                "runtime_contract": {"requirements": {"executable": "cataclysm"}}}), \
+                mock.patch.object(startup_harness, "detect_executable", side_effect=AssertionError("wrong renderer")):
+            self.assertEqual(scenario_registry_cli._selected_executable("curses"),
+                             (startup_harness.repo_root() / "cataclysm").resolve())
+
     def run_registry_launch(
         self,
         registry_path: Path,
@@ -1316,7 +1323,6 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 mock.patch.object(startup_harness, "build_plan", return_value=plan), \
                 mock.patch.object(startup_harness, "game_child_environment", return_value={}), \
                 mock.patch.object(startup_harness, "startup_gui_automation_required", return_value=False), \
-                mock.patch.object(startup_harness, "kill_existing_game_processes", return_value=[]), \
                 mock.patch.object(startup_harness, "config_dir_for_profile", return_value=root / "config"), \
                 mock.patch.object(startup_harness, "latest_world_save_marker", return_value={}), \
                 mock.patch.object(startup_harness, "copy_file_if_exists"), \

@@ -13,8 +13,9 @@ to make the proof work.
 ## Make the playtest exercise the behavior
 
 Before calling a playtest failed, check its primary physical circumstances: did the intended
-order apply to the right actor, did the player actually move, and did enough game time and
-separation develop for the behavior to become observable? Give the mechanic room to work.
+order apply to the right actor and establish actual follow eligibility (an affirmative reply or
+`follow_close` flag alone does not establish it), did the player actually move, and did enough game
+time and separation develop for the behavior to become observable? Give the mechanic room to work.
 For following, move away far enough to require pursuit under the actual follow setting; two
 nearby steps may prove nothing. For staying/guarding, move away from the NPC and allow enough
 time to distinguish holding position from following; walking toward it is a weak test. Choose
@@ -47,64 +48,34 @@ Treat inadequate separation, blocked movement or insufficient elapsed time as a 
 problem to resolve in the current run where possible. Preserve the observation, adapt the test,
 and distinguish a setup limitation or inconclusive result from a demonstrated gameplay failure.
 
-## Search routing: primary worker and Luna helper
+## Current display and evidence
 
-Keep the primary context focused on the playtest outcome, current state and next decision.
-Send bulky context to Luna for extraction of the specific information needed; bring back findings
-and exact references. If an answer is incomplete, ask for the missing point or inspect the cited
-location narrowly instead of loading the full artifact.
+Use the smallest query that resolves the next decision. `look` explicitly refreshes surroundings;
+collected actions display changed facts, removals, current input-owner transitions and outcomes.
+Menu selection and usable controls change independently of game time. A fresh frame still updates
+native authority even when no visual facts change. Chains retain intermediate evidence and show
+their terminal observation or interruption; inspect actual progress before interpreting behavior.
 
-Choose between two cases before loading search results:
+`play_cli.py evidence` queries one immutable snapshot across retained cockpit, native, NPC and
+runner records. Filter exact actor/run/request/event fields before projection; unavailable identities
+remain null. Names and runner-local request IDs alone do not establish cross-process correlation.
+Use exact evidence handles for omitted fields, complete records or stable continuation pages.
 
-- **Easy lookup: do it directly.** The relevant file/function, response selector, or small search
-  scope is known and the answer needs little extraction. Use a targeted read/query. A missing-path
-  `null` or schema error calls for inspecting the parent keys or supplied selector, not a bulk dump.
-- **Broader search: delegate to a read-only Luna helper.** When locating or extracting the answer
-  becomes a separate investigation across unfamiliar code, files, runs or bulky artifacts, hand
-  off that search before bringing the bulk into the primary context. This also applies when an
-  initially easy lookup expands. Keep the primary focused on the live task and its next decision.
+Supported player/bridge retrieval stdout is bounded to 8192 serialized UTF-8 bytes including the
+newline, metadata and errors. This presentation default fits the measured ordinary World/menu
+views; it limits neither game execution nor retained evidence. Every response has a complete
+immutable `presentation.full_evidence` handle. Oversized values have their own handles. Retrieve
+with `evidence_display.py --sha256 HASH`, optionally `--selector FIELD --offset N --limit N`, or
+`--export FILE` to write the complete selected JSON to a new file. Never interpret an omission as
+absence. Existing `inspect`, `messages`, `log-query` and exact record references remain available.
+`log-query --snapshot HASH` keeps subsequent pages on the same source prefix and filters.
 
-**Playtest catalogue searches use the same two routes.** For a known scenario, the primary checks
-its specific readiness, requirements or next launch command directly using a compact, targeted
-result. When finding or comparing scenarios for an outcome, delegate catalogue discovery to Luna
-before loading candidate details. Give the desired behavior, required evidence class, platform,
-known scenario/manifest references and relevant setup constraints. Luna returns suitable candidates
-with why each fits, missing prerequisites, evidence limits and exact scenario/manifest references;
-report no suitable candidate honestly. Expand candidate detail only to resolve a selection question,
-not to dump the catalogue. The primary owns final selection, any required readiness recheck and
-launch; the search helper does not launch games or rebuild the catalogue. See
-[Select and launch](#select-and-launch) for catalogue commands and evidence semantics.
-
-**During play and when returning evidence.** For an NPC conversation, retrieve the known
-actor/request's correlated request and reply once; do not replace that question with overlapping
-log tails. During repeated movement, keep outcomes, input owner, interruptions and relevant state
-visible while projecting bulky maps out of the displayed result; retain exact responses for deeper
-inspection. Use the tested [focused evidence recipes](references/searching.md#focused-playtest-evidence).
-When assembling a witness requires locating citations or resolving journal/schema details, delegate
-that read-only packaging search to Luna. Ask: "For these claimed actions and before/after states,
-find the supporting citation IDs and exact check paths relative to entry.value; return the relevant
-values, run/actor/frame identities, contradictions and any unsupported part of the claim." Supply
-the session, journal request and known action/observation references. Luna extracts evidence; the
-primary decides the claim and submits the witness. An already-known citation is still an easy
-lookup. Do not print a full journal merely to discover citation IDs.
-
-**Primary's handoff.** Ask Luna the concrete question and explain what decision the answer will
-inform. Supply the exact workspace and known file/session/request/run references, relevant scope
-or evidence constraints, and a link to the [search map](references/searching.md). Give focused
-context rather than the full playtest history. Request a concise answer with the supporting facts,
-exact pointers/selectors or a reusable query, and unresolved uncertainty. Do not prescribe a guessed
-answer or make Luna repeat game setup. Continue independent work while the search runs; use its
-answer for the decision, expanding cited evidence only where needed. The primary owns game input,
-edits and final causal judgment.
-
-**Luna's search role.** If assigned as the search helper, perform that read-only investigation
-rather than routing the same search to another helper. Use the [search map](references/searching.md)
-for the applicable retrieval shape; inspect broader source locally when the question needs it, but
-return findings instead of raw dumps. Keep run/actor/request identities and evidence ceilings clear;
-distinguish a bad query, unavailable evidence and a valid no-match. Explain relevant contradictions
-or missing information without inventing an answer. Do not control the live game or change files.
-A narrow cited extract is useful; a transcript, full journal or replay of search attempts is not the
-handoff. Simple lookup and delegated investigation are the two routes, not a mandatory agent chain.
+Keep routine current controls separate from help: `controls` retrieves macro recipes and evidence
+source metadata explicitly. For an unfamiliar investigation, choose direct indexed retrieval or a
+read-only helper according to what resolves it efficiently. Give a helper the question, known
+identities and evidence ceiling; it returns supporting facts and exact references. The primary
+owns gameplay input and causal judgment. Historical traces are evidence to retrieve only when a
+missing detail can change the decision. See the [search map](references/searching.md).
 
 ## Setup and interventions
 
@@ -305,34 +276,10 @@ original indices (for example, search decoded messages for save failures among r
 `response-artifact` with the receipt SHA-256
 recovers the full response. Both routes verify the retained artifact.
 
-When investigating structured output, request the JSON fields that answer your current question.
-Use the returned selectors, `inspect`, or `log-query --select`; filter matching records before
-rendering them. Paging limits record count, not nested content. Expand to parent objects or full
-records whenever the narrower view leaves relevant uncertainty. For flexible transformations of
-retained JSON, use `jq` or Python.
-
-For question-to-command examples and response shapes, use the [search map](references/searching.md).
-
-The same bridge CLI provides:
-
-```sh
-python3 tools/openclaw_harness/cockpit_file_bridge.py log-query \
-  --session-dir <session-dir> --request-id <bridge-request-id>
-python3 tools/openclaw_harness/cockpit_file_bridge.py log-query \
-  --path <exact-debug-or-jsonl-log> --run-id <run-id> --event surface_receipt
-```
-
-Session queries inspect retained responses; `--path` queries an exact log and may be repeated.
-Filter with `--frame-id`, native `--request-id` on logs, or `--where 'field="value"'` (JSON values);
-`--select <dot.path>` retrieves only selected semantic fields; `--contains <text>` narrows matching
-records before rendering. Default pages contain 20 records;
-counts and `page.next_offset` disclose every remaining match. These are presentation choices, not
-proof limits. Parse failures and records lacking run identity are counted separately, never silently
-attributed to a run; query `--event unparsed` or `--event text` to inspect them.
-Every returned row has a path, byte offset, length, and SHA-256 for `record-artifact`; it verifies
-that exact range before returning raw text and parsed evidence, or selected fields. Rotation or
-replacement produces a hash error. Raw files remain unchanged. The CLI help and response retrieval
-metadata expose these routes; whole-record text searches and line tails are unnecessary for field
-discovery.
+For legacy exact log queries, use `cockpit_file_bridge.py log-query --path PATH` with
+`--where FIELD=JSON`, `--select FIELD`, and the returned snapshot for stable continuation.
+Session queries verify retained response receipts. Every original record has an offset, length and
+SHA-256 for `record-artifact`; replaced bytes fail verification. Full responses and selected values
+use the same byte-bounded presentation and immutable export route as the player CLI.
 
 Report startup, feature outcome, contradictions, evidence ceiling, and cleanup separately.

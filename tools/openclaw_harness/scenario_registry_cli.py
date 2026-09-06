@@ -1089,6 +1089,12 @@ def _load_query_request(args: argparse.Namespace) -> Mapping[str, Any]:
     return value
 
 
+def _selected_executable(scenario: str) -> Path:
+    declaration = startup_harness.load_scenario(scenario)
+    declared = declaration.get("runtime_contract", {}).get("requirements", {}).get("executable", "")
+    return (startup_harness.repo_root() / declared).resolve() if declared else startup_harness.detect_executable()
+
+
 def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
         *, post_relaunch_continuation: bool = False) -> argparse.Namespace:
     """Adapt one validated registry selection into the ordinary probe parser."""
@@ -2335,7 +2341,8 @@ def main(argv: Sequence[str] | None = None) -> int:
                 if not selection.accepted:
                     result = asdict(selection)
                 else:
-                    readiness = _current_source_executable_readiness()
+                    selected_executable = _selected_executable(selection.scenario)
+                    readiness = _current_source_executable_readiness(executable=str(selected_executable))
                     if readiness.get("status") != "ready":
                         record_selection_token_rejection(
                             connection,
@@ -2390,9 +2397,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                                 reason="canonical_probe_source_mismatch",
                             ))
                         else:
-                            runtime_binding = startup_harness.build_runtime_binding(
-                                startup_harness.detect_executable()
-                            )
+                            runtime_binding = startup_harness.build_runtime_binding(selected_executable)
                             if not runtime_binding.get("ok"):
                                 record_selection_token_rejection(
                                     connection,

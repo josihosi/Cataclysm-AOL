@@ -178,6 +178,27 @@ class CockpitObservationTest(unittest.TestCase):
         self.assertEqual(acted["observation"]["frame_id"], "surface-proof:2")
         self.assertEqual(reads, 1)
 
+    def test_same_frame_native_selection_publishes_changed_payload_and_clock(self):
+        descriptor = {"event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "menu", "frame_id": "surface-proof:1", "kind": "menu",
+            "game_minutes": 100, "game_turn": 6000, "breadcrumbs": ["World", "Menu"],
+            "payload": {"selected_index": "0"},
+            "valid_actions": [{"id": "menu.select", "stable_id": "", "label": "Select", "enabled": True}]}
+        successor = {**descriptor, "payload": {"selected_index": "1"}}
+        def dispatch(frame, action_id):
+            return {"native_receipt": {"requested_frame_id": frame["frame_id"],
+                "requested_surface_id": frame["surface_id"], "consuming_surface_id": frame["surface_id"],
+                "action_id": action_id, "accepted": True}, "next_frame": successor}
+        channel = cockpit.CockpitRunChannel(lambda: descriptor, dispatch)
+        before = channel.observe()
+        result = channel.act(observation_id=before["observation_id"], action_id="menu.select")
+        self.assertTrue(result["ok"], result)
+        after = result["observation"]
+        self.assertEqual(after["observation_id"], before["observation_id"])
+        self.assertEqual(after["surface"]["facts"]["selected_index"], "1")
+        self.assertEqual(after["game_minutes"], 100)
+        self.assertEqual(after["game_turn"], 6000)
+
     def test_descriptor_retains_all_advertised_stable_ids_for_one_action(self) -> None:
         descriptor = {
             "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",

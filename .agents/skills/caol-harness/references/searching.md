@@ -50,70 +50,43 @@ have different shapes; narrow the request/event or inspect the matching record's
 
 ## Focused playtest evidence
 
-### Correlated NPC conversation
+### Correlated events and omitted values
 
-Start with the exact log paths advertised by `controls`. Query the known request, actor and
-run/time window; a runner-local ID such as `req_0` is not globally unique. Retrieve the request
-and reply together once, then expand only missing fields. Use `log-query --path PATH
---request-id REQUEST` where that log exposes request identity, adding repeated `--select FIELD`
-arguments for the question. For text logs, extract the matching request/reply block locally by
-its verified timestamp and actor. Do not substitute overlapping tails of several logs for this
-correlation. Preserve the utterance, reply/order, actor identity and correlation pointers; a reply
-alone does not prove subsequent NPC behavior. Distinguish no match from an unavailable field.
+Use `play_cli.py --session SESSION evidence --actor-id character:N --event actor_observed`
+for observed actor positions/status and game time. `--actor-name`, `--request-id`, `--run-id`,
+`--process-instance`, `--where FIELD=JSON`, `--contains TEXT` and repeated `--select FIELD`
+can narrow the same event envelope. For speech, find the utterance in the runner request payload,
+then query the exact request and process instance for completion. Native application remains a
+separate observed turn and reply. Older logs may lack that correlation; null means unavailable.
 
-### Repeated movement responses
+The result's `snapshot` is immutable. Continue its `rows` using the provided SHA, selector and
+offset with `evidence_display.py`. Concurrent appends cannot shift that snapshot. Every retained
+source range has exact byte/hash evidence; event IDs identify evidence records, not inferred game
+causes. `payload` preserves producer details. Actor observation rows do not infer pursuit, order
+eligibility, or changes between observations.
 
-The following read-only display projection was tested on retained look, movement, pause and NPC
-inspection responses. It leaves unknown shapes intact and retains `current_input`, surface actions,
-top-level receipts, interruptions and warnings. It replaces named map blocks and duplicate
-observation metadata with retrievable selectors. Use it when those maps are not needed for the
-next decision; expand the selector when terrain or routing matters. Keep the full retained response.
-
-```sh
-python3 tools/openclaw_harness/cockpit_file_bridge.py response-status \
-  --session-dir "$SESSION" --request-id "$REQUEST" |
-python3 -c '
-import json,sys
-d=json.load(sys.stdin)
-r=d.get("response",d)
-def ref(v,p):
-    return {"projection_omitted":True,
-            "selector":v.get("selector",p) if isinstance(v,dict) else p}
-for key in ("observation","terminal_observation","result"):
-    o=r.get(key)
-    if not isinstance(o,dict) or not isinstance(o.get("surface"),dict):
-        continue
-    for k in ("advertised_actions","advertised_action_details","receipt","compact_log"):
-        if k in o:
-            o[k]=ref(o[k],key+"."+k)
-    facts=o["surface"].get("facts",{})
-    for k in ("minimap","overmap","visible_local"):
-        if k in facts:
-            facts[k]=ref(facts[k],key+".surface.facts."+k)
-json.dump(d,sys.stdout,separators=(",",":"))
-'
-```
-
-World `current_input.controls` can be empty while `observation.surface.actions` contains offered
-actions: retain both. Standard compact output may already replace movement coordinates or NPC
-orders with references. Retrieve decision-relevant values explicitly, for example:
+All supported player/bridge retrieval stdout fits the declared 8192-byte presentation budget.
+For any `omitted` value, use its `evidence.sha256` with:
 
 ```sh
-python3 tools/openclaw_harness/cockpit_file_bridge.py response-slice \
-  --session-dir "$SESSION" --request-id "$REQUEST" \
-  --selector receipt.native_receipt.after_absolute_ms
-# For an NPC inspection response, use its returned orders selector, such as:
-# observation.surface.facts.diagnostic_orders
+python3 tools/openclaw_harness/evidence_display.py --sha256 HASH --offset 0 --limit 20
+python3 tools/openclaw_harness/evidence_display.py --sha256 HASH --selector FIELD --export NEW_FILE.json
 ```
 
-These selectors were verified on retained evidence, not live gameplay. The projection samples
-were successful responses; they do not establish behavior during an actual interruption. If a
-receipt or log contains unique decision-relevant detail, expand it before acting.
+Objects page key/value entries; arrays page elements; strings page exact characters. An oversized
+page can itself return exact nested handles. Every response's `presentation.full_evidence` also
+recovers the complete result. Export writes full JSON to a new file, never a bulk stdout dump.
+Metadata and errors obey the same bound. The guarantee covers these CLIs, not arbitrary shell
+commands. The budget is presentation only; no simulation, retention or verification limit follows.
+
+Ordinary collected actions already show changes and interruptions. Use `look` for explicit full
+refresh, `inspect` for targeted native detail and `controls` for command recipes. No hand-written
+map-suppression pipeline is needed. Intermediate chain observations and receipts remain retained.
 
 ### Journal citation packaging
 
-Give Luna the exact session, journal request, claimed actions and known observation/action IDs.
-Ask for citation IDs, exact check paths relative to `entry.value`, relevant values and run/actor/frame
+When a helper would simplify citation extraction, supply the exact session, journal request,
+claimed actions and known observation/action IDs. Ask for citation IDs, exact check paths relative to `entry.value`, relevant values and run/actor/frame
 identities, including contradictions and unsupported claims. The primary owns the verdict and
 witness submission; retrieving evidence does not authorize replay, game input or a new test.
 

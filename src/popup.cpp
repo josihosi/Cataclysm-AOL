@@ -350,6 +350,14 @@ query_popup::result query_popup::query_once()
         return { false, "ERROR", {} };
     }
 
+    // Automatic activities can open a prompt outside handle_action's World
+    // scope.  The prompt still owns native input in a bound harness session.
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( active_semantic_surface_manager() == nullptr &&
+        openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
+
     if( test_mode && active_semantic_surface_manager() == nullptr ) {
         return { false, "ERROR", {} };
     }

@@ -513,7 +513,9 @@ class LiveSessionTest(unittest.TestCase):
         })["error"], "unknown_or_stale_observation")
 
     def test_no_progress_and_bound_exhaustion_stop_without_relaunch(self) -> None:
-        no_progress, finals = self.service([frame(1, 100), frame(2, 100)])
+        stalled = frame(2, 100)
+        stalled["observed_turn"] = frame(1, 100)["observed_turn"]
+        no_progress, finals = self.service([frame(1, 100), stalled])
         observed = no_progress.call({"action": "game.observe"})["result"]
         no_progress.call({
             "action": "run.continue", "observation_id": observed["observation_id"],

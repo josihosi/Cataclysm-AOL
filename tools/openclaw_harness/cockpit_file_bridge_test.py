@@ -178,7 +178,10 @@ class CockpitFileBridgeTest(unittest.TestCase):
                     "response-artifact", "--session-dir", str(directory),
                     "--request-id", "witness-1", "--sha256", "0" * 64,
                 ]), 0)
-            self.assertEqual(json.loads(rejected_output.getvalue()), {
+            from evidence_display import recover, DEFAULT_BYTES
+            self.assertLessEqual(len(rejected_output.getvalue().encode()), DEFAULT_BYTES)
+            shown_error = json.loads(rejected_output.getvalue())
+            self.assertEqual(recover(shown_error["presentation"]["full_evidence"]["sha256"]), {
                 "ok": False, "error": "response_artifact_digest_mismatch",
             })
             (responses / "witness-1.receipt.json").write_text(json.dumps({

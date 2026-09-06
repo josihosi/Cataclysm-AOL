@@ -19279,29 +19279,6 @@ def render_derived_screens(run_dir: Path, specs: List[Dict[str, Any]]) -> List[D
     return reports
 
 
-def kill_existing_game_processes() -> List[int]:
-    proc = subprocess.run(["pgrep", "-f", "cataclysm-(tiles|tlg-tiles)"], capture_output=True, text=True, check=False)
-    pids: List[int] = []
-    for line in proc.stdout.splitlines():
-        line = line.strip()
-        if not line:
-            continue
-        try:
-            pid = int(line)
-        except ValueError:
-            continue
-        if pid == os.getpid():
-            continue
-        pids.append(pid)
-    for pid in pids:
-        subprocess.run(["kill", str(pid)], check=False, capture_output=True, text=True)
-    if pids:
-        time.sleep(1.0)
-        for pid in pids:
-            subprocess.run(["kill", "-9", str(pid)], check=False, capture_output=True, text=True)
-    return pids
-
-
 def certification_startup_lease_context(
     args: argparse.Namespace,
     *,
@@ -33360,10 +33337,9 @@ def run_startup(args: argparse.Namespace) -> int:
             "status": "not_required_native_semantic" if semantic_only_startup else "not_required_harness_new_world",
             "gui_automation": False,
         }
-    # This legacy broad matching behavior is deliberately unavailable to a
-    # bound certification round.  Its reservation already excluded only the
-    # sealed world/process identity without touching unrelated game sessions.
-    killed_pids = [] if certification_lease is not None else kill_existing_game_processes()
+    # Launch grants no cleanup authority over other sessions. Terminal cleanup
+    # uses this run's recorded process identity, regardless of launch route.
+    killed_pids = []
     ensure_dir(config_dir_for_profile(profile))
     debug_log = config_dir_for_profile(profile) / "debug.log"
     lastworld = config_dir_for_profile(profile) / "lastworld.json"

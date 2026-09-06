@@ -6,9 +6,13 @@ import os
 import sys
 import time
 import traceback
+import uuid
 import urllib.request
 import urllib.error
 from typing import Any, Dict, Optional, TextIO, Tuple
+
+PROCESS_INSTANCE = uuid.uuid4().hex
+EVENT_SEQUENCE = 0
 
 TEMPERATURE = 0.6
 TOP_P = 0.9
@@ -273,7 +277,10 @@ def request_event(log_fp, event: str, payload: Dict[str, Any]) -> None:
     """Producer evidence only; completion does not assert native application."""
     if log_fp is None:
         return
+    global EVENT_SEQUENCE
+    EVENT_SEQUENCE += 1
     record = {"event": event, "timestamp": time.time(), "runner_pid": os.getpid(),
+              "process_instance": PROCESS_INSTANCE, "sequence": EVENT_SEQUENCE, "payload": payload,
               "request_id": payload.get("request_id", "unknown")}
     if event == "llm_request_started":
         record["prompt_sha256"] = hashlib.sha256(str(payload.get("prompt", "")).encode()).hexdigest()

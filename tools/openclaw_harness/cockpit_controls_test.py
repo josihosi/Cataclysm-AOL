@@ -39,6 +39,15 @@ class ControlsTest(unittest.TestCase):
         self.assertTrue(result["ok"], result)
         self.assertEqual(dispatched, ["world.pause"])
 
+    def test_changing_only_danger_mode_keeps_relative_wait_target_valid(self):
+        service, dispatched = self.wait_service()
+        request = cockpit.player_controls()["wait"]["example_request"]
+        request["wait"]["danger_handling"] = "stop_on_interruption"
+        result = service.call(request)
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.pause"])
+        self.assertEqual(result["result"]["terminal_observation"]["game_minutes"], 101)
+
     def test_published_move_example_proves_expected_native_displacement(self):
         service, dispatched, finals = move_fixture.RelativeMovementTest().service([
             move_fixture.frame(1, [10, 20, 0]), move_fixture.frame(2, [11, 20, 0]),

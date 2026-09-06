@@ -190,13 +190,25 @@ class RawWaitTest(unittest.TestCase):
         self.assertEqual(dispatched, ["world.wait"])
 
     def test_raw_route_stops_on_no_progress_after_preserving_native_receipt(self) -> None:
-        service, dispatched = self.service([frame(1, 100), frame(2, 100)])
+        stalled = frame(2, 100)
+        stalled["observed_turn"] = 1
+        service, dispatched = self.service([frame(1, 100), stalled])
         result = service.call(self.request(target=101, maximum=1))
         self.assertEqual(result["error"], "proved_no_progress")
         self.assertEqual(dispatched, ["world.wait"])
         actions = [entry for entry in service.run_channel._transcript
                    if entry.get("kind") == "action"]
         self.assertEqual(actions[-1]["result"]["receipt"]["native_receipt"]["action_id"], "world.wait")
+
+    def test_native_pause_progress_within_one_minute_is_not_a_stall(self) -> None:
+        service, dispatched = self.service([frame(1, 100), frame(2, 100), frame(3, 101)])
+        result = service.call({"action": "game.raw_wait", "raw_wait": {
+            "enabled": True, "target_delta_game_minutes": 1,
+            "bound": bound(1), "recipe": ["world.wait"],
+        }})
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "world.wait"])
+        self.assertEqual(result["result"]["partial_progress"], 1)
 
     def test_raw_route_off_switch_is_primitive_only(self) -> None:
         service, dispatched = self.service([frame(1, 100)])
