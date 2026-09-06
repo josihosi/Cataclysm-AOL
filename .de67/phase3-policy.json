@@ -234,13 +234,16 @@
         "deadline_incident",
         "integrity_incident"
       ],
-      "action": "wait_for_worker_event",
+      "action": "coordinate_live_work",
       "reads": [
         "clock"
       ],
       "obligations": [
         "wake_no_later_than_item_deadline",
-        "do_not_poll_faster_without_new_event",
+        "choose_useful_inspection_messages_replanning_or_independent_dispatch",
+        "keep_implementation_and_substantial_investigation_with_workers",
+        "preserve_exclusive_task_and_runtime_ownership",
+        "wait_when_no_useful_coordination_decision_remains",
         "preserve_live_outcome_across_subtask_checkpoints"
       ]
     },

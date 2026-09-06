@@ -171,13 +171,38 @@
             "action": "audit_blocker"
         },
         {
-            "name": "wait",
+            "name": "live-coordination",
             "facts": [
                 "live_task"
             ],
-            "action": "wait_for_worker_event",
+            "action": "coordinate_live_work",
             "required_obligations": [
-                "wake_no_later_than_item_deadline"
+                "wake_no_later_than_item_deadline",
+                "keep_implementation_and_substantial_investigation_with_workers",
+                "preserve_exclusive_task_and_runtime_ownership",
+                "wait_when_no_useful_coordination_decision_remains",
+                "preserve_live_outcome_across_subtask_checkpoints"
+            ]
+        },
+        {
+            "name": "live-coordination-can-replan-independent-work",
+            "facts": ["live_task", "closure_ready", "open_gap", "executable_route"],
+            "action": "coordinate_live_work",
+            "required_obligations": [
+                "choose_useful_inspection_messages_replanning_or_independent_dispatch"
+            ]
+        },
+        {
+            "name": "live-coordination-dispatches-opened-independent-task",
+            "facts": ["live_task", "unbound_task"],
+            "action": "spawn_worker"
+        },
+        {
+            "name": "mutation-preempts-live-coordination-and-queued-dispatch",
+            "facts": ["live_task", "unbound_task", "random_mutation_due"],
+            "action": "wait_for_mutation_quiescence",
+            "required_obligations": [
+                "dispatch_no_new_worker"
             ]
         },
         {
