@@ -84,10 +84,14 @@ live actions, evidence ceiling, exact bindings, indexed journal identities, dige
 references, accepted no-replay work, active work, first open boundary, useful narrow queries, and
 entrypoints. The terminal transition must cite that receipt. Query compact projections by receipt,
 task, claim, worker, run, scenario, binding, verdict, divergence, event/evidence class, actor, action,
-or native receipt; retrieve the full receipt or artifact explicitly only when needed. A material
-checkpoint stays with the same task and worker. If the execution context is exhausted, the receipt
-ends only that attempt. Keep the
-unfinished ledger outcome visible and project its remaining frontier from the receipt to a fresh
+or native receipt; retrieve the full receipt or artifact explicitly only when needed. Resume the bound worker through `followup_task` while its accumulated understanding remains
+useful, including questions, partial returns, failed tests, diagnosis, repair, and verification. A
+changed tactic alone does not require fresh context. Consider a fresh worker for substantially
+different context or concrete evidence that the existing worker cannot continue effectively. Ending
+an assignment and interrupting execution are separate decisions: completion, cancellation, a concrete
+need to stop ongoing actions, or demonstrated inability can justify stopping; communication and partial
+results alone do not. A material checkpoint stays with the same task and worker. If the execution
+context is exhausted, the receipt ends only that attempt. Keep the unfinished ledger outcome visible and project its remaining frontier from the receipt to a fresh
 worker task after any required incident review. Context exhaustion is not a formal finding or a
 product outcome.
 

@@ -541,19 +541,18 @@ need native state and complete mode-valid actions, including useful custom/debug
 The current inventory contains mixed files such as `action.cpp`, `npctalk.cpp` and `ranged.cpp`;
 file membership alone cannot prove every loop supported or safely stopped.
 
-- [ ] 🔴 R-SURFACE-011 — Current input-owner coverage has drifted beyond the accepted checkpoint.
+Implementation status:
+
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-SURFACE-011 -->
+- [x] R-SURFACE-011 — Current native input-owner coverage is reconciled and the repaired inspector, Dialogue, and MESSAGE_LOG routes are independently validated.
   - DFS slices: `R-SURFACE-011-S001`
-  - Code gap: the source inventory omits the implemented NPC inspector; newly reached unsupported
-    owners, including the message viewer, have no complete semantic operation proof.
-  - Required mechanism: reconcile source classification with real native loops; use existing shared
-    controls or focused native scopes for required discovered owners, including their child/return
-    paths. Retain actionless hard stop until each such owner is supported. This authorizes semantic
-    instrumentation, not a change to the gameplay behavior that opens the owner.
-  - Proof: the current source inventory passes after real classification; native inspector/item
-    close and stale-actor/item controls prove its boundary. Source-bound traversal of each repaired
-    custom owner proves navigation/completion/yield, exact receipts, restored parent and renderer
-    equivalence where the repair affects both renderers. An unsupported control retains zero
-    actions and no request dispatch. A filename-list pass alone cannot close broad owner coverage.
+  - dialogue-fail-closed: Receipt a656476d9f7be158e2a63286dc10f87bcbd9e24ed1ddda1007b4afbbf8bca59f independently confirms no native dispatch for the unadvertised response, retained Dialogue ownership, accepted native receipt for the advertised response, and World restoration with matching current relevant source hashes.
+  - inventory-reconciliation: Receipt a2f39142a98fd284e75f0e4a69bf35d13c6a6608add70fb3e619a5be3806accb independently confirms exact 74-source classification equality and 78 passing owner-coverage, semantic-state and semantic-step tests. It limits the conclusion to current input-owner inventory reconciliation.
+  - message-log-parity: Receipt 4bad63572c8e1a1fb5623148315ece5b0c5c480f98d449de747c2df88a48b1df independently confirms current source-bound Tiles and curses viewer entry, controls, filter prompt cancellation back to MESSAGE_LOG, close to World, and explicit cleanup with passing focused suites.
+  - npc-inspection-parity: Receipt 55e3dd74b64cbb6b72699b9aac6c490c705b6e059ca89763bfbf8a52ccf711d4 binds fresh current source-bound Tiles and curses runs proving inspector entry, stale item rejection, valid item child, child and parent restoration, and explicit cleanup.
+  - Evidence ceiling: input-owner inventory and native semantic operation only; no CAOL gameplay or message-content claim. Earlier implementation and diagnostic receipts remain durable at their original scope.
+  - Durable acceptance: #1 via `R-SURFACE-011-closure-004`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-SURFACE-011-S001 claim=R-SURFACE-011 -->
 
 ### 12. Fresh package and retained acceptance
@@ -579,6 +578,8 @@ The reusable package guide must name available scenes, meaningful player questio
 and launch prerequisites, supported observation/action routes, preparation limits, independent
 verdicts and evidence handles. It must preserve earlier scenarios and reports instead of replacing
 them. Current qualification documentation is implementation/use evidence, not a second product ledger.
+
+Implementation status:
 
 - [ ] 🔴 R-026 — No current-source integrated CAOL feature package yet binds the living-base,
   bandit, cannibal, signal-control, and flesh-raptor families through one audited established-base
@@ -697,6 +698,8 @@ that turn or the next. Bind actor HP/attitude/target/offensive events before dem
 trade, later ordinary turns, travel ownership changes and save/reload. One member attacking early
 or resuming aggression after accepted payment contradicts that branch even if dialogue also succeeds.
 
+Implementation status:
+
 - [ ] 🔴 R-029 — Bandit and cannibal camps do not yet have a proved coherent natural
   signal-to-response route with correct night-raid commitment and operation-scoped shakedown,
   combat, and paid-departure ordering.
@@ -780,6 +783,8 @@ Save/load preserves NPC rules, mission and assignment, not the in-flight queue o
 Do not invent durable LLM-memory semantics. An observed contradiction in intended follow/camp behavior
 is distinct from a correctly nonpersistent queue.
 
+Implementation status:
+
 - [ ] 🔴 R-031 — Living NPC intent/context, follow/stay travel and camp routing lack fresh package proof.
   - DFS slices: `R-031-S001`
   - Code/proof gap: unit parsing/action tests and qualification's named replies/orders establish
@@ -822,6 +827,8 @@ it. Mission/assignment/patrol-order state is saved, whereas shift caches/exclude
 rebuilt. Zone revisions reject stale UI mutation. Reassignment, removal/disable of a zone, or danger
 must invalidate the affected plan and yield to the correct native owner without duplicated service.
 
+Implementation status:
+
 - [ ] 🔴 R-032 — Camp establishment, mission completion and Locker/Patrol/Food/Storage behavior lack fresh proof.
   - DFS slices: `R-032-S001`
   - Code/proof gap: prepared-base and zone-editor qualification prove management footing and
@@ -862,6 +869,8 @@ route/waypoint and simulation owner. Loaded NPC movement yields at handoff; abst
 move locally owned members again. Reentry must materialize the same admitted group rather than clone
 it or substitute another site's record. Use absolute map-square/OMT coordinates with explicit units.
 
+Implementation status:
+
 - [ ] 🔴 R-033 — Physical signal controls, camp memory and local/overmap boundary behavior need fresh evidence.
   - DFS slices: `R-033-S001`
   - Code/proof gap: R-027 remains accepted historically; qualification observed distinct candidate
@@ -891,6 +900,8 @@ stores; `site_record`, report/decision and hostile-operation serialization prese
 identity chain described in R-029. `PlayerClient.collect` recognizes the declared saved-world
 continuation in a new process/generation; old frame grants are discarded and the fixture is not
 reinstalled. Native saving, original-process exit, restored state and later behavior are distinct facts.
+
+Implementation status:
 
 - [ ] 🔴 R-034 — Fresh package changes lack new-process persistence and continued-behavior evidence.
   - DFS slices: `R-034-S001`
@@ -922,6 +933,8 @@ the inspected tactic, not newly chosen balance requirements. It commits a swoop 
 orbit `wander_pos`/`wandf`, or yields to ordinary movement when no orbit is suitable. Native monster
 movement, run effects, target visibility and save/load remain competing readers/writers of that state.
 
+Implementation status:
+
 - [ ] 🔴 R-035 — Flesh-raptor orbit/swoop/fallback and encounter feel lack fresh package proof.
   - DFS slices: `R-035-S001`
   - Code/proof gap: `tests/flesh_raptor_test.cpp` and older staged live planning scenes do not satisfy
@@ -949,6 +962,8 @@ process-core percentage; a mixed-context interval is labeled mixed. `compare_rec
 explicit workload label but that label cannot prove comparability. Native renderer timing, camp
 cadence counters and action completion measure different costs and must remain separate from
 controller/bridge memory, retained evidence size and NPC-runner/model work.
+
+Implementation status:
 
 - [ ] 🔴 R-036 — The fresh combined living-base/hostile-ecology package lacks matched performance evidence.
   - DFS slices: `R-036-S001`
