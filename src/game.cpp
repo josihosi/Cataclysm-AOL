@@ -3670,7 +3670,7 @@ void game::draw( ui_adaptor &ui )
     input_context world_context = get_default_mode_input_context();
     input_context::scoped_activation world_input_owner( world_context );
     openclaw_harness_semantic_initial_world_frame_if_ready(
-        input_context::get_active_context(), !u.activity,
+        &world_context, !u.activity,
         !u.has_destination() && !u.has_destination_activity(),
         !( uquit == QUIT_WATCH && u.is_dead_state() ) );
 

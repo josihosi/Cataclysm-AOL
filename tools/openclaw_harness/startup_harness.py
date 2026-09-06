@@ -22093,12 +22093,25 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 raise SystemExit(
                     f"Fixture save_transforms[{index}] overmap_npcs_near_player chat_topic must be non-empty in {manifest_path}"
                 )
+            source_npc_id = raw.get("source_npc_id")
+            if source_npc_id is not None:
+                try:
+                    source_npc_id = int(source_npc_id)
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] overmap_npcs_near_player source_npc_id must be an integer in {manifest_path}"
+                    )
+                if source_npc_id <= 0:
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] overmap_npcs_near_player source_npc_id must be positive in {manifest_path}"
+                    )
             transforms.append({
                 "kind": kind,
                 "player_save": player_save,
                 "offsets_ms": offsets,
                 "name_prefix": str(raw.get("name_prefix", "OpenClaw Ally") or "OpenClaw Ally").strip(),
                 "clone_follower_template": bool(raw.get("clone_follower_template", True)),
+                "source_npc_id": source_npc_id,
                 "scan_all_overmaps_for_ids": bool(raw.get("scan_all_overmaps_for_ids", True)),
                 "clear_camp_assignment": bool(raw.get("clear_camp_assignment", False)),
                 "npc_faction": npc_faction,
@@ -24889,7 +24902,17 @@ def apply_overmap_npcs_near_player_transform(world_dir: Path, transform: Dict[st
         if not isinstance(raw_npcs, list):
             raise SystemExit(f"Overmap has non-list npcs array: {target_overmap_path}")
         template: Optional[Dict[str, Any]] = None
-        if bool(transform.get("clone_follower_template", True)):
+        requested_source_npc_id = transform.get("source_npc_id")
+        if requested_source_npc_id is not None:
+            for npc_payload in raw_npcs:
+                if isinstance(npc_payload, dict) and npc_payload.get("id") == requested_source_npc_id:
+                    template = npc_payload
+                    break
+            if template is None:
+                raise SystemExit(
+                    f"Fixture overmap-npcs transform needs source_npc_id={requested_source_npc_id} in {target_overmap_path}"
+                )
+        elif bool(transform.get("clone_follower_template", True)):
             for npc_payload in raw_npcs:
                 if not isinstance(npc_payload, dict):
                     continue
@@ -24957,6 +24980,7 @@ def apply_overmap_npcs_near_player_transform(world_dir: Path, transform: Dict[st
         "player_abs_omt": player_abs_omt,
         "overmap": str(target_overmap_path.relative_to(world_dir)),
         "placed_count": len(placed),
+        "source_npc_id": requested_source_npc_id,
         "placed_npcs": placed,
     }
 

@@ -1,10 +1,10 @@
 {
   "schema": "caol-playtest-witness-charter-v1",
   "claim": "R-029: prove that a bandit camp begins its response through the shared natural significant-sound, staffed-observer, camp-memory, scout, report, authorization, rally, and response route.",
-  "material_proof": "A current source- and executable-bound run first loads and fires the supplied revolver through ordinary player UI. The resulting production sound must be tied to an eligible staffed observer, a durable camp-signal sound lead, and any later scout/report/operation identities. The fixture contributes neither sound nor downstream response."
-  ,"current_uncertainty": "Whether player-native revolver loading and firing are exposed cleanly by the cockpit/ordinary UI, and whether the subsequent cadence records the source-bound staffed sound observation."
-  ,"material_contradiction": ["missing current source or executable binding", "fixture-created sound or injected lead/report/operation/contact", "sound with no exact staffed observer and source identity", "cleanup or identity drift"]
+  "material_proof": "A current source- and executable-bound run first allows the zero-credit special registration and structural roster-materialization cadence to pass. Before firing, it binds the nearer camp's concrete at-home ready member on a staffed-observer cadence. It then loads and fires the supplied revolver through ordinary player UI. The resulting production sound must be tied to that eligible staffed observer, a durable camp-signal sound lead, and any later scout/report/operation identities. The fixture and ordinary roster materialization contribute neither sound nor downstream response."
+  ,"current_uncertainty": "Whether the nearer footprint receives a concrete ready at-home observer after ordinary structural maintenance, whether player-native revolver loading and firing are exposed cleanly by the cockpit/ordinary UI, and whether the following cadence records the source-bound staffed sound observation."
+  ,"material_contradiction": ["missing current source or executable binding", "stimulus before the nearer site's concrete ready observer is bound", "fixture-created sound or injected lead/report/operation/contact", "sound with no exact staffed observer and source identity", "cleanup or identity drift"]
   ,"forbidden_shortcuts": ["debug sound/signal injection", "direct camp-memory/report/operation/contact mutation", "crediting fixture equipment or camp placement", "using a preloaded report or direct player opportunity as the signal boundary"]
-  ,"honest_stop_conditions": ["the first source-bound staffed sound observation or first distinct causal divergence", "binding drift"]
+  ,"honest_stop_conditions": ["the first nearer-site concrete observer/readiness result", "the first source-bound staffed sound observation or first distinct causal divergence after that result", "binding drift"]
   ,"requested_evidence_ceiling": "focused"
 }

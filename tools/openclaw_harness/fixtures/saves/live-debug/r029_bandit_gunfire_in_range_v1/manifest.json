@@ -29,6 +29,17 @@
       "source_special_id": "bandit_camp",
       "site_index": 1,
       "offset_omt": [0, -1, -1]
+    },
+    {
+      "kind": "overmap_npcs_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offsets_ms": [[0, -24, -1]],
+      "source_npc_id": 4,
+      "clone_follower_template": false,
+      "npc_faction": "hells_raiders",
+      "npc_mission": 7,
+      "chat_topic": "TALK_STRANGER_NEUTRAL",
+      "name_prefix": "R029 setup observer"
     }
   ]
 }

@@ -7054,6 +7054,46 @@ int bootstrap_live_bandit_abstract_sites_near_player()
         bandit_live_world::register_abstract_sites_near( state, center,
                 live_bandit_system_envelope_omt, special_lookup );
 
+    // Mapgen and the lazy materializer already register their concrete NPCs
+    // through claim_tracked_spawn.  A persisted hostile NPC can instead be
+    // loaded from the overmap before either producer runs; reconcile that
+    // exact source-footprint actor through the same ownership boundary rather
+    // than treating an abstract headcount as a concrete roster.
+    int reconciled_persisted_members = 0;
+    // This API takes submaps, not map squares.  Three submaps include the
+    // adjacent-OMT fixture actor at its 24-map-square offset while excluding
+    // the regional hostile roster.
+    for( const shared_ptr_fast<npc> &candidate :
+         overmap_buffer.get_npcs_near_player( 3 ) ) {
+        if( candidate == nullptr || candidate->is_dead() ) {
+            continue;
+        }
+        const tripoint_abs_omt candidate_omt = candidate->pos_abs_omt();
+        const std::optional<std::string> source_id = special_lookup( candidate_omt );
+        if( !source_id ) {
+            continue;
+        }
+        const std::optional<bandit_live_world::owned_site_kind> site_kind =
+            bandit_live_world::classify_tracked_source(
+                bandit_live_world::anchor_source_kind::overmap_special, *source_id );
+        if( !site_kind ) {
+            continue;
+        }
+        const bool expected_faction =
+            ( *site_kind == bandit_live_world::owned_site_kind::cannibal_camp &&
+              candidate->get_fac_id().str() == "cannibal_camp" ) ||
+            ( *site_kind != bandit_live_world::owned_site_kind::cannibal_camp &&
+              candidate->get_fac_id().str() == "hells_raiders" );
+        const npc_template_id template_id = live_bandit_template_for_site( *site_kind );
+        if( !expected_faction || template_id.is_null() || !template_id.is_valid() ) {
+            continue;
+        }
+        if( bandit_live_world::claim_tracked_spawn( state, template_id.str(), candidate->getID(),
+                candidate->pos_abs(), source_id, std::nullopt, special_lookup ) ) {
+            reconciled_persisted_members++;
+        }
+    }
+
     // The fixture may establish an overmap-special footprint, but its roster is
     // deliberately absent.  Receipt the production registration boundary before
     // any routine materializes an NPC or considers a signal, target, or contact.
@@ -7085,7 +7125,8 @@ int bootstrap_live_bandit_abstract_sites_near_player()
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world abstract_bootstrap created_sites="
                                    << result.created_sites << " recognized_tiles=" << result.recognized_tiles
                                    << " scan_radius_omt=" << live_bandit_system_envelope_omt
-                                   << " total_sites=" << state.sites.size() << '\n';
+                                   << " total_sites=" << state.sites.size()
+                                   << " reconciled_persisted_members=" << reconciled_persisted_members << '\n';
     }
     return result.created_sites;
 }
