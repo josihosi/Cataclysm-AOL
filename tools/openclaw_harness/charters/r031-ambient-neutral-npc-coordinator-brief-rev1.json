@@ -1,0 +1,5 @@
+{
+  "outcome": "Bind one ordinary unaddressed ambient interaction to a visible, hearing, non-allied neutral NPC on current source, including context, reply or honest non-action, an applying turn, and cleanup.",
+  "scenario": "r031.ambient_neutral_npc_v001_mcw",
+  "query": {"requirements": [{"key": "runtime.fixture", "minimum_evidence": "declared", "op": "eq", "value": "r031_ambient_neutral_npc_v1"}, {"key": "runtime.world", "minimum_evidence": "declared", "op": "eq", "value": "McWilliams"}, {"key": "capabilities.r031.ambient_recipient", "minimum_evidence": "declared", "op": "eq", "value": "visible_hearing_nonallied_neutral_npc"}], "preferences": [{"key": "runtime.entry_mode", "minimum_evidence": "declared", "op": "eq", "value": "cockpit_live_session"}]}
+}

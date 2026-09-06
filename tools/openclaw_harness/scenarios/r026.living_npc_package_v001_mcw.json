@@ -4,7 +4,7 @@
   "description": "Current-source R-026 living-base package route: start from the audited established-base fixture and use only current native semantic owners to bind free-text recipient selection, ambient LLM handling, snapshots, and basecamp request context.",
   "profile": "dev-harness",
   "world": "McWilliams",
-  "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "fixture": "r031_living_non_camp_follower_v1",
   "fixture_profile": "live-debug",
   "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
   "profile_snapshot_profile": "live-debug",
@@ -13,7 +13,7 @@
   "suppress_profile_startup_input": true,
   "capabilities": {
     "runtime.entry_mode": "cockpit_live_session",
-    "runtime.fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "runtime.fixture": "r031_living_non_camp_follower_v1",
     "runtime.world": "McWilliams",
     "capabilities.r026.living_npc_package": "follower_ambient_snapshot_basecamp_context"
   },
@@ -40,13 +40,13 @@
     "permissions": ["accessibility"],
     "platform": ["macos"],
     "profile": "dev-harness",
-    "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "fixture": "r031_living_non_camp_follower_v1",
     "requirements": {
       "os": "macos",
       "source": "current-worktree",
       "executable": "cataclysm-tiles",
       "profile": "dev-harness",
-      "fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+      "fixture": "r031_living_non_camp_follower_v1",
       "helper": "native-semantic-broker",
       "peekaboo": false,
       "input": ["frame-bound semantic requests"],
@@ -56,7 +56,7 @@
     "grants_gameplay_proof": true
   },
   "source_binding": {
-    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json",
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r031_living_non_camp_follower_v1/manifest.json",
     "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
   },
   "steps": [

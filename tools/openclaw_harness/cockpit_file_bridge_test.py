@@ -660,7 +660,7 @@ for line in sys.stdin:
                 "d=lambda n:{'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
                 "'run_id':'run-a','binding_id':'native-'+n,'bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
                 "print(json.dumps({'cockpit_live_session':d('first')}),flush=True); sys.stdin.readline(); "
-                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','declared_reentry_ready':True}}),flush=True); "
                 "print(json.dumps({'cockpit_live_session':d('second')}),flush=True); sys.stdin.readline(); "
                 "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
                 "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'}))"
@@ -704,6 +704,27 @@ for line in sys.stdin:
             self.assertFalse(thread.is_alive())
             self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
 
+    def test_declared_reentry_requires_native_save_quit_marker(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = FileBackedCockpitBridge(directory, ["unused"], binding_id="bound-a",
+                                              session_reentries=1)
+            bridge.prepare()
+            response = {
+                "ok": True,
+                "result": {
+                    "schema": "caol-cockpit-live-final-v1",
+                    "state": "finished",
+                    "declared_reentry_ready": False,
+                },
+            }
+            bridge._persist_response("finish", b'{"action":"run.finish"}',
+                                     json.dumps(response).encode("utf-8"))
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["state"], "terminalizing")
+            self.assertEqual(status["declared_reentry_skipped"], "native_save_quit_not_observed")
+            self.assertEqual(bridge.session_reentries, 1)
+
     def test_declared_reentry_replaces_live_registry_wrapper_after_registered_game_exits(self):
         """A live launcher is retired only after its separately owned game exits."""
         with tempfile.TemporaryDirectory() as temp:
@@ -713,7 +734,7 @@ for line in sys.stdin:
                 "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
                 "'run_id':'run-a','binding_id':'native-first','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); sys.stdin.readline(); "
-                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); time.sleep(30)"
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','declared_reentry_ready':True}}),flush=True); time.sleep(30)"
             )
             continuation = (
                 "import json,os,sys; "
@@ -960,7 +981,7 @@ for line in sys.stdin:
                 "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); "
                 "sys.stdin.readline(); "
-                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','declared_reentry_ready':True}}),flush=True); "
                 "print(json.dumps({'ok':True,'final':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
                 "time.sleep(0.3)"
             )
@@ -1022,7 +1043,7 @@ for line in sys.stdin:
                 "import json,os,sys; "
                 "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
                 "print(json.dumps({'cockpit_live_session':d}),flush=True); sys.stdin.readline(); "
-                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished','declared_reentry_ready':True}}),flush=True); "
                 "print(json.dumps({'ok':True,'final':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); sys.exit(0)"
             )
             bridge = FileBackedCockpitBridge(

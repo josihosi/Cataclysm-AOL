@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On current source, a fresh authority-bound native ambient route identifies one visible, hearing, non-allied neutral NPC for an ordinary unaddressed utterance and yields its real reply or honest non-action after an ordinary applying turn.",
+  "material_proof": "One new uniquely bound run records native roster facts, the unaddressed player receipt, same-run ambient selection and context, reply-or-no-action, one ordinary applying turn, the registered report gate, witness ingestion, and accepted cleanup.",
+  "material_contradiction": ["a recipient is inferred rather than recorded", "the NPC is allied, hostile, invisible, or cannot hear", "reply injection or direct state mutation", "a repeated run or bridge binding", "missing report gate, witness ingestion, or cleanup"],
+  "already_accepted_evidence": ["The earlier R-031 ambient run is mechanically valid but remains zero-credit and is not replayed or retroactively promoted."],
+  "current_uncertainty": "The fresh route may produce an honest no-action or fail one required bound report-gate condition.",
+  "forbidden_shortcuts": ["physical input, OCR, screenshots, coordinates, or guessed controls", "synthetic response injection", "direct NPC, camp, or save mutation", "crediting fixture installation or startup", "replaying a sealed run"],
+  "honest_stop_conditions": ["stop before gameplay if fresh selection, current source binding, or registered report gate is absent", "after launch retain the first missing native prerequisite or actual no-action, finish cleanup, and preserve independent observations"],
+  "requested_evidence_ceiling": "focused"
+}

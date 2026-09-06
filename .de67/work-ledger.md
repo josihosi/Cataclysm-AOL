@@ -79,7 +79,7 @@ its isolated profile; the retained R-029 run remains separate.
 
 - [ ] R-031 — Living NPC intent/context, follow/stay travel and camp routing lack fresh package proof.
   - DFS slices: `R-031-S001`
-  - Current handoff: Freshly test actual NPC context/reply/action, follow/stay travel, ambient and camp routing with independent outcomes and competing-owner controls.
+  - Current handoff: Receipt `7b8058e34251d86ec7d7201df69e6b821586adb2567dae9fdd6f0eac6ee4910c` seals one fresh non-camp follow contradiction: acknowledgement and `follow_close` did not produce travel across three pauses and three movement turns. Suspected CAOL bug `R031-F001` records this result; it is not promoted and no gameplay repair is authorized. Receipt `c576cf1e20539365d4602340c35c9efc27311403b823a2bda07af2dc01b050ed` independently seals a green stay/guard route: the non-camp ally established and held guard post `[3374,994,0]` while the player moved. Receipt `84abcaf58759d7b7a3e83e534aa6a18893a6749f2495630b5267509a20a62f31` seals a fresh camp-context route in run `c9590416829b8441cb8ef66b69e77b451247ed8304108c9adda8d0a68e5aea92`: Katharina was a `CAMP_RESIDENT` assigned to `[140,41,0]`, received the addressed board-status request, and replied with one live bandage request and zero old requests. Each cleanup was explicit and has no native-exit credit. Do not replay fixture construction, authority repair, Katharina's earlier chat, or the sealed follow/stay/camp routes. Await Josef's decision on R031-F001 while continuing independent ambient recipient routing, competing mission/Patrol ownership, persistence and package proof.
 
 - [ ] R-032 — Camp establishment, mission completion and Locker/Patrol/Food/Storage behavior lack fresh proof.
   - DFS slices: `R-032-S001`

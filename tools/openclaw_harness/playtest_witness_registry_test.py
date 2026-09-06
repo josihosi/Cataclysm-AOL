@@ -73,7 +73,9 @@ class PlaytestWitnessRegistryTest(unittest.TestCase):
                 "VALUES( ?, 'manifest-a', ?, 'r018-route', 'binding-a', 'focused', 'yellow', ? )",
                 ("verification-" + report_id, report_id, json.dumps({
                     "manifest": {"source_sha256": "source-a"},
-                    "runtime": {"runtime_binding_observed": {"executable_sha256": "exe-a"}},
+                    "runtime": {"runtime_binding_observed": {
+                        "executable_sha256": "exe-a", "runtime_source_sha256": "runtime-source-a",
+                    }},
                     "proof": {"status": "yellow"},
                 })),
             )
@@ -85,7 +87,7 @@ class PlaytestWitnessRegistryTest(unittest.TestCase):
 
     def witness_inputs(
         self, *, run_id: str = "raw-run", scenario_id: str = "r018.raw_wait_acceptance_mcw",
-        source_identity: str = "source-a", executable_identity: str = "exe-a",
+        source_identity: str = "runtime-source-a", executable_identity: str = "exe-a",
     ) -> tuple[dict[str, object], dict[str, object]]:
         journal = build_evidence_journal(
             charter=CHARTER,
@@ -217,13 +219,15 @@ class PlaytestWitnessRegistryTest(unittest.TestCase):
             "'focused', 'yellow', ? )",
             (json.dumps({
                 "manifest": {"source_sha256": "source-b"},
-                "runtime": {"runtime_binding_observed": {"executable_sha256": "exe-b"}},
+                "runtime": {"runtime_binding_observed": {
+                    "executable_sha256": "exe-b", "runtime_source_sha256": "runtime-source-b",
+                }},
             }),),
         )
         self.connection.commit()
         journal, statement = self.witness_inputs(
             run_id="generic-run", scenario_id="generic.live_playtest",
-            source_identity="source-b", executable_identity="exe-b",
+            source_identity="runtime-source-b", executable_identity="exe-b",
         )
         witness = record_playtest_witness(
             self.connection, manifest_id="manifest-b", report_ids=["generic-report"],

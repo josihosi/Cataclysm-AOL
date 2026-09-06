@@ -10092,6 +10092,30 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                         clone_follower_template,
                     )
 
+    def test_resolved_fixture_normalizes_neutral_nearby_npc(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            self.write_resolved_fixture_chain(
+                temp_dir,
+                [],
+                [{
+                    "kind": "overmap_npcs_near_player",
+                    "player_save": "player.sav.zzip",
+                    "offsets_ms": [[1, 0, 0]],
+                    "npc_faction": "no_faction",
+                    "npc_mission": 0,
+                    "chat_topic": "TALK_STRANGER_NEUTRAL",
+                }],
+            )
+            with mock.patch(
+                "startup_harness.profile_fixture_root",
+                side_effect=lambda profile: Path(temp_dir) / profile,
+            ):
+                transform = resolve_fixture_payload("derived", "live-debug")["save_transforms"][-1]
+
+        self.assertEqual(transform["npc_faction"], "no_faction")
+        self.assertEqual(transform["npc_mission"], 0)
+        self.assertEqual(transform["chat_topic"], "TALK_STRANGER_NEUTRAL")
+
     def test_resolved_fixture_allows_clone_after_partial_remove_and_relocation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             self.write_resolved_fixture_chain(

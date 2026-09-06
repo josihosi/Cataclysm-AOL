@@ -10,6 +10,102 @@ ingestion, and lifecycle history. Use the cockpit/TUI for live observation, nati
 witness, and finish. The coordinator supplies the outcome and compact charter; the worker owns how
 to make the proof work.
 
+## Make the playtest exercise the behavior
+
+Before calling a playtest failed, check its primary physical circumstances: did the intended
+order apply to the right actor, did the player actually move, and did enough game time and
+separation develop for the behavior to become observable? Give the mechanic room to work.
+For following, move away far enough to require pursuit under the actual follow setting; two
+nearby steps may prove nothing. For staying/guarding, move away from the NPC and allow enough
+time to distinguish holding position from following; walking toward it is a weak test. Choose
+distance and duration from the mechanic and observed state, not a universal step count.
+
+Compare actual before/after positions and game time. An unchanged position may mean a wall,
+closed door, occupied tile or intervening prompt: inspect it and find a usable door, window or
+route around the obstruction before judging the NPC. A game turn is one second; an action can
+cost a different amount of game time. Wall-clock waiting and repeated observations do not advance
+the simulation. Measure distance in map squares and elapsed time in game timestamps rather than
+assuming a few tool calls gave the behavior a meaningful opportunity.
+
+Prefer a movement or wait macro when the next useful decision is at a destination or after an
+interval. For many separation tests, native overmap autotravel to a tile one OMT away is a useful
+first choice: it uses the game's pathfinder and gives the behavior room without a tool response
+per footstep. Choose a destination away from the NPC, use the current Overmap actions
+`overmap.move_cursor` and `overmap.choose_destination` with their advertised targets, and handle
+the native travel confirmation. Inspect actual arrival/displacement and elapsed time; selecting
+a destination alone is not completed travel, and one OMT is a useful test choice, not a universal
+success threshold. Adjust if the behavior or an interruption requires it.
+
+For local movement or waiting, use the existing `game.move_relative` / `game.wait` requests
+advertised by `controls`, submitted through `call --request`. `game.move_relative` batches cardinal
+steps; it does not pathfind around walls. Choose a passable route, collect once, and inspect terminal
+state, actual progress and interruptions
+instead of reading a full response after every tile. Single steps remain useful when the next
+step itself matters. Macro completion proves movement/time passage, not the tested feature.
+
+Treat inadequate separation, blocked movement or insufficient elapsed time as a test-design
+problem to resolve in the current run where possible. Preserve the observation, adapt the test,
+and distinguish a setup limitation or inconclusive result from a demonstrated gameplay failure.
+
+## Search routing: primary worker and Luna helper
+
+Keep the primary context focused on the playtest outcome, current state and next decision.
+Send bulky context to Luna for extraction of the specific information needed; bring back findings
+and exact references. If an answer is incomplete, ask for the missing point or inspect the cited
+location narrowly instead of loading the full artifact.
+
+Choose between two cases before loading search results:
+
+- **Easy lookup: do it directly.** The relevant file/function, response selector, or small search
+  scope is known and the answer needs little extraction. Use a targeted read/query. A missing-path
+  `null` or schema error calls for inspecting the parent keys or supplied selector, not a bulk dump.
+- **Broader search: delegate to a read-only Luna helper.** When locating or extracting the answer
+  becomes a separate investigation across unfamiliar code, files, runs or bulky artifacts, hand
+  off that search before bringing the bulk into the primary context. This also applies when an
+  initially easy lookup expands. Keep the primary focused on the live task and its next decision.
+
+**Playtest catalogue searches use the same two routes.** For a known scenario, the primary checks
+its specific readiness, requirements or next launch command directly using a compact, targeted
+result. When finding or comparing scenarios for an outcome, delegate catalogue discovery to Luna
+before loading candidate details. Give the desired behavior, required evidence class, platform,
+known scenario/manifest references and relevant setup constraints. Luna returns suitable candidates
+with why each fits, missing prerequisites, evidence limits and exact scenario/manifest references;
+report no suitable candidate honestly. Expand candidate detail only to resolve a selection question,
+not to dump the catalogue. The primary owns final selection, any required readiness recheck and
+launch; the search helper does not launch games or rebuild the catalogue. See
+[Select and launch](#select-and-launch) for catalogue commands and evidence semantics.
+
+**During play and when returning evidence.** For an NPC conversation, retrieve the known
+actor/request's correlated request and reply once; do not replace that question with overlapping
+log tails. During repeated movement, keep outcomes, input owner, interruptions and relevant state
+visible while projecting bulky maps out of the displayed result; retain exact responses for deeper
+inspection. Use the tested [focused evidence recipes](references/searching.md#focused-playtest-evidence).
+When assembling a witness requires locating citations or resolving journal/schema details, delegate
+that read-only packaging search to Luna. Ask: "For these claimed actions and before/after states,
+find the supporting citation IDs and exact check paths relative to entry.value; return the relevant
+values, run/actor/frame identities, contradictions and any unsupported part of the claim." Supply
+the session, journal request and known action/observation references. Luna extracts evidence; the
+primary decides the claim and submits the witness. An already-known citation is still an easy
+lookup. Do not print a full journal merely to discover citation IDs.
+
+**Primary's handoff.** Ask Luna the concrete question and explain what decision the answer will
+inform. Supply the exact workspace and known file/session/request/run references, relevant scope
+or evidence constraints, and a link to the [search map](references/searching.md). Give focused
+context rather than the full playtest history. Request a concise answer with the supporting facts,
+exact pointers/selectors or a reusable query, and unresolved uncertainty. Do not prescribe a guessed
+answer or make Luna repeat game setup. Continue independent work while the search runs; use its
+answer for the decision, expanding cited evidence only where needed. The primary owns game input,
+edits and final causal judgment.
+
+**Luna's search role.** If assigned as the search helper, perform that read-only investigation
+rather than routing the same search to another helper. Use the [search map](references/searching.md)
+for the applicable retrieval shape; inspect broader source locally when the question needs it, but
+return findings instead of raw dumps. Keep run/actor/request identities and evidence ceilings clear;
+distinguish a bad query, unavailable evidence and a valid no-match. Explain relevant contradictions
+or missing information without inventing an answer. Do not control the live game or change files.
+A narrow cited extract is useful; a transcript, full journal or replay of search attempts is not the
+handoff. Simple lookup and delegated investigation are the two routes, not a mandatory agent chain.
+
 ## Setup and interventions
 
 Scenario setup exists to remove irrelevant friction, not to prove gameplay. Choose mutations,
@@ -215,63 +311,7 @@ rendering them. Paging limits record count, not nested content. Expand to parent
 records whenever the narrower view leaves relevant uncertainty. For flexible transformations of
 retained JSON, use `jq` or Python.
 
-### Search by question
-
-Start from the response you are investigating, not a guessed universal JSON root:
-
-- A collected `look` response has `.response.current_input` and `.response.result` in the CLI
-  output. Other actions can expose `observation` or `terminal_observation` instead of `result`.
-  Copy `current_input.source_selector` and `actions_selector` from that response.
-- `controls` has `.result.availability` and top-level `.evidence_logs`; there is no `.response`
-  wrapper. Availability is session permission, not proof that the current menu accepts an action.
-- `inspect` takes the returned selector relative to the retained inner response, without the CLI's
-  `response.` prefix. Its answer is in `.slice`. Compact `.preview` is a display aid, not part of
-  the retained selector. Follow `.selector` to retrieve omitted or complete data.
-
-In the map below, `SOURCE` means the returned `source_selector`, not literal text to type.
-Field names under World facts are starting points; another input owner exposes its own facts.
-
-| Question | Search starting point |
-| --- | --- |
-| Which menu/prompt owns input, and what can I select? | Read `current_input`; inspect its `actions_selector` with `--contains NAME` for a target or `--limit N` to page. Inspect `SOURCE.surface.facts` for prompt text and owner-specific facts. |
-| What operations are permitted, and where are this run's logs? | `controls`: `.result.availability`; `.evidence_logs.entries` supplies exact paths, scope and query arguments. |
-| What is the player's condition, equipment or position? | Inspect `SOURCE.surface.facts.avatar_status`, `avatar_effects`, or `avatar`; select the relevant child once its fields are known. |
-| What is nearby: characters, terrain, objects, effects or zones? | Inspect World fact selectors `visible_entities`, `visible_local`, `minimap`, `overmap`, or `visible_zones`. Filter a list by name/type, then check identity, coordinates and relevant fields. Use larger map detail when immediate neighbours do not cover the question. |
-| What did the game say? | `messages --contains TEXT` searches the displayed observation. For an earlier response, inspect its messages selector with `--request-id REQUEST --contains TEXT`. Correlate message time and actor; retained fixture history may be present. |
-| What happened in an earlier action or causal event? | Use its request ID with `inspect`; for logs, use the exact query arguments from `controls`, then filter run/event/actor and project relevant fields with repeated `--select`. Follow returned evidence handles for deeper detail. |
-
-For example, after substituting the session, retained request and returned selector:
-
-```sh
-python3 tools/openclaw_harness/play_cli.py --session SESSION inspect ACTIONS_SELECTOR --request-id REQUEST --contains wait
-python3 tools/openclaw_harness/play_cli.py --session SESSION inspect FACTS_SELECTOR --request-id REQUEST
-python3 tools/openclaw_harness/play_cli.py --session SESSION messages --contains "Saving game"
-```
-
-Pin `--request-id` when inspecting earlier evidence: otherwise `inspect` uses the last retained
-response, which may have changed since the observation you meant. Use `--contains` on lists; it
-matches serialized row text case-insensitively, not an exact field predicate. A target-name match
-can return several actions; choose by action ID/label and enabled state, not target name alone. Retrieve that narrow
-list and use `jq`/Python when the question needs an exact coordinate, identity, or numeric condition.
-For example, a retrieved local-tile list can be projected with
-`jq '.slice[] | select(.dx == 1 and .dy == 1) | {terrain, furniture, fields}'`.
-Those coordinates illustrate a destination, not a fixed setup requirement.
-
-`--offset`/`--limit` page lists only: omit them for an object or scalar. A valid filtered list with
-`matched: 0` and `.slice: []` means no match in that selected evidence. An unavailable-selector
-error means the path cannot be retrieved; check the owner and returned selector. For saved JSON,
-inspect `keys` at the relevant parent after a missing-path `null`; it does not prove absence.
-Check `.ok`/`.error` before interpreting `.slice`, and use `page.next_offset` when more matches matter.
-Historical `log-query` can return `field_unavailable` for individual projected fields when records
-have different shapes; narrow the request/event or inspect the matching record's structure.
-
-As the primary worker, when a lookup expands into searching across files or past runs, delegate
-that search to a read-only Luna helper before bringing bulk results into your context. Give Luna
-the question and known references; request the answer, exact evidence pointers, and unresolved
-uncertainty, not a dump. Keep direct reads for a known relevant function or a targeted structured
-query. If a query returns `null` or a schema error, inspect keys or the supplied selector before
-expanding the output. Keep causal judgment, edits, and game interaction with the primary worker.
-Do not delegate a simple lookup just to add another agent.
+For question-to-command examples and response shapes, use the [search map](references/searching.md).
 
 The same bridge CLI provides:
 

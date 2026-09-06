@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On current source, native ambient selection can identify a visible, hearing, non-allied neutral NPC as the recipient of one ordinary unaddressed utterance, retain its actual request context, and yield a real reply or honest non-action through an ordinary applying turn.",
+  "material_proof": "One newly selected current-source run records the neutral NPC's native roster facts, a bound unaddressed player receipt, same-run ambient selection/context and reply-or-no-action evidence, one ordinary applying turn, and accepted cleanup.",
+  "material_contradiction": ["a recipient is inferred rather than recorded", "the NPC is allied, hostile, invisible, or cannot hear", "the reply is injected or direct state mutation is used", "the run or bridge binding repeats a prior run", "cleanup fails"],
+  "already_accepted_evidence": ["The R-031 duplicate camp-board run correction is retained only as zero-credit fixture-strategy evidence."],
+  "current_uncertainty": "The source-selected NPC may not produce a model reply or an applying turn in this exact state. That is a scoped honest non-action rather than proof of success.",
+  "forbidden_shortcuts": ["physical input, OCR, screenshots, coordinates, or guessed controls", "synthetic response injection", "direct NPC, camp, or save mutation", "crediting fixture installation or startup as gameplay behavior", "replaying the duplicate camp-board run"],
+  "honest_stop_conditions": ["stop before gameplay if fresh selection or source binding is absent", "after launch, record the first missing native prerequisite or actual no-action, clean up, and retain independent observations"],
+  "requested_evidence_ceiling": "focused"
+}

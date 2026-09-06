@@ -1,0 +1,18 @@
+{
+  "name": "r031_ambient_neutral_npc_v1",
+  "source_fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "R-031 zero-credit derived footing: retain the established base and add one nearby visible, hearing, non-allied neutral NPC for ambient-recipient selection.",
+  "save_transforms": [{
+    "kind": "overmap_npcs_near_player",
+    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "offsets_ms": [[2, -2, 0]],
+    "name_prefix": "R031 Ambient Neutral",
+    "clone_follower_template": true,
+    "scan_all_overmaps_for_ids": true,
+    "clear_camp_assignment": true,
+    "npc_faction": "no_faction",
+    "npc_mission": 0,
+    "chat_topic": "TALK_STRANGER_NEUTRAL"
+  }]
+}

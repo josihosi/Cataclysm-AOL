@@ -8551,9 +8551,12 @@ def record_playtest_witness(
         manifest = details.get("manifest")
         if not isinstance(observed, Mapping) or not isinstance(manifest, Mapping):
             raise ScenarioRegistryStoreError("playtest witness source or executable identity is missing")
+        runtime_source_sha256 = str(observed.get("runtime_source_sha256", "")).strip()
+        if not runtime_source_sha256:
+            raise ScenarioRegistryStoreError("playtest witness product runtime source identity is missing")
         expected_identities.add((
             str(report_value.get("scenario", "")),
-            str(manifest.get("source_sha256", "")),
+            runtime_source_sha256,
             str(observed.get("executable_sha256", "")),
             str(finals[0].get("run_id", "")),
             str(finals[0].get("binding_id", "")),

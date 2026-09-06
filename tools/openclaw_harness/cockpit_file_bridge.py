@@ -306,7 +306,10 @@ class FileBackedCockpitBridge:
             isinstance(terminal, Mapping) and terminal.get("schema") == "caol-cockpit-live-final-v1" and \
             terminal.get("state") == "finished"
         terminal_action = receipt["request_identity"].get("action")
-        next_state = ("transitioning" if self.session_reentries and terminal_action == "run.finish"
+        declared_reentry_ready = isinstance(terminal, Mapping) and \
+            terminal.get("declared_reentry_ready") is True
+        next_state = ("transitioning" if self.session_reentries and terminal_action == "run.finish" and
+                      declared_reentry_ready
                       else "terminalizing") if is_terminal else "ready"
         # Publish admission state before making the response collectible. A
         # client may submit its next action immediately after seeing a receipt.
@@ -314,6 +317,9 @@ class FileBackedCockpitBridge:
         self._write_status(
             next_state,
             last_response=receipt,
+            **({"declared_reentry_skipped": "native_save_quit_not_observed"}
+               if is_terminal and terminal_action == "run.finish" and self.session_reentries and
+               not declared_reentry_ready else {}),
             **({"session_descriptor": self._active_session_descriptor}
                if self._active_session_descriptor else {}),
         )
@@ -518,7 +524,8 @@ class FileBackedCockpitBridge:
             if request.get("action") in {"run.finish", "run.quit"} and response.get("ok") is True and \
                     isinstance(terminal, Mapping) and terminal.get("schema") == "caol-cockpit-live-final-v1" and \
                     terminal.get("state") == "finished":
-                if request.get("action") == "run.finish" and self.session_reentries:
+                if request.get("action") == "run.finish" and self.session_reentries and \
+                        terminal.get("declared_reentry_ready") is True:
                     self.session_reentries -= 1
                     self._write_status(
                         "transitioning",

@@ -483,6 +483,15 @@ class CockpitRunChannel:
     def _stop(self, reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
         if self._final_report is not None:
             return self._final_report
+        # A declared saved-world continuation is meaningful only after the
+        # native save-and-quit owner has actually been used.  Surface that
+        # run-owned fact for the bridge rather than making every finish a
+        # speculative reentry attempt.
+        declared_reentry_ready = any(
+            entry.get("kind") == "action" and entry.get("action_id") == "world.save_quit"
+            for entry in self._transcript
+            if isinstance(entry, Mapping)
+        )
         report: Dict[str, Any] = {
             "schema": "caol-cockpit-live-final-v1",
             "run_id": self._run_id,
@@ -494,6 +503,7 @@ class CockpitRunChannel:
             "action_observation_sequence": self._transcript if self.archive is not None else list(self._transcript),
             "bound_derivation": dict(self._continuation or {}),
             "unused_authority": str(detail.get("unused_authority", "none")),
+            "declared_reentry_ready": declared_reentry_ready,
         }
         if self._finalize_session is not None:
             finalized = self._finalize_session(report)

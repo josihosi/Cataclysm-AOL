@@ -280,6 +280,7 @@ class LiveSessionTest(unittest.TestCase):
         self.assertEqual(finished["result"]["cleanup"]["status"], "terminated")
         self.assertEqual(len(finals), 1)
         self.assertEqual(finals[0]["stop_reason"], "target_predicate_proved")
+        self.assertFalse(finals[0]["declared_reentry_ready"])
 
     def test_r019_timed_entry_requires_actual_hostile_frame_before_wait(self) -> None:
         initial = frame(1, 100)

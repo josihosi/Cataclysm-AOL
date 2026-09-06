@@ -22099,6 +22099,23 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                     raise SystemExit(
                         f"Fixture save_transforms[{index}].offsets_ms[{offset_index}] values must be integers in {manifest_path}"
                     )
+            npc_faction = str(raw.get("npc_faction", "your_followers") or "").strip()
+            if not npc_faction:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] overmap_npcs_near_player npc_faction must be non-empty in {manifest_path}"
+                )
+            try:
+                npc_mission = int(raw.get("npc_mission", 6))
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] overmap_npcs_near_player npc_mission must be an integer in {manifest_path}"
+                )
+            default_chat_topic = "TALK_FRIEND" if npc_faction == "your_followers" else "TALK_STRANGER_NEUTRAL"
+            chat_topic = str(raw.get("chat_topic", default_chat_topic) or "").strip()
+            if not chat_topic:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] overmap_npcs_near_player chat_topic must be non-empty in {manifest_path}"
+                )
             transforms.append({
                 "kind": kind,
                 "player_save": player_save,
@@ -22106,6 +22123,10 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "name_prefix": str(raw.get("name_prefix", "OpenClaw Ally") or "OpenClaw Ally").strip(),
                 "clone_follower_template": bool(raw.get("clone_follower_template", True)),
                 "scan_all_overmaps_for_ids": bool(raw.get("scan_all_overmaps_for_ids", True)),
+                "clear_camp_assignment": bool(raw.get("clear_camp_assignment", False)),
+                "npc_faction": npc_faction,
+                "npc_mission": npc_mission,
+                "chat_topic": chat_topic,
             })
             continue
 
@@ -24919,10 +24940,22 @@ def apply_overmap_npcs_near_player_transform(world_dir: Path, transform: Dict[st
             npc_payload["id"] = npc_id
             npc_payload["name"] = f"{name_prefix} {index}"
             npc_payload["location"] = location
-            npc_payload["my_fac"] = "your_followers"
+            npc_payload["my_fac"] = str(transform.get("npc_faction", "your_followers"))
             npc_payload["attitude"] = 0
-            npc_payload["mission"] = 6
+            npc_payload["mission"] = int(transform.get("npc_mission", 6))
             npc_payload["marked_for_death"] = False
+            if bool(transform.get("clear_camp_assignment", False)):
+                npc_payload["assigned_camp"] = None
+                npc_payload["guard_pos"] = None
+                npc_payload["camp_patrol_order_active"] = False
+                npc_payload["chair_pos"] = None
+                npc_payload["wander_pos"] = None
+                npc_payload["destination_point"] = None
+                npc_payload["omt_path"] = []
+                npc_payload["path"] = []
+                chatbin = npc_payload.get("chatbin")
+                if isinstance(chatbin, dict):
+                    chatbin["first_topic"] = str(transform.get("chat_topic", "TALK_FRIEND"))
             raw_npcs.append(npc_payload)
             placed.append({
                 "id": npc_id,
@@ -24932,6 +24965,7 @@ def apply_overmap_npcs_near_player_transform(world_dir: Path, transform: Dict[st
                 "my_fac": npc_payload.get("my_fac"),
                 "attitude": npc_payload.get("attitude"),
                 "mission": npc_payload.get("mission"),
+                "assigned_camp": npc_payload.get("assigned_camp"),
             })
         payload["npcs"] = raw_npcs
         write_overmap_payload(plain_path, version_line, payload)

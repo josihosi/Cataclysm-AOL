@@ -7,7 +7,7 @@
         "key": "runtime.fixture",
         "minimum_evidence": "declared",
         "op": "eq",
-        "value": "bandit_basecamp_prepared_base_v1_2026-04-22"
+        "value": "r031_living_non_camp_follower_v1"
       },
       {
         "key": "runtime.world",

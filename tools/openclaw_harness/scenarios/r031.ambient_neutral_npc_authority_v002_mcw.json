@@ -1,0 +1,42 @@
+{
+  "manifest_version": 2,
+  "name": "r031.ambient_neutral_npc_authority_v002_mcw",
+  "description": "Independently authorized current-source R-031 ambient recipient validation. The derived neutral NPC fixture establishes zero-credit footing only; a new run must prove recipient selection and applied reply.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r031_ambient_neutral_npc_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r031_ambient_neutral_npc_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r031.ambient_recipient": "visible_hearing_nonallied_neutral_npc"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:game.wait", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["physical-key", "guessed-key", "keyboard", "mouse", "ocr", "screen-coordinate", "callback-injection", "direct-state-mutation", "direct-save-edit", "fixture-restage"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r031_ambient_neutral_npc_v1",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"dev-harness","fixture":"r031_ambient_neutral_npc_v1","helper":"native-semantic-broker","peekaboo":false,"input":["frame-bound semantic requests"],"ocr":false,"cleanup":true},
+    "grants_gameplay_proof": true
+  },
+  "source_binding": {"fixture_manifest":"tools/openclaw_harness/fixtures/saves/live-debug/r031_ambient_neutral_npc_v1/manifest.json"},
+  "proof_gates": [{"id":"r031_ambient_neutral_live","label":"R-031 independently authorized ambient neutral live session","boundary_step":"operate_ambient_neutral_recipient","predecessors":[],"expectations":[{"kind":"saved_artifact","predicate":{"artifact_kind":"worker_controlled_live_cockpit_session","gameplay_credit":true}}],"checkpoint_safe_ui":{"screen_text_contains":["Move:","Wield:"]}}],
+  "proof_route": {"gates":["r031_ambient_neutral_live"],"terminal":["r031_ambient_neutral_live"],"capability_gates":{"capabilities.r031.ambient_recipient":{"terminal":["r031_ambient_neutral_live"]}}},
+  "steps": [
+    {"kind":"native_semantic_bootstrap","label":"bind_ambient_neutral_world","native_semantic_checkpoint":{"required_actions":["world.wait"],"required_state":"world","require_initial_hud_world_ready_frame":false}},
+    {"kind":"cockpit_live_session","label":"operate_ambient_neutral_recipient","cleanup_on_finish":true,"objective":"In one new unique run, identify the visible hearing non-allied neutral NPC from native state, submit one unaddressed utterance, correlate ambient selection and context, then observe a reply or honest non-action after one ordinary applying turn.","proof_targets":["actual ambient recipient identity","request context and reply or honest non-action","one ordinary applying turn","accepted cleanup"],"authority":["currently advertised native semantic actions","game.act","game.wait","run.witness","run.finish"],"invariants":["fixture installation is zero-credit","recipient identity is read from same-run native evidence","do not synthesize a reply or mutate NPC/save state directly","do not replay a sealed run"],"live_operations":["game.act","game.wait"],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}
+  ],
+  "evidence_contract": {"claim":"a fresh authority-bound ambient route supplies recipient, context, applying-turn, and reply-or-no-action evidence","failure_rule":"missing native recipient, bound request, applying turn, report gate, witness ingestion, or cleanup leaves the result inconclusive"}
+}

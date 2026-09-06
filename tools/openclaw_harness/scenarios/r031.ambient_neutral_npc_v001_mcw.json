@@ -1,0 +1,70 @@
+{
+  "manifest_version": 1,
+  "name": "r031.ambient_neutral_npc_v001_mcw",
+  "description": "Current-source R-031 ambient route: use one visible, hearing, non-allied neutral NPC in an established-base world to bind native ambient recipient selection, request context, actual reply or honest non-action, one ordinary applying turn, and cleanup.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r031_ambient_neutral_npc_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r031_ambient_neutral_npc_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r031.ambient_recipient": "visible_hearing_nonallied_neutral_npc"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:game.wait", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["physical-key", "guessed-key", "keyboard", "mouse", "ocr", "screen-coordinate", "callback-injection", "direct-state-mutation", "direct-save-edit", "fixture-restage"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r031_ambient_neutral_npc_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "r031_ambient_neutral_npc_v1",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": ["frame-bound semantic requests"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r031_ambient_neutral_npc_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_ambient_neutral_world",
+      "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": false}
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_ambient_neutral_recipient",
+      "cleanup_on_finish": true,
+      "objective": "Submit one ordinary unaddressed utterance only after native roster evidence identifies the R031 Ambient Neutral NPC as visible, hearing, non-allied, and non-hostile. Bind ambient selection and request context to the same-run native record, observe the real reply or honest non-action, allow one ordinary applying turn, then finish cleanup.",
+      "proof_targets": ["actual ambient recipient identity", "request context and reply or honest non-action", "one ordinary applying turn", "accepted cleanup"],
+      "authority": ["currently advertised native semantic actions", "game.act", "game.wait", "run.witness", "run.finish"],
+      "invariants": ["fixture installation is zero-credit", "recipient identity is read from same-run native evidence", "do not synthesize a reply or mutate NPC/save state directly", "a missing ambient candidate, reply, or applying turn is an honest claim-scoped result", "do not replay a sealed run"],
+      "live_operations": ["game.act", "game.wait"],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {"precondition": ["bind_ambient_neutral_world"], "production_behavior": ["operate_ambient_neutral_recipient"], "terminal_persistence": ["operate_ambient_neutral_recipient"], "artifact_verdict": ["operate_ambient_neutral_recipient"], "disallowed_shortcuts": ["bind_ambient_neutral_world"]}
+}
