@@ -704,6 +704,90 @@ for line in sys.stdin:
             self.assertFalse(thread.is_alive())
             self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
 
+    def test_declared_reentry_replaces_live_registry_wrapper_after_registered_game_exits(self):
+        """A live launcher is retired only after its separately owned game exits."""
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            wrapper = (
+                "import json,os,sys,time; "
+                "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
+                "'run_id':'run-a','binding_id':'native-first','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
+                "print(json.dumps({'cockpit_live_session':d}),flush=True); sys.stdin.readline(); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); time.sleep(30)"
+            )
+            continuation = (
+                "import json,os,sys; "
+                "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
+                "'run_id':'run-a','binding_id':'native-second','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}; "
+                "print(json.dumps({'cockpit_live_session':d}),flush=True); sys.stdin.readline(); "
+                "print(json.dumps({'ok':True,'result':{'schema':'caol-cockpit-live-final-v1','state':'finished'}}),flush=True); "
+                "open(os.path.join(os.environ['OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR'],'cockpit.bridge.safe_to_cleanup.json'),'w').write(json.dumps({'schema':'caol-cockpit-scenario-terminalization-v1','binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID'],'state':'safe_to_cleanup'}))"
+            )
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", wrapper], binding_id="bound-a",
+                require_session_ready=True, session_reentries=1,
+                reentry_command=[sys.executable, "-u", "-c", continuation],
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            while not (directory / "status.json").is_file() or \
+                    json.loads((directory / "status.json").read_text())["state"] != "ready":
+                time.sleep(0.01)
+            game = subprocess.Popen([sys.executable, "-u", "-c", "pass"])
+            from startup_harness import pid_command
+            game.wait(timeout=2)
+            self.assertEqual(pid_command(game.pid), "")
+            (directory / "game-process.json").write_text(json.dumps({
+                "pid": game.pid, "binding_id": "bound-a", "command": "/registered/native/game",
+            }))
+            wrapper_pid = bridge._child.pid
+            self.assertTrue(bridge.send_request(
+                directory, request_id="finish-first", binding_id="bound-a", request={"action": "run.finish"},
+            )["ok"])
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                status = json.loads((directory / "status.json").read_text())
+                if status.get("session_descriptor", {}).get("binding_id") == "native-second":
+                    break
+                time.sleep(0.01)
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["state"], "ready", status)
+            self.assertEqual(status["session_descriptor"]["binding_id"], "native-second")
+            self.assertNotEqual(status["child_pid"], wrapper_pid)
+            self.assertIsNotNone(bridge._child)
+            self.assertIsNone(bridge._child.poll())
+            self.assertTrue(bridge.send_request(
+                directory, request_id="finish-second", binding_id="bound-a", request={"action": "run.finish"},
+            )["ok"])
+            thread.join(5)
+            self.assertFalse(thread.is_alive())
+            self.assertEqual(json.loads((directory / "status.json").read_text())["state"], "safe_to_cleanup")
+
+    def test_live_registered_game_keeps_registry_wrapper_during_reentry(self):
+        """The wrapper cannot be retired merely because a reentry is declared."""
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp)
+            bridge = FileBackedCockpitBridge(directory, [sys.executable], binding_id="bound-a")
+            wrapper = subprocess.Popen([sys.executable, "-u", "-c", "import time; time.sleep(30)"])
+            game = subprocess.Popen([sys.executable, "-u", "-c", "import time; time.sleep(30)"])
+            try:
+                from startup_harness import pid_command
+                time.sleep(0.05)
+                command = pid_command(game.pid)
+                self.assertTrue(command)
+                (directory / "game-process.json").write_text(json.dumps({
+                    "pid": game.pid, "binding_id": "bound-a", "command": command,
+                }))
+                bridge._child = wrapper
+                with self.assertRaisesRegex(ValueError, "reentry_child_still_running"):
+                    bridge._retire_exited_game_wrapper_for_reentry()
+                self.assertIsNone(wrapper.poll())
+            finally:
+                for child in (wrapper, game):
+                    if child.poll() is None:
+                        child.terminate()
+                        child.wait(timeout=2)
+
     def test_declared_reentry_run_quit_terminalizes_without_reentry(self):
         """A player quit ends the scenario even when finish supports reentry."""
         with tempfile.TemporaryDirectory() as temp:

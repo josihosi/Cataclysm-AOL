@@ -237,6 +237,28 @@ class FileBackedCockpitBridge:
             self._child_stderr.close()
             self._child_stderr = None
 
+    def _retire_exited_game_wrapper_for_reentry(self) -> None:
+        """Retire only our registry wrapper after its registered game is gone.
+
+        A registry launch stays alive to ingest the finished segment even
+        after it has observed the native game's clean exit.  It is not the
+        saved-world continuation owner.  The registered game identity is the
+        guard: a live or unverified game must keep the old child in place.
+        """
+        if self._child is None or self._child.poll() is not None:
+            self._close_child_streams()
+            return
+        game_process = self._owned_game_process_evidence()
+        if game_process.get("status") != "exited_or_identity_changed":
+            raise ValueError("reentry_child_still_running")
+        self._child.terminate()
+        try:
+            self._child.wait(timeout=2)
+        except subprocess.TimeoutExpired:
+            self._child.kill()
+            self._child.wait(timeout=2)
+        self._close_child_streams()
+
     def prepare(self) -> None:
         if self.session_dir.exists():
             raise ValueError("bridge session directory already exists")
@@ -506,9 +528,7 @@ class FileBackedCockpitBridge:
                     )
                     try:
                         if self.reentry_command:
-                            if self._child is None or self._child.poll() is None:
-                                raise ValueError("reentry_child_still_running")
-                            self._close_child_streams()
+                            self._retire_exited_game_wrapper_for_reentry()
                             self._start_child(self.reentry_command, append_stderr=True)
                         descriptor = self._await_session_descriptor(
                             consume_pre_descriptor_prefix=False,

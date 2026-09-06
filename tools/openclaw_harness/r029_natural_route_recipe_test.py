@@ -18,6 +18,15 @@ import startup_harness  # noqa: E402
 
 
 class R029NaturalRouteRecipeTest(unittest.TestCase):
+    def test_post_relaunch_fire_audit_tracks_the_guarded_north_retreat(self) -> None:
+        scenario = json.loads((Path(__file__).resolve().parent / "scenarios" /
+                               "cannibal.r029_natural_route_roof_mcw.json").read_text())
+        persisted_fire_audit = scenario["post_relaunch"]["steps"][0]
+        self.assertEqual(persisted_fire_audit["label"], "audit_persisted_r029_player_fire")
+        # The brazier is deployed southeast (+1,+1); after the exact two-tile
+        # north retreat it is relative to the saved player at (+1,+3).
+        self.assertEqual(persisted_fire_audit["offsets"], [[1, 3, 0]])
+
     def test_post_relaunch_recipe_uses_the_advertised_duration_primitive(self) -> None:
         scenario = json.loads((Path(__file__).resolve().parent / "scenarios" /
                                "cannibal.r029_natural_route_roof_mcw.json").read_text())
