@@ -131,6 +131,22 @@ class StartupRunDirectoryTest(unittest.TestCase):
             self.assertEqual(len(reports), 2)
             self.assertTrue(channel.calls)
 
+    def test_semantic_only_step_capture_does_not_request_peekaboo(self) -> None:
+        with tempfile.TemporaryDirectory() as temporary, \
+                mock.patch.object(startup_harness, "capture_screenshot", return_value={
+                    "screen_summary": {"capture_success": False},
+                }) as capture, \
+                mock.patch.object(startup_harness.time, "sleep"):
+            reports = startup_harness.execute_probe_steps(
+                1, Path(temporary), [{
+                    "kind": "wait", "label": "native_wait", "seconds": 0.01,
+                    "capture_after": True,
+                }], profile="test", world="world", semantic_only=True,
+            )
+        self.assertEqual(len(reports), 1)
+        capture.assert_called_once()
+        self.assertTrue(capture.call_args.kwargs["semantic_only"])
+
     def test_interruption_action_uses_the_public_advertised_actions_field(self) -> None:
         observation = {
             "advertised_actions": ["activity.stop", "activity.ignore"],

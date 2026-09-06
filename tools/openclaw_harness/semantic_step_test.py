@@ -859,6 +859,129 @@ class SemanticStepChannelTest(unittest.TestCase):
         self.assertEqual(current["event"], "surface_descriptor")
         self.assertEqual(current["frame_id"], "surface-frame")
 
+    def test_refresh_trace_bounds_parsed_events_while_preserving_recent_semantics(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "semantic.native.log"
+            run_id = self.run_id
+            events = [{
+                "event": "surface_descriptor", "schema_version": 1, "run_id": run_id,
+                "surface_id": "surface-world", "frame_id": f"frame-{index}",
+                "kind": "world", "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+            } for index in range(5)]
+            source.write_text("\n".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event)
+                for event in events
+            ) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "semantic_step_source_trace", return_value=source), \
+                    patch.object(startup_harness, "SEMANTIC_STEP_MAX_EVENTS", 2):
+                _source, owned = startup_harness.refresh_semantic_step_trace(
+                    profile="ignored", run_dir=root, run_id=run_id, start_offset=0,
+                )
+            parsed, status = startup_harness.read_semantic_step_trace(owned, root, run_id)
+        self.assertEqual(status, "ok")
+        self.assertEqual([event["frame_id"] for event in parsed], ["frame-3", "frame-4"])
+
+    def test_refresh_trace_respects_sampled_boundary_on_hot_append(self) -> None:
+        events = [{
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": f"frame-{index}",
+            "kind": "world", "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        } for index in range(3)]
+        encoded = ("\n".join(
+            "openclaw_harness_semantic_step: " + json.dumps(event)
+            for event in events
+        ) + "\n").encode("utf-8")
+
+        class SampledPath:
+            def __init__(self, path: Path, sampled_size: int, mutation: callable) -> None:
+                self.path = path
+                self.sampled_size = sampled_size
+                self.mutation = mutation
+
+            def resolve(self):
+                return self
+
+            def stat(self):
+                return type("Stat", (), {"st_size": self.sampled_size})()
+
+            def open(self, mode: str):
+                self.mutation()
+                return self.path.open(mode)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source.log"
+            source.write_bytes(encoded)
+            def append_same_run() -> None:
+                with source.open("ab") as stream:
+                    stream.write((
+                        "openclaw_harness_semantic_step: "
+                        + json.dumps({
+                            "event": "surface_descriptor", "schema_version": 1,
+                            "run_id": self.run_id, "surface_id": "surface-world",
+                            "frame_id": "frame-hot-append", "kind": "world",
+                            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+                        }) + "\n"
+                    ).encode("utf-8"))
+            hot = SampledPath(source, len(encoded), append_same_run)
+            with patch.object(startup_harness, "semantic_step_source_trace", return_value=hot):
+                _, owned = startup_harness.refresh_semantic_step_trace(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=0,
+                )
+            parsed, status = startup_harness.read_semantic_step_trace(owned, root, self.run_id)
+        self.assertEqual(status, "ok")
+        self.assertEqual([event["frame_id"] for event in parsed], ["frame-0", "frame-1", "frame-2"])
+
+    def test_refresh_trace_respects_truncated_sample_and_start_offset(self) -> None:
+        events = [{
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": f"frame-{index}",
+            "kind": "world", "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        } for index in range(3)]
+        encoded = ("\n".join(
+            "openclaw_harness_semantic_step: " + json.dumps(event)
+            for event in events
+        ) + "\n").encode("utf-8")
+        class SampledPath:
+            def __init__(self, path: Path, sampled_size: int, mutation: callable) -> None:
+                self.path = path
+                self.sampled_size = sampled_size
+                self.mutation = mutation
+
+            def resolve(self):
+                return self
+
+            def stat(self):
+                return type("Stat", (), {"st_size": self.sampled_size})()
+
+            def open(self, mode: str):
+                self.mutation()
+                return self.path.open(mode)
+
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "source.log"
+            source.write_bytes(encoded)
+            offset = encoded.index(b"openclaw_harness_semantic_step:", 1)
+            truncated = SampledPath(source, len(encoded), lambda: source.write_bytes(encoded[:offset + 10]))
+            with patch.object(startup_harness, "semantic_step_source_trace", return_value=truncated):
+                _, owned = startup_harness.refresh_semantic_step_trace(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=offset,
+                )
+            parsed, status = startup_harness.read_semantic_step_trace(owned, root, self.run_id)
+            self.assertEqual(status, "ok")
+            self.assertEqual(parsed, [])
+
+            source.write_bytes(encoded)
+            with patch.object(startup_harness, "semantic_step_source_trace", return_value=source):
+                _, owned = startup_harness.refresh_semantic_step_trace(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=offset,
+                )
+            parsed, status = startup_harness.read_semantic_step_trace(owned, root, self.run_id)
+        self.assertEqual(status, "ok")
+        self.assertEqual([event["frame_id"] for event in parsed], ["frame-1", "frame-2"])
+
     def test_surface_descriptor_action_uses_native_request_transport_only(self) -> None:
         descriptor = {
             "event": "surface_descriptor", "run_id": self.run_id,

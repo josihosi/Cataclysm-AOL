@@ -13,6 +13,7 @@ import json
 import math
 import os
 from pathlib import Path
+import sys
 import time
 from typing import Any
 import uuid
@@ -83,18 +84,94 @@ class PlayerClient:
     def save(self):
         _atomic_json(self.state_path, self.state)
 
+    def _evidence_logs(self) -> dict[str, Any]:
+        """Describe producer-published logs without observing or changing the live owner."""
+        root = Path(__file__).resolve().parents[2]
+        status: dict[str, Any] = {}
+        try:
+            value = json.loads((self.session / "status.json").read_text(encoding="utf-8"))
+            if isinstance(value, dict):
+                status = value
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            pass
+        owner: dict[str, Any] = {}
+        try:
+            value = json.loads((self.session / "game-process.json").read_text(encoding="utf-8"))
+            if isinstance(value, dict):
+                owner = value
+        except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+            pass
+        descriptor = status.get("session_descriptor")
+        descriptor_run_id = str(descriptor.get("run_id", "")).strip() if isinstance(descriptor, dict) else ""
+        owner_run_id = str(owner.get("run_id", "")).strip()
+        run_id = owner_run_id or descriptor_run_id
+        if (not owner or not owner_run_id or not str(owner.get("binding_id", "")).strip()
+                or not str(status.get("binding_id", "")).strip()):
+            identity_status = "unavailable"
+        elif (owner.get("binding_id") != self.binding or
+              status.get("binding_id") != self.binding):
+            identity_status = "binding_mismatch"
+        elif not descriptor_run_id:
+            identity_status = "unavailable"
+        elif descriptor_run_id != owner_run_id:
+            identity_status = "run_mismatch"
+        else:
+            identity_status = "bound"
+        published = owner.get("log_paths") if isinstance(owner.get("log_paths"), dict) else {}
+        bridge_query = Path(__file__).with_name("cockpit_file_bridge.py")
+
+        def entry(name: str, metadata: Any, default_scope: str) -> dict[str, Any]:
+            metadata = metadata if isinstance(metadata, dict) else {}
+            raw_path = str(metadata.get("path", "")).strip()
+            path = Path(raw_path).expanduser() if raw_path else None
+            scope = str(metadata.get("scope", default_scope)).strip() or default_scope
+            query = None
+            if path is not None and identity_status == "bound":
+                query = [sys.executable, str(bridge_query), "log-query", "--path", str(path)]
+                if scope == "run_bound":
+                    query.extend(("--run-id", run_id))
+                query.extend(("--limit", "20"))
+            available = path is not None and identity_status == "bound" and path.is_file()
+            if identity_status != "bound":
+                state = identity_status
+            elif path is None:
+                state = "unavailable"
+            else:
+                state = "available" if available else "missing"
+            return {
+                "name": name, "path": str(path) if path is not None else None,
+                "present": path.is_file() if path is not None else False,
+                "status": state, "scope": scope, "run_id": run_id or None,
+                "binding_id": self.binding, "query": query,
+                "query_note": "Read-only retained records. Correlate run_id, timestamps, actor and request; shared logs may contain other runs." if scope != "run_bound" else "The --run-id filter is bound to this session run; records do not by themselves prove gameplay outcomes.",
+            }
+
+        entries = [entry(name, published.get(name), "run_bound") for name in (
+            "native_semantic_events", "native_semantic_snapshot", "transition_events")]
+        entries.append(entry("profile_diagnostic_debug", published.get("profile_diagnostic_debug"), "profile_shared"))
+        for name in ("llm_intent.log", "llm_intent_events.log", "llm_intent_runner.log"):
+            entries.append(entry("npc_" + name.removesuffix(".log"),
+                                 {"path": str(root / "config" / name), "scope": "repository_shared"},
+                                 "repository_shared"))
+        return {
+            "run_id": run_id or None, "binding_id": self.binding, "identity_status": identity_status,
+            "metadata_source": "game-process.json log_paths" if published else "missing_game_process_log_metadata",
+            "entries": entries,
+            "scope_note": "run_bound files come from the launch producer and belong to this run; profile_shared and repository_shared files can contain other runs. Missing metadata is reported without guessing a path.",
+            "log_query": "Use each entry's query argv when present, then add --event, --contains, --where FIELD=JSON, or --select FIELD. Use record-artifact with a returned artifact handle for exact bytes.",
+        }
+
     def controls(self) -> dict[str, Any]:
         # Local metadata only: safe while a native request is pending. Do not
         # refresh the frame, enqueue traffic, or save client ownership state.
-        root = Path(__file__).resolve().parents[2]
+        logs = self._evidence_logs()
         return {"ok": True, "result": player_controls(self.state.get("operation_availability")),
+                "evidence_logs": logs,
                 "evidence_tools": {
                     "messages": "messages [--contains TEXT] [--offset N --limit N] reads the displayed frame's native messages as JSON; no game input.",
-                    "npc_logs": [{"path": str(root / "config" / name),
-                                  "present": (root / "config" / name).is_file()}
-                                 for name in ("llm_intent.log", "llm_intent_events.log", "llm_intent_runner.log")],
-                    "log_scope": "These engine logs are shared across runs. Correlate the exact utterance, actor, request and timestamp; file presence or an old reply is not current-run evidence.",
-                    "query": "cockpit_file_bridge.py log-query --path PATH --contains TEXT --limit 5; record-artifact verifies exact returned byte ranges.",
+                    "logs_selector": "evidence_logs",
+                    "log_scope": logs["scope_note"],
+                    "query": logs["log_query"],
                 }}
 
     def performance(self, args):

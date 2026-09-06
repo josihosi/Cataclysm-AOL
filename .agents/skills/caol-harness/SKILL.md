@@ -94,8 +94,10 @@ To end without making a gameplay claim, use `quit --reason "your reason"`, or se
 `{"action":"run.quit","stop_reason":"your reason"}` through `call --request`. A client disconnect also leaves the game running. Only explicit native
 quit, `run.quit`, `run.finish`, or requested bridge cleanup ends it.
 `messages` reads the displayed observation as JSON, including quoted speech; it defaults to the
-latest matching page and does not send game input. `controls` also identifies the central NPC
-prompt, response and runner logs, which are shared across runs and need exact event correlation.
+latest matching page and does not send game input. `controls` discovers the bound run's native
+and transition logs, profile diagnostics, and shared NPC logs with exact paths, availability,
+scope and copyable query arguments. Missing files or metadata mean unavailable evidence, not
+absence of ecological activity. Shared logs need exact event and identity correlation.
 Scripted Dialogue choices and free-text speech are different native routes. A model request needs
 its utterance, hearer, time and resulting reply or error correlated; automatic `prewarm` requests
 only load the model and do not establish an NPC conversation.

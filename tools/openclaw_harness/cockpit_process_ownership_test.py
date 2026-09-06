@@ -37,6 +37,53 @@ class ProcessOwnershipTest(unittest.TestCase):
                 cleanup.assert_not_called()
                 self.assertEqual(result["ownership"], "process_exited_or_identity_changed")
 
+    def test_process_record_publishes_actual_run_log_metadata(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            session = Path(tmp) / "session"
+            run_dir = Path(tmp) / "harness-run"
+            run_dir.mkdir()
+            session.mkdir()
+            process = Mock(pid=123)
+            with patch.object(harness, "pid_command", return_value="/test/cataclysm-tiles --userdir /test/disposable"):
+                harness.record_bridge_game_process(process, {
+                    "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": str(session),
+                    "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "bound",
+                    "OPENCLAW_HARNESS_RUN_ID": "run",
+                    "OPENCLAW_HARNESS_RUN_DIR": str(run_dir),
+                    "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH": str(run_dir / "semantic.native.events.jsonl"),
+                    "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH": str(run_dir / "transition.events.jsonl"),
+                    "OPENCLAW_HARNESS_PROFILE": "test-profile"})
+            record = json.loads((session / "game-process.json").read_text())
+            self.assertEqual(record["log_paths"]["native_semantic_events"], {
+                "path": str(run_dir / "semantic.native.events.jsonl"), "scope": "run_bound"})
+            self.assertEqual(record["log_paths"]["transition_events"]["path"],
+                             str(run_dir / "transition.events.jsonl"))
+            self.assertEqual(record["log_paths"]["profile_diagnostic_debug"]["scope"], "profile_shared")
+
+    def test_relaunch_metadata_uses_operational_snapshot_and_bound_transition_path(self):
+        with tempfile.TemporaryDirectory() as tmp:
+            session = Path(tmp) / "session"
+            operational = Path(tmp) / "post-relaunch"
+            artifact = Path(tmp) / "initial-artifacts"
+            session.mkdir()
+            operational.mkdir()
+            artifact.mkdir()
+            env = harness.semantic_request_transport_child_environment(operational, "run")
+            env.update({
+                "OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR": str(session),
+                "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID": "bound",
+                "OPENCLAW_HARNESS_RUN_ID": "run",
+                "OPENCLAW_HARNESS_RUN_DIR": str(artifact),
+                "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH": str(artifact / "transition.events.jsonl"),
+            })
+            with patch.object(harness, "pid_command", return_value="/test/cataclysm-tiles"):
+                harness.record_bridge_game_process(Mock(pid=123), env)
+            logs = json.loads((session / "game-process.json").read_text())["log_paths"]
+            self.assertEqual(Path(logs["native_semantic_snapshot"]["path"]),
+                             (operational / "semantic.native.log").resolve())
+            self.assertEqual(Path(logs["native_semantic_events"]["path"]).parent, operational.resolve())
+            self.assertEqual(Path(logs["transition_events"]["path"]), artifact / "transition.events.jsonl")
+
     def test_deferred_scenario_cleanup_requires_the_player_quit_record(self):
         process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", "cataclysm-tiles"])
         try:

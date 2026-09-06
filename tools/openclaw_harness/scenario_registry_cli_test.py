@@ -2028,5 +2028,37 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertIn("valid JSON", json.loads(malformed_query.stderr)["error"])
 
 
+    def test_post_relaunch_continuation_does_not_count_its_initial_session_as_reentry(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "scenario.json"
+            source.write_text(json.dumps({
+                "post_relaunch": {
+                    "steps": [{"kind": "cockpit_live_session"}],
+                },
+            }), encoding="utf-8")
+            selection = argparse.Namespace(source_path=str(source))
+            self.assertEqual(
+                scenario_registry_cli._declared_live_session_reentries(selection), 1
+            )
+            self.assertEqual(
+                scenario_registry_cli._declared_live_session_reentries(
+                    selection, post_relaunch_continuation=True,
+                ), 0
+            )
+            source.write_text(json.dumps({
+                "post_relaunch": {
+                    "steps": [
+                        {"kind": "cockpit_live_session"},
+                        {"kind": "cockpit_live_session"},
+                    ],
+                },
+            }), encoding="utf-8")
+            self.assertEqual(
+                scenario_registry_cli._declared_live_session_reentries(
+                    selection, post_relaunch_continuation=True,
+                ), 1
+            )
+
+
 if __name__ == "__main__":
     unittest.main()

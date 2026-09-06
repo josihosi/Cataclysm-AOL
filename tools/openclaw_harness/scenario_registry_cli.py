@@ -1611,8 +1611,10 @@ def _scenario_requires_bound_live_bridge(scenario_name: str) -> bool:
     )
 
 
-def _declared_live_session_reentries(selection: Any) -> int:
-    """Count only declared post-relaunch cockpit sessions for a bound bridge."""
+def _declared_live_session_reentries(
+    selection: Any, *, post_relaunch_continuation: bool = False,
+) -> int:
+    """Count only cockpit sessions that follow the bridge's initial session."""
     try:
         scenario = json.loads(Path(selection.source_path).read_text(encoding="utf-8"))
     except (OSError, json.JSONDecodeError) as exc:
@@ -1627,10 +1629,16 @@ def _declared_live_session_reentries(selection: Any) -> int:
     steps = post_relaunch.get("steps")
     if not isinstance(steps, list):
         raise ScenarioRegistryStoreError("post_relaunch steps are malformed")
-    return sum(
+    declared_sessions = sum(
         1 for step in steps
         if isinstance(step, Mapping) and step.get("kind") == "cockpit_live_session"
     )
+    if post_relaunch_continuation:
+        # The probe rewrites its steps to start directly at the saved-world
+        # continuation. Its first cockpit session is already the bridge's
+        # initial session; only later declared sessions need reentry slots.
+        return max(0, declared_sessions - 1)
+    return declared_sessions
 
 
 def _witness_launch_environment(args: argparse.Namespace) -> Dict[str, str]:
@@ -1723,7 +1731,9 @@ def _launch_selection_file_bridge(args: argparse.Namespace, registry_path: Path)
         connection.close()
     try:
         pre_descriptor_prefix = _declared_pre_descriptor_prefix(selection)
-        session_reentries = _declared_live_session_reentries(selection)
+        session_reentries = _declared_live_session_reentries(
+            selection, post_relaunch_continuation=bool(getattr(args, "post_relaunch_continuation", False))
+        )
     except (OSError, SystemExit, ScenarioRegistryStoreError) as exc:
         _write_result({"ok": False, "command": args.command, "error": str(exc),
                        "session_dir": str(session_dir)}, stream=sys.stderr)
@@ -1820,7 +1830,9 @@ def _launch_bootstrap_file_bridge(args: argparse.Namespace, registry_path: Path)
 
     try:
         pre_descriptor_prefix = _declared_pre_descriptor_prefix(selection)
-        session_reentries = _declared_live_session_reentries(selection)
+        session_reentries = _declared_live_session_reentries(
+            selection, post_relaunch_continuation=bool(getattr(args, "post_relaunch_continuation", False))
+        )
     except (OSError, SystemExit, ScenarioRegistryStoreError) as exc:
         _write_result({
             "ok": False,

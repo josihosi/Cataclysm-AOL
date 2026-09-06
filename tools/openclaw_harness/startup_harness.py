@@ -22,6 +22,7 @@ from cockpit_report_reference import write_report_reference
 import argparse
 import copy
 import contextlib
+from collections import deque
 import hashlib
 import hmac
 import io
@@ -4476,15 +4477,18 @@ def refresh_semantic_step_trace(
                 raise ValueError("semantic trace start offset is stale")
         start_offset = 0
     marker = SEMANTIC_STEP_PREFIX.encode("utf-8")
-    selected_events: list[Dict[str, Any]] = []
+    selected_events = deque(maxlen=SEMANTIC_STEP_MAX_EVENTS)
     with source.open("rb") as handle:
         handle.seek(start_offset)
-        # ``debug.log`` remains hot while the game renders its HUD.  Iterating
-        # the live file can consequently chase appended lines forever and
-        # strand the scheduler after an otherwise valid world frame.  Read the
-        # byte range sampled above as one immutable snapshot instead.
-        snapshot = handle.read(size - start_offset)
-        for raw_line in snapshot.splitlines(keepends=True):
+        # ``debug.log`` remains hot while the game renders its HUD.  Iterate
+        # only the byte range sampled above so appended lines cannot extend
+        # this refresh, while keeping one line at a time in memory instead of
+        # materializing the complete history and its split-line list.
+        while handle.tell() < size:
+            remaining = size - handle.tell()
+            raw_line = handle.readline(remaining)
+            if not raw_line:
+                break
             marker_offset = raw_line.find(marker)
             if marker_offset < 0:
                 continue
@@ -4508,11 +4512,9 @@ def refresh_semantic_step_trace(
 
     # The immutable native trace retains the complete current-run history.
     # The file bridge needs only a bounded suffix ending in the active owner;
-    # apply that event bound before byte compaction so a sequence of ordinary
-    # native moves cannot make its next descriptor undispatchable.
-    if len(selected_events) > SEMANTIC_STEP_MAX_EVENTS:
-        selected_events = selected_events[-SEMANTIC_STEP_MAX_EVENTS:]
-
+    # the deque above applies that event bound while parsing, before a long
+    # trace can accumulate parsed event dictionaries in memory.
+    selected_events = list(selected_events)
     selected = encode(selected_events)
     if len(selected) > SEMANTIC_STEP_MAX_BYTES:
         # Preserve the newest complete World descriptor—the only one that can
@@ -20187,6 +20189,7 @@ def semantic_request_transport_child_environment(run_dir: Path, run_id: str) -> 
     return {
         "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH": str(path.resolve()),
         "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH": str(trace_path.resolve()),
+        "OPENCLAW_HARNESS_SEMANTIC_SNAPSHOT_PATH": str((run_dir / "semantic.native.log").resolve()),
     }
 
 
@@ -20591,9 +20594,23 @@ def record_bridge_game_process(process: subprocess.Popen, env: Mapping[str, str]
     if not session or not bridge:
         return
     target = Path(session) / "game-process.json"
+    profile = str(env.get("OPENCLAW_HARNESS_PROFILE", "")).strip()
+    log_paths = {}
+    for name, key in (
+        ("native_semantic_events", "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH"),
+        ("native_semantic_snapshot", "OPENCLAW_HARNESS_SEMANTIC_SNAPSHOT_PATH"),
+        ("transition_events", "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH"),
+    ):
+        path = str(env.get(key, "")).strip()
+        if path:
+            log_paths[name] = {"path": path, "scope": "run_bound"}
+    if profile:
+        log_paths["profile_diagnostic_debug"] = {
+            "path": str(config_dir_for_profile(profile) / "debug.log"), "scope": "profile_shared",
+        }
     value = {"binding_id": bridge, "pid": process.pid,
              "run_id": env.get("OPENCLAW_HARNESS_RUN_ID", ""),
-             "command": pid_command(process.pid)}
+             "command": pid_command(process.pid), "log_paths": log_paths}
     try:
         if not value["command"]:
             raise OSError("game process identity unavailable before startup")
@@ -27799,6 +27816,7 @@ def execute_probe_steps(
     action_trace_baseline: int = 0,
     semantic_step_trace_start_offset: Optional[int] = None,
     adaptive_semantic_autodrive: bool = False,
+    semantic_only: bool = False,
     artifact_baseline: int = 0,
     filter_debug_noise: bool = False,
     artifact_patterns: Optional[List[str]] = None,
@@ -31751,7 +31769,10 @@ def execute_probe_steps(
             capture_after_crop = normalize_capture_crop(
                 step.get("capture_after_crop", step.get("capture_crop", step.get("crop")))
             )
-            capture = capture_screenshot(pid, run_dir, f"{label}.after", crop=capture_after_crop)
+            capture = capture_screenshot(
+                pid, run_dir, f"{label}.after", crop=capture_after_crop,
+                semantic_only=semantic_only,
+            )
             report["screen_after"] = capture.get("screen_summary", {})
             if expected_visible_fact:
                 report["screen_after"]["expected_visible_fact"] = expected_visible_fact
@@ -35993,6 +36014,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             getattr(args, "adaptive_semantic_autodrive", False) or
             scenario.get("adaptive_semantic_autodrive", False)
         ),
+        semantic_only=("--semantic-only-startup" in start_cmd),
         artifact_baseline=artifact_start,
         filter_debug_noise=filter_debug_noise,
         artifact_patterns=artifact_patterns,
@@ -36112,6 +36134,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 action_trace_log=feature_debug_log,
                 action_trace_baseline=feature_debug_start,
                 semantic_step_trace_start_offset=post_semantic_trace_start,
+                semantic_only=("--semantic-only-startup" in start_cmd),
                 artifact_baseline=relaunch_artifact_baseline,
                 filter_debug_noise=filter_debug_noise,
                 artifact_patterns=artifact_patterns,

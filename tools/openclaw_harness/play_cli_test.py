@@ -141,6 +141,89 @@ class PlayerCliTest(unittest.TestCase):
         self.assertEqual((self.session / "play-client.json").read_bytes(), before)
         self.assertEqual(self.requests(), requests)
 
+    def test_controls_discovers_bound_and_shared_logs_without_touching_pending_state(self):
+        run_dir = self.session.parent / "actual-run"
+        profile = self.session.parent / "profile"
+        config = profile / "config"
+        config.mkdir(parents=True, exist_ok=True)
+        logs = {
+            "native_semantic_events": run_dir / "semantic.native.events.jsonl",
+            "native_semantic_snapshot": run_dir / "semantic.native.log",
+            "transition_events": run_dir / "transition.events.jsonl",
+            "profile_diagnostic_debug": config / "debug.log",
+        }
+        run_dir.mkdir(exist_ok=True)
+        record = {"event": "surface_descriptor", "run_id": "run-a", "frame_id": "frame-a"}
+        for name, path in logs.items():
+            path.write_text(json.dumps(record) + "\n")
+        self.write("game-process.json", {"binding_id": "bound-a", "run_id": "run-a",
+                                         "command": "cataclysm-tiles --userdir " + str(profile),
+                                         "log_paths": {name: {"path": str(path),
+                                                              "scope": "run_bound" if name != "profile_diagnostic_debug" else "profile_shared"}
+                                                       for name, path in logs.items()}})
+        self.write("status.json", {"binding_id": "bound-a", "state": "awaiting_response",
+                                    "session_descriptor": {"run_id": "run-a"}})
+        before = (self.session / "status.json").read_bytes()
+        result = self.cli("controls")
+        logs_result = result["evidence_logs"]
+        self.assertEqual(logs_result["run_id"], "run-a")
+        by_name = {entry["name"]: entry for entry in logs_result["entries"]}
+        self.assertEqual(by_name["native_semantic_events"]["scope"], "run_bound")
+        self.assertEqual(by_name["native_semantic_events"]["status"], "available")
+        self.assertEqual(by_name["transition_events"]["status"], "available")
+        self.assertEqual(by_name["profile_diagnostic_debug"]["scope"], "profile_shared")
+        self.assertEqual(by_name["profile_diagnostic_debug"]["status"], "available")
+        self.assertNotIn("--run-id", by_name["profile_diagnostic_debug"]["query"])
+        queried = subprocess.run(by_name["native_semantic_events"]["query"], capture_output=True, text=True, check=True)
+        self.assertEqual(json.loads(queried.stdout)["matched"], 1)
+        self.assertEqual((self.session / "status.json").read_bytes(), before)
+        self.assertFalse(self.requests())
+
+    def test_controls_reports_descriptor_owner_run_mismatch_without_querying(self):
+        self.write("game-process.json", {"binding_id": "bound-a", "run_id": "owner-run",
+                                         "log_paths": {"native_semantic_events": {
+                                             "path": str(self.session / "events.jsonl"), "scope": "run_bound"}}})
+        self.write("status.json", {"binding_id": "bound-a", "state": "ready",
+                                    "session_descriptor": {"run_id": "descriptor-run"}})
+        result = self.cli("controls")
+        logs = result["evidence_logs"]
+        self.assertEqual(logs["identity_status"], "run_mismatch")
+        self.assertTrue(all(entry["query"] is None for entry in logs["entries"]))
+
+    def test_controls_requires_current_bridge_identity_before_querying_logs(self):
+        self.write("game-process.json", {"binding_id": "bound-a", "run_id": "run-a"})
+        for status in ({}, {"state": "ready"}, {"binding_id": "bound-a", "state": "ready"}):
+            with self.subTest(status=status):
+                self.write("status.json", status)
+                logs = self.cli("controls")["evidence_logs"]
+                self.assertEqual(logs["identity_status"], "unavailable")
+                self.assertTrue(all(entry["query"] is None for entry in logs["entries"]))
+        (self.session / "status.json").unlink()
+        logs = self.cli("controls")["evidence_logs"]
+        self.assertEqual(logs["identity_status"], "unavailable")
+        self.assertTrue(all(entry["query"] is None for entry in logs["entries"]))
+
+    def test_controls_rejects_status_binding_mismatch(self):
+        self.write("game-process.json", {"binding_id": "bound-a", "run_id": "run-a"})
+        self.write("status.json", {"binding_id": "stale-binding", "state": "ready",
+                                    "session_descriptor": {"run_id": "run-a"}})
+        logs = self.cli("controls")["evidence_logs"]
+        self.assertEqual(logs["identity_status"], "binding_mismatch")
+        self.assertTrue(all(entry["query"] is None for entry in logs["entries"]))
+
+    def test_controls_reports_unavailable_and_mismatched_log_identity(self):
+        result = self.cli("controls")
+        self.assertEqual(result["evidence_logs"]["identity_status"], "unavailable")
+        self.assertTrue(all(entry["status"] == "unavailable" for entry in result["evidence_logs"]["entries"]))
+        self.write("game-process.json", {"binding_id": "other-binding", "run_id": "run-a",
+                                         "command": ["cataclysm-tiles", "--userdir", ".userdata/profile/"]})
+        result = self.cli("controls")
+        self.assertEqual(result["evidence_logs"]["identity_status"], "binding_mismatch")
+        by_name = {entry["name"]: entry for entry in result["evidence_logs"]["entries"]}
+        self.assertEqual(by_name["native_semantic_events"]["status"], "binding_mismatch")
+        self.assertEqual(by_name["transition_events"]["status"], "binding_mismatch")
+        self.assertEqual(by_name["profile_diagnostic_debug"]["status"], "binding_mismatch")
+
     def test_controls_before_observation_reports_unknown_permission(self):
         result = self.cli("controls")["result"]
         self.assertIsNone(result["availability"]["game.wait"])
