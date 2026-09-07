@@ -6,24 +6,29 @@
   "source_profile": "live-debug",
   "save_transforms": [
     {
-      "kind": "bandit_committed_shakedown_operation",
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "lead_id": "r029-fixture-player-opportunity",
+      "kind_value": "terrain_opportunity",
+      "origin": "structural_routine",
+      "target_id": "player@146,51,0",
+      "target_omt": [146, 51, 0],
+      "revision": 1,
+      "first_seen_minutes": 8280,
+      "last_seen_minutes": 8280,
+      "last_checked_minutes": 8280
+    },
+    {
+      "kind": "bandit_scheduler_response_candidate",
       "site_id": "overmap_special:bandit_camp@140,51,0",
       "target_id": "player@146,51,0",
       "target_omt": [146, 51, 0],
       "member_ids": [4, 5],
       "generation": 2,
       "current_minutes": 8280,
+      "target_lead_id": "r029-fixture-player-opportunity",
       "branch": "reopened_demand"
-    },
-    {
-      "kind": "bandit_projection_leases",
-      "site_id": "overmap_special:bandit_camp@140,51,0",
-      "activity_id": "overmap_special:bandit_camp@140,51,0#hostile:2",
-      "owner": "local",
-      "generation": 2,
-      "handoff_epoch": 1,
-      "last_advanced_minutes": 8280,
-      "npc_ids": [4, 5]
     },
     {
       "kind": "active_monsters_near_player",
@@ -62,6 +67,12 @@
       "items": [
         { "typeid": "gold_watch", "count": 101 }
       ]
+    },
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5248800,
+      "shift_queued_eocs": true
     }
   ]
 }

@@ -1,0 +1,39 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r029_sound_lead_continuation_058_mcw",
+  "description": "R-029 zero-credit sound-lead continuation bootstrap. It reloads a no-shot product-materialized bandit camp and serializes only the exact already-proved signal lead before later ordinary cadence observation.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r029_sound_lead_continuation_058",
+  "fixture_profile": "dev-harness",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "semantic_only_startup": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r029.bandit_sound_lead_continuation": "reload_exact_signal_lead_then_ordinary_scout_report_rally",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.keep_watch", "cockpit:run.continue", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["ordinary-player-ui:fire-revolver", "debug:emit_sound", "debug:inject_signal", "debug:inject_target_knowledge", "debug:inject_dispatch", "debug:inject_local_contact", "raw-save-rewrite-after-install", "direct-state-mutation"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "r029_sound_lead_continuation_058",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r029_sound_lead_continuation_058", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["worker-owned live cockpit", "ordinary waits only after reload verification"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/dev-harness/r029_sound_lead_continuation_058/manifest.json", "native_source": "src/do_turn.cpp", "native_executable": "cataclysm-tiles"},
+  "proof_gates": [{"id": "r029_sound_lead_continuation_bound", "label": "R-029 continuation reloads exact signal lead before later cadence", "boundary_step": "operate_r029_sound_lead_continuation", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r029_sound_lead_continuation_bound"], "terminal": ["r029_sound_lead_continuation_bound"]},
+  "steps": [{"kind": "native_semantic_bootstrap", "label": "bind_r029_sound_lead_continuation", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}}, {"kind": "cockpit_live_session", "label": "operate_r029_sound_lead_continuation", "objective": "Before any ordinary wait, verify reloaded site overmap_special:bandit_camp@140,40,0, NPC 18 at home, exact receipt-74f2 lead identity/revision/payload hash, and no report, outing, operation, reservation or member transform. Then cross later cadence boundaries using ordinary waits only and bind the first scout/report/operation transition reached.", "proof_targets": ["reloaded exact camp/NPC/lead identity", "later ordinary scout/report/operation transitions"], "authority": ["advertised native actions and worker-chosen waits", "run.witness", "run.finish"], "invariants": ["bootstrap is zero-credit", "no firearm fire", "no report/operation/member mutation", "later-cadence gameplay proof begins only after reload verification"], "live_operations": ["game.act", "game.keep_watch", "game.raw_wait", "game.wait"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}],
+  "evidence_contract": {"claim": "one source-bound R-029 continuation independently verifies the exact bootstrapped lead and observes only later production cadence", "failure_rule": "missing reload verification or direct state mutation leaves later response unproved"}
+}

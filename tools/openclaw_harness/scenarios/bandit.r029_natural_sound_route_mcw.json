@@ -11,6 +11,7 @@
   "replace_existing_worlds": true,
   "run_class": "non_combat",
   "observer_character": true,
+  "semantic_only_startup": true,
   "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
   "capabilities": {
     "capabilities.r029.bandit_natural_sound_route": "player_gunfire_staffed_observer_scout_report_rally_response",

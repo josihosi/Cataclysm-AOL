@@ -398,6 +398,41 @@ class R019ValidationStartupTest(unittest.TestCase):
                 run_dir / "semantic.native.events.jsonl",
             )
 
+    def test_run_owned_surface_receipt_beats_legacy_debug_fallback(self) -> None:
+        """Duration completion must retain its bound successor, not a bare debug receipt."""
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory) / "run"
+            run_dir.mkdir()
+            native_trace = run_dir / "semantic.native.events.jsonl"
+            native_trace.write_text(
+                'openclaw_harness_semantic_step: {"event":"surface_receipt"}\n',
+                encoding="utf-8",
+            )
+            debug_log = Path(directory) / "debug.log"
+            debug_log.write_text("openclaw_harness_semantic_step: {}\n", encoding="utf-8")
+            with mock.patch("startup_harness.config_dir_for_profile", return_value=debug_log.parent):
+                self.assertEqual(
+                    startup_harness.semantic_step_source_trace("test", run_dir), native_trace
+                )
+
+    def test_run_owned_initial_world_frame_beats_oversize_debug_fallback(self) -> None:
+        """A frame-only startup stream is the exact cockpit admission source."""
+        with tempfile.TemporaryDirectory() as directory:
+            run_dir = Path(directory) / "run"
+            run_dir.mkdir()
+            native_trace = run_dir / "semantic.native.events.jsonl"
+            native_trace.write_text(
+                'openclaw_harness_semantic_step: {"event":"frame","run_id":"run-a",'
+                '"state":"world","producer":"hud_world_ready",'
+                '"initial_world_ready":true}\n', encoding="utf-8",
+            )
+            debug_log = Path(directory) / "debug.log"
+            debug_log.write_bytes(b"x" * (startup_harness.SEMANTIC_STEP_MAX_BYTES + 1))
+            with mock.patch("startup_harness.config_dir_for_profile", return_value=debug_log.parent):
+                self.assertEqual(
+                    startup_harness.semantic_step_source_trace("test", run_dir), native_trace
+                )
+
     def test_initial_frame_selector_rejects_counterexamples(self) -> None:
         base = {
             "event": "frame", "run_id": "run-1", "frame_id": "run-1:initial", "state": "world",

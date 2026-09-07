@@ -3737,14 +3737,26 @@ def issue_registry_repair_token(
             ).fetchone() is not None
             if invalidation is None:
                 if claimed:
+                    # A claimed token remains non-replayable, but a later
+                    # repair bootstrap must be able to authorize the next
+                    # bounded recovery attempt.  Terminalize this attempt
+                    # before deriving a distinct v2 token.
+                    connection.execute(
+                        "INSERT INTO token_history( token_id, manifest_id, verification_id, route_key, event_kind, reason, details_json ) "
+                        "VALUES( ?, ?, ?, ?, 'repair_invalidated', 'claimed_attempt_superseded', ? )",
+                        (current_token_id, manifest_id, red_verification_id, route_key,
+                         _json_text({"authority_id": authority_id, "next_attempt": "fresh_bootstrap"})),
+                    )
+                    invalidation = connection.execute(
+                        "SELECT token_event_id, reason, details_json FROM token_history "
+                        "WHERE token_id = ? AND event_kind = 'repair_invalidated' "
+                        "ORDER BY token_event_id DESC LIMIT 1", (current_token_id,),
+                    ).fetchone()
+                else:
                     return RegistryRepairToken(
-                        current_token_id, False, "token_already_claimed", source_path.stem,
+                        current_token_id, True, "current", source_path.stem,
                         str(source_path.resolve()), current_binding["runtime"],
                     )
-                return RegistryRepairToken(
-                    current_token_id, True, "current", source_path.stem,
-                    str(source_path.resolve()), current_binding["runtime"],
-                )
             current_details = _json_object(str(current["details_json"]), "repair token details")
             prior_sequence = current_details.get("attempt_sequence", 1)
             if type(prior_sequence) is not int or prior_sequence < 1:

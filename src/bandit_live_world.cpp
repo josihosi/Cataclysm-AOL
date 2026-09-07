@@ -16540,6 +16540,10 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         for( const std::size_t site_index : dispatch_site_indices ) {
             if( state.sites[site_index].camp_decision.state !=
                 camp_decision_state::report_awaiting_assessment ) {
+                scheduler_exit_diagnostic( &state.sites[site_index],
+                                           "response_decision_not_awaiting_assessment",
+                                           "camp_decision_state=" + std::to_string(
+                                               static_cast<int>( state.sites[site_index].camp_decision.state ) ) );
                 continue;
             }
             if( materialize_for_response ) {
@@ -16551,6 +16555,9 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
             if( site.camp_decision.state !=
                 camp_decision_state::report_awaiting_assessment ) {
                 result.response_operation_rejections++;
+                scheduler_exit_diagnostic( &site, "response_decision_changed_after_materialization",
+                                           "camp_decision_state=" + std::to_string(
+                                               static_cast<int>( site.camp_decision.state ) ) );
                 continue;
             }
             const std::vector<response_member_power_read> reads =
@@ -16573,6 +16580,9 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                             "authorized response preparing follow-on" );
                 if( transition != camp_decision_transition_result::applied ) {
                     result.response_operation_rejections++;
+                    scheduler_exit_diagnostic( &site, "response_prepare_transition_rejected",
+                                               "transition=" + std::to_string(
+                                                   static_cast<int>( transition ) ) );
                     continue;
                 }
                 const hostile_operation_kind operation_kind = operation_kind_for_report_policy(
@@ -16581,6 +16591,10 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                     hostile_route_lookup ? hostile_route_lookup( candidate ) : std::nullopt;
                 if( operation_kind == hostile_operation_kind::none || !route ) {
                     result.response_operation_rejections++;
+                    scheduler_exit_diagnostic( &site, "response_operation_kind_or_route_unavailable",
+                                               "operation_kind=" + std::to_string(
+                                                   static_cast<int>( operation_kind ) ) +
+                                               ",route=" + ( route ? "present" : "absent" ) );
                     continue;
                 }
                 const authorized_hostile_operation_plan plan =
@@ -16588,6 +16602,9 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                             selection, route->route, route->rally_omt, now_minutes );
                 if( !plan.plan.valid ) {
                     result.response_operation_rejections++;
+                    scheduler_exit_diagnostic( &site, "response_operation_plan_invalid",
+                                               plan.plan.notes.empty() ? "no-plan-note" :
+                                               plan.plan.notes.front() );
                     continue;
                 }
                 result.response_operations_planned++;
@@ -16595,6 +16612,8 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                                      apply_hostile_operation_plan_with_authorized_response( candidate, plan );
                 if( !applied ) {
                     result.response_operation_rejections++;
+                    scheduler_exit_diagnostic( &site, "response_operation_apply_rejected",
+                                               "authorized plan failed precondition validation" );
                     continue;
                 }
                 const active_outing_state &reservation = plan.plan.operation.reservation;
@@ -16607,15 +16626,38 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                         reservation.target_omt ) == nullptr || claim_result !=
                     hostile_target_claim_result::applied ) {
                     result.response_operation_rejections++;
+                    scheduler_exit_diagnostic( &site, "response_target_claim_rejected",
+                                               "target_present=" + std::string(
+                                                   state.find_hostile_target_opportunity(
+                                                       reservation.target_id,
+                                                       reservation.target_omt ) != nullptr ? "yes" : "no" ) +
+                                               ",claim_result=" + std::to_string(
+                                                   static_cast<int>( claim_result ) ) );
                     continue;
                 }
                 site = std::move( candidate );
                 result.response_operations_applied++;
                 continue;
             }
+            scheduler_exit_diagnostic( &site, "response_authorization_denied",
+                                       "reason=" + authorization.rejection_reason +
+                                       ",valid=" + ( authorization.valid ? "yes" : "no" ) +
+                                       ",report_current=" +
+                                       ( authorization.report_current ? "yes" : "no" ) +
+                                       ",report_unexpired=" +
+                                       ( authorization.report_unexpired ? "yes" : "no" ) +
+                                       ",assessment_ready=" +
+                                       ( authorization.assessment_ready ? "yes" : "no" ) +
+                                       ",opportunity=" + std::to_string(
+                                           authorization.normalized_opportunity ) +
+                                       ",party_power=" + std::to_string( authorization.party_power ) +
+                                       ",required_power=" + std::to_string(
+                                           authorization.required_power ) );
             if( !report_matches_camp_decision( site.current_scout_report,
                                                site.camp_decision ) ) {
                 result.response_denial_rejections++;
+                scheduler_exit_diagnostic( &site, "response_report_decision_mismatch",
+                                           "authorization_denied_with_stale_report" );
                 continue;
             }
             const response_denial_resolution resolution =

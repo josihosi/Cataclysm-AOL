@@ -1,7 +1,7 @@
 # Orchestrator guidelines
 
-This workspace-local file supplies coordinator method. The compiled policy owns routing and
-durable lifecycle transitions.
+This is a legacy differential fixture. Runtime routing comes from the compiled policy;
+coordinator_supervisor.py generates the coordinator role contract.
 
 ## Read and route
 
@@ -39,7 +39,14 @@ own output into non-credit bootstrap followed by independent validation.
 Record durable acceptance once. DFS delivery-status synchronization is machine-owned; do not edit
 DFS status markers or repeat acceptance bookkeeping in a worker task.
 
-Choose Luna or Terra and an effort appropriate to the work. Frame and judge an experiment from
+Choose Luna or Terra and an effort appropriate to the assignment; the injected task identity does
+not choose the model. Complete the call with an available model_choices capability. Give Luna
+meaningful suitable execution as well as extraction. Read the existing work-context token_usage
+projection as feedback, never a quota or reason to manufacture work.
+Before opening focused exploration, record `  - Assignment TASK-ID: ...` in the existing ledger
+with its outcome and exit condition. Preserve whole-claim context separately; broad assignments
+remain possible.
+ Frame and judge an experiment from
 sufficient causal understanding of the relevant implementation and current state: the actual
 recipient, eligibility and units, triggering transition and its schedule, and observations that
 separate success, insufficient setup, an unevaluated condition and contradiction. Resolve only
@@ -67,8 +74,8 @@ metadata and searchable receipt history (`--claim`, `--task`, `--receipt`, `--co
 Infrastructure records and indexes what it already knows; workers explain findings and uncertainty.
 Select relevant evidence by exact task, gap, session or artifact references. A newer receipt for a
 claim does not replace other contributions. Open full records when their missing detail can change
-the decision; missing or stale context stays explicit. Use Luna for a specific discovery question
-that requires interpreting scattered evidence, never routine archive cataloguing. For a live
+the decision; missing or stale context stays explicit. Choose a local query or Luna extraction/comparison by the specific question and total work;
+infrastructure indexes routine history. For a live
 playtest, provide the compact witness charter and CAOL harness entrypoint. The session context
 provider supplies recorded status, freshness, pending input and exact refresh/query handles; a
 saved status is not live authority. The worker owns strategy and may inspect, repair, improvise or
@@ -85,10 +92,13 @@ references, accepted no-replay work, active work, first open boundary, useful na
 entrypoints. The terminal transition must cite that receipt. Query compact projections by receipt,
 task, claim, worker, run, scenario, binding, verdict, divergence, event/evidence class, actor, action,
 or native receipt; retrieve the full receipt or artifact explicitly only when needed.
-Stay engaged with tests and proof runs through concise summaries of their purpose, procedure,
-current state, and results. Give occasional guidance to keep the bound worker oriented toward the
-assigned outcome and next useful evidence, and request a clearer or more useful summary when needed.
-Progress messages need no quota, periodic report, or automatic ledger entry.
+Keep the current evidence useful for execution: established results, changed premises, uncertainty
+and the next question, with independent source references. Commission targeted Luna extraction,
+comparison or reconciliation when it reduces decision work; improve an existing query for repeated
+joins or differences. Replace obsolete handoff material as relevant facts change. Facts come from
+original artifacts, not summaries of summaries; preserve failures, missing fields and freshness.
+Stay engaged through concise purpose/procedure/state/result summaries and occasional guidance at
+material uncertainty. No parallel forms, periodic rewriting, report counts or new acceptance gates.
 Resume the bound worker through `followup_task` while its accumulated understanding remains
 useful, including questions, partial returns, failed tests, diagnosis, repair, and verification. A
 changed tactic alone does not require fresh context. Consider a fresh worker for substantially

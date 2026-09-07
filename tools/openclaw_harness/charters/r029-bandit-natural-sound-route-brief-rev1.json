@@ -1,4 +1,12 @@
 {
+  "claim": "R-029 natural staffed-camp signal source recovery",
+  "material_proof": "A source-bound live run binds NPC 18's eligible staffed-camp callback to one ordinary player-created revolver gunfire event and independently records the callback channel, source/intensity, and resulting camp memory lead state.",
+  "current_uncertainty": "The retained eligible callback at minute 8235 had no surviving signal source; the fresh run must establish audibility and callback opportunity before a no-source result can be interpreted.",
+  "material_contradiction": ["A valid eligible NPC 18 callback after an audible player-created gunfire event records no matching gunfire source or produces a provenance-conflicting lead, with the responsible causal path still to be diagnosed."],
+  "already_accepted_evidence": ["Receipt d36167cf142dabb594555e46e40f8c5db4d85b775745e0f0ac2e40935bde12cc proves eligibility only.", "Receipt 3a3ae62787437ada72021e94ff8320ea4906565ecb20f409b17c5339d71df62e proves the separate downstream Fight slice only."],
+  "forbidden_shortcuts": ["No debug-emitted sound, injected signal, lead, dispatch, contact, or direct state mutation.", "Fixture installation and roster materialization are zero-credit setup."],
+  "honest_stop_conditions": ["Stop the first comparison after the first eligible five-minute callback following one native revolver shot.", "Keep channel/source-intensity and camp-memory outcomes independent if they differ."],
+  "requested_evidence_ceiling": "focused",
   "outcome": "R-029: prove that a bandit camp begins its response through the shared natural significant-sound, staffed-observer, camp-memory, scout, report, authorization, rally, and response route.",
   "scenario": "bandit.r029_natural_sound_route_mcw",
   "query": {

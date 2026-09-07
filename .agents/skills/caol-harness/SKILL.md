@@ -40,7 +40,7 @@ is relevant when interpreting that feature's signal evidence.
   native receipts, observed behavior and the run's evidence ceiling. Transport success, startup
   and calculation completion each establish less than feature success.
 - Compact views retain handles to complete evidence. Missing displayed detail does not establish
-  absence. Use targeted lookups locally and Luna for broad retrieval, then inspect its references
-  for the next decision rather than repeating the broad search.
+  absence. Choose a targeted local query or Luna extraction by the question and total work, then inspect
+  cited evidence rather than duplicating the investigation.
 - Keep observations and contradictions through recovery. At closeout, distinguish the feature
   result, remaining uncertainty and actual cleanup; use the witness theme when reaching that point.

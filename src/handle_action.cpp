@@ -862,6 +862,7 @@ static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_a
         { "world.messages", "messages" },
         { "world.chat", "chat" },
         { "world.fire", "fire" },
+        { "world.reload", "reload_wielded" },
         { "world.debug_menu", "debug" },
         { "world.move.north", "UP" },
         { "world.move.south", "DOWN" },
@@ -1011,6 +1012,7 @@ static std::vector<semantic_action_descriptor> semantic_surface_actions(
     for( const std::pair<std::string, std::string> &action : actions ) {
         const std::map<std::string, std::string> labels = {
             { "world.fire", _( "Fire wielded weapon" ) },
+            { "world.reload", _( "Reload wielded weapon" ) },
             { "world.move.north", _( "Move north (interact or attack if occupied)" ) },
             { "world.move.south", _( "Move south (interact or attack if occupied)" ) },
             { "world.move.west", _( "Move west (interact or attack if occupied)" ) },
@@ -1049,9 +1051,13 @@ void openclaw_harness_semantic_world_after_activity_distraction()
     if( !openclaw_harness_semantic_step_trace_enabled() ) {
         return;
     }
-    input_context world_context = get_default_mode_input_context();
+    // IGNORE returns to the interrupted activity.  It does not enter
+    // handle_action and therefore does not create a native World input owner.
+    // Mark the resumption without advertising default-mode actions; the real
+    // World descriptor is published later by the scoped owner in
+    // game::handle_action, or a new native query publishes its own owner.
     openclaw_harness_pending_world_frame = openclaw_harness_semantic_step_frame(
-                    "world", openclaw_harness_world_actions( world_context ) );
+                    "activity_resumed", {} );
 }
 
 static void openclaw_harness_semantic_step_receipt( const std::string &frame_id,
@@ -4574,6 +4580,8 @@ bool game::handle_action()
                         act = ACTION_CHAT;
                     } else if( request.action_id == "world.fire" ) {
                         act = ACTION_FIRE;
+                    } else if( request.action_id == "world.reload" ) {
+                        act = ACTION_RELOAD_WIELDED;
                     } else if( request.action_id == "world.debug_menu" ) {
                         act = ACTION_DEBUG;
                     } else if( request.action_id == "world.move.north" ) {

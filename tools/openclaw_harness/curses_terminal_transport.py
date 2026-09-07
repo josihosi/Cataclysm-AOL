@@ -10,9 +10,16 @@ from __future__ import annotations
 
 from dataclasses import dataclass
 import errno
+import hashlib
+import json
 import os
 from pathlib import Path
+import select
+import socket
+import sys
 import threading
+import time
+import uuid
 from typing import IO
 
 
@@ -73,6 +80,131 @@ class CursesTerminalTransport:
         if self._reader is not None:
             self._reader.join()
         self._transcript.close()
+
+    def hand_off_to_dispatcher(self, *, run_id: str, pid: int) -> Path:
+        """Give a detached, run-bound broker ownership of this PTY master.
+
+        A probe process may finish with a deliberately retained game.  Keeping
+        the master only in that probe would send the child a terminal hangup.
+        The broker is also the sole accepted path for terminal-native input.
+        """
+        # macOS AF_UNIX paths are short; harness run directories are not.
+        endpoint = Path("/tmp") / ("caol-pty-" + hashlib.sha256(
+            (str(self.transcript_path) + run_id + str(pid)).encode()
+        ).hexdigest()[:24] + ".sock")
+        endpoint.unlink(missing_ok=True)
+        command = [sys.executable, str(Path(__file__).resolve()), "--broker",
+                   "--master-fd", str(self.master_fd), "--transcript", str(self.transcript_path),
+                   "--endpoint", str(endpoint), "--run-id", run_id, "--pid", str(pid)]
+        # The broker outlives the launcher.  Do not inherit a JSON-launch
+        # subprocess's capture pipes: their open write ends would keep
+        # communicate() waiting after the starter has successfully returned.
+        broker = __import__("subprocess").Popen(
+            command, pass_fds=(self.master_fd,), start_new_session=True,
+            stdout=__import__("subprocess").DEVNULL,
+            stderr=__import__("subprocess").DEVNULL,
+        )
+        deadline = time.monotonic() + 2.0
+        while time.monotonic() < deadline:
+            if endpoint.exists():
+                self._transcript.close()
+                os.close(self.master_fd)
+                self.master_fd = -1
+                return endpoint
+            if broker.poll() is not None:
+                break
+            time.sleep(0.01)
+        broker.terminate()
+        raise RuntimeError("terminal dispatcher did not create its run-bound endpoint")
+
+
+def dispatch_input(endpoint: Path, *, run_id: str, pid: int, keys: list[str]) -> dict:
+    """Deliver one exact request to the detached terminal owner and await receipt."""
+    request = {"request_id": uuid.uuid4().hex, "run_id": run_id, "pid": pid, "keys": keys}
+    with socket.socket(socket.AF_UNIX, socket.SOCK_STREAM) as client:
+        client.settimeout(2.0)
+        client.connect(str(endpoint))
+        client.sendall((json.dumps(request, sort_keys=True) + "\n").encode())
+        response = b""
+        while not response.endswith(b"\n"):
+            chunk = client.recv(65536)
+            if not chunk:
+                break
+            response += chunk
+    receipt = json.loads(response.decode() or "{}")
+    if receipt.get("request_id") != request["request_id"] or not receipt.get("ok"):
+        raise RuntimeError("terminal input dispatcher rejected request: " + json.dumps(receipt, sort_keys=True))
+    return receipt
+
+
+def _key_bytes(keys: list[str]) -> bytes:
+    named = {"return": b"\r", "enter": b"\r", "escape": b"\x1b", "space": b" ",
+             "up": b"\x1b[A", "down": b"\x1b[B", "right": b"\x1b[C", "left": b"\x1b[D"}
+    output = bytearray()
+    for key in keys:
+        if key in named:
+            output.extend(named[key])
+        elif len(key) == 1 and key.isprintable():
+            output.extend(key.encode("utf-8"))
+        else:
+            raise ValueError("unsupported terminal-native key: " + repr(key))
+    return bytes(output)
+
+
+def _broker(master_fd: int, transcript_path: Path, endpoint: Path, run_id: str, pid: int) -> int:
+    endpoint.unlink(missing_ok=True)
+    transcript = transcript_path.open("ab")
+    listener = socket.socket(socket.AF_UNIX, socket.SOCK_STREAM)
+    listener.bind(str(endpoint))
+    listener.listen(4)
+    listener.settimeout(0.05)
+    try:
+        while True:
+            readable, _, _ = select.select([master_fd], [], [], 0.05)
+            if readable:
+                try:
+                    data = os.read(master_fd, 65536)
+                    if data:
+                        transcript.write(data); transcript.flush()
+                except OSError as error:
+                    if error.errno == errno.EIO:
+                        return 0
+            try:
+                client, _ = listener.accept()
+            except socket.timeout:
+                continue
+            with client:
+                raw = client.recv(65536).split(b"\n", 1)[0]
+                try:
+                    request = json.loads(raw.decode())
+                    if request.get("run_id") != run_id or int(request.get("pid", 0)) != pid:
+                        raise ValueError("run_or_pid_mismatch")
+                    keys = [str(key) for key in request.get("keys", [])]
+                    payload = _key_bytes(keys)
+                    os.write(master_fd, payload)
+                    receipt = {"ok": True, "request_id": request["request_id"], "run_id": run_id,
+                               "pid": pid, "keys": keys, "payload_sha256": hashlib.sha256(payload).hexdigest(),
+                               "owner": "run_bound_pty"}
+                except Exception as error:
+                    receipt = {"ok": False, "request_id": request.get("request_id", "") if 'request' in locals() else "",
+                               "error": str(error)}
+                client.sendall((json.dumps(receipt, sort_keys=True) + "\n").encode())
+    finally:
+        listener.close(); endpoint.unlink(missing_ok=True); transcript.close()
+
+
+if __name__ == "__main__":
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--broker", action="store_true")
+    parser.add_argument("--master-fd", type=int)
+    parser.add_argument("--transcript")
+    parser.add_argument("--endpoint")
+    parser.add_argument("--run-id")
+    parser.add_argument("--pid", type=int)
+    args = parser.parse_args()
+    if args.broker:
+        raise SystemExit(_broker(args.master_fd, Path(args.transcript), Path(args.endpoint), args.run_id, args.pid))
 
 
 def should_use_curses_terminal(executable: Path, requested: str) -> bool:

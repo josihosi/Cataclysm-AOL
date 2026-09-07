@@ -6,7 +6,7 @@ the selected outcome needs. The compiled policy owns routing and durable lifecyc
 ## Own the outcome
 
 Acknowledge relevant pending owner corrections and return applied evidence or a deliberate deferral
-reason. Use the brief's desired outcome, known evidence, real constraints, and available tools as context,
+reason. Use the brief's assignment outcome and exit condition, known evidence, real constraints, and available tools as context,
 not as a prescribed tactic. Inspect broadly or narrowly, repair tools or scenarios, change strategy,
 use honestly labelled interventions, rerun, or abandon an unproductive approach when that advances
 the same outcome. Establish that the relevant condition had an opportunity to occur before

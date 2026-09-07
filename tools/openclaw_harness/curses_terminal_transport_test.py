@@ -7,11 +7,12 @@ import subprocess
 import sys
 import tempfile
 import unittest
+from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from curses_terminal_transport import should_use_curses_terminal
+from curses_terminal_transport import dispatch_input, should_use_curses_terminal
 
 
 class CursesTerminalTransportTest(unittest.TestCase):
@@ -43,6 +44,50 @@ class CursesTerminalTransportTest(unittest.TestCase):
             self.assertEqual(process.wait(timeout=5), 0)
             transport.close()
             self.assertIn("stdin_tty=True", (run_dir / "game.terminal.log").read_text())
+
+    def test_detached_dispatcher_accepts_only_the_bound_run_and_pid(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            run_dir = Path(temp)
+            from curses_terminal_transport import CursesTerminalTransport
+            transport, slave_fd = CursesTerminalTransport.open(run_dir / "game.terminal.log")
+            try:
+                process = subprocess.Popen(
+                    [sys.executable, "-c", "import os, sys, tty; tty.setraw(0); print(os.read(0, 1).decode(), flush=True)"],
+                    stdin=slave_fd, stdout=slave_fd, stderr=slave_fd, start_new_session=True,
+                    preexec_fn=CursesTerminalTransport.make_controlling_terminal,
+                )
+            finally:
+                import os
+                os.close(slave_fd)
+            endpoint = transport.hand_off_to_dispatcher(run_id="run-a", pid=process.pid)
+            with self.assertRaisesRegex(RuntimeError, "rejected request"):
+                dispatch_input(endpoint, run_id="wrong-run", pid=process.pid, keys=["f"])
+            receipt = dispatch_input(endpoint, run_id="run-a", pid=process.pid, keys=["f"])
+            self.assertTrue(receipt["ok"])
+            self.assertEqual(receipt["owner"], "run_bound_pty")
+            self.assertEqual(process.wait(timeout=5), 0)
+            self.assertIn("f", (run_dir / "game.terminal.log").read_text())
+
+    def test_detached_dispatcher_does_not_inherit_starter_capture_streams(self) -> None:
+        """A detached broker must not keep a start subprocess's stdout pipe open."""
+        with tempfile.TemporaryDirectory() as temp:
+            run_dir = Path(temp)
+            from curses_terminal_transport import CursesTerminalTransport
+            transport, slave_fd = CursesTerminalTransport.open(run_dir / "game.terminal.log")
+            try:
+                endpoint = Path("/tmp") / "caol-test-broker-stdio.sock"
+                with mock.patch.object(CursesTerminalTransport, "hand_off_to_dispatcher") as handoff:
+                    handoff.return_value = endpoint
+                    self.assertEqual(transport.hand_off_to_dispatcher(run_id="run", pid=1), endpoint)
+                # Regression coverage is source-level because the real broker
+                # intentionally outlives this test's starter process.
+                source = Path(__file__).with_name("curses_terminal_transport.py").read_text()
+                self.assertIn("stdout=__import__(\"subprocess\").DEVNULL", source)
+                self.assertIn("stderr=__import__(\"subprocess\").DEVNULL", source)
+            finally:
+                import os
+                os.close(slave_fd)
+                transport.close()
 
 
 if __name__ == "__main__":

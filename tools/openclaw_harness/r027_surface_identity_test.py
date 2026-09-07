@@ -59,6 +59,16 @@ class R027SurfaceIdentityTest(unittest.TestCase):
         surface = harness.bound_surface_identity(self.root, self.pid)
         self.assertEqual(surface["rejected"], "missing_or_invalid_persisted_surface_identity")
 
+    def test_missing_pid_window_is_not_replaced_by_an_unbound_pid_capture(self):
+        with patch.object(harness, "choose_capture_window", return_value={}):
+            capture = harness.capture_screenshot(self.pid, self.root, "missing-window")
+
+        self.assertFalse(capture["screen_summary"]["capture_success"])
+        self.assertEqual(
+            capture["screen_summary"]["surface_identity_status"],
+            "no_renderable_window_for_bound_pid",
+        )
+
     def test_bound_cleanup_uses_lease_for_renamed_game(self):
         lease = {
             "lease_id": "lease", "pid": self.pid, "world_identity": "world",

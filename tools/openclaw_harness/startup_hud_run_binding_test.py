@@ -7,7 +7,11 @@ from pathlib import Path
 from unittest import mock
 
 import startup_harness
-from startup_harness import semantic_run_binding_child_environment, startup_screen_probe_classification
+from startup_harness import (
+    scenario_terminal_transport,
+    semantic_run_binding_child_environment,
+    startup_screen_probe_classification,
+)
 
 
 def trace( run_id: str ) -> str:
@@ -53,6 +57,12 @@ class StartupHudRunBindingTest( unittest.TestCase ):
         )
         with self.assertRaisesRegex(ValueError, "bound harness run ID"):
             semantic_run_binding_child_environment(" ")
+
+    def test_scenario_can_explicitly_select_pty_for_a_tiles_gui_session(self) -> None:
+        self.assertEqual(scenario_terminal_transport({"runtime_contract": {"terminal_transport": "pty"}}), "pty")
+        self.assertEqual(scenario_terminal_transport({"runtime_contract": {}}), "auto")
+        with self.assertRaisesRegex(ValueError, "terminal_transport"):
+            scenario_terminal_transport({"runtime_contract": {"terminal_transport": "launchservices"}})
 
     def test_launch_overwrites_a_stale_semantic_binding_with_its_current_run( self ) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

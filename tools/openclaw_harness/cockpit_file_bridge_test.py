@@ -626,6 +626,28 @@ for line in sys.stdin:
             self.assertEqual(status["reason"], "undeclared_pre_descriptor_action")
             self.assertEqual(status["cleanup"], {"status": "accepted"})
 
+    def test_pre_descriptor_terminal_report_preserves_the_abort_reason(self):
+        child = (
+            "import json; "
+            "print(json.dumps({'semantic_session':{'schema':'caol-adaptive-semantic-session-v1',"
+            "'run_id':'run-a','objective':'first window','required_action_chain':['world.wait'],"
+            "'adaptive_interrupt_actions':['activity.ignore']}}),flush=True); "
+            "print(json.dumps({'ok':True,'abort':{'guard':'adaptive_semantic_window',"
+            "'status':'blocked_adaptive_semantic_receipt_chain','reason':'fresh_world_postcondition_missing'},"
+            "'report_path':'probe.report.json'}),flush=True)"
+        )
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", child], binding_id="bound-a",
+                require_session_ready=True, pre_descriptor_prefix=PREFIX,
+            )
+            self.assertEqual(bridge.serve(), 1)
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["reason"], "fresh_world_postcondition_missing")
+            self.assertEqual(status["startup_failure"]["abort_guard"], "adaptive_semantic_window")
+            self.assertEqual(status["startup_failure"]["report_path"], "probe.report.json")
+
     def test_live_finish_keeps_child_until_scenario_terminalization_signals_safe_cleanup(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp) / "session"

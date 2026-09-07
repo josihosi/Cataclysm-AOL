@@ -21,17 +21,11 @@ absence. Existing `inspect`, `messages`, `log-query` and exact record references
 `log-query --snapshot HASH` keeps subsequent pages on the same source prefix and filters.
 
 Keep routine current controls separate from help: `controls` retrieves macro recipes and evidence
-source metadata explicitly. Keep targeted lookups for specific facts or known references with
-the primary. Use a read-only Luna subagent for bulky extraction and broad searches across source,
-documentation, logs or artifacts, so the primary receives findings rather than the bulk material.
-Use `model="gpt-5.6-luna"` and `fork_turns="none"`.
-Give the helper the question, known identities and evidence ceiling; it returns a concise answer
-with supporting facts, exact references and material uncertainty. Follow up or inspect a cited
-location narrowly instead of repeating its bulk reads. Apply this throughout the task, including
-when an initially targeted lookup expands into a broad search. If helpers are unavailable, keep
-local retrieval targeted and retain full evidence on disk. The primary owns gameplay input and
-causal judgment. Historical traces are evidence to retrieve only when a missing detail can change
-the decision. See the [search map](searching.md).
+source metadata explicitly. Choose targeted local queries or read-only Luna extraction by the
+current question and expected total work. Give a helper the known identities, evidence ceiling and
+decision to support; it returns facts, exact references and uncertainty. The primary owns gameplay
+input and causal judgment. Retrieve history only when missing detail can change that judgment.
+See the [search map](searching.md).
 
 ## Messages and correlated logs
 

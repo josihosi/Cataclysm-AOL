@@ -238,6 +238,28 @@ static void openclaw_harness_trace_post_hud_pre_input_boundary( const avatar &pl
             << " ordinary_input_candidate=" << ( ordinary_input_candidate ? "yes" : "no" );
 }
 
+// Keep this at the native action/activity boundary.  A semantic wait can be accepted
+// before the activity consumes moves, so the harness needs both sides of each call to
+// distinguish a dropped return from an activity that simply did not advance.
+static void openclaw_harness_trace_activity_driver( const char *event, const avatar &player,
+        std::optional<bool> handle_action_return = std::nullopt )
+{
+    if( !openclaw_harness_startup_boundary_trace_enabled() ) {
+        return;
+    }
+
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_activity_driver: event=" << event
+            << " run_id=\"" << run_id << '\"'
+            << " moves=" << player.get_moves()
+            << " activity_present=" << ( player.activity ? "yes" : "no" )
+            << " activity_type=" << ( player.activity ? player.activity.id().str() : "none" )
+            << " handle_action_return="
+            << ( !handle_action_return ? "not_applicable" :
+                 ( *handle_action_return ? "true" : "false" ) );
+}
+
 #if defined(__ANDROID__)
 extern std::map<std::string, std::list<input_event>> quick_shortcuts_map;
 extern bool add_best_key_for_action_to_quick_shortcuts( action_id action,
@@ -975,6 +997,42 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
     const bandit_live_world::site_record &site,
     const bandit_live_world::shakedown_surface &surface )
 {
+    // A committed contact can open while an activity advances, outside the
+    // World handle_action() semantic-session lifetime.  Re-establish the
+    // current run's native manager here so this real modal owns its input;
+    // otherwise the last wait-duration descriptor remains stale while SDL
+    // waits in this dialogue and a durable request can never be consumed.
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( openclaw_harness_semantic_session_active() && active_semantic_surface_manager() == nullptr ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
+    semantic_surface_manager *const semantic_manager = active_semantic_surface_manager();
+    std::optional<live_bandit_shakedown_response> semantic_response;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_manager != nullptr ) {
+        const std::map<std::string, std::string> semantic_payload = {
+            { "opening", surface.opening_id },
+            { "responses", "pay/fight" },
+            { "payment_surface", "npc_trade_ui" },
+        };
+        const std::vector<semantic_action_descriptor> semantic_actions = {
+            { "shakedown.pay", "", _( "Pay." ), true },
+            { "shakedown.fight", "", _( "Fight." ), true },
+        };
+        const semantic_action_consumer semantic_consumer = [ &semantic_response ](
+        const semantic_action_request &request ) {
+            if( request.action_id == "shakedown.pay" ) {
+                semantic_response = live_bandit_shakedown_response::pay;
+            } else if( request.action_id == "shakedown.fight" ) {
+                semantic_response = live_bandit_shakedown_response::fight;
+            } else {
+                return semantic_action_dispatch_result( false, "unadvertised_action" );
+            }
+            return semantic_action_dispatch_result( true );
+        };
+        semantic_scope.emplace( *semantic_manager, "shakedown_demand", "Bandit demand",
+                                semantic_payload, semantic_actions, semantic_consumer );
+    }
     dialogue_window d_win;
     d_win.is_not_conversation = true;
     const std::pair<std::string, nc_color> speaker = live_bandit_shakedown_speaker( site );
@@ -1010,6 +1068,9 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
     while( true ) {
         ui_manager::redraw();
         std::string action = ctxt.handle_input();
+        if( semantic_response ) {
+            return *semantic_response;
+        }
         const input_event evt = ctxt.get_raw_input();
         d_win.handle_scrolling( action, ctxt );
         if( action == "CONFIRM" ) {
@@ -2458,26 +2519,61 @@ bool materialize_committed_cannibal_raid( bandit_live_world::site_record &site )
 bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &site )
 {
     bandit_live_world::active_outing_state *outing = site.active_external_outing();
-    if( site.retired_empty_site || outing == nullptr || outing != &site.active_hostile_operation.reservation ||
-        !site.active_hostile_operation.is_active() ||
-        site.active_hostile_operation.operation_kind !=
-        bandit_live_world::hostile_operation_kind::shakedown ||
-        site.active_hostile_operation.phase !=
-        bandit_live_world::hostile_operation_phase::committed_contact ||
-        outing->owner != bandit_live_world::simulation_owner::local ) {
+    const auto reject = [&site]( const std::string_view reason, const std::string_view observed ) {
+        // This is run-bound admission instrumentation, not gameplay evidence or state mutation.
+        DebugLog( D_INFO, DC_ALL ) << "bandit_live_world shakedown_materialization_rejected"
+                                   << " reason=" << reason
+                                   << " site=" << site.site_id
+                                   << " observed=" << observed
+                                   << " outcome_credit=none";
         return false;
+    };
+    if( site.retired_empty_site ) {
+        return reject( "retired_empty_site", "site_retired=yes" );
+    }
+    if( outing == nullptr ) {
+        return reject( "no_active_external_outing", "outing=none" );
+    }
+    if( outing != &site.active_hostile_operation.reservation ) {
+        return reject( "outing_not_hostile_reservation", "reservation_identity=mismatch" );
+    }
+    if( !site.active_hostile_operation.is_active() ) {
+        return reject( "hostile_operation_inactive", "operation_active=no" );
+    }
+    if( site.active_hostile_operation.operation_kind !=
+        bandit_live_world::hostile_operation_kind::shakedown ) {
+        return reject( "operation_kind_not_shakedown", "operation_kind=mismatch" );
+    }
+    if( site.active_hostile_operation.phase !=
+        bandit_live_world::hostile_operation_phase::committed_contact ) {
+        return reject( "operation_phase_not_committed_contact", "phase=mismatch" );
+    }
+    if( outing->owner != bandit_live_world::simulation_owner::local ) {
+        return reject( "outing_not_locally_owned", "owner=nonlocal" );
     }
 
     map &here = get_map();
     const tripoint_bub_ms avatar_pos = get_avatar().pos_bub( here );
     std::vector<shared_ptr_fast<npc>> party;
     party.reserve( outing->member_ids.size() );
-    for( const character_id member_id : outing->member_ids ) {
+    for( std::size_t member_index = 0; member_index < outing->member_ids.size(); ++member_index ) {
+        const character_id member_id = outing->member_ids[member_index];
         const bandit_live_world::member_record *member = site.find_member( member_id );
         const shared_ptr_fast<npc> member_npc = overmap_buffer.find_npc( member_id );
-        if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ||
-            !member_npc || member_npc->is_dead() || member_npc->is_active() ) {
-            return false;
+        if( member == nullptr ) {
+            return reject( "member_record_missing", "member_index=" + std::to_string( member_index ) );
+        }
+        if( member->state != bandit_live_world::member_state::local_contact ) {
+            return reject( "member_not_local_contact", "member_index=" + std::to_string( member_index ) );
+        }
+        if( !member_npc ) {
+            return reject( "overmap_npc_missing", "member_index=" + std::to_string( member_index ) );
+        }
+        if( member_npc->is_dead() ) {
+            return reject( "member_dead", "member_index=" + std::to_string( member_index ) );
+        }
+        if( member_npc->is_active() ) {
+            return reject( "member_already_active", "member_index=" + std::to_string( member_index ) );
         }
         party.push_back( member_npc );
     }
@@ -2494,7 +2590,9 @@ bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &sit
         }
     }
     if( placements.size() != party.size() ) {
-        return false;
+        return reject( "insufficient_empty_local_placements",
+                       "party_size=" + std::to_string( party.size() ) +
+                       ",placement_count=" + std::to_string( placements.size() ) );
     }
 
     for( std::size_t index = 0; index < party.size(); ++index ) {
@@ -12235,7 +12333,9 @@ bool game::do_turn()
 
     // process avatar activities (ignoring user input)
     while( u.get_moves() > 0 && u.activity ) {
+        openclaw_harness_trace_activity_driver( "pre_input_activity_do_turn_enter", u );
         u.activity.do_turn( u );
+        openclaw_harness_trace_activity_driver( "pre_input_activity_do_turn_exit", u );
     }
 
     // Process NPC sound events before they move or they hear themselves talking
@@ -12288,7 +12388,10 @@ bool game::do_turn()
                     queue_screenshot = false;
                 }
 
-                if( handle_action() ) {
+                openclaw_harness_trace_activity_driver( "handle_action_enter", u );
+                const bool handle_action_returned = handle_action();
+                openclaw_harness_trace_activity_driver( "handle_action_exit", u, handle_action_returned );
+                if( handle_action_returned ) {
                     ++moves_since_last_save;
                     u.action_taken();
                 }
@@ -12303,7 +12406,9 @@ bool game::do_turn()
 
                 // avatar processes moves for activities started by handle_action()
                 while( u.get_moves() > 0 && u.activity ) {
+                    openclaw_harness_trace_activity_driver( "post_handle_action_activity_do_turn_enter", u );
                     u.activity.do_turn( u );
+                    openclaw_harness_trace_activity_driver( "post_handle_action_activity_do_turn_exit", u );
                 }
             }
             // Reset displayed sound markers now that the turn is over.

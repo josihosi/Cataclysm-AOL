@@ -6,9 +6,19 @@ from pathlib import Path
 import unittest
 
 from startup_harness import evaluate_bound_startup_gameplay_hud_verdict
+from startup_harness import startup_proof_classification
 
 
 class R008StartupSemanticHudGateTest( unittest.TestCase ):
+    def test_native_semantic_live_cockpit_path_does_not_require_foreground_focus(self) -> None:
+        result = startup_proof_classification(
+            ok=True, screen_summary={"startup_screen_probe": {"classification": "green_gameplay_hud_present"}},
+            focus_result={"ok": False, "error": "activation denied"},
+            native_semantic_startup_ready=True,
+        )
+        self.assertEqual(result["status"], "green")
+        self.assertFalse(result["focus_proven"])
+        self.assertTrue(result["native_semantic_startup_ready"])
     def inputs( self ) -> tuple[ dict, dict, dict, dict, str, dict, str ]:
         return (
             {"classification": "green_gameplay_hud_present"},

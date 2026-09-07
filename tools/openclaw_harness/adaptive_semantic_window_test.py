@@ -4,6 +4,9 @@
 from __future__ import annotations
 
 from pathlib import Path
+import argparse
+import contextlib
+import io
 import sys
 import tempfile
 import unittest
@@ -19,6 +22,8 @@ from startup_harness import (  # noqa: E402
     build_probe_step_ledger,
     collect_materiality_waivers,
     compact_probe_report_for_stdout,
+    run_semantic_observe,
+    execute_semantic_act,
     finalize_probe_report,
     recover_adaptive_activity_distraction,
     semantic_frame_action_ids,
@@ -27,6 +32,109 @@ from startup_harness import (  # noqa: E402
 
 
 class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
+    def test_semantic_observe_revokes_returned_activity_descriptor(self) -> None:
+        """The command must not expose frame 48 after its bound IGNORE return."""
+        descriptor = {
+            "event": "surface_descriptor", "kind": "activity_distraction",
+            "run_id": "run", "frame_id": "run:frame:48", "game_minutes": 8422,
+            "valid_actions": [{"id": "activity.ignore", "enabled": True}],
+        }
+        returned = {
+            "event": "return", "type": "noise", "action": "IGNORE",
+            "game_minutes": 8422, "issuing_open_offset": 2547943,
+            "event_offset": 2562589,
+        }
+        args = argparse.Namespace(
+            profile="test", run_dir="/tmp/run", run_id="run", trace_start_offset=0,
+        )
+        rendered = io.StringIO()
+        with mock.patch("startup_harness.refresh_semantic_step_trace",
+                        return_value=(Path("native.events"), Path("owned.events"))), \
+                mock.patch("startup_harness.semantic_step_effective_source_offset", return_value=0), \
+                mock.patch("startup_harness.read_semantic_step_trace", return_value=([descriptor], "ok")), \
+                mock.patch("startup_harness.latest_semantic_step_frame", return_value=dict(descriptor)), \
+                mock.patch("startup_harness.semantic_step_frame_source_offset", return_value=5257330), \
+                mock.patch("startup_harness.semantic_step_source_trace", return_value=Path("debug.log")) as source, \
+                mock.patch("startup_harness.activity_query_effective_trace_start_offset", return_value=0), \
+                mock.patch("startup_harness.read_latest_activity_query_trace", return_value=returned), \
+                contextlib.redirect_stdout(rendered):
+            self.assertEqual(run_semantic_observe(args), 0)
+
+        source.assert_called_once_with("test")
+        public = __import__("json").loads(rendered.getvalue())
+        self.assertEqual(public["state"], "activity_resumed")
+        self.assertEqual(public["resolved_action"], "IGNORE")
+        self.assertNotIn("activity.ignore", public.get("valid_actions", []))
+
+    def test_semantic_observe_does_not_promote_world_shaped_activity_return(self) -> None:
+        """Frame 48 must not turn a resumed activity into a World owner."""
+        descriptor = {
+            "event": "surface_descriptor", "kind": "activity_distraction",
+            "run_id": "run", "frame_id": "run:frame:48", "game_minutes": 8422,
+            "valid_actions": [{"id": "activity.ignore", "enabled": True}],
+        }
+        world = {
+            "event": "frame", "state": "world", "run_id": "run",
+            "frame_id": "run:5257330:62", "game_minutes": 8422,
+            "observation": {"schema": "caol-avatar-visible-v1"},
+            "valid_actions": ["world.pause"],
+        }
+        returned = {
+            "event": "return", "type": "noise", "action": "IGNORE",
+            "game_minutes": 8422, "issuing_open_offset": 2547943,
+            "event_offset": 2562589,
+        }
+        args = argparse.Namespace(
+            profile="test", run_dir="/tmp/run", run_id="run", trace_start_offset=0,
+        )
+        rendered = io.StringIO()
+        with mock.patch("startup_harness.refresh_semantic_step_trace",
+                        return_value=(Path("native.events"), Path("owned.events"))), \
+                mock.patch("startup_harness.semantic_step_effective_source_offset", return_value=0), \
+                mock.patch("startup_harness.read_semantic_step_trace", return_value=([descriptor, world], "ok")), \
+                mock.patch("startup_harness.latest_semantic_step_frame", return_value=dict(descriptor)), \
+                mock.patch("startup_harness.semantic_step_frame_source_offset", return_value=5257330), \
+                mock.patch("startup_harness.semantic_step_source_trace", return_value=Path("debug.log")), \
+                mock.patch("startup_harness.activity_query_effective_trace_start_offset", return_value=0), \
+                mock.patch("startup_harness.read_latest_activity_query_trace", return_value=returned), \
+                contextlib.redirect_stdout(rendered):
+            self.assertEqual(run_semantic_observe(args), 0)
+
+        public = __import__("json").loads(rendered.getvalue())
+        self.assertEqual(public["state"], "activity_resumed")
+        self.assertEqual(public["resolved_action"], "IGNORE")
+        self.assertNotIn("world.pause", public.get("valid_actions", []))
+
+    def test_activity_return_is_a_durable_receipt_without_surface_successor(self) -> None:
+        frame = {
+            "event": "surface_descriptor", "state": "activity_distraction",
+            "surface_id": "surface:activity", "frame_id": "frame:activity",
+            "activity_query_offset": 17,
+            "valid_actions": [{"id": "activity.ignore", "enabled": True}],
+        }
+        returned = {
+            "event": "return", "action": "IGNORE",
+            "issuing_open_offset": 17, "event_offset": 23,
+        }
+        with tempfile.TemporaryDirectory() as root, \
+                mock.patch("startup_harness.semantic_wake_pipe_contract",
+                           return_value={"status": "bound", "path": "pipe"}), \
+                mock.patch("startup_harness.write_semantic_wake_pipe", return_value=1), \
+                mock.patch("startup_harness.append_semantic_wake_observation"), \
+                mock.patch("startup_harness.refresh_semantic_step_trace",
+                           return_value=(Path(root) / "source", Path(root) / "owned")), \
+                mock.patch("startup_harness.read_semantic_step_trace", return_value=([], "ok")), \
+                mock.patch("startup_harness.read_latest_activity_query_trace", return_value=returned):
+            result = execute_semantic_act(
+                run_dir=Path(root), profile="test", run_id="run", trace_start_offset=0,
+                pid=1, session_id="session", frame_id="frame:activity",
+                action_id="activity.ignore", transition_timeout_seconds=0.1,
+                observe_interval_seconds=0.01, observed_frame=frame,
+            )
+
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["native_receipt"]["resolved_action"], "IGNORE")
+
     def test_raw_surface_descriptor_actions_are_advertised(self) -> None:
         descriptor = {
             "event": "surface_descriptor",
@@ -241,6 +349,35 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
 
         self.assertTrue(status["proved"])
         self.assertEqual(status["recovery_modal_identity"], "wait-duration:4")
+
+    def test_native_duration_descriptor_binds_declared_menu_issuer(self) -> None:
+        report = self.wait_modal_report()
+        report["semantic_session"]["required_action_chain"] = [
+            "world.wait", "wait.duration_menu", "wait.5m",
+        ]
+        report["semantic_session"]["recovery_contract"]["actions"] = ["wait.5m"]
+        issuer = report["semantic_receipts"][1]
+        issuer["declared_action_id"] = "wait.duration_menu"
+        native_modal = {
+            "event": "surface_descriptor", "kind": "menu",
+            "frame_id": "wait-duration:native", "breadcrumbs": ["World", "Wait duration"],
+            "valid_actions": [{"id": "wait.5m", "enabled": True}],
+        }
+        issuer["next_frame"] = native_modal
+        recovery = report["semantic_receipts"][2]
+        recovery["action_id"] = "wait.5m"
+        recovery["native_receipt"]["action_id"] = "wait.5m"
+        recovery["semantic_response"]["action_id"] = "wait.5m"
+        recovery["frame_id"] = "wait-duration:native"
+        recovery["native_receipt"]["frame_id"] = "wait-duration:native"
+        recovery["semantic_response"]["frame_id"] = "wait-duration:native"
+        recovery["current_frame"] = dict(native_modal)
+        recovery["declared_action_id"] = "wait.5m"
+
+        status = adaptive_semantic_receipt_chain_status(report)
+
+        self.assertTrue(status["proved"])
+        self.assertEqual(status["recovery_modal_identity"], "wait-duration:native")
 
     def test_wait_duration_recovery_rejects_a_receipt_from_another_modal(self) -> None:
         report = self.wait_modal_report()

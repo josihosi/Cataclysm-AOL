@@ -73,7 +73,7 @@ from certification_route import (
     capture_and_finalize_certification,
     continuous_capture_proof_classification,
 )
-from curses_terminal_transport import CursesTerminalTransport, should_use_curses_terminal
+from curses_terminal_transport import CursesTerminalTransport, dispatch_input as dispatch_terminal_input, should_use_curses_terminal
 from identity_binding import (
     authoritative_identity_binding,
     canonical_digest,
@@ -3414,12 +3414,12 @@ def peekaboo_focus_pid(pid: int) -> Dict[str, Any]:
     }
     if report["ok"]:
         return report
-    app_switch = peekaboo_switch_app_for_pid(pid)
-    report["app_switch_fallback"] = app_switch
-    if app_switch.get("ok"):
-        report["returncode"] = 0
-        report["ok"] = True
-        report["stdout"] = "Peekaboo app switch verified target pid active"
+    # Multiple live game instances share the same app name.  Switching by
+    # that name after an exact PID focus failed could activate a foreign run,
+    # then falsely credit its HUD or input to this run.  Keep this boundary
+    # bound to the launched process; callers can choose a separately proven
+    # run-bound terminal transport, but never an app-name substitute.
+    report["error"] = "Peekaboo PID-specific window focus failed; app-name fallback is forbidden"
     return report
 
 
@@ -3500,6 +3500,29 @@ PEEKABOO_KEY_ALIASES = {
     "backspace": "delete",
     "enter": "return",
 }
+
+# Populated only after startup returns a matched terminal-native owner.  A
+# registered PID is fail-closed: its scenario actions never fall back to GUI
+# automation, which may address a different desktop session.
+TERMINAL_NATIVE_INPUTS: Dict[int, Dict[str, str]] = {}
+
+
+def register_terminal_native_input(pid: int, endpoint: str, run_id: str, run_dir: Path) -> None:
+    if pid <= 0 or not endpoint or not run_id:
+        raise ValueError("terminal-native input registration requires pid, endpoint, and run id")
+    TERMINAL_NATIVE_INPUTS[pid] = {"endpoint": endpoint, "run_id": run_id, "run_dir": str(run_dir)}
+
+
+def terminal_native_press_sequence(pid: int, keys: List[str]) -> Dict[str, Any]:
+    owner = TERMINAL_NATIVE_INPUTS.get(pid)
+    if owner is None:
+        raise RuntimeError("terminal-native input owner is not registered")
+    normalized = [normalize_peekaboo_key(key) for key in keys]
+    receipt = dispatch_terminal_input(Path(owner["endpoint"]), run_id=owner["run_id"], pid=pid,
+                                     keys=normalized)
+    receipt["input_owner"] = "run_bound_pty"
+    write_json(Path(owner["run_dir"]) / f"terminal.input.{receipt['request_id']}.receipt.json", receipt)
+    return receipt
 
 
 def normalize_peekaboo_key(raw_key: Any) -> str:
@@ -3583,9 +3606,11 @@ def peekaboo_press_sequence(
     delay_ms: int = 200,
     *,
     focus_once: bool = False,
-) -> None:
+) -> Optional[Dict[str, Any]]:
     if not keys:
         return
+    if pid in TERMINAL_NATIVE_INPUTS:
+        return terminal_native_press_sequence(pid, keys)
     if focus_once:
         normalized = [normalize_peekaboo_key(raw_key) for raw_key in keys]
         if all(key == "." for key in normalized):
@@ -4362,7 +4387,18 @@ def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> 
         # observation.  Once the native stream has content it remains the
         # preferred, run-owned source.
         if native_trace.is_file() and native_trace.stat().st_size > 0:
-            return native_trace
+            # A startup stream legitimately contains only the first native
+            # World frame until a player action has a receipt.  That frame is
+            # itself the live-cockpit admission authority, so never replace it
+            # with the profile-shared debug log merely because no receipt has
+            # been produced yet.  The prefix still keeps arbitrary nonsemantic
+            # run artifacts from being selected as a source.
+            try:
+                native_bytes = native_trace.read_bytes()
+                if SEMANTIC_STEP_PREFIX.encode( "utf-8" ) in native_bytes:
+                    return native_trace
+            except OSError:
+                pass
     return config_dir_for_profile(resolve_profile_name(profile)) / "debug.log"
 
 
@@ -4486,6 +4522,7 @@ def refresh_semantic_step_trace(
         start_offset = 0
     marker = SEMANTIC_STEP_PREFIX.encode("utf-8")
     selected_events = deque(maxlen=SEMANTIC_STEP_MAX_EVENTS)
+    latest_duration_receipt: Optional[Dict[str, Any]] = None
     with source.open("rb") as handle:
         handle.seek(start_offset)
         # ``debug.log`` remains hot while the game renders its HUD.  Iterate
@@ -4507,6 +4544,14 @@ def refresh_semantic_step_trace(
                 continue
             if not isinstance(event, Mapping) or str(event.get("run_id", "")) != str(run_id):
                 continue
+            # Legacy duration selections publish a semantic ``receipt`` and
+            # then an actionless wait_activity frame.  The bounded suffix can
+            # otherwise evict that only correlation record before the adapter
+            # sees it.  Keep one exact current-run receipt; action, accepted,
+            # and internal-turn checks remain the consumer's responsibility.
+            if event.get("event") == "receipt" and event.get("accepted") is True and \
+                    str(event.get("action_id", "")).startswith("wait."):
+                latest_duration_receipt = dict(event)
             if event_filter is not None and str(event.get("event", "")) not in event_filter:
                 continue
             selected_events.append(compact_semantic_step_channel_event(event))
@@ -4523,6 +4568,12 @@ def refresh_semantic_step_trace(
     # the deque above applies that event bound while parsing, before a long
     # trace can accumulate parsed event dictionaries in memory.
     selected_events = list(selected_events)
+    if latest_duration_receipt is not None and not any(
+            event.get("event") == "receipt" and
+            event.get("frame_id") == latest_duration_receipt.get("frame_id") and
+            event.get("action_id") == latest_duration_receipt.get("action_id")
+            for event in selected_events):
+        selected_events.insert(0, compact_semantic_step_channel_event(latest_duration_receipt))
     selected = encode(selected_events)
     if len(selected) > SEMANTIC_STEP_MAX_BYTES:
         # Preserve the newest complete World descriptor—the only one that can
@@ -4665,6 +4716,68 @@ def current_semantic_step_frame(
             # system: the filtered run-owned copy omits intervening native
             # output and therefore cannot prove a fresh activity return.
             native["_event_offset"] = source_offset
+    # A traced activity return revokes the prior activity descriptor even when
+    # native UI has not redrawn a World surface yet.  Never leave that stale
+    # descriptor as an actionable owner after its exact query has returned.
+    # ``owned`` is a filtered, run-owned semantic channel and intentionally
+    # excludes the native UI trace that records an activity query's return.
+    # Read that return from the profile debug log, but normalize its cursor by
+    # the same generation mapper used for every other activity-query lookup.
+    # This is the first projection shared by ``semantic-observe`` and the
+    # action path, so a returned query cannot remain the command's owner.
+    activity_trace = semantic_step_source_trace(profile)
+    activity_trace_start = activity_query_effective_trace_start_offset(
+        activity_trace, start_offset,
+    )
+    latest_activity_return = (
+        read_latest_activity_query_trace(activity_trace, activity_trace_start)
+        if activity_trace_start is not None else None
+    )
+    if native is not None and native.get("kind") == "activity_distraction" and \
+            latest_activity_return is not None and latest_activity_return.get("event") == "return" and \
+            latest_activity_return.get("game_minutes") == native.get("game_minutes") and \
+            str(latest_activity_return.get("action", "")) in {"YES", "NO", "MANAGER", "IGNORE"} and \
+            isinstance(latest_activity_return.get("issuing_open_offset"), int):
+        # A resumed activity can render a World-shaped raw frame while
+        # ``u.activity`` still owns the turn.  It has no semantic surface and
+        # must not be promoted into a dispatchable World action.  Only the
+        # later descriptor emitted by game::handle_action can be that owner.
+        return {
+            "run_id": run_id,
+            "frame_id": f"{run_id}:activity-return:{latest_activity_return['event_offset']}",
+            "state": "activity_resumed",
+            "valid_actions": [],
+            "action_inputs": {},
+            "provenance": "native_activity_distraction_return",
+            "resolved_action": str(latest_activity_return.get("action", "")),
+            "_event_offset": int(latest_activity_return["event_offset"]),
+            "_kind": "activity_return",
+        }
+    # Legacy wait-duration owners receipt their internal turn-frame, then
+    # enter actionless wait_activity without a successor surface receipt.
+    # That accepted same-run/action/turn chain invalidates a stale duration
+    # descriptor until native code publishes another real owner.
+    duration_receipts = [event for event in events if event.get("event") == "receipt" and
+                         event.get("accepted") is True and
+                         str(event.get("action_id", "")).startswith("wait.")]
+    if duration_receipts:
+        receipt = duration_receipts[-1]
+        parts = str(receipt.get("frame_id", "")).rsplit(":", 2)
+        if len(parts) == 3:
+            waiting = next((event for event in reversed(events)
+                            if event.get("event") == "frame" and
+                            event.get("state") == "wait_activity" and
+                            str(event.get("observed_turn")) == parts[1]), None)
+            if waiting is not None:
+                return {
+                    "run_id": run_id, "frame_id": str(waiting.get("frame_id", "")),
+                    "state": "wait_activity", "valid_actions": [], "action_inputs": {},
+                    "provenance": "native_wait_duration_receipt",
+                    "resolved_action": str(receipt.get("action_id", "")),
+                    "game_minutes": waiting.get("game_minutes"),
+                    "_event_offset": waiting.get("_event_offset", -1),
+                    "_kind": "wait_activity",
+                }
     if native is not None and native.get("event") == "surface_descriptor":
         # A duration dispatch can publish a World descriptor immediately after
         # its raw activity frame.  The descriptor remains the sole action
@@ -5734,6 +5847,109 @@ def execute_semantic_act(
                 native_receipt = next((event for event in events if
                                        event.get("event") == "surface_receipt" and
                                        event.get("request_id") == request_id), None)
+                # Duration menus are older native owners: their accepted
+                # semantic-step receipt names the internal turn-frame rather
+                # than the projected surface descriptor, and an accepted wait
+                # immediately enters actionless wait_activity.  Correlate
+                # that shape only through its same-run, same-turn coordinate,
+                # exact advertised action, and accepted flag; never use it as
+                # a general fallback for a menu receipt.
+                if native_receipt is None and action_id.startswith("wait."):
+                    descriptor_turn = before.get("game_turn", before.get("observed_turn"))
+                    legacy_matches = []
+                    for event in events:
+                        legacy_frame = str(event.get("frame_id", ""))
+                        legacy_parts = legacy_frame.rsplit(":", 2)
+                        same_internal_turn = len(legacy_parts) == 3 and \
+                            str(descriptor_turn) == legacy_parts[1]
+                        if event.get("event") == "receipt" and \
+                                event.get("run_id") == run_id and \
+                                event.get("action_id") == action_id and \
+                                event.get("accepted") is True and same_internal_turn:
+                            legacy_matches.append(event)
+                    if len(legacy_matches) == 1:
+                        legacy_receipt = legacy_matches[0]
+                        legacy_frame = str(legacy_receipt.get("frame_id", ""))
+                        durable_receipt = {
+                            "schema": "caol-semantic-step-receipt-v1", "run_id": run_id,
+                            "session_id": session_id, "frame_id": str(before.get("frame_id", "")),
+                            "action_id": action_id, "accepted": True,
+                            "reason": "native_wait_duration_legacy_receipt_accepted",
+                            "next_frame": None,
+                            "native_receipt": {"frame_id": legacy_frame, "action_id": action_id,
+                                               "accepted": True, "descriptor_game_turn": descriptor_turn},
+                        }
+                        SemanticStepChannel(run_id=run_id, session_id=session_id,
+                            receipt_path=run_dir / "semantic.steps.jsonl", read_frame=read_frame)._persist(
+                                durable_receipt)
+                        return {"accepted": True, "surface_request": request,
+                                "native_receipt": durable_receipt["native_receipt"], "next_frame": None}
+                # A native activity-distraction prompt can return directly to
+                # its interrupted activity without publishing a second
+                # surface receipt.  Its run-bound query-return trace is the
+                # native receipt, but only when it belongs to this exact
+                # issuing activity frame and spells the action we requested.
+                if native_receipt is None and ( before.get("state") == "activity_distraction" or
+                                                before.get("kind") == "activity_distraction" ):
+                    expected_activity_action = {
+                        "activity.stop": "YES", "activity.continue": "NO",
+                        "activity.manage": "MANAGER", "activity.ignore": "IGNORE",
+                    }.get(action_id, "")
+                    issuing_open_offset = before.get("activity_query_offset")
+                    # Descriptor projections retain the native owner but can
+                    # omit trace-private activity metadata.  Rebind only from
+                    # the latest matching return in this run's trace.
+                    if not isinstance( issuing_open_offset, int ):
+                        latest_return = read_latest_activity_query_trace(
+                            semantic_step_source_trace(profile), trace_start_offset,
+                        )
+                        if latest_return is not None and \
+                                latest_return.get("event") == "return" and \
+                                latest_return.get("action") == expected_activity_action and \
+                                latest_return.get("game_minutes") == before.get("game_minutes"):
+                            issuing_open_offset = latest_return.get("issuing_open_offset")
+                    if isinstance(issuing_open_offset, int) and expected_activity_action:
+                        activity_return = read_latest_activity_query_trace(
+                            semantic_step_source_trace(profile), trace_start_offset,
+                            issuing_open_offset=issuing_open_offset,
+                        )
+                        if activity_return is not None and \
+                                activity_return.get("event") == "return" and \
+                                activity_return.get("issuing_open_offset") == issuing_open_offset and \
+                                activity_return.get("action") == expected_activity_action:
+                            durable_receipt = {
+                                "schema": "caol-semantic-step-receipt-v1",
+                                "run_id": run_id,
+                                "session_id": session_id,
+                                "frame_id": str(before.get("frame_id", "")),
+                                "action_id": action_id,
+                                "declared_action_id": declared_action_id or action_id,
+                                "accepted": True,
+                                "reason": "native_activity_distraction_return_accepted",
+                                "current_frame": {
+                                    key: value for key, value in before.items()
+                                    if not str(key).startswith("_")
+                                },
+                                "next_frame": None,
+                                "native_receipt": {
+                                    "frame_id": str(before.get("frame_id", "")),
+                                    "action_id": action_id,
+                                    "accepted": True,
+                                    "resolved_action": expected_activity_action,
+                                    "issuing_open_offset": issuing_open_offset,
+                                    "return_event_offset": activity_return.get("event_offset"),
+                                },
+                            }
+                            SemanticStepChannel(
+                                run_id=run_id, session_id=session_id,
+                                receipt_path=run_dir / "semantic.steps.jsonl", read_frame=read_frame,
+                            )._persist(durable_receipt)
+                            return {
+                                "accepted": True,
+                                "surface_request": request,
+                                "native_receipt": durable_receipt["native_receipt"],
+                                "next_frame": None,
+                            }
                 if native_receipt is not None:
                     # A matching request id is necessary but not sufficient:
                     # the native owner must also attest to the exact run,
@@ -5822,7 +6038,8 @@ def execute_semantic_act(
                                            str(event.get("frame_id", "")) != str(before.get("frame_id", ""))), None)
                     if next_frame is None and not (
                             resulting_frame_id and action_id == "menu.choose" and
-                            str(stable_id or "").startswith("wait-mode:")):
+                            str(stable_id or "").startswith("wait-mode:")) and not (
+                            allow_terminal_exit and not resulting_frame_id):
                         try:
                             next_frame = dict(read_frame())
                         except ValueError:
@@ -6398,6 +6615,31 @@ def execute_r008_normal_player_fire_setup(
     return {"accepted": False, "reason": "native_fire_result_not_observed", "phase": phase}
 
 
+def bound_pty_wait_completion(run_dir: Path, pid: int, text: str) -> bool:
+    """Accept OCR-poor wait completion only with the exact terminal-owner receipt."""
+    normalized = " ".join(text.lower().split())
+    if "you finish waiting" not in normalized:
+        # The interruption classifier intentionally reduces an unrecognized
+        # clear scan.  Its immutable screen-text artifact retains the exact
+        # native completion phrase; never consult any unrelated screenshot.
+        text = "\n".join(
+            path.read_text(errors="replace") for path in
+            run_dir.glob("*.interruption_final.screen_text.txt")
+        )
+    if "you finish waiting" not in " ".join(text.lower().split()):
+        return False
+    for path in sorted(run_dir.glob("terminal.input.*.receipt.json"), reverse=True):
+        try:
+            receipt = json.loads(path.read_text())
+        except (OSError, json.JSONDecodeError):
+            continue
+        if receipt.get("ok") and receipt.get("owner") == "run_bound_pty" and \
+                int(receipt.get("pid", 0)) == pid and receipt.get("keys") and \
+                set(receipt["keys"]) == {"."}:
+            return True
+    return False
+
+
 def advance_turns(
     pid: int,
     count: int,
@@ -6535,6 +6777,11 @@ def advance_turns(
                 if interruption_status.startswith("blocked_"):
                     timing["status"] = interruption_status
                 elif interruption_status == "clear":
+                    if bound_pty_wait_completion(run_dir, pid, interruption_text):
+                        accepted_count = batch_count
+                        timing["status"] = "completed"
+                        interruption["bound_pty_wait_completion"] = True
+                        break
                     timing["status"] = "blocked_unclassified_transient_interruption"
                 else:
                     timing["status"] = f"blocked_missing_pause_dispatches_{interruption_status}"
@@ -14830,6 +15077,15 @@ def audit_saved_bandit_live_world_state(
     else:
         status = "scanned"
 
+    scheduler_snapshot = {
+        "routine_scheduler_last_hour": bandit_world.get("routine_scheduler_last_hour"),
+        "routine_scheduler_cursor": bandit_world.get("routine_scheduler_cursor"),
+        "hostile_target_opportunities": raw_hostile_opportunities,
+        "sites": [{"site_id": site.get("site_id"), "living_total": site.get("living_total"),
+                   "member_ids": site.get("members", []), "current_scout_report": site.get("current_scout_report", {}),
+                   "camp_decision": site.get("camp_decision", {}), "active_hostile_operation": site.get("active_hostile_operation", {})}
+                  for site in raw_sites if isinstance(site, dict)],
+    }
     stat = dimension_path.stat()
     return {
         "world": world_dir.name,
@@ -14848,6 +15104,7 @@ def audit_saved_bandit_live_world_state(
         "matching_sites": matching_sites,
         "observed_sites": observed_sites,
         "missing_required_fields": missing_required_fields,
+        "scheduler_snapshot": scheduler_snapshot,
         "status": status,
     }
 
@@ -16387,22 +16644,21 @@ def capture_screenshot(
     json_path = run_dir / f"{label}.peekaboo.json"
     surface = bound_surface_identity(run_dir, pid)
     capture_target = choose_capture_window(pid, surface)
-    if capture_target.get("rejected"):
+    if capture_target.get("rejected") or not capture_target.get("window_id"):
         return {
             "label": label,
             "capture_target": capture_target,
             "screen_summary": {
                 "capture_success": False,
                 "capture_process_pid": pid,
-                "surface_identity_status": str(capture_target["rejected"]),
+                "surface_identity_status": str(capture_target.get(
+                    "rejected", "no_renderable_window_for_bound_pid"
+                )),
                 "expected_surface_title": str(capture_target.get("expected_title", "")),
             },
         }
     cmd_args = ["image", "--json", "--path", str(png_path)]
-    if capture_target.get("window_id"):
-        cmd_args.extend(["--window-id", str(capture_target["window_id"])])
-    else:
-        cmd_args.extend(["--pid", str(pid)])
+    cmd_args.extend(["--window-id", str(capture_target["window_id"])])
     cmd = peekaboo_command(cmd_args, channel="capture")
     try:
         proc = subprocess.run(
@@ -18358,13 +18614,24 @@ def adaptive_semantic_receipt_chain_status(report: Mapping[str, Any]) -> Dict[st
         if not issuer_action or not modal_state or not modal_owner or not recovery_actions:
             return {"proved": False, "reason": "semantic_recovery_contract_incomplete"}
         issuer = next((receipt for receipt in accepted_receipts
-                       if str(receipt.get("action_id", "")).strip() == issuer_action), None)
+                       if str(receipt.get("declared_action_id", receipt.get("action_id", "")).strip()) == issuer_action), None)
         modal = issuer.get("next_frame") if isinstance(issuer, Mapping) else None
         if not isinstance(modal, Mapping):
             return {"proved": False, "reason": "native_recovery_modal_missing"}
         recovery_modal_identity = str(modal.get("frame_id", "")).strip()
-        if not recovery_modal_identity or modal.get("state") != modal_state or \
-                modal.get("provenance") != modal_owner:
+        native_duration_modal = (
+            modal.get("event") == "surface_descriptor" and
+            modal.get("kind") == "menu" and
+            isinstance(modal.get("breadcrumbs"), list) and
+            "Wait duration" in modal.get("breadcrumbs", [])
+        )
+        modal_matches_contract = (
+            modal.get("state") == modal_state and modal.get("provenance") == modal_owner
+        ) or (
+            modal_state == "wait_duration_choice" and
+            modal_owner == "native_semantic_step_trace" and native_duration_modal
+        )
+        if not recovery_modal_identity or not modal_matches_contract:
             return {"proved": False, "reason": "native_recovery_modal_mismatch"}
         for action in recovery_actions:
             recovery = next((receipt for receipt in accepted_receipts
@@ -18373,9 +18640,15 @@ def adaptive_semantic_receipt_chain_status(report: Mapping[str, Any]) -> Dict[st
             if not isinstance(current, Mapping) or \
                     str(recovery.get("frame_id", "")).strip() != recovery_modal_identity or \
                     str(current.get("frame_id", "")).strip() != recovery_modal_identity or \
-                    current.get("state") != modal_state or \
-                    current.get("provenance") != modal_owner or \
-                    action not in current.get("valid_actions", []):
+                    not ((current.get("state") == modal_state and
+                          current.get("provenance") == modal_owner) or
+                         (modal_state == "wait_duration_choice" and
+                          modal_owner == "native_semantic_step_trace" and
+                          current.get("event") == "surface_descriptor" and
+                          current.get("kind") == "menu" and
+                          isinstance(current.get("breadcrumbs"), list) and
+                          "Wait duration" in current.get("breadcrumbs", []))) or \
+                    action not in semantic_frame_action_ids(current):
                 return {"proved": False, "reason": "native_recovery_receipt_unbound"}
     if not isinstance(next_frame, Mapping) or \
             str(next_frame.get("state", next_frame.get("kind", ""))) != "world":
@@ -18860,8 +19133,13 @@ def build_probe_step_ledger(
                 verdict = "red_step_aborted_by_metadata_guard"
             issues = issues + ["metadata_abort_guard"]
         elif isinstance(report.get("abort"), dict):
-            verdict = "red_step_aborted_by_screen_text_guard"
-            issues.append("screen_text_abort_guard")
+            abort_status = str(report["abort"].get("status", "") or "")
+            if abort_status == "aborted_by_screen_text_guard":
+                verdict = "red_step_aborted_by_screen_text_guard"
+                issues.append("screen_text_abort_guard")
+            else:
+                verdict = "red_step_aborted"
+                issues.append(f"abort:{abort_status or 'unspecified'}")
         elif interruption_flags["release_blocking"]:
             verdict = "red_step_acknowledged_release_blocking_popup"
             issues.append("release_blocking_popup_acknowledged")
@@ -20729,11 +21007,15 @@ def launch_game(
             "pid": process.pid,
             "writer_pid": None,
         })
-        transport.start_reader()
-        # The process object remains the compatibility surface for current
-        # callers.  The private attachment gives terminal cleanup a precise
-        # owner without exposing a byte-injection action route.
-        process._openclaw_curses_terminal = transport
+        endpoint = ""
+        if isinstance(process.pid, int):
+            endpoint = str(transport.hand_off_to_dispatcher(run_id=binding["run_id"], pid=process.pid))
+        else:  # unit-test doubles do not own a usable descriptor or PID.
+            transport.start_reader()
+        # The detached broker owns the master FD beyond this probe process.
+        # This prevents an honest retained-game receipt from being followed by
+        # an implicit SIGHUP when the launcher exits.
+        process._openclaw_terminal_input_endpoint = endpoint
 
         def release_terminal_after_exit() -> None:
             exit_code = process.wait()
@@ -20746,7 +21028,6 @@ def launch_game(
                 "pid": process.pid,
                 "returncode": exit_code,
             })
-            transport.close()
 
         threading.Thread(
             target=release_terminal_after_exit, name="caol-curses-terminal-cleanup", daemon=True,
@@ -20820,6 +21101,17 @@ def build_game_command(
 def startup_gui_automation_required(strategy: str, *, semantic_only: bool = False) -> bool:
     """Whether startup owns Peekaboo permission, focus, and input steps."""
     return strategy != "harness_new_world" and not semantic_only
+
+
+def scenario_terminal_transport(scenario: Mapping[str, Any]) -> str:
+    """Return the declared transport without silently changing a scenario's UI owner."""
+    runtime_contract = scenario.get("runtime_contract", {})
+    if not isinstance(runtime_contract, Mapping):
+        raise ValueError("scenario runtime_contract must be an object")
+    transport = str(runtime_contract.get("terminal_transport", "auto")).strip().lower()
+    if transport not in {"auto", "pty", "pipes"}:
+        raise ValueError(f"unsupported runtime_contract.terminal_transport: {transport!r}")
+    return transport
 
 
 def terminal_native_startup_identity(
@@ -21342,7 +21634,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
-        if kind == "bandit_committed_shakedown_operation":
+        if kind == "bandit_scheduler_response_candidate":
             site_id = str(raw.get("site_id", "")).strip()
             target_id = str(raw.get("target_id", "")).strip()
             raw_target_omt = raw.get("target_omt", [])
@@ -22496,7 +22788,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_camp_supply, bandit_clear_site_evidence, "
-            "bandit_clone_site, bandit_site_roster_shape, bandit_projection_leases, bandit_committed_shakedown_operation"
+                "bandit_clone_site, bandit_site_roster_shape, bandit_projection_leases, bandit_scheduler_response_candidate"
         )
     return transforms
 
@@ -26849,11 +27141,11 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
     }
 
 
-def apply_bandit_committed_shakedown_operation_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
-    """Install a schema-current, zero-credit local shakedown setup."""
+def apply_bandit_scheduler_response_candidate_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Install a schema-current, zero-credit candidate for scheduler-owned response."""
     dimension_path = world_dir / "dimension_data.gsav"
     if not dimension_path.exists():
-        raise SystemExit(f"Fixture committed shakedown transform target not found: {dimension_path}")
+        raise SystemExit(f"Fixture scheduler-response candidate target not found: {dimension_path}")
     version_line, separator, payload_text = dimension_path.read_text(encoding="utf-8").partition("\n")
     if not separator:
         raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
@@ -26863,14 +27155,22 @@ def apply_bandit_committed_shakedown_operation_transform(world_dir: Path, transf
     site_id = str(transform["site_id"])
     site = next((candidate for candidate in sites if isinstance(candidate, dict) and candidate.get("site_id") == site_id), None)
     if site is None or int(site.get("schema_version", 0) or 0) < 10:
-        raise SystemExit("Fixture committed shakedown transform needs one current-schema owned site")
+        raise SystemExit("Fixture scheduler-response candidate needs one current-schema owned site")
     member_ids = list(transform["member_ids"])
     members = {int(member.get("npc_id")): member for member in site.get("members", []) if isinstance(member, dict) and str(member.get("npc_id", "")).lstrip("-").isdigit()}
     missing_member_ids = sorted(set(member_ids) - set(members))
     if missing_member_ids:
-        raise SystemExit(f"Fixture committed shakedown transform members are not camp residents: {missing_member_ids}")
+        raise SystemExit(f"Fixture scheduler-response candidate members are not camp residents: {missing_member_ids}")
     if any(member.get("wounded_or_unready", False) for member in (members[npc_id] for npc_id in member_ids)):
-        raise SystemExit("Fixture committed shakedown transform cannot reserve wounded or unready members")
+        raise SystemExit("Fixture scheduler-response candidate cannot use wounded or unready source members")
+    # This scheduler-owned bootstrap must not make stale saved identities count
+    # as materialized response capacity.  Production creates and claims the
+    # response roster after the report candidate is loaded.
+    site["members"] = []
+    # Keep only abstract staffing.  The response scheduler owns all concrete
+    # NPC IDs, but cannot admit a hostile response from a camp with fewer than
+    # two living abstract residents.
+    site["living_total"] = max( 2, int( site.get( "living_total", 0 ) or 0 ) )
     generation = int(transform["generation"])
     current_minutes = int(transform["current_minutes"])
     target_id = str(transform["target_id"])
@@ -26878,19 +27178,31 @@ def apply_bandit_committed_shakedown_operation_transform(world_dir: Path, transf
     activity_id = f"{site_id}#hostile:{generation}"
     route = [list(site.get("anchor", [])), [target_omt[0], target_omt[1] + 3, target_omt[2]], target_omt]
     if len(route[0]) != 3 or route[0] == route[1] or route[1] == route[2]:
-        raise SystemExit("Fixture committed shakedown transform cannot derive a canonical camp-to-target route")
+        raise SystemExit("Fixture scheduler-response candidate cannot derive a canonical camp-to-target route")
     report_generation = generation - 1
     report_activity_id = f"{site_id}#fixture_scout:{report_generation}"
     report_application_key = f"{report_activity_id}:report:{report_generation}"
-    for npc_id in member_ids:
-        members[npc_id]["state"] = "local_contact"
-        members[npc_id]["last_writeback_summary"] = "fixture zero-credit committed shakedown contact"
-    site["next_outing_generation"] = max(int(site.get("next_outing_generation", 0) or 0), generation + 1)
-    site["current_scout_report"] = {"schema_version": 4, "revision": 1, "action_policy": "bandit_shakedown", "source_activity_id": report_activity_id, "source_generation": report_generation, "source_job_type": "scout", "target_id": target_id, "target_omt": target_omt, "target_lead_id": "", "target_lead_revision": 0, "application_key": report_application_key, "observations": [], "casualty_ids": [], "delivered_minutes": current_minutes, "provisional": False}
-    site["camp_decision"] = {"schema_version": 2, "state": "preparing_follow_on", "report_policy": "bandit_shakedown", "source_report_revision": 1, "source_report_generation": report_generation, "source_report_activity_id": report_activity_id, "source_report_application_key": report_application_key, "target_id": target_id, "target_omt": target_omt, "target_lead_id": "", "target_lead_revision": 0, "last_transition_minutes": current_minutes, "next_eligible_minutes": -1, "transition_reason": "fixture zero-credit committed shakedown setup"}
-    site["active_hostile_operation"] = {"schema_version": 1, "operation_kind": "shakedown", "phase": "committed_contact", "reservation": {"schema_version": 5, "kind": "hostile_operation", "activity_id": activity_id, "camp_id": site_id, "generation": generation, "member_ids": member_ids, "leader_id": member_ids[0], "shared_route": route, "waypoint_index": 2, "target_id": target_id, "target_omt": target_omt, "job_type": "toll", "target_lead_id": "", "target_lead_revision": 0, "phase": "observing", "observations": [], "cargo": {"supply_units": 0, "trade_value": 0}, "casualty_ids": [], "resolved_member_ids": [], "started_minutes": current_minutes, "local_contact_minutes": current_minutes, "last_progress_minutes": current_minutes, "expected_return_minutes": current_minutes + 120, "missing_deadline_minutes": current_minutes + 300, "simulation_owner": "local", "handoff_epoch": 1, "last_advanced_minutes": current_minutes, "return_application_key": f"{activity_id}:return:{generation}", "report_application_key": f"{activity_id}:report:{generation}", "cargo_application_key": f"{activity_id}:cargo:{generation}"}, "source_report_revision": 1, "source_report_generation": report_generation, "source_report_activity_id": report_activity_id, "source_report_application_key": report_application_key, "shakedown_pending_branch": str(transform["branch"]), "shakedown_pending_demanded_value": 0, "shakedown_pending_surrendered_value": 0, "shakedown_pending_reachable_value": 0, "shakedown_pending_basecamp_scene": False, "has_rally": True, "rally_omt": route[1], "last_transition_reason": "fixture zero-credit committed shakedown setup", "legacy_unpinned": False}
+    const_lead_id = "r029-fixture-player-opportunity"
+    requested_lead_id = str(transform.get("target_lead_id") or "")
+    if requested_lead_id and requested_lead_id != const_lead_id:
+        raise SystemExit("Fixture scheduler-response transform target lead ID mismatches R-029 bootstrap")
+    lead_id = requested_lead_id or const_lead_id
+    site["next_outing_generation"] = max(int(site.get("next_outing_generation", 0) or 0), generation)
+    site["current_scout_report"] = {"schema_version": 5, "revision": 1, "action_policy": "bandit_shakedown", "source_activity_id": report_activity_id, "source_generation": report_generation, "source_job_type": "scout", "target_id": target_id, "target_omt": target_omt, "target_lead_id": lead_id, "target_lead_revision": 1, "application_key": report_application_key, "carrier_ids": [], "observations": [], "assessment": {"schema_version": 2, "observation_started_minutes": current_minutes, "last_progress_minutes": current_minutes, "burned_minutes": -1, "burn_origin_omt": [0, 0, 0], "certainty": 70, "readiness_latched": True, "threshold_class": "normal", "strong_visual_windows": 1, "defenders_low": 1, "defenders_high": 1, "danger_low": 1, "danger_high": 1, "bounty_estimate": 3, "route_danger_high": 1, "target_alert": 0, "pinned_target_revision": 1, "next_eligible_minutes": current_minutes, "exit_reason": "fixture zero-credit authorization-ready candidate"}, "casualty_ids": [], "delivered_minutes": current_minutes, "provisional": False}
+    site["camp_decision"] = {"schema_version": 2, "state": "report_awaiting_assessment", "report_policy": "bandit_shakedown", "source_report_revision": 1, "source_report_generation": report_generation, "source_report_activity_id": report_activity_id, "source_report_application_key": report_application_key, "target_id": target_id, "target_omt": target_omt, "target_lead_id": lead_id, "target_lead_revision": 1, "last_transition_minutes": current_minutes, "next_eligible_minutes": -1, "transition_reason": "fixture zero-credit scheduler response candidate"}
+    # The hostile reservation is the sole external outing owner.  Duplicating it
+    # into active_outing is non-canonical in current schemas: production rejects
+    # dual owners and active_external_outing intentionally returns null for them.
+    site.pop("active_outing", None)
+    site.pop("active_hostile_operation", None)
+    opportunities = live_world.setdefault("hostile_target_opportunities", [])
+    if not isinstance(opportunities, list):
+        raise SystemExit("Fixture scheduler-response transform needs hostile_target_opportunities list")
+    opportunities[:] = [entry for entry in opportunities if not (isinstance(entry, dict) and entry.get("target_id") == target_id and entry.get("target_omt") == target_omt)]
+    opportunities.append({"target_id": target_id, "target_omt": target_omt, "goods_value": 1, "population": 1, "activity": 1, "revision": 1, "consumed_operation_id": "", "consumed_report_key": "", "consumed_generation": 0})
+    live_world["schema_version"] = max(7, int(live_world.get("schema_version", 0) or 0))
     dimension_path.write_text(version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    return {"kind": "bandit_committed_shakedown_operation", "world": world_dir.name, "site_id": site_id, "activity_id": activity_id, "generation": generation, "member_ids": member_ids, "phase": "committed_contact", "branch": str(transform["branch"]), "target_id": target_id, "target_omt": target_omt}
+    return {"kind": "bandit_scheduler_response_candidate", "world": world_dir.name, "site_id": site_id, "report_activity_id": report_activity_id, "report_generation": report_generation, "candidate_member_source_count": len(member_ids), "active_operation": False, "active_reservation": False, "branch": str(transform["branch"]), "target_id": target_id, "target_omt": target_omt}
 
 
 def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -26999,8 +27311,8 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
         if kind == "bandit_site_roster_shape":
             reports.append(apply_bandit_site_roster_shape_transform(world_dir, transform))
             continue
-        if kind == "bandit_committed_shakedown_operation":
-            reports.append(apply_bandit_committed_shakedown_operation_transform(world_dir, transform))
+        if kind == "bandit_scheduler_response_candidate":
+            reports.append(apply_bandit_scheduler_response_candidate_transform(world_dir, transform))
             continue
         raise SystemExit(f"Unsupported fixture save transform kind: {kind}")
     return reports
@@ -27286,6 +27598,7 @@ def run_probe_post_relaunch(
     wait_input_trace: bool = False,
     semantic_only_startup: bool = False,
     suppress_profile_startup_input: bool = False,
+    terminal_transport: str = "auto",
     artifact_run_dir: Optional[Path] = None,
     transition_event_run_id: str = "",
     transition_event_path: str = "",
@@ -27368,6 +27681,7 @@ def run_probe_post_relaunch(
         "--world", world,
         "--harness-run-id", transition_event_run_id,
         "--transition-event-path", transition_event_path,
+        "--terminal-transport", terminal_transport,
     ]
     if startup_dismiss_blocking_overlay:
         start_cmd.append("--startup-dismiss-blocking-overlay")
@@ -28701,10 +29015,12 @@ def execute_probe_steps(
             )
             if prefix_physical and len(focusable_prefix) < len(keys):
                 peekaboo_press_sequence(pid, focusable_prefix, delay_ms=delay_ms, focus_once=True)
-                peekaboo_press_sequence(pid, keys[-1:], delay_ms=delay_ms)
+                input_receipt = peekaboo_press_sequence(pid, keys[-1:], delay_ms=delay_ms)
             else:
-                peekaboo_press_sequence(pid, keys, delay_ms=delay_ms)
+                input_receipt = peekaboo_press_sequence(pid, keys, delay_ms=delay_ms)
             report.update({"keys": keys, "delay_ms": delay_ms})
+            if input_receipt is not None:
+                report["input_receipt"] = input_receipt
             if isinstance(native_semantic_checkpoint, Mapping):
                 required_actions = native_semantic_checkpoint.get("required_actions", [])
                 if not isinstance(required_actions, list):
@@ -33348,7 +33664,15 @@ def run_startup(args: argparse.Namespace) -> int:
     child_environment.pop("OPENCLAW_HARNESS_BANDIT_FEASIBILITY", None)
     if plan.harness_bandit_feasibility:
         child_environment["OPENCLAW_HARNESS_BANDIT_FEASIBILITY"] = "1"
-    terminal_native_transport = should_use_curses_terminal(Path(plan.executable), "auto")
+    try:
+        terminal_transport = scenario_terminal_transport(
+            {"runtime_contract": {"terminal_transport": getattr(args, "terminal_transport", "auto")}}
+        )
+    except ValueError as error:
+        raise SystemExit(str(error)) from error
+    terminal_native_transport = should_use_curses_terminal(
+        Path(plan.executable), terminal_transport
+    )
     semantic_only_startup = bool(getattr(args, "semantic_only_startup", False))
     gui_automation_required = startup_gui_automation_required(
         plan.strategy, semantic_only=semantic_only_startup
@@ -33405,6 +33729,7 @@ def run_startup(args: argparse.Namespace) -> int:
         transition_event_run_id=transition_binding["run_id"],
         transition_event_path=transition_binding["event_path"],
         executable=plan.executable,
+        terminal_transport=terminal_transport,
     )
     if certification_lease is not None:
         try:
@@ -33470,6 +33795,10 @@ def run_startup(args: argparse.Namespace) -> int:
     }
     if terminal_native_transport:
         terminal_identity = terminal_native_startup_identity(proc.pid, Path(plan.executable), runtime_binding)
+        terminal_identity["input_endpoint"] = str(
+            getattr(proc, "_openclaw_terminal_input_endpoint", "")
+        )
+        terminal_identity["input_owner"] = "run_bound_pty"
         focus_result = dict(terminal_identity)
     if gui_automation_required:
         focus_result = peekaboo_focus_pid_with_retry(proc.pid)
@@ -33749,7 +34078,7 @@ def run_startup(args: argparse.Namespace) -> int:
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             screen_summary = screen.get("screen_summary", {})
             native_semantic_startup = {}
-            if semantic_only_startup:
+            if semantic_only_startup or bool( getattr( args, "cockpit_live_session", False ) ):
                 # Current native semantic builds publish a surface descriptor
                 # at the ordinary input boundary.  It is the action authority
                 # for this session; the older HUD/world-ready frame is not
@@ -33854,6 +34183,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "flexbuffer_cache_purge": flexbuffer_cache_purge,
                 "peekaboo_permissions": peekaboo_permissions,
                 "focus": focus_result,
+                "terminal_input_endpoint": str(getattr(proc, "_openclaw_terminal_input_endpoint", "")),
                 "post_lastworld_wait_seconds": post_lastworld_wait,
                 "startup_overlay_recovery": startup_overlay_recovery,
                 "lastworld": data if readiness_kind == "lastworld" else {},
@@ -35237,6 +35567,7 @@ def cockpit_step_explicitly_quit(step: Mapping[str, Any]) -> bool:
 
 def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     scenario = load_scenario(args.scenario)
+    args.terminal_transport = scenario_terminal_transport(scenario)
     if bool(getattr(args, "cockpit_live_session", False)):
         capabilities = scenario.get("capabilities", {})
         entry_mode = capabilities.get("runtime.entry_mode") if isinstance(capabilities, Mapping) else None
@@ -35484,6 +35815,8 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         scenario_name,
         "--harness-run-id",
         transition_event_run_id,
+        "--terminal-transport",
+        str(args.terminal_transport),
     ]
     scenario_contract_path = str(scenario.get("path", "")).strip()
     if scenario_contract_path:
@@ -35670,6 +36003,13 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             post_finalize_hook=post_finalize_hook,
         )
         return 1
+
+    terminal_endpoint = str(start_result.get("terminal_input_endpoint", "")).strip()
+    terminal_focus = start_result.get("focus", {})
+    if isinstance(terminal_focus, Mapping) and terminal_focus.get("transport") == "terminal_native":
+        if not terminal_endpoint:
+            raise RuntimeError("matched terminal-native startup omitted its run-bound input endpoint")
+        register_terminal_native_input(pid, terminal_endpoint, transition_event_run_id, run_dir)
 
     # The file-backed cockpit owns terminal interaction, but its enclosing
     # probe report is still the registry ingestion boundary.  Retain the
@@ -36165,6 +36505,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 wait_input_trace=bool(scenario.get("wait_input_trace", False)),
                 semantic_only_startup=("--semantic-only-startup" in start_cmd),
                 suppress_profile_startup_input=("--suppress-profile-startup-input" in start_cmd),
+                terminal_transport=scenario_terminal_transport(scenario),
                 artifact_run_dir=run_dir,
                 transition_event_run_id=transition_event_run_id,
                 transition_event_path=str(transition_event_path),
@@ -36177,6 +36518,21 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         relaunch["artifact_log_pre_relaunch_size"] = relaunch_artifact_baseline
         if int(relaunch.get("pid", 0) or 0) > 0:
             final_pid = int(relaunch["pid"])
+        if relaunch.get("status") == "ready":
+            relaunch_startup = relaunch.get("startup")
+            if isinstance(relaunch_startup, Mapping):
+                relaunch_endpoint = str(relaunch_startup.get("terminal_input_endpoint", "")).strip()
+                relaunch_focus = relaunch_startup.get("focus", {})
+                if isinstance(relaunch_focus, Mapping) and relaunch_focus.get("transport") == "terminal_native":
+                    if not relaunch_endpoint:
+                        relaunch["status"] = "relaunch_terminal_native_endpoint_missing"
+                    else:
+                        register_terminal_native_input(final_pid, relaunch_endpoint,
+                                                       transition_event_run_id, run_dir)
+                        relaunch["terminal_native_input"] = {
+                            "pid": final_pid, "endpoint": relaunch_endpoint,
+                            "owner": "run_bound_pty",
+                        }
         if relaunch.get("status") == "ready":
             certification_post_relaunch_segment = certification_recheck_evidence_segment(
                 args, segment="post_relaunch_evidence_segment"
@@ -36833,6 +37189,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--config-profile", default="", help="Startup policy profile; defaults to the target user-data profile.")
     start_p.add_argument("--world", default="", help="Explicit target world name.")
     start_p.add_argument("--executable", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--terminal-transport", default="auto", help=argparse.SUPPRESS)
     start_p.add_argument("--scenario-identity", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--scenario-contract-path", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--registry-launch-receipt", default="", help=argparse.SUPPRESS)

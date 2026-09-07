@@ -75,6 +75,7 @@ from startup_harness import (  # noqa: E402
     classify_wait_screen_text,
     is_hostile_auto_move_cancel_modal,
     native_travel_stable_hud_markers,
+    peekaboo_focus_pid,
     is_retained_hostile_auto_move_cancelled_hud_message,
     classify_wait_step_ledger,
     committed_revision_matches,
@@ -3761,32 +3762,18 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
 
 
 class ScenarioStartupProfileContractTest(unittest.TestCase):
-    def test_app_switch_focus_fallback_verifies_target_pid_is_active(self) -> None:
-        before = {
-            "data": {
-                "apps": [{"name": "cataclysm-tiles", "pid": 42, "is_active": False}],
-            },
-        }
-        switched = {"success": True}
-        after = {
-            "data": {
-                "apps": [{"name": "cataclysm-tiles", "pid": 42, "is_active": True}],
-            },
-        }
+    def test_pid_focus_failure_never_activates_a_same_named_foreign_game(self) -> None:
+        failed = SimpleNamespace(returncode=1, stdout="", stderr="window not found")
         with (
-            mock.patch("startup_harness.run_json", side_effect=[before, switched, after]),
-            mock.patch("startup_harness.peekaboo_command", side_effect=lambda args, **_: list(args)),
-            mock.patch("startup_harness.time.sleep") as sleep,
+            mock.patch("startup_harness.peekaboo_command", return_value=["peekaboo", "window"]),
+            mock.patch("startup_harness.subprocess.run", return_value=failed),
+            mock.patch("startup_harness.peekaboo_switch_app_for_pid") as app_switch,
         ):
-            result = peekaboo_switch_app_for_pid(42)
+            result = peekaboo_focus_pid(42)
 
-        self.assertTrue(result["ok"])
-        self.assertEqual(result["app_name"], "cataclysm-tiles")
-        self.assertEqual(
-            result["switch_command"],
-            ["app", "switch", "--to", "cataclysm-tiles", "--json"],
-        )
-        sleep.assert_called_once_with(0.1)
+        self.assertFalse(result["ok"])
+        self.assertIn("app-name fallback is forbidden", result["error"])
+        app_switch.assert_not_called()
 
     def test_startup_focus_retry_preserves_failed_attempt_before_green_result(self) -> None:
         failed = {"ok": False, "returncode": 1, "stderr": "verification failed"}
@@ -9477,60 +9464,90 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             scenario["evidence_contract"]["pass_fail_rule"],
         )
 
-    def test_reopened_fight_continuation_binds_empty_export_and_real_terminal(self) -> None:
+    def test_reopened_fight_continuation_binds_canonical_reservation_and_guarded_observation(self) -> None:
         scenario = load_scenario("bandit.extortion_reopened_fight_continuation_mcw")
         fixture = resolve_fixture_payload(scenario["fixture"], scenario["fixture_profile"])
-        manifest = json.loads(
-            (Path(fixture["save_src"]).parent / "manifest.json").read_text(encoding="utf-8")
-        )
-        steps = list(scenario["steps"])
+        manifest = fixture["manifest"]
+        initial_steps = list(scenario["steps"])
+        successor_steps = list(scenario["post_relaunch"]["steps"])
+        steps = [*initial_steps, *successor_steps]
         kinds = [str(step.get("kind", "")).strip() for step in steps]
 
         self.assertEqual(
             scenario["fixture"],
-            "bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24",
+            "bandit_r029_committed_shakedown_fixture_v1",
         )
-        self.assertEqual(manifest.get("save_transforms"), [])
+        self.assertTrue(any(
+            transform.get("kind") == "bandit_scheduler_response_candidate"
+            for transform in manifest.get("save_transforms", [])
+            if isinstance(transform, dict)
+        ))
+        candidate = next(transform for transform in manifest["save_transforms"]
+                         if transform.get("kind") == "bandit_scheduler_response_candidate")
+        self.assertNotIn("active_hostile_operation", candidate)
+        self.assertNotIn("reservation", candidate)
         self.assertNotIn("bandit.scout_to_decision_observer_live_mcw", scenario["description"])
         self.assertEqual(
             next(step["keys"] for step in steps if step.get("label") == "choose_reopened_fight"),
             ["f"],
         )
         self.assertIn("advance_turns", kinds)
-        current_reservation_preflight = next(
+        candidate_preflight = next(
             step for step in steps
-            if step.get("label") == "preflight_current_committed_shakedown_reservation"
+            if step.get("label") == "preflight_scheduler_response_candidate"
         )
-        self.assertEqual(current_reservation_preflight["kind"], "audit_saved_bandit_live_world_state")
+        self.assertEqual(candidate_preflight["kind"], "audit_saved_bandit_live_world_state")
         self.assertEqual(
-            current_reservation_preflight["required_active_hostile_operation_phase"],
-            "committed_contact",
+            candidate_preflight["required_camp_decision_state"],
+            "report_awaiting_assessment",
         )
-        self.assertEqual(
-            current_reservation_preflight[
-                "required_active_hostile_reservation_min_member_ids"
-            ],
-            2,
-        )
-        self.assertIn("audit_authoritative_fight_terminal", [step["label"] for step in steps])
-        self.assertIn("audit_one_identity_stable_fight_receipt", [step["label"] for step in steps])
+        self.assertNotIn("required_active_hostile_operation_phase", candidate_preflight)
+        self.assertIn("no external outing owner", candidate_preflight[
+            "expected_immediate_state"
+        ])
+        self.assertIn("observe_five_guarded_fight_turns", [step["label"] for step in steps])
+        self.assertIn("audit_released_members_materialized_and_combat_forward",
+                      [step["label"] for step in steps])
+        self.assertIn("post_relaunch", scenario)
         self.assertEqual(
             scenario["post_relaunch"]["terminal_save_step_label"],
-            "confirm_full_fight_terminal_save",
+            "confirm_native_process_replacement_after_scheduler_save",
         )
+        self.assertIn("save_scheduler_response_boundary", [step["label"] for step in initial_steps])
+        self.assertIn("audit_scheduler_save_marker", [step["label"] for step in initial_steps])
+        main_menu_quit = next(
+            step for step in initial_steps
+            if step.get("label") == "confirm_native_process_replacement_after_scheduler_save"
+        )
+        self.assertEqual(main_menu_quit["kind"], "semantic_terminal_action_chain")
         self.assertEqual(
-            scenario["post_relaunch"]["steps"][-1]["label"],
-            "audit_post_relaunch_terminal_replay_inertness",
+            main_menu_quit["required_action_chain"],
+            ["main_menu.quit", "prompt.yes"],
         )
-        self.assertIn(
-            "byte_stable=yes",
-            scenario["post_relaunch"]["steps"][-1]["required_line_patterns"][0],
+        self.assertNotIn(
+            "open_native_main_menu_quit_after_scheduler_save",
+            [step["label"] for step in initial_steps],
         )
-        save_labels = [step["label"] for step in steps if step.get("kind") == "audit_player_save_mtime"]
-        self.assertEqual(save_labels, [
-            "audit_player_save_mtime_before_fight_reload",
-            "audit_player_save_mtime_after_fight_save",
+        self.assertIn("audit_scheduler_created_committed_shakedown",
+                      [step["label"] for step in successor_steps])
+        cadence_waits = [
+            step for step in initial_steps
+            if str(step.get("label", "")).startswith("wait_5m_")
+        ]
+        self.assertEqual([step["label"] for step in cadence_waits], [
+            *[f"wait_5m_{index:02d}" for index in range(1, 13)],
+            "wait_5m_13_execute_8340",
         ])
+        for step in cadence_waits:
+            self.assertEqual(step["kind"], "adaptive_semantic_window")
+            self.assertEqual(step["minimum_elapsed_minutes"], 5)
+            self.assertEqual(step["required_action_chain"], [
+                "world.wait", "wait.duration_menu", "wait.5m",
+            ])
+            self.assertEqual(step["recovery_contract"]["actions"], ["wait.5m"])
+            self.assertEqual(step["recovery_contract"]["modal_state"],
+                             "wait_duration_choice")
+        self.assertFalse(any(step.get("kind") == "wait_action" for step in cadence_waits))
         for step in steps:
             if step.get("capture_after"):
                 self.assertTrue(

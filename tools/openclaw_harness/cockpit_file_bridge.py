@@ -395,6 +395,22 @@ class FileBackedCockpitBridge:
                             gameplay_credit=False )
         return True
 
+    def _consume_pre_descriptor_terminal_report( self, envelope: Mapping[str, Any] ) -> bool:
+        """Preserve a declared-prefix abort without misclassifying its compact report as input."""
+        abort = envelope.get( "abort" )
+        report_path = envelope.get( "report_path" )
+        if not isinstance( abort, Mapping ) or not isinstance( report_path, str ) or not report_path:
+            return False
+        reason = str( abort.get( "reason", "pre_descriptor_terminal_report" ) ).strip()
+        self._startup_failure = {
+            "reason": reason or "pre_descriptor_terminal_report",
+            "abort_guard": abort.get( "guard" ),
+            "abort_status": abort.get( "status" ),
+            "artifact": "child.startup.stdout.jsonl",
+            "report_path": report_path,
+        }
+        return True
+
     def _await_session_descriptor(self, *, consume_pre_descriptor_prefix: bool = True) -> Mapping[str, Any]:
         """Run only the declared zero-credit prefix before admitting public input."""
         prefix_index = 0
@@ -429,6 +445,8 @@ class FileBackedCockpitBridge:
             if self._consume_startup_progress( envelope ):
                 continue
             if consume_pre_descriptor_prefix and prefix_index < len(self.pre_descriptor_prefix):
+                if self._consume_pre_descriptor_terminal_report( envelope ):
+                    raise ValueError( str( self._startup_failure["reason"] ) )
                 if not self._consume_pre_descriptor(envelope, prefix_index):
                     raise ValueError("missing_declared_pre_descriptor_stage")
                 prefix_index += 1

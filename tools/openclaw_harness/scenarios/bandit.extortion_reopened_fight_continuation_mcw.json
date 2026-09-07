@@ -1,7 +1,26 @@
 {
   "manifest_version": 1,
+  "cockpit_pre_descriptor_bootstrap": {
+    "schema": "caol-cockpit-pre-descriptor-bootstrap-v1",
+    "gameplay_credit": false,
+    "adaptive_prefix": [
+      {"label": "wait_5m_01", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_02", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_03", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_04", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_05", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_06", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_07", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_08", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_09", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_10", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_11", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_12", "objective": "zero-credit scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []},
+      {"label": "wait_5m_13_execute_8340", "objective": "zero-credit 8340 scheduler cadence", "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": []}
+    ]
+  },
   "name": "bandit.extortion_reopened_fight_continuation_mcw",
-  "description": "Real continuation from the committed McWilliams local-contact export: visibly choose Fight at the reopened shakedown, then use only ordinary gameplay turns to reach an authoritative terminal, save and exit, relaunch the same world with a new focused process, and read exact/stale terminal receipt replays without changing the winner.",
+  "description": "Guarded continuation from a zero-credit McWilliams scheduler-response candidate: cross one structural cadence, save and replace the native process, audit the serialized scheduler-created sole operation, then visibly choose Fight and observe five ordinary turns.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "bandit_r029_committed_shakedown_fixture_v1",
@@ -25,6 +44,7 @@
     "bandit_live_world terminal_shakedown_replay_observer"
   ],
   "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
     "player.hud": ["Move:", "Wield:"],
     "local_place.shakedown.reopened_options": ["Pay", "Fight"],
     "capabilities.shakedown.fight_selection": "visible",
@@ -39,6 +59,7 @@
     "setup_only_debug": true,
     "disposable_copy": true,
     "helpers": ["Peekaboo"],
+    "terminal_transport": "pty",
     "permissions": ["accessibility", "screen-recording"],
     "platform": ["macos"],
     "profile": "dev-harness",
@@ -58,32 +79,20 @@
     "grants_gameplay_proof": false
   },
   "proof_route": {
-    "precondition": ["post_load_fight_continuation_settle", "preflight_current_committed_shakedown_reservation"],
-    "production_behavior": ["advance_299_turns_to_reopened_fight_gate", "audit_reopened_fight_surface", "choose_reopened_fight", "audit_fight_branch_started", "ordinary_combat_to_authoritative_terminal", "advance_one_turn_after_saved_terminal_relaunch"],
-    "terminal_persistence": ["audit_authoritative_fight_terminal", "audit_player_save_mtime_after_fight_save", "audit_one_identity_stable_fight_receipt", "audit_post_relaunch_terminal_replay_inertness"],
-    "artifact_verdict": ["audit_reopened_fight_surface", "audit_fight_branch_started", "audit_authoritative_fight_terminal", "audit_one_identity_stable_fight_receipt", "audit_post_relaunch_terminal_replay_inertness"],
-    "disallowed_shortcuts": ["audit_reopened_fight_surface", "audit_authoritative_fight_terminal"],
+    "precondition": ["post_load_fight_continuation_settle", "preflight_scheduler_response_candidate"],
+    "production_behavior": ["wait_5m_01", "wait_5m_02", "wait_5m_03", "wait_5m_04", "wait_5m_05", "wait_5m_06", "wait_5m_07", "wait_5m_08", "wait_5m_09", "wait_5m_10", "wait_5m_11", "wait_5m_12", "wait_5m_13_execute_8340", "audit_scheduler_cadence_crossed", "save_scheduler_response_boundary", "audit_scheduler_created_committed_shakedown", "audit_reopened_fight_surface", "choose_reopened_fight", "audit_fight_branch_started", "observe_five_guarded_fight_turns", "audit_released_members_materialized_and_combat_forward"],
+    "terminal_persistence": ["save_scheduler_response_boundary", "observe_native_main_menu_after_scheduler_save", "confirm_native_process_replacement_after_scheduler_save", "post_scheduler_response_reload_hud", "audit_scheduler_created_committed_shakedown"],
+    "artifact_verdict": ["audit_reopened_fight_surface", "audit_fight_branch_started", "audit_released_members_materialized_and_combat_forward"],
+    "disallowed_shortcuts": ["audit_reopened_fight_surface", "audit_released_members_materialized_and_combat_forward"],
     "capability_gates": {
       "player.hud": {
         "startup": ["post_load_fight_continuation_settle"]
       },
       "local_place.shakedown.reopened_options": {
-        "interaction": ["advance_299_turns_to_reopened_fight_gate", "audit_reopened_fight_surface"]
+        "interaction": ["wait_5m_12", "audit_reopened_fight_surface"]
       },
       "capabilities.shakedown.fight_selection": {
         "interaction": ["choose_reopened_fight", "audit_fight_branch_started"]
-      },
-      "capabilities.shakedown.terminal": {
-        "terminal": ["ordinary_combat_to_authoritative_terminal", "audit_authoritative_fight_terminal"]
-      },
-      "capabilities.shakedown.receipt_identity": {
-        "terminal": ["audit_one_identity_stable_fight_receipt"]
-      },
-      "capabilities.persistence": {
-        "persistence": ["audit_player_save_mtime_after_fight_save", "audit_post_relaunch_terminal_replay_inertness"]
-      },
-      "capabilities.shakedown.replay_observer": {
-        "replay": ["advance_one_turn_after_saved_terminal_relaunch", "audit_post_relaunch_terminal_replay_inertness"]
       }
     }
   },
@@ -99,7 +108,210 @@
     },
     {
       "kind": "audit_saved_bandit_live_world_state",
-      "label": "preflight_current_committed_shakedown_reservation",
+      "label": "preflight_scheduler_response_candidate",
+      "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+      "required_scout_report_present": true,
+      "required_camp_decision_state": "report_awaiting_assessment",
+      "required_report_decision_identity_match": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_current_committed_shakedown_fixture",
+      "abort_reason": "the copied save did not contain the zero-credit report/lead/opportunity candidate required for scheduler-owned response creation",
+      "expected_immediate_state": "the untouched save contains only a matched report-awaiting-assessment candidate; no external outing owner is authored"
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "record_pre_scheduler_save_marker",
+      "record_baseline": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_scheduler_save_marker_unreadable",
+      "abort_reason": "the disposable player save was not readable before the scheduler cadence"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "record_scheduler_cadence_start_turn",
+      "record_baseline": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_scheduler_cadence_start_unreadable",
+      "abort_reason": "the zero-credit fixture turn needed to bind the native scheduler cadence was not readable"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_01",
+      "minimum_elapsed_minutes": 5,
+      "observation_timeout_seconds": 60.0,
+      "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"],
+      "adaptive_interrupt_actions": [],
+      "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]},
+      "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required; PTY dots are not cadence proof"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_02",
+      "minimum_elapsed_minutes": 5,
+      "observation_timeout_seconds": 60.0,
+      "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"],
+      "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]},
+      "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_03",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_04",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_05",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_06",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_07",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_08",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_09",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_10",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_11",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_12",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "Accepted World wait.5m receipts and a fresh World successor are required"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "wait_5m_13_execute_8340",
+      "minimum_elapsed_minutes": 5, "observation_timeout_seconds": 60.0, "observation_interval_seconds": 0.5,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.5m"], "adaptive_interrupt_actions": [], "required_interrupt_action_chain": [],
+      "recovery_contract": {"issuer_action": "wait.duration_menu", "modal_state": "wait_duration_choice", "modal_owner": "native_semantic_step_trace", "actions": ["wait.5m"]}, "expected_visible_fact": "This bound wait begins at minute 8340 and executes the scheduler cadence before advancing to its successor World frame"
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "inspect_scheduler_shakedown_admission",
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "objective": "After the already-declared zero-credit scheduler cadence, inspect the first run-bound shakedown admission diagnostic.  Do not send gameplay input or infer a Fight, combat, or natural-discovery result from this diagnostic session.",
+      "proof_targets": ["first scheduler shakedown-admission rejection reason", "same-run source/executable binding", "zero-credit diagnostic lifecycle"],
+      "authority": ["game.observe", "game.look", "run.status", "run.finish"],
+      "invariants": ["no gameplay input", "no fixture mutation", "diagnostic output is not gameplay evidence", "explicit cleanup only after the observation is preserved"],
+      "transition_timeout_seconds": 10.0,
+      "observe_interval_seconds": 0.1
+    },
+    {
+      "kind": "semantic_terminal_action_chain",
+      "label": "save_scheduler_response_boundary",
+      "objective": "Use only the advertised native save-and-quit confirmation path to serialize the post-cadence scheduler state before ownership inspection.",
+      "observation_timeout_seconds": 30.0,
+      "observation_interval_seconds": 0.1,
+      "required_action_chain": ["world.save_quit", "prompt.yes"]
+    },
+    {
+      "kind": "audit_player_save_mtime",
+      "label": "audit_scheduler_save_marker",
+      "changed_since_label": "record_pre_scheduler_save_marker",
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_scheduler_state_not_serialized",
+      "abort_reason": "the bound native save did not write the post-cadence scheduler state"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_scheduler_cadence_crossed",
+      "baseline_label": "record_scheduler_cadence_start_turn",
+      "required_min_delta_turns": 3900,
+      "required_time_of_day_seconds": 68700,
+      "required_time_tolerance_seconds": 0,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_scheduler_cadence_not_crossed",
+      "abort_reason": "the thirteenth bound wait did not carry execution past the 8340 scheduler cadence"
+    },
+    {
+      "kind": "wait",
+      "label": "observe_native_main_menu_after_scheduler_save",
+      "seconds": 2.0,
+      "capture_after": true,
+      "extract_text_after_capture": true,
+      "expected_screen_text_after_contains": ["Load", "Quit"],
+      "abort_on_screen_text_expectation_failure": true,
+      "abort_verdict": "blocked_scheduler_save_main_menu_missing",
+      "abort_reason": "the save-and-quit receipt did not hand the same native process to its main menu before quit confirmation"
+    },
+    {
+      "kind": "semantic_terminal_action_chain",
+      "label": "confirm_native_process_replacement_after_scheduler_save",
+      "objective": "From the captured native main menu, invoke only the currently advertised native Quit action and its native confirmation child.  The accepted confirmation is the explicit process-replacement boundary; no physical menu-navigation encoding may substitute for it.",
+      "observation_timeout_seconds": 30.0,
+      "observation_interval_seconds": 0.1,
+      "required_action_chain": ["main_menu.quit", "prompt.yes"],
+      "expected_visible_fact": "the same bound process exits only after the captured native main-menu Quit action opened and its native Really quit? confirmation accepted"
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "confirm_native_process_replacement_after_scheduler_save",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "post_scheduler_response_reload_hud",
+        "seconds": 2.0,
+        "capture_after": true,
+        "extract_text_after_capture": true,
+        "expected_screen_text_after_contains": ["Move:", "Wield:"],
+        "abort_on_screen_text_expectation_failure": true,
+        "abort_verdict": "blocked_scheduler_response_reload_hud_missing",
+        "abort_reason": "the bound native scheduler-state save did not reload to a gameplay HUD"
+      },
+      {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_scheduler_created_committed_shakedown",
       "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
       "required_active_hostile_operation_kind": "shakedown",
       "required_active_hostile_operation_phase": "committed_contact",
@@ -107,19 +319,11 @@
       "required_active_hostile_reservation_target_id_exact": "player@146,51,0",
       "required_active_hostile_reservation_simulation_owner": "local",
       "required_active_hostile_reservation_min_member_ids": 2,
+      "required_min_active_member_ids": 2,
+      "required_active_members_found": true,
       "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_untrusted_current_committed_shakedown_fixture",
-      "abort_reason": "the copied save did not contain the current committed shakedown reservation that production requires before ordinary turns can open Pay/Fight",
-      "expected_immediate_state": "the untouched save contains one current local shakedown reservation with a toll job, player target, committed-contact phase, and at least two members before ordinary turns begin"
-    },
-    {
-      "kind": "advance_turns",
-      "label": "advance_299_turns_to_reopened_fight_gate",
-      "count": 299,
-      "settle_seconds": 0.5,
-      "capture_after": false,
-      "expected_interruption_screen_text_contains": ["Pay.", "Fight."],
-      "expected_visible_fact": "ordinary turns reach the reopened local-contact dialogue boundary"
+      "abort_verdict": "blocked_scheduler_owned_shakedown_missing",
+      "abort_reason": "scheduler did not create a materialized sole committed shakedown operation"
     },
     {
       "kind": "audit_log_contains",
@@ -153,111 +357,40 @@
     },
     {
       "kind": "advance_turns",
-      "label": "ordinary_combat_to_authoritative_terminal",
-      "count": 120,
+      "label": "observe_five_guarded_fight_turns",
+      "count": 5,
       "settle_seconds": 0.5,
       "auto_acknowledge_interruptions": true,
       "capture_after": true,
-      "proof_deferred_to_label": "audit_authoritative_fight_terminal",
-      "expected_visible_fact": "only ordinary gameplay turns advance the visible combat until a responder casualty or survivor-return terminal is reached"
+      "proof_deferred_to_label": "audit_released_members_materialized_and_combat_forward",
+      "expected_visible_fact": "five ordinary gameplay turns observe the released members without asserting a casualty, return, or terminal window"
     },
     {
       "kind": "audit_log_contains",
-      "label": "audit_authoritative_fight_terminal",
+      "label": "audit_released_members_materialized_and_combat_forward",
+      "required_line_patterns": [
+        ["bandit_live_world shakedown_fight_advance", "npc=4", "from=", "to=", "target=", "combat_forward=yes"],
+        ["bandit_live_world shakedown_fight_advance", "npc=5", "from=", "to=", "target=", "combat_forward=yes"]
+      ],
       "required_any_line_patterns": [
-        ["bandit_live_world shakedown combat", "casualty"],
-        ["bandit_live_world local homeward boundary committed", "members="],
-        ["bandit_live_world physical_player_observation"]
+        ["bandit_live_world shakedown_fight_advance", "npc=4", "attacked=yes"],
+        ["bandit_live_world shakedown_fight_advance", "npc=4", "path_found=yes"],
+        ["bandit_live_world shakedown_fight_advance", "npc=5", "attacked=yes"],
+        ["bandit_live_world shakedown_fight_advance", "npc=5", "path_found=yes"]
       ],
       "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_authoritative_fight_terminal_missing",
-      "abort_reason": "ordinary combat did not produce an authoritative casualty or survivor-return terminal"
-    },
-    {
-      "kind": "audit_player_save_mtime",
-      "label": "audit_player_save_mtime_before_fight_reload",
-      "expected_visible_fact": "the pre-save player-save marker is captured before the full save/reload"
-    },
-    {
-      "kind": "press",
-      "label": "open_full_save_prompt_after_fight_terminal",
-      "keys": ["S"],
-      "settle_seconds": 1.0,
-      "capture_after": true,
-      "extract_text_after_capture": true,
-      "expected_screen_text_after_contains": ["quit", "Case"],
-      "abort_on_screen_text_expectation_failure": true,
-      "abort_verdict": "blocked_fight_terminal_save_prompt_missing",
-      "abort_reason": "the full case-sensitive save-and-quit prompt was not visible"
-    },
-    {
-      "kind": "press",
-      "label": "confirm_full_fight_terminal_save",
-      "keys": ["Y"],
-      "settle_seconds": 5.0,
-      "expected_visible_fact": "the fight terminal state is fully written before process exit"
-    },
-    {
-      "kind": "audit_player_save_mtime",
-      "label": "audit_player_save_mtime_after_fight_save",
-      "changed_since_label": "audit_player_save_mtime_before_fight_reload",
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_fight_terminal_writeback_missing",
-      "abort_reason": "the full save did not advance the player-save marker"
-    },
-    {
-      "kind": "audit_log_contains",
-      "label": "audit_one_identity_stable_fight_receipt",
-      "required_line_patterns": [[
-        "operation=",
-        "generation=",
-        "epoch=",
-        "member=",
-        "application_key="
-      ]],
-      "abort_on_metadata_failure": true,
-      "abort_verdict": "blocked_identity_stable_fight_receipt_missing",
-      "abort_reason": "the same-run receipt did not expose operation, generation, epoch, member, and application identities"
+      "abort_verdict": "blocked_fight_members_not_materialized_or_no_offensive_opportunity",
+      "abort_reason": "the five-turn route did not prove both released members had live locations plus a combat-forward attack or path opportunity",
+      "stop_after_live_session": true
     }
-  ],
-  "post_relaunch": {
-    "terminal_save_step_label": "confirm_full_fight_terminal_save",
-    "terminal_exit_timeout_seconds": 5.0,
-    "steps": [
-      {
-        "kind": "advance_turns",
-        "label": "advance_one_turn_after_saved_terminal_relaunch",
-        "count": 1,
-        "settle_seconds": 1.0,
-        "capture_after": true,
-        "extract_text_after_capture": true,
-        "expected_screen_text_after_contains": ["Move:", "Wield:"],
-        "expected_visible_fact": "the canonical startup owner focused a new process on the saved McWilliams world before the read-only replay observer runs"
-      },
-      {
-        "kind": "audit_log_contains",
-        "label": "audit_post_relaunch_terminal_replay_inertness",
-        "required_line_patterns": [[
-          "bandit_live_world terminal_shakedown_replay_observer",
-          "active_operation=absent",
-          "exact=exact_duplicate",
-          "stale=stale_replay",
-          "byte_stable=yes",
-          "outcome_credit=none"
-        ]],
-        "abort_on_metadata_failure": true,
-        "abort_verdict": "blocked_post_relaunch_terminal_replay_inertness_missing",
-        "abort_reason": "the new-process log delta did not prove the released winner receipt stayed exact/stale readable, byte-stable, and uncredited"
-      }
     ]
   },
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.extortion_reopened_fight_continuation_mcw",
   "evidence_contract": {
-    "claim": "the committed-contact export reaches the real reopened Pay/Fight surface, Fight is visibly selected, ordinary combat reaches an authoritative responder casualty or survivor-return terminal, one matching receipt exposes its identity tuple, and a full save exits before canonical same-world relaunch proves exact/stale replay inertness",
-    "fixture_binding": "live-debug:bandit_extortion_reopen_local_contact_mcw_v0_2026-04-24 with manifest save_transforms=[]; no raw fixture or authored combat state is allowed",
-    "preconditions_and_interventions": "the only pre-feature setup is harness profile installation and copying the committed export; after the real gameplay HUD and focus gates, the scenario sends visible Fight and ordinary turn inputs only",
-    "terminal": "the run stops at the first missing authoritative terminal, save/exit, new-PID focus, or post-relaunch replay-inertness checkpoint and reports direct evidence",
-    "identity_requirement": "the receipt must expose one operation, generation, epoch, member, and application identity tuple before terminal save",
-    "replay_status": "the post-relaunch audit reads only the new-process debug-log delta; it requires an absent active operation, exact duplicate and stale replay dispositions, byte-stable serialization, and no outcome credit.  It cannot recreate an operation or rewrite the saved world."
+    "claim": "a scheduler-created operation survives one bound native save and process replacement, reaches the real reopened Pay/Fight surface, and produces five ordinary combat observations",
+    "fixture_binding": "live-debug scheduler-response candidate only; fixture transforms author no active outing, reservation, or concrete response member identity",
+    "preconditions_and_interventions": "the only pre-feature setup is profile/fixture installation.  Scheduler advancement is serialized through an advertised native Save-and-Quit path before any ownership audit or Fight input.",
+    "terminal": "the run stops after the guarded five-turn observation or at the first missing save/reload, scheduler materialization, surface, or offensive-opportunity checkpoint and reports direct evidence",
+    "identity_requirement": "the serialized successor must contain the scheduler-authored sole operation and its production-created member IDs before Fight evidence is considered"
   }
 }
