@@ -6,16 +6,13 @@ only the facts needed for the next decision.
 
 ## Commands
 
-Capture stdout and stderr from builds, tests, packaging and dependency installation in a log from
-the start. Reuse a task log directory, use distinct names for concurrent jobs, and preserve exit
-status. Inspect the runner's own result summary and relevant diagnostics; an empty error search is
-not success. Keep long-running command output redirected when collecting its result.
+Keep task logs together in the existing `build_logs/` or `.de67/task-logs/` route used by that task;
+the global implementation/evidence rules govern capture and result inspection.
 
 Use `rg --files` with a filename clue to locate unknown source, or `rg -n -F` for a known symbol.
 Read the enclosing function or section after locating it. Search generated output separately from
 source and select the relevant run/session/artifact first. When output is truncated, narrow the
-query or extract the required fields rather than increasing the dump. Delegate a specific evidence
-question to Luna when it reduces total work; do not repeat the survey yourself.
+query or extract the required fields rather than increasing the dump.
 
 ## Structured evidence and handoff
 
@@ -23,8 +20,6 @@ For JSON, JSONL and databases, inspect schema when unknown, filter by exact iden
 needed fields. A line limit does not bound a large single-line JSON record. Preserve source paths,
 identities and full-retrieval handles; omitted detail is not absent evidence.
 
-Reuse known paths, symbols, commands and findings. Reopen them for a change, contradiction or
-material missing detail. Pass the current outcome, accepted frontier, unresolved question and exact
-entrypoints to a successor. Historical instructions retain their original scope; the current owner
-contract controls the assignment. Clear current data and retrievable history serve both execution
-and review without another reporting procedure.
+Keep current task knowledge in the existing `.de67` context/ledger surfaces. Run artifacts under
+`.userdata/*/harness_runs/` and session bindings under `.userdata/*/sessions/` or
+`.userdata/openclaw_harness/bridge-sessions/` are evidence, not current owner instructions.

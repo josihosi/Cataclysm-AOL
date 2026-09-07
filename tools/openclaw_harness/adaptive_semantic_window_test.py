@@ -431,10 +431,20 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
     def test_finalization_does_not_treat_recovery_as_player_quit(self) -> None:
         report = {"mode": "probe", "steps": [self.report(interruption_proved=True)]}
         with tempfile.TemporaryDirectory() as root, \
+                mock.patch("startup_harness.current_owned_process_generation", return_value={
+                    "status": "alive", "pid": 49972, "source": "process.json",
+                    "expected": {
+                        "pid": 49972, "birth_identity": "fixture-birth-49972",
+                        "command": "/fixture/Cataclysm-AOL --userdir /fixture/",
+                    },
+                }), \
                 mock.patch("startup_harness.cleanup_game_process", return_value={"status": "terminated"}) as cleanup:
             finalize_probe_report(Path(root), report, cleanup_pid=49972)
 
-        cleanup.assert_called_once_with(49972, explicit_quit=False)
+        cleanup.assert_called_once_with(49972, explicit_quit=False, expected_process_generation={
+            "pid": 49972, "birth_identity": "fixture-birth-49972",
+            "command": "/fixture/Cataclysm-AOL --userdir /fixture/",
+        })
         self.assertEqual(report["cleanup"]["status"], "terminated")
 
     def test_activity_distraction_recovery_requires_matching_native_return(self) -> None:

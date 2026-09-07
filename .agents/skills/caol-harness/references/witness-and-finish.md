@@ -23,3 +23,11 @@ coordinator's separate causal judgment.
 For extraction examples, see [journal citation packaging](searching.md#journal-citation-packaging).
 
 Report startup, feature outcome, contradictions, evidence ceiling, and cleanup separately.
+The primary worker owns every game launched by it or its helpers, including failed starts and
+replacement generations. Native save/quit preserves the requested game state; explicit `run.finish`
+seals the witness and requests process cleanup, which does not earn native-save/exit proof.
+Inspect cleanup's current PID/birth identity and verify OS exit for all owned attempts and their
+brokers, or hand over an explicitly retained run with its purpose and exact session. A minimized
+window, stopped broker or finished report alone leaves that obligation open. A failed startup's
+retained-process result requires an explicit owner action. Preserve the run and report the exact
+blocker if supported graceful closure fails; do not silently force-kill it.

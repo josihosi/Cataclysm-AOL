@@ -683,7 +683,8 @@ member IDs and route progress. Generic travel may not advance a concurrently loc
 `live_bandit_handle_hostile_shakedown_contact` and `choose_local_gate_posture` distinguish normal
 shakedown from favorable rolling-travel attack. The forced native payment UI remains.
 `live_bandit_commit_paid_return` commits `committed_contact -> returning_home` with branch `paid`;
-`live_bandit_choose_fight` records combat release for refusal/incomplete payment. Player attack
+`live_bandit_choose_fight` records combat release for explicit refusal/incomplete payment;
+technical preparation failure must remain distinct from player refusal. Player attack
 calls `release_shakedown_combat_on_player_attack` for an exact parley member.
 `hostile_operation_player_relationship_for` validates active hostile reservation, toll/shakedown
 kind, member identity and non-dead/non-missing membership. It returns parley at committed contact,
@@ -726,6 +727,36 @@ Implementation status:
     night-local-contact fixture supplies a returned-report lead. None proves natural discovery or
     scouting. Setup-created signals, reports, actors, contact, darkness or deadlines earn no credit
     for the transitions they manufacture. Preserve their legitimate downstream route evidence.
+- Owner-authorized repair boundary, 2026-09-07: R029-F003's accepted same-minute Pay
+    must reach payment preparation/trade without being converted into player refusal by a
+    technical failure. `live_bandit_prepare_paid_return` currently rejects current minute equal
+    to the simulation cursor, and its caller falls through to Fight. Separate preparation and
+    transaction failure from explicit refusal; preserve native value transfer and idempotent
+    paid-return commit. Eligible first sight of the player OR a follower must offer negotiation
+    before attack. A follower contributing goods does not prove follower-triggered contact.
+    Successful payment clears this group's hostility and initiates retreat; stale combat,
+    stalking, hold or strategic travel must not restore aggression or immediately demand again.
+    Test both target types at same-minute contact, Pay, explicit Fight/refusal, later ordinary
+    turns and reload. Preserve unrelated hostile actors and favorable rolling ambush exclusions.
+  - Activation and arbitration investigation: R029-F004 proves relocation without local
+    activation. `materialize_committed_bandit_shakedown` uses `Creature::setpos`; compare
+    call order/outcomes with `game::load_npcs` and creature-tracker registration before a
+    targeted fix. The intended actor retains one identity and one advancing simulation owner.
+    Local hostile combat owns tactical movement/attacks while strategic bookkeeping retains
+    continuity; stalking is an explicit single-owner exception. Inspect camp-hold, homeward
+    and alternate-watch transitions individually. Negotiation and paid retreat outrank stale
+    orders. Prove activation separately, then enter/contact/combat-or-stalk/disengage/leave/reenter;
+    ambiguous precedence requires owner judgment, not globally disabling overmap AI.
+  - Sound diagnosis correction: run `4b7c5abb…` preserved a lead last seen 8220 and last checked
+    8225. At attempt 8280 the latter is inside `structural_lead_recently_checked`'s six-hour
+    cooldown; `cheap_structural_outing_candidates` runs before the reported drive 347 check.
+    No eligible plan means even sufficient drive cannot dispatch. The sensing writer also sets
+    last_checked to observation time, with sound expiry preceding cooldown release; distinguish
+    sensing from physical investigation as a candidate for owner decision. The full drive vector remains
+    unavailable. Detection proof stands; no threshold change or sound-compels-scouting contract
+    is authorized. Investigate remaining eligibility using the exact state and a discriminating
+    control, with fixture changes counted as setup. `.de67/state/review-owner-f918d28be953/`
+    retains the source predicate reproduction and exact artifact paths.
 <!-- DE67:DFS-SLICE:END id=R-029-S001 claim=R-029 -->
 
 ### 14. Lossless CAOL evidence transport
@@ -800,6 +831,19 @@ Implementation status:
   - Controls: prewarm is not conversation; a spoken promise/order label is not movement; canned
     dialogue is not an LLM response; player proximity alone does not prove follow; a camp selector
     opening is not mission execution. Bind exact actor, utterance, time and actual consequence.
+- Owner-authorized speech/craft correction: an incapable or unassigned follower must not
+    falsely promise native camp crafting. Correlate actor/request/source before attributing
+    the reported reply. `npctalk.cpp` filters direct address, selects ambient recipients, groups
+    assigned camp listeners and invokes `handle_heard_camp_request`, then enqueues remaining
+    LLM hearers. `uses_basecamp_request_routing` excludes walking followers; camp handling
+    resolves a capable worker and can create a resource-blocked request. Preserve valid direct
+    follower commands; a blanket camp-listener veto is not the required behavior. The capable,
+    assigned recipient handles the request or gives an honest blocked result.
+    Test mixed camp/follower listeners, addressed versus broadcast speech, assigned/capable
+    versus unassigned actors, and available versus missing recipe resources. Spawn only required
+    bandage materials through authorized fixture/debug setup after checking actor roles, recipe,
+    resource ownership/location and source binding; setup has zero proof credit. Bind native
+    craft request/result to the reply, keeping persistence under R-034 separate.
 <!-- DE67:DFS-SLICE:END id=R-031-S001 claim=R-031 -->
 
 ### 16. Fresh camp establishment, missions and zones
@@ -850,6 +894,14 @@ Implementation status:
     `patrol.disconnected_live` stage priorities/geometry. They supply downstream route seeds only.
   - Persistence: R-034 proves saved policy/assignment/zone/mission facts and rebuilt services in a
     new process; it must not require transient cache bytes to persist.
+- Owner-promoted R032-F001 repair: on the next ordinary AI update, Patrol priority zero
+    invalidates affected cached roster membership and releases that worker's patrol assignment
+    and order to appropriate ordinary reassignment. `camp_patrol_cached_roster_is_eligible`
+    currently omits the current priority even though new-roster selection checks it. Preserve
+    unrelated missions, camp policy and valid enabled Patrol proof. Distinguish cache invalidation
+    from the durable guard mission/order. Prove enable -> actual patrol -> disable -> ordinary
+    reassignment, including relevant save/reload behavior; historical regression provenance is
+    unproved and unnecessary for the repair verdict.
 <!-- DE67:DFS-SLICE:END id=R-032-S001 claim=R-032 -->
 
 ### 17. Fresh signal controls and world boundaries
@@ -888,6 +940,10 @@ Implementation status:
   - False greens: debug source placement proves setup only; timestamp adjacency, unrelated site IDs,
     adopted opportunity, absent logs, source visibility to the avatar alone, or one retained lead
     cannot prove the intended observation/response. Do not manufacture a report to get unstuck.
+- Owner-accepted scope limitation: smoke on the bandit camp's own OMT (R033-F001) is excluded
+    from the requested repair/acceptance obligation. Its original `blocked_line_of_sight`
+    observation remains valid at that ceiling. This does not waive smoke sensing on other OMTs,
+    local visual perception/aggression, or any unperformed signal/memory/world-boundary test.
 <!-- DE67:DFS-SLICE:END id=R-033-S001 claim=R-033 -->
 
 ### 18. Fresh persistence and continuation
@@ -1070,3 +1126,10 @@ After freeze, named proof can close a red item without changing acceptance stren
 clarify mechanisms only within the WEC. Product intent, vocabulary, required behavior and material
 design alternatives remain user-owned. The WEC's promotion boundary applies to CAOL suspected bugs;
 this DFS supplies no automatic gameplay-fix authority.
+
+Owner-scoped refreeze 2026-09-07: same product outcome and stable claim/slice identities retained.
+Inspected source HEAD `f4df8bf70e22bf2e1bd2f3beff264869ec26a40c`; gameplay source unchanged by this
+review. Owner receipt `70c4632e512e` promotes the bounded repairs above and accepts the same-OMT
+smoke exception. Existing accepted proof and full original observations remain intact; these are
+repair/verification obligations, not completed gameplay results.
+Current owner-contract SHA-256: `af6ce90990e4c5358aeedee16bd37ea9ebd979c3a8f2ff2aa874f234975a99df`.

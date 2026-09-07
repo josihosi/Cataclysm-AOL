@@ -126,6 +126,16 @@ class HarnessNewWorldTest(unittest.TestCase):
         self.assertFalse(harness.harness_feasibility_artifact_ready({}))
 
     def test_cleanup_accepts_supported_executable_identities(self) -> None:
+        class TerminatingInspector:
+            def __init__(self, command: str) -> None:
+                self.command = command
+                self.alive = True
+
+            def inspect(self, pid: int):
+                return harness.ProcessSnapshot(
+                    pid=pid, alive=self.alive, birth_identity="birth-123", command=self.command,
+                )
+
         for command in (
             "/game/Cataclysm-AOL --userdir .userdata/p/",
             "/game/Cataclysm-AOL.exe --userdir .userdata/p/",
@@ -133,10 +143,16 @@ class HarnessNewWorldTest(unittest.TestCase):
             "/game/cataclysm-tlg-tiles.exe --userdir .userdata/p/",
             "/game/r027-closure-007-tiles --userdir .userdata/r027/",
         ):
-            with self.subTest(command=command), patch.object(harness, "pid_command", return_value=command), patch.object(
-                harness, "pid_is_alive", return_value=False
-            ), patch.object(harness.os, "kill") as kill:
-                result = harness.cleanup_game_process(123, grace_seconds=0.0)
+            inspector = TerminatingInspector(command)
+            expected = {"pid": 123, "birth_identity": "birth-123", "command": command}
+            def signal(pid: int, _signal: int) -> None:
+                self.assertEqual(pid, 123)
+                inspector.alive = False
+            with self.subTest(command=command), patch.object(harness.os, "kill", side_effect=signal) as kill:
+                result = harness.cleanup_game_process(
+                    123, grace_seconds=0.0, explicit_quit=True,
+                    expected_process_generation=expected, inspector=inspector,
+                )
             self.assertEqual(result["status"], "terminated")
             kill.assert_called_once()
 

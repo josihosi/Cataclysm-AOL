@@ -306,8 +306,12 @@ class ProbeRelaunchTest(unittest.TestCase):
                 }) + "\n", encoding="utf-8")
                 with mock.patch.dict(os.environ, {"OPENCLAW_CERTIFICATION_SAVE_CAPABILITY": save_capability}), \
                         mock.patch.object(harness, "wait_for_pid_exit", return_value=True), \
+                        mock.patch.object(harness, "persisted_run_process_generation", return_value={
+                            "pid": 202, "birth_identity": "fixture-relaunch-202",
+                            "command": "/fixture/Cataclysm-AOL --world world",
+                        }), \
                         mock.patch.object(harness, "run_json_command", return_value=(0, {
-                            "ok": True, "pid": 202, "focus": {"ok": True},
+                            "ok": True, "pid": 202, "run_dir": str(root / "relaunch"), "focus": {"ok": True},
                             "proof_classification": {"startup_clean_for_feature_steps": True},
                         }, "", "")) as launch:
                     relaunch = harness.run_probe_post_relaunch(
@@ -364,7 +368,15 @@ class ProbeRelaunchTest(unittest.TestCase):
             "focus": {"ok": True},
             "proof_classification": {"startup_clean_for_feature_steps": True},
         }
-        with mock.patch.object(harness, "wait_for_pid_exit", return_value=True), \
+        with mock.patch.object(harness, "native_save_quit_receipt", return_value={"status": "matched"}), \
+                mock.patch.object(harness, "observe_bound_process_exit", return_value={
+                    "status": "native_exit", "elapsed_seconds": 0.1,
+                    "scheduling_uncertainty_seconds": 0.0,
+                }), \
+                mock.patch.object(harness, "persisted_run_process_generation", return_value={
+                    "pid": 202, "birth_identity": "fixture-relaunch-202",
+                    "command": "/fixture/Cataclysm-AOL --world McWilliams",
+                }), \
                 mock.patch.object(harness, "run_json_command", return_value=(0, start_result, "out", "err")) as run:
             result = harness.run_probe_post_relaunch(
                 initial_pid=101,
@@ -425,6 +437,28 @@ class ProbeRelaunchTest(unittest.TestCase):
             )
         self.assertEqual(same_pid["status"], "same_pid_relaunch_rejected")
 
+    def test_relaunch_with_pid_but_no_generation_is_retained_not_ready(self) -> None:
+        with tempfile.TemporaryDirectory() as directory, \
+                mock.patch.object(harness, "native_save_quit_receipt", return_value={"status": "matched"}), \
+                mock.patch.object(harness, "observe_bound_process_exit", return_value={
+                    "status": "native_exit", "elapsed_seconds": 0.1,
+                    "scheduling_uncertainty_seconds": 0.0,
+                }), \
+                mock.patch.object(harness, "persisted_run_process_generation", return_value={}), \
+                mock.patch.object(harness, "run_json_command", return_value=(0, {
+                    "ok": True, "pid": 202, "run_dir": "/tmp/relaunch-run",
+                    "focus": {"ok": True},
+                    "proof_classification": {"startup_clean_for_feature_steps": True},
+                }, "", "")):
+            result = harness.run_probe_post_relaunch(
+                initial_pid=101,
+                initial_process_command="/tmp/cataclysm-tiles",
+                profile="profile", config_profile="config", world="McWilliams",
+                scenario_name="test", registry_launch_receipt="", terminal_exit_timeout_seconds=1,
+                artifact_run_dir=Path(directory),
+            )
+        self.assertEqual(result["status"], "replacement_identity_unavailable")
+
     def test_probe_runs_post_relaunch_steps_then_finalizes_once_with_new_pid(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -473,7 +507,14 @@ class ProbeRelaunchTest(unittest.TestCase):
                 "resolve_startup_config_profile": mock.Mock(return_value="dev-harness"),
                 "resolve_scenario_profile_option_overrides": mock.Mock(return_value={}),
                 "portal_storm_policy_from_scenario": mock.Mock(return_value={}),
-                "run_json_command": mock.Mock(side_effect=[(0, first_start, "", ""), (0, relaunch_start, "", "")]),
+                "run_startup_in_process": mock.Mock(return_value=(0, first_start, "", "")),
+                "run_json_command": mock.Mock(return_value=(0, relaunch_start, "", "")),
+                "pid_command": mock.Mock(return_value="/fixture/Cataclysm-AOL --world McWilliams"),
+                "native_save_quit_receipt": mock.Mock(return_value={"status": "matched"}),
+                "observe_bound_process_exit": mock.Mock(return_value={
+                    "status": "native_exit", "elapsed_seconds": 0.1,
+                    "scheduling_uncertainty_seconds": 0.0,
+                }),
                 "resolve_artifact_source": mock.Mock(return_value=(artifact_log, False, "debug.log")),
                 "probe_runtime_blockers": mock.Mock(return_value=[]),
                 "probe_runtime_warnings": mock.Mock(return_value=[]),
@@ -482,6 +523,10 @@ class ProbeRelaunchTest(unittest.TestCase):
                 "capture_screenshot": screenshot,
                 "execute_probe_steps": execute,
                 "wait_for_pid_exit": mock.Mock(return_value=True),
+                "persisted_run_process_generation": mock.Mock(return_value={
+                    "pid": 202, "birth_identity": "fixture-relaunch-202",
+                    "command": "/fixture/Cataclysm-AOL --world McWilliams",
+                }),
                 "capture_feature_phase_guard": mock.Mock(return_value={"status": "green", "ledger_row": {}}),
                 "render_derived_screens": mock.Mock(return_value=[]),
                 "declared_screen_artifact_matches": mock.Mock(return_value=[]),
@@ -507,7 +552,8 @@ class ProbeRelaunchTest(unittest.TestCase):
             self.assertEqual(report["relaunch"]["status"], "ready")
             self.assertEqual(report["relaunch"]["artifact_log_pre_relaunch_size"], 0)
             self.assertEqual(report["steps"][-1]["phase"], "post_relaunch")
-            relaunch_command = patches["run_json_command"].call_args_list[1].args[0]
+            patches["run_startup_in_process"].assert_called_once()
+            relaunch_command = patches["run_json_command"].call_args_list[0].args[0]
             self.assertEqual(
                 relaunch_command[relaunch_command.index("--harness-artifact-run-dir") + 1],
                 str(run_dir.resolve()),

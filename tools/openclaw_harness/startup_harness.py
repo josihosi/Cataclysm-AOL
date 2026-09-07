@@ -63,6 +63,7 @@ from scenario_registry_store import (
 )
 from certification_process_lease import (
     CertificationLeaseError,
+    ProcessSnapshot,
     SystemProcessInspector,
     load_certification_manifest,
     release_certification_lease_handle,
@@ -3220,7 +3221,26 @@ def finalize_failed_certification_start(
     owner records an already-exited process without signalling it.
     """
     if certification_lease is None:
-        return {"status": "not_certification"}
+        generation = current_owned_process_generation(run_dir)
+        status = str(generation.get("status", ""))
+        if status == "exited":
+            return {
+                "status": "already_exited",
+                "pid": generation.get("pid", 0),
+                "process_generation": generation,
+                "native_exit_credit": False,
+            }
+        return {
+            "status": "retained_startup_failure_requires_explicit_quit",
+            "pid": generation.get("pid", 0),
+            "process_generation": generation,
+            "native_exit_credit": False,
+            "next_action": {
+                "owner": "launching_worker",
+                "action": "explicit_native_quit_or_bound_cleanup",
+                "reason": "startup failure does not authorize automatic game termination",
+            },
+        }
     cleanup = release_certification_lease_handle(
         certification_lease["connection"], manifest=certification_lease["manifest"],
         lease=certification_lease["lease"], inspector=certification_lease["inspector"],
@@ -5561,17 +5581,48 @@ def finalize_cockpit_live_session(
     final_path = final_path or cockpit_live_final_path( run_dir )
     if final_path.exists():
         return {"cleanup": {"status": "rejected_existing_final_report"}}
+    owned = current_owned_process_generation(run_dir)
+    cleanup_pid = int(owned.get("pid", 0) or 0)
     explicit_quit = report.get("termination_requested") is True
     if explicit_quit:
         write_json(run_dir / "cockpit.player_quit.json", {
-            "schema": "caol-cockpit-player-quit-v1", "pid": pid,
-            "command": pid_command(pid), "run_id": report.get("run_id"),
+            "schema": "caol-cockpit-player-quit-v1", "pid": cleanup_pid,
+            "command": str(owned.get("expected", {}).get("command", "")),
+            "process_generation": owned,
+            "run_id": report.get("run_id"),
             "binding_id": report.get("binding_id"), "stop_reason": report.get("stop_reason"),
         })
-    cleanup = cleanup_game_process( pid, explicit_quit=explicit_quit ) if cleanup_process else {
-        "status": "deferred_to_scenario_terminalization",
-        "pid": pid,
-    }
+    if not cleanup_process:
+        cleanup = {
+            "status": "deferred_to_scenario_terminalization",
+            "pid": cleanup_pid,
+            "process_generation": owned,
+        }
+    elif owned.get("status") == "alive":
+        cleanup = cleanup_game_process(
+            cleanup_pid,
+            explicit_quit=explicit_quit,
+            expected_process_generation=owned["expected"],
+        )
+    elif owned.get("status") == "exited":
+        cleanup = {
+            "status": "already_exited",
+            "pid": cleanup_pid,
+            "process_generation": owned,
+            "native_exit_credit": False,
+        }
+    else:
+        cleanup = {
+            "status": "retained_process_identity_unavailable",
+            "pid": cleanup_pid,
+            "process_generation": owned,
+            "native_exit_credit": False,
+            "next_action": {
+                "owner": "launching_worker",
+                "action": "inspect_bound_process_identity",
+                "reason": "the current process generation could not be authenticated for cleanup",
+            },
+        }
     payload = {**dict( report ), "cleanup": cleanup}
     ensure_dir( final_path.parent )
     exported = write_json_stream(final_path, payload)
@@ -21387,14 +21438,28 @@ def record_bridge_game_process(process: subprocess.Popen, env: Mapping[str, str]
         log_paths["profile_diagnostic_debug"] = {
             "path": str(config_dir_for_profile(profile) / "debug.log"), "scope": "profile_shared",
         }
+    generation = process_generation_snapshot(process.pid)
     value = {"binding_id": bridge, "pid": process.pid,
              "run_id": env.get("OPENCLAW_HARNESS_RUN_ID", ""),
-             "command": pid_command(process.pid), "log_paths": log_paths}
+             "command": generation["command"], "process_generation": generation,
+             "log_paths": log_paths}
     try:
         if not value["command"]:
             raise OSError("game process identity unavailable before startup")
         temporary = target.with_suffix(".tmp")
         temporary.write_text(json.dumps(value), encoding="utf-8")
+        # ``game-process.json`` deliberately identifies only the active
+        # generation.  Retain each launch separately so a failed reentry does
+        # not erase the original finish/exit evidence or conceal its live
+        # replacement behind the same binding id.
+        attempts = Path(session) / "game-process.generations.jsonl"
+        with attempts.open("a", encoding="utf-8") as sink:
+            sink.write(json.dumps({
+                "schema": "caol-owned-game-process-generation-v1",
+                "binding_id": bridge,
+                "run_id": env.get("OPENCLAW_HARNESS_RUN_ID", ""),
+                "process_generation": generation,
+            }, ensure_ascii=False, sort_keys=True) + "\n")
         os.replace(temporary, target)
     except OSError as exc:
         raise OSError(f"{exc}; game pid {process.pid} retained for the player's decision") from exc
@@ -21639,6 +21704,140 @@ def pid_command(pid: int) -> str:
     return proc.stdout.strip()
 
 
+def process_generation_snapshot(
+    pid: int, *, inspector: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """Return the current PID generation without granting cleanup authority.
+
+    A command line alone is not durable ownership: a later process can reuse a
+    PID with the same executable.  The start identity supplied by the process
+    inspector is the stable component used for all bound cleanup decisions.
+    """
+    observed = (inspector or SystemProcessInspector()).inspect(int(pid))
+    if not isinstance(observed, ProcessSnapshot):
+        raise TypeError("process inspector returned an invalid snapshot")
+    # POSIX ``kill(pid, 0)`` reports a zombie until its parent reaps it.  A
+    # zombie has already exited and must not be mistaken for a reused PID or a
+    # still-live cleanup blocker.
+    if inspector is None and observed.alive and not pid_is_alive(pid):
+        observed = ProcessSnapshot(pid=int(pid), alive=False)
+    command = str(observed.command or pid_command(pid)).strip()
+    return {
+        "schema": "caol-owned-process-generation-v1",
+        "pid": int(pid),
+        "alive": bool(observed.alive),
+        "birth_identity": str(observed.birth_identity or "").strip(),
+        "command": command,
+        "executable_path": str(observed.executable_path or "").strip(),
+    }
+
+
+def process_generation_matches(
+    expected: Mapping[str, Any], observed: Mapping[str, Any],
+) -> bool:
+    """Compare the fields that make a persisted PID ownership binding exact."""
+    try:
+        expected_pid = int(expected.get("pid", 0) or 0)
+        observed_pid = int(observed.get("pid", 0) or 0)
+    except (TypeError, ValueError):
+        return False
+    return bool(
+        expected_pid > 0
+        and expected_pid == observed_pid
+        and str(expected.get("birth_identity", "")).strip()
+        and str(expected.get("birth_identity", "")).strip()
+        == str(observed.get("birth_identity", "")).strip()
+        and str(expected.get("command", "")).strip()
+        and str(expected.get("command", "")).strip()
+        == str(observed.get("command", "")).strip()
+    )
+
+
+def recorded_process_generation(record: Mapping[str, Any]) -> Dict[str, Any]:
+    """Extract a validated persisted generation from a process record."""
+    candidate = record.get("process_generation") if isinstance(record, Mapping) else None
+    if not isinstance(candidate, Mapping):
+        return {}
+    result = dict(candidate)
+    try:
+        result["pid"] = int(result.get("pid", 0) or 0)
+    except (TypeError, ValueError):
+        return {}
+    if result["pid"] <= 0:
+        return {}
+    return result
+
+
+def persisted_run_process_generation(run_dir: Path) -> Dict[str, Any]:
+    """Read one launch's immutable process record without probing its PID."""
+    try:
+        value = json.loads((Path(run_dir) / "process.json").read_text(encoding="utf-8"))
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return {}
+    return recorded_process_generation(value) if isinstance(value, Mapping) else {}
+
+
+def current_owned_process_generation(
+    run_dir: Path, *, inspector: Optional[Any] = None,
+) -> Dict[str, Any]:
+    """Resolve the newest recorded launch generation for this logical run.
+
+    ``process_chain.json`` is written only by a declared saved-world reentry;
+    it supersedes the initial process record when a replacement was launched,
+    including a replacement whose startup failed.  A missing or mismatched
+    birth identity remains retained and actionable, never a license to signal
+    whichever process currently holds the numeric PID.
+    """
+    root = Path(run_dir)
+    record: Mapping[str, Any] = {}
+    source = ""
+    try:
+        chain = json.loads((root / "process_chain.json").read_text(encoding="utf-8"))
+        if isinstance(chain, Mapping):
+            replacement = chain.get("current_process_generation")
+            if isinstance(replacement, Mapping):
+                record = {"process_generation": replacement}
+                source = "process_chain.json"
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        pass
+    if not record:
+        expected_from_run = persisted_run_process_generation(root)
+        if expected_from_run:
+            record = {"process_generation": expected_from_run}
+            source = "process.json"
+    expected = recorded_process_generation(record)
+    pid = int(expected.get("pid", 0) or 0) if expected else 0
+    if pid <= 0:
+        return {
+            "status": "identity_unavailable",
+            "pid": 0,
+            "source": source or "missing_process_record",
+            "reason": "no current owned process generation was recorded",
+        }
+    observed = process_generation_snapshot(pid, inspector=inspector)
+    result: Dict[str, Any] = {
+        "pid": pid,
+        "source": source,
+        "expected": expected,
+        "observed": observed,
+    }
+    if not observed.get("alive"):
+        result["status"] = "exited"
+    elif not expected.get("birth_identity") or not expected.get("command"):
+        result.update({
+            "status": "identity_unavailable",
+            "reason": "current process record lacks a stable birth and command identity",
+        })
+    elif not process_generation_matches(expected, observed):
+        result.update({
+            "status": "identity_changed",
+            "reason": "current PID does not match the recorded owned process generation",
+        })
+    else:
+        result["status"] = "alive"
+    return result
+
+
 def _utc_timestamp(epoch_seconds: float) -> str:
     return datetime.fromtimestamp(
         float(epoch_seconds), tz=timezone.utc
@@ -21814,8 +22013,14 @@ def wait_for_pid_exit(pid: int, timeout_seconds: float) -> bool:
     return not pid_is_alive(pid)
 
 
-def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0,
-                         explicit_quit: bool = False) -> Dict[str, Any]:
+def cleanup_game_process(
+    pid: int,
+    *,
+    grace_seconds: float = 2.0,
+    explicit_quit: bool = False,
+    expected_process_generation: Optional[Mapping[str, Any]] = None,
+    inspector: Optional[Any] = None,
+) -> Dict[str, Any]:
     cleanup_started_epoch = time.time()
     info: Dict[str, Any] = {
         "pid": pid,
@@ -21829,7 +22034,32 @@ def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0,
         info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
 
-    command = pid_command(pid)
+    if expected_process_generation is None:
+        info["status"] = "retained_process_identity_unavailable"
+        info["next_action"] = {
+            "owner": "launching_worker",
+            "action": "inspect_bound_process_identity",
+            "reason": "cleanup requires a recorded PID birth and command identity",
+        }
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
+        return info
+    expected = dict(expected_process_generation)
+    info["expected_process_generation"] = expected
+    observed = process_generation_snapshot(pid, inspector=inspector)
+    info["observed_process_generation"] = observed
+    if not observed.get("alive"):
+        info["status"] = "already_exited"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
+        return info
+    if not expected.get("birth_identity") or not expected.get("command"):
+        info["status"] = "retained_process_identity_unavailable"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
+        return info
+    if not process_generation_matches(expected, observed):
+        info["status"] = "retained_process_identity_changed"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
+        return info
+    command = str(observed["command"])
     info["command"] = command
     if not command:
         if not pid_is_alive(pid):
@@ -21864,24 +22094,27 @@ def cleanup_game_process(pid: int, *, grace_seconds: float = 2.0,
         info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
 
-    if wait_for_pid_exit(pid, grace_seconds):
+    deadline = time.monotonic() + max(float(grace_seconds), 0.0)
+    after = process_generation_snapshot(pid, inspector=inspector)
+    while after.get("alive") and time.monotonic() < deadline:
+        time.sleep(0.1)
+        after = process_generation_snapshot(pid, inspector=inspector)
+    exited = not after.get("alive")
+    info["final_process_generation"] = after
+    if after.get("alive") and not process_generation_matches(expected_process_generation, after):
+        info["status"] = "retained_process_identity_changed"
+        info["cleanup_finished_at"] = _utc_timestamp(time.time())
+        return info
+    if exited:
         info["status"] = "terminated"
         info["cleanup_finished_at"] = _utc_timestamp(time.time())
         return info
-
-    try:
-        os.kill(pid, signal.SIGKILL)
-        info["signal"] = "SIGKILL"
-    except ProcessLookupError:
-        info["status"] = "terminated_during_kill_escalation"
-        info["cleanup_finished_at"] = _utc_timestamp(time.time())
-        return info
-    except PermissionError:
-        info["status"] = "permission_denied_on_kill"
-        info["cleanup_finished_at"] = _utc_timestamp(time.time())
-        return info
-
-    info["status"] = "killed" if wait_for_pid_exit(pid, 1.0) else "still_running_after_kill"
+    info["status"] = "graceful_quit_unconfirmed_process_retained"
+    info["next_action"] = {
+        "owner": "launching_worker",
+        "action": "inspect_native_quit_blocker",
+        "reason": "SIGTERM did not observe an exit; no forced-kill escalation was sent",
+    }
     info["cleanup_finished_at"] = _utc_timestamp(time.time())
     return info
 
@@ -28823,7 +29056,7 @@ def run_probe_post_relaunch(
         result.update({
             "status": (
                 "terminal_process_exit_missing"
-                if process_observation.get("status") in {"", "timeout"}
+                if process_observation.get("status", "") in {"", "timeout"}
                 else "terminal_process_identity_invalid"
             ),
             "pid": initial_pid,
@@ -28885,31 +29118,55 @@ def run_probe_post_relaunch(
         ])
     start_rc, start_result, start_stdout, start_stderr = run_json_command(start_cmd)
     relaunch_pid = int(start_result.get("pid", 0) or 0)
+    replacement_run_dir_value = str(start_result.get("run_dir", "") or "").strip()
+    replacement_run_dir = Path(replacement_run_dir_value) if replacement_run_dir_value else None
+    replacement_generation = (
+        persisted_run_process_generation(replacement_run_dir)
+        if replacement_run_dir is not None else {}
+    )
+    if not replacement_generation:
+        startup_cleanup = start_result.get("cleanup")
+        retained = startup_cleanup.get("process_generation") \
+            if isinstance(startup_cleanup, Mapping) else None
+        if isinstance(retained, Mapping):
+            candidate = retained.get("expected")
+            if isinstance(candidate, Mapping):
+                replacement_generation = dict(candidate)
+    initial_generation = (
+        persisted_run_process_generation(artifact_run_dir)
+        if artifact_run_dir is not None else {}
+    )
     result.update({
         "status": "startup_failed" if start_rc != 0 or not start_result.get("ok") else "started",
         "pid": relaunch_pid,
+        "process_generation": replacement_generation,
         "start_command": start_cmd,
         "startup": start_result,
         "start_stdout": start_stdout,
         "start_stderr": start_stderr,
     })
     if start_rc != 0 or not start_result.get("ok"):
-        return result
-    if relaunch_pid <= 0:
+        result["status"] = "startup_failed"
+    elif relaunch_pid <= 0:
         result["status"] = "startup_missing_pid"
-        return result
-    if relaunch_pid == initial_pid:
+    elif relaunch_pid == initial_pid:
         result["status"] = "same_pid_relaunch_rejected"
-        return result
-    startup_classification = start_result.get("proof_classification", {})
-    if not isinstance(startup_classification, dict) or not startup_classification.get("startup_clean_for_feature_steps", False):
-        result["status"] = "relaunch_startup_gate_not_clean"
-        return result
-    focus = start_result.get("focus", {})
-    if not isinstance(focus, dict) or not focus.get("ok"):
-        result["status"] = "relaunch_focus_unproven"
-        return result
+    elif not replacement_generation:
+        result["status"] = "replacement_identity_unavailable"
+    else:
+        startup_classification = start_result.get("proof_classification", {})
+        if not isinstance(startup_classification, dict) or not startup_classification.get(
+                "startup_clean_for_feature_steps", False):
+            result["status"] = "relaunch_startup_gate_not_clean"
+        else:
+            focus = start_result.get("focus", {})
+            result["status"] = "ready" if isinstance(focus, dict) and focus.get("ok") \
+                else "relaunch_focus_unproven"
     if artifact_run_dir is not None:
+        # This is the authoritative current-generation handoff for the
+        # enclosing logical run.  It is written even for a failed replacement
+        # so the worker can explicitly close that exact game rather than
+        # accidentally applying the original finish receipt to a stale PID.
         launch_receipt: Mapping[str, Any] = {}
         try:
             parsed_receipt = json.loads(registry_launch_receipt) if registry_launch_receipt else {}
@@ -28927,9 +29184,24 @@ def run_probe_post_relaunch(
             "replacement_pid": relaunch_pid,
             "executable_identity": str(launch_receipt.get("runtime_binding", {}).get("executable_sha256", ""))
             if isinstance(launch_receipt.get("runtime_binding"), Mapping) else "",
-            "lifecycle": "replacement_ready",
+            "initial_process_generation": initial_generation,
+            "replacement_process_generation": replacement_generation,
+            # A known replacement PID supersedes the initial generation even
+            # when its record could not be read.  Falling back to the old
+            # generation would make a later explicit finish target the wrong
+            # process after a failed reentry.
+            "current_process_generation": (
+                replacement_generation if relaunch_pid > 0 else initial_generation
+            ),
+            "replacement_startup_status": result["status"],
+            "lifecycle": (
+                "replacement_identity_unavailable"
+                if relaunch_pid > 0 and not replacement_generation else
+                "replacement_ready" if result["status"] == "ready" else
+                "replacement_rejected_retained" if relaunch_pid > 0 else
+                "replacement_not_started"
+            ),
         })
-    result["status"] = "ready"
     return result
 
 
@@ -35005,9 +35277,11 @@ def run_startup(args: argparse.Namespace) -> int:
                 "certification process launched but could not be identity-bound; "
                 f"no process was signalled: {exc}"
             ) from exc
+    process_generation = process_generation_snapshot(proc.pid)
     write_json(run_dir / "process.json", {
         "pid": proc.pid,
         "command": list(proc.args) if isinstance(proc.args, (list, tuple)) else str(proc.args),
+        "process_generation": process_generation,
         "harness_new_world": plan.harness_new_world,
         "harness_raw_seed": plan.harness_raw_seed,
         "harness_bandit_feasibility": plan.harness_bandit_feasibility,
@@ -35484,7 +35758,7 @@ def run_startup(args: argparse.Namespace) -> int:
 
     if plan.strategy == "harness_new_world":
         if certification_lease is None:
-            cleanup = cleanup_game_process(proc.pid)
+            cleanup = finalize_failed_certification_start(None, run_dir)
         else:
             cleanup = finalize_failed_certification_start(certification_lease, run_dir)
         try:
@@ -35753,10 +36027,13 @@ def finalize_probe_report(
                 quit_request = json.loads((Path(run_dir) / "cockpit.player_quit.json").read_text(encoding="utf-8"))
             except (OSError, ValueError):
                 pass
+        owned = current_owned_process_generation(Path(run_dir)) \
+            if run_dir is not None else {}
+        current_pid = int(owned.get("pid", 0) or 0)
         explicit_quit = isinstance(quit_request, Mapping) and \
             quit_request.get("schema") == "caol-cockpit-player-quit-v1" and \
-            quit_request.get("pid") == cleanup_pid and \
-            quit_request.get("command") == pid_command(cleanup_pid)
+            quit_request.get("pid") == current_pid and \
+            quit_request.get("command") == str(owned.get("expected", {}).get("command", ""))
         pending_recovery = pending_adaptive_semantic_recovery(report)
         if pending_recovery is not None and not explicit_quit:
             # A report can describe an incomplete transaction, but it cannot
@@ -35765,7 +36042,8 @@ def finalize_probe_report(
             # finalized run has an accepted receipt chain.
             report["cleanup"] = {
                 "status": "deferred_pending_adaptive_recovery",
-                "pid": cleanup_pid,
+                "pid": current_pid or cleanup_pid,
+                "process_generation": owned,
                 "pending_recovery": pending_recovery,
             }
             report["finalization"] = {
@@ -35773,7 +36051,28 @@ def finalize_probe_report(
                 "reason": "owned_game_process_retained_until_recovery_receipt_is_accepted",
             }
         else:
-            report["cleanup"] = cleanup_game_process(cleanup_pid, explicit_quit=explicit_quit)
+            if owned.get("status") == "alive":
+                report["cleanup"] = cleanup_game_process(
+                    current_pid, explicit_quit=explicit_quit,
+                    expected_process_generation=owned["expected"],
+                )
+            elif owned.get("status") == "exited":
+                report["cleanup"] = {
+                    "status": "already_exited", "pid": current_pid,
+                    "process_generation": owned, "native_exit_credit": False,
+                }
+            else:
+                report["cleanup"] = {
+                    "status": "retained_process_identity_unavailable",
+                    "pid": current_pid or cleanup_pid,
+                    "process_generation": owned,
+                    "native_exit_credit": False,
+                    "next_action": {
+                        "owner": "launching_worker",
+                        "action": "inspect_bound_process_identity",
+                        "reason": "report finalization could not authenticate the current owned process",
+                    },
+                }
     if run_dir is not None and isinstance(report.get("cleanup"), Mapping):
         seal_r027_signal_cleanup_sidecar(run_dir, report["cleanup"])
         report["wait_diagnostic"] = seal_wait_diagnostic_ledger(
@@ -36575,6 +36874,7 @@ def run_launch_only_handoff(
         process = {
             "pid": proc.pid,
             "command": [plan.executable, "--userdir", f".userdata/{profile}/", "--world", plan.target_world],
+            "process_generation": process_generation_snapshot(proc.pid),
             "killed_previous_pids": [],
             "launch_only": True,
             "transition_event_run_id": transition_binding["run_id"],

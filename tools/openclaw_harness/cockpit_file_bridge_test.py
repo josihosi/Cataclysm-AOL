@@ -18,6 +18,7 @@ from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cockpit_file_bridge import FileBackedCockpitBridge, FileBackedCockpitClient, FreshObservationSequence, main
+import startup_harness
 
 
 CHILD = (
@@ -1024,8 +1025,10 @@ for line in sys.stdin:
             time.sleep(0.05)
             game_command = pid_command(game.pid)
             self.assertTrue(game_command)
+            game_generation = startup_harness.process_generation_snapshot(game.pid)
             (directory / "game-process.json").write_text(json.dumps({
                 "pid": game.pid, "binding_id": "bound-a", "command": game_command,
+                "process_generation": game_generation,
             }))
             self.assertTrue(bridge.send_request(
                 directory, request_id="finish", binding_id="bound-a", request={"action": "run.finish"}
@@ -1085,8 +1088,10 @@ for line in sys.stdin:
             time.sleep(0.05)
             game_command = pid_command(game.pid)
             self.assertTrue(game_command)
+            game_generation = startup_harness.process_generation_snapshot(game.pid)
             (directory / "game-process.json").write_text(json.dumps({
                 "pid": game.pid, "binding_id": "bound-a", "command": game_command,
+                "process_generation": game_generation,
             }))
             self.assertTrue(bridge.send_request(
                 directory, request_id="finish", binding_id="bound-a", request={"action": "run.finish"}

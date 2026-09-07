@@ -176,7 +176,8 @@ class FileBackedCockpitBridge:
 
     def _owned_game_process_evidence(self) -> dict[str, Any]:
         """Observe the registered game identity independently of the bridge child."""
-        from startup_harness import pid_command
+        from startup_harness import (pid_command, process_generation_matches,
+                                     process_generation_snapshot)
         ownership_path = self.session_dir / "game-process.json"
         if not ownership_path.exists():
             return {"status": "unconfirmed_missing_process_record", "pid": 0}
@@ -188,6 +189,20 @@ class FileBackedCockpitBridge:
             return {"status": "unconfirmed_invalid_process_record", "pid": 0}
         if ownership.get("binding_id") != self.binding_id or pid <= 0 or not expected_command:
             return {"status": "identity_mismatch", "pid": pid}
+        expected_generation = ownership.get("process_generation")
+        if isinstance(expected_generation, Mapping):
+            observed_generation = process_generation_snapshot(pid)
+            if not observed_generation.get("alive") or not process_generation_matches(
+                    expected_generation, observed_generation):
+                return {
+                    "status": "exited_or_identity_changed", "pid": pid,
+                    "expected_process_generation": dict(expected_generation),
+                    "observed_process_generation": observed_generation,
+                }
+            return {
+                "status": "alive", "pid": pid, "command": observed_generation["command"],
+                "process_generation": dict(expected_generation),
+            }
         observed_command = pid_command(pid)
         if observed_command != expected_command:
             return {"status": "exited_or_identity_changed", "pid": pid,
@@ -220,7 +235,25 @@ class FileBackedCockpitBridge:
         else:
             cleanup["ownership"] = "unconfirmed_missing_process_record"
         if game_pid:
-            cleanup["game"] = cleanup_game_process(game_pid, explicit_quit=explicit_quit)
+            expected_generation = ownership.get("process_generation")
+            if isinstance(expected_generation, Mapping) and \
+                    expected_generation.get("birth_identity") and expected_generation.get("command"):
+                cleanup["game"] = cleanup_game_process(
+                    game_pid, explicit_quit=explicit_quit,
+                    expected_process_generation=expected_generation,
+                )
+            else:
+                cleanup["game"] = {
+                    "status": "retained_process_identity_unavailable",
+                    "pid": game_pid,
+                    "recorded_process": ownership,
+                    "native_exit_credit": False,
+                    "next_action": {
+                        "owner": "launching_worker",
+                        "action": "inspect_bound_process_identity",
+                        "reason": "legacy bridge ownership has no stable process birth identity",
+                    },
+                }
         self._close_child_streams()
         return cleanup
 

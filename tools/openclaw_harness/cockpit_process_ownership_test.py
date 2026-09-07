@@ -28,9 +28,11 @@ class ProcessOwnershipTest(unittest.TestCase):
                 record = json.loads((session / "game-process.json").read_text())
                 self.assertEqual(record["pid"], 123)
                 self.assertEqual(record["run_id"], "run")
-                with patch.object(harness, "cleanup_game_process", return_value={"status": "terminated"}) as cleanup:
-                    bridge._emergency_cleanup()
-                    cleanup.assert_called_once_with(123, explicit_quit=False)
+                generations = [json.loads(line) for line in
+                               (session / "game-process.generations.jsonl").read_text().splitlines()]
+                self.assertEqual(generations[-1]["process_generation"]["pid"], 123)
+                retained = bridge._emergency_cleanup()
+                self.assertEqual(retained["game"]["status"], "retained_process_identity_unavailable")
             with patch.object(harness, "pid_command", return_value="unrelated process"), patch.object(harness, "cleanup_game_process") as cleanup:
                 bridge._startup_progress = {"pid": 123}
                 result = bridge._emergency_cleanup()
@@ -87,8 +89,15 @@ class ProcessOwnershipTest(unittest.TestCase):
     def test_deferred_scenario_cleanup_requires_the_player_quit_record(self):
         process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", "cataclysm-tiles"])
         try:
+            # The macOS Python launcher replaces itself once after Popen;
+            # record the executable process generation, not that launcher.
+            time.sleep(0.1)
             with tempfile.TemporaryDirectory() as temp, redirect_stdout(io.StringIO()):
                 run_dir = Path(temp)
+                generation = harness.process_generation_snapshot(process.pid)
+                (run_dir / "process.json").write_text(json.dumps({
+                    "pid": process.pid, "process_generation": generation,
+                }), encoding="utf-8")
                 disconnected = {"mode":"probe", "steps":[]}
                 harness.finalize_probe_report(run_dir, disconnected, cleanup_pid=process.pid)
                 self.assertEqual(disconnected["cleanup"]["status"], "retained_waiting_for_player_quit")
@@ -111,10 +120,19 @@ class ProcessOwnershipTest(unittest.TestCase):
     def test_live_process_survives_cleanup_until_explicit_player_quit(self):
         process = subprocess.Popen([sys.executable, "-c", "import time; time.sleep(60)", "cataclysm-tiles"])
         try:
-            retained = harness.cleanup_game_process(process.pid)
+            time.sleep(0.1)
+            unbound = harness.cleanup_game_process(process.pid, explicit_quit=True)
+            self.assertEqual(unbound["status"], "retained_process_identity_unavailable")
+            self.assertIsNone(process.poll())
+            generation = harness.process_generation_snapshot(process.pid)
+            retained = harness.cleanup_game_process(
+                process.pid, expected_process_generation=generation,
+            )
             self.assertEqual(retained["status"], "retained_waiting_for_player_quit")
             self.assertIsNone(process.poll())
-            ended = harness.cleanup_game_process(process.pid, explicit_quit=True)
+            ended = harness.cleanup_game_process(
+                process.pid, explicit_quit=True, expected_process_generation=generation,
+            )
             self.assertEqual(ended["status"], "terminated")
             process.wait(timeout=3)
             self.assertFalse(ended["native_exit_credit"])
@@ -122,6 +140,124 @@ class ProcessOwnershipTest(unittest.TestCase):
             if process.poll() is None:
                 process.terminate()
                 process.wait(timeout=3)
+
+    def test_reused_pid_generation_is_retained_without_signalling(self):
+        class ReusedPidInspector:
+            def inspect(self, pid):
+                return harness.ProcessSnapshot(
+                    pid=pid, alive=True, birth_identity="birth-new",
+                    command="/test/Cataclysm-AOL --userdir /test/disposable",
+                )
+
+        expected = {
+            "pid": 123,
+            "birth_identity": "birth-old",
+            "command": "/test/Cataclysm-AOL --userdir /test/disposable",
+        }
+        with patch.object(harness.os, "kill") as kill:
+            cleanup = harness.cleanup_game_process(
+                123, explicit_quit=True, expected_process_generation=expected,
+                inspector=ReusedPidInspector(),
+            )
+        self.assertEqual(cleanup["status"], "retained_process_identity_changed")
+        kill.assert_not_called()
+
+    def test_explicit_cleanup_does_not_escalate_to_forced_kill(self):
+        class StillAliveInspector:
+            def inspect(self, pid):
+                return harness.ProcessSnapshot(
+                    pid=pid, alive=True, birth_identity="birth-123",
+                    command="/test/Cataclysm-AOL",
+                )
+
+        expected = {
+            "pid": 123, "birth_identity": "birth-123", "command": "/test/Cataclysm-AOL",
+        }
+        with patch.object(harness.os, "kill") as kill:
+            cleanup = harness.cleanup_game_process(
+                123, explicit_quit=True, grace_seconds=0.0,
+                expected_process_generation=expected, inspector=StillAliveInspector(),
+            )
+        self.assertEqual(cleanup["status"], "graceful_quit_unconfirmed_process_retained")
+        kill.assert_called_once_with(123, harness.signal.SIGTERM)
+        self.assertFalse(cleanup["native_exit_credit"])
+
+    def test_failed_start_reports_the_live_owned_generation_without_closing_it(self):
+        process = subprocess.Popen([
+            os.path.realpath(sys.executable), "-u", "-c", "import time; time.sleep(60)", "Cataclysm-AOL",
+        ])
+        try:
+            with tempfile.TemporaryDirectory() as temp:
+                run_dir = Path(temp)
+                generation = harness.process_generation_snapshot(process.pid)
+                (run_dir / "process.json").write_text(json.dumps({
+                    "pid": process.pid, "process_generation": generation,
+                }), encoding="utf-8")
+                result = harness.finalize_failed_certification_start(None, run_dir)
+            self.assertEqual(result["status"], "retained_startup_failure_requires_explicit_quit")
+            self.assertEqual(result["process_generation"]["expected"], generation)
+            self.assertEqual(result["next_action"]["action"], "explicit_native_quit_or_bound_cleanup")
+            self.assertIsNone(process.poll())
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=3)
+
+    def test_unbound_finish_and_report_finalization_retain_a_live_fake_child(self):
+        process = subprocess.Popen([
+            os.path.realpath(sys.executable), "-u", "-c", "import time; time.sleep(60)", "Cataclysm-AOL",
+        ])
+        try:
+            with tempfile.TemporaryDirectory() as temp:
+                run_dir = Path(temp)
+                finished = harness.finalize_cockpit_live_session(
+                    run_dir, process.pid, {"termination_requested": True},
+                )
+                report = {"mode": "probe", "steps": []}
+                harness.finalize_probe_report(
+                    run_dir, report, cleanup_pid=process.pid,
+                    report_filename="unbound.probe.report.json",
+                )
+            self.assertEqual(finished["cleanup"]["status"], "retained_process_identity_unavailable")
+            self.assertEqual(report["cleanup"]["status"], "retained_process_identity_unavailable")
+            self.assertIsNone(process.poll())
+        finally:
+            if process.poll() is None:
+                process.terminate()
+                process.wait(timeout=3)
+
+    def test_explicit_finish_uses_current_replacement_generation_only(self):
+        original = subprocess.Popen([
+            os.path.realpath(sys.executable), "-u", "-c", "import time; time.sleep(60)", "Cataclysm-AOL",
+        ])
+        replacement = subprocess.Popen([
+            os.path.realpath(sys.executable), "-u", "-c", "import time; time.sleep(60)", "Cataclysm-AOL",
+        ])
+        try:
+            with tempfile.TemporaryDirectory() as temp:
+                run_dir = Path(temp)
+                original_generation = harness.process_generation_snapshot(original.pid)
+                replacement_generation = harness.process_generation_snapshot(replacement.pid)
+                (run_dir / "process.json").write_text(json.dumps({
+                    "pid": original.pid, "process_generation": original_generation,
+                }), encoding="utf-8")
+                (run_dir / "process_chain.json").write_text(json.dumps({
+                    "current_process_generation": replacement_generation,
+                }), encoding="utf-8")
+                result = harness.finalize_cockpit_live_session(
+                    run_dir, original.pid,
+                    {"termination_requested": True, "run_id": "run", "binding_id": "bound"},
+                )
+            self.assertEqual(result["cleanup"]["pid"], replacement.pid)
+            self.assertEqual(result["cleanup"]["status"], "terminated")
+            self.assertFalse(result["cleanup"]["native_exit_credit"])
+            replacement.wait(timeout=3)
+            self.assertIsNone(original.poll())
+        finally:
+            for process in (original, replacement):
+                if process.poll() is None:
+                    process.terminate()
+                    process.wait(timeout=3)
 
     def test_progress_pid_without_owned_identity_is_not_killed(self):
         with tempfile.TemporaryDirectory() as tmp:

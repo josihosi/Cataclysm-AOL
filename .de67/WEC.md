@@ -229,6 +229,33 @@ The canonical source is the Mac workspace `/Volumes/CodexBulk/Schanigarten/works
 
 The qualified harness is described by the repository skill `.agents/skills/caol-harness/SKILL.md` and `tools/openclaw_harness/QUALIFICATION.md`; these are current implementation/use documentation, not a replacement product ledger. The latest tested implementation checkpoint is 54d6c00dfefafc3443f80097f5a3bf1664192348, followed by qualification documentation at 1bfcf283417d63ae407bc66fc9950a90a68dd5b5. Recheck current identity. The harness lifecycle keeps games running after failures; only explicit player quit/finish/cleanup ends a trial. Do not introduce automatic time/RSS kill limits.
 
+### Pending owner corrections — review f918d28be953
+
+Owner70c4632e512e promotes R032-F001 Patrol release and R029-F003 same-minute Pay, including
+player-or-follower first contact, negotiation before attack and safe paid retreat. It commissions
+targeted R029-F004 activation/arbitration investigation and repair planning, plus correlation and
+bounded repair of false follower camp-craft promises under R-031. No global AI shutdown or blanket
+camp-listener veto is authorized. The refrozen named DFS slices and separate same-claim assignments
+carry the mechanisms and tests; earlier pending-promotion restrictions yield only for these outcomes.
+These repairs are not yet implemented or proved.
+
+Same-OMT camp smoke is an accepted scope limitation; other smoke, local perception and unperformed
+tests remain required. Sound detection stands, but recent-check cooldown precedes drive347.
+Sound gameplay changes remain unpromoted; the authorized eligibility investigation continues.
+The assigned R-031 worker may spawn only required bandage ingredients after checking current roles,
+recipe, resource ownership/location and binding. Setup and an NPC promise earn no craft-result credit.
+Preserve independent R-034 persistence evidence.
+
+Owner203701a9a40e assigns the primary worker responsibility for all game attempts, including helpers,
+failed starts and replacements, until verified OS exit or explicit retained ownership transfer.
+Apply the runtime/finish contract and inspect actual cleanup; no time/RSS kill limit is authorized.
+The review's five observed exits and four retained automation bindings are in
+`.de67/state/review-owner-f918d28be953/process-recovery.json`; owner freeplay is separate.
+
+The next coordinator delivers still-relevant corrections to the responsible worker and retains this
+handoff until applied evidence or an explicit remaining limitation is returned. Full original owner
+wording remains in the review's `baseline/mutation-suggestions.md`, as evidence rather than a queue.
+
 <!-- DE67:OWNER-CONTRACT:END -->
 
 This invocation authorizes phase 2 specification, its named workspace preparation and checkpointing. It does not launch phase 3 or a playtest campaign. Keep phase-3 coordination policy out of the mechanistic product DFS; preserve the owner's fault responsibilities in the appropriate authorized intent and handoff surfaces. Do not alter unrelated guidance merely to silence a conflict.
