@@ -1,0 +1,74 @@
+{
+  "manifest_version": 1,
+  "name": "r032.prepared_camp_locker_policy_v001_mcw",
+  "description": "R-032 focused established-camp Locker route.  A disposable prepared fixture supplies the Food, Storage, and Locker zones plus one helmet on the Locker tile as zero-credit footing.  The live run must use native semantic owners to observe exact pre/post item location, change one Locker Policy slot, and advance only through native World time until a worker-downtime service result is observed.  Policy mutation alone does not establish service.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r032_prepared_camp_locker_service_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r032_prepared_camp_locker_service_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r032.camp_locker_policy": "native_locker_policy_toggle"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["physical-key", "guessed-key", "ocr-control", "screen-coordinate", "callback-injection", "direct-state-mutation", "direct-save-edit", "fixture-restage"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r032_prepared_camp_locker_service_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "r032_prepared_camp_locker_service_v1",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": ["frame-bound semantic requests"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_prepared_camp_locker_service_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r032_prepared_camp_locker_world",
+      "native_semantic_checkpoint": {"required_actions": ["world.basecamp_missions"], "required_state": "world", "require_initial_hud_world_ready_frame": false}
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_r032_locker_policy",
+      "cleanup_on_finish": true,
+      "objective": "Use only advertised native semantic actions to observe setup-only Locker/Storage footing and the helmet's pre-service native location, enter the currently available Locker Policy route, toggle one current policy slot, advance native World time through a worker-downtime cadence, and observe exact post-service helmet location plus worker state.",
+      "proof_targets": ["same-run current native Locker and Storage zone observations and helmet pre-service type/count/location as setup-only footing", "accepted native camp board and Locker Policy action receipts", "accepted native policy-menu selection", "fresh post-close native board observation showing a changed Locker Policy enabled-slot count", "accepted native elapsed-time route and same-run post-service helmet location/worker state", "accepted cleanup"],
+      "authority": ["currently advertised native semantic actions", "game.act", "run.witness", "run.finish"],
+      "invariants": ["fixture zones and helmet are zero-credit setup only", "policy mutation alone does not prove automatic locker service or storage transfer", "Locker-service credit requires an exact native pre/post item type, count, location, camp identity, worker state, and native elapsed trigger", "do not use physical controls, OCR, coordinates, source inference, direct state mutation, direct save edits, or synthetic receipt injection", "Food and Patrol remain separately uncredited", "stop the affected claim at missing native receipt, unavailable route, source-binding drift, stale owner, or cleanup failure while retaining independent evidence"],
+      "live_operations": ["game.act"],
+      "transition_timeout_seconds": 20.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": ["bind_r032_prepared_camp_locker_world"],
+    "production_behavior": ["operate_r032_locker_policy"],
+    "terminal_persistence": ["operate_r032_locker_policy"],
+    "artifact_verdict": ["operate_r032_locker_policy"],
+    "disallowed_shortcuts": ["bind_r032_prepared_camp_locker_world"]
+  }
+}

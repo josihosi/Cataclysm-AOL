@@ -1,0 +1,12 @@
+{
+  "outcome": "On current source, an established camp with a declared setup-only Locker zone and helmet can use native semantic camp-board owners to change one Locker Policy slot and complete a current native worker-downtime Locker service transition.",
+  "scenario": "r032.prepared_camp_locker_policy_v001_mcw",
+  "query": {
+    "requirements": [
+      {"key": "runtime.fixture", "minimum_evidence": "declared", "op": "eq", "value": "r032_prepared_camp_locker_service_v1"},
+      {"key": "runtime.world", "minimum_evidence": "declared", "op": "eq", "value": "McWilliams"},
+      {"key": "capabilities.r032.camp_locker_policy", "minimum_evidence": "declared", "op": "eq", "value": "native_locker_policy_toggle"}
+    ],
+    "preferences": [{"key": "runtime.entry_mode", "minimum_evidence": "declared", "op": "eq", "value": "cockpit_live_session"}]
+  }
+}

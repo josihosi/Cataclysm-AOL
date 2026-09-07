@@ -1,0 +1,107 @@
+{
+  "manifest_version": 1,
+  "name": "r032.prepared_camp_mission_food_storage_v001_mcw",
+  "description": "R-032 focused established-camp route: a disposable derived fixture supplies existing CAMP_FOOD/CAMP_STORAGE footing and cooked food as zero-credit setup.  The live run must use only current native semantic owners to inspect that footing, distribute food, send an assigned worker on an already-native advertised three-hour companion mission, advance only through native World actions until its matching return is offered, and observe the native return result.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r032_prepared_camp_food_storage_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r032_prepared_camp_food_storage_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r032.camp_mission_food_storage": "native_food_distribution_looting_assignment_and_return"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:game.call",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "physical-key",
+      "guessed-key",
+      "ocr-control",
+      "screen-coordinate",
+      "callback-injection",
+      "direct-state-mutation",
+      "direct-save-edit",
+      "fixture-restage"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r032_prepared_camp_food_storage_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "r032_prepared_camp_food_storage_v1",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": ["frame-bound semantic requests"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_prepared_camp_food_storage_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r032_prepared_camp_world",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.basecamp_missions"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_r032_food_storage_and_mission",
+      "cleanup_on_finish": true,
+      "objective": "Use only advertised native semantic actions to confirm the prepared Food/Storage footing and supplied-food precondition as setup, then distribute food, select one currently available three-hour companion mission, choose a current available worker, advance native time until the matching recovery entry is offered, and return that worker.",
+      "proof_targets": [
+        "same-run current native Food and Storage zone observations and installed food as setup-only footing",
+        "accepted food-distribution receipt and a post-action food-supply observation",
+        "accepted native mission-board, worker-choice, mission-start, elapsed-time, recovery, and return receipts for the same companion mission",
+        "post-return authoritative worker/mission state",
+        "accepted cleanup"
+      ],
+      "authority": ["currently advertised native semantic actions", "game.act", "game.call", "run.witness", "run.finish"],
+      "invariants": [
+        "fixture installation, zones, and cooked food are zero-credit setup only",
+        "the Food and Storage observations establish prerequisites, not Food/Storage worker behavior",
+        "board opening or accepted selection alone does not prove a mission",
+        "mission credit requires one actual worker departure on an advertised companion mission, a native elapsed-time route, and that same mission's successful native recovery/return observation",
+        "do not use physical controls, OCR, coordinates, source inference, direct state mutation, direct save edits, or synthetic receipt injection",
+        "Locker and Patrol remain independent uncredited claims",
+        "stop the affected claim at missing native receipt, unavailable prerequisite, source-binding drift, stale owner, or cleanup failure while retaining independent evidence"
+      ],
+      "live_operations": ["game.act", "game.call"],
+      "transition_timeout_seconds": 20.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": ["bind_r032_prepared_camp_world"],
+    "production_behavior": ["operate_r032_food_storage_and_mission"],
+    "terminal_persistence": ["operate_r032_food_storage_and_mission"],
+    "artifact_verdict": ["operate_r032_food_storage_and_mission"],
+    "disallowed_shortcuts": ["bind_r032_prepared_camp_world"]
+  }
+}

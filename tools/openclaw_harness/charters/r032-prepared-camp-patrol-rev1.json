@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On current source, an established camp with a declared setup-only Patrol zone can use native semantic camp-board job assignment to set a stationed worker's patrol priority, enter native Patrol runtime, and release that worker by returning the priority to zero.",
+  "material_proof": "A selected current-source run records the Patrol zone only as setup; then retains accepted native receipts for board/job-assignment entry, the current patrol-priority menu selection, numeric priority one, native elapsed time, direct worker runtime/position state, numeric priority zero, and direct post-release state.",
+  "material_contradiction": ["Patrol footing is inferred or credited as runtime", "the job-assignment route or priority entry lacks matching native receipt", "priority one lacks direct worker runtime ownership/position after native elapsed time", "priority zero lacks direct post-release state", "a physical key, OCR, coordinate, callback, direct state/save mutation, or synthetic receipt is used", "binding drift or cleanup failure"],
+  "already_accepted_evidence": ["R-032 separately established current camp identity, worker assignment, Food accounting, Survey Expansion completion, and a bounded Locker worker-downtime result.", "Prepared-fixture transforms provide only zero-credit zone and material footing."],
+  "current_uncertainty": "The current board availability, native job editor entries, chosen worker, Patrol runtime target/position, and priority-zero release must be observed.  Job-menu reachability and a fixture zone alone establish neither assignment nor runtime.",
+  "forbidden_shortcuts": ["physical keys, hotkeys, OCR, screenshots, coordinates, or guessed controls", "synthetic receipt injection", "direct NPC, camp, mission, item, zone, or save mutation after fixture install", "crediting fixture zones, startup, or board opening without the named assignment/runtime/release result"],
+  "honest_stop_conditions": ["stop before launch if no active source-matched registry selection exists", "after launch, retain unavailable job assignment, Patrol entry, runtime, or release as its own precondition result", "seal only after native priority-one and priority-zero selections, direct runtime/release state, and cleanup are cited"],
+  "requested_evidence_ceiling": "focused"
+}

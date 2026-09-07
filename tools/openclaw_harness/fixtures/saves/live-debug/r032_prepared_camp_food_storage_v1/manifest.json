@@ -1,0 +1,19 @@
+{
+  "name": "r032_prepared_camp_food_storage_v1",
+  "source_fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Disposable R-032 mission footing derived from the audited established camp.  It preserves the existing Food and Storage zones and places only cooked food on the existing Food-zone tile so native food distribution and a separately selected mission can be exercised.  Zone and material transforms are setup-only and earn no mission credit.",
+  "save_transforms": [
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {
+          "typeid": "meat_cooked",
+          "count": 80,
+          "offset_ms": [-10, 3, 0]
+        }
+      ]
+    }
+  ]
+}

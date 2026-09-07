@@ -1,0 +1,17 @@
+{
+  "name": "r032_prepared_camp_patrol_v1",
+  "source_fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Disposable R-032 Patrol footing.  It retains the established camp's existing Food, Storage, and Locker zones and adds one single-tile CAMP_PATROL zone at a known passable camp tile.  The zone transform is setup-only; native job-priority assignment, runtime ownership/position, elapsed time, and priority-zero release are separately required for any Patrol conclusion.",
+  "save_transforms": [
+    {
+      "kind": "source_firewood_zone_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "name": "R032 patrol hold footing",
+      "zone_type": "CAMP_PATROL",
+      "faction": "your_followers",
+      "start_offset_ms": [-10, -2, 0],
+      "end_offset_ms": [-10, -2, 0]
+    }
+  ]
+}

@@ -1,0 +1,14 @@
+{
+  "outcome": "On current source, an established camp with declared setup-only Food and Storage zones and setup-only supplied food can use native semantic camp-board owners to distribute food and complete one currently advertised three-hour companion mission from assignment through native recovery and return.",
+  "scenario": "r032.prepared_camp_mission_food_storage_v001_mcw",
+  "query": {
+    "requirements": [
+      {"key": "runtime.fixture", "minimum_evidence": "declared", "op": "eq", "value": "r032_prepared_camp_food_storage_v1"},
+      {"key": "runtime.world", "minimum_evidence": "declared", "op": "eq", "value": "McWilliams"},
+      {"key": "capabilities.r032.camp_mission_food_storage", "minimum_evidence": "declared", "op": "eq", "value": "native_food_distribution_looting_assignment_and_return"}
+    ],
+    "preferences": [
+      {"key": "runtime.entry_mode", "minimum_evidence": "declared", "op": "eq", "value": "cockpit_live_session"}
+    ]
+  }
+}

@@ -1,0 +1,33 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On current source, an established camp's advertised native Gather Materials companion mission can return materials to the current camp's first native Storage destination, with a fresh exact pre/post item-state observation.",
+  "material_proof": "A selected current-source run records current camp identity and the first native Storage destination's exact center, top-level item type/count, and owner as setup-state; it then retains accepted native board, worker-choice, Gather Materials departure, native elapsed-time, matching recovery, and return receipts. A post-return view of that same destination shows a changed item state and the returned worker's authoritative state, followed by accepted cleanup.",
+  "material_contradiction": [
+    "Storage zone, destination center, item state, or ownership is inferred rather than observed in the current native run",
+    "fixture zones or material are credited as a gather placement",
+    "a selected worker is not actually sent on the advertised Gather Materials mission",
+    "recovery occurs before native time reaches the mission's return condition, differs from the started mission, or fails to return that worker",
+    "the exact first-Storage pre/post state does not change after return",
+    "a random native mission failure is rerolled without an independently changed, informative setup",
+    "a physical key, OCR, coordinate, callback, direct state/save mutation, or synthetic receipt is used",
+    "binding drift or cleanup failure"
+  ],
+  "already_accepted_evidence": [
+    "R-032 separately established a camp identity, worker assignment, Food accounting, Survey Expansion return, Locker behavior, and a Patrol priority-zero release contradiction.",
+    "Prepared-fixture transforms provide only zero-credit Food/Storage footing and supplied food."
+  ],
+  "current_uncertainty": "The current Gather Materials availability, worker choice, departure, return timing, random result, first Storage destination, post-return contents, and ownership must be observed rather than inferred. A native no-result or failed return bounds this fresh run without settling unrelated camp behavior.",
+  "forbidden_shortcuts": [
+    "physical keys, hotkeys, OCR, screenshots, coordinates, or guessed controls",
+    "synthetic receipt injection",
+    "direct NPC, camp, mission, item, zone, or save mutation after fixture install",
+    "crediting fixture installation, zones, supplied food, startup, board opening, or semantic acceptance without the named return and changed Storage state",
+    "rerolling a random result by restaging the same fixture"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch if no active source-matched registry selection exists",
+    "after launch, preserve unavailable Gather Materials, native failure, missing Storage observation, or unchanged Storage state as a bounded result",
+    "seal proof only after departure, native elapsed-time readiness, matching return, changed exact Storage state, post-return worker state, and cleanup are cited"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

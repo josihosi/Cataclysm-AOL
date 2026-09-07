@@ -1,0 +1,32 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On a current-source eligible pre-camp site, a player can use native semantic World, dialogue, and camp-type menu owners to establish a new camp and then observe the actual resulting camp identity and assigned actor.",
+  "material_proof": "A selected current-source run first records the fixture-derived nearby unassigned follower strictly as setup, then retains accepted native receipts through the advertised World/chat, actor-selection, follower dialogue, and camp-type menu path.  A post-establishment authoritative observation names the resulting camp's identity, owner and site together with the same actor's assigned-camp state.  The run has an accepted cleanup.",
+  "material_contradiction": [
+    "an accepted player action lacks its matching native receipt",
+    "the chosen follower is inferred rather than identified, is already assigned, or is direct-mutated after launch",
+    "the site or offered camp type is inferred from presentation rather than current native state",
+    "the selected menu entry produces no resulting camp identity or a camp at a different site/owner",
+    "a selector opening, fixture transform, source inspection, physical key, OCR, screenshot, coordinate, callback, or direct save/NPC/camp mutation is credited as establishment",
+    "binding drift or cleanup failure"
+  ],
+  "already_accepted_evidence": [
+    "R-020 controlled camp setup is manufactured-state setup only.",
+    "R-026 Base Missions recovery proves a prepared-camp selector handoff only.",
+    "The historical R-009 physical/OCR camp footing is not current establishment proof."
+  ],
+  "current_uncertainty": "The pre-camp fixture's derived follower and eligible terrain must be confirmed from the current native run, and the native dialogue may expose a different valid conversation/menu sequence than historical physical automation.  Mission, Food, Storage, Locker and Patrol behavior remain independent claims.",
+  "forbidden_shortcuts": [
+    "physical keys, hotkeys, OCR, screenshots, coordinates, or guessed controls",
+    "synthetic receipt injection",
+    "direct NPC, camp, site, or save mutation after fixture install",
+    "crediting fixture installation, startup, setup follower presence, selector availability, or semantic acceptance without the resulting camp state",
+    "treating establishment as proof of mission, Food, Storage, Locker, or Patrol behavior"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch if no active source-matched registry selection exists",
+    "after launch, preserve the first missing semantic owner, invalid eligibility, missing native receipt, or missing resulting camp identity and continue independent clean claims",
+    "seal the establishment claim only after the named postcondition and cleanup are cited"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

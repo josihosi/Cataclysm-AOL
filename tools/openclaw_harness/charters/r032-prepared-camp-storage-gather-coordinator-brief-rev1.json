@@ -1,0 +1,14 @@
+{
+  "outcome": "On current source, an established camp's advertised native Gather Materials companion mission can return materials to the current camp's first native Storage destination, with a fresh exact pre/post item-state observation.",
+  "scenario": "r032.prepared_camp_storage_gather_v001_mcw",
+  "query": {
+    "requirements": [
+      {"key": "runtime.fixture", "minimum_evidence": "declared", "op": "eq", "value": "r032_prepared_camp_food_storage_v1"},
+      {"key": "runtime.world", "minimum_evidence": "declared", "op": "eq", "value": "McWilliams"},
+      {"key": "capabilities.r032.camp_storage_gather", "minimum_evidence": "declared", "op": "eq", "value": "native_gather_return_storage_placement"}
+    ],
+    "preferences": [
+      {"key": "runtime.entry_mode", "minimum_evidence": "declared", "op": "eq", "value": "cockpit_live_session"}
+    ]
+  }
+}

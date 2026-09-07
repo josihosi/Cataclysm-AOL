@@ -1,0 +1,32 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On current source, an established camp with declared setup-only Food and Storage zones and setup-only supplied food can use native semantic camp-board owners to distribute food and complete one currently advertised three-hour companion mission from assignment through native recovery and return.",
+  "material_proof": "A selected current-source run records the Food and Storage zones plus supplied food only as setup; then retains accepted native receipts for food distribution, the camp board, selecting a current available worker, a three-hour companion-mission departure, native elapsed time, matching recovery selection, and return.  Post-action observations show changed food supply and the returned worker's state, and the run has accepted cleanup.",
+  "material_contradiction": [
+    "Food, Storage, or food material is inferred rather than observed in the current native run",
+    "fixture material or setup is credited as worker behavior",
+    "a selected worker is not actually sent on the advertised mission",
+    "the recovery is offered before native time reaches the mission's return condition, differs from the started mission, or leaves the worker unreturned",
+    "an accepted player action lacks its matching native receipt",
+    "a physical key, OCR, coordinate, callback, direct state/save mutation, or synthetic receipt is used",
+    "binding drift or cleanup failure"
+  ],
+  "already_accepted_evidence": [
+    "R-032 establishment separately proved a fresh camp identity and a worker assignment boundary.",
+    "The prepared-base fixture can provide Food/Storage zone footing only; fixture transforms receive zero feature credit."
+  ],
+  "current_uncertainty": "The exact current board availability, worker menu, mission duration, recovery entry, and return state must be observed rather than inferred.  Any unavailable prerequisite is evidence for that prerequisite and does not settle Locker or Patrol.",
+  "forbidden_shortcuts": [
+    "physical keys, hotkeys, OCR, screenshots, coordinates, or guessed controls",
+    "synthetic receipt injection",
+    "direct NPC, camp, mission, item, zone, or save mutation after fixture install",
+    "crediting fixture installation, zones, supplied food, startup, board opening, or semantic acceptance without the named result",
+    "treating Food/Storage setup as Locker or Patrol behavior"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch if no active source-matched registry selection exists",
+    "after launch, preserve an unavailable Food/Storage/material or mission condition as a precondition result and continue independent clean observations",
+    "seal the mission claim only after departure, native elapsed-time readiness, matching return, post-return state, and cleanup are cited"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

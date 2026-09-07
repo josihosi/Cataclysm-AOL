@@ -8,6 +8,7 @@
 #include <utility>
 
 #include "avatar.h"
+#include "basecamp.h"
 #include "bodypart.h"
 #include "calendar.h"
 #include "cata_imgui.h"
@@ -22,6 +23,7 @@
 #include "json.h"
 #include "npc.h"
 #include "npctalk_rules.h"
+#include "overmapbuffer.h"
 #include "output.h"
 #include "pocket_type.h"
 #include "string_formatter.h"
@@ -31,6 +33,8 @@
 
 namespace
 {
+static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+
 struct inspected_item {
     const item *value;
     std::string parent_uid;
@@ -232,6 +236,23 @@ std::vector<semantic_action_descriptor> npc_inspection_world_actions( avatar &vi
     return actions;
 }
 
+std::vector<semantic_action_descriptor> npc_inspection_current_camp_actions( avatar &viewer )
+{
+    std::vector<semantic_action_descriptor> actions;
+    const std::optional<basecamp *> camp = overmap_buffer.find_camp( viewer.pos_abs_omt().xy() );
+    if( !camp || *camp == nullptr || !( *camp )->allowed_access_by( viewer ) ) {
+        return actions;
+    }
+    for( const npc_ptr &worker : ( *camp )->get_npcs_assigned() ) {
+        if( worker && !worker->is_dead() ) {
+            actions.push_back( { "world.inspect_camp_npc", npc_inspection_actor_id( *worker ),
+                                 string_format( _( "Inspect camp worker %s (includes diagnostics)" ),
+                                                worker->get_name() ), true } );
+        }
+    }
+    return actions;
+}
+
 std::map<std::string, std::string> npc_inspection_payload( npc &actor, avatar &viewer )
 {
     const auto items = physical_items( actor );
@@ -279,7 +300,10 @@ std::map<std::string, std::string> npc_inspection_payload( npc &actor, avatar &v
                 json.member( "attitude", npc_attitude_name( actor.get_attitude() ) );
                 json.member( "mission", io::enum_to_string( actor.mission ) );
                 json.member( "activity", actor.current_activity_id.str() );
+                json.member( "absolute_position", actor.pos_abs() );
                 json.member( "camp_patrol_order", actor.has_camp_patrol_order() );
+                json.member( "camp_patrol_priority",
+                             actor.job.get_priority_of_job( ACT_CAMP_PATROL ) );
                 json.member( "guard_post", actor.get_guard_post() );
                 json.member( "move_target", actor.goto_to_this_pos );
                 json.member( "assigned_camp", actor.assigned_camp );
@@ -291,6 +315,52 @@ std::map<std::string, std::string> npc_inspection_payload( npc &actor, avatar &v
                     json.member( "companion_mission", mission.miss_id.id );
                     json.member( "companion_role", mission.role_id );
                     json.member( "companion_destination", mission.destination );
+                }
+                json.end_object();
+            } ) },
+        { "diagnostic_camp_patrol", json_text( [&]( JsonOut & json ) {
+                json.start_object();
+                json.member( "provenance", "Current assigned-camp patrol shift-cache diagnostic; it may refresh the camp plan but does not synchronize or mutate this actor's patrol order." );
+                const std::optional<basecamp *> camp = actor.assigned_camp ?
+                                                     overmap_buffer.find_camp( actor.assigned_camp->xy() ) :
+                                                     std::nullopt;
+                json.member( "camp_found", camp && *camp != nullptr );
+                if( !camp || *camp == nullptr ) {
+                    json.end_object();
+                    return;
+                }
+                basecamp *const current_camp = *camp;
+                json.member( "camp_site", current_camp->camp_omt_pos() );
+                json.member( "patrol_zone_defined", current_camp->has_patrol_zone() );
+                const camp_patrol_shift_plan *const plan = current_camp->get_current_patrol_shift_plan();
+                json.member( "shift_cache_available", plan != nullptr );
+                if( plan == nullptr ) {
+                    json.end_object();
+                    return;
+                }
+                json.member( "shift", plan->shift == camp_patrol_shift::day ? "day" : "night" );
+                json.member( "roster" );
+                json.start_array();
+                for( const character_id &worker_id : plan->roster ) {
+                    json.write( string_format( "character:%d", worker_id.get_value() ) );
+                }
+                json.end_array();
+                const auto active = std::find_if( plan->active_guards.begin(), plan->active_guards.end(),
+                [&actor]( const camp_patrol_guard_plan &guard ) {
+                    return guard.worker_id == actor.getID();
+                } );
+                json.member( "actor_active_guard", active != plan->active_guards.end() );
+                json.member( "actor_reserve_guard", std::find( plan->reserve_guards.begin(),
+                             plan->reserve_guards.end(), actor.getID() ) != plan->reserve_guards.end() );
+                const std::optional<camp_patrol_guard_runtime> runtime =
+                    describe_camp_patrol_guard_runtime( *plan, actor.getID(), calendar::turn );
+                json.member( "runtime_available", runtime.has_value() );
+                if( runtime ) {
+                    json.member( "behavior", runtime->behavior == camp_patrol_guard_behavior::loop ?
+                                 "loop" : "hold" );
+                    json.member( "target", runtime->target );
+                    json.member( "route", runtime->route );
+                    json.member( "coordinate_system", "absolute_ms" );
                 }
                 json.end_object();
             } ) },
@@ -336,25 +406,30 @@ void show_npc_inspection( character_id actor_id )
     if( actor == nullptr ) {
         return;
     }
-    const std::string identity = npc_inspection_actor_id( *actor );
-    if( resolve_npc_inspection_actor( get_avatar(), identity ) != actor ) {
+    show_npc_inspection( *actor, false );
+}
+
+void show_npc_inspection( npc &actor, const bool allow_offbubble )
+{
+    const std::string identity = npc_inspection_actor_id( actor );
+    if( !allow_offbubble && resolve_npc_inspection_actor( get_avatar(), identity ) != &actor ) {
         return;
     }
-    const auto facts = npc_inspection_payload( *actor, get_avatar() );
+    const auto facts = npc_inspection_payload( actor, get_avatar() );
     inspection_window window( _( "NPC inspection" ) );
     window.text = string_format( _( "%s\nDiagnostic inspection: exact health, orders, rules and all stored items. These facts include information the avatar cannot see.\nHealth: %s\nOrders: %s\nSelect an item for its native details." ),
-                                 actor->get_name(), actor->hp_description().first,
-                                 actor->describe_mission() );
-    for( const bodypart_id &part : actor->get_all_body_parts() ) {
+                                 actor.get_name(), actor.hp_description().first,
+                                 actor.describe_mission() );
+    for( const bodypart_id &part : actor.get_all_body_parts() ) {
         window.text += string_format( "\n%s: %d/%d", body_part_name( part ),
-                                      actor->get_part_hp_cur( part ), actor->get_part_hp_max( part ) );
+                                      actor.get_part_hp_cur( part ), actor.get_part_hp_max( part ) );
     }
     window.text += string_format( "\n%s: %s", _( "Assigned camp (absolute OMT)" ),
-                                  actor->assigned_camp ? actor->assigned_camp->to_string() : _( "None" ) );
-    const auto rule_labels = follower_rules_ui::semantic_labels( *actor );
-    const auto rule_facts = follower_rules_ui::semantic_payload( *actor, rule_labels );
+                                  actor.assigned_camp ? actor.assigned_camp->to_string() : _( "None" ) );
+    const auto rule_labels = follower_rules_ui::semantic_labels( actor );
+    const auto rule_facts = follower_rules_ui::semantic_payload( actor, rule_labels );
     for( const auto &rule : ally_rule_strs ) {
-        window.text += "\n" + rule_labels.at( actor->rules.has_flag( rule.second.rule ) ?
+        window.text += "\n" + rule_labels.at( actor.rules.has_flag( rule.second.rule ) ?
                                               rule.second.rule_true_text : rule.second.rule_false_text );
     }
     for( const char *key : { "engagement", "aim", "cbm_recharge", "cbm_reserve" } ) {
@@ -364,7 +439,7 @@ void show_npc_inspection( character_id actor_id )
         { "npc_inspection.close", "", _( "Close" ), true },
         { "npc_inspection.item_details", "", _( "Item details (requires item_uid parameter)" ), true }
     };
-    for( const inspected_item &entry : physical_items( *actor ) ) {
+    for( const inspected_item &entry : physical_items( actor ) ) {
         const std::string uid = std::to_string( entry.value->uid().get_value() );
         const std::string label = entry.slot + ": " + entry.value->tname();
         window.items.emplace_back( uid, label );
@@ -373,14 +448,10 @@ void show_npc_inspection( character_id actor_id )
     std::optional<semantic_surface_scope> scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
         scope.emplace( *manager, "npc_inspection", _( "NPC inspection" ), facts, actions,
-        [&window, &identity]( const semantic_action_request &request ) {
+        [&window, &actor]( const semantic_action_request &request ) {
             if( request.action_id == "npc_inspection.close" ) {
                 window.closed = true;
                 return semantic_action_dispatch_result{ true, "", "" };
-            }
-            npc *current = resolve_npc_inspection_actor( get_avatar(), identity );
-            if( current == nullptr ) {
-                return semantic_action_dispatch_result{ false, "stale_actor_id", "" };
             }
             if( request.action_id != "npc_inspection.item_details" ) {
                 return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
@@ -389,7 +460,7 @@ void show_npc_inspection( character_id actor_id )
             if( selected == request.parameters.end() || selected->second.empty() ) {
                 return semantic_action_dispatch_result{ false, "missing_item_uid", "" };
             }
-            if( owned_item( *current, selected->second ) == nullptr ) {
+            if( owned_item( actor, selected->second ) == nullptr ) {
                 return semantic_action_dispatch_result{ false, "stale_actor_item_uid", "" };
             }
             window.selected = selected->second;
@@ -407,10 +478,7 @@ void show_npc_inspection( character_id actor_id )
             scope->consume_request();
         }
         if( window.selected ) {
-            npc *current = resolve_npc_inspection_actor( get_avatar(), identity );
-            if( current != nullptr ) {
-                show_item( *current, *window.selected );
-            }
+            show_item( actor, *window.selected );
             window.selected.reset();
         } else if( !pending && !window.closed ) {
             physical_input( window, ctxt );

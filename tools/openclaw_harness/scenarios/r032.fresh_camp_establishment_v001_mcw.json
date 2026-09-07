@@ -1,0 +1,132 @@
+{
+  "manifest_version": 1,
+  "name": "r032.fresh_camp_establishment_v001_mcw",
+  "description": "R-032 fresh establishment route: a disposable current-source pre-camp world has one setup-only nearby unassigned follower, then the player follows only advertised native semantic dialogue and menu owners to establish a camp on the eligible site.  The independent run must retain the accepted conversation and camp-type receipts plus the resulting native camp identity; fixture setup and selector opening have no outcome credit.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r032_fresh_camp_establishment_follower_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r032_fresh_camp_establishment_follower_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r032.establishment": "native_semantic_dialogue_and_menu_to_new_camp_identity"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "frame-bound semantic requests",
+      "cockpit:game.act",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "physical-key",
+      "guessed-key",
+      "ocr-control",
+      "screen-coordinate",
+      "callback-injection",
+      "direct-state-mutation",
+      "direct-save-edit",
+      "fixture-restage"
+    ],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [
+      "native-semantic-broker"
+    ],
+    "permissions": [
+      "accessibility"
+    ],
+    "platform": [
+      "macos"
+    ],
+    "profile": "dev-harness",
+    "fixture": "r032_fresh_camp_establishment_follower_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "r032_fresh_camp_establishment_follower_v1",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": [
+        "frame-bound semantic requests"
+      ],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_fresh_camp_establishment_follower_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r032_pre_camp_world",
+      "native_semantic_checkpoint": {
+        "required_actions": [
+          "world.chat"
+        ],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": false
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "establish_r032_camp",
+      "cleanup_on_finish": true,
+      "objective": "Use only currently advertised native semantic actions to select the setup-only nearby follower, enter the native camp conversation, select an eligible offered camp type, and inspect the resulting camp identity and assigned actor state.",
+      "proof_targets": [
+        "fixture-derived follower identity and no assigned camp, recorded as setup only",
+        "accepted native World, dialogue, and menu receipts for the chosen establishment route",
+        "resulting authoritative camp identity, owner, site, and actor assignment",
+        "independent native postcondition observation after establishment",
+        "accepted cleanup"
+      ],
+      "authority": [
+        "currently advertised native semantic actions",
+        "game.act",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture installation and its added follower are setup only and receive zero establishment credit",
+        "do not use physical controls, OCR, coordinates, source inference, direct NPC/camp/save mutation, or synthetic receipt injection",
+        "camp selector availability or selection alone does not prove establishment",
+        "a passing establishment verdict requires a same-run authoritative resulting camp identity and the actual assigned actor",
+        "leave missions, Food, Storage, Locker, and Patrol as separate R-032 verdicts",
+        "stop the affected claim at missing native receipt, source-binding drift, stale owner, or cleanup failure while retaining independent evidence"
+      ],
+      "live_operations": [
+        "game.act"
+      ],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": [
+      "bind_r032_pre_camp_world"
+    ],
+    "production_behavior": [
+      "establish_r032_camp"
+    ],
+    "terminal_persistence": [
+      "establish_r032_camp"
+    ],
+    "artifact_verdict": [
+      "establish_r032_camp"
+    ],
+    "disallowed_shortcuts": [
+      "bind_r032_pre_camp_world"
+    ]
+  }
+}

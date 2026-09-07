@@ -1,0 +1,12 @@
+{
+  "outcome": "On current source, an established camp with a declared setup-only Patrol zone can use native semantic camp-board job assignment to set a stationed worker's Patrol priority to nine, enter native Patrol runtime with an authoritative current shift-cache target/route, and release that worker by returning the priority to zero.",
+  "scenario": "r032.prepared_camp_patrol_v001_mcw",
+  "query": {
+    "requirements": [
+      {"key": "runtime.fixture", "minimum_evidence": "declared", "op": "eq", "value": "r032_prepared_camp_patrol_v1"},
+      {"key": "runtime.world", "minimum_evidence": "declared", "op": "eq", "value": "McWilliams"},
+      {"key": "capabilities.r032.camp_patrol", "minimum_evidence": "declared", "op": "eq", "value": "native_job_priority_assignment_and_release"}
+    ],
+    "preferences": [{"key": "runtime.entry_mode", "minimum_evidence": "declared", "op": "eq", "value": "cockpit_live_session"}]
+  }
+}

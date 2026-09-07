@@ -1,0 +1,74 @@
+{
+  "manifest_version": 1,
+  "name": "r032.prepared_camp_storage_gather_v001_mcw",
+  "description": "R-032 focused established-camp Storage route. A disposable prepared fixture supplies the existing Food and Storage zones and cooked food solely as zero-credit setup. The live run must use the currently advertised native three-hour gather-materials companion mission and matching native recovery, then compare the first native Storage destination's exact item state before and after return.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r032_prepared_camp_food_storage_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r032_prepared_camp_food_storage_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r032.camp_storage_gather": "native_gather_return_storage_placement"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:game.call", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["physical-key", "guessed-key", "ocr-control", "screen-coordinate", "callback-injection", "direct-state-mutation", "direct-save-edit", "fixture-restage"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r032_prepared_camp_food_storage_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "r032_prepared_camp_food_storage_v1",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": ["frame-bound semantic requests"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_prepared_camp_food_storage_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r032_prepared_camp_storage_world",
+      "native_semantic_checkpoint": {"required_actions": ["world.basecamp_missions"], "required_state": "world", "require_initial_hud_world_ready_frame": false}
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_r032_storage_gather_return",
+      "cleanup_on_finish": true,
+      "objective": "Use only currently advertised native semantic actions to record the current camp and first native Storage destination before the mission, choose one native Gather Materials worker, advance native time until that exact recovery is offered, complete native recovery, and record the same Storage destination plus returned-worker state afterward.",
+      "proof_targets": ["same-run current camp identity and Storage destination center/items/owners, with zones and fixture material treated only as setup", "accepted native board, Gather Materials worker-choice, departure, elapsed-time, matching recovery, and return receipts", "same-run pre/post first-Storage exact type/count/location/owner comparison and returned worker state", "accepted cleanup"],
+      "authority": ["currently advertised native semantic actions", "game.act", "game.call", "run.witness", "run.finish"],
+      "invariants": ["fixture installation, zones, and cooked food are zero-credit setup only", "the diagnostic Storage view is read-only and does not establish a transfer without a changed post-return item state", "Storage placement credit requires one actual Gather Materials departure, native elapsed-time readiness, matching native return, and an exact first-Storage pre/post transition in the same run", "a native random mission failure is a result for this run, not authorization to reroll", "do not use physical controls, OCR, coordinates, source inference, direct state mutation, direct save edits, or synthetic receipt injection", "Food, Locker, and Patrol remain separately bounded", "stop the affected claim at missing native receipt, unavailable prerequisite, source-binding drift, or cleanup failure while retaining independent evidence"],
+      "live_operations": ["game.act", "game.call"],
+      "transition_timeout_seconds": 20.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": ["bind_r032_prepared_camp_storage_world"],
+    "production_behavior": ["operate_r032_storage_gather_return"],
+    "terminal_persistence": ["operate_r032_storage_gather_return"],
+    "artifact_verdict": ["operate_r032_storage_gather_return"],
+    "disallowed_shortcuts": ["bind_r032_prepared_camp_storage_world"]
+  }
+}

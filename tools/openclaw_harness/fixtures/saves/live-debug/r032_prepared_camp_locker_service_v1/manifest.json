@@ -1,0 +1,15 @@
+{
+  "name": "r032_prepared_camp_locker_service_v1",
+  "source_fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "Disposable R-032 Locker-service footing.  It retains the established camp's existing Food, Storage, and Locker zones and places one robofac military helmet on the existing Locker-zone tile.  The zone and item transform are setup-only; a live worker-downtime cycle, exact native pre/post location, and actor state are separately required for any Locker-service conclusion.",
+  "save_transforms": [
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {"typeid": "robofac_military_helmet", "count": 1, "offset_ms": [-10, -2, 0]}
+      ]
+    }
+  ]
+}

@@ -1,0 +1,34 @@
+{
+  "outcome": "On a current-source eligible pre-camp site, a player can use native semantic World, dialogue, and camp-type menu owners to establish a new camp and then observe the actual resulting camp identity and assigned actor.",
+  "scenario": "r032.fresh_camp_establishment_v001_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "runtime.fixture",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "r032_fresh_camp_establishment_follower_v1"
+      },
+      {
+        "key": "runtime.world",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "McWilliams"
+      },
+      {
+        "key": "capabilities.r032.establishment",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "native_semantic_dialogue_and_menu_to_new_camp_identity"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "runtime.entry_mode",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "cockpit_live_session"
+      }
+    ]
+  }
+}

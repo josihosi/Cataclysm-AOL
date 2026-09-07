@@ -1,0 +1,74 @@
+{
+  "manifest_version": 1,
+  "name": "r032.prepared_camp_patrol_v001_mcw",
+  "description": "R-032 focused established-camp Patrol route.  A disposable prepared fixture adds a single CAMP_PATROL tile as zero-credit footing.  The live run must use the native camp board's job-assignment modal, select its advertised patrol priority entry, submit priority 9 through the native numeric prompt so it outranks the prepared workers' existing priority-8 work, observe the assigned worker's runtime state and position after native elapsed time, then submit priority 0 and observe native release.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r032_prepared_camp_patrol_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r032_prepared_camp_patrol_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r032.camp_patrol": "native_job_priority_assignment_and_release"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["physical-key", "guessed-key", "ocr-control", "screen-coordinate", "callback-injection", "direct-state-mutation", "direct-save-edit", "fixture-restage"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": ["accessibility"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r032_prepared_camp_patrol_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "r032_prepared_camp_patrol_v1",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "input": ["frame-bound semantic requests"],
+      "ocr": false,
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r032_prepared_camp_patrol_v1/manifest.json",
+    "profile_snapshot": "tools/openclaw_harness/fixtures/profiles/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json"
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r032_prepared_camp_patrol_world",
+      "native_semantic_checkpoint": {"required_actions": ["world.basecamp_missions"], "required_state": "world", "require_initial_hud_world_ready_frame": false}
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_r032_patrol_assignment",
+      "cleanup_on_finish": true,
+      "objective": "Use only advertised native semantic actions to observe the setup-only Patrol-zone footing, enter the currently available job-assignment route, set one current worker's patrol priority to nine through the native priority editor so it outranks the prepared workers' existing priority-eight work, advance native World time to observe direct worker runtime ownership and position plus the read-only current camp patrol shift-cache/route diagnostic, then use the same native editor to set that patrol priority to zero and observe release.",
+      "proof_targets": ["same-run native board observation of a Patrol zone only as zero-credit footing", "accepted native board, job-assignment, priority-menu, and numeric-prompt receipts for priority nine", "same-run direct camp-worker inspection before and after native elapsed time preserving camp identity, patrol priority, patrol order, mission, position, guard post, move target, current shift-cache roster, and runtime target/route", "accepted native priority-zero receipt and post-release direct camp-worker inspection", "accepted cleanup"],
+      "authority": ["currently advertised native semantic actions", "game.act", "run.witness", "run.finish"],
+      "invariants": ["the fixture Patrol zone is zero-credit setup only", "board/job-menu reachability alone does not prove Patrol assignment or runtime", "Patrol credit requires the named native priority-nine receipt, a direct post-elapsed runtime/position observation, the named native priority-zero receipt, and a direct post-release observation", "do not use physical controls, OCR, coordinates, source inference, direct state mutation, direct save edits, or synthetic receipt injection", "Food, Storage, Locker, and mission conclusions remain separately bounded", "stop the affected claim at missing native receipt, unavailable route, source-binding drift, stale owner, or cleanup failure while retaining independent evidence"],
+      "live_operations": ["game.act"],
+      "transition_timeout_seconds": 20.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {
+    "precondition": ["bind_r032_prepared_camp_patrol_world"],
+    "production_behavior": ["operate_r032_patrol_assignment"],
+    "terminal_persistence": ["operate_r032_patrol_assignment"],
+    "artifact_verdict": ["operate_r032_patrol_assignment"],
+    "disallowed_shortcuts": ["bind_r032_prepared_camp_patrol_world"]
+  }
+}

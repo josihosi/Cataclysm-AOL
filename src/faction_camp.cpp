@@ -92,6 +92,7 @@
 #include "requirements.h"
 #include "ret_val.h"
 #include "rng.h"
+#include "semantic_surface.h"
 #include "simple_pathfinding.h"
 #include "skill.h"
 #include "stomach.h"
@@ -5435,6 +5436,62 @@ void basecamp::job_assignment_ui()
     ctxt.register_action( "HELP_KEYBINDINGS" );
     validate_assignees();
 
+    // This is a native modal with a follower selector and a native priority
+    // editor behind CONFIRM.  Publish only the currently stationed workers,
+    // and preserve that same selector/CONFIRM path for the semantic owner.
+    // This keeps the job priorities themselves in the game's uilist and
+    // numeric prompt rather than creating a separate command surface.
+    std::string semantic_native_action;
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        const tripoint_abs_omt expected_site = camp_omt_pos();
+        const faction_id expected_owner = get_owner();
+        const std::vector<npc_ptr> assigned_workers = get_npcs_assigned();
+        std::vector<semantic_action_descriptor> actions = {
+            { "camp_assignment.close", "", _( "Close worker assignment" ), true }
+        };
+        for( const npc_ptr &worker : assigned_workers ) {
+            if( worker ) {
+                actions.emplace_back( semantic_action_descriptor{
+                    "camp_assignment.edit_worker_jobs",
+                    string_format( "character:%d", worker->getID().get_value() ),
+                    string_format( _( "Edit %s's job priorities" ), worker->disp_name() ), true } );
+            }
+        }
+        const std::map<std::string, std::string> payload = {
+            { "camp_name", camp_name() },
+            { "camp_site", expected_site.to_string() },
+            { "owner_faction", expected_owner.str() },
+            { "assigned_worker_count", std::to_string( assigned_workers.size() ) },
+            { "job_priority_editor", _( "Native uilist and numeric prompt after selecting an advertised worker" ) }
+        };
+        semantic_scope.emplace( *manager, "basecamp_worker_assignment", _( "Worker assignment" ), payload,
+        actions, [ this, expected_site, expected_owner, &semantic_native_action, &selection ]
+        ( const semantic_action_request &request ) {
+            if( camp_omt_pos() != expected_site || get_owner() != expected_owner ) {
+                return semantic_action_dispatch_result{ false, "stale_camp", "" };
+            }
+            if( request.action_id == "camp_assignment.close" ) {
+                semantic_native_action = "QUIT";
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            if( request.action_id != "camp_assignment.edit_worker_jobs" ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            const std::string requested_id = request.stable_id.value_or( "" );
+            const std::vector<npc_ptr> current_workers = get_npcs_assigned();
+            for( size_t index = 0; index < current_workers.size(); ++index ) {
+                const npc_ptr &worker = current_workers[index];
+                if( worker && requested_id == string_format( "character:%d", worker->getID().get_value() ) ) {
+                    selection = index;
+                    semantic_native_action = "CONFIRM";
+                    return semantic_action_dispatch_result{ true, "", "" };
+                }
+            }
+            return semantic_action_dispatch_result{ false, "stale_worker", "" };
+        } );
+    }
+
     std::vector<npc *> stationed_npcs;
     npc *cur_npc = nullptr;
 
@@ -5497,8 +5554,17 @@ void basecamp::job_assignment_ui()
         }
 
         ui_manager::redraw();
-
-        const std::string action = ctxt.handle_input();
+        if( semantic_scope ) {
+            semantic_scope->consume_request();
+        }
+        std::string action;
+        if( semantic_native_action.empty() ) {
+            action = ctxt.handle_input();
+        }
+        if( !semantic_native_action.empty() ) {
+            action = std::move( semantic_native_action );
+            semantic_native_action.clear();
+        }
         if( action == "INSPECT_NPC" ) {
             if( cur_npc ) {
                 cur_npc->disp_info();

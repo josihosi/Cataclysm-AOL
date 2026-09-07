@@ -863,6 +863,102 @@ static std::string openclaw_harness_visible_zones( const map &here,
     return zones.str();
 }
 
+// This is a read-only, current-site camp lookup for the semantic World owner.
+// Terrain labels only show that mapgen changed; a camp's native identity and
+// owner live in the overmap camp record.  Keep this diagnostic fact separate
+// from avatar knowledge and from any claim that a particular NPC is assigned.
+static std::string openclaw_harness_current_site_camp( const avatar &player )
+{
+    const tripoint_abs_omt site = player.pos_abs_omt();
+    std::ostringstream result;
+    result << "{\"schema\":\"caol-current-site-basecamp-v1\",\"coordinate_system\":"
+           << "\"absolute_omt\",\"site\":[" << site.x() << ',' << site.y() << ',' << site.z() << ']';
+    const std::optional<basecamp *> camp = overmap_buffer.find_camp( site.xy() );
+    if( !camp || *camp == nullptr ) {
+        result << ",\"found\":false";
+    } else {
+        basecamp &found = **camp;
+        const tripoint_abs_omt camp_site = found.camp_omt_pos();
+        result << ",\"found\":true,\"camp_name\":"
+               << openclaw_harness_quote_action_value( found.camp_name() )
+               << ",\"board_name\":"
+               << openclaw_harness_quote_action_value( found.board_name() )
+               << ",\"owner_faction\":"
+               << openclaw_harness_quote_action_value( found.get_owner().str() )
+               << ",\"camp_site\":[" << camp_site.x() << ',' << camp_site.y() << ',' << camp_site.z() << ']';
+    }
+    result << ",\"provenance\":\"diagnostic_current_overmap_basecamp_record_not_avatar_knowledge\"}";
+    return result.str();
+}
+
+// This is a read-only view of the storage destination which native camp
+// gathering uses.  The normal pickup selector describes display names and
+// local selection affordances, but not an item's faction owner.  Keep this
+// scoped to the current accessible camp and retain the manager ordering: the
+// first matching zone is exactly the one form_storage_zones selects as its
+// dumping spot.
+static std::string openclaw_harness_current_site_camp_storage( avatar &player )
+{
+    std::ostringstream result;
+    result << "{\"schema\":\"caol-current-site-camp-storage-v1\"";
+    const std::optional<basecamp *> camp = overmap_buffer.find_camp( player.pos_abs_omt().xy() );
+    if( !camp || *camp == nullptr || !( *camp )->allowed_access_by( player ) ) {
+        result << ",\"accessible\":false";
+        result << ",\"provenance\":\"diagnostic_current_accessible_camp_storage_not_item_mutation\"}";
+        return result.str();
+    }
+
+    basecamp &found = **camp;
+    const zone_type_id storage_type( "CAMP_STORAGE" );
+    const std::vector<const zone_data *> zones = zone_manager::get_manager().get_near_zones(
+                storage_type, found.get_bb_pos(), MAX_VIEW_DISTANCE, found.get_owner() );
+    map &here = get_map();
+    result << ",\"accessible\":true,\"camp_site\":[" << found.camp_omt_pos().x() << ','
+           << found.camp_omt_pos().y() << ',' << found.camp_omt_pos().z() << ']'
+           << ",\"camp_owner_faction\":"
+           << openclaw_harness_quote_action_value( found.get_owner().str() )
+           << ",\"native_destination_rule\":\"form_storage_zones uses first matching zone center\""
+           << ",\"zones\":[";
+    for( size_t zone_index = 0; zone_index < zones.size(); ++zone_index ) {
+        const zone_data &zone = *zones[zone_index];
+        const tripoint_abs_ms center = zone.get_center_point();
+        result << ( zone_index == 0 ? "" : "," ) << "{\"manager_index\":" << zone_index
+               << ",\"name\":" << openclaw_harness_quote_action_value( zone.get_name() )
+               << ",\"type\":" << openclaw_harness_quote_action_value( zone.get_type().str() )
+               << ",\"faction\":" << openclaw_harness_quote_action_value( zone.get_faction().str() )
+               << ",\"start_absolute_ms\":[" << zone.get_start_point().x() << ','
+               << zone.get_start_point().y() << ',' << zone.get_start_point().z() << ']'
+               << ",\"end_absolute_ms\":[" << zone.get_end_point().x() << ','
+               << zone.get_end_point().y() << ',' << zone.get_end_point().z() << ']'
+               << ",\"center_absolute_ms\":[" << center.x() << ',' << center.y() << ','
+               << center.z() << "]";
+        const tripoint_bub_ms local_center = here.get_bub( center );
+        if( !here.inbounds( local_center ) ) {
+            result << ",\"loaded\":false}";
+            continue;
+        }
+        result << ",\"loaded\":true,\"items\":[";
+        bool first_item = true;
+        for( const item &stored : here.i_at( local_center ) ) {
+            if( !first_item ) {
+                result << ',';
+            }
+            first_item = false;
+            const int count = stored.count_by_charges() ? stored.charges : 1;
+            result << "{\"type_id\":" << openclaw_harness_quote_action_value( stored.typeId().str() )
+                   << ",\"name\":" << openclaw_harness_quote_action_value( stored.tname() )
+                   << ",\"count\":" << count
+                   << ",\"count_by_charges\":" << ( stored.count_by_charges() ? "true" : "false" )
+                   << ",\"owner_faction\":"
+                   << openclaw_harness_quote_action_value( stored.get_owner().str() ) << '}';
+        }
+        result << "]}";
+    }
+    result << "]"
+           << ",\"provenance\":\"diagnostic_current_accessible_camp_storage_not_item_mutation\"}";
+    return result.str();
+}
+
 static std::string openclaw_harness_semantic_step_frame(
     const std::string &state, const std::vector<std::pair<std::string, std::string>> &actions,
     const std::string &producer = "" )
@@ -1083,6 +1179,8 @@ static std::map<std::string, std::string> openclaw_harness_world_payload()
         { "visible_local", openclaw_harness_visible_local_facts( here, avatar_pos, 1, false, true ) },
         { "minimap", minimap.str() },
         { "overmap", overmap.str() },
+        { "current_site_camp", openclaw_harness_current_site_camp( player ) },
+        { "current_site_camp_storage", openclaw_harness_current_site_camp_storage( player ) },
         { "visible_entities", openclaw_harness_visible_entities( player ) },
         { "visible_zones", openclaw_harness_visible_zones( here, avatar_pos ) },
         { "messages", openclaw_harness_world_messages() },
@@ -4526,6 +4624,7 @@ bool game::handle_action()
     std::optional<semantic_surface_scope> world_semantic_scope;
     bool semantic_action_consumed = false;
     std::optional<character_id> semantic_npc_inspection_actor;
+    npc_ptr semantic_camp_npc_inspection_actor;
     // A Base Missions selector owns a blocking native modal.  Keep only an
     // identity here while the semantic World owner receipts its validated
     // pre-modal dispatch; the selector itself is invoked below, after that
@@ -4588,10 +4687,14 @@ bool game::handle_action()
                 const auto inspection_actions = npc_inspection_world_actions( player_character );
                 semantic_actions.insert( semantic_actions.end(), inspection_actions.begin(),
                                          inspection_actions.end() );
+                const auto camp_inspection_actions = npc_inspection_current_camp_actions( player_character );
+                semantic_actions.insert( semantic_actions.end(), camp_inspection_actions.begin(),
+                                         camp_inspection_actions.end() );
                 world_semantic_scope.emplace( semantic_manager, "world", "World",
                                               openclaw_harness_world_payload(),
                                               semantic_actions,
                 [ &act, &semantic_manager, &semantic_npc_inspection_actor,
+                  &semantic_camp_npc_inspection_actor,
                   &semantic_basecamp_mission_actor, &semantic_debug_creature_killed,
                   basecamp_mission_candidates ]( const semantic_action_request &request ) {
                     if( request.action_id == "world.pause" ) {
@@ -4634,6 +4737,27 @@ bool game::handle_action()
                             return semantic_action_dispatch_result{ false, "stale_actor_id", "" };
                         }
                         semantic_npc_inspection_actor = actor->getID();
+                    } else if( request.action_id == "world.inspect_camp_npc" ) {
+                        const std::optional<basecamp *> camp = overmap_buffer.find_camp(
+                            get_avatar().pos_abs_omt().xy() );
+                        if( !camp || *camp == nullptr || !( *camp )->allowed_access_by( get_avatar() ) ) {
+                            return semantic_action_dispatch_result{ false, "unavailable_camp", "" };
+                        }
+                        const std::string requested_id = request.stable_id.value_or( "" );
+                        const std::vector<npc_ptr> workers = ( *camp )->get_npcs_assigned();
+                        const auto worker = std::find_if( workers.begin(), workers.end(),
+                        [&requested_id]( const npc_ptr &candidate ) {
+                            return candidate && !candidate->is_dead() &&
+                                   requested_id == npc_inspection_actor_id( *candidate );
+                        } );
+                        if( worker == workers.end() ) {
+                            return semantic_action_dispatch_result{ false, "stale_camp_worker", "" };
+                        }
+                        // The assigned-worker list owns an npc_ptr even while
+                        // Patrol moves that worker out of the loaded local map.
+                        // Retain the exact validated object only long enough
+                        // for the following read-only inspection surface.
+                        semantic_camp_npc_inspection_actor = *worker;
                     } else if( request.action_id == "world.basecamp_missions" ) {
                         const std::string candidate_id = request.stable_id.value_or( "" );
                         const auto candidate = std::find_if( basecamp_mission_candidates.begin(),
@@ -4705,7 +4829,8 @@ bool game::handle_action()
                                                             act == ACTION_INVENTORY || act == ACTION_MAP ||
                                                             act == ACTION_FIRE || act == ACTION_CHAT ||
                                                             act == ACTION_PICKUP ||
-                                                            semantic_npc_inspection_actor.has_value() };
+                                                            semantic_npc_inspection_actor.has_value() ||
+                                                            semantic_camp_npc_inspection_actor != nullptr };
                 } );
             }
             // The scope constructed above is the actual owner for this input
@@ -4731,6 +4856,10 @@ bool game::handle_action()
         openclaw_harness_pending_world_frame.clear();
     }
     if( semantic_debug_creature_killed ) {
+        return false;
+    }
+    if( semantic_camp_npc_inspection_actor ) {
+        show_npc_inspection( *semantic_camp_npc_inspection_actor, true );
         return false;
     }
     if( semantic_npc_inspection_actor ) {

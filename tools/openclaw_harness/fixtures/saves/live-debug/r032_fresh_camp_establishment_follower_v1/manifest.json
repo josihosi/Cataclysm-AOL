@@ -1,0 +1,23 @@
+{
+  "name": "r032_fresh_camp_establishment_follower_v1",
+  "source_fixture": "r009_m059_preopportunity_bootstrap",
+  "source_profile": "live-debug",
+  "description": "R-032 setup-only derivative of the pre-opportunity save.  It adds exactly one nearby ordinary follower with no camp assignment so a separate native semantic playtest can exercise the standard camp-establishment conversation.  The fixture transform, follower presence, and launch establish no camp gameplay outcome.",
+  "save_transforms": [
+    {
+      "kind": "overmap_npcs_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offsets_ms": [
+        [
+          2,
+          -2,
+          0
+        ]
+      ],
+      "name_prefix": "R032 Establishment Ally",
+      "clone_follower_template": true,
+      "scan_all_overmaps_for_ids": true,
+      "clear_camp_assignment": true
+    }
+  ]
+}

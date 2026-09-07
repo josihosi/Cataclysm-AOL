@@ -1025,10 +1025,11 @@ bool talk_function::display_and_choose_opts(
             basecamp *const expected_camp = *camp;
             const std::string expected_camp_id = expected_camp->camp_omt_pos().to_string();
             const faction_id expected_faction = expected_camp->get_owner();
-            const auto find_mission = [ &mission_key ]( const mission_kind kind ) -> const mission_entry * {
+            const auto find_mission = [ &mission_key ]( const mission_kind kind,
+            const bool is_return ) -> const mission_entry * {
                 for( const std::vector<mission_entry> &entries : mission_key.entries ) {
-                    const auto found = std::find_if( entries.begin(), entries.end(), [ kind ]( const mission_entry &entry ) {
-                        return entry.id.id.id == kind && !entry.id.ret;
+                    const auto found = std::find_if( entries.begin(), entries.end(), [ kind, is_return ]( const mission_entry &entry ) {
+                        return entry.id.id.id == kind && entry.id.ret == is_return;
                     } );
                     if( found != entries.end() ) {
                         return &*found;
@@ -1036,10 +1037,26 @@ bool talk_function::display_and_choose_opts(
                 }
                 return nullptr;
             };
-            const mission_entry *const food_mission = find_mission( Camp_Distribute_Food );
-            const mission_entry *const looting_mission = find_mission( Camp_Menial );
+            const mission_entry *const food_mission = find_mission( Camp_Distribute_Food, false );
+            const mission_entry *const looting_mission = find_mission( Camp_Menial, false );
+            const mission_entry *const locker_policy_mission = find_mission( Camp_Locker_Policy, false );
+            const mission_entry *const job_assignment_mission = find_mission( Camp_Assign_Jobs, false );
+            // Keep the board's semantic surface intentionally narrow.  These
+            // two native companion routes each take three hours and have
+            // matching return entries with `ret` set.  Any child owner (such
+            // as Survey Expansion's genuine overmap choice) remains native.
+            const mission_entry *const survey_mission = find_mission( Camp_Survey_Expansion, false );
+            const mission_entry *const survey_return = find_mission( Camp_Survey_Expansion, true );
+            const mission_entry *const gathering_mission = find_mission( Camp_Gather_Materials, false );
+            const mission_entry *const gathering_return = find_mission( Camp_Gather_Materials, true );
             const bool food_available = food_mission != nullptr && food_mission->possible;
             const bool looting_available = looting_mission != nullptr && looting_mission->possible;
+            const bool locker_policy_available = locker_policy_mission != nullptr && locker_policy_mission->possible;
+            const bool job_assignment_available = job_assignment_mission != nullptr && job_assignment_mission->possible;
+            const bool survey_available = survey_mission != nullptr && survey_mission->possible;
+            const bool survey_return_available = survey_return != nullptr && survey_return->possible;
+            const bool gathering_available = gathering_mission != nullptr && gathering_mission->possible;
+            const bool gathering_return_available = gathering_return != nullptr && gathering_return->possible;
             faction *const camp_faction = g->faction_manager_ptr->get( expected_faction );
             const int food_kcal = camp_faction ? camp_faction->food_supply().kcal() : 0;
             const std::map<std::string, std::string> payload = {
@@ -1053,16 +1070,38 @@ bool talk_function::display_and_choose_opts(
                     _( "The visible camp board currently does not offer food distribution." ) },
                 { "looting_sorting_available", looting_available ? "true" : "false" },
                 { "looting_sorting_unavailable_reason", looting_available ? "" :
-                    _( "The visible camp board currently does not offer looting and sorting." ) }
+                    _( "The visible camp board currently does not offer looting and sorting." ) },
+                { "locker_policy_available", locker_policy_available ? "true" : "false" },
+                { "locker_policy_enabled_slots", std::to_string( expected_camp->get_locker_policy().enabled_count() ) },
+                { "locker_zone_defined", expected_camp->has_locker_zone() ? "true" : "false" },
+                { "job_assignment_available", job_assignment_available ? "true" : "false" },
+                { "patrol_zone_defined", expected_camp->has_patrol_zone() ? "true" : "false" },
+                { "survey_expansion_available", survey_available ? "true" : "false" },
+                { "survey_expansion_return_available", survey_return_available ? "true" : "false" },
+                { "gather_materials_available", gathering_available ? "true" : "false" },
+                { "gather_materials_return_available", gathering_return_available ? "true" : "false" }
             };
             const std::vector<semantic_action_descriptor> actions = {
                 { "camp.distribute_food", expected_camp_id, _( "Distribute camp food" ), food_available },
                 { "camp.start_looting_sorting", expected_camp_id, _( "Start camp looting and sorting" ), looting_available },
+                { "camp.edit_locker_policy", expected_camp_id,
+                  _( "Edit camp locker policy" ), locker_policy_available },
+                { "camp.open_job_assignment", expected_camp_id,
+                  _( "Assign camp worker job priorities" ), job_assignment_available },
+                { "camp.start_survey_expansion", expected_camp_id,
+                  _( "Start three-hour expansion survey" ), survey_available },
+                { "camp.return_survey_expansion", expected_camp_id,
+                  _( "Recover completed expansion surveyor" ), survey_return_available },
+                { "camp.start_gather_materials", expected_camp_id,
+                  _( "Start three-hour materials gathering" ), gathering_available },
+                { "camp.return_gather_materials", expected_camp_id,
+                  _( "Recover completed materials gatherer" ), gathering_return_available },
                 { "camp.close", "", _( "Close Base Missions" ), true }
             };
             semantic_scope.emplace( *manager, "basecamp_mission_selector", _( "Base Missions" ), payload, actions,
             [ &mission_key, &semantic_native_action, expected_camp, expected_camp_id, expected_faction,
-              food_available, looting_available ]( const semantic_action_request &request ) {
+              food_available, looting_available, locker_policy_available, job_assignment_available, survey_available, survey_return_available,
+              gathering_available, gathering_return_available ]( const semantic_action_request &request ) {
                 if( request.action_id == "camp.close" ) {
                     semantic_native_action = "QUIT";
                     return semantic_action_dispatch_result{ true, "", "" };
@@ -1074,28 +1113,52 @@ bool talk_function::display_and_choose_opts(
                     expected_camp->get_owner() != expected_faction ) {
                     return semantic_action_dispatch_result{ false, "stale_camp", "" };
                 }
-                const mission_kind expected_kind = request.action_id == "camp.distribute_food" ?
-                                                   Camp_Distribute_Food : Camp_Menial;
-                const bool expected_available = request.action_id == "camp.distribute_food" ?
-                                                food_available : looting_available;
-                if( request.action_id != "camp.distribute_food" &&
-                    request.action_id != "camp.start_looting_sorting" ) {
+                mission_kind expected_kind = No_Mission;
+                bool expected_return = false;
+                bool expected_available = false;
+                if( request.action_id == "camp.distribute_food" ) {
+                    expected_kind = Camp_Distribute_Food;
+                    expected_available = food_available;
+                } else if( request.action_id == "camp.start_looting_sorting" ) {
+                    expected_kind = Camp_Menial;
+                    expected_available = looting_available;
+                } else if( request.action_id == "camp.edit_locker_policy" ) {
+                    expected_kind = Camp_Locker_Policy;
+                    expected_available = locker_policy_available;
+                } else if( request.action_id == "camp.open_job_assignment" ) {
+                    expected_kind = Camp_Assign_Jobs;
+                    expected_available = job_assignment_available;
+                } else if( request.action_id == "camp.start_survey_expansion" ) {
+                    expected_kind = Camp_Survey_Expansion;
+                    expected_available = survey_available;
+                } else if( request.action_id == "camp.return_survey_expansion" ) {
+                    expected_kind = Camp_Survey_Expansion;
+                    expected_return = true;
+                    expected_available = survey_return_available;
+                } else if( request.action_id == "camp.start_gather_materials" ) {
+                    expected_kind = Camp_Gather_Materials;
+                    expected_available = gathering_available;
+                } else if( request.action_id == "camp.return_gather_materials" ) {
+                    expected_kind = Camp_Gather_Materials;
+                    expected_return = true;
+                    expected_available = gathering_return_available;
+                } else {
                     return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
                 }
                 if( !expected_available ) {
                     return semantic_action_dispatch_result{ false, "unavailable", "" };
                 }
                 const auto mission = std::find_if( mission_key.entries.begin(), mission_key.entries.end(),
-                [ expected_kind ]( const std::vector<mission_entry> &entries ) {
-                    return std::any_of( entries.begin(), entries.end(), [ expected_kind ]( const mission_entry &entry ) {
-                        return entry.id.id.id == expected_kind && !entry.id.ret && entry.possible;
+                [ expected_kind, expected_return ]( const std::vector<mission_entry> &entries ) {
+                    return std::any_of( entries.begin(), entries.end(), [ expected_kind, expected_return ]( const mission_entry &entry ) {
+                        return entry.id.id.id == expected_kind && entry.id.ret == expected_return && entry.possible;
                     } );
                 } );
                 if( mission == mission_key.entries.end() ) {
                     return semantic_action_dispatch_result{ false, "stale_mission_availability", "" };
                 }
-                const auto entry = std::find_if( mission->begin(), mission->end(), [ expected_kind ]( const mission_entry &candidate ) {
-                    return candidate.id.id.id == expected_kind && !candidate.id.ret && candidate.possible;
+                const auto entry = std::find_if( mission->begin(), mission->end(), [ expected_kind, expected_return ]( const mission_entry &candidate ) {
+                    return candidate.id.id.id == expected_kind && candidate.id.ret == expected_return && candidate.possible;
                 } );
                 if( entry == mission->end() ) {
                     return semantic_action_dispatch_result{ false, "stale_mission_availability", "" };
