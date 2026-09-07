@@ -1,7 +1,7 @@
 # Test and task guidelines
 
-This workspace-local file supplies the operating method for ordinary Phase-3 work. Read only what
-the selected outcome needs. The compiled policy owns routing and durable lifecycle transitions.
+This is a legacy differential fixture. policy_kernel.py generates ordinary worker instructions;
+the compiled policy owns routing and durable lifecycle transitions.
 
 ## Own the outcome
 
@@ -69,13 +69,24 @@ defect without erasing unaffected evidence, and reserve capability gaps for miss
 interfaces. The witness may use any clear wording. Never invent facts, cite absent values, conceal
 evidence, change identity, or promote its own evidence class.
 
-## Return results
+## Context and results
 
-Return a compact, schema-shaped result naming the outcome or first divergence, material changes,
-tests and live actions, evidence ceiling, exact bindings, indexed journal identities, digest-bound
-artifact references, accepted no-replay work, active work, first open boundary, useful narrow
-queries, and entrypoints. When the execution context cannot carry the next necessary act, this
-receipt ends only the worker attempt and is the successor's continuation footing. The coordinator
-alone validates and records it before durable terminal state. A formal finding must name the real
-route exit; ordinary code, test, harness, fixture, strategy, and context-boundary failures remain
-recoverable work while the outcome is in scope.
+Keep known small lookups local. Use disposable Luna helpers by default for substantial source or
+scenario discovery, historical retrieval, failure-log diagnosis and independent reconciliation.
+Give a bounded question, exact relevant artifacts and the decision to support, with `fork_turns="none"`.
+Import findings, references, contradictions and uncertainty; inspect original details when they can
+change the decision. Preserve exclusive edits/runtime ownership and collect or stop helpers before
+returning. Helpers do not own coordinator records. Sol decides ownership when a prerequisite becomes
+a substantial independent investigation. Preserve live state and continue independent useful work.
+
+Use the prepared brief and selected context bundles. `context_library.py catalog` shows metadata;
+`show --revision SHA256 --section HEADING` retrieves a needed section. At meaningful context changes,
+replace the current handoff with accepted results, shared repairs, bindings, constraints, uncertainty
+and original evidence handles. Do not reload a growing history or inherit a predecessor conversation.
+Name recurring context/tool obstructions so Sol can commission a repair at the producing surface.
+
+Return the supported result, material changes, tests and live actions, evidence ceiling, exact
+bindings and artifact/journal references, accepted work and first remaining boundary. The coordinator
+records the existing durable receipt and lifecycle transition. No parallel report or new receipt
+system. A context boundary ends only an attempt, never the unfinished outcome. Keep pending owner
+corrections in the current owner contract until applied with evidence or deliberately deferred.

@@ -39,10 +39,10 @@ own output into non-credit bootstrap followed by independent validation.
 Record durable acceptance once. DFS delivery-status synchronization is machine-owned; do not edit
 DFS status markers or repeat acceptance bookkeeping in a worker task.
 
-Choose Luna or Terra and an effort appropriate to the assignment; the injected task identity does
-not choose the model. Complete the call with an available model_choices capability. Give Luna
-meaningful suitable execution as well as extraction. Read the existing work-context token_usage
-projection as feedback, never a quota or reason to manufacture work.
+Default to Luna for playtesting, clear execution and ordinary repairs. Choose Terra for a
+concrete hard diagnosis or coupled implementation problem; a broad assignment's possible debugging
+is not enough. After that problem, reassess substantial remaining Luna execution by total work,
+including handoff and helper costs. Sol owns direction and scope, without quotas or forced handoffs.
 Before opening focused exploration, record `  - Assignment TASK-ID: ...` in the existing ledger
 with its outcome and exit condition. Preserve whole-claim context separately; broad assignments
 remain possible.
@@ -68,18 +68,24 @@ new worker packets already include. Relevant live corrections also use native me
 them through ledger rewrites until the responsible worker acknowledges and applies them with
 evidence, or deliberately defers with a reason. File preservation alone does not prove delivery.
 
-The generated read plan maps evidence without prescribing a sequence. `work_context.py` beside the
-policy kernel provides current tasks, independent task results, dispatch relationships, runner
-metadata and searchable receipt history (`--claim`, `--task`, `--receipt`, `--contains`, `--full`).
-Infrastructure records and indexes what it already knows; workers explain findings and uncertainty.
-Select relevant evidence by exact task, gap, session or artifact references. A newer receipt for a
-claim does not replace other contributions. Open full records when their missing detail can change
-the decision; missing or stale context stays explicit. Choose a local query or Luna extraction/comparison by the specific question and total work;
-infrastructure indexes routine history. For a live
-playtest, provide the compact witness charter and CAOL harness entrypoint. The session context
-provider supplies recorded status, freshness, pending input and exact refresh/query handles; a
-saved status is not live authority. The worker owns strategy and may inspect, repair, improvise or
-rerun within the outcome.
+Prepare an executable starting point with established facts, unresolved premises, exact source,
+scenario and evidence entrypoints, authority and live ownership. Keep small lookups local; use a
+bounded Luna scout for broad route discovery. Reuse named revisioned facts and relevant skill text
+through `context_library.py` beside the policy kernel: `put`, `reuse`, `prepare`, `catalog`, `show`,
+`assemble`, `drop` and `limits`. Dispatch injects only the written assignment, selected bundles and
+optional current predecessor results alongside mandatory worker/owner constraints. Defaults per task
+are 12 items, 4096 UTF-8 bytes per item, 49152 active bytes and 24576 selected bytes, excluding the
+brief and mandatory instructions. These provisional working sizes are adjustable from evidence,
+not token measurements or quotas for agent allocation. Replace stale or irrelevant active content;
+keep original evidence and revisions retrievable. Never silently truncate constraints or contradictions.
+Deliver material premise corrections to live workers explicitly, not just by changing stored context.
+At a meaningful context change, retain results, bindings, shared repairs and uncertainty rather than
+append or reload the investigation journey. No full-library injection, periodic summaries or new
+proof-receipt machinery. `work_context.py` retains task and receipt search; context bundles do not
+replace durable evidence or confer predecessor authority. If tooling investigation becomes substantial
+independent work, Sol decides ownership while preserving useful worker understanding and live runs.
+Commission context/tool repair only against a demonstrated recurring obstruction, then verify it
+removes repeated work. DE67 method changes keep exclusive mutation/guard ownership.
 
 ## Durable worker lifecycle
 
