@@ -1,0 +1,19 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The fresh native segment reached the declared save/reload boundary; continuation evidence is required to assess restored state.",
+  "causal_account": "This witness intentionally does not claim persistence from startup or presentation text.",
+  "citations": [
+    {
+      "citation_id": "J0002",
+      "meaning": "Fresh native world observation bound to this run and exposed lifecycle actions.",
+      "checks": {
+        "value.observation_id": "c0d05911953bf4310b8496bd02515ed659caef9c3de9901b0b011dc96b78408d:frame:1",
+        "value.run_id": "c0d05911953bf4310b8496bd02515ed659caef9c3de9901b0b011dc96b78408d"
+      }
+    }
+  ],
+  "recommended_disposition": "continue",
+  "contradictions": [],
+  "remaining_unknowns": ["new-process reload and exact durable-state comparison"],
+  "evidence_ceiling": "focused"
+}

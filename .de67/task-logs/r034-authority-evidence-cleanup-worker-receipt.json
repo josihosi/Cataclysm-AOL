@@ -1,0 +1,41 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-034-closure-authority-evidence-cleanup-001",
+  "claim_id": "R-034",
+  "worker_id": "01a07d54-63e2-74f1-9f47-ce6995d7e479",
+  "disposition": "completed",
+  "verdict": "closure_gap_satisfied",
+  "outcome": "The exact authority, evidence-ceiling, repaired bootstrap, observed-only control, and cleanup requirements were verified.",
+  "summary": "The prior-process request was rejected as unknown_or_stale_observation, post-reload native pauses were accepted, the scenario uses native_semantic_bootstrap/world.wait, the invalid generated report remains uncredited, the free-text control authorizes no repair claim, and PID 89865 exited cleanly.",
+  "material_changes": [],
+  "tests": [
+    "Parsed the repaired scenario JSON.",
+    "Validated the relevant repository diff with git diff --check."
+  ],
+  "live_actions": ["Verified cleanup outcome safe_to_cleanup/already_exited for PID 89865 with exit code 0."],
+  "evidence_ceiling": [
+    "OCR, terminal bytes, and rendered text receive zero proof credit for input consumption, elapsed time, gameplay state, or checkpoints.",
+    "The generated invalid_report remains uncredited; immutable native evidence defines the ceiling.",
+    "The unaddressed free-text response is observed-only and proves neither duplicate mutation nor a gameplay defect."
+  ],
+  "bindings": {
+    "scenario_id": "r026.living_npc_package_v001_mcw",
+    "run_id": "d7929b2e62413e227fde942eebe5e00bcab02f9c5bc8639c48b41be41ae8bdd8",
+    "binding_id": "3a5dbb5f23ae3a7334e22ae8233e67a96453fb9c29a72fd6cbc682ba86505dd2"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": ".de67/task-logs/r034-stale-frame-request.json", "sha256": "4baa09da8dd37c5dd3cde2e08a77e84cd355af4c9fed5c525bd2c59829ced6ad", "role": "stale-frame authority rejection"},
+    {"path": ".de67/task-logs/r034-post-journal.json", "sha256": "532034395f23f5f61915807aa6bf7482742878a4a52ac5fef47028c4398960ac", "role": "post-reload native journal"},
+    {"path": ".de67/task-logs/r034-post-witness-bundle.json", "sha256": "904d5315ce671e63efe67ff41dda5409c4164498413c0f1fb4988f769b2be4c2", "role": "post-reload witness bundle"},
+    {"path": "tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json", "sha256": "1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0", "role": "repaired native semantic bootstrap scenario"}
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": ["Do not replay the accepted authority and cleanup checks."],
+  "active_work": [],
+  "first_open_boundary": "",
+  "narrow_queries": ["unknown_or_stale_observation", "world.pause", "invalid_report", "native_semantic_bootstrap"],
+  "entrypoints": ["tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json"],
+  "context_metrics": {}
+}

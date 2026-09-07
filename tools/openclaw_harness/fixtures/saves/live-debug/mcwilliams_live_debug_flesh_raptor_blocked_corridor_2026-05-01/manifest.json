@@ -22,6 +22,26 @@
       "clear_spawn_tile_headcount": true
     },
     {
+      "kind": "map_terrain_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "terrain": [
+        { "id": "t_floor", "offset_ms": [3, 0, 0] },
+        { "id": "t_floor", "offset_ms": [4, 0, 0] },
+        { "id": "t_floor", "offset_ms": [5, 0, 0] },
+        { "id": "t_floor", "offset_ms": [6, 0, 0] }
+      ]
+    },
+    {
+      "kind": "map_furniture_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "furniture": [
+        { "id": "f_null", "offset_ms": [3, 0, 0] },
+        { "id": "f_null", "offset_ms": [4, 0, 0] },
+        { "id": "f_null", "offset_ms": [5, 0, 0] },
+        { "id": "f_null", "offset_ms": [6, 0, 0] }
+      ]
+    },
+    {
       "kind": "map_furniture_near_player",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "furniture": [

@@ -1,0 +1,17 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This fresh current-source segment establishes native package inspection, an ordinary native follower interaction and a successful native quicksave followed by confirmed save-and-quit, main-menu quit, and process exit. It does not by itself establish restored state or continued behavior.",
+  "causal_account": "Native semantic receipts are bound to run d7929b2e62413e227fde942eebe5e00bcab02f9c5bc8639c48b41be41ae8bdd8 and identify each action/frame. The native quicksave reported saved before save-and-quit and process exit. Reload and post-reload state remain unobserved until the declared continuation.",
+  "citations": [
+    {"citation_id":"J0001", "meaning":"Current source/executable/run/binding identity for this fresh segment.", "checks":{"run_id":"d7929b2e62413e227fde942eebe5e00bcab02f9c5bc8639c48b41be41ae8bdd8"}},
+    {"citation_id":"J0012", "meaning":"An ordinary native pause was accepted after the follower interaction, producing a bound successor frame.", "checks":{"native_receipt.accepted":true,"native_receipt.action_id":"world.pause"}},
+    {"citation_id":"J0015", "meaning":"Native quicksave receipt was accepted; its resulting observation reported last_save_result saved.", "checks":{"native_receipt.accepted":true,"native_receipt.action_id":"world.quicksave"}},
+    {"citation_id":"J0017", "meaning":"Native save-and-quit action was accepted and opened native confirmation.", "checks":{"native_receipt.accepted":true,"native_receipt.action_id":"world.save_quit"}},
+    {"citation_id":"J0021", "meaning":"Native main-menu quit action was accepted before process exit.", "checks":{"native_receipt.accepted":true,"native_receipt.action_id":"main_menu.quit"}},
+    {"citation_id":"J0022", "meaning":"The original bound process exited with code 0; the native observation explicitly says exit alone does not establish save durability.", "checks":{"value.surface.kind":"process_exited","value.surface.facts.exit_code":0,"value.surface.facts.save_outcome":"not_established_by_process_exit"}}
+  ],
+  "recommended_disposition": "continue",
+  "contradictions": [],
+  "remaining_unknowns": ["New-process relaunch, durable identity/value comparison, stale-grant rejection, and later ordinary behavior are pending the declared continuation."],
+  "evidence_ceiling": "focused"
+}

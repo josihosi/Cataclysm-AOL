@@ -1,0 +1,146 @@
+{
+  "schema": "caol-playtest-witness-bundle-v1",
+  "claims": [
+    {
+      "claim_id": "new-process-persistence",
+      "statement": {
+        "verdict": "proved",
+        "smallest_supported_claim": "After the declared native save/reload process replacement, the same run exposed Bugchaser central and its accessible storage, and Katharina Leach (character:2) retained the saved camp assignment, follower rule, priority, identity, and 17-item inventory. A later native pause was accepted and advanced the game turn, showing ordinary behavior resumed.",
+        "causal_account": "The post-reload observation is bound to run d7929b2e62413e227fde942eebe5e00bcab02f9c5bc8639c48b41be41ae8bdd8 and binding 3a5dbb5f23ae3a7334e22ae8233e67a96453fb9c29a72fd6cbc682ba86505dd2. Native NPC inspection reports the same actor identity and durable values after reload; the storage snapshot retains all seven pre-save entries. Native world.pause receipts are accepted on the relaunched owner, and the follow-up inspection retains the same values.",
+        "citations": [
+          {
+            "citation_id": "J0001",
+            "meaning": "Exact source, executable, scenario, run, and binding identity for the sealed witness.",
+            "checks": {
+              "run_id": "d7929b2e62413e227fde942eebe5e00bcab02f9c5bc8639c48b41be41ae8bdd8",
+              "binding_id": "3a5dbb5f23ae3a7334e22ae8233e67a96453fb9c29a72fd6cbc682ba86505dd2"
+            }
+          },
+          {
+            "citation_id": "J0002",
+            "meaning": "Fresh post-reload World owner exposes the saved camp and accessible storage.",
+            "checks": {
+              "value.surface.kind": "world",
+              "value.surface.facts.current_site_camp.site": [140, 41, 0],
+              "value.surface.facts.current_site_camp.camp_name": "Bugchaser central",
+              "value.surface.facts.current_site_camp_storage.accessible": true,
+              "value.surface.facts.current_site_camp_storage.zones.0.items.0.type_id": "novel_coa",
+              "value.surface.facts.current_site_camp_storage.zones.0.items.6.type_id": "box_small",
+              "value.surface.facts.current_site_camp_storage.zones.0.items.6.count": 1
+            }
+          },
+          {
+            "citation_id": "J0004",
+            "meaning": "Post-reload native NPC inspection exposes Katharina's exact identity, assignment, rule, priority, and inventory count.",
+            "checks": {
+              "value.surface.kind": "npc_inspection",
+              "value.surface.facts.actor_id": "character:2",
+              "value.surface.facts.actor_name": "Katharina Leach",
+              "value.surface.facts.diagnostic_item_count": "17",
+              "value.surface.facts.diagnostic_orders.mission": "CAMP_RESIDENT",
+              "value.surface.facts.diagnostic_orders.assigned_camp": [140, 41, 0],
+              "value.surface.facts.diagnostic_orders.camp_patrol_order": false,
+              "value.surface.facts.diagnostic_orders.camp_patrol_priority": 8,
+              "value.surface.facts.diagnostic_rules.speaker_id": "2",
+              "value.surface.facts.diagnostic_rules.rules.9.id": "follow_close",
+              "value.surface.facts.diagnostic_rules.rules.9.enabled": true,
+              "value.surface.facts.diagnostic_rules.rules.9.override_enabled": true
+            }
+          },
+          {
+            "citation_id": "J0010",
+            "meaning": "The first ordinary native pause after reload was accepted on the relaunched owner.",
+            "checks": {
+              "native_receipt.action_id": "world.pause",
+              "native_receipt.accepted": true
+            }
+          },
+          {
+            "citation_id": "J0011",
+            "meaning": "The resumed world returned to native NPC inspection at the next game turn.",
+            "checks": {
+              "value.surface.kind": "npc_inspection",
+              "value.surface.facts.actor_id": "character:2",
+              "value.surface.facts.diagnostic_item_count": "17",
+              "value.surface.facts.diagnostic_orders.assigned_camp": [140, 41, 0]
+            }
+          },
+          {
+            "citation_id": "J0022",
+            "meaning": "After the control and a later native pause, the camp/storage state remains present and unchanged at the cited item boundary.",
+            "checks": {
+              "value.surface.kind": "world",
+              "value.surface.facts.current_site_camp_storage.zones.0.items.0.type_id": "novel_coa",
+              "value.surface.facts.current_site_camp_storage.zones.0.items.6.type_id": "box_small",
+              "value.surface.facts.current_site_camp_storage.zones.0.items.6.count": 1
+            }
+          },
+          {
+            "citation_id": "J0023",
+            "meaning": "A second ordinary native pause was accepted after the free-text control.",
+            "checks": {
+              "native_receipt.action_id": "world.pause",
+              "native_receipt.accepted": true
+            }
+          }
+        ],
+        "material_deviations": [],
+        "contradictions": [],
+        "remaining_unknowns": [
+          "The compact journal does not itself carry the child process-instance field; the bridge manifest and stale-frame rejection artifact provide the lifecycle/process-generation evidence.",
+          "No movement/separation claim was made; resumed behavior here is limited to accepted ordinary turns and stable state inspection."
+        ],
+        "recommended_disposition": "accept",
+        "evidence_ceiling": "focused"
+      }
+    },
+    {
+      "claim_id": "unaddressed-control-routing",
+      "statement": {
+        "verdict": "contradicted",
+        "smallest_supported_claim": "The independently receipted unaddressed free-text utterance was accepted, but after one native turn the world displayed a second Katharina camp-craft response as well as the ordinary follower response; therefore this run does not establish the declared control property that the unaddressed control does not queue the addressed camp-craft route.",
+        "causal_account": "The native chat/menu/prompt chain was accepted with exact frame-bound receipts. The later World observation records the submitted utterance, a new Katharina craft response, and a subsequent R031 Route Ally 1 response. The storage item boundary remains unchanged, so no duplicate item mutation was observed, but the routing-control expectation itself was not met.",
+        "citations": [
+          {
+            "citation_id": "J0021",
+            "meaning": "The unaddressed free-text prompt submission was accepted by the native owner.",
+            "checks": {
+              "native_receipt.action_id": "prompt.submit",
+              "native_receipt.accepted": true
+            }
+          },
+          {
+            "citation_id": "J0022",
+            "meaning": "The post-control native messages include the second Katharina craft response and the ordinary follower response.",
+            "checks": {
+              "value.surface.facts.messages.238.text": "You say \"craft some bandages please\"",
+              "value.surface.facts.messages.239.text": "Katharina Leach says, \"Heard you.  1 × bandages matched bandage, but it's blocked: Camp storage could not supply the needed ingredients or tools.\"",
+              "value.surface.facts.messages.240.text": "R031 Route Ally 1 says: \"Sure thing, Zoraida—hand-crafting bandages now for you.\""
+            }
+          }
+        ],
+        "material_deviations": [
+          "The expected unaddressed-control non-queue property was not demonstrated; a camp response was observed.",
+          "The same craft utterance was used as the control, so the response is evidence of observed routing, not proof of a distinct addressed request identity."
+        ],
+        "contradictions": [],
+        "remaining_unknowns": [
+          "The retained native surface does not expose a structured camp-request ID for the second free-text utterance."
+        ],
+        "recommended_disposition": "repair",
+        "evidence_ceiling": "focused"
+      }
+    }
+  ],
+  "findings": [
+    {
+      "finding_id": "R034-unaddressed-control-routing",
+      "observed_defect": "The post-reload free-text control produced a second Katharina camp-craft response instead of cleanly remaining outside the addressed camp-craft route.",
+      "citations": ["J0021", "J0022"],
+      "affected_claims": ["unaddressed-control-routing"],
+      "unaffected_claims": ["new-process-persistence"],
+      "disposition": "repair",
+      "next_action": "Trace the native free-text recipient/routing path and add a new-source witness that distinguishes an unaddressed utterance from the saved addressed craft request without recreating the addressed request."
+    }
+  ]
+}

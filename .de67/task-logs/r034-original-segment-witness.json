@@ -1,0 +1,18 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This segment establishes a current source-bound native package interaction and a successful native quicksave followed by confirmed save-and-quit, main-menu quit, and process exit. It does not by itself establish restored state or continued behavior.",
+  "causal_account": "Native semantic receipts identify the selected actions and exact run/frame identities. The world pause produced a native reply from Katharina after the submitted sentence, and quicksave reported saved before native save-and-quit and process exit. Reload and post-reload state remain unobserved until the declared continuation.",
+  "citations": [
+    {"citation_id":"J0001", "meaning":"Current source/executable/run/binding identity for the segment.", "checks":{"run_id":"72857e6f98071abbd53edb2b1ee65ccb047988991db004bbc561ceb3c05d913a"}},
+    {"citation_id":"J0024", "meaning":"Native free-text prompt submission was accepted on the bound frame.", "checks":{"native_receipt.accepted":true,"native_receipt.action_id":"prompt.submit"}},
+    {"citation_id":"J0026", "meaning":"A later ordinary native pause was accepted, producing the next bound frame and allowing the native response to be observed.", "checks":{"native_receipt.accepted":true,"native_receipt.action_id":"world.pause"}},
+    {"citation_id":"J0029", "meaning":"Native quicksave receipt was accepted; its resulting observation reported last_save_result saved.", "checks":{"native_receipt.accepted":true,"native_receipt.action_id":"world.quicksave"}},
+    {"citation_id":"J0031", "meaning":"Native save-and-quit action was accepted and opened the native confirmation owner.", "checks":{"native_receipt.accepted":true,"native_receipt.action_id":"world.save_quit"}},
+    {"citation_id":"J0035", "meaning":"Native main-menu quit action was accepted before process exit.", "checks":{"native_receipt.accepted":true,"native_receipt.action_id":"main_menu.quit"}},
+    {"citation_id":"J0036", "meaning":"The original bound process exited with code 0; the native observation explicitly says exit alone does not establish save durability.", "checks":{"value.surface.kind":"process_exited","value.surface.facts.exit_code":0,"value.surface.facts.save_outcome":"not_established_by_process_exit"}}
+  ],
+  "recommended_disposition": "continue",
+  "contradictions": [],
+  "remaining_unknowns": ["New-process relaunch, durable identity/value comparison, stale-grant rejection, and later ordinary behavior are pending the declared continuation."],
+  "evidence_ceiling": "focused"
+}

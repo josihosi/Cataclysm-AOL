@@ -1,0 +1,28 @@
+{
+  "claim": "R-034 native new-process save/load and resumed durable behavior",
+  "material_proof": "A current-source run must produce meaningful package state through native play, record actor identity/rules/assignment and any durable camp state before save, save through native input, exit the original process, reload the exact world in a new source-bound process without fixture reinstall, reject stale prior-process grants, compare durable identities and values, and observe later ordinary behavior rebuilding derived services without duplicate effects.",
+  "current_uncertainty": "Fresh package changes have not yet been independently shown to preserve their changed durable state through native process replacement and continued behavior.",
+  "material_contradiction": [
+    "Native save or process exit is not confirmed.",
+    "Reload does not reach the same saved world in a new process/generation.",
+    "A stale prior-process frame or UID can act on the new owner.",
+    "A durable identity, rule, assignment, mission, item, zone, policy, or relevant ecology value differs after reload without an explained native transition.",
+    "Later ordinary behavior fails to rebuild a derived service or double-applies a report, payment, or terminal effect."
+  ],
+  "already_accepted_evidence": [
+    "The fixture and startup are setup and source-binding evidence only.",
+    "Historical camp, NPC, zone, item, and save observations remain at their original narrow scope and are not persistence proof for this fresh run.",
+    "The unpromoted Patrol priority-zero contradiction is preserved and must not be replayed or repaired here."
+  ],
+  "forbidden_shortcuts": [
+    "Direct save mutation, fixture restage, or debug state injection.",
+    "Physical-key, guessed-key, OCR, terminal-text, or rendered-text control/proof.",
+    "Treating a stale frame, process exit, saved file, or cleanup result as restored gameplay."
+  ],
+  "honest_stop_conditions": [
+    "A named native save or lifecycle failure is observed and preserved.",
+    "A required current native owner or source-bound process replacement remains unavailable.",
+    "The restored durable state or continued behavior contradicts the requested outcome."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

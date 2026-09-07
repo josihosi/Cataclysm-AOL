@@ -935,21 +935,23 @@ movement, run effects, target visibility and save/load remain competing readers/
 
 Implementation status:
 
-- [ ] 🔴 R-035 — Flesh-raptor orbit/swoop/fallback and encounter feel lack fresh package proof.
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-035 -->
+- [x] R-035 — Fresh native flesh-raptor orbit, blocked-route fallback, committed swoop, melee pressure, encounter feel, controls, exclusions, and cleanup are proved at their stated evidence ceilings.
   - DFS slices: `R-035-S001`
-  - Code/proof gap: `tests/flesh_raptor_test.cpp` and older staged live planning scenes do not satisfy
-    the new fresh gameplay obligation.
-  - Required mechanism: observe source-bound native monster planning and actual movement/combat in
-    open terrain, a crowded arc and a blocked route. `flesh_raptor.live_open_field_skirmisher_mcw`,
-    `flesh_raptor.live_crowded_arc_skirmisher_mcw` and `flesh_raptor.live_blocked_corridor_skirmisher_mcw` are route seeds;
-    staged active monsters are setup, with no natural-spawn or persistence credit implied.
-  - Proof questions: does the exact raptor use available lateral space, commit a real swoop and
-    recover/fall back when the arc is blocked? Do crowding, visibility and run/retreat state explain
-    the observed choice? Preserve native plan facts, positions, combat outcomes and the player's
-    experience of pressure/readability. Do not force a successful attack walkthrough.
-  - Controls: compare unavailable/occupied arcs and ordinary non-raptor movement without changing
-    excluded creature features. Scorer calls, a spawned actor or a visual animation alone are not
-    the subsequent gameplay transition. R-034 covers persistence only when actually claimed.
+  - Assignment R-035-fresh-raptor-encounter-001: Freshly prove native flesh-raptor orbit, swoop, fallback, and encounter feel with discriminating controls. Reconcile the current executable and source before play. Repository-owned harness, fixture, scenario, registry, observation, and implementation repairs are authorized when they preserve intended gameplay. Finish only when each behavior has source-bound native evidence or a named assigned-outcome exit under valid conditions. Writhing stalkers and zombie riders remain excluded. OCR, terminal bytes, and rendered text are presentation observations only and cannot prove input, time, state, or gameplay.
+  - Assignment R-035-closure-orbit-control-001: Independently verify the exact open and crowded runs prove readable lateral orbit selection and the less-crowded arc choice from source-bound native frames and plan facts. Do not credit fixture setup, OCR, terminal bytes, or rendered presentation.
+  - Assignment R-035-closure-fallback-pressure-001: Independently verify the exact blocked run proves no-readable-lateral-orbit fallback followed by committed swoop cadence, melee pressure, and the stated encounter-feel conclusion under its controls.
+  - Assignment R-035-closure-evidence-lifecycle-001: Independently verify source and executable identities, artifact hashes, focused tests, excluded-creature absence, evidence ceilings, manifest changes, and explicit cleanup of every R-035-owned process.
+  - Current handoff: Exploration receipt `813fe7aebb3fed9ac997e21c0de41c3a5baba62d023a94444326ed4307700c75` and three independent closure receipts settle the full R-035 claim. Orbit-control receipt `bb2302cd6ea32c7ee06388c9b286fd057a16b7dae44133043e9081b977b5e349` preserves the corrected crowded request identity. Fallback-pressure receipt `28e667d1bb71499a123a4ad786209427e28a147772d49c6a9215a79c7bd26612` verifies the blocked route, committed swoop, and melee pressure. Evidence-lifecycle receipt `fcfc9de408eff0754d35e360f7d6c4bfda23125890ac4290c96e1dd2d27aa53c` verifies source and artifact identities, 7 focused cases with 61 assertions, exclusions, evidence limits, fixture changes, and cleanup. The packaged probe reports remain timing-inconclusive and are not credited. OCR, terminal bytes, and rendered text received no proof credit.
+  - Subtasks:
+    - [done] prove-open-and-crowded-orbit :: Fresh native runs selected readable orbit arcs and chose the less-crowded side under a controlled crowd.
+    - [done] prove-blocked-fallback :: A blocked lateral route produced the named fallback and continued into pressure without orbit jitter.
+    - [done] prove-swoop-combat-and-feel :: Native cadence and melee outcomes support readable circling followed by concrete pressure.
+    - [done] verify-controls-exclusions-and-tests :: Fixture controls are zero-credit setup, excluded creatures are absent, and 7 focused cases with 61 assertions pass.
+    - [done] close-owned-processes :: All four R-035 game attempts and their brokers were explicitly closed; the omitted exploratory process was recovered before completion.
+    - [done] audit-finite-closure :: Independent orbit-control, fallback-pressure, and evidence-lifecycle checks all closed before claim acceptance.
+  - Durable acceptance: #1 via `R-035-closure-evidence-lifecycle-001`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-035-S001 claim=R-035 -->
 
 ### 20. Fresh integrated performance

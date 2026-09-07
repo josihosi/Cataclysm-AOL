@@ -1,0 +1,12 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "Native save-quit was accepted and reached the post-save boundary; restored generation-1 state remains to be observed.",
+  "causal_account": "The native action receipt establishes the save boundary only; it does not establish persistence or reload.",
+  "citations": [
+    {"citation_id":"J0006","meaning":"Native save confirmation was accepted.","checks":{"action_id":"prompt.choose","observation_id":"afd0c247fcea06f17dc47598e7e720b0259a9c4dc194ab51a6e8d0a21a6d06f5:frame:2","native_receipt.accepted":true}}
+  ],
+  "recommended_disposition": "continue",
+  "contradictions": [],
+  "remaining_unknowns": ["new-process reload and durable-state comparison"],
+  "evidence_ceiling": "focused"
+}

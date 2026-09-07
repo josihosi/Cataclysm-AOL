@@ -1,0 +1,38 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-034-closure-native-lifecycle-001",
+  "claim_id": "R-034",
+  "worker_id": "01a07d54-8ef5-7740-8fa3-948969b1f463",
+  "disposition": "abandoned",
+  "verdict": "partial_route_preserved_for_mutation_quiescence",
+  "outcome": "The independent closure attempt proved native quicksave, save-and-quit confirmations, main-menu quit, and original-process exit, but did not prove generation-1 reload because startup hit a shared fonts.json temporary-file rename race.",
+  "summary": "Run 873249... and binding ed7dfa... preserve the accepted generation-0 lifecycle evidence. The separate reentry route reached declared_reentry_ready but its replacement startup gate was red; no reload or resumed-behavior credit is taken. Replacement PID 95453 was explicitly cleaned.",
+  "material_changes": [],
+  "tests": ["Verified the native lifecycle receipts and explicit cleanup artifacts for the exact run and binding."],
+  "live_actions": ["Original PID 93591 exited with code 0.", "Replacement PID 95453 was explicitly cleaned after the startup failure."],
+  "evidence_ceiling": [
+    "This attempt proves only the generation-0 save/exit/menu lifecycle and process cleanup.",
+    "It proves no generation-1 reload or resumed behavior.",
+    "OCR, terminal bytes, and rendered text receive zero proof credit."
+  ],
+  "bindings": {
+    "scenario_id": "r026.living_npc_package_v001_mcw",
+    "run_id": "8732494719c59a55e3a8b2951f8822d1aafdeec36def10888d71c58855a29d1e",
+    "binding_id": "ed7dfa4a27ca3de729614c869ee165da300de06cbea03b4a8158f415d9b429d5"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": ".de67/task-logs/r034-lifecycle-mainmenu-yes.json", "sha256": "9136a6e30fe4eca639500822271f1f2dff6773843d2dc1f7acac9d5b8b62c53d", "role": "native main-menu confirmation and original exit"},
+    {"path": ".de67/task-logs/r034-lifecycle-third-finish.json", "sha256": "7591d83269ea035c5f09ab5ed720fc64ef4d571f6a6409ffb6a9c6f1b20bb445", "role": "failed reentry startup result"},
+    {"path": ".de67/task-logs/r034-lifecycle-third-journal-full.json", "sha256": "104fc4b73fb4c2e3fd11ba03c45ad4f5cfbc0fb90e216e64a7c6c1e26e5cdf2e", "role": "full immutable journal for the failed reentry route"},
+    {"path": ".de67/task-logs/r034-lifecycle-third-explicit-cleanup.json", "sha256": "be86b0daa816aa79401ef0fd974a921f51712a3341090e3d21211d88147a9c98", "role": "replacement-process cleanup"}
+  ],
+  "first_divergence": {"class": "harness-shared-tempfile-race", "summary": "Generation-1 startup failed when a shared fonts.json temporary-file rename could not complete."},
+  "accepted_no_replay": ["Do not replay the accepted generation-0 save/exit/menu proof."],
+  "active_work": [],
+  "first_open_boundary": "Repair or isolate shared fonts.json atomic temporary naming, then rerun only the generation-1 launch and resumed native-semantic boundary.",
+  "narrow_queries": ["fonts.json", "declared_reentry_ready", "startup_gate", "process_generation=1"],
+  "entrypoints": ["tools/openclaw_harness"],
+  "context_metrics": {}
+}

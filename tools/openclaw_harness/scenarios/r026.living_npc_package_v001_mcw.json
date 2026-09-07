@@ -114,16 +114,13 @@
     "terminal_exit_timeout_seconds": 30.0,
     "steps": [
       {
-        "kind": "wait",
+        "kind": "native_semantic_bootstrap",
         "label": "bind_relaunched_living_base_world",
-        "seconds": 2.0,
-        "capture_after": true,
-        "startup_semantic_hud_expectation": {
-          "classification": "green_gameplay_hud_present"
-        },
-        "abort_on_screen_text_expectation_failure": true,
-        "abort_verdict": "blocked_r026_living_base_relaunch_hud_missing",
-        "abort_reason": "the declared native lifecycle owner did not relaunch the saved McWilliams world into ordinary gameplay"
+        "native_semantic_checkpoint": {
+          "required_actions": ["world.wait"],
+          "required_state": "world",
+          "require_initial_hud_world_ready_frame": false
+        }
       },
       {
         "kind": "cockpit_live_session",

@@ -1,0 +1,40 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-034-closure-restored-state-001",
+  "claim_id": "R-034",
+  "worker_id": "01a07d54-b94c-7b12-8884-338eba818592",
+  "disposition": "completed",
+  "verdict": "closure_gap_satisfied",
+  "outcome": "The exact tested McWilliams camp, storage, and Katharina state persisted across the generation-0 to generation-1 process replacement, and later native pauses retained that state.",
+  "summary": "Native semantic facts before and after reload preserve Bugchaser central at [140,41,0], the same seven one-count storage entries, and Katharina character:2 with CAMP_RESIDENT assignment, camp, follow_close rule, priority 8, and 17 diagnostic inventory items.",
+  "material_changes": [],
+  "tests": [
+    "Compared the authoritative semantic fields projected from J0002, J0013, and J0022.",
+    "Verified the scenario and source provenance hashes reported by the worker."
+  ],
+  "live_actions": [],
+  "evidence_ceiling": [
+    "This closes only the named restored-state gap for the exact tested world, run, binding, actor, camp, storage, and rule fields.",
+    "Message history and rendered text receive no proof credit; the conclusion rests on native semantic state.",
+    "The packaged invalid_report remains uncredited."
+  ],
+  "bindings": {
+    "scenario_id": "r026.living_npc_package_v001_mcw",
+    "run_id": "d7929b2e62413e227fde942eebe5e00bcab02f9c5bc8639c48b41be41ae8bdd8",
+    "binding_id": "3a5dbb5f23ae3a7334e22ae8233e67a96453fb9c29a72fd6cbc682ba86505dd2"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": ".de67/task-logs/r034-j0002-facts.json", "sha256": "7ea041da023411401281e83ad46831177996d3b77cecc6f6c10a3ef55c6b1d47", "role": "generation-0 semantic facts"},
+    {"path": ".de67/task-logs/r034-j0013-facts.json", "sha256": "7ea041da023411401281e83ad46831177996d3b77cecc6f6c10a3ef55c6b1d47", "role": "generation-1 semantic facts"},
+    {"path": ".de67/task-logs/r034-j0022-facts.json", "sha256": "3377907feed1d17deec1f7221b337cc0be407b2b159297ce483c969b41796c40", "role": "later post-reload semantic facts and non-authoritative message projection"}
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": ["Do not replay the accepted restored-state comparison."],
+  "active_work": [],
+  "first_open_boundary": "",
+  "narrow_queries": ["current_site_camp", "current_site_camp_storage", "character:2", "J0010", "J0023"],
+  "entrypoints": ["src/savegame_json.cpp", "tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json"],
+  "context_metrics": {}
+}

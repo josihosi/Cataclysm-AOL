@@ -1,0 +1,15 @@
+{
+  "outcome": "R-034 native new-process save/load and resumed durable behavior",
+  "scenario_id": "r026.living_npc_package_v001_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r026.living_npc_package",
+        "op": "eq",
+        "value": "follower_ambient_snapshot_basecamp_context",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}
