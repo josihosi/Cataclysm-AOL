@@ -22,6 +22,8 @@ from unittest.mock import patch
 HARNESS_DIR = Path(__file__).resolve().parent
 sys.path.insert(0, str(HARNESS_DIR))
 
+import startup_harness as harness  # noqa: E402
+
 from startup_harness import (  # noqa: E402
     DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS,
     acknowledge_blocking_interruptions,
@@ -84,6 +86,7 @@ from startup_harness import (  # noqa: E402
     summarize_probe_step_ledger,
     summarize_wait_step_ledgers,
     terminal_native_startup_identity,
+    terminal_native_pause_receipt_count,
     wait_input_trace_child_environment,
 )
 
@@ -1746,6 +1749,45 @@ class BlockingInterruptionTest(unittest.TestCase):
         self.assertEqual(press_mock.call_args_list[0].args[1], [".", ".", "."])
         self.assertEqual(press_mock.call_args_list[1].args[1], [".", "."])
         self.assertEqual(acknowledge_mock.call_count, 2)
+
+    @patch("startup_harness.acknowledge_blocking_interruptions", return_value={
+        "status": "clear", "acknowledgement_count": 0, "acknowledgements": [],
+    })
+    @patch("startup_harness.wait_for_pause_dispatch_count")
+    @patch("startup_harness.peekaboo_press_sequence")
+    def test_terminal_batch_uses_exact_pty_receipt_not_one_trace_event(
+        self,
+        press_mock: Any,
+        dispatch_count_mock: Any,
+        _acknowledge_mock: Any,
+    ) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir, \
+                patch.dict(harness.TERMINAL_NATIVE_INPUTS, {
+                    42: {"endpoint": "/tmp/pty.sock", "run_id": "run-42", "run_dir": temp_dir},
+                }, clear=False):
+            run_dir = Path(temp_dir)
+            debug_log = run_dir / "debug.log"
+            debug_log.write_bytes(b"")
+            press_mock.return_value = {
+                "ok": True, "owner": "run_bound_pty", "run_id": "run-42",
+                "pid": 42, "keys": ["."],
+            }
+            result = advance_turns(42, 3, run_dir=run_dir, action_trace_log=debug_log)
+
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["accepted_pause_dispatch_count"], 3)
+        dispatch_count_mock.assert_not_called()
+        self.assertEqual(press_mock.call_count, 3)
+        self.assertTrue(all(call.args[1] == ["."] for call in press_mock.call_args_list))
+
+    def test_terminal_pause_receipt_rejects_wrong_bound_run(self) -> None:
+        with patch.dict(harness.TERMINAL_NATIVE_INPUTS, {
+            42: {"endpoint": "/tmp/pty.sock", "run_id": "run-42", "run_dir": "/tmp"},
+        }, clear=False):
+            self.assertEqual(terminal_native_pause_receipt_count(42, {
+                "ok": True, "owner": "run_bound_pty", "run_id": "wrong-run",
+                "pid": 42, "keys": [".", "."],
+            }), 0)
 
     def test_runtime_portal_prompt_is_visible_to_top_level_weather_warning(self) -> None:
         reports = [{

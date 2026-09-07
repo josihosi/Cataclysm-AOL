@@ -3831,6 +3831,10 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
         }
         with (
             mock.patch(
+                "startup_harness.peekaboo_focus_pid_with_retry",
+                return_value={"ok": True, "attempt_count": 1},
+            ),
+            mock.patch(
                 "startup_harness.capture_screenshot",
                 side_effect=[missing, discovered],
             ),
@@ -3848,6 +3852,27 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
         self.assertEqual(result["identity"]["window_id"], 73)
         self.assertEqual(len(result["attempts"]), 2)
         sleep.assert_called_once()
+
+    def test_remote_window_discovery_never_captures_foreign_window_before_local_pid_focus(self) -> None:
+        with (
+            mock.patch(
+                "startup_harness.peekaboo_focus_pid_with_retry",
+                return_value={"ok": False, "error": "no_window"},
+            ),
+            mock.patch("startup_harness.capture_screenshot") as capture,
+            mock.patch("startup_harness.time.sleep"),
+        ):
+            result = wait_for_remote_window_discovery(
+                42,
+                Path("unused"),
+                deadline=time.monotonic(),
+                poll_seconds=0.25,
+                label="candidate",
+            )
+
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"], "local_pid_window_missing_before_remote_discovery_deadline")
+        capture.assert_not_called()
 
     def test_reacquired_local_focus_rejects_changed_remote_window(self) -> None:
         discovered = {
@@ -5439,6 +5464,54 @@ class BanditCloneSiteTransformContractTest(unittest.TestCase):
         self.assertEqual(cloned["shakedown_anger"], 0)
         self.assertEqual(cloned["shakedown_defender_losses"], 0)
         self.assertFalse(cloned["shakedown_reopen_available"])
+
+
+class BanditSchedulerResponseCandidateTransformContractTest(unittest.TestCase):
+    def test_candidate_reopens_the_current_scheduler_hour_without_authoring_an_operation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir)
+            dimension_path = world_dir / "dimension_data.gsav"
+            dimension_path.write_text(
+                "# version 39\n" + json.dumps({
+                    "overmapbuffer": {
+                        "bandit_live_world": {
+                            "schema_version": 7,
+                            "routine_scheduler_last_hour": 138,
+                            "sites": [{
+                                "schema_version": 12,
+                                "site_id": "camp",
+                                "anchor": [140, 51, 0],
+                                "living_total": 2,
+                                "members": [
+                                    {"npc_id": 4, "wounded_or_unready": False},
+                                    {"npc_id": 5, "wounded_or_unready": False},
+                                ],
+                            }],
+                        },
+                    },
+                }),
+                encoding="utf-8",
+            )
+            reports = apply_fixture_save_transforms(world_dir, [{
+                "kind": "bandit_scheduler_response_candidate",
+                "site_id": "camp",
+                "target_id": "player@146,51,0",
+                "target_omt": [146, 51, 0],
+                "member_ids": [4, 5],
+                "generation": 2,
+                "current_minutes": 8280,
+                "branch": "reopened_demand",
+            }])
+            payload = json.loads(dimension_path.read_text(encoding="utf-8").split("\n", 1)[1])
+            live_world = payload["overmapbuffer"]["bandit_live_world"]
+            site = live_world["sites"][0]
+
+        self.assertEqual(reports[0]["scheduler_hour"], 138)
+        self.assertEqual(reports[0]["routine_scheduler_last_hour"], 137)
+        self.assertEqual(live_world["routine_scheduler_last_hour"], 137)
+        self.assertEqual(site["members"], [])
+        self.assertNotIn("active_outing", site)
+        self.assertNotIn("active_hostile_operation", site)
 
 
 class OvermapTerrainIdAtAbsOmtTransformContractTest(unittest.TestCase):

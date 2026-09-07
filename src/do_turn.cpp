@@ -1010,6 +1010,9 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
     std::optional<live_bandit_shakedown_response> semantic_response;
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_manager != nullptr ) {
+        DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event=scope_construct"
+                                   << " run_active=" << ( openclaw_harness_semantic_session_active() ? "true" : "false" )
+                                   << " manager=present opening=" << surface.opening_id;
         const std::map<std::string, std::string> semantic_payload = {
             { "opening", surface.opening_id },
             { "responses", "pay/fight" },
@@ -1032,6 +1035,11 @@ live_bandit_shakedown_response query_live_bandit_shakedown_dialogue(
         };
         semantic_scope.emplace( *semantic_manager, "shakedown_demand", "Bandit demand",
                                 semantic_payload, semantic_actions, semantic_consumer );
+        DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event=scope_published"
+                                   << " owner=shakedown_demand actions=shakedown.pay,shakedown.fight";
+    } else {
+        DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event=scope_absent"
+                                   << " run_active=" << ( openclaw_harness_semantic_session_active() ? "true" : "false" );
     }
     dialogue_window d_win;
     d_win.is_not_conversation = true;
@@ -1117,13 +1125,19 @@ bool open_live_bandit_shakedown_surface( bandit_live_world::site_record &site,
     if( !surface.valid ) {
         return false;
     }
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event=valid_contact"
+                               << " session_active=" << ( openclaw_harness_semantic_session_active() ? "true" : "false" )
+                               << " opening=" << surface.opening_id;
     bandit_live_world::mark_shakedown_reopen_used( site );
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event=reopen_marked";
 
     DebugLog( D_INFO, DC_ALL ) << "shakedown_surface_dialogue_window opening="
                                << ( surface.opening_id.empty() ? "none" : surface.opening_id )
                                << " responses=pay/fight payment_surface=npc_trade_ui\n";
     const live_bandit_shakedown_response response =
         query_live_bandit_shakedown_dialogue( site, surface );
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_shakedown_semantic: event=dialogue_return"
+                               << " response=" << ( response == live_bandit_shakedown_response::pay ? "pay" : "fight" );
 
     bool payment_failed = false;
     if( response == live_bandit_shakedown_response::pay ) {

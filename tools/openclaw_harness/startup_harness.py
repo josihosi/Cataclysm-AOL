@@ -3525,6 +3525,28 @@ def terminal_native_press_sequence(pid: int, keys: List[str]) -> Dict[str, Any]:
     return receipt
 
 
+def terminal_native_pause_receipt_count(
+    pid: int,
+    receipt: Optional[Mapping[str, Any]],
+) -> int:
+    """Count dots accepted by this PID's run-bound PTY receipt.
+
+    A terminal dispatcher accepts a whole key sequence as one native request,
+    so its semantic trace has one event for a multi-dot batch.  The receipt is
+    the authoritative per-key delivery observation for this transport.
+    """
+    owner = TERMINAL_NATIVE_INPUTS.get(pid)
+    if owner is None or not isinstance(receipt, Mapping):
+        return 0
+    keys = receipt.get("keys")
+    if not receipt.get("ok") or receipt.get("owner") != "run_bound_pty" or \
+            receipt.get("run_id") != owner["run_id"] or \
+            int(receipt.get("pid", 0) or 0) != pid or \
+            not isinstance(keys, list) or not keys or any(key != "." for key in keys):
+        return 0
+    return len(keys)
+
+
 def normalize_peekaboo_key(raw_key: Any) -> str:
     key = str(raw_key).strip()
     if not key:
@@ -4580,11 +4602,23 @@ def refresh_semantic_step_trace(
         # receive the next native request—and compact render-only data from
         # older World observations.  Their full native records remain in
         # debug.log and in their immutable game-act transaction artifact.
+        latest_descriptor_index = max(
+            (index for index, event in enumerate(selected_events)
+             if event.get("event") == "surface_descriptor"),
+            default=-1,
+        )
         latest_world_index = max(
             (index for index, event in enumerate(selected_events)
              if event.get("event") == "surface_descriptor" and event.get("kind") == "world"),
             default=-1,
         )
+        # A World descriptor is executable only while it is the active
+        # descriptor.  Once a child menu has become the active owner, keeping
+        # the prior World's full render payload merely crowds that child out
+        # of the bounded channel.  Its immutable native record remains in the
+        # debug trace and transaction artifact.
+        if latest_world_index != latest_descriptor_index:
+            latest_world_index = -1
         selected_events = [
             compact_historical_world_render_payload(event)
             if index != latest_world_index else event
@@ -6651,6 +6685,10 @@ def advance_turns(
     max_acknowledgements: int = DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS,
     portal_storm_allowed: bool = False,
     expected_interruption_screen_text_contains: Sequence[str] = (),
+    expected_native_semantic_action: str = "",
+    semantic_profile: str = "",
+    semantic_run_id: str = "",
+    semantic_trace_start_offset: int = 0,
 ) -> Dict[str, Any]:
     timing: Dict[str, Any] = {
         "count": max(count, 0),
@@ -6685,8 +6723,46 @@ def advance_turns(
         interruption_reports: List[Dict[str, Any]] = []
         while accepted_count < batch_count:
             missing_count = batch_count - accepted_count
-            peekaboo_press_sequence(pid, ["."] * missing_count, focus_once=True)
-            if action_trace_log is not None:
+            # A curses child can consume all remaining bytes in a PTY write
+            # after a newly opened modal.  Deliver one native pause at a time
+            # so the run-bound transcript can stop at that modal rather than
+            # letting trailing dots cross it.
+            requested_count = 1 if pid in TERMINAL_NATIVE_INPUTS else missing_count
+            dispatch_receipt = peekaboo_press_sequence(
+                pid, ["."] * requested_count, focus_once=True,
+            )
+            terminal_accepted = terminal_native_pause_receipt_count(pid, dispatch_receipt)
+            if terminal_accepted:
+                # One terminal request may contain many dots.  Do not enter
+                # GUI/OCR recovery merely because the debug trace represents
+                # that single native receipt as one dispatch event.
+                observed_count = accepted_count + terminal_accepted
+                # Receipt acknowledgement confirms the PTY write, not that
+                # curses has painted the resulting modal.  Give its reader a
+                # short bounded turn before classifying this run's transcript.
+                time.sleep(0.05)
+                if expected_native_semantic_action and semantic_profile and semantic_run_id:
+                    try:
+                        native_frame = current_semantic_step_frame(
+                            profile=semantic_profile, run_dir=run_dir or Path("."),
+                            run_id=semantic_run_id,
+                            start_offset=semantic_trace_start_offset,
+                        )
+                        native_dispatch = semantic_frame_dispatch(
+                            native_frame, expected_native_semantic_action,
+                        )
+                    except (OSError, ValueError):
+                        native_frame = {}
+                        native_dispatch = None
+                    if native_dispatch is not None:
+                        timing["expected_native_semantic_owner"] = {
+                            "action": expected_native_semantic_action,
+                            "frame_id": str(native_frame.get("frame_id", "")),
+                            "state": str(native_frame.get("state", "")),
+                        }
+                        timing["status"] = "completed"
+                        break
+            elif action_trace_log is not None:
                 observed_count = wait_for_pause_dispatch_count(
                     action_trace_log,
                     batch_log_start,
@@ -6698,9 +6774,12 @@ def advance_turns(
             accepted_this_attempt = max(0, observed_count - accepted_count)
             accepted_count = observed_count
             attempts.append({
-                "sent_count": missing_count,
+                "sent_count": requested_count,
                 "accepted_pause_dispatch_count": accepted_this_attempt,
                 "cumulative_accepted_pause_dispatch_count": accepted_count,
+                "input_observation": (
+                    "run_bound_pty_receipt" if terminal_accepted else "semantic_action_trace"
+                ),
             })
             if accepted_count >= batch_count:
                 break
@@ -6777,6 +6856,11 @@ def advance_turns(
                 if interruption_status.startswith("blocked_"):
                     timing["status"] = interruption_status
                 elif interruption_status == "clear":
+                    # Unlike a GUI trace deficit, a successful one-dot PTY
+                    # receipt plus a clear same-run transcript is normal
+                    # progress.  Continue with the next one-dot receipt.
+                    if terminal_accepted:
+                        continue
                     if bound_pty_wait_completion(run_dir, pid, interruption_text):
                         accepted_count = batch_count
                         timing["status"] = "completed"
@@ -6874,6 +6958,10 @@ def advance_turns(
             break
         if start + batch_size < count:
             time.sleep(0.05)
+
+    if expected_native_semantic_action and "expected_native_semantic_owner" not in timing and \
+            timing["status"] == "completed":
+        timing["status"] = "blocked_expected_native_semantic_action_unobserved"
 
     if timing["status"] != "completed" and "abort" not in timing:
         timing["abort"] = {
@@ -16762,10 +16850,35 @@ def wait_for_remote_window_discovery(
     poll_seconds: float,
     label: str,
 ) -> Dict[str, Any]:
-    """Capture until the remote bridge identifies the new process's window."""
+    """Capture a remote window only after local PID ownership is proved.
+
+    The remote desktop bridge can enumerate an SDL window for the shared
+    application bundle even when that window belongs to another live game
+    process.  A remote image is useful after the launched PID has acquired a
+    local window, but it must never establish that ownership itself.
+    """
     attempts: List[Dict[str, Any]] = []
     serial = 1
     while True:
+        local_focus = peekaboo_focus_pid_with_retry(pid)
+        if not local_focus.get("ok"):
+            attempts.append({
+                "label": f"{label}.{serial}",
+                "identity": {},
+                "local_focus": local_focus,
+            })
+            remaining_seconds = deadline - time.monotonic()
+            if remaining_seconds <= 0:
+                return {
+                    "ok": False,
+                    "screen": {},
+                    "identity": {},
+                    "attempts": attempts,
+                    "error": "local_pid_window_missing_before_remote_discovery_deadline",
+                }
+            time.sleep(min(poll_seconds, remaining_seconds))
+            serial += 1
+            continue
         screen = capture_screenshot(pid, run_dir, f"{label}.{serial}")
         identity = captured_window_identity(screen)
         attempts.append({"label": f"{label}.{serial}", "identity": identity})
@@ -17199,6 +17312,114 @@ def capture_screen_text_artifact(
     return result
 
 
+def capture_terminal_transcript_text_artifact(
+    run_dir: Path,
+    label: str,
+    tail_lines: int = 8,
+) -> Dict[str, Any]:
+    """Persist a bounded, ANSI-stripped observation from this run's PTY transcript."""
+    transcript_path = run_dir / "game.terminal.log"
+    text_json_path = run_dir / f"{label}.terminal_text.json"
+    text_txt_path = run_dir / f"{label}.terminal_text.txt"
+    if not transcript_path.is_file():
+        return {
+            "kind": "terminal_transcript_text_capture",
+            "label": label,
+            "ok": False,
+            "error": "run-bound terminal transcript is unavailable",
+        }
+    raw = transcript_path.read_bytes().decode("utf-8", errors="replace")
+    lines = render_curses_terminal_screen(raw)
+    # These lines are one current frame, not a history.  Keep its HUD and
+    # modal regions together; the map-bottom tail alone omits `Move:`.
+    tail = lines
+    payload = {
+        "kind": "terminal_transcript_text_capture",
+        "label": label,
+        "ok": bool(lines),
+        "source_terminal_transcript": str(transcript_path),
+        "line_count": len(lines),
+        "tail_line_count": len(tail),
+        "tail_lines": tail,
+        "lines": tail,
+        "text": "\n".join(tail),
+    }
+    text_json_path.write_text(json.dumps(payload, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
+    text_txt_path.write_text("\n".join(tail).rstrip() + ("\n" if tail else ""), encoding="utf-8")
+    payload["json_path"] = str(text_json_path)
+    payload["text_path"] = str(text_txt_path)
+    return payload
+
+
+def render_curses_terminal_screen(raw: str) -> List[str]:
+    """Render the current Curses frame, rather than concatenating its history.
+
+    PTY logs are an append-only stream: stripping control sequences turns old
+    modal text into a false current observation.  This deliberately small
+    cursor renderer handles the Curses sequences emitted by the harness's
+    xterm PTY and preserves only the final painted cells.
+    """
+    rows, columns = 60, 200
+    screen = [[" "] * columns for _ in range(rows)]
+    row = col = 0
+    index = 0
+    while index < len(raw):
+        character = raw[index]
+        if character == "\x1b" and index + 1 < len(raw):
+            if raw[index + 1] == "[":
+                end = index + 2
+                while end < len(raw) and not ("@" <= raw[end] <= "~"):
+                    end += 1
+                if end >= len(raw):
+                    break
+                params, command = raw[index + 2:end], raw[end]
+                values = [int(value) if value.isdigit() else 0
+                          for value in params.lstrip("?").split(";")]
+                first = values[0] if values and values[0] else 1
+                if command in "Hf":
+                    row = max(0, (values[0] if values and values[0] else 1) - 1)
+                    col = max(0, (values[1] if len(values) > 1 and values[1] else 1) - 1)
+                elif command == "A": row = max(0, row - first)
+                elif command == "B": row = min(rows - 1, row + first)
+                elif command == "C": col = min(columns - 1, col + first)
+                elif command == "D": col = max(0, col - first)
+                elif command == "G": col = max(0, first - 1)
+                elif command == "J" and (not values or values[0] in {0, 2, 3}):
+                    screen = [[" "] * columns for _ in range(rows)]
+                elif command == "K":
+                    for cursor in range(col, columns): screen[row][cursor] = " "
+                index = end + 1
+                continue
+            if raw[index + 1] == "]":
+                end = raw.find("\x07", index + 2)
+                index = len(raw) if end < 0 else end + 1
+                continue
+            index += 2
+            continue
+        if character == "\r": col = 0
+        elif character == "\n": row = min(rows - 1, row + 1)
+        elif character == "\b": col = max(0, col - 1)
+        elif ord(character) >= 32:
+            if row < rows and col < columns: screen[row][col] = character
+            col = min(columns - 1, col + 1)
+        index += 1
+    return ["".join(line).rstrip() for line in screen if "".join(line).strip()]
+
+
+def capture_step_text_artifact(
+    run_dir: Path,
+    label: str,
+    capture: Dict[str, Any],
+    tail_lines: int = 8,
+) -> Dict[str, Any]:
+    """Use OCR for a captured GUI frame or the same-run PTY transcript for Curses."""
+    summary = capture.get("screen_summary", {}) if isinstance(capture, Mapping) else {}
+    if isinstance(summary, Mapping) and summary.get("capture_status") == "not_requested_native_semantic" and \
+            (run_dir / "game.terminal.log").is_file():
+        return capture_terminal_transcript_text_artifact(run_dir, label, tail_lines)
+    return capture_screen_text_artifact(run_dir, label, capture, tail_lines)
+
+
 def persist_interruption_scan_artifacts(
     scan_dir: Path,
     run_dir: Path,
@@ -17260,8 +17481,17 @@ def acknowledge_blocking_interruptions(
         scan_count += 1
         with tempfile.TemporaryDirectory(prefix="interrupt-scan-", dir=str(run_dir)) as temp_path:
             scan_dir = Path(temp_path)
-            capture = capture_screenshot(pid, scan_dir, "scan")
-            screen_text = capture_screen_text_artifact(scan_dir, "scan", capture, tail_lines=48)
+            # A run-bound curses owner has no GUI surface.  Its immutable PTY
+            # transcript is the relevant observation and prevents recovery
+            # from addressing a different desktop game instance.
+            terminal_native = pid in TERMINAL_NATIVE_INPUTS
+            capture = capture_screenshot(pid, scan_dir, "scan", semantic_only=terminal_native)
+            # The temporary scan directory has no PTY transcript; that file
+            # belongs to the launched run and is the sole terminal evidence.
+            screen_text = capture_step_text_artifact(
+                run_dir if terminal_native else scan_dir,
+                "scan", capture, tail_lines=48,
+            )
             semantic_ui = read_active_semantic_ui_trace(
                 semantic_ui_trace_log, semantic_ui_trace_start_offset
             )
@@ -18697,6 +18927,7 @@ def semantic_frame_dispatch( frame: Mapping[str, Any], declared_action: str ) ->
         "wait.duration_menu": "Wait a while",
         "wait.1m": "1 minute",
         "wait.5m": "5 minutes",
+        "wait.30m": "30 minutes",
         "prompt.yes": "YES",
     }
     wanted_label = labels.get( declared_action )
@@ -18709,6 +18940,149 @@ def semantic_frame_dispatch( frame: Mapping[str, Any], declared_action: str ) ->
             if stable_id:
                 return str( action.get( "id" ) ), stable_id
     return None
+
+
+def semantic_live_hostile_operation_snapshot(frame: Mapping[str, Any]) -> Dict[str, Any]:
+    """Project the native in-memory operation emitted with a World descriptor."""
+    raw = frame.get("live_hostile_operation")
+    return dict(raw) if isinstance(raw, Mapping) else {}
+
+
+def semantic_hostile_operation_progress_key(snapshot: Mapping[str, Any]) -> Tuple[Any, ...]:
+    """Stable progress comparison: advancing a timestamp alone is not route progress."""
+    cursor = snapshot.get("route_cursor", {})
+    cursor = cursor if isinstance(cursor, Mapping) else {}
+    members = snapshot.get("members", [])
+    def coordinate_key(value: Any) -> Tuple[Any, ...]:
+        return tuple(value) if isinstance(value, (list, tuple)) else ()
+    member_state = tuple(
+        (member.get("id"), member.get("state"), coordinate_key(member.get("omt")))
+        for member in members if isinstance(member, Mapping)
+    ) if isinstance(members, list) else ()
+    return (
+        snapshot.get("operation_id"), snapshot.get("phase"), snapshot.get("owner"),
+        snapshot.get("target_id"), coordinate_key(snapshot.get("target_omt")),
+        cursor.get("waypoint_index"), cursor.get("route_length"),
+        coordinate_key(cursor.get("projection_omt")), cursor.get("local_contact_minutes"),
+        member_state,
+    )
+
+
+def execute_semantic_terminal_wait_until(
+    *, step: Mapping[str, Any], profile: str, run_dir: Path, run_id: str,
+    trace_start_offset: int, pid: int,
+) -> Dict[str, Any]:
+    """Advance bounded native duration windows, retaining each live operation snapshot."""
+    action_chain = [str(item).strip() for item in step.get("required_action_chain", [])
+                    if str(item).strip()]
+    stop_action = str(step.get("stop_when_advertised_action", "") or "").strip()
+    max_windows = int(step.get("max_windows", 0) or 0)
+    ordinary_applying_turn = step.get("ordinary_applying_turn_after_duration") is True
+    max_unchanged_windows = int(step.get("max_unchanged_operation_windows", 0) or 0)
+    timeout = float(step.get("observation_timeout_seconds", 0) or 0)
+    interval = float(step.get("observation_interval_seconds", 0) or 0)
+    if not action_chain or not stop_action or max_windows <= 0 or timeout <= 0 or interval <= 0 or \
+            not run_id or max_unchanged_windows < 0:
+        raise ValueError("bounded semantic duration route is incomplete")
+    session_id, identity_source = adaptive_semantic_session_identity()
+    receipts: List[Dict[str, Any]] = []
+    boundaries: List[Dict[str, Any]] = []
+    previous_key: Tuple[Any, ...] | None = None
+    unchanged_windows = 0
+    for window in range(max_windows):
+        frame = current_semantic_step_frame(profile=profile, run_dir=run_dir, run_id=run_id,
+                                            start_offset=trace_start_offset)
+        if semantic_frame_dispatch(frame, stop_action) is not None:
+            return {"status": "stop_action_advertised", "receipts": receipts,
+                    "boundaries": boundaries, "stop_frame": frame,
+                    "session_id": session_id, "session_identity_source": identity_source}
+        for position, declared_action in enumerate(action_chain):
+            frame = current_semantic_step_frame(profile=profile, run_dir=run_dir, run_id=run_id,
+                                                start_offset=trace_start_offset)
+            dispatch = semantic_frame_dispatch(frame, declared_action)
+            if dispatch is None:
+                return {"status": "blocked_semantic_duration_unadvertised", "receipts": receipts,
+                        "boundaries": boundaries, "required_action": declared_action,
+                        "session_id": session_id, "session_identity_source": identity_source}
+            receipt = execute_semantic_act(
+                run_dir=run_dir, profile=profile, run_id=run_id, trace_start_offset=trace_start_offset,
+                pid=pid, session_id=session_id, frame_id=str(frame["frame_id"]), action_id=dispatch[0],
+                stable_id=dispatch[1] or None, declared_action_id=declared_action,
+                transition_timeout_seconds=timeout, observe_interval_seconds=interval,
+                observed_frame=frame, allow_terminal_exit=position == len(action_chain) - 1,
+            )
+            receipts.append(receipt)
+            if receipt.get("accepted") is not True:
+                return {"status": "blocked_semantic_duration_receipt_rejected", "receipts": receipts,
+                        "boundaries": boundaries, "required_action": declared_action,
+                        "session_id": session_id, "session_identity_source": identity_source}
+        deadline = time.monotonic() + timeout
+        frame = {}
+        while time.monotonic() <= deadline:
+            frame = current_semantic_step_frame(profile=profile, run_dir=run_dir, run_id=run_id,
+                                                start_offset=trace_start_offset)
+            if semantic_frame_dispatch(frame, stop_action) is not None or \
+                    str(frame.get("state", frame.get("kind", ""))) == "world":
+                break
+            time.sleep(interval)
+        duration_snapshot = semantic_live_hostile_operation_snapshot(frame)
+        boundary = {"window": window + 1, "frame_id": str(frame.get("frame_id", "")),
+                    "game_minutes": frame.get("game_minutes"),
+                    "duration_snapshot": duration_snapshot}
+        if semantic_frame_dispatch(frame, stop_action) is not None:
+            boundary["snapshot"] = duration_snapshot
+            boundaries.append(boundary)
+            return {"status": "stop_action_advertised", "receipts": receipts,
+                    "boundaries": boundaries, "stop_frame": frame,
+                    "session_id": session_id, "session_identity_source": identity_source}
+        if ordinary_applying_turn:
+            timing = advance_turns(
+                pid, 1, run_dir=run_dir, label=f"semantic-applying-turn-{window + 1}",
+                auto_acknowledge_interruptions=True, semantic_profile=profile,
+                semantic_run_id=run_id, semantic_trace_start_offset=trace_start_offset,
+            )
+            applying_frame = current_semantic_step_frame(
+                profile=profile, run_dir=run_dir, run_id=run_id,
+                start_offset=trace_start_offset,
+            )
+            snapshot = semantic_live_hostile_operation_snapshot(applying_frame)
+            boundary.update({
+                "ordinary_applying_turn": {"turns": 1, "timing": timing,
+                                           "frame_id": str(applying_frame.get("frame_id", "")),
+                                           "game_minutes": applying_frame.get("game_minutes"),
+                                           "snapshot": snapshot},
+                "snapshot": snapshot,
+            })
+            boundaries.append(boundary)
+            if timing.get("status") != "completed":
+                return {"status": "blocked_semantic_duration_applying_turn", "receipts": receipts,
+                        "boundaries": boundaries, "session_id": session_id,
+                        "session_identity_source": identity_source}
+            if semantic_frame_dispatch(applying_frame, stop_action) is not None:
+                return {"status": "stop_action_advertised", "receipts": receipts,
+                        "boundaries": boundaries, "stop_frame": applying_frame,
+                        "session_id": session_id, "session_identity_source": identity_source}
+        else:
+            snapshot = duration_snapshot
+            boundary["snapshot"] = snapshot
+            boundaries.append(boundary)
+        current_key = semantic_hostile_operation_progress_key(snapshot)
+        if not snapshot:
+            return {"status": "blocked_semantic_duration_causal_stall", "receipts": receipts,
+                    "boundaries": boundaries, "session_id": session_id,
+                    "session_identity_source": identity_source}
+        if previous_key is not None and current_key == previous_key:
+            unchanged_windows += 1
+            if unchanged_windows > max_unchanged_windows:
+                return {"status": "blocked_semantic_duration_causal_stall", "receipts": receipts,
+                        "boundaries": boundaries, "session_id": session_id,
+                        "session_identity_source": identity_source}
+        else:
+            unchanged_windows = 0
+        previous_key = current_key
+    return {"status": "blocked_semantic_duration_bound_exhausted", "receipts": receipts,
+            "boundaries": boundaries, "session_id": session_id,
+            "session_identity_source": identity_source}
 
 
 def adaptive_semantic_materiality_waivers(report: Mapping[str, Any]) -> List[Dict[str, Any]]:
@@ -19146,6 +19520,20 @@ def build_probe_step_ledger(
         elif interruption_flags["contaminating"]:
             verdict = "yellow_step_acknowledged_contaminating_popup"
             issues.append("contaminating_popup_acknowledged")
+        elif kind == "semantic_terminal_wait_until":
+            required_actions = [str(item).strip() for item in report.get(
+                "semantic_terminal_session", {}).get("required_action_chain", []) if str(item).strip()]
+            receipts = report.get("semantic_receipts", [])
+            stop_action = str(report.get("semantic_terminal_session", {}).get(
+                "stop_when_advertised_action", "")).strip()
+            stop_frame = report.get("stop_frame", {})
+            if required_actions and stop_action and isinstance(stop_frame, Mapping) and \
+                    isinstance(receipts, list) and len(receipts) >= len(required_actions) and \
+                    all(isinstance(receipt, Mapping) and receipt.get("accepted") is True for receipt in receipts):
+                verdict = "green_step_semantic_native_duration_proven"
+            else:
+                verdict = "red_step_semantic_native_duration_unproved"
+                issues.append("semantic_terminal_duration_receipts_or_stop_missing")
         elif kind == "semantic_terminal_action_chain":
             required_actions = [str(item).strip() for item in report.get(
                                     "semantic_terminal_session", {}
@@ -27201,8 +27589,13 @@ def apply_bandit_scheduler_response_candidate_transform(world_dir: Path, transfo
     opportunities[:] = [entry for entry in opportunities if not (isinstance(entry, dict) and entry.get("target_id") == target_id and entry.get("target_omt") == target_omt)]
     opportunities.append({"target_id": target_id, "target_omt": target_omt, "goods_value": 1, "population": 1, "activity": 1, "revision": 1, "consumed_operation_id": "", "consumed_report_key": "", "consumed_generation": 0})
     live_world["schema_version"] = max(7, int(live_world.get("schema_version", 0) or 0))
+    # This is only an authorization-ready candidate.  It must be admitted by
+    # the native structural scheduler on its first loaded cadence, rather than
+    # inheriting a completed-hour cursor that replay-suppresses that decision.
+    scheduler_hour = current_minutes // 60
+    live_world["routine_scheduler_last_hour"] = scheduler_hour - 1
     dimension_path.write_text(version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
-    return {"kind": "bandit_scheduler_response_candidate", "world": world_dir.name, "site_id": site_id, "report_activity_id": report_activity_id, "report_generation": report_generation, "candidate_member_source_count": len(member_ids), "active_operation": False, "active_reservation": False, "branch": str(transform["branch"]), "target_id": target_id, "target_omt": target_omt}
+    return {"kind": "bandit_scheduler_response_candidate", "world": world_dir.name, "site_id": site_id, "report_activity_id": report_activity_id, "report_generation": report_generation, "candidate_member_source_count": len(member_ids), "active_operation": False, "active_reservation": False, "scheduler_hour": scheduler_hour, "routine_scheduler_last_hour": scheduler_hour - 1, "branch": str(transform["branch"]), "target_id": target_id, "target_omt": target_omt}
 
 
 def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -29383,6 +29776,12 @@ def execute_probe_steps(
                     str(item) for item in step.get("expected_interruption_screen_text_contains", [])
                     if str(item).strip()
                 ),
+                expected_native_semantic_action=str(
+                    step.get("expected_native_semantic_action", "") or ""
+                ).strip(),
+                semantic_profile=profile,
+                semantic_run_id=semantic_run_id,
+                semantic_trace_start_offset=semantic_trace_start,
             )
             timing_status = str(report["timing"].get("status", ""))
             if timing_status == "blocked_contaminating_interruption":
@@ -29401,6 +29800,41 @@ def execute_probe_steps(
                 }
                 reports.append(report)
                 return reports
+        elif kind == "semantic_terminal_wait_until":
+            try:
+                duration_result = execute_semantic_terminal_wait_until(
+                    step=step, profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                    trace_start_offset=semantic_trace_start, pid=pid,
+                )
+            except ValueError as error:
+                raise SystemExit(f"Scenario step '{label}' {error}") from error
+            report["semantic_receipts"] = duration_result["receipts"]
+            report["duration_boundaries"] = duration_result["boundaries"]
+            report["semantic_terminal_session"] = {
+                "run_id": semantic_run_id,
+                "session_id": duration_result["session_id"],
+                "session_identity_source": duration_result["session_identity_source"],
+                "required_action_chain": list(step.get("required_action_chain", [])),
+                "stop_when_advertised_action": str(step.get("stop_when_advertised_action", "")),
+                "max_windows": int(step.get("max_windows", 0) or 0),
+            }
+            if duration_result["status"] != "stop_action_advertised":
+                report["abort"] = {
+                    "guard": "semantic_terminal_wait_until", "status": duration_result["status"],
+                    "verdict": "red_semantic_duration_unproved",
+                    "reason": "native operation did not advertise the required action before a causal stall or bound",
+                    "required_action": duration_result.get("required_action", step.get("stop_when_advertised_action", "")),
+                }
+                report["stop_after_step"] = True
+                reports.append(report)
+                return reports
+            stop_frame = duration_result["stop_frame"]
+            report["stop_frame"] = {key: value for key, value in stop_frame.items()
+                                    if not key.startswith("_") and key != "action_inputs"}
+            report["metadata"] = {"artifact_kind": "semantic_native_duration_until_action",
+                                  "native_actions_proved": step.get("required_action_chain", []),
+                                  "terminal_receipt_proved": True,
+                                  "early_stop_action": step.get("stop_when_advertised_action", "")}
         elif kind == "semantic_terminal_action_chain":
             action_chain = [str(item).strip() for item in step.get("required_action_chain", []) if str(item).strip()]
             timeout = float(step.get("observation_timeout_seconds", 0) or 0)
@@ -29447,6 +29881,27 @@ def execute_probe_steps(
             report["metadata"] = {"artifact_kind": "semantic_native_save_and_quit",
                                   "native_actions_proved": action_chain,
                                   "terminal_receipt_proved": True}
+            if kind == "semantic_terminal_wait_until":
+                stop_action = str(step.get("stop_when_advertised_action", "") or "").strip()
+                frame = current_semantic_step_frame(profile=profile, run_dir=run_dir,
+                                                    run_id=semantic_run_id,
+                                                    start_offset=semantic_trace_start)
+                if not stop_action or semantic_frame_dispatch(frame, stop_action) is None:
+                    report["abort"] = {"guard": "semantic_terminal_wait_until",
+                                       "status": "blocked_semantic_duration_stop_action_unobserved",
+                                       "verdict": "red_semantic_duration_unproved",
+                                       "reason": "the native duration ended before the required action appeared",
+                                       "required_action": stop_action}
+                    report["stop_after_step"] = True
+                    reports.append(report)
+                    return reports
+                report["stop_frame"] = {key: value for key, value in frame.items()
+                                        if not key.startswith("_") and key != "action_inputs"}
+                report["semantic_terminal_session"]["stop_when_advertised_action"] = stop_action
+                report["metadata"] = {"artifact_kind": "semantic_native_duration_until_action",
+                                      "native_actions_proved": action_chain,
+                                      "terminal_receipt_proved": True,
+                                      "early_stop_action": stop_action}
         elif kind == "adaptive_semantic_window":
             if artifact_log is None or action_trace_log is None:
                 raise SystemExit(f"Scenario step '{label}' requires native artifact and action traces")
@@ -31938,7 +32393,7 @@ def execute_probe_steps(
             if bool(step.get("extract_text", False)) or normalize_screen_text_patterns(
                 step.get("abort_if_text_contains", [])
             ) or expected_screen_text_patterns:
-                screen_text_report = capture_screen_text_artifact(
+                screen_text_report = capture_step_text_artifact(
                     run_dir,
                     label,
                     capture,
@@ -32177,7 +32632,7 @@ def execute_probe_steps(
             if bool(step.get("extract_text_after_capture", False)) or normalize_screen_text_patterns(
                 step.get("abort_if_text_contains", [])
             ) or expected_screen_text_patterns:
-                screen_text_report = capture_screen_text_artifact(
+                screen_text_report = capture_step_text_artifact(
                     run_dir,
                     f"{label}.after",
                     capture,
@@ -32616,6 +33071,17 @@ def startup_profile_snapshot_verdict(snapshot_name: str, snapshot_result: Dict[s
 
 def startup_screen_capture_verdict(screen_summary: Dict[str, Any]) -> str:
     if not screen_capture_succeeded(screen_summary):
+        native_startup = screen_summary.get("native_semantic_startup", {})
+        surface = screen_summary.get("surface_identity", {})
+        if (
+            screen_summary.get("capture_status") == "not_requested_native_semantic"
+            and isinstance(native_startup, Mapping)
+            and native_startup.get("status") == "required_state_present"
+            and isinstance(surface, Mapping)
+            and surface.get("transport") == "terminal_native"
+            and surface.get("ok") is True
+        ):
+            return "green_native_semantic_terminal_hud"
         return "red_screen_capture_failed"
     runtime_version_match = screen_summary.get("version_matches_runtime_paths")
     if runtime_version_match is False:
@@ -34074,11 +34540,16 @@ def run_startup(args: argparse.Namespace) -> int:
                     "requested": bool(getattr(args, "startup_dismiss_blocking_overlay", False)),
                     "status": "not_requested",
                 }
-            screen = capture_screenshot(proc.pid, run_dir, "success", semantic_only=semantic_only_startup)
+            screen = capture_screenshot(
+                proc.pid,
+                run_dir,
+                "success",
+                semantic_only=semantic_only_startup or terminal_native_transport,
+            )
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             screen_summary = screen.get("screen_summary", {})
             native_semantic_startup = {}
-            if semantic_only_startup or bool( getattr( args, "cockpit_live_session", False ) ):
+            if semantic_only_startup or terminal_native_transport or bool( getattr( args, "cockpit_live_session", False ) ):
                 # Current native semantic builds publish a surface descriptor
                 # at the ordinary input boundary.  It is the action authority
                 # for this session; the older HUD/world-ready frame is not
@@ -36378,7 +36849,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         return 2
     screen_before = capture_screenshot(
         pid, run_dir, f"{mode}_before",
-        semantic_only=("--semantic-only-startup" in start_cmd),
+        semantic_only=("--semantic-only-startup" in start_cmd or args.terminal_transport == "pty"),
     )
     bridge_binding_id = os.environ.get( "OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", "" ).strip()
     if bridge_binding_id:
@@ -36432,7 +36903,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             getattr(args, "adaptive_semantic_autodrive", False) or
             scenario.get("adaptive_semantic_autodrive", False)
         ),
-        semantic_only=("--semantic-only-startup" in start_cmd),
+        semantic_only=("--semantic-only-startup" in start_cmd or args.terminal_transport == "pty"),
         artifact_baseline=artifact_start,
         filter_debug_noise=filter_debug_noise,
         artifact_patterns=artifact_patterns,
@@ -36568,7 +37039,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                 action_trace_log=feature_debug_log,
                 action_trace_baseline=feature_debug_start,
                 semantic_step_trace_start_offset=post_semantic_trace_start,
-                semantic_only=("--semantic-only-startup" in start_cmd),
+                semantic_only=("--semantic-only-startup" in start_cmd or args.terminal_transport == "pty"),
                 artifact_baseline=relaunch_artifact_baseline,
                 filter_debug_noise=filter_debug_noise,
                 artifact_patterns=artifact_patterns,
@@ -36604,7 +37075,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     derived_screen_reports = render_derived_screens(run_dir, derived_screens)
     screen_after = capture_screenshot(
         final_pid, run_dir, f"{mode}_after",
-        semantic_only=("--semantic-only-startup" in start_cmd),
+        semantic_only=("--semantic-only-startup" in start_cmd or args.terminal_transport == "pty"),
     )
     world_snapshot_report: Dict[str, Any] = {}
     if capture_world_after:
@@ -36645,9 +37116,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         ),
         require_screen_observability=(
             bool(scenario.get("runtime_contract", {}).get(
-                "require_screen_observability", "--semantic-only-startup" not in start_cmd))
+                "require_screen_observability", "--semantic-only-startup" not in start_cmd and args.terminal_transport != "pty"))
             if isinstance(scenario.get("runtime_contract", {}), Mapping)
-            else "--semantic-only-startup" not in start_cmd
+            else "--semantic-only-startup" not in start_cmd and args.terminal_transport != "pty"
         ),
         expected_clean_terminal_exit=expected_clean_terminal_exit,
     )

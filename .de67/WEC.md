@@ -195,6 +195,20 @@ Fresh players receive understandable situations and meaningful gameplay question
 
 Tests have independent results. A mixed trajectory can support one behavior, contradict another and leave another unobserved. Debug interventions and fixture preparation remain zero-credit setup for natural gameplay claims. Accepted input, a launch, or mechanical witness validity does not by itself prove gameplay or causal interpretation.
 
+### Evidence-source correction — 2026-09-07
+
+Owner instruction: OCR is not allowed as proof. OCR output must not establish accepted input,
+elapsed game time, a gameplay state, or a passing proof checkpoint. Preserve native semantic
+receipts, authoritative game-state/transition observations, and exact run/request/frame identities
+as evidence. Terminal bytes or rendered text are observations of presentation, not confirmation
+that an input was consumed or that the requested gameplay occurred. This correction applies to
+current and future tests; preserve raw earlier artifacts and reassess any conclusion that relied
+on OCR. Pending handoff: the coordinator must carry this correction to affected active work and
+retain it until acknowledged with applied evidence or an explicit unresolved limitation.
+Supporting agent-authored diagnosis: `.de67/state/review-wait-information-20260907/diagnosis.md`
+records native clock/owner evidence and the unproved scheduler/roster premises; it grants no
+additional gameplay-repair authority.
+
 ### Three fault responsibilities
 
 1. DE67 3 loop: diagnose workflow failures and repair the loop through mutation.

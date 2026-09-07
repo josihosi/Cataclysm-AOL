@@ -31,6 +31,8 @@ class CursesTerminalTransport:
     transcript_path: Path
     _transcript: IO[bytes]
     _reader: threading.Thread | None = None
+    _broker: object | None = None
+    _broker_endpoint: Path | None = None
 
     @classmethod
     def open(cls, transcript_path: Path) -> tuple["CursesTerminalTransport", int]:
@@ -73,6 +75,19 @@ class CursesTerminalTransport:
 
     def close(self) -> None:
         """Close the harness terminal after its child has stopped."""
+        broker = self._broker
+        if broker is not None:
+            if getattr(broker, "poll")() is None:
+                getattr(broker, "terminate")()
+            try:
+                getattr(broker, "wait")(timeout=2)
+            except __import__("subprocess").TimeoutExpired:
+                getattr(broker, "kill")()
+                getattr(broker, "wait")(timeout=2)
+            self._broker = None
+        if self._broker_endpoint is not None:
+            self._broker_endpoint.unlink(missing_ok=True)
+            self._broker_endpoint = None
         try:
             os.close(self.master_fd)
         except OSError:
@@ -104,6 +119,8 @@ class CursesTerminalTransport:
             stdout=__import__("subprocess").DEVNULL,
             stderr=__import__("subprocess").DEVNULL,
         )
+        self._broker = broker
+        self._broker_endpoint = endpoint
         deadline = time.monotonic() + 2.0
         while time.monotonic() < deadline:
             if endpoint.exists():
@@ -115,6 +132,8 @@ class CursesTerminalTransport:
                 break
             time.sleep(0.01)
         broker.terminate()
+        self._broker = None
+        self._broker_endpoint = None
         raise RuntimeError("terminal dispatcher did not create its run-bound endpoint")
 
 
@@ -138,7 +157,7 @@ def dispatch_input(endpoint: Path, *, run_id: str, pid: int, keys: list[str]) ->
 
 
 def _key_bytes(keys: list[str]) -> bytes:
-    named = {"return": b"\r", "enter": b"\r", "escape": b"\x1b", "space": b" ",
+    named = {"return": b"\r", "enter": b"\r", "tab": b"\t", "escape": b"\x1b", "space": b" ", "F1": b"\x1bOP",
              "up": b"\x1b[A", "down": b"\x1b[B", "right": b"\x1b[C", "left": b"\x1b[D"}
     output = bytearray()
     for key in keys:
@@ -160,6 +179,10 @@ def _broker(master_fd: int, transcript_path: Path, endpoint: Path, run_id: str, 
     listener.settimeout(0.05)
     try:
         while True:
+            try:
+                os.kill(pid, 0)
+            except ProcessLookupError:
+                return 0
             readable, _, _ = select.select([master_fd], [], [], 0.05)
             if readable:
                 try:

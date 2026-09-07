@@ -3,11 +3,109 @@ from __future__ import annotations
 
 from typing import Any, Mapping, Sequence
 import json
+from pathlib import Path
+
+
+def _run_observation(report: Mapping[str, Any], *, run_id: str,
+                     receipt_id: str | None = None) -> dict:
+    """Project one run receipt into a compact, explicitly bounded observation.
+
+    Manifest declarations and native run observations intentionally remain in
+    separate objects.  This is a presentation helper only: it never promotes
+    a declared capability to a run fact.
+    """
+    expected = str(run_id).strip()
+    if not expected:
+        raise ValueError("run identity must be nonempty")
+    steps = report.get("_semantic_steps", report.get("steps", []))
+    if not isinstance(steps, list):
+        steps = []
+    pay_receipts = []
+    for step in steps:
+        if not isinstance(step, Mapping):
+            continue
+        if step.get("action_id") == "shakedown.pay" and step.get("accepted") is True:
+            frame = step.get("current_frame")
+            if not isinstance(frame, Mapping):
+                frame = {}
+            pay_receipts.append({key: step.get(key) for key in
+                                 ("action_id", "run_id")}
+                                | {"game_minutes": frame.get("game_minutes", step.get("game_minutes")),
+                                   "game_turn": frame.get("game_turn", step.get("game_turn"))})
+    artifact_lines = []
+    artifacts = report.get("artifacts", {})
+    if isinstance(artifacts, Mapping):
+        for group in artifacts.get("matches_by_pattern", []):
+            if isinstance(group, Mapping):
+                artifact_lines.extend(str(line) for line in group.get("lines", []))
+    joined = "\n".join(artifact_lines)
+    actor_ids = sorted({int(match) for match in __import__("re").findall(r"\bnpc=(\d+)\b", joined)})
+    forced_fight = "shakedown_fight_advance" in joined
+    trade_owner = any("shakedown_trade_ui opened" in line for line in artifact_lines)
+    source_binding = {}
+    binding = report.get("_runtime_binding", report.get("runtime", report.get("runtime_binding")))
+    if isinstance(binding, Mapping):
+        source_binding = dict(binding)
+    proof = report.get("proof_classification", {})
+    verdict = proof.get("verdict") if isinstance(proof, Mapping) else None
+    declared = report.get("scenario_manifest", {})
+    declaration = declared.get("normalized", declared) if isinstance(declared, Mapping) else {}
+    manifest_source = declared.get("source", {}) if isinstance(declared, Mapping) else {}
+    if isinstance(manifest_source, Mapping):
+        source_binding = {"runtime": source_binding, "manifest": dict(manifest_source)}
+    missing = []
+    for field, present in (("trade_owner", trade_owner),
+                           ("trade_ui_open", trade_owner),
+                           ("payment_completed", any("result=paid" in line for line in artifact_lines)),
+                           ("paid_departure", any("return=physical" in line for line in artifact_lines))):
+        if not present:
+            missing.append(field)
+    return {
+        "identity": {"run_id": expected, "receipt_id": receipt_id},
+        "accepted_pay": {"accepted": bool(pay_receipts), "receipts": pay_receipts},
+        "trade_owner": {"present": trade_owner, "status": "observed" if trade_owner else "missing"},
+        "forced_fight": forced_fight,
+        "actors": actor_ids,
+        "source_binding": source_binding,
+        "verdict": verdict or report.get("verdict"),
+        "proof_depth": "interaction" if pay_receipts else "startup/load-or-inconclusive",
+        "missing_fields": missing,
+        "manifest_declarations": declaration,
+        "run_observations": {
+            "artifact_patterns": artifact_lines,
+            "actor_ids_source": "run artifact lines",
+        },
+    }
+
+
+def load_run_report(repo_root: Path, run_id: str) -> Mapping[str, Any]:
+    """Find a retained probe report by exact run identity, without launching."""
+    run = str(run_id).strip()
+    matches = sorted(repo_root.glob(f".userdata/*/harness_runs/{run}/probe.report.json"))
+    if len(matches) != 1:
+        raise ValueError(f"expected one retained run report for {run}, found {len(matches)}")
+    report_path = matches[0]
+    value = json.loads(report_path.read_text(encoding="utf-8"))
+    if not isinstance(value, Mapping):
+        raise ValueError("run report must contain an object")
+    result = dict(value)
+    semantic_path = report_path.parent / "semantic.steps.jsonl"
+    if semantic_path.exists():
+        result["_semantic_steps"] = [json.loads(line) for line in
+                                      semantic_path.read_text(encoding="utf-8").splitlines() if line.strip()]
+    binding_path = report_path.parent / "runtime.binding.json"
+    if binding_path.exists():
+        binding = json.loads(binding_path.read_text(encoding="utf-8"))
+        if isinstance(binding, Mapping):
+            result["_runtime_binding"] = dict(binding)
+    return result
 
 
 def query_page(payload: Mapping[str, Any], receipt: Mapping[str, Any], *,
                offset: int, page_size: int, cli: Sequence[str],
-               view: str = "matches", scenario_id: str | None = None) -> dict:
+               view: str = "matches", scenario_id: str | None = None,
+               run_report: Mapping[str, Any] | None = None,
+               run_id: str | None = None, receipt_id: str | None = None) -> dict:
     if offset < 0 or page_size <= 0:
         raise ValueError("offset must be nonnegative and page size must be positive")
     result = payload["result"]
@@ -68,6 +166,8 @@ def query_page(payload: Mapping[str, Any], receipt: Mapping[str, Any], *,
                   "--offset", str(next_offset), "--page-size", str(page_size), "--view", view]
                  if scenario_id is None and next_offset < len(identities) else None)
     readiness = result.get("source_executable_readiness", {})
+    projected = _run_observation(run_report, run_id=run_id, receipt_id=receipt_id) \
+        if run_report is not None and run_id is not None else None
     return {
         **dict(receipt),
         **{key: result.get(key) for key in
@@ -84,6 +184,7 @@ def query_page(payload: Mapping[str, Any], receipt: Mapping[str, Any], *,
                  "total_matches": len(ranked),
                  "excluded_candidates": len(snapshots) - len(ranked), "next": next_page},
         "full_result": [*cli, "registry-query-artifact", "--sha256", digest],
+        **({"run_evidence": projected} if projected is not None else {}),
         "authority": "Saved query snapshot; browsing does not reselect or issue authority. "
                      "The token belongs only to selected_scenario_id; launch revalidates current state.",
     }

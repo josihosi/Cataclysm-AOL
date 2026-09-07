@@ -6,13 +6,14 @@ from __future__ import annotations
 import subprocess
 import sys
 import tempfile
+import time
 import unittest
 from unittest import mock
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 
-from curses_terminal_transport import dispatch_input, should_use_curses_terminal
+from curses_terminal_transport import _key_bytes, dispatch_input, should_use_curses_terminal
 
 
 class CursesTerminalTransportTest(unittest.TestCase):
@@ -21,6 +22,12 @@ class CursesTerminalTransportTest(unittest.TestCase):
         self.assertFalse(should_use_curses_terminal(Path("cataclysm-tiles"), "auto"))
         self.assertTrue(should_use_curses_terminal(Path("cataclysm-tiles"), "pty"))
         self.assertFalse(should_use_curses_terminal(Path("cataclysm"), "pipes"))
+
+    def test_f1_uses_xterm_ss3_sequence_for_native_trade_autobalance(self) -> None:
+        self.assertEqual(_key_bytes(["F1"]), b"\x1bOP")
+
+    def test_tab_uses_the_native_control_character_for_trade_pane_switching(self) -> None:
+        self.assertEqual(_key_bytes(["tab"]), b"\t")
 
     def test_curses_child_has_a_controlling_terminal_and_transcript(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -66,6 +73,11 @@ class CursesTerminalTransportTest(unittest.TestCase):
             self.assertTrue(receipt["ok"])
             self.assertEqual(receipt["owner"], "run_bound_pty")
             self.assertEqual(process.wait(timeout=5), 0)
+            deadline = time.monotonic() + 2
+            while endpoint.exists() and time.monotonic() < deadline:
+                time.sleep(0.01)
+            self.assertFalse(endpoint.exists())
+            transport.close()
             self.assertIn("f", (run_dir / "game.terminal.log").read_text())
 
     def test_detached_dispatcher_does_not_inherit_starter_capture_streams(self) -> None:

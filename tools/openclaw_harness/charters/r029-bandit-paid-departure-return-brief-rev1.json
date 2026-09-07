@@ -1,0 +1,27 @@
+{
+  "outcome": "R-029: independently prove native completion of a bandit shakedown payment, exact-operation paid protection and departure, and the first later return boundary without claiming natural signal discovery or replaying the Fight branch.",
+  "scenario": "bandit.extortion_committed_paid_departure_continuation_mcw",
+  "query": {
+    "preferences": [],
+    "requirements": [
+      {
+        "key": "capabilities.shakedown.payment",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "native_trade_completed"
+      },
+      {
+        "key": "capabilities.shakedown.paid_departure",
+        "minimum_evidence": "declared",
+        "op": "contains",
+        "value": "returning_home"
+      },
+      {
+        "key": "capabilities.persistence",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "full_save_exit_relaunch_same_world"
+      }
+    ]
+  }
+}

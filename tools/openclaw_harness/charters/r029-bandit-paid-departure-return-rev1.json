@@ -1,0 +1,31 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-029: independently prove native completion of a bandit shakedown payment, exact-operation paid protection and departure, and the first later return boundary without claiming natural signal discovery or replaying the Fight branch.",
+  "material_proof": "A current source- and executable-bound run may begin only from the fixture's zero-credit report/lead/opportunity candidate. It must then reach the native Pay surface through ordinary scheduler-owned turns; transfer native value and record completed payment; bind the same operation, reservation and members to paid returning_home protection; and cross the declared later fresh-process ordinary-turn boundary without a renewed shakedown offense. The fixture contributes neither response commitment, payment, protection, departure, return, persistence, natural discovery, nor Fight evidence.",
+  "current_uncertainty": "Whether the current scheduler-owned shakedown response's native trade completion atomically preserves the exact operation and its members as paid returning_home, protects them through departure, and prevents its old encounter from reopening across the first later ordinary turns after reload.",
+  "material_contradiction": [
+    "missing current source or executable binding",
+    "fixture state other than the declared zero-credit committed-contact reservation",
+    "Pay selection without native trade completion and transferred value",
+    "a paid record lacking exact operation, reservation, member, and returning_home identity",
+    "an exact paid member attacks or re-enters the shakedown offense path before the first later return boundary",
+    "cleanup, persistence, or identity drift"
+  ],
+  "already_accepted_evidence": [
+    "Receipt 74f2dcf128e1c77024c68f251c7fbbe60798e8158cfb5b1ba94e10f26435540d remains completed natural sound callback and lead evidence and is not replayed.",
+    "Receipt 3a3ae62787437ada72021e94ff8320ea4906565ecb20f409b17c5339d71df62e remains independent demand-to-Fight evidence and is not replayed.",
+    "R029-F002 is a separate owner-promotion wait and authorizes no gameplay repair in this route.",
+    "This downstream contact fixture cannot prove natural physical-signal, staffed-observer, camp-memory, scout, report, rally, or approach behavior."
+  ],
+  "forbidden_shortcuts": [
+    "debug spawning or direct payment, relationship, departure, return, combat, or outcome mutation",
+    "raw save rewrite or fixture transform after installation",
+    "crediting the report/lead/opportunity fixture as response commitment, payment, protection, departure, return, persistence, Fight, or natural-discovery evidence",
+    "replaying the retained sound or Fight routes"
+  ],
+  "honest_stop_conditions": [
+    "The assigned payment, protection/departure, and first later return boundary is settled, or continuation requires a materially different owner outcome, unavailable capability, irreversible risk, or source-binding change.",
+    "Record the first divergence between Pay acceptance, completed trade, exact operation state, member protection, departure movement, and later return; repair harness, fixture, or observation faults in scope, but do not promote or implement a gameplay repair."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

@@ -76,7 +76,7 @@ from scenario_registry_store import (
 import startup_harness
 import production_capture
 from command_receipts import read_command_artifact, write_command_artifact
-from registry_query_output import query_page
+from registry_query_output import load_run_report, query_page
 from startup_harness import (
     CLEANUP_ACCEPTED_STATUSES,
     fixture_source_binding,
@@ -1287,6 +1287,8 @@ def build_parser() -> argparse.ArgumentParser:
     query_page_parser.add_argument("--page-size", type=_positive_page_size, default=5)
     query_page_parser.add_argument("--view", choices=("matches", "excluded"), default="matches")
     query_page_parser.add_argument("--scenario-id", help="exact saved candidate including full evidence")
+    query_page_parser.add_argument("--run-id", help="exact retained native run identity for compact evidence")
+    query_page_parser.add_argument("--receipt-id", help="receipt identity paired with --run-id")
     query_artifact = commands.add_parser("registry-query-artifact", help="locate or export one complete query result")
     query_artifact.add_argument("--sha256", required=True)
     query_artifact.add_argument("--output", help="write the verified artifact to this file")
@@ -2081,8 +2083,13 @@ def main(argv: Sequence[str] | None = None) -> int:
                     receipt["export"] = {**receipt["artifact"], "path": str(destination)}
                 _write_result({"ok": True, "command": args.command, "result": receipt})
             else:
+                run_report = load_run_report(Path(__file__).resolve().parents[2], args.run_id) \
+                    if args.run_id else None
                 result = query_page(payload, receipt, offset=args.offset, page_size=args.page_size,
-                                    view=args.view, scenario_id=args.scenario_id, cli=[sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path)])
+                                    view=args.view, scenario_id=args.scenario_id,
+                                    run_report=run_report, run_id=args.run_id,
+                                    receipt_id=args.receipt_id,
+                                    cli=[sys.executable, str(Path(__file__).resolve()), "--registry", str(registry_path)])
                 _write_result({"ok": True, "command": args.command, "registry": str(registry_path), "result": result})
             return 0
         except (OSError, ValueError, KeyError) as error:

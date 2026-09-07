@@ -882,6 +882,42 @@ class SemanticStepChannelTest(unittest.TestCase):
         self.assertEqual(status, "ok")
         self.assertEqual([event["frame_id"] for event in parsed], ["frame-3", "frame-4"])
 
+    def test_refresh_trace_compacts_superseded_world_before_active_child(self) -> None:
+        """A large World render must not evict its current child menu."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "semantic.native.log"
+            world = {
+                "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+                "surface_id": "world", "frame_id": "world-frame", "kind": "world",
+                "breadcrumbs": ["World"],
+                "payload": {"minimap": "m" * 900, "overmap": "o" * 900},
+                "valid_actions": [{"id": "world.wait", "stable_id": "world.wait",
+                                   "label": "Wait", "enabled": True}],
+            }
+            child = {
+                "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+                "surface_id": "menu", "frame_id": "menu-frame", "kind": "menu",
+                "breadcrumbs": ["World", "Wait duration"], "payload": {},
+                "valid_actions": [{"id": "wait.5m", "stable_id": "wait.5m",
+                                   "label": "Wait 5 minutes", "enabled": True}],
+            }
+            source.write_text("\n".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event)
+                for event in (world, child)
+            ) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "semantic_step_source_trace", return_value=source), \
+                    patch.object(startup_harness, "SEMANTIC_STEP_MAX_BYTES", 700):
+                _source, owned = startup_harness.refresh_semantic_step_trace(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=0,
+                )
+            parsed, status = startup_harness.read_semantic_step_trace(owned, root, self.run_id)
+        self.assertEqual(status, "ok")
+        self.assertEqual(parsed[-1]["frame_id"], "menu-frame")
+        self.assertEqual(parsed[-1]["valid_actions"], [{"id": "wait.5m", "stable_id": "wait.5m",
+                                                         "label": "Wait 5 minutes", "enabled": True}])
+        self.assertNotIn("minimap", parsed[0]["payload"])
+
     def test_refresh_trace_respects_sampled_boundary_on_hot_append(self) -> None:
         events = [{
             "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,

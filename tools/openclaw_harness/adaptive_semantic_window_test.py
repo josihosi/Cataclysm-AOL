@@ -156,6 +156,14 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
         self.assertEqual( semantic_frame_dispatch( frame, "wait.5m" ),
                           ("menu.choose", "uilist-entry:5") )
 
+    def test_long_wait_route_uses_the_advertised_thirty_minute_boundary(self) -> None:
+        frame = {"kind": "menu", "valid_actions": [
+            {"id": "menu.choose", "stable_id": "wait-duration:wait.30m",
+             "label": "30 minutes", "enabled": True},
+        ]}
+        self.assertEqual( semantic_frame_dispatch( frame, "wait.30m" ),
+                          ("menu.choose", "wait-duration:wait.30m") )
+
     def receipt(self, action_id: str, frame_id: str, *, accepted: bool = True) -> dict:
         return {
             "accepted": accepted,

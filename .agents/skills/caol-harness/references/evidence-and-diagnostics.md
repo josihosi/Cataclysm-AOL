@@ -21,10 +21,14 @@ absence. Existing `inspect`, `messages`, `log-query` and exact record references
 `log-query --snapshot HASH` keeps subsequent pages on the same source prefix and filters.
 
 Keep routine current controls separate from help: `controls` retrieves macro recipes and evidence
-source metadata explicitly. Choose targeted local queries or read-only Luna extraction by the
-current question and expected total work. Give a helper the known identities, evidence ceiling and
-decision to support; it returns facts, exact references and uncertainty. The primary owns gameplay
-input and causal judgment. Retrieve history only when missing detail can change that judgment.
+source metadata explicitly. The playtest owner keeps gameplay input and causal judgment;
+Luna handles bulky retrieval, log correlation and artifact comparison from the known run/request
+identities and evidence handles. Ask the concrete playtest question; use its returned facts,
+references and uncertainty to choose the next action. Compact known lookups can stay local.
+When answering an ordinary playtest question still needs awkward manual extraction, tell the
+coordinator which question the current view could not answer. Together, use the existing query
+or improve that view so subsequent playtests do not repeat the same archaeology. Retrieve history
+only when missing detail can change the decision.
 See the [search map](searching.md).
 
 ## Messages and correlated logs

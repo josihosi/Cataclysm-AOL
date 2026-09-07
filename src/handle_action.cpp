@@ -24,6 +24,7 @@
 #include "avatar.h"
 #include "avatar_action.h"
 #include "avatar_status.h"
+#include "bandit_live_world.h"
 #include "bionics.h"
 #include "bodygraph.h"
 #include "bodypart.h"
@@ -298,6 +299,92 @@ static std::string openclaw_harness_semantic_event_clock()
     return fields.str();
 }
 
+static void openclaw_harness_write_omt( std::ostringstream &out, const tripoint_abs_omt &omt )
+{
+    out << '[' << omt.x() << ',' << omt.y() << ',' << omt.z() << ']';
+}
+
+static bool openclaw_harness_outing_projection_is_known(
+    const bandit_live_world::active_outing_state &outing )
+{
+    return !outing.shared_route.empty() && outing.waypoint_index >= 0 &&
+           outing.waypoint_index < static_cast<int>( outing.shared_route.size() );
+}
+
+// This is deliberately a read-only live-world projection.  It accompanies a
+// World descriptor after a native duration action, before any harness cleanup
+// can discard the in-memory operation.  Save-file inspection alone cannot
+// establish this boundary because an interrupted probe need not save.
+static std::string openclaw_harness_live_hostile_operation_snapshot()
+{
+    const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const bandit_live_world::site_record *site = nullptr;
+    for( const bandit_live_world::site_record &candidate : state.sites ) {
+        if( !candidate.retired_empty_site && candidate.active_hostile_operation.is_active() ) {
+            site = &candidate;
+            break;
+        }
+    }
+    if( site == nullptr ) {
+        return "null";
+    }
+    const bandit_live_world::hostile_operation_state &operation = site->active_hostile_operation;
+    const bandit_live_world::active_outing_state &outing = operation.reservation;
+    const bool projection_known = openclaw_harness_outing_projection_is_known( outing );
+    std::ostringstream snapshot;
+    snapshot << "{\"site_id\":" << openclaw_harness_quote_action_value( site->site_id )
+             << ",\"current_game_minutes\":"
+             << to_minutes<int>( calendar::turn - calendar::start_of_cataclysm )
+             << ",\"operation_id\":" << openclaw_harness_quote_action_value( outing.activity_id )
+             << ",\"operation_kind\":" << openclaw_harness_quote_action_value(
+                 bandit_live_world::to_string( operation.operation_kind ) )
+             << ",\"phase\":" << openclaw_harness_quote_action_value(
+                 bandit_live_world::to_string( operation.phase ) )
+             << ",\"owner\":" << openclaw_harness_quote_action_value(
+                 bandit_live_world::to_string( outing.owner ) )
+             << ",\"target_id\":" << openclaw_harness_quote_action_value( outing.target_id )
+             << ",\"target_omt\":";
+    openclaw_harness_write_omt( snapshot, outing.target_omt );
+    snapshot << ",\"rally_omt\":";
+    openclaw_harness_write_omt( snapshot, operation.rally_omt );
+    snapshot << ",\"route_cursor\":{\"waypoint_index\":" << outing.waypoint_index
+             << ",\"route_length\":" << outing.shared_route.size()
+             << ",\"last_progress_minutes\":" << outing.last_progress_minutes
+             << ",\"last_advanced_minutes\":" << outing.last_advanced_minutes
+             << ",\"local_contact_minutes\":" << outing.local_contact_minutes
+             << ",\"projection_omt\":";
+    if( projection_known ) {
+        openclaw_harness_write_omt( snapshot,
+                                    outing.shared_route[static_cast<size_t>( outing.waypoint_index )] );
+    } else {
+        snapshot << "null";
+    }
+    snapshot << "},\"members\":[";
+    for( size_t index = 0; index < outing.member_ids.size(); ++index ) {
+        const character_id member_id = outing.member_ids[index];
+        if( index > 0 ) {
+            snapshot << ',';
+        }
+        const auto found = std::find_if( site->members.begin(), site->members.end(),
+        [&member_id]( const bandit_live_world::member_record &member ) {
+            return member.npc_id == member_id;
+        } );
+        snapshot << "{\"id\":" << member_id.get_value()
+                 << ",\"state\":" << openclaw_harness_quote_action_value( found == site->members.end() ?
+                         "materialized" : bandit_live_world::to_string( found->state ) )
+                 << ",\"omt\":";
+        if( projection_known ) {
+            openclaw_harness_write_omt( snapshot,
+                                        outing.shared_route[static_cast<size_t>( outing.waypoint_index )] );
+        } else {
+            snapshot << "null";
+        }
+        snapshot << '}';
+    }
+    snapshot << "]}";
+    return snapshot.str();
+}
+
 static void openclaw_harness_semantic_surface_descriptor(
     const semantic_surface_descriptor &descriptor )
 {
@@ -349,6 +436,8 @@ static void openclaw_harness_semantic_surface_descriptor(
           << ",\"kind\":" << openclaw_harness_quote_action_value( descriptor.kind )
           << ",\"breadcrumbs\":" << breadcrumbs.str()
           << ",\"payload\":" << payload.str()
+          << ",\"live_hostile_operation\":" << (
+              descriptor.kind == "world" ? openclaw_harness_live_hostile_operation_snapshot() : "null" )
           << ",\"valid_actions\":" << actions.str() << '}';
     openclaw_harness_write_semantic_step_event( event.str() );
     DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();

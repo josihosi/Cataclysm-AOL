@@ -13,9 +13,35 @@ from unittest import mock
 
 import scenario_registry_cli as cli
 import scenario_registry_cli_test as fixtures
+from registry_query_output import _run_observation
 
 
 class RegistryQueryOutputTest(unittest.TestCase):
+    def test_run_bound_compact_projection_keeps_missing_trade_and_declarations_explicit(self):
+        report = {
+            "steps": [{"action_id": "shakedown.pay", "accepted": True,
+                       "run_id": "native-run", "game_minutes": 8380,
+                       "game_turn": 5254801}],
+            "artifacts": {"matches_by_pattern": [{"lines": [
+                "dialogue_return response=pay",
+                "bandit_live_world shakedown_fight_advance npc=18 attacked=yes",
+                "bandit_live_world shakedown_fight_advance npc=19 attacked=yes",
+            ]}]},
+            "proof_classification": {"verdict": "blocked_terminal_save_step_not_completed"},
+            "scenario_manifest": {"normalized": {"capabilities": {"state": "declared",
+                "value": {"local_place.shakedown.reopened_options": ["Pay", "Fight"]}}}},
+            "runtime_binding": {"source_sha256": "source-bound"},
+        }
+        result = _run_observation(report, run_id="20260907_103541_164574e2295845f586c0eeb37ee0bba4",
+                                   receipt_id="c0698f3f5a843fb54695bb3bbcb39c18f4ac152854723c494f151746b2341967")
+        self.assertTrue(result["accepted_pay"]["accepted"])
+        self.assertEqual(result["trade_owner"]["status"], "missing")
+        self.assertTrue(result["forced_fight"])
+        self.assertEqual(result["actors"], [18, 19])
+        self.assertIn("trade_owner", result["missing_fields"])
+        self.assertEqual(result["manifest_declarations"]["capabilities"]["state"], "declared")
+        self.assertEqual(result["run_observations"]["actor_ids_source"], "run artifact lines")
+
     def test_query_preserves_build_and_binding_metadata(self):
         readiness = {"status": "ready", "build_entrypoint": {"argv": ["python", "verified-builder.py"]},
                      "executable_sha256": "a" * 64, "product_source_sha256": "b" * 64}
