@@ -20,4 +20,3 @@ more than its inputs.
 
 ## Pending suggestions
 
-- Owner-authorized [trigger]: Discord message 1546477629291495454 (relay receipt 23362bda10cb): Uuuh what. Terra is supposed to be a worker no? Why is terra a mutator?
