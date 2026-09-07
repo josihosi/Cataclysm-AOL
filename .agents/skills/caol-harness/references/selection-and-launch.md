@@ -18,10 +18,12 @@ python3 tools/openclaw_harness/scenario_registry_cli.py registry-query-page \
 ```
 
 This returns the exact `source_path`, manifest binding, lifecycle, saved candidate facts and next
-action; use the returned path when source inspection is needed. Scenario declarations describe
-intended coverage, not observed success. Judge a playtest outcome from explicit run-bound evidence;
-when that evidence is absent from the page, follow the run's evidence handles. This resolves an uncertain filename
-without searching generated history. `full_result` is the verified full-result receipt;
+action. Use the returned path for source inspection. For observed playtest evidence, add
+`--run-id <native-run-id>` to this page query; `--receipt-id <receipt-id>` can further select a
+receipt paired with that run. The compact result separates scenario declarations from run
+observations. Declarations describe intended coverage, not observed success; keep absent or
+unavailable run evidence visible and follow exact evidence handles for unresolved detail.
+`full_result` is the verified full-result receipt;
 `registry-query-artifact --sha256 <digest> --output <path>` exports it when deeper evidence is
 needed. `registry-query --full` also exports to a file rather than printing bulk.
 The selected token belongs only to
