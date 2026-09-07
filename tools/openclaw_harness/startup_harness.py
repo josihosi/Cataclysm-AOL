@@ -4424,6 +4424,26 @@ def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> 
     return config_dir_for_profile(resolve_profile_name(profile)) / "debug.log"
 
 
+def semantic_step_trace_start_for_source(
+    profile: str, run_dir: Path, inherited_offset: int,
+) -> int:
+    """Translate a profile-log cursor to the source used by semantic steps.
+
+    Startup records its pre-launch cursor against the profile-shared
+    ``debug.log``.  A populated ``semantic.native.events.jsonl`` is instead a
+    fresh, run-owned stream, so that cursor has no coordinate meaning there.
+    Its whole lifetime belongs to this run and must be read from byte zero.
+    """
+    source = semantic_step_source_trace(profile, run_dir)
+    native_trace = Path(run_dir) / "semantic.native.events.jsonl"
+    try:
+        if source.resolve() == native_trace.resolve():
+            return 0
+    except OSError:
+        pass
+    return inherited_offset
+
+
 def decode_semantic_step_event(payload: bytes) -> Mapping[str, Any]:
     """Decode one native event before DebugLog's following record, if any."""
     text = payload.decode("utf-8")
@@ -5297,6 +5317,7 @@ def open_cockpit_game_service(
             Path( run_dir ), run_id, profile=profile, pid=pid or 0,
             child_resources=(performance.latest["resources"]
                              if performance is not None and performance.latest else None),
+            binding_id=binding_id,
         )
         if performance is not None:
             evidence["performance"] = performance.brief()
@@ -5420,6 +5441,7 @@ def _read_jsonl_objects(path: Path) -> List[Dict[str, Any]]:
 def compact_cockpit_live_evidence(
     run_dir: Path, run_id: str, *, profile: str = "", pid: int = 0,
     child_resources: Optional[Mapping[str, Any]] = None,
+    binding_id: str = "",
 ) -> Dict[str, Any]:
     """Return bounded semantic facts, never raw logs, for one live decision."""
     from r008_indoor_channel_observation import read_r008_indoor_channel_observation
@@ -5437,8 +5459,12 @@ def compact_cockpit_live_evidence(
         Path( run_dir ), run_id=run_id,
         source_sha256=str(runtime_binding.get("runtime_source_sha256", "")),
         executable_sha256=str(runtime_binding.get("executable_sha256", "")),
-        binding_id=(sha256_file(Path( run_dir ) / RUNTIME_BINDING_FILENAME)[0]
-                    if (Path( run_dir ) / RUNTIME_BINDING_FILENAME).is_file() else ""),
+        # The native child writes its bridge identity in a live cockpit.  The
+        # runtime-binding file is still source evidence, but its hash is not
+        # the action-owner identity once the registry bridge owns the run.
+        binding_id=(str(binding_id).strip() or
+                    (sha256_file(Path( run_dir ) / RUNTIME_BINDING_FILENAME)[0]
+                     if (Path( run_dir ) / RUNTIME_BINDING_FILENAME).is_file() else "")),
     )
     receipts = [
         item for item in _read_jsonl_objects( run_dir / "semantic.steps.jsonl" )
@@ -11481,6 +11507,27 @@ def summarize_map_items(payload: Any) -> List[str]:
     return [typeid for typeid in (map_item_typeid(item) for item in payload) if typeid]
 
 
+def summarize_map_item_states(payload: Any) -> List[Dict[str, Any]]:
+    """Read persisted item state without interpreting it as feature behavior."""
+    entries = payload if isinstance(payload, list) else [payload]
+    states: List[Dict[str, Any]] = []
+    for entry in entries:
+        item = entry[0] if isinstance(entry, list) and len(entry) == 2 and isinstance(entry[0], dict) else entry
+        if not isinstance(item, dict):
+            continue
+        typeid = str(item.get("typeid", "")).strip()
+        if not typeid:
+            continue
+        countdown_point = item.get("countdown_point")
+        try:
+            countdown_point = int(countdown_point) if countdown_point is not None else None
+        except (TypeError, ValueError):
+            countdown_point = None
+        states.append({"typeid": typeid, "active": bool(item.get("active", False)),
+                       "countdown_point": countdown_point})
+    return states
+
+
 def decode_submap_rle(raw: Any, *, context: str) -> List[Any]:
     """Decode submap terrain/radiation RLE into 144 row-major values."""
     if not isinstance(raw, list):
@@ -11571,6 +11618,8 @@ def audit_map_tiles_near_player(
     required_terrain: Optional[List[str]] = None,
     required_fields: Optional[List[str]] = None,
     required_items: Optional[List[str]] = None,
+    required_active_items: Optional[List[str]] = None,
+    required_countdown_points: Optional[List[int]] = None,
     required_furniture: Optional[List[str]] = None,
     required_traps: Optional[List[str]] = None,
     required_radiation: Optional[List[int]] = None,
@@ -11650,9 +11699,11 @@ def audit_map_tiles_near_player(
                 radiation = None
             fields = [summarize_map_field(payload) for x, y, payload in iter_map_triples(submap.get("fields")) if x == local[0] and y == local[1]]
             items: List[str] = []
+            item_states: List[Dict[str, Any]] = []
             for x, y, payload in iter_map_triples(submap.get("items")):
                 if x == local[0] and y == local[1]:
                     items.extend(summarize_map_items(payload))
+                    item_states.extend(summarize_map_item_states(payload))
             furniture = [str(payload) for x, y, payload in iter_map_triples(submap.get("furniture")) if x == local[0] and y == local[1]]
             traps = [str(payload) for x, y, payload in iter_map_triples(submap.get("traps")) if x == local[0] and y == local[1]]
             if explicit_offsets or terrain or fields or items or furniture or traps or radiation not in (None, 0):
@@ -11665,6 +11716,7 @@ def audit_map_tiles_near_player(
                     "terrain": terrain,
                     "fields": fields,
                     "items": items,
+                    "item_states": item_states,
                     "furniture": furniture,
                     "traps": traps,
                     "radiation": radiation,
@@ -11679,6 +11731,8 @@ def audit_map_tiles_near_player(
     required_terrain = [terrain for terrain in (required_terrain or []) if terrain]
     required_fields = [field for field in (required_fields or []) if field]
     required_items = [item for item in (required_items or []) if item]
+    required_active_items = [item for item in (required_active_items or []) if item]
+    required_countdown_points = [int(point) for point in (required_countdown_points or [])]
     required_furniture = [furn for furn in (required_furniture or []) if furn]
     required_traps = [trap for trap in (required_traps or []) if trap]
     required_radiation = [int(rad) for rad in (required_radiation or [])]
@@ -11691,12 +11745,18 @@ def audit_map_tiles_near_player(
     observed_terrain = [str(tile.get("terrain")) for tile in tile_reports if str(tile.get("terrain", ""))]
     observed_field_ids = [str(field.get("field_id")) for tile in tile_reports for field in tile.get("fields", []) if isinstance(field, dict)]
     observed_items = [str(item) for tile in tile_reports for item in tile.get("items", [])]
+    observed_active_items = [str(state.get("typeid")) for tile in tile_reports for state in tile.get("item_states", [])
+                             if isinstance(state, dict) and state.get("active") is True]
+    observed_countdown_points = [int(state["countdown_point"]) for tile in tile_reports for state in tile.get("item_states", [])
+                                 if isinstance(state, dict) and state.get("countdown_point") is not None]
     observed_furniture = [str(furn) for tile in tile_reports for furn in tile.get("furniture", [])]
     observed_traps = [str(trap) for tile in tile_reports for trap in tile.get("traps", [])]
     observed_radiation = [int(rad) for rad in (tile.get("radiation") for tile in tile_reports) if rad is not None]
     missing_required_terrain = [terrain for terrain in required_terrain if terrain not in observed_terrain]
     missing_required_fields = [field for field in required_fields if field not in observed_field_ids]
     missing_required_items = [item for item in required_items if item not in observed_items]
+    missing_required_active_items = [item for item in required_active_items if item not in observed_active_items]
+    missing_required_countdown_points = [point for point in required_countdown_points if point not in observed_countdown_points]
     missing_required_furniture = [furn for furn in required_furniture if furn not in observed_furniture]
     missing_required_traps = [trap for trap in required_traps if trap not in observed_traps]
     missing_required_radiation = [rad for rad in required_radiation if rad not in observed_radiation]
@@ -11710,6 +11770,8 @@ def audit_map_tiles_near_player(
         len(required_terrain)
         + len(required_fields)
         + len(required_items)
+        + len(required_active_items)
+        + len(required_countdown_points)
         + len(required_furniture)
         + len(required_traps)
         + len(required_radiation)
@@ -11724,6 +11786,8 @@ def audit_map_tiles_near_player(
         len(missing_required_terrain)
         + len(missing_required_fields)
         + len(missing_required_items)
+        + len(missing_required_active_items)
+        + len(missing_required_countdown_points)
         + len(missing_required_furniture)
         + len(missing_required_traps)
         + len(missing_required_radiation)
@@ -11750,6 +11814,8 @@ def audit_map_tiles_near_player(
         "required_terrain": required_terrain,
         "required_fields": required_fields,
         "required_items": required_items,
+        "required_active_items": required_active_items,
+        "required_countdown_points": required_countdown_points,
         "required_furniture": required_furniture,
         "required_traps": required_traps,
         "required_radiation": required_radiation,
@@ -11762,6 +11828,8 @@ def audit_map_tiles_near_player(
         "observed_terrain": observed_terrain,
         "observed_field_ids": observed_field_ids,
         "observed_items": observed_items,
+        "observed_active_items": observed_active_items,
+        "observed_countdown_points": observed_countdown_points,
         "observed_furniture": observed_furniture,
         "observed_traps": observed_traps,
         "observed_radiation": observed_radiation,
@@ -11774,6 +11842,8 @@ def audit_map_tiles_near_player(
         "missing_required_terrain": missing_required_terrain,
         "missing_required_fields": missing_required_fields,
         "missing_required_items": missing_required_items,
+        "missing_required_active_items": missing_required_active_items,
+        "missing_required_countdown_points": missing_required_countdown_points,
         "missing_required_furniture": missing_required_furniture,
         "missing_required_traps": missing_required_traps,
         "missing_required_radiation": missing_required_radiation,
@@ -14563,6 +14633,7 @@ def audit_saved_bandit_live_world_state(
     required_min_active_member_ids: Optional[int] = None,
     required_active_members_found: bool = False,
     required_active_member_max_abs_offset_ms: Optional[List[int]] = None,
+    required_active_member_abs_omt: Optional[List[int]] = None,
     player_save: str = "",
     required_remembered_target_or_mark_prefix: str = "",
     required_remembered_pressure: str = "",
@@ -14659,7 +14730,7 @@ def audit_saved_bandit_live_world_state(
     player_abs_omt: List[int] = []
     active_member_scan_error = ""
     active_member_npcs_by_id: Dict[str, Dict[str, Any]] = {}
-    should_scan_active_members = bool(required_active_members_found or required_active_member_max_abs_offset_ms is not None)
+    should_scan_active_members = bool(required_active_members_found or required_active_member_max_abs_offset_ms is not None or required_active_member_abs_omt is not None)
     if should_scan_active_members:
         try:
             selected_player_save, _player_save_path, player_payload, _player_stat = load_saved_player_payload(world_dir, selected_player_save)
@@ -14705,6 +14776,8 @@ def audit_saved_bandit_live_world_state(
                             "index": index,
                             "name": str(npc_payload.get("name", "") or ""),
                             "location_ms": location_ms,
+                            "abs_omt": ([location_ms[0] // 24, location_ms[1] // 24, location_ms[2]]
+                                        if len(location_ms) >= 3 else []),
                             "offset_ms": offset_ms,
                             "attitude": npc_payload.get("attitude"),
                             "mission": npc_payload.get("mission"),
@@ -14716,7 +14789,8 @@ def audit_saved_bandit_live_world_state(
                         cleanup_extracted_overmap(plain_path, keep=False)
         except Exception as exc:
             active_member_scan_error = str(exc)
-            if required_active_members_found or required_active_member_max_abs_offset_ms is not None:
+            if (required_active_members_found or required_active_member_max_abs_offset_ms is not None or
+                    required_active_member_abs_omt is not None):
                 raise
 
     normalized_max_abs_offset: Optional[List[int]] = None
@@ -14727,6 +14801,14 @@ def audit_saved_bandit_live_world_state(
             int(required_active_member_max_abs_offset_ms[0]),
             int(required_active_member_max_abs_offset_ms[1]),
             int(required_active_member_max_abs_offset_ms[2]),
+        ]
+    normalized_active_member_abs_omt: Optional[List[int]] = None
+    if required_active_member_abs_omt is not None:
+        if len(required_active_member_abs_omt) < 3:
+            raise RuntimeError("required_active_member_abs_omt needs [x,y,z]")
+        normalized_active_member_abs_omt = [
+            int(required_active_member_abs_omt[0]), int(required_active_member_abs_omt[1]),
+            int(required_active_member_abs_omt[2]),
         ]
 
     for site in observed_sites:
@@ -14748,6 +14830,8 @@ def audit_saved_bandit_live_world_state(
                     and len(offset) >= 3
                     and all(abs(int(offset[i])) <= normalized_max_abs_offset[i] for i in range(3))
                 )
+            if normalized_active_member_abs_omt is not None:
+                row["at_required_abs_omt"] = row.get("abs_omt", []) == normalized_active_member_abs_omt
             lookups.append(row)
         site["active_member_saved_lookup"] = lookups
         site["active_members_all_found_in_saved_overmap"] = bool(active_ids) and all(
@@ -14756,6 +14840,10 @@ def audit_saved_bandit_live_world_state(
         if normalized_max_abs_offset is not None:
             site["active_members_within_required_max_abs_offset_ms"] = bool(active_ids) and all(
                 bool(row.get("within_required_max_abs_offset_ms")) for row in lookups
+            )
+        if normalized_active_member_abs_omt is not None:
+            site["active_members_at_required_abs_omt"] = bool(active_ids) and all(
+                bool(row.get("at_required_abs_omt")) for row in lookups
             )
         site["position_exposure_footing"] = {
             "player_location_ms": player_location_ms,
@@ -14981,6 +15069,9 @@ def audit_saved_bandit_live_world_state(
             return False
         if normalized_max_abs_offset is not None and not bool(site.get("active_members_within_required_max_abs_offset_ms")):
             return False
+        if normalized_active_member_abs_omt is not None and not bool(
+                site.get("active_members_at_required_abs_omt")):
+            return False
         if required_remembered_target_or_mark_prefix and not str(site.get("remembered_target_or_mark", "")).startswith(required_remembered_target_or_mark_prefix):
             return False
         if required_remembered_pressure and str(site.get("remembered_pressure", "")) != required_remembered_pressure:
@@ -15124,6 +15215,7 @@ def audit_saved_bandit_live_world_state(
         "required_min_active_member_ids": required_min_active_member_ids,
         "required_active_members_found": required_active_members_found,
         "required_active_member_max_abs_offset_ms": normalized_max_abs_offset,
+        "required_active_member_abs_omt": normalized_active_member_abs_omt,
         "required_remembered_target_or_mark_prefix": required_remembered_target_or_mark_prefix,
         "required_remembered_pressure": required_remembered_pressure,
         "required_min_leads": required_min_leads,
@@ -22022,6 +22114,93 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "bandit_structural_homeward_reentry":
+            site_id = str(raw.get("site_id", "") or "").strip()
+            activity_id = str(raw.get("activity_id", "") or "").strip()
+            raw_member_ids = raw.get("member_ids", [])
+            raw_camp_omt = raw.get("camp_omt", [])
+            raw_positions = raw.get("member_positions_ms", {})
+            if (not site_id or not activity_id or not isinstance(raw_member_ids, list) or
+                    not isinstance(raw_camp_omt, list) or len(raw_camp_omt) != 3 or
+                    not isinstance(raw_positions, dict)):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] needs site_id, activity_id, member_ids, "
+                    f"camp_omt, and member_positions_ms in {manifest_path}"
+                )
+            try:
+                member_ids = [int(value) for value in raw_member_ids]
+                camp_omt = [int(value) for value in raw_camp_omt]
+                generation = int(raw.get("generation"))
+                member_positions_ms = {
+                    int(member_id): [int(value) for value in position]
+                    for member_id, position in raw_positions.items()
+                }
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] homeward reentry values must be integers in {manifest_path}"
+                )
+            if len(member_ids) != 2 or len(set(member_ids)) != 2 or generation != 1:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] homeward reentry requires the exact two-member generation-1 pair in {manifest_path}"
+                )
+            if set(member_positions_ms) != set(member_ids) or any(
+                    len(position) != 3 for position in member_positions_ms.values()):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] member_positions_ms must name exactly the pair with [x,y,z] in {manifest_path}"
+                )
+            if any([position[0] // 24, position[1] // 24, position[2]] != camp_omt
+                   for position in member_positions_ms.values()):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] member_positions_ms must be on camp_omt in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind, "player_save": player_save, "site_id": site_id,
+                "activity_id": activity_id, "member_ids": member_ids,
+                "generation": generation, "camp_omt": camp_omt,
+                "member_positions_ms": member_positions_ms,
+            })
+            continue
+
+        if kind == "bandit_post_handoff_abstract_bootstrap":
+            site_id = str(raw.get("site_id", "") or "").strip()
+            activity_id = str(raw.get("activity_id", "") or "").strip()
+            raw_member_ids = raw.get("member_ids", [])
+            capture = raw.get("native_handoff_capture", {})
+            unexpected_keys = sorted(set(raw) - {
+                "kind", "player_save", "site_id", "activity_id", "member_ids",
+                "native_handoff_capture",
+            })
+            if (unexpected_keys or not site_id or not activity_id or
+                    not isinstance(raw_member_ids, list) or not isinstance(capture, dict)):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] post-handoff abstract bootstrap needs only "
+                    f"site_id, activity_id, member_ids, and native_handoff_capture in {manifest_path}"
+                )
+            try:
+                member_ids = [int(value) for value in raw_member_ids]
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] post-handoff member_ids must be integers in {manifest_path}"
+                )
+            expected_capture = {
+                "run_id": "6158dd4f735779ccb2a4af5982c2bd80a356c50713add68c86db716b770ac05f",
+                "receipt_sha256": "f7ce139d93d956e8f6c6347aeb167345bbd4c69b4aacde2f08f63362a59e5be1",
+                "dimension_sha256": "71b809ef2f57c93dc82b81faa5a519a952a0d1cc21845b18982b96738c933e62",
+            }
+            if (site_id != "overmap_special:bandit_camp@140,51,0" or
+                    activity_id != site_id + "#structural" or member_ids != [4, 5] or
+                    any(str(capture.get(key, "")) != value for key, value in expected_capture.items())):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] post-handoff bootstrap is bound only to the "
+                    "captured generation-1 [4,5] native owner transition"
+                )
+            transforms.append({
+                "kind": kind, "player_save": player_save, "site_id": site_id,
+                "activity_id": activity_id, "member_ids": member_ids,
+                "native_handoff_capture": expected_capture,
+            })
+            continue
+
         if kind == "bandit_scheduler_response_candidate":
             site_id = str(raw.get("site_id", "")).strip()
             target_id = str(raw.get("target_id", "")).strip()
@@ -22564,6 +22743,28 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                             f"Fixture save_transforms[{index}].items[{item_index}] contents must be object in {manifest_path}"
                         )
                     item["contents"] = contents
+                if "active" in item_raw:
+                    if not isinstance(item_raw.get("active"), bool):
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] active must be boolean in {manifest_path}"
+                        )
+                    item["active"] = bool(item_raw["active"])
+                if "countdown_offset_turns" in item_raw:
+                    try:
+                        countdown_offset_turns = int(item_raw.get("countdown_offset_turns"))
+                    except (TypeError, ValueError):
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] countdown_offset_turns must be integer in {manifest_path}"
+                        )
+                    if countdown_offset_turns <= 0:
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] countdown_offset_turns must be > 0 in {manifest_path}"
+                        )
+                    if item.get("active") is not True:
+                        raise SystemExit(
+                            f"Fixture save_transforms[{index}].items[{item_index}] countdown_offset_turns requires active=true in {manifest_path}"
+                        )
+                    item["countdown_offset_turns"] = countdown_offset_turns
                 items.append(item)
             transforms.append({
                 "kind": kind,
@@ -23168,6 +23369,25 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "bandit_registered_staffed_observer_bootstrap":
+            # These are deliberately fixed, audited R-033 footings rather than
+            # a general camp/lead editor.  The same-level variant exists solely
+            # to isolate the previously observed vertical LOS rejection.
+            footing = str(raw.get("footing", "roof_v1") or "roof_v1").strip()
+            if footing not in {"roof_v1", "same_level_clear_los_z0_v1", "same_level_registered_pair_z0_v2"}:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_registered_staffed_observer_bootstrap "
+                    f"has unsupported footing {footing!r} in {manifest_path}"
+                )
+            unexpected_keys = sorted(set(raw) - {"kind", "player_save", "footing"})
+            if unexpected_keys:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_registered_staffed_observer_bootstrap "
+                    f"has unexpected keys {unexpected_keys} in {manifest_path}"
+                )
+            transforms.append({"kind": kind, "player_save": player_save, "footing": footing})
+            continue
+
         raise SystemExit(
             f"Unsupported fixture save_transforms[{index}].kind '{kind}' in {manifest_path}; "
             "supported kinds: player_mutations, player_remove_addiction, clear_avatar_auto_move, clear_avatar_activity, player_items, player_worn_items, player_condition, player_location_offset_ms, player_basecamp_at_omt, player_near_overmap_special, "
@@ -23176,7 +23396,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_camp_supply, bandit_clear_site_evidence, "
-                "bandit_clone_site, bandit_site_roster_shape, bandit_projection_leases, bandit_scheduler_response_candidate"
+                "bandit_clone_site, bandit_site_roster_shape, bandit_registered_staffed_observer_bootstrap, bandit_projection_leases, bandit_structural_homeward_reentry, bandit_post_handoff_abstract_bootstrap, bandit_scheduler_response_candidate"
         )
     return transforms
 
@@ -24919,7 +25139,8 @@ def apply_map_fields_near_player_transform(world_dir: Path, transform: Dict[str,
 
 def saved_item_payload(typeid: str, *, bday: int = 0, charges: Optional[int] = None,
                        contents: Optional[Dict[str, Any]] = None,
-                       owner: Optional[str] = None) -> Dict[str, Any]:
+                       owner: Optional[str] = None, active: bool = False,
+                       countdown_point: Optional[int] = None) -> Dict[str, Any]:
     payload: Dict[str, Any] = {
         "typeid": typeid,
         "bday": int(bday),
@@ -24932,12 +25153,23 @@ def saved_item_payload(typeid: str, *, bday: int = 0, charges: Optional[int] = N
         payload["owner"] = str(owner)
     if isinstance(contents, dict):
         payload["contents"] = contents
+    if active:
+        payload["active"] = True
+    if countdown_point is not None:
+        payload["countdown_point"] = int(countdown_point)
     return payload
 
 
 def apply_map_items_near_player_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     player_save_name = str(transform.get("player_save", "")).strip()
     _player_abs_omt, player_location = load_player_abs_omt(world_dir, player_save_name)
+    _selected_save, _player_path, player_payload, _player_stat = load_saved_player_payload(
+        world_dir, player_save_name
+    )
+    try:
+        saved_turn = int(player_payload.get("turn"))
+    except (TypeError, ValueError):
+        raise SystemExit(f"Fixture map-item transform player save has no integer turn: {player_save_name}")
     maps_dir = world_dir / "maps"
     if not maps_dir.exists():
         raise SystemExit(f"Fixture map-item transform maps dir not found: {maps_dir}")
@@ -24955,6 +25187,12 @@ def apply_map_items_near_player_transform(world_dir: Path, transform: Dict[str, 
         charges = item.get("charges")
         contents = item.get("contents") if isinstance(item.get("contents"), dict) else None
         owner = str(item.get("owner", "") or "").strip()
+        active = bool(item.get("active", False))
+        countdown_offset_turns = item.get("countdown_offset_turns")
+        countdown_point = (
+            saved_turn + int(countdown_offset_turns)
+            if countdown_offset_turns is not None else None
+        )
 
         target_location = [
             int(player_location[0]) + offset_ms[0],
@@ -25003,6 +25241,8 @@ def apply_map_items_near_player_transform(world_dir: Path, transform: Dict[str, 
                 charges=int(charges) if charges is not None else None,
                 contents=contents,
                 owner=owner if owner else None,
+                active=active,
+                countdown_point=countdown_point,
             )
             for _ in range(count)
         ]
@@ -25015,6 +25255,9 @@ def apply_map_items_near_player_transform(world_dir: Path, transform: Dict[str, 
             "count": count,
             "charges": int(charges) if charges is not None else None,
             "owner": owner or None,
+            "active": active,
+            "countdown_offset_turns": int(countdown_offset_turns) if countdown_offset_turns is not None else None,
+            "countdown_point": countdown_point,
             "offset_ms": offset_ms,
             "target_location_ms": target_location,
             "target_abs_omt": list(target_abs_omt),
@@ -26882,6 +27125,322 @@ def apply_bandit_projection_leases_transform(world_dir: Path, transform: Dict[st
     }
 
 
+def apply_bandit_structural_homeward_reentry_transform(
+    world_dir: Path, transform: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Stage only the physical-return preconditions for a native owner handoff.
+
+    This deliberately does not emulate the return recorder.  In particular, the
+    saved cursor remains local and its generation/epoch, return receipts, reports,
+    and leads are byte-identical; the next native turn is the only authority that
+    may consume the physical arrival and advance the owner.
+    """
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Fixture structural homeward reentry target not found: {dimension_path}")
+    requested_site_id = str(transform["site_id"])
+    requested_activity_id = str(transform["activity_id"])
+    member_ids = [int(value) for value in transform["member_ids"]]
+    member_id_set = set(member_ids)
+    generation = int(transform["generation"])
+    camp_omt = [int(value) for value in transform["camp_omt"]]
+    positions = {int(key): [int(value) for value in position]
+                 for key, position in transform["member_positions_ms"].items()}
+
+    dimension_text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = dimension_text.partition("\n")
+    if not sep:
+        raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    try:
+        sites = payload["overmapbuffer"]["bandit_live_world"]["sites"]
+    except (KeyError, TypeError):
+        raise SystemExit("Fixture structural homeward reentry lacks bandit_live_world sites") from None
+    selected = next((site for site in sites if isinstance(site, dict) and
+                     site.get("site_id") == requested_site_id), None)
+    if selected is None:
+        raise SystemExit("Fixture structural homeward reentry could not find the requested site")
+    outing = selected.get("active_outing")
+    handoff = outing.get("local_handoff") if isinstance(outing, dict) else None
+    if not isinstance(outing, dict) or not isinstance(handoff, dict):
+        raise SystemExit("Fixture structural homeward reentry needs an active local handoff")
+    preflight = {
+        "kind": outing.get("kind"), "activity_id": outing.get("activity_id"),
+        "generation": outing.get("generation"), "owner": outing.get("simulation_owner"),
+        "handoff_epoch": outing.get("handoff_epoch"), "phase": outing.get("phase"),
+        "member_ids": list(outing.get("member_ids", [])),
+        "member_return_receipts": list(outing.get("member_return_receipts", [])),
+        "resolved_member_ids": list(outing.get("resolved_member_ids", [])),
+        "casualty_ids": list(outing.get("casualty_ids", [])),
+        "observations": list(outing.get("observations", [])),
+        "report_application_key": outing.get("report_application_key"),
+        "return_application_key": outing.get("return_application_key"),
+        "local_handoff": {key: handoff.get(key) for key in (
+            "activity_id", "activity_generation", "handoff_epoch", "member_ids",
+            "cohesion_assembled", "cohesion_abort_return", "phase", "route_position")},
+        "lead_map": selected.get("intelligence_map"),
+    }
+    handoff_ids = [entry.get("npc_id") for entry in handoff.get("members", [])
+                   if isinstance(entry, dict)]
+    if (outing.get("kind") != "structural_sortie" or outing.get("activity_id") != requested_activity_id or
+            int(outing.get("generation", -1)) != generation or
+            outing.get("simulation_owner") != "local" or int(outing.get("handoff_epoch", -1)) != 1 or
+            outing.get("phase") != "observing" or list(outing.get("member_ids", [])) != member_ids or
+            set(handoff_ids) != member_id_set or len(handoff_ids) != 2 or
+            handoff.get("activity_id") != requested_activity_id or
+            int(handoff.get("activity_generation", -1)) != generation or
+            int(handoff.get("handoff_epoch", -1)) != 1 or
+            handoff.get("phase") != "observing" or
+            preflight["member_return_receipts"] or preflight["resolved_member_ids"] or
+            preflight["casualty_ids"]):
+        raise SystemExit("Fixture structural homeward reentry refused a non-canonical local observing pair")
+
+    # The only dimension-data edits are the paired phase fields.  The native
+    # return recorder owns every receipt, owner, cursor, report, and lead write.
+    outing["phase"] = "returning_home"
+    handoff["phase"] = "returning_home"
+    dimension_path.write_text(
+        version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+
+    found: Dict[int, List[int]] = {}
+    touched_overmaps: List[str] = []
+    for overmap_path in sorted((world_dir / "overmaps").glob("o.*.*.zzip")):
+        plain_path: Optional[Path] = None
+        try:
+            plain_path, overmap_version, overmap_payload = extract_overmap_payload(overmap_path)
+            npcs = overmap_payload.get("npcs", [])
+            if not isinstance(npcs, list):
+                continue
+            changed = False
+            for npc_payload in npcs:
+                if not isinstance(npc_payload, dict):
+                    continue
+                try:
+                    npc_id = int(npc_payload.get("id"))
+                except (TypeError, ValueError):
+                    continue
+                if npc_id not in member_id_set:
+                    continue
+                npc_payload["location"] = positions[npc_id]
+                found[npc_id] = list(npc_payload["location"])
+                changed = True
+            if changed:
+                write_overmap_payload(plain_path, overmap_version, overmap_payload)
+                touched_overmaps.append(str(overmap_path.relative_to(world_dir)))
+                plain_path = None  # write_overmap_payload consumed it.
+        finally:
+            if plain_path is not None and plain_path.exists():
+                cleanup_extracted_overmap(plain_path, keep=False)
+    if set(found) != member_id_set:
+        raise SystemExit(
+            f"Fixture structural homeward reentry could not find exact NPC pair: {sorted(member_id_set - set(found))}"
+        )
+
+    # Reload to make an accidental owner/receipt/lead write a hard failure.
+    after = json.loads(dimension_path.read_text(encoding="utf-8").split("\n", 1)[1])
+    after_site = next(site for site in after["overmapbuffer"]["bandit_live_world"]["sites"]
+                      if isinstance(site, dict) and site.get("site_id") == requested_site_id)
+    after_outing = after_site["active_outing"]
+    after_handoff = after_outing["local_handoff"]
+    prohibited_stable = (
+        after_outing.get("simulation_owner") == preflight["owner"] and
+        after_outing.get("generation") == preflight["generation"] and
+        after_outing.get("handoff_epoch") == preflight["handoff_epoch"] and
+        after_outing.get("member_ids") == preflight["member_ids"] and
+        after_outing.get("member_return_receipts", []) == preflight["member_return_receipts"] and
+        after_outing.get("resolved_member_ids", []) == preflight["resolved_member_ids"] and
+        after_outing.get("casualty_ids", []) == preflight["casualty_ids"] and
+        after_outing.get("observations", []) == preflight["observations"] and
+        after_outing.get("report_application_key") == preflight["report_application_key"] and
+        after_outing.get("return_application_key") == preflight["return_application_key"] and
+        after_site.get("intelligence_map") == preflight["lead_map"] and
+        all(after_handoff.get(key) == value for key, value in preflight["local_handoff"].items()
+            if key != "phase")
+    )
+    if (after_outing.get("phase") != "returning_home" or
+            after_handoff.get("phase") != "returning_home" or not prohibited_stable):
+        raise SystemExit("Fixture structural homeward reentry postcondition rejected an unsafe mutation")
+    return {
+        "kind": "bandit_structural_homeward_reentry", "world": world_dir.name,
+        "site_id": requested_site_id, "activity_id": requested_activity_id,
+        "generation": generation, "member_ids": member_ids, "camp_omt": camp_omt,
+        "member_locations_ms": found, "touched_overmaps": touched_overmaps,
+        "invariant_checks": {
+            "local_owner_unchanged": after_outing.get("simulation_owner") == "local",
+            "generation_unchanged": after_outing.get("generation") == generation,
+            "cursor_epoch_unchanged": after_outing.get("handoff_epoch") == 1,
+            "no_return_records": not after_outing.get("member_return_receipts", []),
+            "no_resolutions": not after_outing.get("resolved_member_ids", []),
+            "no_casualties": not after_outing.get("casualty_ids", []),
+            "no_lead_or_report_mutation": prohibited_stable,
+            "only_homeward_phase_staged": after_outing.get("phase") == "returning_home" and
+            after_handoff.get("phase") == "returning_home",
+            "all_members_at_camp_omt": all(
+                [location[0] // 24, location[1] // 24, location[2]] == camp_omt
+                for location in found.values()),
+        },
+    }
+
+
+def apply_bandit_post_handoff_abstract_bootstrap_transform(
+    world_dir: Path, transform: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Reproduce one captured native owner result as a zero-credit fixture.
+
+    This is deliberately narrower than a generic owner-state editor.  It
+    accepts only the R-033 generation-1 source pair and the immutable capture
+    identities recorded by the native owner-boundary run.  It provides a fresh
+    process with that already-proved post-boundary footing; it does not supply
+    a sound, observation, lead, report, route decision, or later transition.
+    """
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Fixture post-handoff abstract bootstrap target not found: {dimension_path}")
+    site_id = str(transform["site_id"])
+    activity_id = str(transform["activity_id"])
+    member_ids = [int(value) for value in transform["member_ids"]]
+    capture = dict(transform["native_handoff_capture"])
+
+    text = dimension_path.read_text(encoding="utf-8")
+    version_line, sep, payload_text = text.partition("\n")
+    if not sep:
+        raise SystemExit(f"Fixture dimension data missing version header newline: {dimension_path}")
+    payload = json.loads(payload_text)
+    try:
+        sites = payload["overmapbuffer"]["bandit_live_world"]["sites"]
+    except (KeyError, TypeError):
+        raise SystemExit("Fixture post-handoff abstract bootstrap lacks bandit_live_world sites") from None
+    site = next((row for row in sites if isinstance(row, dict) and row.get("site_id") == site_id), None)
+    outing = site.get("active_outing") if isinstance(site, dict) else None
+    handoff = outing.get("local_handoff") if isinstance(outing, dict) else None
+    if not isinstance(outing, dict) or not isinstance(handoff, dict):
+        raise SystemExit("Fixture post-handoff abstract bootstrap needs a canonical active local handoff")
+    handoff_ids = [entry.get("npc_id") for entry in handoff.get("members", []) if isinstance(entry, dict)]
+    preexisting_leads = copy.deepcopy(site.get("intelligence_map", {}).get("leads", []))
+    members = site.get("members", [])
+    roster_pair = {
+        int(member.get("npc_id")): member for member in members
+        if isinstance(member, dict) and str(member.get("npc_id", "")).lstrip("-").isdigit()
+        and int(member.get("npc_id")) in member_ids
+    } if isinstance(members, list) else {}
+    if (
+        outing.get("kind") != "structural_sortie" or outing.get("activity_id") != activity_id or
+        outing.get("generation") != 1 or outing.get("simulation_owner") != "local" or
+        outing.get("handoff_epoch") != 1 or outing.get("phase") != "observing" or
+        list(outing.get("member_ids", [])) != member_ids or handoff_ids != member_ids or
+        handoff.get("activity_id") != activity_id or handoff.get("activity_generation") != 1 or
+        handoff.get("handoff_epoch") != 1 or handoff.get("phase") != "observing" or
+        outing.get("member_return_receipts", []) or outing.get("resolved_member_ids", []) or
+        outing.get("casualty_ids", []) or outing.get("observations", []) or
+        set(roster_pair) != set(member_ids) or any(
+            row.get("state") not in {"outbound", "local_contact"} for row in roster_pair.values()
+        )
+    ):
+        raise SystemExit("Fixture post-handoff abstract bootstrap refused a non-canonical local observing pair")
+
+    # These values are the exact durable post-action state saved by the bound
+    # native quicksave.  The values have no configurable inputs so this cannot
+    # become a generic handoff/lead injector.
+    outing.update({
+        "schema_version": 9,
+        "phase": "returning_home",
+        "resolved_member_ids": [4, 5],
+        "simulation_owner": "abstract",
+        "handoff_epoch": 2,
+        "last_advanced_minutes": 8284,
+        "local_projection_reconciliation_rejected": False,
+        "member_return_receipts": [
+            {"member_id": 4, "application_key": activity_id + ":return:1:member:4", "returned_minutes": 8284},
+            {"member_id": 5, "application_key": activity_id + ":return:1:member:5", "returned_minutes": 8284},
+        ],
+        "local_handoff": {
+            "schema_version": 4, "activity_id": "", "activity_generation": 0,
+            "handoff_epoch": -1, "waypoint_index": 0, "phase": "assembling",
+            "route_position": [0, 0, 0], "approach_from": [0, 0, 0],
+            "egress_omt": [0, 0, 0], "cargo": {"supply_units": 0, "trade_value": 0},
+            "casualty_ids": [], "members": [], "cohesion_leader_id": -1,
+            "cohesion_deadline_minutes": -1, "cohesion_reroutes_used": 0,
+            "cohesion_assembled": False, "cohesion_abort_return": False,
+            "cohesion_best_staging_distances": [], "committed_minutes": -1,
+        },
+        "target_footprint": [[136, 51, 0]],
+        "selected_watch_kind": "none", "selected_watch_omt": [0, 0, 0],
+        "selected_watch_route_cost": -1,
+    })
+    # The owner handoff was consumed by two native physical-return records.
+    # Their roster writebacks are part of that durable result, not an extra
+    # signal or lead.  Without them the serialized reservation says both
+    # members are resolved while the durable roster still marks them away.
+    for member_id in member_ids:
+        roster_pair[member_id]["state"] = "at_home"
+        roster_pair[member_id]["last_writeback_summary"] = "physical structural return receipt committed"
+    dimension_path.write_text(
+        version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+
+    removed_leases: List[int] = []
+    for overmap_path in sorted((world_dir / "overmaps").glob("o.*.*.zzip")):
+        plain_path: Optional[Path] = None
+        try:
+            plain_path, overmap_version, overmap_payload = extract_overmap_payload(overmap_path)
+            npcs = overmap_payload.get("npcs", [])
+            changed = False
+            if isinstance(npcs, list):
+                for npc in npcs:
+                    if not isinstance(npc, dict) or npc.get("id") not in member_ids:
+                        continue
+                    if "bandit_live_world_projection_lease" in npc:
+                        npc.pop("bandit_live_world_projection_lease")
+                        removed_leases.append(int(npc["id"]))
+                        changed = True
+            if changed:
+                write_overmap_payload(plain_path, overmap_version, overmap_payload)
+                plain_path = None
+        finally:
+            if plain_path is not None and plain_path.exists():
+                cleanup_extracted_overmap(plain_path, keep=False)
+
+    after = json.loads(dimension_path.read_text(encoding="utf-8").split("\n", 1)[1])
+    after_site = next(row for row in after["overmapbuffer"]["bandit_live_world"]["sites"]
+                      if isinstance(row, dict) and row.get("site_id") == site_id)
+    after_outing = after_site["active_outing"]
+    safe = (
+        after_outing.get("simulation_owner") == "abstract" and
+        after_outing.get("handoff_epoch") == 2 and after_outing.get("last_advanced_minutes") == 8284 and
+        after_outing.get("generation") == 1 and after_outing.get("member_ids") == member_ids and
+        after_outing.get("observations", []) == [] and after_site.get("intelligence_map", {}).get("leads", []) == preexisting_leads and
+        after_outing.get("local_handoff", {}).get("members") == [] and
+        [entry.get("member_id") for entry in after_outing.get("member_return_receipts", [])] == member_ids and
+        all(
+            isinstance(member, dict) and member.get("state") == "at_home"
+            for member in after_site.get("members", [])
+            if isinstance(member, dict) and member.get("npc_id") in member_ids
+        )
+    )
+    if not safe:
+        raise SystemExit("Fixture post-handoff abstract bootstrap postcondition rejected an unsafe mutation")
+    return {
+        "kind": "bandit_post_handoff_abstract_bootstrap", "world": world_dir.name,
+        "site_id": site_id, "activity_id": activity_id, "member_ids": member_ids,
+        "native_handoff_capture": capture, "removed_projection_leases": sorted(removed_leases),
+        "invariant_checks": {
+            "captured_abstract_owner": after_outing.get("simulation_owner") == "abstract",
+            "same_pair_generation": after_outing.get("generation") == 1 and after_outing.get("member_ids") == member_ids,
+            "captured_cursor": after_outing.get("handoff_epoch") == 2 and after_outing.get("last_advanced_minutes") == 8284,
+            "local_handoff_cleared": after_outing.get("local_handoff", {}).get("members") == [],
+            "captured_roster_writeback": all(
+                isinstance(member, dict) and member.get("state") == "at_home"
+                for member in after_site.get("members", [])
+                if isinstance(member, dict) and member.get("npc_id") in member_ids
+            ),
+            "no_bootstrap_observation_or_lead": after_outing.get("observations", []) == [] and after_site.get("intelligence_map", {}).get("leads", []) == preexisting_leads,
+        },
+    }
+
+
 def apply_bandit_camp_map_lead_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     dimension_path = world_dir / "dimension_data.gsav"
     if not dimension_path.exists():
@@ -27529,6 +28088,204 @@ def apply_bandit_site_roster_shape_transform(world_dir: Path, transform: Dict[st
     }
 
 
+def apply_bandit_registered_staffed_observer_bootstrap_transform(
+    world_dir: Path, transform: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Install the one audited, empty R-033 registered-observer footing.
+
+    This records no observation and grants no lead, report, operation, contact,
+    or dispatch.  Its constants are intentionally fixed to the durable native
+    state observed in run 229638e6 immediately after structural registration:
+    the separately staged smoke item remains the only signal source.
+    """
+    selected_save = str(transform.get("player_save", "") or "").strip()
+    footing = str(transform.get("footing", "roof_v1") or "roof_v1")
+    expected_player_by_footing = {
+        "roof_v1": [3372, 996, 1],
+        "same_level_clear_los_z0_v1": [3372, 996, 0],
+        "same_level_registered_pair_z0_v2": [3372, 996, 0],
+    }
+    expected_player = expected_player_by_footing.get(footing)
+    if expected_player is None:
+        raise SystemExit(f"R-033 registered observer bootstrap has unsupported footing {footing!r}")
+    expected_site_id = "overmap_special:bandit_camp@140,40,0"
+    expected_member_id = 18
+    _player_omt, player_location = load_player_abs_omt(world_dir, selected_save)
+    if player_location != expected_player:
+        raise SystemExit(
+            "R-033 registered observer bootstrap requires the audited player location "
+            f"{expected_player}, got {player_location}"
+        )
+
+    dimension_path = world_dir / "dimension_data.gsav"
+    version_line, separator, payload_text = dimension_path.read_text(encoding="utf-8").partition("\n")
+    if not separator:
+        raise SystemExit("R-033 registered observer bootstrap lacks dimension-data header")
+    payload = json.loads(payload_text)
+    live_world = payload.get("overmapbuffer", {}).get("bandit_live_world", {})
+    sites = live_world.get("sites", []) if isinstance(live_world, dict) else []
+    if not isinstance(sites, list):
+        raise SystemExit("R-033 registered observer bootstrap lacks bandit sites")
+    if any(isinstance(site, dict) and site.get("site_id") == expected_site_id for site in sites):
+        raise SystemExit("R-033 registered observer bootstrap refuses an already registered site")
+
+    observer_found = False
+    observer_location: List[int] = []
+    for overmap_path in sorted((world_dir / "overmaps").glob("o.*.*.zzip")):
+        plain_path: Optional[Path] = None
+        try:
+            plain_path, _version_line, overmap = extract_overmap_payload(overmap_path)
+            for npc in overmap.get("npcs", []) if isinstance(overmap.get("npcs", []), list) else []:
+                if not isinstance(npc, dict) or int(npc.get("id", -1)) != expected_member_id:
+                    continue
+                observer_found = True
+                observer_location = [int(value) for value in npc.get("location", [])[:3]]
+        finally:
+            if plain_path is not None and plain_path.exists():
+                cleanup_extracted_overmap(plain_path, keep=False)
+    if not observer_found or observer_location != [3372, 972, 0]:
+        raise SystemExit(
+            "R-033 registered observer bootstrap requires the exact seeded observer "
+            f"id={expected_member_id} at [3372, 972, 0], got {observer_location}"
+        )
+
+    def empty_outing() -> Dict[str, Any]:
+        return {
+            "schema_version": 5, "kind": "none", "activity_id": "", "camp_id": "",
+            "generation": 0, "member_ids": [], "leader_id": -1, "shared_route": [],
+            "waypoint_index": 0, "target_id": "", "target_omt": [0, 0, 0],
+            "job_type": "", "target_lead_id": "", "target_lead_revision": 0,
+            "phase": "assembling", "observations": [], "cargo": {"supply_units": 0, "trade_value": 0},
+            "casualty_ids": [], "resolved_member_ids": [], "started_minutes": -1,
+            "local_contact_minutes": -1, "last_progress_minutes": -1,
+            "expected_return_minutes": -1, "missing_deadline_minutes": -1,
+            "simulation_owner": "abstract", "handoff_epoch": 0, "last_advanced_minutes": -1,
+            "local_projection_reconciliation_rejected": False, "return_application_key": "",
+            "report_application_key": "", "cargo_application_key": "", "member_return_receipts": [],
+        }
+
+    empty_report = {
+        "schema_version": 5, "revision": 0, "action_policy": "none", "source_activity_id": "",
+        "source_generation": 0, "source_job_type": "", "target_id": "", "target_omt": [0, 0, 0],
+        "target_lead_id": "", "target_lead_revision": 0, "application_key": "", "carrier_ids": [],
+        "observations": [], "assessment": {
+            "schema_version": 2, "observation_started_minutes": -1, "last_progress_minutes": -1,
+            "burned_minutes": -1, "burn_origin_omt": [0, 0, 0], "certainty": 0,
+            "readiness_latched": False, "threshold_class": "none", "strong_visual_windows": 0,
+            "defenders_low": 0, "defenders_high": 0, "danger_low": 0, "danger_high": 0,
+            "bounty_estimate": 0, "route_danger_high": 0, "target_alert": 0,
+            "pinned_target_revision": 0, "next_eligible_minutes": -1, "exit_reason": "",
+        }, "casualty_ids": [], "delivered_minutes": -1,
+    }
+    site = {
+        "schema_version": 12, "site_id": expected_site_id, "source_kind": "overmap_special",
+        "site_kind": "bandit_camp", "hostile_profile": "camp_style", "source_id": "bandit_camp",
+        "anchor": [140, 40, 0], "living_total": 6, "supply_units": 42,
+        "supply_last_update_minutes": -1, "supply_accounted_living_total": 6,
+        "supply_member_minute_remainder": 0, "routine_activated_minutes": -1,
+        "last_routine_resolved_minutes": -1, "next_routine_dispatch_eligible_minutes": -1,
+        "routine_no_candidate_streak": 0,
+        "footprint": [[140, 40, 0], [141, 40, 0], [141, 41, 0], [140, 40, 1], [141, 40, 1], [141, 41, 1]],
+        "members": [{"npc_id": expected_member_id, "npc_template_id": "bandit",
+                     "home_spawn_tile": [3372, 979, 0], "state": "at_home",
+                     "wounded_or_unready": False, "last_writeback_summary": ""}],
+        "spawn_tiles": [{"tile": [3372, 979, 0], "assigned_living_total": 1}],
+        "next_outing_generation": 1, "applied_return_generation": 0,
+        "applied_report_generation": 0, "applied_cargo_generation": 0,
+        "last_cargo_application_key": "", "last_hostile_shakedown_aftermath_key": "",
+        "last_hostile_shakedown_operation_id": "", "last_hostile_shakedown_report_key": "",
+        "last_hostile_shakedown_generation": 0, "applied_resource_generation": 0,
+        "last_resource_application_key": "", "last_resource_claimed_units": 0,
+        "active_outing": empty_outing(),
+        "current_scout_report": empty_report,
+        "camp_decision": {"schema_version": 2, "state": "idle", "report_policy": "none",
+                          "source_report_revision": 0, "source_report_generation": 0,
+                          "source_report_activity_id": "", "source_report_application_key": "",
+                          "target_id": "", "target_omt": [0, 0, 0], "target_lead_id": "",
+                          "target_lead_revision": 0, "last_transition_minutes": -1,
+                          "next_eligible_minutes": -1, "transition_reason": ""},
+        "active_hostile_operation": {"schema_version": 1, "operation_kind": "none",
+                                     "phase": "assembling", "reservation": empty_outing(),
+                                     "source_report_revision": 0, "source_report_generation": 0,
+                                     "source_report_activity_id": "", "source_report_application_key": "",
+                                     "shakedown_pending_branch": "", "shakedown_pending_demanded_value": 0,
+                                     "shakedown_pending_surrendered_value": 0,
+                                     "shakedown_pending_reachable_value": 0,
+                                     "shakedown_pending_basecamp_scene": False, "has_rally": False,
+                                     "rally_omt": [0, 0, 0], "last_transition_reason": "",
+                                     "legacy_unpinned": False},
+        "intelligence_map": {"schema_version": 5, "last_daily_cleanup_minutes": -1,
+                             "next_near_tick_minutes": -1, "next_mid_tick_minutes": -1,
+                             "next_far_tick_minutes": -1, "next_frontier_tick_minutes": -1,
+                             "known_radius_omt": 0, "terrain_scan_cursor": 0,
+                             "last_routine_target_lead_id": "", "previous_routine_target_lead_id": "",
+                             "frontier_radius_omt": 0, "frontier_sector_cursor": 0,
+                             "frontier_last_resolved_minutes": [-1, -1, -1, -1, -1, -1, -1, -1],
+                             "leads": []},
+        "known_recent_marks": [], "remembered_target_or_mark": "", "remembered_pressure": "ample",
+        "remembered_bounty_estimate": 0, "remembered_threat_estimate": 0,
+        "remembered_retreat_bias": 0, "remembered_return_clock": -1,
+        "returned_cargo_stock": {"supply_units": 0, "trade_value": 0},
+        "retired_empty_site": False, "retirement_summary": "",
+        "origin_disposition": "active_hostile", "origin_summary": "", "origin_changed_minutes": -1,
+        "acted_reports": [], "last_routine_resolved_minutes": -1,
+        "last_shakedown_outcome": "", "shakedown_anger": 0, "shakedown_bandit_losses": 0,
+        "shakedown_basecamp_defender_observation_pending": False,
+        "shakedown_basecamp_defenders_at_fight": 0, "shakedown_caution": 0,
+        "shakedown_defender_losses": 0, "shakedown_last_demanded_value": 0,
+        "shakedown_last_reachable_value": 0, "shakedown_last_surrendered_value": 0,
+        "shakedown_loot_value": 0, "shakedown_reopen_available": False,
+        "shakedown_reopen_used": False,
+    }
+    removed_site_ids: List[str] = []
+    if footing in {"same_level_clear_los_z0_v1", "same_level_registered_pair_z0_v2"}:
+        # The preceding roof trial showed that a second inherited site makes the
+        # callback aggregate non-specific.  This fixed successor starts with
+        # only the exact empty registered site; it clears no live outcome and
+        # cannot pregrant a lead, report, operation, contact, or dispatch.
+        removed_site_ids = [
+            str(existing.get("site_id", "")) for existing in sites
+            if isinstance(existing, dict) and str(existing.get("site_id", ""))
+        ]
+        sites.clear()
+        hostile_opportunities = live_world.get("hostile_target_opportunities")
+        if isinstance(hostile_opportunities, list):
+            hostile_opportunities.clear()
+    sites.append(site)
+    registered_site_ids = [expected_site_id]
+    if footing == "same_level_registered_pair_z0_v2":
+        # The native scan also sees the pre-existing bandit camp at 140,51.
+        # Register its exact empty durable shell now, so the first five-minute
+        # signal cadence does not consume the staffed-observer callback branch
+        # by lazily registering that independent source.  It supplies no
+        # resident, lead, report, operation, contact, or dispatch.
+        inherited_site = copy.deepcopy(site)
+        inherited_site_id = "overmap_special:bandit_camp@140,51,0"
+        inherited_site.update({
+            "site_id": inherited_site_id,
+            "anchor": [140, 51, 0],
+            "footprint": [
+                [140, 51, 0], [141, 51, 0], [140, 52, 0], [141, 52, 0],
+                [140, 51, 1], [141, 51, 1], [140, 52, 1], [141, 52, 1],
+            ],
+            "members": [],
+            "spawn_tiles": [],
+            "living_total": 6,
+            "supply_accounted_living_total": 6,
+        })
+        sites.append(inherited_site)
+        registered_site_ids.append(inherited_site_id)
+    dimension_path.write_text(version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return {
+        "kind": "bandit_registered_staffed_observer_bootstrap", "world": world_dir.name,
+        "site_id": expected_site_id, "anchor_omt": site["anchor"], "observer_id": expected_member_id,
+        "observer_location_ms": observer_location, "active_outing": "none", "lead_count": 0,
+        "report_revision": 0, "operation_kind": "none", "footing": footing,
+        "registered_site_ids": registered_site_ids, "cleared_inherited_site_ids": removed_site_ids,
+        "gameplay_credit": False,
+    }
+
+
 def apply_bandit_scheduler_response_candidate_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     """Install a schema-current, zero-credit candidate for scheduler-owned response."""
     dimension_path = world_dir / "dimension_data.gsav"
@@ -27607,6 +28364,12 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "bandit_projection_leases":
             reports.append(apply_bandit_projection_leases_transform(world_dir, transform))
+            continue
+        if kind == "bandit_structural_homeward_reentry":
+            reports.append(apply_bandit_structural_homeward_reentry_transform(world_dir, transform))
+            continue
+        if kind == "bandit_post_handoff_abstract_bootstrap":
+            reports.append(apply_bandit_post_handoff_abstract_bootstrap_transform(world_dir, transform))
             continue
         if kind == "player_mutations":
             reports.append(apply_player_mutations_transform(world_dir, transform))
@@ -27703,6 +28466,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "bandit_site_roster_shape":
             reports.append(apply_bandit_site_roster_shape_transform(world_dir, transform))
+            continue
+        if kind == "bandit_registered_staffed_observer_bootstrap":
+            reports.append(apply_bandit_registered_staffed_observer_bootstrap_transform(world_dir, transform))
             continue
         if kind == "bandit_scheduler_response_candidate":
             reports.append(apply_bandit_scheduler_response_candidate_transform(world_dir, transform))
@@ -28629,9 +29395,12 @@ def execute_probe_steps(
     reports: List[Dict[str, Any]] = _WatermarkedReports(
         structured_event_reader, structured_events, structured_event_diagnostics
     )
-    semantic_trace_start = (
+    inherited_semantic_trace_start = (
         action_trace_baseline if semantic_step_trace_start_offset is None
         else semantic_step_trace_start_offset
+    )
+    semantic_trace_start = semantic_step_trace_start_for_source(
+        profile, run_dir, inherited_semantic_trace_start,
     )
     try:
         semantic_binding = json.loads(
@@ -31311,6 +32080,15 @@ def execute_probe_steps(
                     int(raw_required_max_offset[1]),
                     int(raw_required_max_offset[2]),
                 ]
+            raw_required_active_member_abs_omt = step.get("required_active_member_abs_omt")
+            required_active_member_abs_omt: Optional[List[int]] = None
+            if isinstance(raw_required_active_member_abs_omt, list) and len(
+                    raw_required_active_member_abs_omt) >= 3:
+                required_active_member_abs_omt = [
+                    int(raw_required_active_member_abs_omt[0]),
+                    int(raw_required_active_member_abs_omt[1]),
+                    int(raw_required_active_member_abs_omt[2]),
+                ]
             world_dir = save_dir_for_profile(profile) / world
             metadata_artifact = run_dir / f"{label}.metadata.json"
             try:
@@ -31391,6 +32169,7 @@ def execute_probe_steps(
                     required_min_active_member_ids=required_min_active_member_ids,
                     required_active_members_found=bool(step.get("required_active_members_found", False)),
                     required_active_member_max_abs_offset_ms=required_max_offset,
+                    required_active_member_abs_omt=required_active_member_abs_omt,
                     required_scout_report_present=required_scout_report_present,
                     required_scout_report_provisional=required_scout_report_provisional,
                     required_scout_report_min_observations=required_scout_report_min_observations,
@@ -31465,6 +32244,7 @@ def execute_probe_steps(
                     "required_min_active_member_ids": required_min_active_member_ids,
                     "required_active_members_found": bool(step.get("required_active_members_found", False)),
                     "required_active_member_max_abs_offset_ms": required_max_offset,
+                    "required_active_member_abs_omt": required_active_member_abs_omt,
                     "required_scout_report_present": required_scout_report_present,
                     "required_scout_report_provisional": required_scout_report_provisional,
                     "required_scout_report_min_observations": required_scout_report_min_observations,
@@ -31957,6 +32737,8 @@ def execute_probe_steps(
         elif kind == "audit_saved_player_items":
             player_save = str(step.get("player_save", "") or "").strip()
             required_items = [str(item).strip() for item in step.get("required_items", step.get("required_item_ids", [])) if str(item).strip()]
+            required_active_items = [str(item).strip() for item in step.get("required_active_items", []) if str(item).strip()]
+            required_countdown_points = [int(point) for point in step.get("required_countdown_points", [])]
             required_weapon = str(step.get("required_weapon", step.get("required_weapon_typeid", "")) or "").strip()
             required_weapon_ammo_type = str(step.get("required_weapon_ammo_type", "") or "").strip()
             required_weapon_ammo_min = int(step.get("required_weapon_ammo_min", 0) or 0)
@@ -31967,6 +32749,8 @@ def execute_probe_steps(
                     world_dir,
                     player_save=player_save,
                     required_items=required_items,
+                    required_active_items=required_active_items,
+                    required_countdown_points=required_countdown_points,
                     required_weapon=required_weapon,
                     required_weapon_ammo_type=required_weapon_ammo_type,
                     required_weapon_ammo_min=required_weapon_ammo_min,
@@ -32235,6 +33019,8 @@ def execute_probe_steps(
             required_terrain = [str(terrain).strip() for terrain in step.get("required_terrain", step.get("required_terrain_ids", [])) if str(terrain).strip()]
             required_fields = [str(field).strip() for field in step.get("required_fields", step.get("required_field_ids", [])) if str(field).strip()]
             required_items = [str(item).strip() for item in step.get("required_items", step.get("required_item_ids", [])) if str(item).strip()]
+            required_active_items = [str(item).strip() for item in step.get("required_active_items", []) if str(item).strip()]
+            required_countdown_points = [int(point) for point in step.get("required_countdown_points", [])]
             required_furniture = [str(furn).strip() for furn in step.get("required_furniture", step.get("required_furniture_ids", [])) if str(furn).strip()]
             required_traps = [str(trap).strip() for trap in step.get("required_traps", step.get("required_trap_ids", [])) if str(trap).strip()]
             required_radiation = [int(rad) for rad in step.get("required_radiation", step.get("required_radiation_values", []))]
@@ -32255,6 +33041,8 @@ def execute_probe_steps(
                     required_terrain=required_terrain,
                     required_fields=required_fields,
                     required_items=required_items,
+                    required_active_items=required_active_items,
+                    required_countdown_points=required_countdown_points,
                     required_furniture=required_furniture,
                     required_traps=required_traps,
                     required_radiation=required_radiation,
@@ -32274,6 +33062,8 @@ def execute_probe_steps(
                     "required_terrain": required_terrain,
                     "required_fields": required_fields,
                     "required_items": required_items,
+                    "required_active_items": required_active_items,
+                    "required_countdown_points": required_countdown_points,
                     "required_furniture": required_furniture,
                     "required_traps": required_traps,
                     "required_radiation": required_radiation,

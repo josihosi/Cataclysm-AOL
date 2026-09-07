@@ -1,0 +1,13 @@
+{
+  "outcome": "R-033: after a separately captured, native local-to-abstract handoff is reconstructed as a zero-credit bound fixture, a later isolated active C-4 source may be credited only through a fresh-run native semantic action, production callback, eligible observer result, and any identity-continuous reentry/materialization.",
+  "scenario": "r033.phase4_semantic_armed_sound_c4_rev4_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r033.route", "op": "eq", "value": "post_native_handoff_abstract_source_callback_and_reentry", "minimum_evidence": "declared"},
+      {"key": "capabilities.r033.control", "op": "eq", "value": "native_semantic_only_no_ocr_or_foreground_input", "minimum_evidence": "declared"}
+    ],
+    "preferences": [
+      {"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}
+    ]
+  }
+}

@@ -1,0 +1,11 @@
+{
+  "outcome": "R-033: an exact local structural pair may transition to abstract ownership under accepted native semantic turns, retaining member IDs, generation, route cursor and a single owner, before any later source callback or lead is attributed.",
+  "scenario": "r033.phase4_semantic_owner_first_c4_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r033.route", "op": "eq", "value": "semantic_local_to_abstract_owner_before_sound_callback", "minimum_evidence": "declared"},
+      {"key": "capabilities.r033.control", "op": "eq", "value": "native_semantic_only_no_ocr_or_foreground_input", "minimum_evidence": "declared"}
+    ],
+    "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]
+  }
+}

@@ -1,0 +1,45 @@
+{
+  "manifest_version": 2,
+  "name": "r033.structural_signal_boundary_cockpit_mcw",
+  "description": "R-033 source-bound native cockpit route for independently observing a staffed camp's physical signal path and its member-identity/owner boundary. The fixture supplies only the declared idle route footing; the player uses frame-bound native requests to advance time and inspect immutable observations. No OCR, screen coordinates, or terminal rendering is an evidence source.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "semantic_only_startup": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r033.route": "staffed_signal_and_local_abstract_identity_boundary",
+    "capabilities.r033.control": "native_semantic_only_no_ocr_or_foreground_input"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:game.wait", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "raw-save-rewrite", "fixture-save-transform", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_phase4_ecology_observer_handoff_v0_2026-08-05/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json"
+  },
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "bind_r033_native_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "r033_signal_boundary_live", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Use only native semantic frames and actions to establish the actual eligible observer/source opportunity, independent signal controls, exact lead-memory transitions, and local/abstract owner continuity.", "proof_targets": ["run-bound native frame and action receipts", "source/observer/member/lead identity", "exact elapsed game time", "single-owner local/abstract transition", "explicit cleanup"], "authority": ["currently advertised native semantic actions", "declared cockpit native wait operations", "run.witness", "run.finish"], "invariants": ["fixture setup has zero behavior credit", "screen and OCR output are not proof", "no actor is credited without matching native identity and owner state", "mixed outcomes remain independent"], "live_operations": ["game.act", "game.wait", "game.raw_wait", "game.keep_watch", "game.move_relative"], "transition_timeout_seconds": 30.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_gates": [{"id": "r033_signal_boundary_live", "label": "R-033 native semantic signal and ownership route", "boundary_step": "r033_signal_boundary_live", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
+  "proof_route": {"gates": ["r033_signal_boundary_live"], "terminal": ["r033_signal_boundary_live"]}
+}

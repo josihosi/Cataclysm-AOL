@@ -891,6 +891,58 @@ static std::string openclaw_harness_current_site_camp( const avatar &player )
     return result.str();
 }
 
+// A read-only ownership snapshot for a live structural outing.  This exposes
+// the scheduler's durable cursor, never NPC control or a state mutation, so a
+// semantic playtest can distinguish a real local-to-abstract handoff from a
+// fixture declaration or a simultaneous-owner claim.
+static std::string openclaw_harness_structural_outing_owner_snapshot()
+{
+    const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    std::ostringstream result;
+    result << "{\"schema\":\"caol-structural-outing-owner-v1\"";
+    const bandit_live_world::site_record *selected = nullptr;
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        if( site.active_outing.kind == bandit_live_world::outing_kind::structural_sortie &&
+            site.active_outing.member_ids.size() == 2 ) {
+            selected = &site;
+            break;
+        }
+    }
+    if( selected == nullptr ) {
+        result << ",\"present\":false";
+    } else {
+        const bandit_live_world::active_outing_state &outing = selected->active_outing;
+        result << ",\"present\":true,\"site_id\":"
+               << openclaw_harness_quote_action_value( selected->site_id )
+               << ",\"activity_id\":" << openclaw_harness_quote_action_value( outing.activity_id )
+               << ",\"generation\":" << outing.generation
+               << ",\"owner\":" << openclaw_harness_quote_action_value(
+                   bandit_live_world::to_string( outing.owner ) )
+               << ",\"phase\":" << openclaw_harness_quote_action_value(
+                   bandit_live_world::to_string( outing.phase ) )
+               << ",\"waypoint_index\":" << outing.waypoint_index
+               << ",\"last_advanced_minutes\":" << outing.last_advanced_minutes
+               << ",\"member_ids\":[" << outing.member_ids[0].get_value() << ','
+               << outing.member_ids[1].get_value() << ']';
+        if( outing.waypoint_index >= 0 &&
+            static_cast<std::size_t>( outing.waypoint_index ) < outing.shared_route.size() ) {
+            const tripoint_abs_omt waypoint = outing.shared_route[static_cast<std::size_t>( outing.waypoint_index )];
+            result << ",\"waypoint_omt\":[" << waypoint.x() << ',' << waypoint.y() << ',' << waypoint.z() << ']';
+        }
+        const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
+            bandit_live_world::current_external_simulation_cursor( *selected );
+        result << ",\"cursor_present\":" << ( cursor ? "true" : "false" );
+        if( cursor ) {
+            result << ",\"cursor_owner\":" << openclaw_harness_quote_action_value(
+                       bandit_live_world::to_string( cursor->owner ) )
+                   << ",\"cursor_generation\":" << cursor->generation
+                   << ",\"cursor_last_advanced_minutes\":" << cursor->last_advanced_minutes;
+        }
+    }
+    result << ",\"provenance\":\"diagnostic_read_only_global_bandit_live_world_active_structural_cursor\"}";
+    return result.str();
+}
+
 // This is a read-only view of the storage destination which native camp
 // gathering uses.  The normal pickup selector describes display names and
 // local selection affordances, but not an item's faction owner.  Keep this
@@ -1180,6 +1232,7 @@ static std::map<std::string, std::string> openclaw_harness_world_payload()
         { "minimap", minimap.str() },
         { "overmap", overmap.str() },
         { "current_site_camp", openclaw_harness_current_site_camp( player ) },
+        { "structural_outing_owner", openclaw_harness_structural_outing_owner_snapshot() },
         { "current_site_camp_storage", openclaw_harness_current_site_camp_storage( player ) },
         { "visible_entities", openclaw_harness_visible_entities( player ) },
         { "visible_zones", openclaw_harness_visible_zones( here, avatar_pos ) },

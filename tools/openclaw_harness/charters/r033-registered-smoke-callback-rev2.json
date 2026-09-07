@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-033: a native active smoke source that persists through the next authoritative cadence can be evaluated by an already registered, eligible staffed bandit observer.",
+  "material_proof": "A source- and executable-bound disposable run starts with the exact zero-credit registered idle site overmap_special:bandit_camp@140,40,0, observer id 18 at home and empty lead/report/operation/outing state. Exactly one active smokebomb_act occupies the verified solid roof at [2,0,0], and its saved countdown exceeds the next five-minute cadence. Native emission and the production scan precede the first staffed observer callback; the durable callback/lead or principled rejection is retained.",
+  "current_uncertainty": "Whether the first staffed callback accepts the native smoke observation into a durable lead or records a principled rejection under the loaded environment.",
+  "material_contradiction": ["any fd_smoke/fd_fire field, light, sound, authored lead, dispatch, report, operation, contact, or hostile actor is used as the source", "missing active-source expiry, source/executable, or observer binding", "a callback result is promoted without its source, range, LOS, elevation and environment facts"],
+  "forbidden_shortcuts": ["debug signal injection", "direct camp-memory or operation mutation", "treating fixture registration or item activation as gameplay proof"],
+  "honest_stop_conditions": ["the first eligible staffed callback after the source scan", "a source-binding or fixture-isolation contradiction"],
+  "requested_evidence_ceiling": "focused"
+}

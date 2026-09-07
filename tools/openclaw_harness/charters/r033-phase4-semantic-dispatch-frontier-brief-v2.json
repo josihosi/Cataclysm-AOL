@@ -1,0 +1,11 @@
+{
+  "outcome": "R-033: establish only the changed native structural frontier from the digest-bound abstract dispatch checkpoint to the pre-countdown 10080 cadence.",
+  "scenario": "r033.phase4_semantic_dispatch_frontier_v2_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r033.dispatch_frontier", "op": "eq", "value": "native_abstract_cursor_9960_to_10080_precountdown", "minimum_evidence": "declared"},
+      {"key": "capabilities.r033.control", "op": "eq", "value": "native_semantic_only_no_ocr_or_foreground_input", "minimum_evidence": "declared"}
+    ],
+    "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]
+  }
+}

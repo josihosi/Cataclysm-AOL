@@ -13,6 +13,11 @@ from unittest.mock import patch
 sys.path.insert( 0, str( Path( __file__ ).resolve().parent ) )
 
 from semantic_state import MAX_EVENT_BYTES, SEMANTIC_STEP_PREFIX, read_semantic_step_trace
+from r008_indoor_channel_observation import (
+    R008_CHANNEL_RECORD_FILENAME,
+    R008_CHANNEL_SCHEMA,
+    R008_CHANNELS,
+)
 from startup_harness import (
     compact_cockpit_live_evidence,
     execute_semantic_surface_rejection_matrix,
@@ -60,6 +65,42 @@ class R009SemanticChannelCompactionTest( unittest.TestCase ):
                     Path( temporary ), "r009-current-macos", profile="r009-m095", pid=73,
                 )
         self.assertEqual( evidence["child_resources"], sample )
+
+    def test_live_channel_evidence_uses_the_live_bridge_binding( self ) -> None:
+        run_id = "r009-live-bridge"
+        bridge_binding = "bridge-binding-a"
+        with tempfile.TemporaryDirectory() as temporary:
+            root = Path( temporary )
+            ( root / "runtime.binding.json" ).write_text( json.dumps( {
+                "runtime_source_sha256": "source-a", "executable_sha256": "exe-a",
+            } ), encoding="utf-8" )
+            ( root / "contract.preflight.json" ).write_text(
+                json.dumps( {"scenario": "scenario-a"} ), encoding="utf-8"
+            )
+            rows = [
+                {
+                    "schema": R008_CHANNEL_SCHEMA, "sequence": sequence, "run_id": run_id,
+                    "scan_id": run_id + ":1",
+                    "binding": {
+                        "runtime_source_sha256": "source-a", "executable_sha256": "exe-a",
+                        "scenario_id": "scenario-a", "binding_id": bridge_binding,
+                    },
+                    "scan": {"game_minutes": 100, "fresh": True, "isolated": True},
+                    "channel": channel, "signal_origin": "none",
+                    "consumer": "bandit_live_world.signal_scan", "observed": False,
+                    "isolated": True,
+                }
+                for sequence, channel in enumerate( R008_CHANNELS, 1 )
+            ]
+            ( root / R008_CHANNEL_RECORD_FILENAME ).write_text(
+                "".join( json.dumps( row ) + "\n" for row in rows ), encoding="utf-8"
+            )
+
+            evidence = compact_cockpit_live_evidence(
+                root, run_id, binding_id=bridge_binding,
+            )
+
+        self.assertTrue( evidence["production_channel_observation"]["eligible"] )
 
     def test_full_native_render_maps_do_not_overflow_the_semantic_action_channel( self ) -> None:
         run_id = "r009-current-macos"

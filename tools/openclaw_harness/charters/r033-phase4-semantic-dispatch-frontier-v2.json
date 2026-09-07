@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-033: establish only the changed native structural frontier from the digest-bound abstract dispatch checkpoint to the pre-countdown 10080 cadence.",
+  "material_proof": "The fixture is a byte-bound copy of native quicksave state c5c99231, already showing pair [4,5], generation 1, abstract outbound cursor at minute 9960 and no local handoff. Credit is limited to later same-run native cursor movement and an explicit pre-10081 observation of selected watch, return, or stall. The staged C-4 remains zero-credit until a valid selected-watch predicate exists.",
+  "current_uncertainty": "Whether the production abstract cursor reaches selected watch [138,52,0], returns, or remains at a prior waypoint at the next structural cadence.",
+  "material_contradiction": ["source observed before selected watch", "owner, route, member, report, lead, or signal injection", "pair/generation/cursor identity drift", "any F001 replay or mutation"],
+  "forbidden_shortcuts": ["GUI/debug execution", "debug emitted sound", "direct state rewrite after bootstrap", "treating the copied quicksave or C-4 staging as feature proof"],
+  "honest_stop_conditions": ["one pre-countdown selected-watch, return, or stall observation", "first identity/binding contradiction", "any source before valid watch"],
+  "requested_evidence_ceiling": "focused"
+}

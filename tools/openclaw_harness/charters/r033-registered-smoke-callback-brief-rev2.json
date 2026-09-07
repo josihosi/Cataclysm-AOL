@@ -1,0 +1,12 @@
+{
+  "outcome": "R-033: a native active smoke source that persists through the next authoritative cadence can be evaluated by an already registered, eligible staffed bandit observer.",
+  "scenario": "bandit.r033_registered_smoke_callback_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r033.isolated_smoke_channel", "op": "eq", "value": "registered_staffed_observer_native_active_smoke_callback", "minimum_evidence": "declared"}
+    ],
+    "preferences": [
+      {"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}
+    ]
+  }
+}

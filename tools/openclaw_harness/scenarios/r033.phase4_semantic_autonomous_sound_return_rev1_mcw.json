@@ -1,0 +1,49 @@
+{
+  "manifest_version": 2,
+  "name": "r033.phase4_semantic_autonomous_sound_return_rev1_mcw",
+  "description": "R-033 semantic-only successor: an idle structural camp must autonomously dispatch, reach an abstract watch before a delayed fixture C-4 emits, consume the native sound, and later publish a matching returned_report lead.  The native run proves the route; fixture staging is zero-credit and no legacy GUI/debug transport is used.",
+  "status": "active",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r033_phase4_autonomous_sound_return_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r033.autonomous_sound_return": "native_abstract_watch_then_sound_then_returned_report",
+    "capabilities.r033.control": "native_semantic_only_no_ocr_or_foreground_input"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.raw_wait", "cockpit:game.wait", "cockpit:game.act", "cockpit:run.quit", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["keyboard", "mouse", "focus", "ocr", "screen-coordinate", "debug:emit_sound", "debug:inject_signal", "debug:inject_report", "debug:inject_operation", "debug:inject_member", "debug:inject_route", "debug:inject_owner", "raw-save-rewrite-after-install", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r033_phase4_autonomous_sound_return_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r033_phase4_autonomous_sound_return_v1", "helper": "native file bridge", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r033_phase4_autonomous_sound_return_v1/manifest.json",
+    "native_sources": ["src/do_turn.cpp", "src/bandit_live_world.cpp"],
+    "native_executable": "cataclysm-tiles"
+  },
+  "steps": [
+    {"kind": "audit_saved_bandit_live_world_state", "label": "audit_idle_structural_source_footing", "required_site_id_contains": "overmap_special:bandit_camp@140,51,0", "required_member_count": 5, "required_ready_at_home_count": 5, "required_wounded_or_unready_count": 0, "required_active_outside_count": 0, "required_active_group_id_exact": "", "required_active_target_id_exact": "", "required_min_leads": 1, "required_max_leads": 1, "required_lead_kind": "terrain_opportunity", "required_lead_target_id": "road", "required_lead_source_contains": "fixture_phase4_structural_signal_matrix:terrain_fit:road", "abort_on_metadata_failure": true, "abort_verdict": "blocked_r033_autonomous_idle_footing_missing", "abort_reason": "the fresh semantic route lacks its sole non-signal road opportunity or idle roster"},
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_delayed_zero_credit_c4_source", "offsets": [[24,72,0]], "required_items": ["c4armed"], "required_active_items": ["c4armed"], "required_countdown_points": [5356860], "forbidden_fields": ["fd_fire", "fd_smoke"], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r033_autonomous_delayed_source_missing", "abort_reason": "the isolated source item or its exact post-watch native timer is missing, or a competing field channel is authored"},
+    {"kind": "native_semantic_bootstrap", "label": "bind_r033_autonomous_sound_return_native_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "operate_r033_autonomous_sound_return", "objective": "Bind pre-input idle roster, road lead, source countdown, source/executable, and HUD frame. Use only observed native semantic waits to separately establish autonomous dispatch, abstract watch arrival before source emission, run-bound production sound/callback, and a later source-matched returned_report lead. The source is the route's persisted first forward OMT and its exact timer is one minute after watch. Stop on the first contradiction. Do not replay F001 or use GUI/debug transport.", "proof_targets": ["idle roster and sole non-signal lead before input", "native dispatch and exact abstract watcher ownership", "watch arrival before source emission", "run-bound native sound record and callback", "matching returned_report lead after return", "current source/executable/bridge binding", "cleanup"], "authority": ["currently advertised native semantic actions", "game.raw_wait with bounds derived from observed game minutes", "run.quit", "run.witness", "run.finish"], "invariants": ["fixture item staging is zero-credit", "the source may not count before native watch arrival", "no injected signal, lead, report, operation, member, route, or owner", "F001 is not replayed or repaired", "screen/OCR are not evidence", "returned_report must match this run's source provenance"], "live_operations": ["game.raw_wait", "game.wait", "game.act"], "transition_timeout_seconds": 30.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_gates": [{"id": "r033_autonomous_sound_return_bound", "label": "R-033 autonomous abstract sound-return route is bound to one native session", "boundary_step": "operate_r033_autonomous_sound_return", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r033_autonomous_sound_return_bound"], "terminal": ["r033_autonomous_sound_return_bound"]},
+  "evidence_contract": {"claim": "one current-source semantic-only run may establish native abstract dispatch/watch, later native sound, and its matching returned_report lead; it does not establish dedup or aging", "failure_rule": "a pre-watch source fact, missing native owner/source/callback/return binding, or any extra owner/state mutation leaves the route unproved"}
+}

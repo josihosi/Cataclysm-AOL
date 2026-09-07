@@ -1,0 +1,23 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r033_pure_smoke_channel_mcw",
+  "description": "Current-source R-033 isolated smoke channel witness. The disposable fixture contributes one zero-credit primed smoke grenade whose native item processing begins emission immediately before the first eligible callback, plus an eligible-observer footing. Placement and ordinary structural roster materialization are zero-credit; the run must retain native emission, a current production scan, and the first later staffed-observer result without conflating fire, light, sound, memory, dispatch, report, operation or contact.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r033_bandit_smoke_only_observer_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "semantic_only_startup": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {"capabilities.r033.isolated_smoke_channel": "native_smoke_emission_only_staffed_observer_callback", "runtime.entry_mode": "cockpit_live_session"},
+  "runtime_contract": {"permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.keep_watch", "cockpit:run.quit", "cockpit:run.witness", "cockpit:run.finish"], "forbidden_input": ["debug:emit_sound", "debug:inject_signal", "debug:inject_target_knowledge", "debug:inject_dispatch", "debug:inject_local_contact", "raw-save-rewrite-after-install", "direct-state-mutation"], "setup_only_debug": true, "disposable_copy": true, "helpers": ["native file bridge"], "permissions": [], "platform": ["macos"], "profile": "dev-harness", "fixture": "r033_bandit_smoke_only_observer_v1", "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r033_bandit_smoke_only_observer_v1", "helper": "native file bridge", "peekaboo": false, "input": ["advertised native actions"], "ocr": false, "cleanup": true}, "grants_gameplay_proof": false},
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r033_bandit_smoke_only_observer_v1/manifest.json", "native_source": "src/do_turn.cpp", "native_executable": "cataclysm-tiles"},
+  "proof_gates": [{"id": "r033_pure_smoke_channel_bound", "label": "R-033 smoke reaches one current source-bound live session", "boundary_step": "operate_r033_pure_smoke_channel", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r033_pure_smoke_channel_bound"], "terminal": ["r033_pure_smoke_channel_bound"]},
+  "steps": [{"kind": "wait", "label": "load_r033_smoke_laboratory", "seconds": 2.0, "capture_after": true}, {"kind": "native_semantic_bootstrap", "label": "bind_r033_smoke_native_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}}, {"kind": "cockpit_live_session", "label": "operate_r033_pure_smoke_channel", "objective": "Audit the staged zero-credit primer, native smoke emission and production scan, bind a concrete at-home eligible observer, and retain the first following staffed-observer callback. Keep the channel and any lead/rejection separate from fixture setup.", "proof_targets": ["primed-item fixture installation", "native smoke emission with authoritative in-range field state", "production smoke channel record", "eligible observer identity", "source/range/LOS/elevation/weather callback result", "cleanup binding"], "authority": ["advertised native actions and worker-chosen waits", "run.quit", "run.witness", "run.finish"], "invariants": ["fixture activation state and roster materialization are zero-credit", "no injected lead/report/operation/contact", "preserve cadence timestamps and first callback"], "live_operations": ["game.act", "game.keep_watch", "game.wait"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}],
+  "evidence_contract": {"claim": "one source-bound R-033 run supplies only independently observed isolated smoke facts", "failure_rule": "a conflating source, missing binding, missing observer identity, or missing callback facts leaves the affected claim unproved"}
+}

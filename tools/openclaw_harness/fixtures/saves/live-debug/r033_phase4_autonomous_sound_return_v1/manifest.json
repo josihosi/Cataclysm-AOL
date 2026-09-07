@@ -1,0 +1,21 @@
+{
+  "name": "r033_phase4_autonomous_sound_return_v1",
+  "source_fixture": "bandit_phase4_ecology_observer_handoff_v0_2026-08-05",
+  "source_profile": "live-debug",
+  "description": "Disposable R-033 semantic-only footing for an autonomous structural sound return.  It retains the idle five-member camp and its one non-signal road opportunity, and adds one active C-4 on the route's persisted first forward OMT.  Authoritative native HUD conversion records saved turn 5306460 as minute 9241, so the timer is exactly one game minute after the watch boundary: 5306460 + (10081 - 9241) * 60 = 5356860.  Item staging is zero-credit: it provides no field, sound event, observation, signal lead, report, operation, route, member-state, or owner transition.  The native scheduler must first dispatch and move the pair to its watch; only a later native countdown event may supply the sound fact and eventual returned_report lead.",
+  "save_transforms": [
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {
+          "typeid": "c4armed",
+          "count": 1,
+          "offset_ms": [24, 72, 0],
+          "active": true,
+          "countdown_offset_turns": 50400
+        }
+      ]
+    }
+  ]
+}

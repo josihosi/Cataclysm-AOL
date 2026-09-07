@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-033: a current-source isolated nighttime f_exodii_lamp physical source can be observed through the production local-field light channel and then evaluated by an eligible staffed bandit observer.",
+  "material_proof": "A source- and executable-bound disposable run structurally audits its night turn and exactly one f_exodii_lamp source (native light_emitted 90 at installed [10,0,0]), with no fd_fire, fd_smoke or significant sound. It crosses bootstrap and binds the first eligible at-home observer before the following five-minute callback. Any source, observer, range, LOS, elevation, weather and durable lead/rejection record is preserved without treating fixture placement as gameplay credit.",
+  "current_uncertainty": "Whether the isolated lamp source is viable under the loaded map's nighttime weather and whether the bound staffed observer accepts it or records a principled rejection.",
+  "material_contradiction": ["any fire, smoke, sound, authored lead, dispatch, report, operation, contact, or hostile actor is used as the light source", "missing night/source/executable/observer binding", "a callback result is promoted without its channel, source, range and environment facts"],
+  "forbidden_shortcuts": ["debug signal injection", "direct camp-memory or operation mutation", "treating fixture installation as gameplay proof"],
+  "honest_stop_conditions": ["the first eligible staffed callback after the source scan", "a source-binding or fixture-isolation contradiction"],
+  "requested_evidence_ceiling": "focused"
+}

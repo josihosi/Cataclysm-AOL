@@ -197,6 +197,13 @@ class CockpitRunChannel:
             "latest_transition": evidence.get("latest_transition"),
             "persistence": evidence.get("persistence", "unavailable"),
             "evidence_refs": list(evidence.get("evidence_refs", [])),
+            "production_channel_observation": evidence.get(
+                "production_channel_observation", {
+                    "status": "unavailable", "eligible": False,
+                    "records": [], "channels": [],
+                    "issues": ["channel_observation_unavailable"],
+                }
+            ),
             "unsafe": evidence.get("unsafe") is True,
         }
         enabled_actions = [action for action in descriptor["actions"] if action["enabled"]]
@@ -1161,6 +1168,7 @@ class CockpitRunChannel:
             target = float(start) + float(target_delta)
         if start is None or target <= start or target > start + float(maximum):
             return {"ok": False, "error": "keep_watch_target_outside_derived_bound"}
+        maximum_terminal_game_minutes = float(start) + float(maximum)
         recipe_index = 0
         last_game_minutes = float(start)
         tool_round_trips = 0
@@ -1178,10 +1186,6 @@ class CockpitRunChannel:
             })
 
         while True:
-            cancelled = self._cancel_result("not_dispatched", native_action_count=tool_round_trips,
-                                            terminal_game_minutes=self._signal_value(observed, "game_minutes"))
-            if cancelled is not None:
-                return cancelled
             if self._state != "active":
                 return {"ok": False, "error": "live_session_finished", "final": self._final_report}
             observed_current = self._signal_value(observed, "game_minutes")
@@ -1190,10 +1194,23 @@ class CockpitRunChannel:
                 current = last_game_minutes
             else:
                 last_game_minutes = float(current)
-            if current == float(target):
+            if current is not None and current > maximum_terminal_game_minutes:
+                return self._fail_operation("target_crossed", {
+                    "target_game_minutes": target,
+                    "observed_game_minutes": current,
+                    "maximum_terminal_game_minutes": maximum_terminal_game_minutes,
+                    "unused_authority": "revoked",
+                })
+            if current is not None and current >= float(target):
+                overshoot = current - float(target)
                 result = {
-                    "stop_reason": "target_reached",
+                    "stop_reason": "target_reached" if current == float(target) else "target_reached_within_bound",
                     "terminal_observation": observed,
+                    "start_game_minutes": start,
+                    "target_game_minutes": target,
+                    "terminal_game_minutes": current,
+                    "target_overshoot_game_minutes": overshoot,
+                    "derived_bound": dict(bound),
                     "native_action_count": tool_round_trips,
                     "model_round_trips": 1,
                     "tool_round_trips": tool_round_trips,
@@ -1203,11 +1220,10 @@ class CockpitRunChannel:
                 }
                 self._transcript.append({"kind": "keep_watch", "result": result})
                 return {"ok": True, "result": result}
-            if current is not None and current > float(target):
-                return self._fail_operation("target_crossed", {
-                    "target_game_minutes": target, "observed_game_minutes": current,
-                    "unused_authority": "revoked",
-                })
+            cancelled = self._cancel_result("not_dispatched", native_action_count=tool_round_trips,
+                                            terminal_game_minutes=current)
+            if cancelled is not None:
+                return cancelled
             record = self._observations.get(str(observed.get("observation_id", "")))
             raw = record.get("issuing_frame") if isinstance(record, Mapping) else None
             raw_state = str(raw.get("paired_raw_state", raw.get("state", ""))) \
@@ -1574,7 +1590,13 @@ class CockpitRunChannel:
                     return {"ok": False, "error": str(exc)}
                 continue
             continuation_bound = dict(bound)
-            continuation_bound["maximum"] = min(float(maximum), float(target) - current)
+            # The macro target is a completion predicate, not the per-action
+            # evidence bound.  A native duration can legitimately settle on
+            # the first observable minute after that predicate; retain the
+            # remaining *derived* macro budget so the next loop can report a
+            # bounded overshoot instead of rejecting an already accepted
+            # native action before its terminal frame is classified.
+            continuation_bound["maximum"] = float(maximum) - (current - float(start))
             continued = self.continue_session(
                 observation_id=str(observed["observation_id"]),
                 expected_signal="game_minutes", bound=continuation_bound,

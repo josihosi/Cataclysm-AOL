@@ -1,0 +1,49 @@
+{
+  "manifest_version": 2,
+  "name": "r033.phase4_semantic_dispatch_frontier_v2_mcw",
+  "description": "R-033 changed-frontier successor. It starts only from the digest-bound production quicksave after autonomous dispatch, then uses native semantic waits to reach the 10080 structural cadence and observe watch, return, or stall before the already staged C-4 can emit at 10081. Bootstrap and item staging are zero-credit.",
+  "status": "active",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r033_phase4_autonomous_dispatch_frontier_v2",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r033.dispatch_frontier": "native_abstract_cursor_9960_to_10080_precountdown",
+    "capabilities.r033.control": "native_semantic_only_no_ocr_or_foreground_input"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.raw_wait", "cockpit:game.wait", "cockpit:game.act", "cockpit:run.quit", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["keyboard", "mouse", "focus", "ocr", "screen-coordinate", "debug:emit_sound", "debug:inject_signal", "debug:inject_report", "debug:inject_operation", "debug:inject_member", "debug:inject_route", "debug:inject_owner", "raw-save-rewrite-after-install", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r033_phase4_autonomous_dispatch_frontier_v2",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r033_phase4_autonomous_dispatch_frontier_v2", "helper": "native file bridge", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r033_phase4_autonomous_dispatch_frontier_v2/manifest.json",
+    "native_sources": ["src/do_turn.cpp", "src/bandit_live_world.cpp"],
+    "native_executable": "cataclysm-tiles"
+  },
+  "steps": [
+    {"kind": "audit_saved_bandit_live_world_state", "label": "audit_digest_bound_9960_abstract_frontier", "required_site_id_contains": "overmap_special:bandit_camp@140,51,0", "required_active_outing_kind": "structural_sortie", "required_active_outing_activity_id_contains": "#structural", "required_active_outing_generation": 1, "required_active_outing_simulation_owner": "abstract", "required_active_outing_phase": "outbound", "required_active_outing_waypoint_index": 0, "required_active_outing_last_advanced_minutes": 9960, "required_active_outing_exact_pair": true, "required_active_outing_pair_contract": true, "required_local_handoff_state": "empty", "required_active_outside_count": 2, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r033_dispatch_frontier_seed_mismatch", "abort_reason": "the exact native quicksave dispatch frontier is not present"},
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_delayed_c4_precountdown", "offsets": [[24,72,0]], "required_items": ["c4armed"], "required_active_items": ["c4armed"], "required_countdown_points": [5356860], "forbidden_fields": ["fd_fire", "fd_smoke"], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r033_dispatch_frontier_source_mismatch", "abort_reason": "the isolated source does not match the bound 10081 countdown"},
+    {"kind": "native_semantic_bootstrap", "label": "bind_r033_dispatch_frontier_native_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "operate_r033_dispatch_frontier", "objective": "From the saved abstract outbound cursor at minute 9960, use only observed native semantic waits. Record the 10020 waypoint advancement, advance no further than the 10080 structural cadence, apply a separately receipted native action, and observe selected watch, return, or stall before minute 10081. Continue to the source only when selected watch [138,52,0] is authoritatively present with the original pair, generation, and sole abstract owner.", "proof_targets": ["digest-bound 9960 seed", "native cursor progression", "pre-countdown watch/return/stall observation", "current source/executable/bridge binding", "cleanup"], "authority": ["currently advertised native semantic actions", "game.raw_wait with bounds derived from observed game minutes", "run.quit", "run.witness", "run.finish"], "invariants": ["fixture seed and C-4 staging are zero-credit", "no source attribution before selected watch", "no injected signal, lead, report, operation, member, route, or owner", "F001 is not replayed or repaired", "screen/OCR are not evidence"], "live_operations": ["game.raw_wait", "game.wait", "game.act"], "transition_timeout_seconds": 30.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_gates": [{"id": "r033_dispatch_frontier_bound", "label": "R-033 dispatch-frontier session is bound to the saved native checkpoint", "boundary_step": "operate_r033_dispatch_frontier", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r033_dispatch_frontier_bound"], "terminal": ["r033_dispatch_frontier_bound"]},
+  "evidence_contract": {"claim": "one current-source semantic-only changed-frontier run may establish the native 10080 watch, return, or stall boundary; it establishes no source/callback/report claim unless the watch predicate is first met", "failure_rule": "a seed mismatch, pre-watch source fact, lost single-owner identity, or boundary contradiction leaves the sound route unproved"}
+}

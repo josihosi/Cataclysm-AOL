@@ -113,6 +113,25 @@ class CockpitObservationTest(unittest.TestCase):
             else:
                 self.assertEqual(observed["advertised_actions"], [f"{kind}.act"])
 
+    def test_native_top_descriptor_exposes_bound_production_channel_observation(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",
+            "surface_id": "surface-world", "frame_id": "surface-proof:channel", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        }
+        channel_observation = {
+            "status": "green", "eligible": True, "record_count": 6,
+            "channels": ["sound", "smoke", "light", "scent", "prior_knowledge", "incidental_contact"],
+            "issues": [],
+        }
+        observed = cockpit.CockpitRunChannel(
+            lambda: descriptor,
+            read_evidence=lambda: {"production_channel_observation": channel_observation},
+        ).observe()
+        self.assertEqual(
+            observed["compact_log"]["production_channel_observation"], channel_observation,
+        )
+
     def test_unsupported_descriptor_with_an_action_fails_closed(self) -> None:
         frame = {
             "event": "surface_descriptor", "schema_version": 1, "run_id": "surface-proof",

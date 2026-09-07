@@ -1,0 +1,5 @@
+{
+  "outcome": "R-033: one active smoke source in an eligible staffed observer's anchor OMT is remembered once as a smoke signal lead and is deduplicated unchanged at the next authoritative cadence.",
+  "scenario": "bandit.r033_registered_smoke_proximity_dedup_mcw",
+  "query": {"requirements": [{"key": "capabilities.r033.isolated_smoke_channel", "op": "eq", "value": "registered_paired_sites_proximity_smoke_create_then_dedup", "minimum_evidence": "declared"}], "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]}
+}

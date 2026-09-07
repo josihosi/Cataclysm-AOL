@@ -1,0 +1,21 @@
+{
+  "outcome": "R-033: a changed-premise, production-owned significant-sound observation can be bound from a real staged source to an abstract structural watcher and through one identity-continuous local/abstract return, without crediting setup.",
+  "scenario": "bandit.phase4_structural_signal_matrix_live_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.phase4.scenario",
+        "op": "eq",
+        "value": "structural_signal_matrix",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.phase4.control",
+        "op": "eq",
+        "value": "real_signal_returns_approximate_lead_without_player_truth",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

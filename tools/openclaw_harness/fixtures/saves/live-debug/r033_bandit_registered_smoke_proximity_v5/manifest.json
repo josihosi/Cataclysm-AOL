@@ -1,0 +1,13 @@
+{
+  "name": "r033_bandit_registered_smoke_proximity_v5",
+  "source_fixture": "r008_fire_signal_common_v1",
+  "source_profile": "live-debug",
+  "description": "R-033 proximity successor. It pre-registers the staffed 140,40 and empty inherited 140,51 sites without memory, then stages exactly one active smokebomb_act on verified ground terrain at [3374,983,0] (player-relative [2,-13,0]) in the staffed observer's anchor OMT. This establishes a narrow overlapping-OMT geometry probe only; registration and activation are zero-credit and no field, light, sound, lead, report, operation, contact, dispatch, or local projection is authored.",
+  "save_transforms": [
+    {"kind": "player_mutations", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"]},
+    {"kind": "seed_overmap_special_near_player", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "special_id": "bandit_camp", "source_special_id": "bandit_camp", "site_index": 1, "offset_omt": [0, -1, 0]},
+    {"kind": "overmap_npcs_near_player", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "offsets_ms": [[0, -24, 0]], "source_npc_id": 4, "clone_follower_template": false, "npc_faction": "hells_raiders", "npc_mission": 7, "chat_topic": "TALK_STRANGER_NEUTRAL", "name_prefix": "R033 proximity smoke observer"},
+    {"kind": "bandit_registered_staffed_observer_bootstrap", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "footing": "same_level_registered_pair_z0_v2"},
+    {"kind": "map_items_near_player", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "items": [{"typeid": "smokebomb_act", "offset_ms": [2, -13, 0], "active": true, "countdown_offset_turns": 700}]}
+  ]
+}

@@ -1,0 +1,48 @@
+{
+  "name": "r033_bandit_registered_smoke_observer_v2",
+  "source_fixture": "r008_fire_signal_roof_bandit_v1",
+  "source_profile": "live-debug",
+  "description": "R-033 successor footing. It recreates only the exact zero-credit registered idle camp state audited after the prior native bootstrap: site overmap_special:bandit_camp@140,40,0 and its at-home, unwounded observer id 18, with empty lead/report/operation/outing state. Separately it stages exactly one already-active smokebomb_act on the verified solid roof. Its authoritative countdown extends from the saved turn through the next five-minute signal cadence. No fd_smoke or fd_fire field, light source, sound, lead, report, operation, contact, dispatch, or local projection is authored.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"]
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [0, -1, -1]
+    },
+    {
+      "kind": "overmap_npcs_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offsets_ms": [[0, -24, -1]],
+      "source_npc_id": 4,
+      "clone_follower_template": false,
+      "npc_faction": "hells_raiders",
+      "npc_mission": 7,
+      "chat_topic": "TALK_STRANGER_NEUTRAL",
+      "name_prefix": "R033 smoke observer"
+    },
+    {
+      "kind": "bandit_registered_staffed_observer_bootstrap",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip"
+    },
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {
+          "typeid": "smokebomb_act",
+          "offset_ms": [2, 0, 0],
+          "active": true,
+          "countdown_offset_turns": 420
+        }
+      ]
+    }
+  ]
+}

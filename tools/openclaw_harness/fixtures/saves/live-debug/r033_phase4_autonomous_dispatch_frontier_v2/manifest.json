@@ -1,0 +1,33 @@
+{
+  "name": "r033_phase4_autonomous_dispatch_frontier_v2",
+  "description": "Disposable, zero-credit R-033 successor seed copied from the one authoritative native quicksave after autonomous structural dispatch. It is bound to the saved dimension digest and retains the production-owned abstract outbound pair only; it adds no owner, route, member, signal, report, or lead state. One already-staged isolated C-4 remains at turn 5356860 (minute 10081).",
+  "source_run": {
+    "run_id": "33026c7c28b85d7137428c755fd2af5fd162abc5b26ecc2b1fd2a90fa8657ce2",
+    "binding_id": "7637a36c19f55d48c29ea5fda30bacc87cadf62e8be9ca72c4a959b0e4077cb9",
+    "dispatch_transition_sequence": 156,
+    "dispatch_minutes": 9960,
+    "native_quicksave_response_sha256": "cd21ac39661dec1770acaa820add7b9dfc4dadc67357754342cfc772a8007185"
+  },
+  "authoritative_saved_state": {
+    "world": "McWilliams",
+    "dimension_data_sha256": "c5c992311dd87f0553bdce64639a1138b6c459d8d6997c08795d190fee2c4f31",
+    "world_tree_sha256": "250b7b39092ec7e965209e4662acc419747f2d4bf449473dbc89a9563e9f6c60",
+    "site_id": "overmap_special:bandit_camp@140,51,0",
+    "activity_id": "overmap_special:bandit_camp@140,51,0#structural",
+    "member_ids": [4, 5],
+    "generation": 1,
+    "simulation_owner": "abstract",
+    "phase": "outbound",
+    "waypoint_index": 0,
+    "waypoint_omt": [140, 51, 0],
+    "cursor_last_advanced_minutes": 9960,
+    "local_handoff_state": "empty"
+  },
+  "delayed_source": {
+    "item": "c4armed",
+    "offset_ms": [24, 72, 0],
+    "countdown_point": 5356860,
+    "game_minutes": 10081,
+    "credit": "zero"
+  }
+}

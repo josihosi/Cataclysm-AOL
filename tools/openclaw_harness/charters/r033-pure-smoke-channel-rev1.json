@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-033: a current-source isolated fd_smoke physical source can be observed through the production local-field channel and then evaluated by an eligible staffed bandit observer.",
+  "material_proof": "A source- and executable-bound disposable run structurally audits exactly one active primed smoke grenade at [2,0,0] on a verified solid tile-flat roof, with a countdown that begins native fd_smoke emission immediately before the callback; the post-scan saved-map audit must then bind every in-range fd_smoke position, intensity and age. There is no fd_fire and no luminous fixture/item. It crosses bootstrap and binds the first eligible at-home observer before the following staffed callback. Any source, observer, range, LOS, elevation, weather and durable lead/rejection record is preserved without treating fixture activation as gameplay credit.",
+  "current_uncertainty": "Whether the isolated smoke source is viable under the loaded map's current weather and whether the bound staffed observer accepts it or records a principled rejection.",
+  "material_contradiction": ["any fire, light, sound, authored lead, dispatch, report, operation, contact, or hostile actor is used as the smoke source", "missing source/executable/observer binding", "a callback result is promoted without its channel, source, range and environment facts"],
+  "forbidden_shortcuts": ["debug signal injection", "direct camp-memory or operation mutation", "treating fixture installation as gameplay proof"],
+  "honest_stop_conditions": ["the first eligible staffed callback after the source scan", "a source-binding or fixture-isolation contradiction"],
+  "requested_evidence_ceiling": "focused"
+}

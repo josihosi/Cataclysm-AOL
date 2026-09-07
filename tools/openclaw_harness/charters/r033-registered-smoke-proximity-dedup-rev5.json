@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-033: one active smoke source in an eligible staffed observer's anchor OMT is remembered once as a smoke signal lead and is deduplicated unchanged at the next authoritative cadence.",
+  "material_proof": "Before input, both visible bandit sites are registered and empty of leads, reports, operations, marks, contacts and dispatch; only 140,40 has at-home unwounded member 18. The sole active native smokebomb_act is at [3374,983,0], grass terrain, OMT [140,40,0], inside the avatar scanner radius and coincident with the observer camp OMT. First cadence must create zero sites, record exact smoke-only R008, and create an accepted smoke signal lead with matching source OMT. Only that signal-origin smoke lead may be counted. With the source unchanged, the second cadence must retain the same signal lead ID/count/hash and record unchanged.",
+  "current_uncertainty": "Whether coincident camp/source OMT geometry clears the native terrain LOS route and produces an independently durable smoke signal lead.",
+  "material_contradiction": ["a site created at the first cadence", "any authored fd_smoke/fd_fire, light, sound, lead, report, operation, contact, dispatch, or local projection", "a callback without actor 18, source/camp OMT coincidence, positive LOS, or exact binding", "counting terrain-opportunity leads instead of a signal-origin smoke lead matching source [140,40,0]", "a dedup claim without matching signal lead identity/hash", "a changed source between cadences"],
+  "forbidden_shortcuts": ["debug signal injection", "direct camp-memory or operation mutation", "treating fixture registration or item activation as gameplay proof"],
+  "honest_stop_conditions": ["first created matching smoke signal lead plus second unchanged matching signal lead", "a source-binding, terrain/source position, bootstrap, callback, or identity contradiction"],
+  "requested_evidence_ceiling": "focused"
+}

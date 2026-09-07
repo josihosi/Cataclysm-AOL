@@ -102,6 +102,7 @@ from startup_harness import (  # noqa: E402
     normalize_fixture_save_transforms,
     remove_inherited_shadow_flavor_producer_global_eocs_from_payload,
     schedule_global_eoc_in_payload,
+    semantic_step_trace_start_for_source,
     overmap_file_coords_from_abs_omt,
     overmap_flat_index,
     overmap_layer_index,
@@ -136,6 +137,22 @@ from bandit_live_world_audit import zzip_binary as bandit_zzip_binary  # noqa: E
 
 class SaveValidationError(RuntimeError):
     """A stable, user-facing reason a player save cannot be trusted."""
+
+
+class SemanticTraceCursorContractTest(unittest.TestCase):
+    def test_run_owned_native_stream_uses_its_own_zero_cursor(self) -> None:
+        """A debug.log pre-launch cursor is invalid for a new run-local trace."""
+        with tempfile.TemporaryDirectory(prefix="semantic_trace_cursor_") as temp_dir:
+            run_dir = Path(temp_dir)
+            (run_dir / "semantic.native.events.jsonl").write_text(
+                'openclaw_harness_semantic_step: {"event":"frame"}\n',
+                encoding="utf-8",
+            )
+
+            self.assertEqual(
+                semantic_step_trace_start_for_source("dev-harness", run_dir, 20422),
+                0,
+            )
 
 
 class PeekabooPressSequenceContractTest(unittest.TestCase):

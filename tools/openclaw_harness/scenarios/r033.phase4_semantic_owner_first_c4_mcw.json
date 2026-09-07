@@ -1,0 +1,40 @@
+{
+  "manifest_version": 2,
+  "name": "r033.phase4_semantic_owner_first_c4_mcw",
+  "description": "R-033 semantic owner-first route.  The disposable fixture begins with the unchanged exact local structural pair and one isolated active C-4 source.  Native semantic turns alone must first produce the local-to-abstract handoff; the read-only structural_outing_owner surface fact records pair IDs, generation, waypoint, cursor, and owner before and after that boundary.  Only a later source event while abstract can be considered for callback or lead evidence.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r033_phase4_owner_first_delayed_c4_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "semantic_only_startup": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r033.route": "semantic_local_to_abstract_owner_before_sound_callback",
+    "capabilities.r033.control": "native_semantic_only_no_ocr_or_foreground_input"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.raw_wait", "cockpit:game.wait", "cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "raw-save-rewrite", "fixture-save-transform", "direct-state-mutation", "debug emitted sound", "direct signal, lead, report, operation, member, route, or owner mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [], "permissions": [], "platform": ["macos"],
+    "profile": "dev-harness", "config_profile": "dev-harness", "fixture": "r033_phase4_owner_first_delayed_c4_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r033_phase4_semantic_armed_c4_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r033_phase4_owner_first_delayed_c4_v1/manifest.json", "profile": "tools/openclaw_harness/profiles/dev-harness.json"},
+  "steps": [
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_zero_credit_armed_source", "offsets": [[24,48,0]], "required_items": ["c4armed"], "required_active_items": ["c4armed"], "required_countdown_points": [5250893], "forbidden_fields": ["fd_fire", "fd_smoke"], "abort_on_metadata_failure": true},
+    {"kind": "audit_saved_bandit_live_world_state", "label": "audit_exact_local_homeward_pair_before_owner_boundary", "required_site_id_contains": "bandit_camp", "required_active_outing_kind": "structural_sortie", "required_active_outing_simulation_owner": "local", "required_active_outing_generation": 1, "required_active_outing_handoff_epoch": 1, "required_active_outing_phase": "returning_home", "required_active_outing_exact_pair": true, "required_local_handoff_exact_pair": true, "required_local_handoff_cohesion_abort_return": false, "required_active_members_found": true, "required_active_member_abs_omt": [140, 51, 0], "abort_on_metadata_failure": true},
+    {"kind": "native_semantic_bootstrap", "label": "bind_owner_first_native_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "r033_owner_first_live", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Use accepted semantic native actions to reach and observe the production-owned local-to-abstract handoff before any callback attribution.  Compare structural_outing_owner snapshots for exact IDs, generation, route/waypoint, cursor, and a single owner; only then observe a later callback/lead.", "proof_targets": ["same-run pre/post owner snapshots", "accepted native receipts", "single-owner handoff", "post-abstract source callback/lead", "cleanup"], "authority": ["currently advertised native semantic actions", "declared cockpit native wait operations", "run.witness", "run.finish"], "invariants": ["fixture source has zero behavior credit", "do not credit or trigger a sound callback until abstract owner is observed", "no direct ownership, route, member, signal, lead, report, or source mutation", "screen/OCR are not proof"], "live_operations": ["game.raw_wait", "game.wait", "game.act", "run.continue"], "transition_timeout_seconds": 30.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_gates": [{"id": "r033_owner_first_live", "label": "R-033 semantic owner-first route", "boundary_step": "r033_owner_first_live", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
+  "proof_route": {"gates": ["r033_owner_first_live"], "terminal": ["r033_owner_first_live"]}
+}

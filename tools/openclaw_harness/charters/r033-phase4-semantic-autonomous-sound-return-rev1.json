@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-033: an idle structural camp autonomously reaches an abstract watch before a delayed real source emits, consumes that source through the current native sound path, and later returns one matching returned_report lead.",
+  "material_proof": "Pre-input evidence binds the exact idle camp, sole road opportunity, active source on the route's first forward OMT, and its exact timer (turn 5356860, calculated from the authoritative native HUD minute 9241 at saved turn 5306460: (10081 - 9241) * 60 turns), together with current source/executable and native session. Credit requires a later same-run native sequence: autonomous dispatch; abstract watch arrival with no sound fact; native C-4 source emission and a run-bound sound observation/callback; then a returned_report lead whose source provenance matches that event. Fixture setup and item activation are zero-credit. This run intentionally does not prove deduplication or aging.",
+  "current_uncertainty": "Whether the delayed source's timer remains quiet through the current scheduler's autonomous watch boundary, and whether the resulting abstract route returns its sound fact as a matching report without a GUI/debug handoff.",
+  "material_contradiction": ["sound observed before native abstract watch arrival", "a lead, report, operation, route, owner, or member state directly injected", "a callback or returned_report lead without same-run source and current executable binding", "a source-provenance mismatch", "any F001 replay or mutation"],
+  "forbidden_shortcuts": ["GUI/debug execution", "debug emitted sound", "direct signal, lead, report, operation, member, route, or owner mutation", "raw save rewrite after installation", "treating fixture staging as feature proof"],
+  "honest_stop_conditions": ["one native source-to-returned_report sequence", "first missing or contradictory dispatch/watch/source/callback/return boundary", "any binding drift"],
+  "requested_evidence_ceiling": "focused"
+}

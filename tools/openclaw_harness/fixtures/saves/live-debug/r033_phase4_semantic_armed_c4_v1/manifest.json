@@ -1,0 +1,26 @@
+{
+  "name": "r033_phase4_semantic_armed_c4_v1",
+  "source_fixture": "bandit_phase4_ecology_dispatch_observer_v0_2026-08-05",
+  "source_profile": "live-debug",
+  "description": "Disposable R-033 sound-source footing derived from the saved local structural-observer pair.  It changes only the passive avatar's safe loaded-map offset and puts one already-active c4armed item at the pair's authoritative target OMT (136,51,0).  The item is an explicit zero-credit fixture source: an ordinary native semantic wait must cause any detonation, production callback, observation, lead, or later ownership transition.  No field, sound event, signal fact, lead, report, operation, member, route, or ownership state is injected.",
+  "save_transforms": [
+    {
+      "kind": "player_location_offset_ms",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offset_ms": [0, -48, 0]
+    },
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        {
+          "typeid": "c4armed",
+          "count": 1,
+          "offset_ms": [24, 48, 0],
+          "active": true,
+          "countdown_offset_turns": 6
+        }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-033: an exact local structural pair may transition to abstract ownership under accepted native semantic turns, retaining member IDs, generation, route cursor and a single owner, before any later source callback or lead is attributed.",
+  "material_proof": "Startup audit is zero-credit and establishes active c4armed at (136,51,0) plus the local exact pair (4,5), generation 1. Credit for the boundary requires same-run structural_outing_owner observations before and after accepted native receipts: unchanged IDs/generation and coherent route/waypoint/cursor, old owner local, new owner abstract, and never a simultaneous owner. Only after the abstract observation can a later source callback or lead be assessed.",
+  "current_uncertainty": "Whether production turns reach the authorized local-to-abstract boundary without a fixture or direct-state shortcut, and whether a later abstract-owned source event is attributable.",
+  "material_contradiction": ["any direct ownership, member, route, signal, lead, report, or source mutation", "changed member IDs or generation across the boundary", "dual local/abstract advancement", "callback or lead credited before abstract ownership is observed"],
+  "forbidden_shortcuts": ["debug emitted sound", "direct state mutation", "raw save rewrite after fixture installation", "physical/foreground input", "fixture mutation of the transition"],
+  "honest_stop_conditions": ["finish after exact source-bound handoff evidence and the first later abstract callback/lead result", "finish inconclusive if the native route does not reach abstract ownership", "finish contradicted on identity, ownership, or provenance violation"],
+  "requested_evidence_ceiling": "focused"
+}

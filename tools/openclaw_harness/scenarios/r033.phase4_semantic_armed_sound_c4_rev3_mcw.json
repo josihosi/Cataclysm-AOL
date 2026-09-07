@@ -1,0 +1,47 @@
+{
+  "manifest_version": 2,
+  "name": "r033.phase4_semantic_armed_sound_c4_rev3_mcw",
+  "description": "R-033 qualified semantic-only source-staged sound route. A disposable fixture provides exactly one persisted active C-4 at the local structural pair's target, with saved turn 5249093 and countdown point 5249099. The required startup audit asserts that active state and countdown before any native wait; staging remains zero credit. The native semantic cockpit owns detonation, production sound callback, observer result, returned lead, and later local/abstract ownership result.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r033_phase4_semantic_armed_c4_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "semantic_only_startup": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r033.route": "source_staged_sound_to_structural_observer_and_owner_boundary",
+    "capabilities.r033.control": "native_semantic_only_no_ocr_or_foreground_input"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.raw_wait", "cockpit:game.wait", "cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "raw-save-rewrite", "fixture-save-transform", "direct-state-mutation", "debug emitted sound", "direct signal, lead, report, operation, or member-state injection"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "r033_phase4_semantic_armed_c4_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r033_phase4_semantic_armed_c4_v1", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r033_phase4_semantic_armed_c4_v1/manifest.json",
+    "profile": "tools/openclaw_harness/profiles/dev-harness.json"
+  },
+  "steps": [
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_zero_credit_armed_source", "offsets": [[24, 48, 0]], "required_items": ["c4armed"], "required_active_items": ["c4armed"], "required_countdown_points": [5249099], "forbidden_fields": ["fd_fire", "fd_smoke"], "abort_on_metadata_failure": true, "abort_verdict": "blocked_r033_armed_source_fixture_missing", "abort_reason": "the disposable source fixture lacks its exact active C-4/timer state or includes a competing field channel"},
+    {"kind": "audit_saved_bandit_live_world_state", "label": "audit_structural_observer_owner_before_source", "required_site_id_contains": "bandit_camp", "required_active_outing_kind": "structural_sortie", "required_active_outing_simulation_owner": "local", "required_active_outing_generation": 1, "required_active_outing_phase": "observing", "required_active_outing_exact_pair": true, "required_local_handoff_exact_pair": true, "abort_on_metadata_failure": true, "abort_verdict": "blocked_r033_structural_observer_footing_missing", "abort_reason": "the staged source does not have its existing exact local structural pair footing"},
+    {"kind": "native_semantic_bootstrap", "label": "bind_r033_armed_source_native_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "r033_armed_source_sound_and_owner_live", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Use only accepted native semantic waits and immutable observations. Establish, if emitted, the real active-C4 detonation, exact sound source/current OMT, callback and structural observer identities, then the first available returned lead and owner transition.", "proof_targets": ["run-bound source receipt", "native detonation/callback observation", "observer/member/lead identity", "exact elapsed game time", "single-owner local/abstract result", "explicit cleanup"], "authority": ["currently advertised native semantic actions", "declared cockpit native wait operations", "run.witness", "run.finish"], "invariants": ["fixture source and all setup have zero behavior credit", "screen and OCR output are not proof", "no actor is credited without matching native identity and owner state", "mixed channel outcomes remain independent"], "live_operations": ["game.raw_wait", "game.wait", "game.act", "run.continue"], "transition_timeout_seconds": 30.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_gates": [{"id": "r033_armed_source_sound_and_owner_live", "label": "R-033 source-staged native semantic sound and ownership route", "boundary_step": "r033_armed_source_sound_and_owner_live", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false, "same_run": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
+  "proof_route": {"gates": ["r033_armed_source_sound_and_owner_live"], "terminal": ["r033_armed_source_sound_and_owner_live"]}
+}

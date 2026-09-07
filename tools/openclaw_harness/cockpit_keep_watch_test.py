@@ -151,6 +151,80 @@ class KeepWatchTest(unittest.TestCase):
             "world.wait", "menu.choose", "wait.1m",
         ])
 
+    def test_terminal_exact_target_wins_over_a_late_player_cancel(self) -> None:
+        start = frame(1, 100, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        target = frame(2, 101, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        dispatched: list[str] = []
+        cancelled = [False]
+
+        def dispatch(issuing: dict[str, object], action_id: str,
+                     stable_id: str | None = None) -> dict[str, object]:
+            dispatched.append(action_id)
+            cancelled[0] = True
+            return {
+                "native_receipt": {
+                    "frame_id": issuing["frame_id"], "action_id": action_id, "accepted": True,
+                },
+                "next_frame": target, "_next_frame": target,
+            }
+
+        channel = cockpit.CockpitRunChannel(
+            lambda: start if not dispatched else target, dispatch,
+            binding_id="binding-a", read_binding_id=lambda: "binding-a",
+            cancel_request=lambda: {"cancelled": cancelled[0], "reason": "player_cancelled"},
+        )
+        result = cockpit.CockpitService(run_channel=channel).call({
+            "action": "game.keep_watch", "keep_watch": {
+                "enabled": True, "target_game_minutes": 101, "bound": bound(),
+                "recipe": ["world.wait"],
+            },
+        })
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["result"]["stop_reason"], "target_reached")
+        self.assertEqual(dispatched, ["world.wait"])
+
+    def test_bounded_terminal_overshoot_is_explicit_success(self) -> None:
+        start = frame(1, 100, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        overshot = frame(2, 102, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        service, dispatched = self.service([start, overshot])
+
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(), "recipe": ["world.wait"],
+        }})
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(result["result"]["stop_reason"], "target_reached_within_bound")
+        self.assertEqual(result["result"]["terminal_game_minutes"], 102)
+        self.assertEqual(result["result"]["target_overshoot_game_minutes"], 1)
+        self.assertEqual(dispatched, ["world.wait"])
+
+    def test_terminal_overshoot_beyond_derived_bound_fails_closed(self) -> None:
+        start = frame(1, 100, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        exceeded = frame(2, 103, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        })
+        service, dispatched = self.service([start, exceeded])
+
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(), "recipe": ["world.wait"],
+        }})
+
+        self.assertFalse(result["ok"], result)
+        self.assertEqual(result["error"], "derived_bound_exhausted")
+        self.assertEqual(result["failure"]["detail"]["observed"], 103)
+        self.assertEqual(dispatched, ["world.wait"])
+
     def test_permissive_watch_receipts_the_explicit_semantic_damage_ignore_prompt(self) -> None:
         safety = {"classification": "clear", "monster": False, "danger": False, "damage": False}
         start = frame(1, 100, safety)

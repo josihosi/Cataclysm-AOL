@@ -1,0 +1,11 @@
+{
+  "outcome": "R-033: a real fixture-staged active C-4 source may be observed only through its later native semantic detonation, production sound callback, structural observer response, and identity-continuous ownership result.",
+  "scenario": "r033.phase4_semantic_armed_sound_c4_rev2_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r033.route", "op": "eq", "value": "source_staged_sound_to_structural_observer_and_owner_boundary", "minimum_evidence": "declared"},
+      {"key": "capabilities.r033.control", "op": "eq", "value": "native_semantic_only_no_ocr_or_foreground_input", "minimum_evidence": "declared"}
+    ],
+    "preferences": []
+  }
+}

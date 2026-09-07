@@ -1,0 +1,11 @@
+{
+  "name": "r033_phase4_owner_first_delayed_c4_v1",
+  "source_fixture": "bandit_phase4_ecology_dispatch_observer_v0_2026-08-05",
+  "source_profile": "live-debug",
+  "description": "Disposable R-033 owner-first footing. It retains the exact generation-1 local structural pair and stages only the two physical-return preconditions: both persistent projections are on their camp OMT and the local cursor is in returning_home. It does not grant an owner transition, return receipt, cursor advancement, lead, report, or signal. The native next turn owns that consuming handoff. The delayed C-4 prevents a source event before that boundary is independently observed.",
+  "save_transforms": [
+    {"kind": "player_location_offset_ms", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "offset_ms": [0, -48, 0]},
+    {"kind": "map_items_near_player", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "items": [{"typeid": "c4armed", "count": 1, "offset_ms": [24, 48, 0], "active": true, "countdown_offset_turns": 1800}]},
+    {"kind": "bandit_structural_homeward_reentry", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "site_id": "overmap_special:bandit_camp@140,51,0", "activity_id": "overmap_special:bandit_camp@140,51,0#structural", "member_ids": [4, 5], "generation": 1, "camp_omt": [140, 51, 0], "member_positions_ms": {"4": [3371, 1230, 0], "5": [3376, 1233, 0]}}
+  ]
+}
