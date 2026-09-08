@@ -1447,3 +1447,43 @@ Implementation status:
 
 - [ ] 🔴 R-MAINT-FS-MIGRATION — One Functional Specification describes code behavior while the existing ledger and evidence surfaces own delivery tracking and proof, with compatible routing and lifecycle operations.
 <!-- DE67:DFS-SLICE:END id=R-MAINT-FS-MIGRATION-S001 claim=R-MAINT-FS-MIGRATION -->
+
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-REVIEW-CONTEXT-S001 claim=R-MAINT-REVIEW-CONTEXT -->
+### Gate-specific reviewer context with preserved owner conversation
+
+`codex_app_server_runner.py::run` currently maps `mutation-reviewer` to `mutator` and, when
+`persistent_mutator` is true, resumes `MutatorSession.thread_id()` regardless of the current gate.
+`mutator_session.py` stores one owner conversation/review thread at `mutator-session.json`.
+That routing reuses all available conversation history even for independent incident/random gates.
+The existing transport test demonstrates a second review selecting `thread/resume`.
+
+Separate the lifetime of a gate review's working context from the durable owner conversation.
+A standalone gate can start with current role guidance, exact invocation bindings, complete pending
+owner input, current contract/frontier and selected retrievable evidence, without automatically
+inheriting every earlier review. Preserve deliberate continuation of the same unfinished review and
+the owner's conversational continuity; do not reset, overwrite or silently replace the owner's
+session or discard authority that has not yet reached current contract/queue state. Reuse existing
+context/receipt selection APIs and exact revision handles; missing necessary current authority must
+remain visible and be recovered before dependent mutation. Historical content is evidence, not a
+new gate or automatic authorization. Session choice must be explicit in retained runner metadata.
+
+`run`, `MutatorSession` and `agent_mailbox` must keep one exclusive mutation owner, exact workspace/
+role/gate/run bindings, owner input delivery during review, correlated replies and safe cancellation.
+Owner conversation messages and coordinator advisory requests must reach their intended recipient;
+completion must leave the owner conversation resumable. Stale/mismatched sessions, interrupted
+review continuation and failed launch must not create a second owner or lose pending input.
+Supervisor launch/restart ownership, policy/clock semantics and accepted evidence remain unchanged.
+
+Use isolated fake-RPC/runner checks for distinct-gate context selection, same-review recovery,
+owner-conversation continuation, concurrent acquisition, mailbox delivery and startup/cancellation
+failure. Prove actual selected input and subsequent use on a naturally authorized review without
+manufacturing a gate. Compare full-tree input/cached/output and helper/retry costs against the
+retained context-heavy baseline on comparable work; report remaining system/context overhead and
+order effects. Configuration or `thread/start` alone proves neither authority preservation nor
+savings. Source and baseline accounting: `state/review-random-cycle-12/review-context-source.json`.
+
+Implementation status:
+
+- [ ] 🔴 R-MAINT-REVIEW-CONTEXT — Standalone mutation reviews receive sufficient current gate context without automatic whole-history inheritance, preserving the owner's conversation, authority and exclusive lifecycle.
+<!-- DE67:DFS-SLICE:END id=R-MAINT-REVIEW-CONTEXT-S001 claim=R-MAINT-REVIEW-CONTEXT -->
