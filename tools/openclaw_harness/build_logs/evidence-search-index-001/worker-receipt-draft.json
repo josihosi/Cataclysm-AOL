@@ -1,0 +1,61 @@
+{
+  "disposition": "completed",
+  "verdict": "implemented",
+  "outcome": "Source-bound incremental evidence ingestion and a real local embedding backend are available for the trial query adapter.",
+  "summary": "The SQLite derived index preserves source generations, committed complete-record cursors, raw artifact handles, occurrence identities, content/model/chunker vector reuse, and atomic recovery. A task-owned isolated llama.cpp server produced real embeddings from an already-installed Gemma GGUF and ranked a low-overlap payment/peace paraphrase correctly before clean exit.",
+  "material_changes": [
+    "Added evidence_search_index.py with automatic explicit-root discovery, generation-aware reconciliation, exact occurrence provenance, durable cursors, stale/unavailable visibility, and content-addressed vector persistence.",
+    "Added evidence_search_backend.py with loopback llama.cpp embedding/ranking and a capability probe for the shared Ollama route.",
+    "Added focused recovery/provenance/vector-reuse tests."
+  ],
+  "tests": [
+    "24 focused unittest cases passed: evidence_search_index_test.py, evidence_display_test.py, cockpit_evidence_test.py.",
+    "Live isolated llama.cpp embedding probe returned 1536-dimensional vectors and ranked the low-overlap payment/peace passage first at cosine 0.732328."
+  ],
+  "live_actions": [
+    "Shared Ollama HTTP embedding endpoints were read-only probed; they refused embedding use and were not restarted or changed.",
+    "Task-owned llama-server PID 8256, born 2026-09-08 16:11:49, listened only on 127.0.0.1:59617, was SIGTERM-cleaned, and was absent from the final ps check."
+  ],
+  "evidence_ceiling": [
+    "Retrieval/indexing functionality only; it creates no gameplay or owner-authority proof.",
+    "The shared Ollama server remains embedding-disabled; the real backend requires an explicit task-owned isolated llama.cpp lifecycle over the already-installed model."
+  ],
+  "bindings": {
+    "backend": "llama.cpp-embedding",
+    "chunking_version": "complete-record-v1",
+    "model_id": "hf.co/google/gemma-4-E2B-it-qat-q4_0-gguf:latest",
+    "model_version": "sha256-fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634",
+    "semantic_probe_port": "127.0.0.1:59617"
+  },
+  "journal_entries": [
+    {
+      "id": "index-001-ingestion",
+      "sequence": 1,
+      "event_type": "derived_index_implementation",
+      "evidence_class": "focused_test",
+      "artifact_ref": "tools/openclaw_harness/build_logs/evidence-search-index-001/focused-tests.log",
+      "summary": "Focused index/recovery/compatibility suite passed."
+    },
+    {
+      "id": "index-001-semantic-probe",
+      "sequence": 2,
+      "event_type": "local_semantic_backend_probe",
+      "evidence_class": "live_local_model",
+      "artifact_ref": "tools/openclaw_harness/build_logs/evidence-search-index-001/isolated-embedding-probe.log",
+      "summary": "Existing local Gemma GGUF served real embeddings through task-owned llama.cpp and then exited."
+    }
+  ],
+  "artifacts": [
+    {"path": "tools/openclaw_harness/evidence_search_index.py", "role": "index implementation"},
+    {"path": "tools/openclaw_harness/evidence_search_backend.py", "role": "semantic backend implementation"},
+    {"path": "tools/openclaw_harness/evidence_search_index_test.py", "role": "focused tests"},
+    {"path": "tools/openclaw_harness/build_logs/evidence-search-index-001/focused-tests.log", "role": "test output"},
+    {"path": "tools/openclaw_harness/build_logs/evidence-search-index-001/isolated-embedding-probe.log", "role": "isolated local backend log"}
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [],
+  "active_work": ["R-MAINT-EVIDENCE-SEARCH-query-001 owns the shared query/CLI adapter and verified original expansion surface.", "R-MAINT-EVIDENCE-SEARCH-evaluation-001 owns usefulness evaluation and owner decision."],
+  "first_open_boundary": "",
+  "narrow_queries": ["Use LlamaCppEmbeddingBackend.rank with the model/version binding above while a task-owned loopback embedding server is alive.", "Use EvidenceIndex.reconcile explicit roots followed by embed_missing(backend); original spans remain recoverable with cockpit_evidence.record_artifact."],
+  "entrypoints": ["tools/openclaw_harness/evidence_search_index.py::EvidenceIndex", "tools/openclaw_harness/evidence_search_backend.py::LlamaCppEmbeddingBackend"]
+}

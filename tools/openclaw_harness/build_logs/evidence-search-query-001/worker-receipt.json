@@ -1,0 +1,84 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-EVIDENCE-SEARCH-query-001",
+  "claim_id": "R-MAINT-EVIDENCE-SEARCH",
+  "worker_id": "01a08163-5e6f-7023-a1df-5e09f1cbf169",
+  "outcome": "Deliver a shared natural-text and filtered evidence query surface with verified original expansion, semantic ranking, exact fallback, and explicit freshness and failure states.",
+  "disposition": "completed",
+  "verdict": "The query and CLI now rank stored evidence with a real local semantic backend, preserve alternate and conflicting hits, verify original excerpts, expose filters, paging and coverage, and degrade visibly to usable lexical results.",
+  "summary": "A shared query adapter and CLI now embed natural-language queries against stored vectors, combine semantic and lexical ranking, apply explicit record and null filters, page stably, expand verified original context, and report stale, partial, missing, tampered, unavailable, no-match, and corrupt-index states. Nine focused tests pass. A live low-overlap payment/peace query ranked the peaceful negotiation record first while retaining hostile and unrelated alternatives.",
+  "first_divergence": null,
+  "first_open_boundary": "Real use on comparable normal worker and coordinator questions, cost and friction comparison, and Josef's keep/revise/retire decision remain assigned to R-MAINT-EVIDENCE-SEARCH-evaluation-001 and the owner gate.",
+  "material_changes": [
+    "Added tools/openclaw_harness/evidence_search_query.py.",
+    "Added tools/openclaw_harness/evidence_search_query_test.py.",
+    "Added semantic query-vector ranking, lexical fallback, filters, paging, verified expansion, coverage and degraded/error reporting."
+  ],
+  "journal_entries": [],
+  "tests": [
+    "The focused index/query unittest suite passed 9 of 9 tests.",
+    "Live local llama.cpp proof embedded a low-overlap query and ranked the peaceful negotiation record first while retaining conflicting and unrelated alternatives.",
+    "Focused cases cover exact and null filters, stable paging and expansion, tamper and deletion, stale/degraded/no-match, unavailable backend with lexical results, and corrupt-index CLI output.",
+    "git diff --check passed."
+  ],
+  "live_actions": [
+    "The proof used an already-installed Gemma model through a task-owned loopback llama-server on port 59617.",
+    "Attempts reported PIDs 9688 and 9817 exited before proof. The worker reported proof PID 10019, while the in-shell process check referenced PID 10143; no birth identity was preserved.",
+    "The server log ends with a clean shutdown message. A later coordinator ps check found PIDs 9688, 9817, 10019 and 10143 absent. The exact worker final absence output was not preserved separately.",
+    "No shared Ollama restart, paid or uploaded service, gameplay replay, game process, broker, OCR, or adoption evaluation was used."
+  ],
+  "evidence_ceiling": [
+    "Functional query behavior and one live semantic path are proved; usefulness, savings and adoption are not.",
+    "Existing cockpit exact-query code was left unchanged and supplies verified artifact recovery; compatibility is inherited rather than a new cross-suite integration result.",
+    "Runtime absence is currently observed for every reported PID, but exact birth identity and a dedicated final absence artifact were not preserved for the query server."
+  ],
+  "accepted_no_replay": [
+    "Do not replay accepted gameplay to evaluate retrieval.",
+    "Do not treat a successful semantic example as the owner keep/revise/retire decision."
+  ],
+  "active_work": [
+    "Use the query surface on suitable normal lookups and compare it with exact, structured, and bounded Luna retrieval routes.",
+    "Preserve misses, friction, source fidelity, cost boundaries, and prior-knowledge effects for the owner decision."
+  ],
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/evidence_search_query.py",
+      "role": "Shared query and CLI implementation.",
+      "sha256": "21c36256d8ca214783419130f58d520d903271b64370dc891fd39881ff18ddc9"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_query_test.py",
+      "role": "Focused query tests.",
+      "sha256": "f6b1e8a789173d304efaf0686a6480a20c0780b2d2b08007869c1cd7df0e0859"
+    },
+    {
+      "path": "tools/openclaw_harness/build_logs/evidence-search-query-001/unittest.log",
+      "role": "Complete focused test output.",
+      "sha256": "956a0c36ba55bb397484b342828153465a6efc7aa26b941cbfc3ed4f89e9cc8a"
+    },
+    {
+      "path": "tools/openclaw_harness/build_logs/evidence-search-query-001/live-semantic.log",
+      "role": "Live local semantic backend log.",
+      "sha256": "1fce01c65d38b22b94773a4b8a62ab69ed651f3c80d15ab263ee798479c242f4"
+    }
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/evidence_search_query.py::EvidenceSearch",
+    "tools/openclaw_harness/evidence_search_query.py::main"
+  ],
+  "bindings": {
+    "dispatch_packet_sha256": "42d6c298cbb61ed0f19829d0d6a0524a034a8831a9ed575621f3c573063f209d",
+    "backend": "llama.cpp-embedding",
+    "model_id": "gemma-local",
+    "model_version": "sha256-fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634",
+    "chunking_version": "complete-record-v1",
+    "semantic_probe_port": "127.0.0.1:59617"
+  },
+  "context_metrics": {},
+  "narrow_queries": [
+    "Run the focused index/query unittest suite from tools/openclaw_harness.",
+    "Use evidence_search_query.py DB TEXT with explicit --filter, --offset, --limit and --expand options.",
+    "Inspect live-semantic.log and verify the four reported server PIDs remain absent."
+  ]
+}

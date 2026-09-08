@@ -1,0 +1,96 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-EVIDENCE-SEARCH-evaluation-001",
+  "claim_id": "R-MAINT-EVIDENCE-SEARCH",
+  "worker_id": "01a0816e-be40-7e93-b7eb-7803d28d7b23",
+  "outcome": "Evaluate the evidence-search trial on real retained sources and coordinator use, preserving failures and cost limits for Josef's keep, revise, or retire decision.",
+  "disposition": "completed",
+  "verdict": "Recommend revise and retest. Lexical discovery found the exact requested original quickly, but real-corpus semantic use is not ready because coverage reporting joins the wrong generation identity and complete-record chunks can exceed the embedding server's physical batch limit.",
+  "summary": "The evaluator registered 56 original sources totaling 884,802 bytes and 2,180 occurrences. Nine focused tests pass. Sol independently queried for the R-033 unchanged-smoke refresh defect and the degraded lexical route ranked the exact witness first with its verified source handle and causal 256-character summary mismatch. A coordinator-owned local embedding server reached readiness, but corpus embedding stopped on a 23,871-token record, leaving missing vectors and semantic fallback. The coverage summary also repeats the wrong generation byte counts. The evidence supports revision and retest before default adoption or expansion.",
+  "first_divergence": {
+    "class": "real-corpus-semantic-readiness",
+    "summary": "The real corpus contains complete-record chunks larger than the embedding backend can accept, while coverage() joins active generation numbers as global generation IDs."
+  },
+  "first_open_boundary": "Josef must choose keep, revise, or retire. The recommended revision is to fix source-local coverage generation joins, bound semantic chunks while retaining constituent original handles, and rerun comparable real-corpus semantic and exact discovery with complete lifecycle and cost accounting.",
+  "material_changes": [
+    "Created a derived evaluation corpus and index under .userdata/evidence-search-evaluation-001.",
+    "Preserved independent Sol degraded and semantic-attempt query results under .de67/task-logs.",
+    "No product gameplay or accepted evidence was changed."
+  ],
+  "journal_entries": [],
+  "tests": [
+    "The focused index/query suite passed 9 of 9 tests.",
+    "The degraded Sol query scanned 2,180 occurrences, ranked .de67/task-logs/r033-v7-witness.json first, and returned its verified original handle.",
+    "A coordinator-owned local llama.cpp server reached readiness, but embed_missing failed on a 23,871-token complete-record chunk with HTTP 500.",
+    "The same query then reported partial status and indexed_embedding_missing while retaining usable term-overlap results."
+  ],
+  "live_actions": [
+    "Evaluator-owned server attempts 11341 and 11600 and readiness shells 11365 and 11619 are absent; their retained log shows loading stopped before a listener.",
+    "Coordinator-owned llama-server PID 12346, born Tue Sep 8 16:45:26 2026, reached loopback listener 127.0.0.1:59617, was stopped with Ctrl-C, logged clean shutdown, and was verified absent afterward.",
+    "The coordinator used the tool independently without receiving the answer from the evaluator. Prior knowledge of the R-033 topic was unavoidable and is an order-effect limit.",
+    "No gameplay replay, OCR, shared Ollama restart, paid service, upload, game, or broker was used."
+  ],
+  "evidence_ceiling": [
+    "This proves one useful lexical coordinator lookup against real retained sources and exposes two real-corpus defects.",
+    "It does not prove semantic usefulness on the registered corpus, complete coverage reporting, token savings, or default-adoption value.",
+    "The 56-source/884,802-byte/2,180-occurrence inventory is source-manifest and occurrence evidence; coverage() byte rows are not trusted because of the join defect.",
+    "Cold/incremental storage and timing observations are incomplete, and no comparable bounded Luna lookup was run after the defects made the owner recommendation clear."
+  ],
+  "accepted_no_replay": [
+    "Do not replay accepted gameplay for retrieval evaluation.",
+    "Preserve the successful lexical lookup and failed semantic corpus attempt; a revision must change chunking and coverage behavior before retest.",
+    "Do not make retrieval the default or expand its scope before Josef's decision."
+  ],
+  "active_work": [
+    "Await Josef's keep, revise, or retire decision.",
+    "If revised, repair coverage generation identity and bounded semantic chunking, then rerun real-corpus semantic and comparison evidence.",
+    "If retired, retain exact/structured queries and the trial artifacts without default adoption."
+  ],
+  "artifacts": [
+    {
+      "path": ".userdata/evidence-search-evaluation-001/corpus-manifest.json",
+      "role": "Registered real-source manifest.",
+      "sha256": "0b372681e85b6e3fb30c56eff67066952f1e5220d68695784fe68a898770fbb9"
+    },
+    {
+      "path": "tools/openclaw_harness/build_logs/evidence-search-evaluation-001/semantic-server.log",
+      "role": "Evaluator semantic-startup attempts and failure boundary.",
+      "sha256": "879944f37da518637f6f166620ae3411426575f5a071e3b133bbb92f07e24ee3"
+    },
+    {
+      "path": ".de67/task-logs/evidence-search-sol-query-degraded.json",
+      "role": "Independent Sol lexical/degraded query result.",
+      "sha256": "79cd5ece9725bd3b71073b3fb4146a64b8628c1e9005ac139e701d75f73e51dc"
+    },
+    {
+      "path": ".de67/task-logs/evidence-search-sol-query-semantic.json",
+      "role": "Independent Sol semantic-attempt result with explicit missing-vector degradation.",
+      "sha256": "6b4be6cf50fe95fc0b9664ae0a3a0bff02607aa3e00db636d2f5784d93f93e20"
+    }
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/evidence_search_index.py::EvidenceIndex",
+    "tools/openclaw_harness/evidence_search_query.py::EvidenceSearch",
+    "tools/openclaw_harness/evidence_search_query.py::main"
+  ],
+  "bindings": {
+    "dispatch_packet_sha256": "db3b627eeec543e3a25e7ee52f0b18f6ca960265d4d9a81b1f1f412ad66b1da4",
+    "coverage_identity": "f993ca4875c05ef24dc6526b6b6d22e39c4a18e4794b9e22ee4f645742760076",
+    "manifest_sha256": "0b372681e85b6e3fb30c56eff67066952f1e5220d68695784fe68a898770fbb9",
+    "current_partial_index_sha256": "739a64d2ca5a155c147948056dc9862af52419cb73408cf488fe6bbfb8321fef",
+    "model_version": "sha256-fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634"
+  },
+  "context_metrics": {
+    "registered_sources": 56,
+    "registered_source_bytes": 884802,
+    "occurrences": 2180,
+    "semantic_server_load_attempts": 3,
+    "coordinator_query_matched": 293
+  },
+  "narrow_queries": [
+    "Inspect the top row and semantic_backend fields in .de67/task-logs/evidence-search-sol-query-degraded.json and evidence-search-sol-query-semantic.json.",
+    "Inspect EvidenceIndex.coverage and complete-record chunk storage before authorizing a revision.",
+    "Verify PIDs 11341, 11600, 11365, 11619 and 12346 remain absent."
+  ]
+}

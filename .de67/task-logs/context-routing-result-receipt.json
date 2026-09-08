@@ -1,0 +1,59 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-CONTEXT-ROUTING-001",
+  "claim_id": "R-MAINT-CONTEXT-ROUTING",
+  "worker_id": "01a08157-4cf5-7f21-b048-863e4ba986bb",
+  "outcome": "Make worker dispatch honor the owning ledger item's validated DFS slice IDs and declared order through actual packet output.",
+  "disposition": "completed",
+  "verdict": "The installed exploration route now selects validated owning-item slices in declared order and fails closed for missing, malformed, duplicate, or wrong-claim selectors.",
+  "summary": "The installed policy route now uses existing mutation-guard slice parsing to locate one owning active ledger block, validate its selected slice IDs, and extract those slices in order. Actual isolated packet output contains selected S002 then S003 and excludes earlier same-claim S001. Focused fixtures now carry valid ownership metadata and all 73 tests pass.",
+  "first_divergence": null,
+  "first_open_boundary": "No boundary remains inside this narrow routing repair. Old issued packets remain immutable, and prompt live adoption is tracked separately.",
+  "material_changes": [
+    "Changed only the installed policy-kernel exploration context extraction and imports.",
+    "Updated only focused installed packet-test fixtures to carry valid DFS selector ownership and complete markers.",
+    "Added actual ordered packet and invalid-selector coverage."
+  ],
+  "journal_entries": [],
+  "tests": [
+    "python3 -m unittest tests.test_work_context tests.test_policy_kernel passed 73 of 73 tests.",
+    "Python compilation passed for policy_kernel.py.",
+    "git diff --check passed.",
+    "An isolated DeadlineHarness packet contained S002 then S003 and excluded S001."
+  ],
+  "live_actions": [
+    "No game, broker, helper, child launch, runtime process, OCR, or issued packet was used or changed."
+  ],
+  "evidence_ceiling": [
+    "This proves worker reference-context extraction and packet output only.",
+    "It does not alter policy bytecode, route predicates, clocks, guards, acceptance records, lifecycle ownership, or previously issued packets."
+  ],
+  "accepted_no_replay": [
+    "Do not rewrite old issued packets or replay unrelated gameplay to re-demonstrate this routing repair."
+  ],
+  "active_work": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/context-routing-validation.log",
+      "role": "Complete focused validation and actual packet-output evidence.",
+      "sha256": "1d30c17264c81c530979d3c12447993837ad788101367e5594b6217d3ca0229d"
+    }
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/policy_kernel.py::_exploration_route",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_policy_kernel.py",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_work_context.py"
+  ],
+  "bindings": {
+    "dispatch_packet_sha256": "de6c37479d6f2103488ac0b6a5601194e9718b0015b881b1759c5506ab419071",
+    "policy_kernel_sha256": "8356ca3717382df43a0147f9c5fad47f027b1e4504cc36b6cf1811fd7ebb3b47",
+    "test_policy_kernel_sha256": "b3d74bcb0763e37fcfe823bbc14e0ab15aa24440f318a8fabd7ad93b5b82a185",
+    "test_work_context_sha256": "54252e3c06f7ead575211eb4fba4b6d5bd3a5a8879fa5bf32d5287fda676fd57"
+  },
+  "context_metrics": {},
+  "narrow_queries": [
+    "Run python3 -m unittest tests.test_work_context tests.test_policy_kernel in the installed Phase-3 package.",
+    "Inspect _exploration_route and the context-routing validation log."
+  ]
+}

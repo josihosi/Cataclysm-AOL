@@ -1,0 +1,62 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-PROMPT-DELIVERY-001",
+  "claim_id": "R-MAINT-PROMPT-DELIVERY",
+  "worker_id": "01a08156-90ac-7283-90c5-7dfd8695e237",
+  "outcome": "Deliver current guarded coordinator, continuation, and mutation-reviewer prompts after on-disk promotion without restarting or duplicating the supervisor.",
+  "disposition": "completed",
+  "verdict": "The installed supervisor now loads and validates the current prompt-producing source at each authorized child transition and fails before launch when that source is unavailable or invalid.",
+  "summary": "A fresh UTF-8 read, compile, and isolated module execution now supplies coordinator, continuation, and mutation-reviewer prompt producers for each authorized child transition. The fake-runner suite preserves exact bindings and restart reason, proves one launch per transition, and fails closed before Popen for invalid source. All 72 supervisor tests pass.",
+  "first_divergence": null,
+  "first_open_boundary": "Actual use by the next naturally authorized live child remains unobserved because no extra coordinator, reviewer, or supervisor restart was authorized for demonstration.",
+  "material_changes": [
+    "Added a fresh prompt-module loader to the installed coordinator supervisor.",
+    "Routed coordinator, continuation, and mutation-reviewer prompt production through the fresh loader.",
+    "Made unavailable, undecodable, corrupt, or load-failing prompt source fail before child launch and mark the run failed."
+  ],
+  "journal_entries": [],
+  "tests": [
+    "Python compilation passed for coordinator_supervisor.py.",
+    "python3 -m unittest discover -s tests -p test_coordinator_supervisor.py passed all 72 tests in 6.844 seconds.",
+    "Fake-runner coverage preserves prompt stdin, exact invocation bindings, restart generation and reason, reviewer and continuation routing, and one launch per authorized transition."
+  ],
+  "live_actions": [
+    "No live supervisor restart, extra child launch, gameplay replay, game process, broker, or other task-owned persistent process was used.",
+    "OCR and rendered presentation were not used as proof."
+  ],
+  "evidence_ceiling": [
+    "The implementation and isolated child-launch behavior are proved.",
+    "Actual next naturally authorized live child input and use are not yet observed.",
+    "This result changes prompt freshness only; it does not change policy, clocks, guards, owner stops, or lifecycle authority."
+  ],
+  "accepted_no_replay": [
+    "Do not launch an extra coordinator or reviewer, restart the supervisor, or replay gameplay merely to demonstrate adoption.",
+    "Observe the next naturally authorized child input when it occurs."
+  ],
+  "active_work": [
+    "Observe and record the next naturally authorized live child input before claiming live adoption."
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/state/review-owner-f918d28be953/prompt-delivery-worker-artifact.md",
+      "role": "Worker implementation and verification summary.",
+      "sha256": "2b203bc58483342324ddcf68c7bb6ca940ee2c4a8364fabc44aa7531236ed18f"
+    }
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py::run_child",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py::run_mutation_reviewer"
+  ],
+  "bindings": {
+    "dispatch_packet_sha256": "fca0d7efea168233799c052d4ec4ede6b0861e77a50c997d2955bbf53218f63d",
+    "installed_source_sha256": "3646bc3fceb439022a303b501636839c639d6d32be092d28c58bdb9cc9470264",
+    "test_log_sha256": "dd71a2937ca7477ac2926797eb2f51bb521b906d8a8c273c0a01c072281808f5"
+  },
+  "context_metrics": {},
+  "narrow_queries": [
+    "Run python3 -m unittest discover -s tests -p test_coordinator_supervisor.py in the installed Phase-3 package.",
+    "Inspect _fresh_prompt_module, run_child, and run_mutation_reviewer in coordinator_supervisor.py.",
+    "Verify SHA-256 of the installed supervisor and preserved worker artifact."
+  ]
+}
