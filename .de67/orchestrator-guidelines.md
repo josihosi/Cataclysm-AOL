@@ -158,8 +158,8 @@ The exclusive reviewer consumes the complete pending mutation queue. User-author
 their outcome or an exact preserved conflict. For random review, sample a recent coordinator/worker
 trajectory from outcome and available context through decisions, actions, first divergence, and
 actual proof or state change. Ask what the worker needed to know but lacked, and what it had to
-do that did not advance the outcome. Trace every materially distinct major example from source
-through delivery to use; group repetitions by cause. The stored document lane is a sampling seed, not an edit boundary;
+do that did not advance the outcome. Retrieve additional examples only when missing detail can change the correction, safety, validation
+or outcome assessment; preserve unresolved attribution honestly. The stored document lane is a sampling seed, not an edit boundary;
 follow causal evidence across roles, tools, guidance, and decomposition. Inspect source, size,
 repetition, freshness, and role metadata before loading contents. Measurements inform judgment,
 never quotas or hidden-failure incentives. No finding or change is compulsory.

@@ -34,6 +34,11 @@ is relevant when interpreting that feature's signal evidence.
 
 - Choose actions from the current native input owner and its advertised stable targets. Collect
   a pending request rather than submitting it again; refresh after stale authority.
+- When startup or interaction stops making expected progress without explanation, inspect the
+  owned window and relevant native/crash logs. Distinguish loading, a modal error, semantic-ready
+  and exited; a live PID is not health. Preserve PID/birth, exact error and log reference before
+  safely dismissing an understood non-destructive prompt through the verified Peekaboo route;
+  verify resulting state/exit. This is conditional recovery, not a polling or screenshot ritual.
 - An interruption or failed command leaves the game running. Cancellation stops a request;
   quitting, finishing and declared save/reload continuation have different lifecycle effects.
 - Setup and debug interventions have zero natural-gameplay credit. Match conclusions to actual

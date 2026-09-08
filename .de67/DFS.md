@@ -1152,3 +1152,30 @@ review. Owner receipt `70c4632e512e` promotes the bounded repairs above and acce
 smoke exception. Existing accepted proof and full original observations remain intact; these are
 repair/verification obligations, not completed gameplay results.
 Current owner-contract SHA-256: `af6ce90990e4c5358aeedee16bd37ea9ebd979c3a8f2ff2aa874f234975a99df`.
+
+## Owner-authorized delivery tooling — cycle 9
+
+These named maintenance slices enable the existing campaign's evidence route; they add no gameplay
+acceptance, change no product outcome and confer no authority over policy, clocks, guard invariants,
+owner decisions or accepted records. The cycle-9 owner queue authorizes Sol to commission repository
+implementation and focused verification, with exclusive file/runtime ownership per assignment.
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-COMPACT-IO-S001 claim=R-MAINT-COMPACT-IO -->
+- [ ] 🔴 R-MAINT-COMPACT-IO — Existing build and native/query interfaces return useful bounded
+  decision fields, errors/contradictions and exact full-artifact handles while retaining original
+  output. Actor/active-service prerequisites and recorded startup uncertainty remain observable.
+  - Proof: controlled success/failure builds retain complete logs and return honest status; historical
+    Patrol frames and inactive-owner counterexamples preserve identities, priority/order and runtime;
+    loading/modal/ready/exited fixtures preserve uncertainty and exact recovery handles. No gameplay
+    acceptance or live-process action is implied. See the named ledger assignments for edit ownership.
+<!-- DE67:DFS-SLICE:END id=R-MAINT-COMPACT-IO-S001 claim=R-MAINT-COMPACT-IO -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-RESULT-REUSE-S001 claim=R-MAINT-RESULT-REUSE -->
+- [ ] 🔴 R-MAINT-RESULT-REUSE — Selected accepted facts and remaining boundaries enter the next
+  prepared worker packet through the existing context tool, with immutable references and current
+  source/evidence dependencies. Sol judges validity; tools do not invent acceptance or proof.
+  - Proof: an isolated actual packet preserves generation-0 save/exit and assigns only the missing
+    generation-1 continuation, retains independent contributions, rejects stale dependencies and
+    replaces obsolete current conclusions without destroying their archived revisions. Demonstrate
+    the interface's next relevant use without replaying accepted product evidence solely for adoption.
+<!-- DE67:DFS-SLICE:END id=R-MAINT-RESULT-REUSE-S001 claim=R-MAINT-RESULT-REUSE -->

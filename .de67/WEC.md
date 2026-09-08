@@ -183,7 +183,8 @@ None. DE67-2 can specify the natural gameplay proof for the turn-order concern.
 
 <!-- DE67:OWNER-CONTRACT:BEGIN -->
 
-This owner-authorized refinement preserves compatible earlier product intent and evidence. It supersedes earlier restrictions that would exempt previously accepted CAOL features from fresh testing or allow newly observed CAOL bugs to become repair findings without Josef's decision. The owner explicitly invoked de67 2 after agreeing this brief, authorizing its incorporation into the existing WEC and a revised, code-grounded DFS. An expected difference from the old WEC is the requested update, not an unresolved source-file collision.
+Current assignment constraints follow. Full versioned owner wording and campaign coverage remain
+in `.de67/state/review-cycle-9/baseline/WEC.md`; the named DFS slice supplies this task's scope.
 
 ### User outcome
 
@@ -191,7 +192,8 @@ Use the newly qualified native playtest harness to freshly test the in-scope CAO
 
 ### Intended experience and coverage
 
-Fresh players receive understandable situations and meaningful gameplay questions, choose actions and investigate consequences through the harness, and preserve mechanical and gameplay-feel evidence. Give them room to investigate rather than prescribing a fixed successful walkthrough. Cover the in-scope CAOL families identified by the existing contract: living NPC intent/context and follow/camp routing; camp establishment, missions and Locker/Patrol/Food/Storage behavior; bandit stimulus/scouting/demand/payment/refusal/return; cannibal discovery/day hold/night departure/approach through dawn; signal controls and world boundaries; persistence; flesh raptors; and integrated performance. Existing exclusions for writhing stalkers and zombie riders remain. Ordinary CDDA actions are dependencies where these routes require them.
+Fresh players receive understandable situations and meaningful gameplay questions, choose actions and investigate consequences through the harness, and preserve mechanical and gameplay-feel evidence. Give them room to investigate rather than prescribing a fixed successful walkthrough. Apply the assigned family's DFS coverage. Writhing stalkers and zombie riders remain excluded.
+Ordinary CDDA actions are dependencies where the assigned route requires them.
 
 Tests have independent results. A mixed trajectory can support one behavior, contradict another and leave another unobserved. Debug interventions and fixture preparation remain zero-credit setup for natural gameplay claims. Accepted input, a launch, or mechanical witness validity does not by itself prove gameplay or causal interpretation.
 
