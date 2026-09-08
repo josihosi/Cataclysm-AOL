@@ -23,6 +23,17 @@ def _terms(value: str) -> set[str]:
     return {part for part in value.casefold().split() if part}
 
 
+# These fields are deliberately denormalized into ``occurrences`` and may be
+# used to reject a candidate before recovering its original record.  Other
+# filter keys belong to the original JSON record and must be evaluated after
+# recovery (for example, ``feature`` or any producer-specific field).
+_OCCURRENCE_FILTER_FIELDS = frozenset({
+    "occurrence_id", "generation_id", "generation", "generation_status",
+    "ordinal", "path", "offset", "length", "raw_sha256", "chunk_sha256",
+    "event_id", "event", "run_id", "actor_id", "request_id", "source_handle",
+})
+
+
 class EvidenceSearch:
     def __init__(self, index: EvidenceIndex, backend: Any | None = None) -> None:
         self.index, self.backend = index, backend
@@ -49,7 +60,8 @@ class EvidenceSearch:
                 (row["chunk_sha256"], self.index.model_id, self.index.model_version,
                  self.index.chunking_version)).fetchone()
             row["embedding_json"] = vector_row["embedding_json"] if vector_row else None
-            if any(row.get(key) != expected for key, expected in filters.items()):
+            if any(row.get(key) != expected for key, expected in filters.items()
+                   if key in _OCCURRENCE_FILTER_FIELDS):
                 continue
             # Event fields are retained as columns where stable; arbitrary
             # filters can still target the original JSON record below.
@@ -67,7 +79,7 @@ class EvidenceSearch:
                 continue
             record = original.get("record", {})
             if any(record.get(key) != expected for key, expected in filters.items()
-                   if key not in row):
+                   if key not in _OCCURRENCE_FILTER_FIELDS):
                 continue
             body = row.get("event", "") + " " + json.dumps(record, sort_keys=True)
             overlap = len(query_terms & _terms(body))

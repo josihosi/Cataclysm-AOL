@@ -20,7 +20,7 @@ from cockpit_evidence import parse_record
 from evidence_events import envelopes, parse
 
 
-SCHEMA_VERSION = 1
+SCHEMA_VERSION = 2
 CHUNKING_VERSION = "complete-record-v1"
 DEFAULT_SUFFIXES = frozenset({".jsonl", ".log", ".md", ".json"})
 
@@ -89,9 +89,49 @@ class EvidenceIndex:
             self.db.execute("ALTER TABLE chunks ADD COLUMN embedding_json TEXT")
         except sqlite3.OperationalError:
             pass
+        # Version 1 wrote the per-source revision number into
+        # ``sources.active_generation`` even though all readers interpret it
+        # as the globally unique ``generations.generation_id``.  Repair that
+        # reference on open before publishing the new schema version.  The
+        # migration is deliberately source-local and preserves every
+        # generation/occurrence row; only the pointer is corrected.
+        previous = self.db.execute(
+            "SELECT value FROM index_meta WHERE key='schema_version'"
+        ).fetchone()
+        if previous is None or int(previous[0]) < 2:
+            self._migrate_generation_references()
         self.db.execute("INSERT OR REPLACE INTO index_meta(key, value) VALUES (?, ?)",
                         ("schema_version", str(SCHEMA_VERSION)))
         self.db.commit()
+
+    def _migrate_generation_references(self) -> None:
+        """Point each source at its own current global generation ID.
+
+        Indexes written by schema v1 may have a pointer that accidentally
+        resolves to another source's generation (typically after ingesting
+        two files whose local revision is both ``1``).  Prefer the source's
+        current generation, falling back to its newest generation when the
+        source is unavailable or an interrupted legacy write left no current
+        status.  No occurrence or chunk data is rewritten.
+        """
+        rows = self.db.execute("SELECT path, status FROM sources").fetchall()
+        for row in rows:
+            generation = self.db.execute(
+                "SELECT generation_id FROM generations "
+                "WHERE path=? AND status='current' ORDER BY generation DESC, generation_id DESC LIMIT 1",
+                (row["path"],),
+            ).fetchone()
+            if generation is None:
+                generation = self.db.execute(
+                    "SELECT generation_id FROM generations "
+                    "WHERE path=? ORDER BY generation DESC, generation_id DESC LIMIT 1",
+                    (row["path"],),
+                ).fetchone()
+            if generation is not None:
+                self.db.execute(
+                    "UPDATE sources SET active_generation=? WHERE path=?",
+                    (generation["generation_id"], row["path"]),
+                )
 
     @staticmethod
     def discover(roots: Iterable[Path]) -> list[Path]:
@@ -125,14 +165,21 @@ class EvidenceIndex:
         return self.db.execute("SELECT * FROM sources WHERE path = ?", (path,)).fetchone()
 
     def _new_generation(self, path: str, raw: bytes, *, status: str = "current") -> sqlite3.Row:
-        row = self._source_row(path)
-        number = 1 if row is None or row["active_generation"] is None else int(row["active_generation"]) + 1
+        number = self.db.execute(
+            "SELECT COALESCE(MAX(generation), 0) + 1 FROM generations WHERE path=?",
+            (path,),
+        ).fetchone()[0]
         now = int(os.stat(self.database).st_mtime_ns) if self.database.exists() else 0
-        self.db.execute("INSERT INTO sources(path, active_generation, status, last_error, updated_ns) VALUES (?, ?, ?, NULL, ?) "
-                        "ON CONFLICT(path) DO UPDATE SET active_generation=excluded.active_generation, status=excluded.status, last_error=NULL, updated_ns=excluded.updated_ns",
-                        (path, number, status, now))
+        # Publish the source row first so the generations foreign key remains
+        # valid; its pointer is updated to the global row ID immediately after
+        # the generation insert succeeds.
+        self.db.execute("INSERT INTO sources(path, active_generation, status, last_error, updated_ns) VALUES (?, NULL, ?, NULL, ?) "
+                        "ON CONFLICT(path) DO UPDATE SET status=excluded.status, last_error=NULL, updated_ns=excluded.updated_ns",
+                        (path, status, now))
         cursor = self.db.execute("INSERT INTO generations(path, generation, prefix_sha256, committed_bytes, file_bytes, status) VALUES (?, ?, ?, 0, ?, ?)",
                                  (path, number, _sha(b""), len(raw), status))
+        generation_id = cursor.lastrowid
+        self.db.execute("UPDATE sources SET active_generation=? WHERE path=?", (generation_id, path))
         return self.db.execute("SELECT * FROM generations WHERE generation_id = ?", (cursor.lastrowid,)).fetchone()
 
     @staticmethod

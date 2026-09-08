@@ -18,7 +18,7 @@ class EvidenceSearchQueryTest(unittest.TestCase):
         self.root = Path(self.temp.name)
         self.path = self.root / "events.jsonl"
         rows = [
-            {"event": "text", "run_id": "run-a", "actor_id": "player", "text": "payment completed and peace held"},
+            {"event": "text", "run_id": "run-a", "actor_id": "player", "feature": "crafting", "text": "payment completed and peace held"},
             {"event": "text", "run_id": "run-b", "actor_id": "npc", "text": "payment failed; attack followed"},
             {"event": "text", "run_id": "run-a", "text": "a quiet weather camp note"},
         ]
@@ -60,6 +60,16 @@ class EvidenceSearchQueryTest(unittest.TestCase):
         self.assertEqual(degraded["status"], "partial")
         self.assertFalse(degraded["semantic_backend"]["available"])
         self.assertIn("embedding_backend_unavailable", degraded["semantic_backend"]["errors"])
+
+    def test_original_record_filter_is_applied_after_occurrence_prefilter(self):
+        found = self.search.query("payment", filters={"feature": "crafting"})
+        self.assertEqual(found["status"], "matched")
+        self.assertEqual(found["matched"], 1)
+        self.assertIn("payment completed", found["rows"][0]["excerpt"])
+
+        absent = self.search.query("payment", filters={"feature": "missing"})
+        self.assertEqual(absent["status"], "no_match")
+        self.assertEqual(absent["matched"], 0)
 
 
 if __name__ == "__main__":

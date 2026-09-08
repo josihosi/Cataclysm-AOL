@@ -1,0 +1,48 @@
+{
+  "head": "1a23b7b0de3df7b1871b5177f2d574d1c344cc93",
+  "sources": {
+    "tools/openclaw_harness/evidence_search_index.py": "a185643367447816504ca53301618bd0bb061b5e522d980f2acc9d45baa8e477",
+    "tools/openclaw_harness/evidence_search_query.py": "21c36256d8ca214783419130f58d520d903271b64370dc891fd39881ff18ddc9",
+    "tools/openclaw_harness/evidence_search_index_test.py": "213f955f4fe062c890a949fed2505d9f86cd02863c36bf40482e4e63d89f1e1e",
+    "tools/openclaw_harness/evidence_search_query_test.py": "f6b1e8a789173d304efaf0686a6480a20c0780b2d2b08007869c1cd7df0e0859"
+  },
+  "multi_source_idempotence": {
+    "expected": "Re-ingesting unchanged B preserves current A and B exactly once.",
+    "before": [
+      {
+        "path": "a.jsonl",
+        "request": "a"
+      },
+      {
+        "path": "b.jsonl",
+        "request": "b"
+      }
+    ],
+    "retry": {
+      "status": "current",
+      "generation": 2,
+      "ingested_records": 1,
+      "committed_bytes": 52,
+      "file_bytes": 52,
+      "pending_tail_bytes": 0
+    },
+    "after": [
+      {
+        "path": "b.jsonl",
+        "request": "b"
+      },
+      {
+        "path": "b.jsonl",
+        "request": "b"
+      }
+    ],
+    "reproduced": true
+  },
+  "original_field_filter": {
+    "expected": "The existing original record with feature=crafting remains discoverable with that explicit filter.",
+    "unfiltered_rows": 1,
+    "filtered_rows": 0,
+    "filtered_status": "no_match",
+    "reproduced": true
+  }
+}

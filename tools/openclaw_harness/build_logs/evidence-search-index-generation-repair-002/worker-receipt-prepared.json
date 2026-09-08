@@ -1,0 +1,82 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-EVIDENCE-SEARCH-index-generation-repair-002",
+  "claim_id": "R-MAINT-EVIDENCE-SEARCH",
+  "worker_id": "01a081c3-0a46-74a1-80f5-566fb973600b",
+  "disposition": "completed",
+  "verdict": "implemented",
+  "outcome": "Multi-source evidence index generation identity is source-bound and unchanged re-ingestion preserves each current source exactly once.",
+  "summary": "sources.active_generation now stores the globally unique generations.generation_id, while local revision numbering is derived from each source's generation history. Schema-v1 indexes migrate source pointers on open without rewriting occurrence/chunk rows.",
+  "material_changes": [
+    "Changed generation publication to insert the source row before its foreign-keyed generation row, then atomically publish the global generation ID pointer.",
+    "Added schema-v1 pointer migration that selects each source's current/newest own generation and updates only active_generation.",
+    "Added regressions for two-source repeat/reopen/append/replacement, source-bound coverage joins, and schema-v1 cross-source pointer migration."
+  ],
+  "tests": [
+    "python3 -m unittest tools/openclaw_harness/evidence_search_index_test.py tools/openclaw_harness/evidence_search_query_test.py: 12 tests passed.",
+    "python3 -m py_compile tools/openclaw_harness/evidence_search_index.py: passed.",
+    "git diff --check: passed."
+  ],
+  "live_actions": [],
+  "evidence_ceiling": [
+    "Indexing/recovery correctness only; this creates no gameplay, usefulness, savings, adoption, or owner keep/revise/retire proof.",
+    "Schema-v1 migration repairs source pointers and preserves rows. A historically polluted v1 database from the reproduced cross-source retry may retain stale/misassigned historical rows and needs explicit re-ingestion/rebuild for full cleanup; this is not silently claimed repaired."
+  ],
+  "bindings": {
+    "chunking_version": "complete-record-v1",
+    "generation_pointer": "global generations.generation_id",
+    "revision_number": "per-source generations.generation",
+    "schema_version": "2"
+  },
+  "journal_entries": [
+    {
+      "id": "index-generation-repair-002-focused",
+      "sequence": "1",
+      "event_type": "derived_index_generation_repair",
+      "evidence_class": "focused_test",
+      "summary": "Multi-source repeat/reopen/append/replacement and v1 pointer migration checks passed.",
+      "artifact_ref": "tools/openclaw_harness/evidence_search_index_test.py"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/evidence_search_index.py",
+      "sha256": "fc340cb73cba09bf852686cb9a668255b7f18f30f3db61d770922e82cc388225",
+      "role": "repaired index implementation"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_index_test.py",
+      "sha256": "c02f6e71e06de0dedd8dedffbe34764f1b378fdbdd8a6bf4a8cfb201012a3a2f",
+      "role": "focused identity and migration tests"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_query.py",
+      "sha256": "68961ed26ea55001e3c63faf3eab87c959da98fbe3b2cd366d6064a62fd27d10",
+      "role": "concurrent query-worker integration surface, unchanged by this worker"
+    },
+    {
+      "path": ".de67/task-logs/code-quality-review-20260908/reproduction.json",
+      "sha256": "a3c32c96fcde25965175f0a4621ba09c7579096bbf18213e104ce75b73dc0146",
+      "role": "retained two-source counterexample and original source identities"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not replay accepted gameplay to evaluate retrieval.",
+    "Do not adopt or expand retrieval based on this indexing repair."
+  ],
+  "active_work": [
+    "R-MAINT-EVIDENCE-SEARCH-query-001 owns original-record filter/query changes.",
+    "R-MAINT-EVIDENCE-SEARCH-evaluation-001 owns usefulness evaluation and Josef's keep/revise/retire decision."
+  ],
+  "first_open_boundary": "Historical v1 indexes polluted by the old cross-source retry require explicit rebuild/re-ingestion for cleanup; this repair does not claim to recover that historical corruption automatically.",
+  "narrow_queries": [
+    "Reopen a schema-v1 index and inspect coverage active_generation joins by source path.",
+    "Run EvidenceIndex.reconcile on explicit roots, then query through the concurrent adapter."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/evidence_search_index.py::EvidenceIndex"
+  ],
+  "context_metrics": {}
+}

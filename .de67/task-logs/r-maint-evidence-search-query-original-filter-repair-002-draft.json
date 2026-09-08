@@ -1,0 +1,49 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-EVIDENCE-SEARCH-query-original-filter-repair-002",
+  "claim_id": "R-MAINT-EVIDENCE-SEARCH",
+  "disposition": "completed",
+  "verdict": "Original-record filters are evaluated after verified source recovery while explicit occurrence filters retain their prefilter behavior.",
+  "outcome": "Repair query filtering so fields intentionally resolved from the original record remain discoverable without weakening occurrence filtering, verified expansion, paging, stale/corrupt/unavailable behavior, or exact-query fallback.",
+  "summary": "Added a schema-scoped occurrence filter allowlist. Unknown producer/original-record keys now pass through occurrence prefiltering and are checked against the recovered original JSON record. The retained feature=crafting counterexample is covered by a positive and negative regression; focused query/index and evidence-display suites pass.",
+  "material_changes": [
+    "Updated tools/openclaw_harness/evidence_search_query.py with _OCCURRENCE_FILTER_FIELDS and deferred original-only filter evaluation.",
+    "Added feature=crafting regression coverage in evidence_search_query_test.py."
+  ],
+  "tests": [
+    "python3.14 -m unittest tools/openclaw_harness/evidence_search_query_test.py tools/openclaw_harness/evidence_search_index_test.py: 12 tests passed.",
+    "PYTHONPATH=tools/openclaw_harness python3.14 -m unittest cockpit_evidence_test evidence_display_test: 19 tests passed.",
+    "python3.14 -m py_compile tools/openclaw_harness/evidence_search_query.py: OK.",
+    "git diff --check: OK."
+  ],
+  "live_actions": [
+    "No game, harness broker, embedding backend, or gameplay process was launched; no live ownership or retained session was changed."
+  ],
+  "evidence_ceiling": [
+    "This proves query/filter correctness and focused evidence-surface compatibility only; it does not establish retrieval usefulness, corpus coverage, cost savings, adoption, or gameplay acceptance.",
+    "The first focused test attempt was blocked by a concurrent index-worker FK ordering defect; after that worker's stable fix, the same combined suite passed. The defect was not edited by this worker."
+  ],
+  "bindings": {
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev",
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-MAINT-EVIDENCE-SEARCH-query-original-filter-repair-002",
+    "assignment_packet_sha256": "44560e90aa70dedfcad1c75216d2084c7ccb08c59802e5f120f1e126202a97e5",
+    "query_source_sha256": "68961ed26ea55001e3c63faf3eab87c959da98fbe3b2cd366d6064a62fd27d10",
+    "query_test_sha256": "f8c4561e75efe3a9768d6b45c1a6d64aba6b28f26887cb7fc08c0931613ea81a",
+    "index_source_sha256": "fc340cb73cba09bf852686cb9a668255b7f18f30f3db61d770922e82cc388225",
+    "focused_test_log_sha256": "7d7273b8fc80f83f2848c332e71c7417db5b26870ca839b409f8a8c5c24894f0"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": ".de67/task-logs/r-maint-evidence-search-query-original-filter-repair-002-focused-tests.log", "sha256": "7d7273b8fc80f83f2848c332e71c7417db5b26870ca839b409f8a8c5c24894f0", "role": "fresh focused and dependency test output"},
+    {"path": "tools/openclaw_harness/evidence_search_query.py", "sha256": "68961ed26ea55001e3c63faf3eab87c959da98fbe3b2cd366d6064a62fd27d10", "role": "repaired query implementation"},
+    {"path": "tools/openclaw_harness/evidence_search_query_test.py", "sha256": "f8c4561e75efe3a9768d6b45c1a6d64aba6b28f26887cb7fc08c0931613ea81a", "role": "focused regression tests"}
+  ],
+  "first_divergence": {"class": "concurrent_index_dependency", "summary": "Initial suite setup failed at the index worker's temporary source-before-generation ordering defect; rerun after its stable repair passed all 12 tests."},
+  "accepted_no_replay": ["No gameplay or retrieval usefulness trial was replayed; only focused tooling tests were run."],
+  "active_work": [],
+  "first_open_boundary": "Owner usefulness/adoption decision and complete real-corpus semantic coverage remain outside this repair.",
+  "narrow_queries": ["Run the retained feature=crafting query against the corrected real-corpus index after the owner-approved revision retest."],
+  "entrypoints": ["tools/openclaw_harness/evidence_search_query.py", "tools/openclaw_harness/evidence_search_query_test.py"]
+}

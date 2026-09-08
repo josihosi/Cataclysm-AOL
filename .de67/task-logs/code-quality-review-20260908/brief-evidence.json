@@ -1,0 +1,18 @@
+[
+  {
+    "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/worker-dispatch/task_522d4d41494e542d45564944454e43452d5345415243482d696e6465782d303031-686a663f4d8d59a4d910696b2fb3531aff64162ecf7903035d87e114dd481140.md",
+    "sha256": "686a663f4d8d59a4d910696b2fb3531aff64162ecf7903035d87e114dd481140",
+    "assignment_header": "Own assigned exploration work R-MAINT-EVIDENCE-SEARCH-index-001 for outcome R-MAINT-EVIDENCE-SEARCH. Scope: task-specific ledger assignment. Judge task completion against this assignment; preserve broader claim requirements independently.",
+    "source_identity_required": true,
+    "explicit_filters_required": false,
+    "agent_model_attribution": "Packet offers worker capabilities; no actual selected runtime model proved by this artifact."
+  },
+  {
+    "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/worker-dispatch/task_522d4d41494e542d45564944454e43452d5345415243482d71756572792d303031-42d6c298cbb61ed0f19829d0d6a0524a034a8831a9ed575621f3c573063f209d.md",
+    "sha256": "42d6c298cbb61ed0f19829d0d6a0524a034a8831a9ed575621f3c573063f209d",
+    "assignment_header": "Own assigned exploration work R-MAINT-EVIDENCE-SEARCH-query-001 for outcome R-MAINT-EVIDENCE-SEARCH. Scope: task-specific ledger assignment. Judge task completion against this assignment; preserve broader claim requirements independently.",
+    "source_identity_required": false,
+    "explicit_filters_required": true,
+    "agent_model_attribution": "Packet offers worker capabilities; no actual selected runtime model proved by this artifact."
+  }
+]

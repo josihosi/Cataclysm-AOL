@@ -71,6 +71,85 @@ class EvidenceSearchIndexTest(unittest.TestCase):
         self.assertEqual(index.occurrences(), [])
         self.assertEqual(len(index.occurrences(include_stale=True)), 2)
 
+    def test_multiple_sources_keep_current_occurrences_and_source_bound_coverage(self) -> None:
+        first = self.root / "a.jsonl"
+        second = self.root / "b.jsonl"
+        first.write_bytes(self.line(request_id="a"))
+        second.write_bytes(self.line(request_id="b"))
+        index = self.index()
+        index.ingest(first)
+        index.ingest(second)
+
+        # Both files start at local generation 1; the active pointer must use
+        # each generation's globally unique row id.
+        before = {(row["path"], row["request_id"]) for row in index.occurrences()}
+        self.assertEqual(before, {(str(first.resolve()), "a"), (str(second.resolve()), "b")})
+        repeated = index.ingest(second)
+        self.assertEqual(repeated["generation"], 1)
+        after = index.occurrences()
+        self.assertEqual(
+            [(row["path"], row["request_id"]) for row in after],
+            sorted(before),
+        )
+        coverage = {row["path"]: row for row in index.coverage()}
+        self.assertEqual(set(coverage), {str(first.resolve()), str(second.resolve())})
+        for path, row in coverage.items():
+            self.assertEqual(row["generation_status"], "current")
+            self.assertEqual(row["committed_bytes"], Path(path).stat().st_size)
+            generation = index.db.execute(
+                "SELECT path FROM generations WHERE generation_id=?",
+                (row["active_generation"],),
+            ).fetchone()[0]
+            self.assertEqual(generation, path)
+
+        index.close()
+        reopened = EvidenceIndex(self.root / "index.sqlite3", model_id="local-model", model_version="v1")
+        self.addCleanup(reopened.close)
+        first.write_bytes(first.read_bytes() + self.line(request_id="a2"))
+        self.assertEqual(reopened.ingest(first)["generation"], 1)
+        self.assertEqual(
+            [(row["path"], row["request_id"]) for row in reopened.occurrences()],
+            sorted({(str(first.resolve()), "a"), (str(first.resolve()), "a2"),
+                    (str(second.resolve()), "b")}),
+        )
+        second.write_bytes(self.line(request_id="b-replacement"))
+        self.assertEqual(reopened.ingest(second)["generation"], 2)
+        self.assertEqual(
+            [(row["path"], row["request_id"]) for row in reopened.occurrences()],
+            sorted({(str(first.resolve()), "a"), (str(first.resolve()), "a2"),
+                    (str(second.resolve()), "b-replacement")}),
+        )
+
+    def test_v1_generation_pointer_migration_repairs_cross_source_reference(self) -> None:
+        first = self.root / "a.jsonl"
+        second = self.root / "b.jsonl"
+        first.write_bytes(self.line(request_id="a"))
+        second.write_bytes(self.line(request_id="b"))
+        index = self.index()
+        index.ingest(first)
+        index.ingest(second)
+        first_generation = index.db.execute(
+            "SELECT generation_id FROM generations WHERE path=?", (str(first.resolve()),)
+        ).fetchone()[0]
+        # Recreate the v1 cross-source pointer and reopen as a migration.
+        index.db.execute(
+            "UPDATE sources SET active_generation=? WHERE path=?",
+            (first_generation, str(second.resolve())),
+        )
+        index.db.execute("UPDATE index_meta SET value='1' WHERE key='schema_version'")
+        index.db.commit()
+        index.close()
+
+        migrated = EvidenceIndex(self.root / "index.sqlite3", model_id="local-model", model_version="v1")
+        self.addCleanup(migrated.close)
+        self.assertEqual(
+            {(row["path"], row["request_id"]) for row in migrated.occurrences()},
+            {(str(first.resolve()), "a"), (str(second.resolve()), "b")},
+        )
+        self.assertEqual(migrated.db.execute(
+            "SELECT value FROM index_meta WHERE key='schema_version'"
+        ).fetchone()[0], "2")
+
     def test_duplicate_text_reuses_chunk_but_keeps_every_occurrence(self) -> None:
         repeated = self.line(request_id="same")
         other = self.line(request_id="other")
