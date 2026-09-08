@@ -1,0 +1,63 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "claim_id": "R-MAINT-PROMPT-DELIVERY",
+  "task_id": "R-MAINT-PROMPT-DELIVERY-closure-source-guards-001",
+  "worker_id": "01a081e1-f842-7980-b21a-22a7223a14da",
+  "disposition": "completed",
+  "finding_kind": null,
+  "outcome": "Independently verify current installed prompt loading, fail-closed source guards, exact child bindings, and focused supervisor tests without launching another live child.",
+  "verdict": "The current installed supervisor freshly loads prompt producers for coordinator, continuation, and mutation-reviewer transitions, rejects unavailable or invalid source before child launch, preserves exact child bindings, and passes all 72 focused tests.",
+  "summary": "Independent source inspection and the complete focused supervisor suite verify the repaired per-transition prompt loader and its failure guards. The retained naturally authorized coordinator record is complete and PID 27126 is absent. No source changed and no extra child, supervisor restart, gameplay process, or broker was launched.",
+  "evidence_ceiling": [
+    "This proves installed loader, guard, binding, focused-test, and retained-process lifecycle behavior.",
+    "It does not prove fresh gameplay or adoption by a newly launched reviewer or continuation child.",
+    "Naturally authorized live prompt adoption remains owned by the separate live-adoption closure gap."
+  ],
+  "bindings": {
+    "dispatch_packet_sha256": "e3b43a70658648c01050c1a1eb2a577ab69bf868ad842371b4d766a76dc97c0c",
+    "installed_supervisor_sha256": "841d4add9e91515a1dbbfcf64142c72ad22eb9268927f27ba83a8122e13a0461",
+    "focused_test_source_sha256": "6f179cfabeb97949385144d318cc679b9a3f93632c5561303af8ff4f5a0e0d03",
+    "retained_coordinator_run_id": "initial-4ea0ed667ba7491fafde71cf4a6a2585",
+    "retained_prompt_sha256": "6005ceb017e484f2eb86287540ac9f361aa73cb3cce584e45f6be9a9de468c2e",
+    "retained_process_pid": "27126"
+  },
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not launch an extra coordinator or reviewer or restart the supervisor to repeat this proof.",
+    "Do not replay gameplay; this is a delivery-tool closure result."
+  ],
+  "material_changes": [],
+  "journal_entries": [],
+  "tests": [
+    "Python 3.14 unittest discovery for test_coordinator_supervisor.py passed all 72 tests in 7.839 seconds.",
+    "Source inspection confirmed fresh UTF-8 read and compile at each authorized transition and SupervisorError before launch for invalid source.",
+    "PID 27126 from retained coordinator run initial-4ea0ed667ba7491fafde71cf4a6a2585 was absent on independent verification."
+  ],
+  "live_actions": [
+    "Read installed source, focused tests, dispatch packet, and retained runner artifacts.",
+    "Ran the focused supervisor tests.",
+    "Observed PID 27126 absent.",
+    "No child, supervisor, game, harness broker, or persistent process was launched."
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/state/runner-runs/20260908T155300Z-27126/prompt.txt",
+      "sha256": "6005ceb017e484f2eb86287540ac9f361aa73cb3cce584e45f6be9a9de468c2e",
+      "role": "Retained naturally authorized coordinator prompt input."
+    }
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py::_fresh_prompt_module",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py::run_child",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py::run_mutation_reviewer"
+  ],
+  "active_work": [
+    "Close the separate naturally authorized live-adoption and lifecycle gap at its actual artifact ceiling."
+  ],
+  "first_open_boundary": "The separate live-adoption closure gap must determine what the naturally authorized coordinator input proves without upgrading unobservable role ingestion.",
+  "narrow_queries": [
+    "Inspect the retained restart-41 and initial-4ea0ed coordinator inputs against their exact runner identities.",
+    "Use the existing live-adoption assignment; do not manufacture another launch."
+  ]
+}

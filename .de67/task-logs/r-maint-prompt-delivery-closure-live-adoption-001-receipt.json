@@ -1,0 +1,81 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "claim_id": "R-MAINT-PROMPT-DELIVERY",
+  "task_id": "R-MAINT-PROMPT-DELIVERY-closure-live-adoption-001",
+  "worker_id": "01a081e2-edd8-7d30-9625-5757c20a8600",
+  "disposition": "completed",
+  "finding_kind": null,
+  "outcome": "Independently verify the naturally authorized current coordinator input under the repaired prompt producer without manufacturing another launch or overstating internal role ingestion.",
+  "verdict": "The retained naturally authorized coordinator run received prompt bytes exactly matching the current continuation producer plus its bindings wrapper and then performed observable policy and continuation actions.",
+  "summary": "Run initial-4ea0ed667ba7491fafde71cf4a6a2585 binds the exact 1,824-byte current continuation prompt to coordinator session 01a08151-5c05-7e82-942d-217ad2db826e. Its event stream contains the same prompt as user input and subsequent policy actions. This proves live input and observable use at the retained artifact ceiling, while internal role-ingestion semantics and a causal source-load receipt remain unobservable.",
+  "evidence_ceiling": [
+    "The retained runner proves exact current prompt input and observable subsequent coordinator actions.",
+    "Exact content match does not directly prove internal role-ingestion semantics or expose a separate causal source-load receipt.",
+    "No extra coordinator, reviewer, continuation child, supervisor restart, or gameplay replay was performed."
+  ],
+  "bindings": {
+    "dispatch_packet_sha256": "a5fa357939df16d09125f4ae239c6cf7a564fd0a0f06860e835758dcf8f41ace",
+    "run_id": "initial-4ea0ed667ba7491fafde71cf4a6a2585",
+    "runner_path": ".de67/state/runner-runs/20260908T155300Z-27126",
+    "role": "coordinator",
+    "session_id": "01a08151-5c05-7e82-942d-217ad2db826e",
+    "prompt_bytes": "1824",
+    "prompt_sha256": "6005ceb017e484f2eb86287540ac9f361aa73cb3cce584e45f6be9a9de468c2e",
+    "events_sha256": "a2dae59ad89369aeae0161fa413e967fafa36b694a17034d1c1c22847509d134",
+    "status_sha256": "71d9a65103b4ad848b7df5c35388c076c3bc632996b573d7bc6ddc7ad19b1c77",
+    "supervisor_pid": "89829"
+  },
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not manufacture another child launch or restart the supervisor for prompt adoption proof.",
+    "Preserve the distinction between exact live input and unobservable internal role-ingestion semantics."
+  ],
+  "material_changes": [
+    "Added a durable read-only audit of the retained naturally authorized coordinator input and event identities."
+  ],
+  "journal_entries": [],
+  "tests": [
+    "Independently regenerated coordinator_continuation_prompt() from the installed source and matched it plus the bindings wrapper byte-for-byte to prompt.txt.",
+    "Verified events.jsonl carries the exact same prompt as user input and records subsequent coordinator policy and continuation actions.",
+    "Verified the retained runner status and preserved all evidence ceilings."
+  ],
+  "live_actions": [
+    "Read retained runner prompt, events, status, and installed prompt producer.",
+    "Observed supervisor PID 89829 as the active external owner and did not touch it.",
+    "No child, supervisor restart, game, broker, or persistent process was launched."
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/prompt-live-adoption-20260908/audit.md",
+      "sha256": "d000510ec33ac7e755d24f9abb69d254ce8088ebaf75895a08ba0e1867e3d729",
+      "role": "Independent live-adoption audit and evidence ceiling."
+    },
+    {
+      "path": ".de67/state/runner-runs/20260908T155300Z-27126/prompt.txt",
+      "sha256": "6005ceb017e484f2eb86287540ac9f361aa73cb3cce584e45f6be9a9de468c2e",
+      "role": "Exact retained coordinator input."
+    },
+    {
+      "path": ".de67/state/runner-runs/20260908T155300Z-27126/events.jsonl",
+      "sha256": "a2dae59ad89369aeae0161fa413e967fafa36b694a17034d1c1c22847509d134",
+      "role": "Retained accepted input and subsequent observable coordinator actions."
+    },
+    {
+      "path": ".de67/state/runner-runs/20260908T155300Z-27126/status.json",
+      "sha256": "71d9a65103b4ad848b7df5c35388c076c3bc632996b573d7bc6ddc7ad19b1c77",
+      "role": "Retained coordinator completion status."
+    }
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_prompt.py::coordinator_continuation_prompt",
+    ".de67/state/runner-runs/20260908T155300Z-27126/prompt.txt",
+    ".de67/state/runner-runs/20260908T155300Z-27126/events.jsonl"
+  ],
+  "active_work": [],
+  "first_open_boundary": "No assigned live-adoption work remains. Internal role-ingestion semantics are not directly observable and are not required beyond exact input plus observable use.",
+  "narrow_queries": [
+    "Verify the four recorded artifact hashes and the exact prompt occurrence in events.jsonl.",
+    "Preserve supervisor PID 89829 ownership; do not relaunch it for this claim."
+  ]
+}
