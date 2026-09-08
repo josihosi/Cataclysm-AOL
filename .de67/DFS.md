@@ -1250,3 +1250,192 @@ Implementation status:
     unrelated method edits still require exclusive review. Current review's restart reason supplies
     the compact immediate handoff; test-only rendering is not live successor adoption.
 <!-- DE67:DFS-SLICE:END id=R-MAINT-PROMPT-DELIVERY-S001 claim=R-MAINT-PROMPT-DELIVERY -->
+
+
+## Owner-scoped retrieval evaluation — 2026-09-08
+
+Refrozen under owner gate `c895367b1fc2`, source HEAD
+`7fdb917c8e149b87634ae04a1afadacbbf90f50c` on `dev`. This adds a non-product tooling
+experiment and clarifies effective prompt delivery. Prior claims, accepted proof and independent
+assignments remain intact. Specification is not implementation or adoption evidence.
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-PROMPT-DELIVERY-S002 claim=R-MAINT-PROMPT-DELIVERY -->
+### Current prompt-delivery assignment contract
+
+This selected slice supersedes S001's coordinator-only source description for current execution;
+S001 remains historical specification. The existing red R-MAINT-PROMPT-DELIVERY claim stays open.
+Current source entrypoints are `coordinator_supervisor.py::run_child` (fresh coordinator and
+continuation rendering), `run_mutation_reviewer` (review override), and their prompt producers.
+There is no current `run_coordinator` function. Both the coordinator and reviewer can otherwise
+receive stale process-loaded text after on-disk promotion.
+
+Sol commissions one narrow loader/freshness repair in the installed Phase-3 supervisor and focused
+tests, covering current guarded text for both roles and any shared continuation path it affects.
+Preserve exact invocation gate/bindings, generation-specific restart reason, owner stops, the hard
+clock/guard/policy and exclusive external-supervisor launch ownership. No live supervisor restart,
+extra reviewer/coordinator or unrelated method edit is authorized for testing. Validate an on-disk
+promotion after process load through an isolated fake runner, including stale/corrupt/unavailable
+input failure and exactly one child launch per authorized transition. Source rendering alone is
+not actual role delivery. Verify the next naturally authorized live child input when available;
+never manufacture a launch or replay gameplay to demonstrate it. The current review handoff gives
+Sol immediate instructions; the source prompt correction remains unproved in the long-lived
+supervisor until this delivery repair reaches its caller.
+<!-- DE67:DFS-SLICE:END id=R-MAINT-PROMPT-DELIVERY-S002 claim=R-MAINT-PROMPT-DELIVERY -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-EVIDENCE-SEARCH-S001 claim=R-MAINT-EVIDENCE-SEARCH -->
+### Experience and authority
+
+A caller describes an unknown passage/event, optionally constrains task, run, feature, actor,
+producer or revision, and receives a compact ranked page of original excerpts. Each hit identifies
+why it matched, its source/occurrence, verified expansion handle, source generation/revision,
+known run/task/actor bindings and freshness. Unknown attribution stays unknown; similar text never
+confers proof, acceptance, current instructions or owner authority. The caller can expand context
+or use existing exact queries without an indexing chore. The outcome is discovery plus an honest
+usefulness evaluation; it does not require a particular vendor, positive verdict or global rollout.
+
+### Existing sources and boundaries
+
+Reuse `tools/openclaw_harness/cockpit_evidence.py::query/record_artifact`: source snapshots and
+`{path, offset, length, sha256}` handles already bind raw records; original recovery rejects changed
+bytes. `evidence_events.py::parse/envelopes` supplies native/NPC/runner event projections and null
+unpublished correlations. Its `query` currently reads complete source files, so it is a reference
+for semantics, not an incremental ingestion implementation. `cockpit_file_bridge.py` exposes
+`log-query`, `record-artifact` and response status/artifact/slice retrieval. Keep these entrypoints
+usable. Respect their distinction between a recorded request and its gameplay result.
+
+`work_context_provider.py::session_context` deliberately follows exact referenced sessions, not an
+archive walk or guessed newest run. `worker_receipt.py::compact_worker_receipt` exposes artifact
+references/entrypoints; `context_library.py::catalog/show` provides revisioned section retrieval.
+Bootstrap a declared source manifest from existing receipt/session/artifact inventories and explicit
+selected historical sources. Register newly produced evidence automatically through the narrow
+existing producer/inventory integration chosen by the worker; periodically reconcile registered
+sources to recover missed notifications. Report source coverage, exclusions and unavailable roots.
+Do not recursively inject the workspace/history or change existing receipt acceptance semantics.
+No `.de67/no-go-zone/`, secrets, credentials, unrelated workspaces or live owner data are index inputs.
+
+Start with logs, worker findings and investigation artifacts whose location or terminology is
+unknown. Plain-text/Markdown chunks must point to original spans, not solely generated summaries.
+Chunk JSONL at complete records and group meaningful adjacent evidence with constituent handles;
+preserve raw unparsed records and diagnostic context. Dedupe text for embedding reuse while keeping
+all occurrence identities. Repeated polling must not bury a rare diagnostic or contradictory outcome.
+Code indexing is a later extension; if included after the decision, bind functions/sections to source
+revisions and make current versus historical lookup explicit.
+
+### Implementation contract
+
+Build a workspace-local derived index with durable source manifest/cursors, content-addressed
+embedding reuse, occurrence/provenance metadata, and a real semantic ranking path combined with
+exact terms and structured filters. Backend/model selection belongs to the implementation worker,
+using an available locally runnable or already-authorized capability; no new paid service, upload
+or spending authority is granted. Record model/version and chunking identity so incompatible
+embeddings are not silently mixed. Deterministic lexical search is a useful fallback, not semantic
+proof. A hardcoded synonym table or stub does not deliver the natural-language route.
+
+For immutable completed artifacts, ingest once per content identity. For growing logs, checkpoint
+only committed complete records; retain a partial trailing record for the next pass. Detect source
+replacement, truncation and rotation, distinguish generations, and resume after crash without lost
+or duplicate occurrences. Changed/deleted registered sources must become visibly stale/unavailable
+or be refreshed; existing records cannot silently masquerade as current. Publish an index generation
+only after its writes/cursor state are coherent. Rebuild from originals and reuse matching embeddings
+where possible. Keep recovery/indexing automatic and independent of task lifecycle; bound resource
+use with adjustable execution settings, not acceptance quotas or worker waiting requirements.
+
+A query supplies text and optional explicit filters plus paging/expansion controls. Returned metadata
+must distinguish indexed coverage, last completed source position/generation, pending catch-up,
+partial/degraded results and no match. Fetch excerpts from verified original spans; reject changed
+bytes or return an explicit unavailable/stale hit instead of serving unverified cached prose. Explain
+ranking without invented causal claims. Retain alternate/contradictory hits. Respect literal filters;
+any inferred query interpretation must be visible and adjustable, never silently narrow away evidence.
+Absent index/model, corrupt state or missing sources must yield a clear error/degraded state with a
+usable existing exact-query route. No match on a partial index cannot establish that an event never
+happened. The index neither mutates source evidence nor becomes another game recorder or authority.
+
+### Behavioral proof
+
+Use existing `cockpit_evidence_test.py` exact filtering/hash-tamper fixtures and
+`evidence_display_test.py` append-stable/replaced-prefix fixtures as compatibility footing. Extend
+focused tests against the chosen implementation for:
+
+- Initial and repeated ingestion; append catch-up after process restart; interrupted writes/partial
+  records; crash between index and cursor commits; truncation, replacement, rotation and deletion.
+  Verify exact occurrence counts/identities and recoverable positions, not only successful commands.
+- Content reuse across multiple run occurrences, model/chunking-version mismatch and rebuild,
+  unparsed records, repetitive polling with retained rare/contradictory evidence, and missing inputs.
+- Natural paraphrases with little terminology overlap using the real selected semantic backend;
+  misleading near-matches, conflicting outcomes and unrelated runs; exact task/run/revision/actor
+  filters, null identities and visible query interpretation. Controlled fixtures may test failure
+  mechanics, but mocked embeddings alone cannot prove semantic utility.
+- Original excerpt and surrounding-record round-trip, hash mismatch/source replacement after search,
+  stable paging for a selected index generation, stale/partial coverage, no match, unavailable model,
+  corrupted index, and a functioning exact/structured fallback. Preserve existing query behavior.
+
+Complete build/test logs and source/model/fixture identities remain retrievable through existing
+artifacts/receipts. Source or isolated proof grants no gameplay credit. A fresh game campaign is not
+required merely to verify retrieval; use retained original evidence and normal upcoming work.
+
+### Convenience evaluation and owner decision
+
+After functional tests, enable explicit trial use by workers on representative difficult lookups
+in their normal assignments and by Sol for coordinator-side discovery. Verify actual tool invocation,
+returned originals and their use in answering the question; installed commands, selected bundles or
+positive self-report alone are insufficient. Workers should be able to ask directly without first
+learning source filenames, event spelling or indexing administration. Record concise friction,
+misses and follow-up searches along with successes through existing results, not a parallel form.
+
+Compare against existing exact/structured queries and bounded Luna retrieval where appropriate.
+Use comparable questions and disclose prior-knowledge/order effects; separate development/tuning
+examples from evaluation questions when practical. Cover enough differing cases to change a keep,
+revise or retire decision, without an arbitrary example quota. Do not replay accepted gameplay.
+Measure answer relevance/misses and source fidelity, elapsed effort, follow-up/helper/retry burden,
+returned and ingested context, and non-overlapping full-tree cached/uncached/output token use where
+available. Include indexing/embedding/search, cold and incremental cost, storage and maintenance
+friction. Preserve measurement boundaries and missing accounting; bytes, latency and subjective
+convenience are not substitutes for measured token savings.
+
+Sol presents Josef a compact evidence-backed keep/adopt, revise/retest or retire recommendation,
+with original handles, actual worker/coordinator use, failures, cost boundaries and tradeoffs.
+An explicit owner decision precedes making retrieval the default or expanding scope. That decision
+applies to this tool, not unrelated delivery. A negative evaluation and retirement decision can
+complete this experiment while retaining evidence and exact-query capability. A revision decision
+keeps the concrete remaining work open. A keep decision requires demonstrated functional behavior
+and convenience; it does not retroactively turn unit tests into adoption evidence. Preserve accepted
+work and reduce obsolete retrieval guidance if adoption makes it unnecessary.
+Implementation status:
+
+- [ ] 🔴 R-MAINT-EVIDENCE-SEARCH — Workers and Sol can discover original evidence by describing its meaning, with automatic incremental indexing and an owner decision on demonstrated usefulness before default adoption or expansion.
+
+<!-- DE67:DFS-SLICE:END id=R-MAINT-EVIDENCE-SEARCH-S001 claim=R-MAINT-EVIDENCE-SEARCH -->
+
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-CONTEXT-ROUTING-S001 claim=R-MAINT-CONTEXT-ROUTING -->
+### Declared DFS slices reach worker context
+
+The review's actual isolated packet reproduction shows that
+`policy_kernel.py::_exploration_route` matches the first DFS slice by claim and ignores the active
+ledger's `DFS slices:` selection. For R-MAINT-PROMPT-DELIVERY that chooses historical S001 instead
+of the selected S002. `_dfs_worker_boundary` then discards text after `Implementation status:`;
+that delimiter separates status from contract and must not be placed before new functional text.
+The new retrieval slice is formatted correctly. The existing prepared-context interface supplies
+S002 as an immediate source-bound worker brief without altering an issued packet.
+
+Authorize Sol to commission the narrow context-extraction helper and its tests in installed
+`policy_kernel.py`, reusing `mutation_guard.py`'s existing slice parsing/extraction APIs. Honor the
+exact validated slice IDs on the owning ledger item, their claim and declared order; retain all
+selected contract sections while excluding only the status projection as intended. Do not invent
+source selection, silently choose the first same-claim slice, or fall back on stale context when
+an explicit slice is absent, mismatched or malformed. Preserve independent assignments, immutable
+packets and current context revisions. This is ordinary tooling engineering under this owner-scoped
+context correction, not authority to change policy bytecode, route predicates, clock/guard functions,
+proof acceptance or process ownership.
+
+Prove actual isolated packet/reference-context output with two same-claim slices where the ledger
+selects the second, multiple selected slices in order, wrong-claim/missing/duplicate selection and
+unrelated assignments, plus the status-delimiter boundary. Retain a representative single-slice
+route as a compatibility check. The baseline counterexample and prepared-context recovery are in
+`state/review-owner-c895367b1fc2/`; completion requires the corrected helper reaching packet output,
+not only a text change or a helper returning an unconsumed string.
+
+Implementation status:
+
+- [ ] 🔴 R-MAINT-CONTEXT-ROUTING — Worker dispatch uses the ledger's declared DFS slices rather than the first same-claim slice, with validated original contract context.
+<!-- DE67:DFS-SLICE:END id=R-MAINT-CONTEXT-ROUTING-S001 claim=R-MAINT-CONTEXT-ROUTING -->
