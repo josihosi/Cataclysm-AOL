@@ -1,0 +1,509 @@
+--- .de67/state/owner-approvals-20260908/method-baseline/scripts/mutation_guard.py	2026-09-08 05:11:02
++++ .de67/state/owner-approvals-20260908/candidate-method/scripts/mutation_guard.py	2026-09-08 20:06:35
+@@ -15,7 +15,12 @@
+ import time
+ from typing import NamedTuple
+ 
++SCRIPT_ROOT = str(Path(__file__).resolve().parent)
++if SCRIPT_ROOT not in sys.path:
++    sys.path.insert(0, SCRIPT_ROOT)
++from specification import SpecificationError, resolve_path
+ 
++
+ TASK_GUIDELINES = "test-and-task-guidelines.md"
+ ORCHESTRATOR_GUIDELINES = "orchestrator-guidelines.md"
+ GUIDELINE_FILES = (TASK_GUIDELINES, ORCHESTRATOR_GUIDELINES)
+@@ -825,12 +830,24 @@
+         raise GuardError(f"Unsupported random mutation lane: {selected_lane}")
+     baseline_files = {
+         name: read_markdown(baseline_root / name)
+-        for name in (*GUIDELINE_FILES, DFS_FILE)
++        for name in GUIDELINE_FILES
+     }
+     candidate_files = {
+         name: read_markdown(candidate_root / name)
+-        for name in (*GUIDELINE_FILES, DFS_FILE)
++        for name in GUIDELINE_FILES
+     }
++    # ``DFS.md`` remains the durable lane/receipt label, but after migration it
++    # is a hash-bound compatibility handle rather than the contract itself.
++    # Resolve both roots before comparing them so a stale redirect cannot make
++    # a changed FS invisible, and so a valid redirect is checked against the
++    # canonical content instead of being parsed as a specification.
++    try:
++        baseline_specification = resolve_path(baseline_root / DFS_FILE)
++        candidate_specification = resolve_path(candidate_root / DFS_FILE)
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
++    baseline_files[DFS_FILE] = baseline_specification.text
++    candidate_files[DFS_FILE] = candidate_specification.text
+     changed = tuple(
+         name
+         for name in (*GUIDELINE_FILES, DFS_FILE)
+@@ -841,7 +858,9 @@
+             if _meaningful_markdown(baseline_files[name]) == _meaningful_markdown(candidate_files[name]):
+                 raise GuardError("Random guideline mutation cannot be whitespace-only")
+         elif name == DFS_FILE:
+-            validate_random_dfs_mutation(baseline_root / DFS_FILE, candidate_root / DFS_FILE)
++            validate_random_dfs_mutation(
++                baseline_specification.path, candidate_specification.path
++            )
+     return changed
+ 
+ 
+@@ -1814,7 +1833,10 @@
+     if len(slice_ids) != len(set(slice_ids)):
+         raise GuardError("DFS slice extraction cannot request a duplicate id")
+     claim_id = _selected_claim_id(selected_claim)
+-    text = _read_utf8_exact(dfs)
++    try:
++        text = resolve_path(dfs).text
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
+     lines = text.splitlines(keepends=True)
+     by_id = {item.slice_id: item for item in parse_dfs_slices(text)}
+     blocks: list[str] = []
+@@ -1841,6 +1863,19 @@
+     return tuple(claims)
+ 
+ 
++def specification_claims(specification_text: str) -> tuple[str, ...]:
++    """Return active legacy lamps or canonical claim identities from slices.
++
++    A functional-only FS intentionally has no implementation-status block.  Its
++    durable slice claims replace status prose for ledger binding; a legacy DFS
++    retains its stricter red-lamp interpretation unchanged.
++    """
++    legacy = red_dfs_claims(specification_text)
++    if legacy:
++        return legacy
++    return tuple(dict.fromkeys(item.claim_id for item in parse_dfs_slices(specification_text)))
++
++
+ def active_work_items(ledger_text: str) -> tuple[str, ...]:
+     items: list[str] = []
+     for _, line in _outside_fences(ledger_text):
+@@ -1901,8 +1936,12 @@
+ 
+     ledger_text = read_markdown(ledger)
+     blocks = _active_work_blocks(ledger_text)
+-    dfs_text = read_markdown(dfs)
+-    red_claims = red_dfs_claims(dfs_text)
++    try:
++        specification = resolve_path(dfs)
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
++    dfs_text = specification.text
++    red_claims = specification_claims(dfs_text)
+     slices_by_id = {item.slice_id: item for item in parse_dfs_slices(dfs_text)}
+     statuses: list[tuple[str, str, str]] = []
+     for reference, block in blocks:
+@@ -1984,8 +2023,12 @@
+     ledger_text = read_markdown(ledger)
+     blocks = _active_work_blocks(ledger_text)
+     items = tuple(reference for reference, _ in blocks)
+-    dfs_text = read_markdown(dfs)
+-    red_claims = red_dfs_claims(dfs_text)
++    try:
++        specification = resolve_path(dfs)
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
++    dfs_text = specification.text
++    red_claims = specification_claims(dfs_text)
+     slices = parse_dfs_slices(dfs_text)
+     slices_by_id = {item.slice_id: item for item in slices}
+     selected_claims: list[str] = []
+
+--- .de67/state/owner-approvals-20260908/method-baseline/scripts/coordinator_supervisor.py	2026-09-08 18:23:31
++++ .de67/state/owner-approvals-20260908/candidate-method/scripts/coordinator_supervisor.py	2026-09-08 20:06:35
+@@ -30,6 +30,7 @@
+ from agent_mailbox import communication_contract
+ from deadline_harness import DeadlineError, DeadlineHarness
+ from policy_kernel import current_owner_contract, worker_selection_contract
++from specification import SpecificationError, resolve
+ from repository_checkpoint import (
+     RepositoryCheckpointError,
+     checkpoint_repository,
+@@ -507,8 +508,13 @@
+             ).fetchall()
+         ]
+     documents: dict[str, str | None] = {}
++    try:
++        specification = resolve(workspace / ".de67")
++        specification_document = str(specification.path.relative_to(workspace))
++    except SpecificationError:
++        specification_document = ".de67/DFS.md"
+     for relative in (
+-        ".de67/DFS.md",
++        specification_document,
+         ".de67/work-ledger.md",
+         ".de67/mutation-suggestions.md",
+         ".de67/phase3-policy.d67",
+@@ -694,12 +700,15 @@
+     lineage_id: str,
+ ) -> bool:
+     """Derive completion from the DFS, current ledger, and live clock gates."""
+-    dfs = workspace / ".de67" / "DFS.md"
+     ledger = workspace / ".de67" / "work-ledger.md"
+-    if not dfs.is_file() or not ledger.is_file() or not state_path.is_file():
++    if not ledger.is_file() or not state_path.is_file():
+         return False
+-    if RED_DFS_CLAIM.search(dfs.read_text(encoding="utf-8")):
++    try:
++        specification = resolve(workspace / ".de67")
++    except SpecificationError:
+         return False
++    if specification.legacy and RED_DFS_CLAIM.search(specification.text):
++        return False
+     if ACTIVE_LEDGER_ITEM.search(ledger.read_text(encoding="utf-8")):
+         return False
+ 
+@@ -794,10 +803,16 @@
+ 
+ 
+ def dfs_has_open_work(workspace: Path) -> bool:
+-    """Return whether the frozen DFS still has a red product claim."""
+-    dfs = workspace / ".de67" / "DFS.md"
+-    return dfs.is_file() and RED_DFS_CLAIM.search(
+-        dfs.read_text(encoding="utf-8")
++    """Return whether the functional contract/ledger still has open work."""
++    try:
++        specification = resolve(workspace / ".de67")
++    except SpecificationError:
++        return False
++    if specification.legacy:
++        return RED_DFS_CLAIM.search(specification.text) is not None
++    ledger = workspace / ".de67" / "work-ledger.md"
++    return ledger.is_file() and ACTIVE_LEDGER_ITEM.search(
++        ledger.read_text(encoding="utf-8")
+     ) is not None
+ 
+ 
+@@ -934,13 +949,17 @@
+ 
+ def recovery_frontier_snapshot(workspace: Path) -> str:
+     """Render the small durable frontier a recovery coordinator must resolve."""
+-    dfs = workspace / ".de67" / "DFS.md"
++    try:
++        specification = resolve(workspace / ".de67")
++        dfs_text = specification.text
++        label = "DFS" if specification.legacy else "FS"
++    except SpecificationError:
++        dfs_text = ""
++        label = "FS/DFS"
+     ledger = workspace / ".de67" / "work-ledger.md"
+     red_lamps = (
+-        [line for line in dfs.read_text(encoding="utf-8").splitlines()
++        [line for line in dfs_text.splitlines()
+          if line.startswith("- [ ] 🔴 ")]
+-        if dfs.is_file()
+-        else []
+     )
+     executable_entries = (
+         [line for line in ledger.read_text(encoding="utf-8").splitlines()
+@@ -949,7 +968,7 @@
+         else []
+     )
+     return (
+-        "DFS red lamps:\n"
++        label + " red lamps:\n"
+         + ("\n".join(red_lamps) if red_lamps else "(none)")
+         + "\nLedger executable entries:\n"
+         + ("\n".join(executable_entries) if executable_entries else "(none)")
+@@ -1033,7 +1052,7 @@
+         "The hash-bound .de67/phase3-policy.d67 file is the machine-canonical routing policy.",
+         "Before each coordinator routing transition, execute the argument array in DE67_POLICY_DECIDE_ARGV_JSON as a subprocess without a shell.",
+         current_owner_contract(workspace),
+-        "The FS (Functional Specification, currently at .de67/DFS.md) defines code behavior; the ledger owns delivery assignments and evidence references. Read the relevant contract and reconcile changed outcomes. Historical acceptance retains its scope; the current owner contract decides fresh proof.",
++        "The FS (Functional Specification, resolved from .de67/FS.md with legacy .de67/DFS.md compatibility) defines code behavior; the ledger owns delivery assignments and evidence references. Read the relevant contract and reconcile changed outcomes. Historical acceptance retains its scope; the current owner contract decides fresh proof.",
+         coordinator_context_contract(),
+         "Current work, independent task results, receipt search, recorded dispatch relationships and runner "
+         "metadata and latest-assigned coordinator-tree token usage are available from this argument array: " + json.dumps([
+@@ -1238,7 +1257,11 @@
+         if remaining is not None:
+             gate = remaining
+             continue
+-        with DeadlineHarness(state_path) as harness:
++        # The reviewer may have atomically promoted the method while this
++        # parent was alive.  Its imported DeadlineHarness must not decide the
++        # post-review projection: load the installed source from disk before
++        # the one authorized successor is claimed.
++        with _fresh_deadline_harness()(state_path) as harness:
+             harness.synchronize_dfs_statuses()
+         restart = read_clock(state_path, lineage_id)
+         if not restart.required or restart.generation is None:
+@@ -1273,6 +1296,38 @@
+             f"Current supervisor prompt source could not be loaded: {error}"
+         ) from error
+     return module
++
++
++def _fresh_deadline_harness() -> type[DeadlineHarness]:
++    """Load the post-review delivery writer from the installed source.
++
++    This mirrors fresh prompt loading.  It keeps a long-lived supervisor from
++    using a pre-promotion status writer for the one post-review handoff, while
++    retaining the same parent, state database, journal, and child-launch
++    authority.
++    """
++    source_path = Path(__file__).with_name("deadline_harness.py")
++    try:
++        source = source_path.read_text(encoding="utf-8")
++        code = compile(source, str(source_path), "exec")
++    except (OSError, SyntaxError, UnicodeError) as error:
++        raise SupervisorError(
++            f"Current delivery projection source is unavailable or corrupt: {error}"
++        ) from error
++    module = types.ModuleType(f"_de67_delivery_source_{uuid.uuid4().hex}")
++    module.__file__ = str(source_path)
++    module.__package__ = None
++    sys.modules[module.__name__] = module
++    try:
++        exec(code, module.__dict__)
++    except Exception as error:
++        raise SupervisorError(
++            f"Current delivery projection source could not be loaded: {error}"
++        ) from error
++    harness_type = getattr(module, "DeadlineHarness", None)
++    if not isinstance(harness_type, type):
++        raise SupervisorError("Current delivery projection source has no DeadlineHarness")
++    return harness_type
+ 
+ 
+ def run_child(
+
+--- .de67/state/owner-approvals-20260908/method-baseline/tests/test_mutation_guard.py	2026-09-08 05:11:02
++++ .de67/state/owner-approvals-20260908/candidate-method/tests/test_mutation_guard.py	2026-09-08 20:08:27
+@@ -7,18 +7,19 @@
+ from pathlib import Path
+ import shutil
+ import sqlite3
++import sys
+ import tempfile
+ import unittest
+ from contextlib import redirect_stderr, redirect_stdout
+ from unittest.mock import patch
+ 
+-
+ ROOT = Path(__file__).resolve().parents[1]
+ MODULE_PATH = ROOT / "scripts" / "mutation_guard.py"
+ SPEC = importlib.util.spec_from_file_location("de67_phase3_mutation_guard", MODULE_PATH)
+ assert SPEC is not None and SPEC.loader is not None
+ guard = importlib.util.module_from_spec(SPEC)
+ SPEC.loader.exec_module(guard)
++from specification import compatibility_pointer  # noqa: E402
+ 
+ DEADLINE_MODULE_PATH = ROOT / "scripts" / "deadline_harness.py"
+ DEADLINE_SPEC = importlib.util.spec_from_file_location(
+@@ -68,7 +69,32 @@
+ 
+     def test_canonical_work_ledger_template_has_no_fake_active_item(self) -> None:
+         self.assertEqual(guard.active_work_items(WORK_LEDGER_TEXT), ())
++
++    def test_legacy_random_lane_resolves_and_guards_the_canonical_target(self) -> None:
++        source = self.expansion_dfs(new_claim="")
++        for root in (self.baseline, self.candidate):
++            fs = root / "FS.md"
++            fs.write_text(source, encoding="utf-8")
++            (root / guard.DFS_FILE).write_text(
++                compatibility_pointer(fs), encoding="utf-8"
++            )
++        candidate_fs = self.candidate / "FS.md"
++        candidate_fs.write_text(source + "\nChanged canonical contract.\n", encoding="utf-8")
++
++        with self.assertRaisesRegex(guard.GuardError, "compatibility pointer"):
++            guard.validate_random_review_mutation(
++                self.baseline, self.candidate, selected_lane=guard.DFS_FILE
++            )
+ 
++        (self.candidate / guard.DFS_FILE).write_text(
++            compatibility_pointer(candidate_fs), encoding="utf-8"
++        )
++        with self.assertRaises(guard.GuardError) as rejected:
++            guard.validate_random_review_mutation(
++                self.baseline, self.candidate, selected_lane=guard.DFS_FILE
++            )
++        self.assertNotIn("must contain exactly one", str(rejected.exception))
++
+     @staticmethod
+     def write_guidelines(root: Path, task_text: str, orchestrator_text: str) -> None:
+         (root / guard.TASK_GUIDELINES).write_text(task_text, encoding="utf-8")
+
+--- .de67/state/owner-approvals-20260908/method-baseline/tests/test_coordinator_supervisor.py	2026-09-08 14:34:08
++++ .de67/state/owner-approvals-20260908/candidate-method/tests/test_coordinator_supervisor.py	2026-09-08 20:07:21
+@@ -23,6 +23,7 @@
+     SupervisionEvent,
+     SupervisorError,
+     _complete_mutation_review,
++    _fresh_deadline_harness,
+     _supervisor_lock,
+     build_parser,
+     coordinator_context_contract,
+@@ -549,6 +550,19 @@
+ 
+ 
+ class CoordinatorSupervisorTests(unittest.TestCase):
++    def test_post_review_projection_loads_the_installed_delivery_writer(self) -> None:
++        # A long-lived parent keeps its ordinary import, but the sole
++        # post-review projection must use the exact on-disk writer that the
++        # exclusive reviewer promoted before it can authorize one successor.
++        fresh = _fresh_deadline_harness()
++        self.assertIsNot(fresh, DeadlineHarness)
++        self.assertEqual(
++            Path(sys.modules[fresh.__module__].__file__).resolve(),
++            (SCRIPTS / "deadline_harness.py").resolve(),
++        )
++        with fresh(self.state_path) as harness:
++            self.assertEqual(harness.synchronize_dfs_statuses(persist=False), ())
++
+     def test_packaged_ledger_refills_until_dfs_is_green_without_batch_cap(self) -> None:
+         template = (
+             SCRIPTS.parent / "assets" / "environment" / "work-ledger.md"
+
+--- /dev/null	2026-09-08 20:11:32
++++ .de67/state/owner-approvals-20260908/candidate-method/scripts/specification.py	2026-09-08 19:09:45
+@@ -0,0 +1,88 @@
++#!/usr/bin/env python3
++"""Resolve the single functional specification across the DFS-to-FS migration.
++
++The compatibility file is deliberately a small, hash-bound redirect.  It is not
++a second editable copy of the specification: consumers must call this module
++instead of reading ``DFS.md`` directly once ``FS.md`` exists.
++"""
++
++from __future__ import annotations
++
++import hashlib
++import re
++from dataclasses import dataclass
++from pathlib import Path
++
++
++FS_FILE = "FS.md"
++LEGACY_DFS_FILE = "DFS.md"
++_POINTER = re.compile(
++    r"\A<!-- DE67:FS-COMPAT canonical=FS\.md sha256=(?P<sha>[0-9a-f]{64}) -->\n?\Z"
++)
++_STATUS = re.compile(
++    r"(?ms)^Implementation status:\s*\n.*?(?=^<!-- DE67:DFS-SLICE:END )"
++)
++_EMPTY_SLICE = re.compile(
++    r"(?m)(<!-- DE67:DFS-SLICE:BEGIN[^>]*-->\n)(?=<!-- DE67:DFS-SLICE:END )"
++)
++
++
++class SpecificationError(RuntimeError):
++    """The workspace has no unambiguous functional specification."""
++
++
++@dataclass(frozen=True)
++class Specification:
++    path: Path
++    text: str
++    legacy: bool
++
++    @property
++    def label(self) -> str:
++        return f".de67/{self.path.name}"
++
++
++def _sha256(path: Path) -> str:
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def compatibility_pointer(fs_path: Path) -> str:
++    return f"<!-- DE67:FS-COMPAT canonical=FS.md sha256={_sha256(fs_path)} -->\n"
++
++
++def render_functional_specification(legacy_text: str) -> str:
++    """Remove delivery projections while preserving all functional/slice bytes."""
++    functional = _STATUS.sub("", legacy_text)
++    return _EMPTY_SLICE.sub(
++        r"\1<!-- DE67:FS-SLICE-IDENTITY delivery=work-ledger.md -->\n",
++        functional,
++    )
++
++
++def resolve(de67_root: Path) -> Specification:
++    """Return the canonical FS or a pre-migration DFS, fail-closed on dual content."""
++    fs_path = de67_root / FS_FILE
++    dfs_path = de67_root / LEGACY_DFS_FILE
++    if fs_path.is_file():
++        if not dfs_path.is_file():
++            raise SpecificationError(
++                "FS.md requires the hash-bound DFS.md compatibility pointer"
++            )
++        pointer = _POINTER.fullmatch(dfs_path.read_text(encoding="utf-8"))
++        if pointer is None:
++            raise SpecificationError("FS.md and DFS.md are conflicting mutable specifications")
++        if pointer.group("sha") != _sha256(fs_path):
++            raise SpecificationError("DFS.md compatibility pointer does not match FS.md")
++        return Specification(fs_path, fs_path.read_text(encoding="utf-8"), legacy=False)
++    if dfs_path.is_file():
++        return Specification(dfs_path, dfs_path.read_text(encoding="utf-8"), legacy=True)
++    raise SpecificationError("Missing FS.md and legacy DFS.md")
++
++
++def resolve_path(path: Path) -> Specification:
++    """Resolve a legacy CLI path without making an arbitrary file ambiguous."""
++    if path.name in (FS_FILE, LEGACY_DFS_FILE):
++        return resolve(path.parent)
++    if not path.is_file():
++        raise SpecificationError(f"Missing functional specification: {path}")
++    return Specification(path, path.read_text(encoding="utf-8"), legacy=path.name == LEGACY_DFS_FILE)
+
+--- /dev/null	2026-09-08 20:11:32
++++ .de67/state/owner-approvals-20260908/candidate-method/tests/test_specification_migration.py	2026-09-08 20:06:35
+@@ -0,0 +1,52 @@
++import hashlib
++import tempfile
++import unittest
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
++from specification import SpecificationError, compatibility_pointer, render_functional_specification, resolve
++
++
++class SpecificationMigrationTests(unittest.TestCase):
++    def test_hash_bound_pointer_resolves_fs_and_rejects_stale_pointer(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            fs = root / "FS.md"
++            fs.write_text("# Functional\n<!-- DE67:DFS-SLICE:BEGIN claim=R-X -->\nImplementation status:\n- [ ] stale\n<!-- DE67:DFS-SLICE:END claim=R-X -->\n", encoding="utf-8")
++            (root / "DFS.md").write_text(compatibility_pointer(fs), encoding="utf-8")
++            self.assertFalse(resolve(root).legacy)
++            fs.write_text(fs.read_text(encoding="utf-8") + "x", encoding="utf-8")
++            with self.assertRaises(SpecificationError):
++                resolve(root)
++
++    def test_dual_mutable_content_and_missing_pointer_fail_closed(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            (root / "FS.md").write_text("# FS\n", encoding="utf-8")
++            (root / "DFS.md").write_text("# DFS\n", encoding="utf-8")
++            with self.assertRaises(SpecificationError):
++                resolve(root)
++
++    def test_functional_render_removes_delivery_status_only(self):
++        text = "# FS\nImplementation status:\n- [x] delivered\n<!-- DE67:DFS-SLICE:END claim=R-X -->\n"
++        rendered = render_functional_specification(text)
++        self.assertNotIn("Implementation status:", rendered)
++        self.assertIn("# FS", rendered)
++
++    def test_functional_render_preserves_contract_before_status_tracking(self):
++        text = (
++            "<!-- DE67:DFS-SLICE:BEGIN id=R-X-S001 claim=R-X -->\n"
++            "The adapter binds sender, workspace, and revision before delivery.\n\n"
++            "Implementation status:\n"
++            "- [x] R-X — historical delivery projection\n"
++            "<!-- DE67:DFS-SLICE:END id=R-X-S001 claim=R-X -->\n"
++        )
++        rendered = render_functional_specification(text)
++        self.assertIn("The adapter binds sender, workspace, and revision", rendered)
++        self.assertNotIn("Implementation status:", rendered)
++        self.assertNotIn("historical delivery projection", rendered)
++
++
++if __name__ == "__main__":
++    unittest.main()

@@ -1,0 +1,20 @@
+{
+  "candidate_method": {
+    "scripts/mutation_guard.py": "d98dcc324fe3ab67c371957a81110f003becc397dc0e6b0852bb3f3c90eae4db",
+    "scripts/coordinator_supervisor.py": "ee0af3aeeb9881ceb1a300ec022f95567260e6de8e8b4b308573f129df6d2eb6",
+    "scripts/specification.py": "84cee503d65848f71ad89fb9c0197959b705104789076be7642e0b0e80d931e3",
+    "tests/test_mutation_guard.py": "ff94b30af4e34a123c6b1e476a3f53c6a6eca9f363e9f1031bfb6ad2d5588058",
+    "tests/test_specification_migration.py": "b7d0b6e3e59b107ebb1ddd90ae7a1d061e93db1c264d9bcf758c0117215b17ed",
+    "tests/test_coordinator_supervisor.py": "b0a753ba0485d04ce537ea15fdeb3cc46cf99d3d7f59c8234fc260092cf3b007"
+  },
+  "staged_workspace": {
+    ".de67/FS.md": "c24630537f0750630e9fe9edbe7ce9fd7db53be62410fc2e19c6db275b006b5c",
+    ".de67/DFS.md": "4e7a48da8b1e541d19a1a3f17a92eeff1658201700feb5436fa2d96a9d2e6817",
+    ".de67/work-ledger.md": "dbe120d2aedf6db84a48da42a5e3cbd18435c171c4c50357194cbe9df000545e"
+  },
+  "active_unchanged": {
+    ".de67/DFS.md": "06a9d7881577c49472304518c48329a99ec790856affa67610c418604e272166",
+    ".de67/work-ledger.md": "41b5cf731c9810ba6242abf31825fa343cff3e878dbb32510af154b39616f5d7",
+    ".de67/FS.md": "absent"
+  }
+}

@@ -1,0 +1,127 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-FS-MIGRATION-integration-003",
+  "claim_id": "R-MAINT-FS-MIGRATION",
+  "worker_id": "01a0822e-3c81-7843-ba88-4603aed06a25",
+  "disposition": "completed",
+  "verdict": "corrected_staged_candidate_requires_exclusive_parent_adoption_boundary",
+  "outcome": "The isolated FS migration candidate now guards legacy DFS review paths against stale canonical pointers, dynamically selects the installed delivery writer for a post-review handoff, and rebases the staged functional FS from the current active DFS while preserving functional content and ledger tracking. Active protected files remain unchanged.",
+  "summary": "The candidate rejects stale FS redirects before legacy-lane validation and validates a valid redirect against canonical content. Its staged FS retains all 32 slice identities and the R-MAINT-CONSULT functional contract, contains no delivery-status markers, and its ledger includes the current integration assignment. The dynamic writer proof covers a long-lived supervisor's fresh on-disk delivery import before its sole successor. Full discovery is comparable to the baseline: candidate 453 and baseline 445 tests, each with the identical 5 failures, 19 errors, and 4 skips; the candidate adds eight tests without a new failing identity.",
+  "material_changes": [
+    "Updated the isolated candidate mutation guard to resolve both legacy DFS roots through the shared canonical resolver before random-lane comparison.",
+    "Updated the isolated candidate supervisor to dynamically load the on-disk deadline-harness delivery writer after review and before the single successor handoff.",
+    "Rebased the isolated candidate FS/DFS pointer and ledger from current active documents, retaining pre-status functional contract text while removing delivery tracking from FS."
+  ],
+  "tests": [
+    "Focused transition regressions: 11 tests passed (resolver/render, canonical guard, functional ledger projection, fresh delivery writer, long-lived supervisor lifecycle).",
+    "Dashboard staged compatibility: both source and deployed candidates passed legacy/canonical read-only, escaped rendering, and stale-pointer panel checks.",
+    "Candidate full discovery: 453 tests, 5 failures, 19 errors, 4 skips; baseline full discovery: 445 tests, 5 failures, 19 errors, 4 skips; the 22 failure/error identities are identical."
+  ],
+  "live_actions": [
+    "No game, broker, coordinator, worker, dashboard, or supervisor process was launched or owned for this task.",
+    "No active method, active DFS/ledger, deadline state, mutation gate, or durable coordination record was modified."
+  ],
+  "evidence_ceiling": [
+    "This proves only the isolated staged candidate, its regression comparison, and its dynamic-adoption design; it does not activate FS.md or prove a live parent has loaded the candidate.",
+    "The running active parent still holds the baseline DeadlineHarness import, so active promotion needs an exclusive reviewer-controlled parent replacement/exec or a verified pre-existing live hook."
+  ],
+  "bindings": {
+    "approval_mail": ".de67/state/agent-mail/coordinator/e14be5fe56244bd0bc6200b9ddd12f61.json",
+    "candidate_method": ".de67/state/owner-approvals-20260908/candidate-method",
+    "candidate_workspace": ".de67/state/owner-approvals-20260908/workspace-candidate",
+    "review_gate": "44b1fc1f8d95",
+    "source_identity_manifest": ".de67/task-logs/r-maint-fs-migration-integration-003/source-identities.json"
+  },
+  "journal_entries": [
+    {
+      "id": "canonical-guard-repair",
+      "sequence": "1",
+      "event_type": "isolated_repair",
+      "evidence_class": "candidate_source_and_test",
+      "summary": "Legacy DFS random-review paths now resolve and validate canonical FS content, rejecting stale redirects.",
+      "artifact_ref": ".de67/task-logs/r-maint-fs-migration-integration-003/focused-transition-regressions.log"
+    },
+    {
+      "id": "functional-content-rebase",
+      "sequence": "2",
+      "event_type": "isolated_stage",
+      "evidence_class": "candidate_workspace",
+      "summary": "Current active DFS was rendered into the staged FS while retaining functional content before delivery tracking and retaining all 32 slices.",
+      "artifact_ref": ".de67/state/owner-approvals-20260908/delivery-stage.json"
+    },
+    {
+      "id": "comparable-regression",
+      "sequence": "3",
+      "event_type": "regression_comparison",
+      "evidence_class": "candidate_and_baseline_test_logs",
+      "summary": "Candidate added eight passing tests and has the same 22 failure/error identities as the baseline.",
+      "artifact_ref": ".de67/task-logs/r-maint-fs-migration-integration-003/candidate-failure-identities.txt"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-integration-003/focused-transition-regressions.log",
+      "sha256": "174e22dbdd8182463b0b2b52d1f8ec3459248856cc03a4e5a68d672af731917b",
+      "role": "focused transition regression output"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-integration-003/candidate-full-unittest.log",
+      "sha256": "573e2d8d33d8c0a18e0f5a8fce8e83b9d874c561b2c7a58db12e6cbbdd1bb851",
+      "role": "candidate complete regression output"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-integration-003/baseline-full-unittest.log",
+      "sha256": "1c874d497ce0acd8435c0150dd26f5e27d62a4db603ba22e6f2b880444e13fdb",
+      "role": "baseline comparable regression output"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-integration-003/candidate-failure-identities.txt",
+      "sha256": "8ef5703c524701f1f7d4b956a55d7f8b26b17c34db0f6a6d40ca03f130d0ea5d",
+      "role": "candidate failure/error identity set"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-integration-003/baseline-failure-identities.txt",
+      "sha256": "8ef5703c524701f1f7d4b956a55d7f8b26b17c34db0f6a6d40ca03f130d0ea5d",
+      "role": "baseline failure/error identity set"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-integration-003/candidate-repair.patch",
+      "sha256": "fd005a527c7377149523496aecfacfe1d35434ddca7a589a5dc931d8d573e4a4",
+      "role": "review-ready isolated candidate delta"
+    },
+    {
+      "path": ".de67/state/owner-approvals-20260908/delivery-stage.json",
+      "sha256": "f4c96214514e15b61108a17955218ac7ca3fd9ac26452c8080a7e320f2542f94",
+      "role": "private current-document rebase record"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-integration-003/source-identities.json",
+      "sha256": "c581a0022364dbfed246fe7f94f9abcce52481e61d239bfa0a80f6dafa330e58",
+      "role": "candidate, staged, and active source identities"
+    }
+  ],
+  "first_divergence": {
+    "class": "live_parent_adoption_boundary",
+    "summary": "The active parent imported the baseline DeadlineHarness before candidate promotion and therefore cannot execute the staged fresh-import path without exclusive reviewer-controlled replacement/exec or an existing verified hook."
+  },
+  "accepted_no_replay": [
+    "Prior staging, audit, owner-approval, and accepted evidence artifacts were preserved without rewrite or replay.",
+    "No protected active candidate installation, mutation resolution, or ordinary-worker activation was attempted."
+  ],
+  "active_work": [
+    "Exclusive reviewer must choose and verify the one authorized parent replacement/exec or a confirmed existing hook, then install the complete candidate method/workspace/dashboard bundle together and run the post-review projection before its sole successor."
+  ],
+  "first_open_boundary": "Exclusive reviewer-controlled active parent adoption/replacement is required before the corrected candidate can be activated; ordinary workers must not install or launch a competing supervisor.",
+  "narrow_queries": [
+    "Does the exclusive reviewer have a verified parent replacement/exec handoff that preserves the existing supervisor owner, journal, state, and sole-successor rule?",
+    "If a hook exists, can it load the complete installed candidate before `synchronize_dfs_statuses` and prove the same current FS/ledger identities?"
+  ],
+  "entrypoints": [
+    ".de67/state/owner-approvals-20260908/candidate-method/scripts/mutation_guard.py",
+    ".de67/state/owner-approvals-20260908/candidate-method/scripts/coordinator_supervisor.py",
+    ".de67/state/owner-approvals-20260908/candidate-method/scripts/specification.py",
+    ".de67/state/owner-approvals-20260908/stage_delivery.py"
+  ],
+  "context_metrics": {}
+}
