@@ -958,6 +958,13 @@ Implementation status:
     from the requested repair/acceptance obligation. Its original `blocked_line_of_sight`
     observation remains valid at that ceiling. This does not waive smoke sensing on other OMTs,
     local visual perception/aggression, or any unperformed signal/memory/world-boundary test.
+- Owner-promoted repair, relay4673b7453329 / review d1cfc813605b: R033-F002 compares
+    fresh signal summary text with its bounded durable representation and falsely refreshes an
+    unchanged lead. Authorize only this persistence/comparison correction and focused native retest.
+    Reproduce the original >256-character summary mismatch, compare canonical semantic content,
+    preserve the specified observation metadata and prove a meaningful source change still updates.
+    Separate unsupported aging and the accepted same-OMT exception; implementation and proof remain
+    open under R-033-smoke-dedup-repair-001, with source-grounded preparation in the task context.
 <!-- DE67:DFS-SLICE:END id=R-033-S001 claim=R-033 -->
 
 ### 18. Fresh persistence and continuation
@@ -1168,6 +1175,21 @@ implementation and focused verification, with exclusive file/runtime ownership p
     Patrol frames and inactive-owner counterexamples preserve identities, priority/order and runtime;
     loading/modal/ready/exited fixtures preserve uncertainty and exact recovery handles. No gameplay
     acceptance or live-process action is implied. See the named ledger assignments for edit ownership.
+  - Owner extension f5319eac0adc, consolidated with cycle 9: optional selected native views expose
+    stable entities/relevant fields, source/run/frame/turn identity, freshness, unknowns and original
+    handles. Before/after comparisons preserve both observations and distinguish changed, unchanged,
+    added, removed, unknown and incompatible bindings; different-time views are not atomic. Existing
+    event/journal queries follow recorded request/actor/source links to native acceptance, rejection
+    and results, retaining pending/missing links and competing listeners/writers without inferred
+    causality. Reuse inspector/cockpit facts, adding narrow read-only native instrumentation only
+    when needed. No new DSL, verdict oracle, automatic setup/time advancement or receipt framework.
+  - Prove crafting recipient/camp/capability, recipe/resources/tools/ownership/location and job,
+    and signal observer/source/visibility/lead/content/timestamps through shared machinery. Cover
+    missing fields/resources/capability, source freshness, process/actor identity incompatibility,
+    same-content timestamp refresh and unrelated-writer contamination. Apply it to Patrol or Pay
+    through selections/adapters only. Use original native artifacts and isolated tests first, then
+    the smallest necessary source-bound native integration test. Sol supplies selected task facts
+    through existing context preparation and verifies actual worker input/use; no replay for adoption.
 <!-- DE67:DFS-SLICE:END id=R-MAINT-COMPACT-IO-S001 claim=R-MAINT-COMPACT-IO -->
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-RESULT-REUSE-S001 claim=R-MAINT-RESULT-REUSE -->
@@ -1179,3 +1201,51 @@ implementation and focused verification, with exclusive file/runtime ownership p
     replaces obsolete current conclusions without destroying their archived revisions. Demonstrate
     the interface's next relevant use without replaying accepted product evidence solely for adoption.
 <!-- DE67:DFS-SLICE:END id=R-MAINT-RESULT-REUSE-S001 claim=R-MAINT-RESULT-REUSE -->
+
+## Owner-authorized advisory integration — review d1cfc813605b
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-CONSULT-S001 claim=R-MAINT-CONSULT -->
+Implementation status:
+
+- [ ] 🔴 R-MAINT-CONSULT — Sol can request bounded architectural/method advice from Josef's persistent conversational Astra Mutator and receive an authenticated task-bound reply.
+  - The supported OpenClaw agent/session interface is transport, not proof of task authorization.
+    Bind sender to current coordinator/workspace/lineage/run and task/assignment revision, recipient
+    to the configured conversational role, and replies to stable request/source identities. Preserve
+    pending work; acknowledge results, deduplicate retries and reject stale, cross-workspace or
+    unauthorized messages. Failures expose the exact unavailable capability and continuation.
+  - Consult for consequential cross-task obstruction, ambiguous responsibility, contradictory
+    specification/evidence, architectural judgment or scope/ownership conflict after local diagnosis.
+    Send concise outcome/state/first divergence, evidence, attempted lessons, constraints/live owner
+    and decision needed when evidence changes. Routine worker repairs/allocation need no consultation.
+  - Advice grants no owner/DFS/repair authority, queue promotion, gate resolution or shared-state
+    edits. Keep conversational advice distinct from exclusive mutation review. Agent-authored
+    recommendations never become Owner-authorized entries. No raw Codex UUID, impersonation, global
+    access change, credential collection, indiscriminate transcripts, echo loop or second coordinator.
+  - Proof: isolated wrong-sender/workspace, stale-revision, duplicate, unavailable-endpoint and
+    no-authority-escalation cases, then one harmless actual Sol request/reply on the next ordinary run.
+    Inspect/preserve/merge existing host surfaces; name any actual host-owned setup requirement.
+    No channel is claimed complete until the round trip is verified. Workbench/channel delivery
+    grants no gameplay acceptance. See R-MAINT-CONSULT-001 and its selected task context.
+<!-- DE67:DFS-SLICE:END id=R-MAINT-CONSULT-S001 claim=R-MAINT-CONSULT -->
+
+Scoped refreeze 2026-09-08, review d1cfc813605b: owner relays6f6a959b0eab,4673b7453329,
+f5319eac0adc refine preparation, the existing workbench assignment, R033-F002 repair and advisory
+integration. Source inspected at the HEAD in `state/review-owner-d1cfc813605b/source-baseline.json`.
+All existing stable claims/slices, accepted proof, clocks and independent assignments remain intact.
+This record grants the named implementation route, not completed capability or gameplay proof.
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-PROMPT-DELIVERY-S001 claim=R-MAINT-PROMPT-DELIVERY -->
+Implementation status:
+
+- [ ] 🔴 R-MAINT-PROMPT-DELIVERY — Each supervisor-launched coordinator receives the current guarded role prompt after a method promotion, without restarting or duplicating the supervisor.
+  - `coordinator_supervisor.py::run_coordinator` currently invokes its process-loaded
+    `coordinator_prompt`; a fresh Codex child alone does not reload that Python function.
+    Authorize Sol to commission a narrow prompt-loading repair in that script and its tests.
+    Do not change the hard clock/guard, retirement/restart ownership, command bindings or policy.
+    Preserve the generation-specific durable restart reason and owner stop behavior.
+  - Prove with an isolated fake-runner test that an on-disk prompt promotion after supervisor load
+    reaches the next child, while stale/corrupt prompt input fails visibly and no duplicate child
+    launches. This is ordinary tool engineering under this explicit owner-scoped refinement;
+    unrelated method edits still require exclusive review. Current review's restart reason supplies
+    the compact immediate handoff; test-only rendering is not live successor adoption.
+<!-- DE67:DFS-SLICE:END id=R-MAINT-PROMPT-DELIVERY-S001 claim=R-MAINT-PROMPT-DELIVERY -->

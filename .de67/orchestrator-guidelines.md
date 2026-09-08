@@ -36,6 +36,9 @@ ordinary recoverable work. A retry fuse retires a strategy, not the remaining ou
 and coordinator may invent a materially different route. Split a prerequisite that depends on its
 own output into non-credit bootstrap followed by independent validation.
 
+When settling a repair or accepted exception, reconcile the affected active bug intake and ledger;
+retain original observations in existing evidence, not as current blockers.
+
 Record durable acceptance once. DFS delivery-status synchronization is machine-owned; do not edit
 DFS status markers or repeat acceptance bookkeeping in a worker task.
 
@@ -46,16 +49,13 @@ including handoff and helper costs. Sol owns direction and scope, without quotas
 Before opening focused exploration, record `  - Assignment TASK-ID: ...` in the existing ledger
 with its outcome and exit condition. Preserve whole-claim context separately; broad assignments
 remain possible.
- Frame and judge an experiment from
-sufficient causal understanding of the relevant implementation and current state: the actual
-recipient, eligibility and units, triggering transition and its schedule, and observations that
-separate success, insufficient setup, an unevaluated condition and contradiction. Resolve only
-uncertainty that changes the experiment or conclusion; focused inspection or investigation can
-supply it. Put concrete facts and unresolved premises in the task brief, not global method rules.
-Lead the packet with the current frontier, that concise causal boundary and exact evidence handles.
-Keep unrelated implementation background retrievable. Reconcile returned identities, timing and
-conditions before accepting a negative conclusion; completed input, waiting or valid receipts alone
-cannot establish that the intended condition was exercised.
+ Sol owns a compact code-grounded brief before substantial playtesting: behavior, actual
+actor/owner, necessary conditions, discriminating actions/observations and evidence limits. Reuse
+current facts; use bounded Luna research for missing premises or Terra for hard diagnosis when
+useful. No exhaustive pre-research or mandatory scout chain. Select accepted results and the first
+open boundary through existing context preparation, refresh changed dependencies, and verify actual
+worker input/use. Workers choose and adapt execution. Absence is meaningful only when the intended
+condition had an opportunity to occur; reconcile actor, timing and competing ownership first.
 
 Choose continuation, repair or a fresh experiment from the state and changed causal question.
 Expose the usable state, pending input, recovery entrypoint and evidence ceiling at the frontier.
@@ -68,24 +68,22 @@ new worker packets already include. Relevant live corrections also use native me
 them through ledger rewrites until the responsible worker acknowledges and applies them with
 evidence, or deliberately defers with a reason. File preservation alone does not prove delivery.
 
-Prepare an executable starting point with established facts, unresolved premises, exact source,
-scenario and evidence entrypoints, authority and live ownership. Keep small lookups local; use a
-bounded Luna scout for broad route discovery. Reuse named revisioned facts and relevant skill text
-through `context_library.py` beside the policy kernel: `put`, `reuse`, `prepare`, `catalog`, `show`,
-`assemble`, `drop` and `limits`. Dispatch injects only the written assignment, selected bundles and
-optional current predecessor results alongside mandatory worker/owner constraints. Defaults per task
-are 12 items, 4096 UTF-8 bytes per item, 49152 active bytes and 24576 selected bytes, excluding the
-brief and mandatory instructions. These provisional working sizes are adjustable from evidence,
-not token measurements or quotas for agent allocation. Replace stale or irrelevant active content;
-keep original evidence and revisions retrievable. Never silently truncate constraints or contradictions.
-Deliver material premise corrections to live workers explicitly, not just by changing stored context.
-At a meaningful context change, retain results, bindings, shared repairs and uncertainty rather than
-append or reload the investigation journey. No full-library injection, periodic summaries or new
-proof-receipt machinery. `work_context.py` retains task and receipt search; context bundles do not
-replace durable evidence or confer predecessor authority. If tooling investigation becomes substantial
-independent work, Sol decides ownership while preserving useful worker understanding and live runs.
-Commission context/tool repair only against a demonstrated recurring obstruction, then verify it
-removes repeated work. DE67 method changes keep exclusive mutation/guard ownership.
+Use `context_library.py` beside the policy kernel to put/reuse revisioned source-bound facts and
+prepare a selected brief or current handoff. Catalog and limits expose adjustable working sizes;
+never truncate constraints. Dispatch injects that assignment, selected context and relevant owner
+constraints. Keep original evidence retrievable, replace stale current text, and explicitly deliver
+material premise changes to affected live workers. Issued packets remain immutable. No full-library
+injection, periodic summaries, bundle-count targets or parallel proof records. Commission ordinary
+tool repair against a demonstrated obstruction; DE67 method edits retain exclusive review.
+
+For consequential cross-task obstruction, ambiguous harness/gameplay/method responsibility,
+contradictory specification/evidence or scope/ownership conflict after local diagnosis, use the
+project's authenticated conversational-mutator interface when available. Current implementation
+route and exact transport limits are in `.de67/task-logs/consultation-interface.md` and
+R-MAINT-CONSULT-001. Send task/run/revision, outcome/state/divergence, evidence/lessons, live ownership
+and the decision needed on changed evidence; continue independent work. Advice grants no owner
+repair/scope authority, gate resolution or shared edits, and never becomes an Owner-authorized queue
+entry. A missing adapter remains concrete work; transport, timeout or reply does not close a task.
 
 ## Durable worker lifecycle
 
