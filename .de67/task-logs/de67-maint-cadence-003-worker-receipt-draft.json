@@ -1,0 +1,106 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "DE67-MAINT-CADENCE-003",
+  "claim_id": "DE67-MAINT-CADENCE",
+  "worker_id": "01a07edf-e92c-75c1-870c-de0add9d7e50",
+  "disposition": "completed",
+  "verdict": "The shortened inclusive cadence is installed and cycle 9 is due without resetting counted work.",
+  "outcome": "Implement and verify the owner-authorized cadence change for the maintenance slice.",
+  "summary": "New cycles draw from 10 through 20 inclusive. The preserved cycle-9 start at 246 now has interval 20 and due count 266; its 278 counted terminal attempts make the general evidence-led review due. The active maintenance attempt remains nonterminal.",
+  "material_changes": [
+    "Changed new review interval draws from 20–50 to 10–20.",
+    "Added a versioned migration that preserves resolved historical cycles and re-bases an unresolved cycle at the new upper boundary without redrawing or recounting attempts.",
+    "Added focused migration, boundary, counting, and restart-persistence coverage."
+  ],
+  "tests": [
+    "92 deadline-harness tests passed.",
+    "SQLite integrity_check returned ok.",
+    "A fresh harness reopen reported the same persisted cycle-9 schedule and due state."
+  ],
+  "live_actions": [
+    "Read live cycle 9 before migration: interval 36, due 282, unresolved.",
+    "Opened the live scheduler once to apply its migration; no worker launch, restart, interruption, or task terminalization was issued.",
+    "Reopened the scheduler and observed cycle 9 at interval 20, due 266, 278 counted terminal attempts, and due=true."
+  ],
+  "evidence_ceiling": [
+    "This is scheduler-maintenance evidence only; it does not accept or alter product claims.",
+    "The due review remains outstanding and requires its normal evidence-led resolution."
+  ],
+  "bindings": {
+    "lineage": "semantic-surface-cockpit",
+    "cycle": "9",
+    "effective_interval": "20",
+    "next_due_count": "266",
+    "counted_terminal_attempts": "278"
+  },
+  "journal_entries": [
+    {
+      "id": "cadence-live-before",
+      "sequence": 1,
+      "event_type": "observation",
+      "evidence_class": "scheduler-state",
+      "artifact_ref": "build_logs/de67-maint-cadence-003-live-before.json",
+      "summary": "Captured the unresolved cycle-9 schedule before migration."
+    },
+    {
+      "id": "cadence-live-after",
+      "sequence": 2,
+      "event_type": "migration",
+      "evidence_class": "scheduler-state",
+      "artifact_ref": "build_logs/de67-maint-cadence-003-live-restart.json",
+      "summary": "Fresh scheduler reopen preserved the shortened due cycle."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "build_logs/de67-maint-cadence-003-deadline-harness.log",
+      "sha256": "fe623f7f1b1eed85a8f3e3954bf4630576a573ccbfdb88ce11ede3913682ab67",
+      "role": "focused test output"
+    },
+    {
+      "path": "build_logs/de67-maint-cadence-003-live-before.json",
+      "sha256": "32f18c92ef36abd6f01781cba5ba5d81b548c444aead2305182132e483b6e94e",
+      "role": "pre-migration live scheduler state"
+    },
+    {
+      "path": "build_logs/de67-maint-cadence-003-live-restart.json",
+      "sha256": "850439be8445da0be57850d5a4e4344ac0a400855b09abfcbeac7729139b443d",
+      "role": "post-restart persisted scheduler state"
+    },
+    {
+      "path": "build_logs/de67-maint-cadence-003-active-attempt.json",
+      "sha256": "2b3b585393f89866abb2c60fa6351a4ac2bb9696b761c6b6ff33e4c4d7883e53",
+      "role": "active attempt nonterminal observation"
+    },
+    {
+      "path": "build_logs/de67-maint-cadence-003-integrity.log",
+      "sha256": "dc51b8c96c2d745df3bd5590d990230a482fd247123599548e0632fdbf97fc22",
+      "role": "SQLite integrity result"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserve historical resolved cycles, including prior 30/DFS universal-review records.",
+    "Do not recount terminal attempts or restart active workers to apply cadence maintenance."
+  ],
+  "active_work": [
+    "Resolve the now-due general evidence-led review through the ordinary coordinator route."
+  ],
+  "first_open_boundary": "The due cycle-9 review has not yet been resolved.",
+  "narrow_queries": [
+    "deadline_harness.py --state .de67/state/deadlines.sqlite3 list",
+    "SELECT cycle_number, interval_windows, due_after_terminal_windows, due_task_id FROM random_mutation_cycles WHERE lineage_id='semantic-surface-cockpit' ORDER BY cycle_number DESC LIMIT 1"
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_deadline_harness.py"
+  ],
+  "context_metrics": {
+    "focused_test_count": 92,
+    "prior_interval": 36,
+    "effective_interval": 20,
+    "prior_due_count": 282,
+    "effective_due_count": 266
+  }
+}
