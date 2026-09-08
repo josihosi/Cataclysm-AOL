@@ -1,0 +1,151 @@
+de67
+de67
+Cataclysm-AOL-hostile-ecology-dev
+Overview
+DFS
+Refresh snapshot ↻
+Live · every 30s
+work: R-MAINT-FS-MIGRATION
+deadline: 03:22:45
+mutations
+17
+due in 14 results
+coordinator
+Terra
+0
+active
+Low
+Medium
+High
+Max
+Luna
+0
+active
+Low
+Medium
+High
+Max
+mutator
+coordinator
+worker Terra
+worker Luna
+2m
+1m
+0
+tokens / hour · last 24h
+mutator
+coordinator
+Terra
+Luna
+role totals · log scale
+16.00m
+14.83m
+109.25m
+18.55m
+10m
+50m
+200m
+total
+158.63m
+~
+campaign · partial
+Trajectory sidecar
+Subtask attention
+Relative pull · not completion
+Assigned gap · R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-002
+Assigned gap → resolve-fs-identity · relative 0.00 · cosine 0.000
+Assigned gap → project-delivery-in-ledger · relative 0.00 · cosine 0.000
+Assigned gap → verify-consumers · relative 0.00 · cosine 0.000
+Assigned gap → promote-through-exclusive-review · relative 0.00 · cosine 0.000
+Workspace code · Current uncommitted diff
+Workspace code → resolve-fs-identity · relative 0.00 · cosine 0.000
+Workspace code → project-delivery-in-ledger · relative 0.00 · cosine 0.000
+Workspace code → verify-consumers · relative 0.00 · cosine 0.000
+Workspace code → promote-through-exclusive-review · relative 0.00 · cosine 0.000
+Workspace tests · Current uncommitted diff
+Workspace tests → resolve-fs-identity · relative 0.00 · cosine 0.000
+Workspace tests → project-delivery-in-ledger · relative 0.00 · cosine 0.000
+Workspace tests → verify-consumers · relative 0.00 · cosine 0.000
+Workspace tests → promote-through-exclusive-review · relative 0.00 · cosine 0.000
+The isolated candidate keeps one canonical functional FS and rejects conflicting or invalid legacy pointers.
+resolve-fs-identity
+done
+The isolated candidate records acceptance through the durable ledger route without FS status blocks.
+project-delivery-in-ledger
+done
+Isolated packet, policy, supervisor, provenance, acceptance, and same-claim task checks passed.
+verify-consumers
+done
+The protected method candidate requires exclusive universal mutation review before active-file adoption and current-method regression.
+promote-through-exclusive-review
+open
+Assigned gap
+Workspace code
+Workspace tests
+R-MAINT-FS-MIGRATION
+R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-002
+exclusive-review-activation r2
+open
+Obtain an authenticated exclusive-review disposition for the repaired isolated migration candidate. If review is authorized, promote only through the universal guard and verify active FS/DFS identity, ledger-only acceptance, packet and supervisor consumers, provenance, independent same-claim tasks, comparable full regression, and process cleanup. If review is deferred, preserve the exact activation condition and candidate identity.
+Each line is scaled to its own strongest gap. Hover a point for raw cosine similarity.
+BRIEFING
+The file-format upgrade works in isolation but is not installed
+What changed
+The team tried to move the project’s main rule document to its intended name and make approvals live in the saved work record instead of inside that document. The isolated copy passed its targeted checks and preserved the project’s existing behavior, including independent tasks. A candidate-only test failure was fixed, but the active project was never changed. The migration is therefore prepared, not active.
+Next
+An authorized reviewer must decide whether to install the prepared change. If approved, the team will check the live project’s readers, approval records, task handling, and full test results together.
+Obstacle
+The change touches protected control code, so the ordinary worker cannot install it. No authenticated reviewer decision has arrived yet; the existing project still uses the old document setup.
+Latest finding
+R-029-ground-signal-recovery-051
+Foreground focus is blocked by missing Peekaboo bridge AppleScript automation.
+43h ago
+THE WORK / CURRENT SCOPE
+Work in focus
+claim R-MAINT-FS-MIGRATION · deadline generation 1 · restart 42
+R-MAINT-CONTEXT-ROUTING
+Open
+Repair the reproduced mismatch between declared DFS slice selection and actual worker reference-context.
+Evidence & handoff ↗
+R-MAINT-EVIDENCE-SEARCH
+Open
+Owner-authorized logs-first semantic evidence discovery with automatic indexing, verified originals and a usefulness decision before default adoption or expansion.
+Evidence & handoff ↗
+R-MAINT-FS-MIGRATION
+Open
+Move the specification to its intended FS name and functional purpose without breaking dispatch, evidence or acceptance.
+Evidence & handoff ↗
+R-MAINT-REVIEW-CONTEXT
+Open
+Reduce repeated review context while preserving the owner's conversation and current authority.
+Evidence & handoff ↗
+R-026
+Open
+No current-source integrated CAOL feature package yet binds the living-base, bandit, cannibal, signal-control, and flesh-raptor families through one audited established-base footing with independent mechanical, causality, feel, persistence, and cleanup evidence plus a usable package guide.
+Evidence & handoff ↗
+R-029
+Open
+Bandit and cannibal camps do not yet have a proved coherent natural signal-to-response route with correct night-raid commitment and operation-scoped shakedown, combat, and paid-departure ordering.
+Evidence & handoff ↗
+R-031
+Open
+Living NPC intent/context, follow/stay travel and camp routing lack fresh package proof.
+Evidence & handoff ↗
+R-033
+Open
+Physical signal controls, camp memory and local/overmap boundary behavior need fresh evidence.
+Evidence & handoff ↗
+12 completed items · View the record ↗
+ON THE HORIZON
+Up next
+Nothing listed here.
+NEEDS ATTENTION
+Blocked work
+Nothing listed here.
+Snapshot 19:37:37
+Markdown
+3c36ea086536
+DFS
+74f7dbe2b868
+SQLite
+healthy

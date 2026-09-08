@@ -1,0 +1,46 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-002",
+  "claim_id": "R-MAINT-FS-MIGRATION",
+  "worker_id": "01a08216-22f0-7313-b081-f427ae74319b",
+  "disposition": "completed",
+  "verdict": "exclusive_review_pending",
+  "outcome": "Authenticated mutator requests 606c996a952b48128348d65cba4c706c and 92171fe96d034fbcab256b3076383af9 remain pending; no exclusive review disposition or activation occurred.",
+  "summary": "Observed the durable mutator mailbox without rerunning the candidate or exercising review, apply, resolve, or bypass authority. Active method and workspace remain unchanged.",
+  "material_changes": [],
+  "tests": [
+    "Task brief SHA-256 verified.",
+    "Mutator request files inspected and both state=pending.",
+    "No candidate rerun; no review or activation attempted."
+  ],
+  "live_actions": [
+    "No processes launched or owned; no active files, state, or coordination records changed."
+  ],
+  "evidence_ceiling": [
+    "Read-only observation of pending authenticated requests; no reviewer authority exercised."
+  ],
+  "bindings": {
+    "mailbox_report": "838afc90a7ca491c8409d497fd1ee03f",
+    "request_606c996a": ".de67/state/agent-mail/mutator/606c996a952b48128348d65cba4c706c.json",
+    "request_92171fe": ".de67/state/agent-mail/mutator/92171fe96d034fbcab256b3076383af9.json"
+  },
+  "journal_entries": [],
+  "artifacts": [],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "No candidate rerun, review, apply, resolve, or bypass; prior evidence preserved."
+  ],
+  "active_work": [
+    "Await authenticated exclusive universal mutation-review disposition."
+  ],
+  "first_open_boundary": "Authenticated exclusive review disposition remains pending; activation cannot proceed until the exact request is authorized and resolved.",
+  "narrow_queries": [
+    "Check whether mutator request states change; if authorized, independently verify promotion and full regression."
+  ],
+  "entrypoints": [
+    ".de67/state/agent-mail/mutator/606c996a952b48128348d65cba4c706c.json",
+    ".de67/state/agent-mail/mutator/92171fe96d034fbcab256b3076383af9.json"
+  ],
+  "context_metrics": {}
+}
