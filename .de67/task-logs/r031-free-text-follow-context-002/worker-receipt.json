@@ -1,0 +1,138 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-031-free-text-follow-context-002",
+  "claim_id": "R-031",
+  "worker_id": "01a082c0-3228-7ea1-b716-417e73fd071a",
+  "disposition": "completed",
+  "verdict": "proved",
+  "outcome": "Fresh source-bound native playtest proved one useful non-camp free-text follow route for character:18 R031 Route Ally 1: exact prompt submission, correlated runner reply, accepted native application, Following state, and ordinary pursuit after meaningful separation.",
+  "summary": "The fresh run bound actor identity and initial GUARD_ALLY/Ignoring state, submitted the exact utterance through the native chat prompt, retained the accepted prompt receipt, correlated the non-prewarm runner request/reply, applied the reply through native world.pause turns, and observed the native begins-following message. Actor-bound inspections then showed Following with mission NULL and camp_patrol_order false. Native semantic pursuit frames recorded rl_dist 5 above follow_distance 4 followed by actor advances reducing separation to 4 and 3. No OCR or rendered text was used; pursuit was not replayed.",
+  "material_changes": [],
+  "tests": [
+    "Fresh qualified harness launch completed with source/executable/binding identity 0a74c44a3b275c8a29584efc8e09a1e50d17f7ff1307d7e9244c53f7b97d31ef / 2f1e5b2b3f678bb4e5b1df36cd09cad748f4196dc025658cba5ed929275b5496.",
+    "Native prompt.submit accepted and native application produced the exact actor reply plus begins-following message.",
+    "Native actor inspections and semantic.native.events.jsonl preserved Following, non-camp ownership, z=0 mobility and pursuit positions/rl_dist.",
+    "run.finish witness was mechanically valid; game exit artifact records PID 81967 exit_code 0 and final OS sweep found game, bridge and runner PIDs absent."
+  ],
+  "live_actions": [
+    "Run 0a74c44a3b275c8a29584efc8e09a1e50d17f7ff1307d7e9244c53f7b97d31ef; game PID 81967 birth posix-lstart:Tue Sep 8 22:52:31 2026; bridge PID 81945 birth posix-lstart:Tue Sep 8 22:52:29 2026.",
+    "Runner PID 82169 was worker-owned and was absent in the final exact-PID sweep.",
+    "run.finish request play-41c810ddd8e44c1c8798413e7e14f4ec terminated the game via SIGTERM after witness validation; status became safe_to_cleanup and child exit_code was 0."
+  ],
+  "evidence_ceiling": [
+    "Native semantic receipts and observations establish input, application, follow state and pursuit; OCR/screenshots/rendered text are excluded.",
+    "The runner record is exact-correlated corroboration, not the authoritative gameplay state.",
+    "Vehicle-owner state was not advertised by the native surface; no vehicle transition was observed, so vehicle absence is not claimed as a stronger fact.",
+    "This run proves the bounded fresh route only and does not generalize to other recipients or persistence."
+  ],
+  "bindings": {
+    "binding_id": "2f1e5b2b3f678bb4e5b1df36cd09cad748f4196dc025658cba5ed929275b5496",
+    "bridge_pid": "81945; birth posix-lstart:Tue Sep 8 22:52:29 2026",
+    "executable_sha256": "2188db07296c8affab8c940563603a9384ebfe8b10f6e63dc37b4ef6dbf4235b",
+    "game_pid": "81967; birth posix-lstart:Tue Sep 8 22:52:31 2026",
+    "harness_run": ".userdata/dev-harness/harness_runs/20260908_225230_281bd8793541442bb4b18909e1770852",
+    "run_id": "0a74c44a3b275c8a29584efc8e09a1e50d17f7ff1307d7e9244c53f7b97d31ef",
+    "runner_pid": "82169; process_instance d705866d709e460f8b0eab573a4231fc",
+    "scenario_id": "r026.living_npc_package_v001_mcw",
+    "session": ".userdata/openclaw_harness/bridge-sessions/r031-free-text-follow-context-002-v3"
+  },
+  "journal_entries": [
+    {
+      "id": "J0003",
+      "sequence": "3",
+      "event_type": "observation",
+      "evidence_class": "native actor inspection",
+      "summary": "Initial actor identity and GUARD_ALLY/Ignoring state."
+    },
+    {
+      "id": "J0013",
+      "sequence": "13",
+      "event_type": "action",
+      "evidence_class": "native receipt",
+      "summary": "Exact prompt.submit accepted."
+    },
+    {
+      "id": "J0020",
+      "sequence": "20",
+      "event_type": "observation",
+      "evidence_class": "native world message",
+      "summary": "Generated reply and begins-following message."
+    },
+    {
+      "id": "J0022",
+      "sequence": "22",
+      "event_type": "observation",
+      "evidence_class": "native actor inspection",
+      "summary": "Following, mission NULL and camp_patrol_order false."
+    },
+    {
+      "id": "J0047",
+      "sequence": "47",
+      "event_type": "observation",
+      "evidence_class": "native actor inspection",
+      "summary": "Later Following actor position advanced to [3374,996,0]."
+    },
+    {
+      "id": "J0066",
+      "sequence": "66",
+      "event_type": "terminal",
+      "evidence_class": "native terminalization",
+      "summary": "Fresh route settled without pursuit replay; cleanup deferred to finish."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r031-free-text-follow-context-002/chain-evidence.json",
+      "sha256": "f15b4be14f0df829b21283e7b63168fd926a7728d6e1f379781892148143ac0c",
+      "role": "actor/request/runner/reply/application/follow chain"
+    },
+    {
+      "path": ".de67/task-logs/r031-free-text-follow-context-002/pursuit-observed.json",
+      "sha256": "f3eee8f71674390398381f8c9cfc498654afa2697b2b211773c60fc1c726ded1",
+      "role": "native semantic pursuit positions and rl_dist table"
+    },
+    {
+      "path": ".de67/task-logs/r031-free-text-follow-context-002/witness.json",
+      "sha256": "c35b4ea65f37fd8b0c8992195b9da9ad343c1e613f637becdf68be4c4f4afe87",
+      "role": "mechanically validated witness statement"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_225230_281bd8793541442bb4b18909e1770852/semantic.native.events.jsonl",
+      "sha256": "6611c701ff76e5aa43ad949795af64c70940abededf06f392950b94c609db50d",
+      "role": "native semantic pursuit receipts and observations"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/r031-free-text-follow-context-002-v3/game-process-exit.json",
+      "sha256": "438a26efedc61a8c2ad4553d042dee41dd511933e0fee3e3c74dc0eafef06234",
+      "role": "bound game PID and exit_code 0"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/r031-free-text-follow-context-002-v3/status.json",
+      "sha256": "00abcbb6ecaa1dc1a904ad9b82ae4c9cb99aa4f0082dbe16e493a59e8d716e1e",
+      "role": "terminalization and safe_to_cleanup status"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/r031-free-text-follow-context-002-v3/responses/play-41c810ddd8e44c1c8798413e7e14f4ec.json",
+      "sha256": "935ba478e255a3933d73fab64f1cbf65a3b5aa532b708d8ede175ec8fa003711",
+      "role": "finish/witness/cleanup response"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Earlier weak distance-3 route was not replayed; this run used fresh exact utterance/application and meaningful rl_dist separation.",
+    "Pursuit evidence was not replayed after the chain audit; existing native semantic frames were preserved and cited.",
+    "No OCR, physical control, synthetic response injection, direct NPC mutation or save rewrite was used."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Vehicle-owner state and durable persistence remain outside this bounded route; no stronger absence claim is made.",
+  "narrow_queries": [
+    "Coordinator should register this receipt against the R-031 original free-text route and retain the chain/pursuit artifacts independently.",
+    "Use the preserved R-034 work only for separate continuity/persistence coverage; do not replay this settled pursuit."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/play_cli.py",
+    "tools/llm_runner/runner.py"
+  ],
+  "context_metrics": {}
+}

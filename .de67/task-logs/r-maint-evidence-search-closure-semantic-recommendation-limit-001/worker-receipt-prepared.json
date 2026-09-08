@@ -1,0 +1,61 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-EVIDENCE-SEARCH-closure-semantic-recommendation-limit-001",
+  "claim_id": "R-MAINT-EVIDENCE-SEARCH",
+  "worker_id": "01a08299-dd6b-7e10-a273-21122a5db3c6",
+  "disposition": "completed",
+  "verdict": "No real semantic comparison was completed; the evidence supports revise without default adoption.",
+  "outcome": "Verify the semantic usefulness boundary, preserve the unavailable-runtime limitation, and retain an executable continuation for an authorized isolated embedding runtime.",
+  "summary": "Current source and the prior exact/structured retest remain consistent with receipt ada24679a94189d4697d7ebb3a927e43106456eec839244cb3b682b96694ca74. The 34 focused tests, fresh 56-source corpus (1,108 occurrences and 1,328 bounded passages), exact/literal R-033 retrieval, and visible 276-byte incomplete tail remain valid. No llama.cpp embedding executable is available. The unchanged shared Ollama service reports HTTP 501 for /api/embed with an installed completion model; a requested embeddinggemma model reports 404. No semantic ranking, relevance, miss-rate, latency, storage-cost, or adoption comparison is therefore proved.",
+  "material_changes": [],
+  "tests": [],
+  "live_actions": [
+    "No game, harness broker, embedding backend, package, service, gameplay process, or retained session was changed; no runtime lifecycle was started or left running."
+  ],
+  "evidence_ceiling": [
+    "Exact/structured retrieval, source identity, bounded chunk construction, visible partial coverage, and cold/incremental ingestion measurements remain proved by the prior receipt.",
+    "Semantic usefulness, semantic rank comparison, relevance/miss rate, embedding latency/storage cost, token savings, and default-adoption value remain unproved because no authorized embedding runtime is available.",
+    "The current Ollama probe is capability evidence only and does not constitute a semantic comparison or adoption proof."
+  ],
+  "bindings": {
+    "assignment_packet_sha256": "ebb266111d8d7ba2d7a4a14113b6203b27246441d4e535b460c308e20a626cb9",
+    "closure_gap_id": "semantic-recommendation-limit",
+    "closure_gap_revision": "1",
+    "lineage_id": "semantic-surface-cockpit",
+    "prior_evidence_receipt": "ada24679a94189d4697d7ebb3a927e43106456eec839244cb3b682b96694ca74",
+    "task_id": "R-MAINT-EVIDENCE-SEARCH-closure-semantic-recommendation-limit-001",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/state/worker-dispatch/task_522d4d41494e542d45564944454e43452d5345415243482d636c6f737572652d73656d616e7469632d7265636f6d6d656e646174696f6e2d6c696d69742d303031-ebb266111d8d7ba2d7a4a14113b6203b27246441d4e535b460c308e20a626cb9.md",
+      "sha256": "ebb266111d8d7ba2d7a4a14113b6203b27246441d4e535b460c308e20a626cb9",
+      "role": "assigned closure packet"
+    },
+    {
+      "path": ".de67/work-ledger.md",
+      "sha256": "c55799d484b895fd0e91bec5672d0a9a3429a88bd3120073f92856d2c5c60b20",
+      "role": "durable current boundary and continuation"
+    }
+  ],
+  "first_divergence": {
+    "class": "unavailable_semantic_runtime",
+    "summary": "The prior local llama.cpp executable is absent and shared Ollama is not configured for embeddings; semantic comparison cannot be completed in this environment."
+  },
+  "accepted_no_replay": [
+    "No accepted gameplay was replayed and no retrieval default/adoption decision was made."
+  ],
+  "active_work": [],
+  "first_open_boundary": "An authorized isolated embedding runtime is required before semantic-vs-exact R-033 comparison and any keep/revise/retire or default-adoption recommendation beyond revise.",
+  "narrow_queries": [
+    "When authorized runtime exists, embed the retained fresh index and repeat the same R-033 semantic-versus-exact comparison, recording relevance, misses, latency, storage, model identity, lifecycle, and cleanup evidence."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/evidence_search_backend.py",
+    "tools/openclaw_harness/evidence_search_index.py",
+    "tools/openclaw_harness/evidence_search_query.py"
+  ],
+  "context_metrics": {}
+}

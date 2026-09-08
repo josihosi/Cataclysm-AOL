@@ -1,0 +1,85 @@
+{
+  "schema": "r031-free-text-follow-context-002-chain-evidence-v1",
+  "run_id": "0a74c44a3b275c8a29584efc8e09a1e50d17f7ff1307d7e9244c53f7b97d31ef",
+  "binding_id": "2f1e5b2b3f678bb4e5b1df36cd09cad748f4196dc025658cba5ed929275b5496",
+  "actor": {
+    "id": "character:18",
+    "name": "R031 Route Ally 1",
+    "initial_relationship_snapshot": {
+      "response": "responses/play-c6e68728083b45a487573d6dde372959.json",
+      "response_sha256": "f59bc26994a8e2c7c4c996d65d0e01015564eb6d6c7bb09516fc82b107540080",
+      "observation_id": "0a74c44a3b275c8a29584efc8e09a1e50d17f7ff1307d7e9244c53f7b97d31ef:frame:2",
+      "turn": 5241593,
+      "absolute_position": [3374, 994, 0],
+      "attitude": "Ignoring",
+      "mission": "GUARD_ALLY",
+      "activity": "ACT_NULL",
+      "guard_post": null,
+      "camp_patrol_order": false,
+      "assigned_camp": null,
+      "has_companion_mission": false,
+      "camp_found": false
+    }
+  },
+  "utterance_and_prompt": {
+    "menu_response": "responses/play-a20adf5a94304fda96e76c6bea38f671.json",
+    "menu_response_sha256": "183846a7679c05cbad78a8cccbd2dff6795b229f6a7be1f7f887241e1adc5fbb",
+    "menu_action": "menu.choose",
+    "menu_stable_id": "uilist-entry:4",
+    "prompt_response": "responses/play-359a65302eef4ca4ba01f541e58bbe32.json",
+    "prompt_response_sha256": "fc43ddd4dbd5f9136c60c625c7700c35c4f3987699bdd2843aea9bf296e3e345",
+    "prompt_action": "prompt.submit",
+    "prompt_native_receipt": "cockpit:harness-61d6c3cdecdb47c28674cc259c1b96cd:0a74c44a3b275c8a29584efc8e09a1e50d17f7ff1307d7e9244c53f7b97d31ef:frame:5:prompt.submit:0a0505147d86227c",
+    "utterance": "R031 Route Ally 1, follow me and stay close."
+  },
+  "runner": {
+    "source": "config/llm_intent_runner.log",
+    "request_id": "req_0",
+    "runner_pid": 82169,
+    "process_instance": "d705866d709e460f8b0eab573a4231fc",
+    "request_timestamp": 1788900833.899272,
+    "response_timestamp": 1788900836.87921,
+    "prompt_snapshot_actor": "R031 Route Ally 1",
+    "prompt_snapshot_follow_mode": "guard/hold",
+    "response": "Alright, Zoraida—keeping tight to your flank like a loyal weasel with a rebar grin.|follow_close|equip_melee",
+    "response_sha256": "065601b549cfb0aca7fa61d89ac14ed3536b8262263f41c59b65cd4a0c5fc219",
+    "correlation_note": "Exact request id, runner pid, process instance and timestamps are preserved; runner log is shared and corroborative, while native prompt receipt/application is authoritative."
+  },
+  "application": {
+    "first_pause": {
+      "response": "responses/play-dab001371b294aa0b5a8f052595ee14c.json",
+      "response_sha256": "2a4d44a122cd000d411d1c3baef7716f0d63530532bf4af0bb7853d718613ad3",
+      "action": "world.pause",
+      "frame": 7,
+      "turn": 5241595
+    },
+    "applying_pause": {
+      "response": "responses/play-f7ca51351352400ea38937525c97a438.json",
+      "response_sha256": "890ecfeff8a6f6c8508ca7645fcf015131b3763b0f35ef0e2021d07cabc1ca89",
+      "action": "world.pause",
+      "frame": 10,
+      "turn": 5241596,
+      "message": "R031 Route Ally 1 begins to follow you."
+    },
+    "follow_state": {
+      "response": "responses/play-485cda0d2f8b44f999ac37edaaf30de3.json",
+      "response_sha256": "552f4853f84b0917e87a0c8ed4361a80bdfe24e74660a846d0e0d3e0c7fffd2a",
+      "observation_id": "0a74c44a3b275c8a29584efc8e09a1e50d17f7ff1307d7e9244c53f7b97d31ef:frame:11",
+      "attitude": "Following",
+      "mission": "NULL",
+      "absolute_position": [3374, 994, 0]
+    }
+  },
+  "pursuit": {
+    "artifact": ".de67/task-logs/r031-free-text-follow-context-002/pursuit-observed.json",
+    "metric": "Euclidean rl_dist over absolute_ms on z=0; follow_distance()=4 when visible",
+    "meaningful_separation_and_pursuit": "semantic frame 20: rl_dist 5; frame 21 actor advanced one square and rl_dist 4; frame 22 rl_dist 5; frame 23 actor advanced and rl_dist 4; frame 33 rl_dist 5; frame 34 actor advanced and rl_dist 3"
+  },
+  "ownership_checks": {
+    "danger": "false in native keep_watch_safety on semantic frames",
+    "structural_outing_owner": "present=false in responses/play-785738937ca84958b0d9e60bb886d292.json",
+    "vehicle_owner": "not advertised by the native world/NPC surface; no vehicle transition observed",
+    "mobility": "actor remained visible on z=0 and advanced toward avatar on ordinary turns; no competing mission/Patrol owner was present in diagnostic_orders"
+  },
+  "evidence_boundary": "No OCR or rendered text used. Native receipts/observations establish input, application and follow state; runner record is exact-correlated corroboration. Pursuit was not replayed."
+}

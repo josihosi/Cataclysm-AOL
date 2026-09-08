@@ -1,0 +1,6 @@
+{
+  "outcome": "On current source, a fresh authority-bound native free-text follow route is compared against active GUARD_ALLY, GUARD, and GUARD_PATROL mission ownership.",
+  "scenario": "r031.competing_ownership_v001_mcw",
+  "charter": "tools/openclaw_harness/charters/r031-competing-ownership-v001.json",
+  "query": {"requirements":[{"key":"runtime.fixture","minimum_evidence":"declared","op":"eq","value":"r031_competing_ownership_v1"},{"key":"runtime.world","minimum_evidence":"declared","op":"eq","value":"McWilliams"},{"key":"capabilities.r031.competing_ownership","minimum_evidence":"declared","op":"eq","value":"native_free_text_follow_against_guard_and_patrol_missions"}],"preferences":[{"key":"runtime.entry_mode","minimum_evidence":"declared","op":"eq","value":"cockpit_live_session"}]}
+}

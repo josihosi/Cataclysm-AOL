@@ -1,0 +1,77 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-031-closure-package-evidence-integrity-001",
+  "claim_id": "R-031",
+  "worker_id": "01a08309-7402-7653-bef7-45dca489e0ad",
+  "disposition": "finding",
+  "finding_kind": "blocker",
+  "verdict": "package_integrity_blocked",
+  "outcome": "Cross-evidence integrity audit verified the bounded R-031 recipient/context, request/reply/application/follow pursuit, ambient, camp-routing, and competing-owner receipts at their stated ceilings, with OCR excluded and no replay. Closure is blocked by one unresolved camp-craft source-binding artifact hash mismatch.",
+  "summary": "All listed artifacts for the free-text follow and competing-owner receipts, and all camp-craft artifacts except its source-binding receipt, match their recorded SHA-256 values. The receipt-listed camp-craft source-binding path currently hashes to 785edad70809f8dfbe5c5b67fb491f68b96d370872764b33ff32a41f781fd72b, not ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50. A targeted search found no immutable alternate carrying the expected binding identity/hash. No gameplay replay or evidence mutation was performed.",
+  "material_changes": [
+    "Added package-integrity-audit.json recording exact hash checks and targeted recovery result."
+  ],
+  "tests": [
+    "Verified 22 listed artifacts by SHA-256; one camp-craft source-binding artifact mismatched.",
+    "Targeted search for binding_id fb035a4e82a0d7800562b54174046d4d5cdbd875b6c2fdb25a09047af7e0b29b, run_id 55098ec37b3868099fa04fdb5626a57a3f043ac3d30b791a44af2c811d53c33b, and expected hash ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50 found no alternate immutable artifact.",
+    "Confirmed no OCR credit and no replay in the audited receipts; competing-owner cleanup retains final exact-PID absence sweep but not bridge/runner birth identities."
+  ],
+  "live_actions": [
+    "Read-only audit only; no game, bridge, runner, or owner-retained process was started or stopped."
+  ],
+  "evidence_ceiling": [
+    "The four accepted R-031 receipts remain valid only at their recorded bounded ceilings; this audit does not generalize behavior or repair missing provenance.",
+    "OCR, rendered text, screenshots, and terminal bytes receive no credit.",
+    "Competing-owner cleanup is bounded by a final exact PID sweep because bridge/runner birth identities were not retained."
+  ],
+  "bindings": {
+    "audit_artifact": ".de67/task-logs/r031-closure-package-evidence-integrity-001/package-integrity-audit.json",
+    "camp_craft_receipt": "34681646df11e45a133cb3eee507287f23719021b376dec2f2142bc6aee3189",
+    "free_text_receipt": "1552a73914c5229878d166ae484df8d0ca47a49d681eb9d96101270effdca37d",
+    "competing_owner_receipt": "7626790fcb57eedca83b88ab5b6a9db790adf5c5a04a0afe96b6dc14fb6aba29",
+    "ambient_receipt": "3cdc4dcba99f742d7b2f5f57f2135cd5bfb5b13a033f7eae68013484ef94b3e0",
+    "missing_field": "Immutable camp-craft source-binding artifact at receipt-listed path or alternate carrying expected binding identity and SHA-256"
+  },
+  "journal_entries": [
+    {
+      "id": "J-AUDIT-001",
+      "sequence": "1",
+      "event_type": "artifact_hash_audit",
+      "evidence_class": "read-only package integrity observation",
+      "artifact_ref": ".de67/task-logs/r031-closure-package-evidence-integrity-001/package-integrity-audit.json",
+      "summary": "22 artifact hashes matched; one receipt-listed camp-craft source-binding hash mismatched and no alternate was found."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r031-closure-package-evidence-integrity-001/package-integrity-audit.json",
+      "sha256": "9293065873000f1e889d9d24334d90467675f3bee86e0a8f70cd5cb2a6e92e05",
+      "role": "read-only cross-evidence hash audit and exact missing field"
+    }
+  ],
+  "first_divergence": {
+    "class": "evidence-integrity",
+    "summary": "Camp-craft receipt artifact .userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1.json has current SHA-256 785edad70809f8dfbe5c5b67fb491f68b96d370872764b33ff32a41f781fd72b versus listed ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50; no alternate immutable binding artifact found."
+  },
+  "accepted_no_replay": [
+    "Do not replay the settled R-031 ambient, camp-craft, free-text follow, or competing-owner routes; only repair provenance with an immutable source-binding artifact or owner-directed fresh evidence."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Restore an immutable camp-craft source-binding artifact carrying the receipt-listed binding identity and SHA-256, or explicitly revise the camp-craft receipt's provenance at owner direction; competing-owner bridge/runner birth-identity omission remains an evidence ceiling.",
+  "narrow_queries": [
+    "Locate or restore the immutable artifact for binding_id fb035a4e82a0d7800562b54174046d4d5cdbd875b6c2fdb25a09047af7e0b29b and expected SHA-256 ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50.",
+    "If provenance cannot be restored, ask owner whether to supersede the camp-craft binding reference with a fresh source-bound receipt."
+  ],
+  "entrypoints": [
+    ".de67/task-logs/r031-camp-craft-recipient-repair-001-worker-receipt.json",
+    ".de67/task-logs/r031-free-text-follow-context-002/worker-receipt.json",
+    ".de67/task-logs/r031-competing-ownership-003/worker-receipt.json"
+  ],
+  "context_metrics": {
+    "listed_artifacts_verified": 22,
+    "listed_artifacts_mismatched": 1,
+    "replay_count": 0,
+    "ocr_credit": 0
+  }
+}

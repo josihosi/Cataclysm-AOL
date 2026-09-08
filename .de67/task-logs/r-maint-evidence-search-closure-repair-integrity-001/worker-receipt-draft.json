@@ -1,0 +1,86 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-EVIDENCE-SEARCH-closure-repair-integrity-001",
+  "claim_id": "R-MAINT-EVIDENCE-SEARCH",
+  "closure_gap_id": "repair-integrity",
+  "closure_gap_revision": 1,
+  "worker_id": "01a08299-6f03-7632-bcb1-544d74686f6b",
+  "disposition": "completed",
+  "verdict": "Repair-integrity closure audit is complete; the implemented evidence-search repairs remain internally consistent and focused tests pass.",
+  "outcome": "Verified null-versus-absent filtering, bounded semantic chunks, legacy corruption quarantine, explicit rebuild behavior, source identity, and focused tests without altering implementation.",
+  "summary": "The current evidence-search implementation preserves source-bound recovery and explicit degraded/partial states. Focused tests cover the assigned repair-integrity boundary, including legacy v1 cross-source generation mismatch quarantine and explicit rebuild recovery. The worktree is unchanged.",
+  "material_changes": [],
+  "tests": [
+    "python3.14 -m unittest tools/openclaw_harness/evidence_search_index_test.py tools/openclaw_harness/evidence_search_query_test.py tools/openclaw_harness/evidence_display_test.py tools/openclaw_harness/cockpit_evidence_test.py: 34 tests passed in 1.354s.",
+    "Worktree status is clean after the audit."
+  ],
+  "live_actions": [
+    "No game, harness broker, embedding backend, gameplay process, service, package, model, or retained session was launched or changed."
+  ],
+  "evidence_ceiling": [
+    "This proves repair integrity, exact/source-bound retrieval behavior, bounded chunk construction, legacy quarantine/rebuild behavior, and focused test compatibility only.",
+    "Semantic usefulness, semantic rank quality, latency, storage cost, token savings, adoption value, and owner keep/revise/retire decisions remain unproved because the local llama.cpp executable is absent and the shared Ollama service returns HTTP 501 for /api/embed.",
+    "The current corpus retains a visible incomplete 276-byte log tail; query results correctly report partial coverage."
+  ],
+  "bindings": {
+    "assignment_packet_sha256": "7befa5c50fd0354f4e499bfd792cc613f7f5e96bea6f05c6fd005a40b6592716",
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-MAINT-EVIDENCE-SEARCH",
+    "closure_gap_id": "repair-integrity",
+    "closure_gap_revision": "1",
+    "task_id": "R-MAINT-EVIDENCE-SEARCH-closure-repair-integrity-001",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/evidence_search_index.py",
+      "sha256": "321ba514ac2cf70013080fa9f799317888cd7012682559965132257c28a61cc9",
+      "role": "current source implementation inspected; unchanged"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_query.py",
+      "sha256": "4c842556cbaa87040e9b810cdefbb99f2237e85d58a00da66ed91ff85f1ec4b7",
+      "role": "current source implementation inspected; unchanged"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_index_test.py",
+      "sha256": "a8d5adf4859bc38b266d5345c5d42d4b182391997a3939277974c95350ee7f4f",
+      "role": "focused integrity tests"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_query_test.py",
+      "sha256": "2ca9754a7a8485e2a87201d2a5277e76e29d6bcfb015c9510d9d1616fb29039d",
+      "role": "focused null/absent and source-bound query tests"
+    },
+    {
+      "path": "tools/openclaw_harness/build_logs/evidence-search-retest-004/worker-receipt-prepared.json",
+      "sha256": "e6ea506c2eeea2a0beba9b6e32d626deb389e3f297463e2c9493c67cdee6a992",
+      "role": "prior exact corpus/source-integrity receipt"
+    }
+  ],
+  "first_divergence": {
+    "class": "semantic-backend-unavailable",
+    "summary": "Implementation and focused integrity behavior are verified, but semantic usefulness cannot be evaluated in this environment because the local llama.cpp executable is absent and shared Ollama embedding endpoint returns HTTP 501."
+  },
+  "accepted_no_replay": [
+    "No accepted gameplay was replayed.",
+    "No retrieval adoption or scope expansion was performed.",
+    "Do not claim semantic usefulness from lexical/source-bound results."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Owner-approved semantic backend availability and usefulness/adoption evaluation remain outside this repair-integrity closure.",
+  "narrow_queries": [
+    "When an authorized isolated embedding backend is available, compare semantic rank quality against the retained exact/source-bound corpus without replaying accepted gameplay."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/evidence_search_index.py",
+    "tools/openclaw_harness/evidence_search_query.py",
+    "tools/openclaw_harness/evidence_search_index_test.py",
+    "tools/openclaw_harness/evidence_search_query_test.py",
+    "tools/openclaw_harness/evidence_display_test.py",
+    "tools/openclaw_harness/cockpit_evidence_test.py"
+  ],
+  "context_metrics": {}
+}

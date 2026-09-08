@@ -1,0 +1,35 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-031-closure-continuity-binding-001",
+  "claim_id": "R-031",
+  "disposition": "completed",
+  "verdict": "closure_gap_satisfied",
+  "outcome": "Accepted R-034 native new-process evidence closes durable living-NPC identity, rule, and camp-assignment continuity for the exact tested world while explicitly excluding in-flight LLM queues and transient targets from persistence.",
+  "summary": "Ledger receipts 070d614e..., 73c163cd..., and e81ca33e... bind the same source/scenario/world across generation 0 save/quit and generation 1 reload, preserving character:2 Katharina Leach, CAMP_RESIDENT, assigned camp [140,41,0], follow_close override, priority 8, inventory 17, and storage. Later native turns were accepted; stale prior-process authority was rejected; native cleanup was exact.",
+  "material_changes": [],
+  "tests": ["Inspected accepted R-034 synthesis/receipts and current source serialization/state ownership."],
+  "live_actions": [],
+  "evidence_ceiling": [
+    "Exact tested world/run/binding continuity at the accepted focused native ceiling.",
+    "Process-local llm_intent_state queue, active action, target and legend/conversation state are not serialized and are erased on NPC destruction; no persistence claim is made for in-flight or transient state.",
+    "No gameplay replay; OCR, terminal bytes and rendered text receive no proof credit."
+  ],
+  "bindings": {"scenario_id": "r026.living_npc_package_v001_mcw"},
+  "journal_entries": [],
+  "artifacts": [
+    {"path": ".de67/task-logs/r034-coordinator-synthesis.md", "role": "accepted R-034 continuity synthesis"},
+    {"path": ".de67/task-logs/r034-restored-state-worker-receipt.json", "role": "authoritative restored state receipt"},
+    {"path": ".de67/task-logs/r034-authority-evidence-cleanup-worker-receipt.json", "role": "authority and cleanup receipt"},
+    {"path": "src/npc.h", "role": "process-local transient LLM state definition"},
+    {"path": "src/npc.cpp", "role": "transient state map and destructor cleanup"},
+    {"path": "src/savegame_json.cpp", "role": "durable NPC field serialization"}
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": ["Do not replay accepted R-034 continuity or lifecycle evidence."],
+  "active_work": [],
+  "first_open_boundary": "R-031 package-evidence-integrity remains separately assigned; no open boundary in this continuity-binding slice.",
+  "narrow_queries": ["character:2", "assigned_camp", "follow_close", "llm_intent_state", "world.pause", "unknown_or_stale_observation"],
+  "entrypoints": ["src/npc.h", "src/npc.cpp", "src/savegame_json.cpp", "tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json"],
+  "context_metrics": {}
+}

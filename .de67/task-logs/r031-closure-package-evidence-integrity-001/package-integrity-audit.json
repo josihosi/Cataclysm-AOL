@@ -1,0 +1,37 @@
+{
+  "schema": "de67.r031-package-integrity-audit.v1",
+  "claim_id": "R-031",
+  "task_id": "R-031-closure-package-evidence-integrity-001",
+  "observed_at": "2026-09-09",
+  "scope": "Cross-evidence integrity audit only; no gameplay replay or evidence mutation.",
+  "receipts_audited": [
+    "3cdc4dcba99f742d7b2f5f57f2135cd5bfb5b13a033f7eae68013484ef94b3e0",
+    "34681646df11e45a133cb3eee507287f23719021b376dec2f2142bc6aee3189",
+    "1552a73914c5229878d166ae484df8d0ca47a49d681eb9d96101270effdca37d",
+    "7626790fcb57eedca83b88ab5b6a9db790adf5c5a04a0afe96b6dc14fb6aba29"
+  ],
+  "checks": {
+    "recipient_context_request_reply_application_follow_pursuit": "present in current free-text receipt and retained native chain/pursuit artifacts",
+    "ambient_recipient_application": "present at bounded ceiling in accepted 3cdc4dcb receipt; no replay",
+    "camp_routing_and_craft_result": "present at bounded ceiling in accepted 34681646 receipt; no replay",
+    "competing_owner_precedence": "present at bounded ceiling in accepted 7626790f receipt; no replay",
+    "ocr": "excluded",
+    "cleanup": "free-text and camp-craft exact owned cleanup receipts present; competing-owner final exact PID sweep present, but bridge/runner birth identities were not retained"
+  },
+  "artifact_hash_check": {
+    "verified_count": 22,
+    "mismatch_count": 1,
+    "mismatch": {
+      "path": ".userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1.json",
+      "receipt_listed_sha256": "ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50",
+      "observed_sha256": "785edad70809f8dfbe5c5b67fb491f68b96d370872764b33ff32a41f781fd72b",
+      "status": "unresolved"
+    }
+  },
+  "targeted_recovery": {
+    "query": "Search .userdata/openclaw_harness/source_bindings and .de67 for fb035a4e82a0d7800562b54174046d4d5cdbd875b6c2fdb25a09047af7e0b29b, run 55098ec37b3868099fa04fdb5626a57a3f043ac3d30b791a44af2c811d53c33b, or expected hash ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50.",
+    "result": "No immutable alternate artifact found; only the camp-craft receipt and work-ledger references matched."
+  },
+  "closure_result": "blocked_by_source_binding_artifact_integrity",
+  "exact_missing_field": "An immutable camp-craft source-binding artifact at the receipt-listed path (or an alternate artifact carrying binding_id fb035a4e82a0d7800562b54174046d4d5cdbd875b6c2fdb25a09047af7e0b29b, run_id 55098ec37b3868099fa04fdb5626a57a3f043ac3d30b791a44af2c811d53c33b, and listed SHA-256 ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50)."
+}

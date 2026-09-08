@@ -1,0 +1,132 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-FS-MIGRATION-closure-activation-reconciliation-006",
+  "claim_id": "R-MAINT-FS-MIGRATION",
+  "worker_id": "01a082a1-44d1-7ed2-9fd9-69de063a2b8d",
+  "disposition": "completed",
+  "verdict": "canonical_fs_activation_and_restart_verified",
+  "outcome": "Revision 6 closure audit verified the installed canonical FS release and the owner-authorized ordinary service restart. The old parent exited, generation 44 was claimed and acknowledged exactly once by its successor, installed consumers and the live dashboard use canonical FS, completed evidence is preserved, and the parent-adoption control plane was not installed.",
+  "summary": "Read-only reconciliation of retained activation, install, dashboard, validation, and restart artifacts. No activation rerun, service restart, migration mutation, or same-owner handoff was performed.",
+  "material_changes": [],
+  "tests": [
+    "activation-result.json reports activated, live_validation=true, policy_guard_exit=0, policy_bytecode_unchanged=true, and 17 installed files.",
+    "activation-manifest.json after-hashes match all installed targets except .de67/work-ledger.md, which has expected post-activation coordinator updates; the release code/specification hashes remain matched.",
+    "validation.json confirms 32 preserved slices, 8 active claims, ledger projection, canonical open-work, provenance compatibility, unchanged policy data, and no premature supervisor completion.",
+    "dashboard-live-validation.json confirms canonical content, FS navigation label, consultation behavior, and compatibility pointer not rendered as the document.",
+    "Full comparison is 454 release tests versus 445 baseline tests with identical 5 failures, 19 errors, and 4 skips; introduced_failure_identities is empty. Inherited failures remain an explicit ceiling, not green results.",
+    "Installed method/dashboard tree contains no parent_adoption references; parent-adoption files remain staged-only under the owner-approvals candidate-method directory."
+  ],
+  "live_actions": [
+    "No activation rerun, migration rerun, service restart, coordinator launch, or parent-adoption installation was performed by this audit.",
+    "Retained restart-verification.json proves old_parent_exited=true; generation 44 run restart-44-c4fe50ba6b5c4cf89c410d04aa2dc52e was acknowledged by exactly one successor owner supervisor-68768-efb13f8022d84b20b27b0c14a5e8ee23.",
+    "The ordinary stop/start occurred before this audit under explicit owner authorization; maintenance-stop.json and maintenance-start.json both report exit_code 0."
+  ],
+  "evidence_ceiling": [
+    "This is a retained-artifact closure audit; it does not replay activation or independently recreate the historical service handoff.",
+    "The full release comparison inherits 5 failures, 19 errors, and 4 skips in both baseline and release; no claim that the suite is fully green is made.",
+    "The manifest ledger hash differs because .de67/work-ledger.md received expected post-activation durable updates; this is not an installed release-code mismatch.",
+    "No same-PID, same-journal-owner, or same-runtime-epoch requirement applies; the owner explicitly authorized normal service replacement.",
+    "No parent-adoption control plane is installed; its staged experiment remains historical evidence only."
+  ],
+  "bindings": {
+    "assignment_packet_sha256": "fb906694f38e2bb5c68ee4cfe4077f0e9c15677109004fac648755c686d24cca",
+    "canonical_fs_sha256": "d8c7d41afeed7d0b12577fdb3d3bd57c513ad96bea0563b97ee9fe3f44812eee",
+    "dfs_pointer_sha256": "fbc631290fbfb64667c70402ccfe4f3bcd2d05815335317444ff3662853c60ff",
+    "lineage_id": "semantic-surface-cockpit",
+    "restart_generation": "44",
+    "restart_run_id": "restart-44-c4fe50ba6b5c4cf89c410d04aa2dc52e",
+    "successor_owner_id": "supervisor-68768-efb13f8022d84b20b27b0c14a5e8ee23",
+    "task_id": "R-MAINT-FS-MIGRATION-closure-activation-reconciliation-006",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/state/review-owner-fs-activation-20260908/activation-result.json",
+      "sha256": "c03caa31ecad4ee4e61b20ef845bef38c1034d8fbb6eb609438223e21368d146",
+      "role": "activation result and policy/live validation status"
+    },
+    {
+      "path": ".de67/state/review-owner-fs-activation-20260908/activation-manifest.json",
+      "sha256": "e9585fb78496e834fd54894c983c744fb78465fb59ab521d711cce41dd35e7dc",
+      "role": "17-file installed release manifest"
+    },
+    {
+      "path": ".de67/state/review-owner-fs-activation-20260908/validation.json",
+      "sha256": "c60a57e91bb6efd48b4013970de7bea483e0295eb53c77dbcae4f57bf81031fd",
+      "role": "installed canonical FS and ledger validation"
+    },
+    {
+      "path": ".de67/state/review-owner-fs-activation-20260908/dashboard-live-validation.json",
+      "sha256": "b10dc75e193de7ea62ae204103f6cca0490d2516a9f27ab98ccad52ddd0059bd",
+      "role": "live dashboard canonical FS validation"
+    },
+    {
+      "path": ".de67/state/review-owner-fs-activation-20260908/restart-verification.json",
+      "sha256": "c2600572b2b058c00c8ac74be6a4687eb5c82c4209cc665cce030b28e434225e",
+      "role": "old-parent exit and generation-44 successor acknowledgement"
+    },
+    {
+      "path": ".de67/state/review-owner-fs-activation-20260908/maintenance-stop.json",
+      "sha256": "2c782f40d4bd13b6a5974fca5ef36e931f62c7b1ba9dd44035a404852fabde4a",
+      "role": "authorized ordinary service stop result"
+    },
+    {
+      "path": ".de67/state/review-owner-fs-activation-20260908/maintenance-start.json",
+      "sha256": "cf71f1a1f404f13971575a2602d50f64dc3d601743b306c007348a73573ac971",
+      "role": "authorized ordinary service start result"
+    },
+    {
+      "path": ".de67/state/review-owner-fs-activation-20260908/maintenance.log",
+      "sha256": "ccdbf18e09234059da972ccc059f2a120822194e653538e032009ae6fbc33fdb",
+      "role": "authoritative maintenance handoff result"
+    },
+    {
+      "path": ".de67/state/review-owner-fs-activation-20260908/tests/full-comparison.json",
+      "sha256": "5f25d38222eaf417ac6a2a2051ab583399683101e7dd30f64a147c73da0afd3d",
+      "role": "release versus baseline inherited-failure comparison"
+    },
+    {
+      "path": ".de67/task-logs/fs-activation-20260908/report.md",
+      "sha256": "38ebaa29b781cba5ef51702cb4ad369c5a03091c13fe2dda13ad5eab89a4e7d4",
+      "role": "activation behavior, scope, and evidence ceiling report"
+    },
+    {
+      "path": ".de67/FS.md",
+      "sha256": "d8c7d41afeed7d0b12577fdb3d3bd57c513ad96bea0563b97ee9fe3f44812eee",
+      "role": "installed canonical functional specification"
+    },
+    {
+      "path": ".de67/DFS.md",
+      "sha256": "fbc631290fbfb64667c70402ccfe4f3bcd2d05815335317444ff3662853c60ff",
+      "role": "hash-bound compatibility pointer"
+    }
+  ],
+  "first_divergence": {
+    "class": "expected_post_activation_ledger_evolution",
+    "summary": "The manifest-recorded ledger hash predates seven expected durable coordinator updates; current ledger content is intentionally newer than the activation snapshot."
+  },
+  "accepted_no_replay": [
+    "No activation or migration replay was performed.",
+    "No service restart or coordinator launch was performed by this closure audit.",
+    "The superseded same-owner handoff premise and staged parent-adoption experiment were not revived."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Inherited baseline/release test failures remain outside this closure audit; no broader regression repair or universal green claim is made.",
+  "narrow_queries": [
+    "canonical FS identity and compatibility pointer",
+    "installed consumer and dashboard projection",
+    "generation 44 old-parent exit and single-successor acknowledgement",
+    "installed absence of parent_adoption",
+    "post-activation ledger hash evolution"
+  ],
+  "entrypoints": [
+    ".de67/state/review-owner-fs-activation-20260908/activation-result.json",
+    ".de67/state/review-owner-fs-activation-20260908/activation-manifest.json",
+    ".de67/state/review-owner-fs-activation-20260908/validation.json",
+    ".de67/state/review-owner-fs-activation-20260908/restart-verification.json",
+    ".de67/task-logs/fs-activation-20260908/report.md"
+  ],
+  "context_metrics": {}
+}

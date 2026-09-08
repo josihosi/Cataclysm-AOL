@@ -1,0 +1,103 @@
+{
+  "schema": "r031-free-text-follow-context-002-pursuit-observed-v1",
+  "run_id": "0a74c44a3b275c8a29584efc8e09a1e50d17f7ff1307d7e9244c53f7b97d31ef",
+  "binding_id": "2f1e5b2b3f678bb4e5b1df36cd09cad748f4196dc025658cba5ed929275b5496",
+  "game_pid": 81967,
+  "game_birth": "posix-lstart:Tue Sep  8 22:52:31 2026",
+  "actor": {
+    "id": "character:18",
+    "name": "R031 Route Ally 1",
+    "non_camp_snapshot": {
+      "assigned_camp": null,
+      "camp_found": false,
+      "camp_patrol_order": false,
+      "mission": "NULL",
+      "guard_post": null,
+      "activity": "ACT_NULL",
+      "attitude": "Following",
+      "follow_close": true,
+      "has_companion_mission": false,
+      "danger": false,
+      "structural_outing_owner": {
+        "present": false,
+        "source_response": "responses/play-785738937ca84958b0d9e60bb886d292.json"
+      },
+      "vehicle_state": "No vehicle-owner fact was advertised by this native world/NPC surface; no vehicle transition or owner was observed."
+    }
+  },
+  "native_semantic_source": ".userdata/dev-harness/harness_runs/20260908_225230_281bd8793541442bb4b18909e1770852/semantic.native.events.jsonl",
+  "metric": "Euclidean rl_dist over absolute_ms on z=0; follow_distance() is 4 when visible",
+  "frames": [
+    {
+      "frame": 20,
+      "turn": 5241601,
+      "avatar": [3374, 999, 0],
+      "actor": [3374, 994, 0],
+      "rl_dist": 5,
+      "note": "Meaningful separation above follow_distance(4) before next ordinary follow selection"
+    },
+    {
+      "frame": 21,
+      "turn": 5241602,
+      "avatar": [3374, 999, 0],
+      "actor": [3374, 995, 0],
+      "rl_dist": 4,
+      "note": "Actor advanced one square toward avatar after separation"
+    },
+    {
+      "frame": 22,
+      "turn": 5241602,
+      "avatar": [3374, 1000, 0],
+      "actor": [3374, 995, 0],
+      "rl_dist": 5,
+      "note": "Player moved one square while actor had not yet closed; separation remained above follow_distance(4)"
+    },
+    {
+      "frame": 23,
+      "turn": 5241603,
+      "avatar": [3374, 1000, 0],
+      "actor": [3374, 996, 0],
+      "rl_dist": 4,
+      "note": "Actor pursued and reduced separation by one square"
+    },
+    {
+      "frame": 31,
+      "turn": 5241603,
+      "avatar": [3374, 1001, 0],
+      "actor": [3374, 996, 0],
+      "rl_dist": 5,
+      "note": "Pre-diagonal ordinary observation with separation above follow_distance(4)"
+    },
+    {
+      "frame": 32,
+      "turn": 5241604,
+      "avatar": [3374, 1001, 0],
+      "actor": [3374, 997, 0],
+      "rl_dist": 4,
+      "note": "Ordinary south move; actor followed"
+    },
+    {
+      "frame": 33,
+      "turn": 5241604,
+      "avatar": [3373, 1002, 0],
+      "actor": [3374, 997, 0],
+      "rl_dist": 5,
+      "note": "Diagonal movement recreated separation above threshold"
+    },
+    {
+      "frame": 34,
+      "turn": 5241606,
+      "avatar": [3373, 1002, 0],
+      "actor": [3374, 999, 0],
+      "rl_dist": 3,
+      "note": "Actor pursued across the two-turn diagonal step"
+    }
+  ],
+  "native_application": {
+    "reply_native_receipt": "cockpit:harness-61d6c3cdecdb47c28674cc259c1b96cd:0a74c44a3b275c8a29584efc8e09a1e50d17f7ff1307d7e9244c53f7b97d31ef:frame:5:prompt.submit:0a0505147d86227c",
+    "follow_begin_message": "R031 Route Ally 1 begins to follow you.",
+    "follow_state_observation": "responses/play-8103dbfe63684cf789f5081df57df017.json",
+    "follow_state_response_sha256": "c067d005941c78bdb573c56f860566ca4edc4f4ad9f9a018e4757a534988a717"
+  },
+  "evidence_boundary": "Native semantic frames and receipts establish application and pursuit. Runner logs remain separately correlated by request id, runner pid and timestamp; OCR/rendering is excluded. Structural outing ownership is explicitly present=false; vehicle-owner state is unavailable from the advertised surface rather than inferred absent. Live session remains intentionally retained for exact-PID owner handoff/closeout."
+}

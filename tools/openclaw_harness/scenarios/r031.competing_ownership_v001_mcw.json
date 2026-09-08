@@ -1,0 +1,42 @@
+{
+  "manifest_version": 1,
+  "name": "r031.competing_ownership_v001_mcw",
+  "description": "Fresh current-source R-031 competing ownership route. Three setup-only cloned allied actors retain GUARD_ALLY, GUARD, and GUARD_PATROL mission ownership while the live run submits one native free-text follow request and inspects whether ownership yields or takes precedence.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r031_competing_ownership_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.fixture": "r031_competing_ownership_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r031.competing_ownership": "native_free_text_follow_against_guard_and_patrol_missions"
+  },
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["physical-key", "guessed-key", "keyboard", "mouse", "ocr", "screen-coordinate", "callback-injection", "direct-state-mutation", "direct-save-edit", "fixture-restage"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r031_competing_ownership_v1",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"dev-harness","fixture":"r031_competing_ownership_v1","helper":"none","peekaboo":false,"input":["frame-bound semantic requests"],"ocr":false,"cleanup":true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest":"tools/openclaw_harness/fixtures/saves/live-debug/r031_competing_ownership_v1/manifest.json","profile":"tools/openclaw_harness/profiles/dev-harness.json"},
+  "proof_gates": [{"id":"r031_competing_ownership_live","label":"R-031 fresh competing mission ownership live session","boundary_step":"operate_competing_ownership","predecessors":[],"expectations":[{"kind":"saved_artifact","predicate":{"artifact_kind":"worker_controlled_live_cockpit_session","gameplay_credit":true}}],"checkpoint_safe_ui":{"screen_text_contains":["Move:","Wield:"]}}],
+  "proof_route": {"precondition":["bind_competing_ownership_world"],"production_behavior":["operate_competing_ownership"],"terminal_persistence":["operate_competing_ownership"],"artifact_verdict":["operate_competing_ownership"],"disallowed_shortcuts":["bind_competing_ownership_world"],"gates":["r031_competing_ownership_live"],"terminal":["r031_competing_ownership_live"],"capability_gates":{"capabilities.r031.competing_ownership":{"terminal":["operate_competing_ownership"]}}},
+  "steps": [
+    {"kind":"native_semantic_bootstrap","label":"bind_competing_ownership_world","native_semantic_checkpoint":{"required_actions":["world.wait"],"required_state":"world","require_initial_hud_world_ready_frame":false}},
+    {"kind":"cockpit_live_session","label":"operate_competing_ownership","cleanup_on_finish":true,"objective":"In one fresh native run, identify the three named cloned allied actors and bind each initial attitude, mission, guard post, camp Patrol order, position, and relationship. Submit one exact unaddressed free-text request meaning follow me to each actor in separate turns, correlate the native prompt and runner reply, allow an ordinary applying turn, then inspect whether mission/guard/Patrol ownership remains or is replaced by follow. Move away far enough for any applied follow to have a meaningful opportunity, then finish.","proof_targets":["exact actor identity and initial mission/guard/Patrol state","exact utterance, hearer, prompt, runner response, and applying turn per actor","post-application mission/attitude/order state per actor","meaningful separation and native movement opportunity","accepted cleanup"],"authority":["currently advertised native semantic actions","game.act","game.wait","game.move_relative","run.witness","run.finish"],"invariants":["fixture cloning and mission values are zero-credit setup","do not synthesize replies or mutate actor/save state","no OCR or rendered text as proof","preserve each actor as an independent result","do not replay a sealed run"],"live_operations":["game.act","game.wait","game.move_relative"],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}
+  ]
+}

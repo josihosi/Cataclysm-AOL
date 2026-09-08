@@ -1,0 +1,14 @@
+{
+  "action": "game.move_relative",
+  "move_relative": {
+    "enabled": true,
+    "offset_ms": [8, 0],
+    "danger_handling": "stop_on_interruption",
+    "bound": {
+      "basis": "path_progress",
+      "source": "Eight cardinal east steps on the observed same-z floor route",
+      "unit": "steps",
+      "maximum": 8
+    }
+  }
+}

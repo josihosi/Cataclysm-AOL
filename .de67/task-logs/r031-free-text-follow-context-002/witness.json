@@ -1,0 +1,67 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "The bound non-camp NPC accepted the exact free-text follow request through the native prompt, changed to Following, and advanced toward the avatar on later ordinary turns while remaining outside camp-patrol ownership.",
+  "causal_account": "The native prompt receipt is accepted; the subsequent native message records the actor's reply and begins-following transition; actor-bound inspections show Following with mission NULL and camp_patrol_order false before and after ordinary movement, including a later actor position advance.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds the run, executable, and scenario identity.",
+      "checks": {
+        "run_id": "0a74c44a3b275c8a29584efc8e09a1e50d17f7ff1307d7e9244c53f7b97d31ef",
+        "binding_id": "2f1e5b2b3f678bb4e5b1df36cd09cad748f4196dc025658cba5ed929275b5496"
+      }
+    },
+    {
+      "citation_id": "J0003",
+      "meaning": "Binds actor identity and the initial non-following, non-camp-patrol state.",
+      "checks": {
+        "value.surface.facts.actor_id": "character:18",
+        "value.surface.facts.actor_name": "R031 Route Ally 1",
+        "value.surface.facts.diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"GUARD_ALLY\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3374,994,0],\"camp_patrol_order\":false,\"camp_patrol_priority\":8,\"guard_post\":null,\"move_target\":null,\"assigned_camp\":null,\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}"
+      }
+    },
+    {
+      "citation_id": "J0013",
+      "meaning": "Native prompt.submit receipt was accepted for the bound run.",
+      "checks": {
+        "native_receipt.action_id": "prompt.submit",
+        "native_receipt.accepted": true,
+        "recovery": false
+      }
+    },
+    {
+      "citation_id": "J0020",
+      "meaning": "World message records the actor's generated reply and native begins-following message.",
+      "checks": {
+        "value.surface.facts.messages.230.text": "You say \"R031 Route Ally 1, follow me and stay close.\"",
+        "value.surface.facts.messages.233.text": "R031 Route Ally 1 says: \"Alright, Zoraida—keeping tight to your flank like a loyal weasel with a rebar grin.\"",
+        "value.surface.facts.messages.234.text": "R031 Route Ally 1 begins to follow you."
+      }
+    },
+    {
+      "citation_id": "J0022",
+      "meaning": "Actor-bound native inspection confirms Following, mission NULL, no camp-patrol order, and the actor identity.",
+      "checks": {
+        "value.surface.facts.actor_id": "character:18",
+        "value.surface.facts.actor_name": "R031 Route Ally 1",
+        "value.surface.facts.diagnostic_orders": "{\"attitude\":\"Following\",\"mission\":\"NULL\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3374,994,0],\"camp_patrol_order\":false,\"camp_patrol_priority\":8,\"guard_post\":null,\"move_target\":null,\"assigned_camp\":null,\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}",
+        "value.surface.facts.diagnostic_camp_patrol": "{\"provenance\":\"Read-only assigned-camp patrol shift-cache diagnostic; it never refreshes the plan or synchronizes this actor's patrol order.\",\"camp_found\":false}"
+      }
+    },
+    {
+      "citation_id": "J0047",
+      "meaning": "Later actor-bound inspection shows the Following actor advanced to a new position while camp-patrol ownership remained false.",
+      "checks": {
+        "value.surface.facts.actor_id": "character:18",
+        "value.surface.facts.diagnostic_orders": "{\"attitude\":\"Following\",\"mission\":\"NULL\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3374,996,0],\"camp_patrol_order\":false,\"camp_patrol_priority\":8,\"guard_post\":null,\"move_target\":null,\"assigned_camp\":null,\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}"
+      }
+    }
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "The advertised surface does not expose a vehicle-owner fact; no vehicle transition was observed.",
+    "The runner response is preserved as corroboration in chain-evidence.json; the native prompt receipt and application state are authoritative."
+  ],
+  "recommended_disposition": "accept",
+  "evidence_ceiling": "focused"
+}

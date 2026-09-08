@@ -1,0 +1,91 @@
+{
+  "schema": "caol-playtest-witness-v1",
+  "verdict": "proved",
+  "smallest_supported_claim": "In the bound native run, all three materialized R-031 actors accepted the free-text follow request and produced native replies/begins-following messages, but the competing camp-guard ownership remained authoritative: after the follow_close/hold_position sequence, each actor was back in GUARD_ALLY with a guard_post and none pursued the avatar across six westward squares.",
+  "causal_account": "The native prompt receipt was accepted. The world message surface recorded the three R-031 replies and begins-following transitions. Subsequent actor-bound inspections showed GUARD_ALLY and guard posts for characters 18, 19, and 20; the final native movement reached [3368,995,0] while the actors remained at [3374,994,0], [3376,994,0], and [3376,995,0]. This establishes a transient follow intent overridden/restored by camp guard ownership, not absence of actor materialization.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds the competing-ownership scenario, executable, run, and bridge binding.",
+      "checks": {
+        "scenario_id": "r031.competing_ownership_v001_mcw",
+        "run_id": "b10271979a76770c726ebe375a650a92ffe1e839b3b6ab3d9fdc050cd9d0a72d",
+        "binding_id": "8e1e8b692b777f6c7314a2b0cb162e27f4437acd9ba7c9a31e8426b50345b5d4"
+      }
+    },
+    {
+      "citation_id": "J0048",
+      "meaning": "Native free-text prompt submission was accepted by the bound game.",
+      "checks": {
+        "native_receipt.action_id": "prompt.submit",
+        "native_receipt.accepted": true,
+        "recovery": false
+      }
+    },
+    {
+      "citation_id": "J0057",
+      "meaning": "Native messages include the follow request, Guard Ally reply, and begins-following transition."
+    },
+    {
+      "citation_id": "J0060",
+      "meaning": "Native messages include Guard 1 follow reply/transition."
+    },
+    {
+      "citation_id": "J0071",
+      "meaning": "Native messages include Patrol 1 follow reply/transition."
+    },
+    {
+      "citation_id": "J0138",
+      "meaning": "Post-sequence inspection of Guard Ally 1 shows GUARD_ALLY restored with a guard post.",
+      "checks": {
+        "value.surface.facts.actor_id": "character:18",
+        "value.surface.facts.actor_name": "R031 Guard Ally 1",
+        "value.surface.facts.diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"GUARD_ALLY\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3374,994,0],\"camp_patrol_order\":false,\"camp_patrol_priority\":8,\"guard_post\":[3374,994,0],\"move_target\":null,\"assigned_camp\":null,\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}"
+      }
+    },
+    {
+      "citation_id": "J0134",
+      "meaning": "Post-sequence inspection of Guard 1 shows GUARD_ALLY restored with a guard post.",
+      "checks": {
+        "value.surface.facts.actor_id": "character:19",
+        "value.surface.facts.actor_name": "R031 Guard 1",
+        "value.surface.facts.diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"GUARD_ALLY\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3376,994,0],\"camp_patrol_order\":false,\"camp_patrol_priority\":8,\"guard_post\":[3376,994,0],\"move_target\":null,\"assigned_camp\":null,\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}"
+      }
+    },
+    {
+      "citation_id": "J0130",
+      "meaning": "Post-sequence inspection of Patrol 1 shows GUARD_ALLY restored with a guard post.",
+      "checks": {
+        "value.surface.facts.actor_id": "character:20",
+        "value.surface.facts.actor_name": "R031 Patrol 1",
+        "value.surface.facts.diagnostic_orders": "{\"attitude\":\"Ignoring\",\"mission\":\"GUARD_ALLY\",\"activity\":\"ACT_NULL\",\"absolute_position\":[3376,995,0],\"camp_patrol_order\":false,\"camp_patrol_priority\":8,\"guard_post\":[3376,995,0],\"move_target\":null,\"assigned_camp\":null,\"assigned_camp_coordinate_system\":\"absolute_omt\",\"order_coordinate_system\":\"absolute_ms\",\"has_companion_mission\":false}"
+      }
+    },
+    {
+      "citation_id": "J0160",
+      "meaning": "Native movement completed the six-square separation to the west.",
+      "checks": {
+        "result.stop_reason": "target_reached",
+        "result.offset_ms": [-6, 0],
+        "result.origin_absolute_ms": [3374, 995, 0],
+        "result.terminal_absolute_ms": [3368, 995, 0]
+      }
+    },
+    {
+      "citation_id": "J0158",
+      "meaning": "Final native observation retains all three actors at their guard-post positions after the separation.",
+      "checks": {
+        "value.surface.facts.avatar": "{\"name\":\"Zoraida Vick\",\"absolute_ms\":[3368,995,0]}"
+      }
+    }
+  ],
+  "contradictions": [
+    "The LLM/native speech path emits begins-following messages, but the follow intent does not persist for these camp-guard actors once hold_position restores GUARD_ALLY and guard_post ownership."
+  ],
+  "remaining_unknowns": [
+    "This run does not establish behavior for camp actors without hold_position restoration, nor persistence across save/reload.",
+    "The runner response is corroborating application evidence; native actor state and movement are authoritative."
+  ],
+  "recommended_disposition": "accept",
+  "evidence_ceiling": "focused"
+}

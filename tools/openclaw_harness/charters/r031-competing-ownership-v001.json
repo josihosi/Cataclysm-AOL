@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On current source, a fresh authority-bound native free-text follow route is compared against active GUARD_ALLY, GUARD, and GUARD_PATROL mission ownership.",
+  "material_proof": "One new uniquely bound run records three named actors, their native initial mission/attitude/guard/Patrol state, one exact utterance and same-run prompt/runner/application chain per actor, post-application ownership state, meaningful movement opportunity, witness ingestion, and accepted cleanup.",
+  "material_contradiction": ["an actor is inferred rather than recorded", "mission or guard/Patrol state is missing", "reply injection or direct state mutation", "a repeated run or bridge binding", "a follow request clears active ownership without an explicit native release route", "missing witness ingestion or cleanup"],
+  "already_accepted_evidence": ["Earlier R-031 free-text follow proves only the clean mission-null non-camp route and is not replayed.", "R-032 Patrol release and persistence remain independent evidence."],
+  "current_uncertainty": "The fresh route may preserve ownership, yield to follow, produce an honest no-action, or fail a required native correlation condition.",
+  "forbidden_shortcuts": ["physical input, OCR, screenshots, coordinates, or guessed controls", "synthetic response injection", "direct NPC, mission, camp, or save mutation", "crediting fixture installation or startup", "replaying a sealed run"],
+  "honest_stop_conditions": ["stop before gameplay if fresh selection or current source binding is absent", "after launch retain the first missing native prerequisite or actual no-action, finish cleanup, and preserve independent observations"],
+  "requested_evidence_ceiling": "focused"
+}

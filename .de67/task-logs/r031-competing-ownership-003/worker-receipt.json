@@ -1,0 +1,175 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-031-competing-ownership-003",
+  "claim_id": "R-031",
+  "worker_id": "01a082e4-4fc2-7fb2-aeda-c0c267e16a09",
+  "disposition": "completed",
+  "verdict": "proved",
+  "outcome": "Fresh source-bound native playtest proved active camp-guard precedence after a transient free-text follow intent: actors 18/19/20 were materialized with initial mission values 6/7/8, each accepted the exact native request and produced a native reply/begins-following chain, then all restored GUARD_ALLY with guard posts and held those posts while the player moved six squares west.",
+  "summary": "The fixture supplied three independently named nearby allied actors: R031 Guard Ally 1 (character:18, initial GUARD_ALLY/mission 6), R031 Guard 1 (character:19, initial GUARD/mission 7), and R031 Patrol 1 (character:20, initial GUARD_PATROL/mission 8). Native inspections bound those identities before interaction (J0029, J0021, J0025). One exact utterance, follow me, was submitted through the native prompt and accepted (J0048). The run-bound native message/application chain records replies and begins-following transitions for all three (J0057, J0060, J0071), with runner requests req_0/req_1/req_2 and corroborating responses in config/llm_intent_runner.log. After ordinary applying turns, actor-bound native inspections show all three normalized to GUARD_ALLY with guard_post values (J0138, J0134, J0130). A native guarded move reached [3368,995,0] from [3374,995,0] (J0160); the final observation retains the actors at their guard-post positions (J0158). This proves precedence of active camp-guard ownership after transient follow intent. It does not separately prove durable mission-7 versus mission-8 semantics once both normalize to GUARD_ALLY, and it does not prove save/reload persistence.",
+  "material_changes": [
+    "Added source-bound scenario tools/openclaw_harness/scenarios/r031.competing_ownership_v001_mcw.json.",
+    "Added setup-only fixture manifest tools/openclaw_harness/fixtures/saves/live-debug/r031_competing_ownership_v1/manifest.json; fixture cloning and mission values are zero-credit setup.",
+    "Added coordinator and witness charter files tools/openclaw_harness/charters/r031-competing-ownership-v001-coordinator-brief.json and tools/openclaw_harness/charters/r031-competing-ownership-v001.json.",
+    "Added mechanically valid witness .de67/task-logs/r031-competing-ownership-003-witness.json and this worker receipt; no gameplay source files or runtime state were edited."
+  ],
+  "tests": [
+    "Fresh registry-launched source/executable/binding run completed: run b10271979a76770c726ebe375a650a92ffe1e839b3b6ab3d9fdc050cd9d0a72d, binding 8e1e8b692b777f6c7314a2b0cb162e27f4437acd9ba7c9a31e8426b50345b5d4.",
+    "Preflight native actor inspections recorded character:18 GUARD_ALLY at [3374,994,0], character:19 GUARD at [3376,994,0], and character:20 GUARD_PATROL at [3377,994,0], each camp_patrol_order false and guard_post null.",
+    "Native prompt.submit was accepted with recovery false; no synthetic reply, callback injection, direct NPC mutation, direct mission mutation, or save rewrite was used.",
+    "Exact runner/application chain was correlated for req_0 character:18, req_1 character:19, and req_2 character:20; application messages then recorded each reply and begins-following transition.",
+    "Post-application native inspections recorded character:18 at [3374,994,0] with GUARD_ALLY/guard_post [3374,994,0], character:19 at [3376,994,0] with GUARD_ALLY/guard_post [3376,994,0], and character:20 at [3376,995,0] with GUARD_ALLY/guard_post [3376,995,0].",
+    "Native guarded movement completed target_reached for offset [-6,0], from [3374,995,0] to [3368,995,0]; final native observation retained all three actors at original guard posts.",
+    "run.witness and run.finish were accepted; witness validation status mechanically_valid, cited_entry_count 10, contradiction_count 0, evidence ceiling focused.",
+    "Cleanup completed with game-process-exit exit_code 0; final exact-PID sweep found game PID 86050, bridge PID 86007, and runner PID 86920 absent."
+  ],
+  "live_actions": [
+    "Run b10271979a76770c726ebe375a650a92ffe1e839b3b6ab3d9fdc050cd9d0a72d; game PID 86050 birth posix-lstart:Tue Sep 8 23:27:14 2026.",
+    "Bridge PID 86007 was bound to the run; a distinct bridge birth identity was not retained in the session status, but the bridge reached safe_to_cleanup and was absent in the final exact-PID sweep.",
+    "Runner PID 86920, process_instance 1ba659263dda4c55a97e268696f6a4b7, handled req_0 through req_4 and shutdown; runner birth identity was not retained in the log, shutdown was acknowledged, and the PID was absent in the final exact-PID sweep.",
+    "run.finish request play-b7ce8e9e451e494099b4c0bc06a29f40 terminated the game via SIGTERM after witness validation; game-process-exit records exit_code 0."
+  ],
+  "evidence_ceiling": [
+    "Native semantic receipts, actor-bound inspections, native messages, and native movement establish the bounded competing-ownership route.",
+    "Runner records are exact-correlated application corroboration, not authoritative gameplay state.",
+    "Fixture installation and mission assignment are setup-only and earn no gameplay credit.",
+    "No OCR, screenshots, physical input, guessed controls, direct NPC/mission/camp mutation, callback injection, or save editing was used.",
+    "The run proves active camp-guard precedence after transient follow intent; it does not separately prove persistent mission-7 versus mission-8 semantics after normalization to GUARD_ALLY, behavior without hold_position restoration, or save/reload persistence."
+  ],
+  "bindings": {
+    "binding_id": "8e1e8b692b777f6c7314a2b0cb162e27f4437acd9ba7c9a31e8426b50345b5d4",
+    "bridge_pid": "86007; birth identity not retained; final OS sweep absent",
+    "executable_sha256": "2188db07296c8affab8c940563603a9384ebfe8b10f6e63dc37b4ef6dbf4235b",
+    "fixture": "r031_competing_ownership_v1",
+    "game_pid": "86050; birth posix-lstart:Tue Sep 8 23:27:14 2026; exit_code 0",
+    "harness_run": ".userdata/dev-harness/harness_runs/20260908_232713_8b842528bb7740a4aff3a08135504b43",
+    "runner_pid": "86920; process_instance 1ba659263dda4c55a97e268696f6a4b7; birth identity not retained; shutdown acknowledged; final OS sweep absent",
+    "runtime_source_sha256": "aeb8bbdb195a8cd10f3e9a36845464e02a9da4a012a457b44f3937bd2120e2cb",
+    "scenario_id": "r031.competing_ownership_v001_mcw",
+    "session": ".userdata/openclaw_harness/bridge-sessions/selected-0d1050d001384b96b2a367cd7ea524e2"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": "1",
+      "event_type": "identity",
+      "evidence_class": "run/binding identity",
+      "summary": "Scenario, executable, run, and bridge binding."
+    },
+    {
+      "id": "J0029",
+      "sequence": "29",
+      "event_type": "observation",
+      "evidence_class": "native actor inspection",
+      "summary": "Initial character:18 R031 Guard Ally 1, GUARD_ALLY mission 6."
+    },
+    {
+      "id": "J0021",
+      "sequence": "21",
+      "event_type": "observation",
+      "evidence_class": "native actor inspection",
+      "summary": "Initial character:19 R031 Guard 1, GUARD mission 7."
+    },
+    {
+      "id": "J0025",
+      "sequence": "25",
+      "event_type": "observation",
+      "evidence_class": "native actor inspection",
+      "summary": "Initial character:20 R031 Patrol 1, GUARD_PATROL mission 8."
+    },
+    {
+      "id": "J0048",
+      "sequence": "48",
+      "event_type": "action",
+      "evidence_class": "native receipt",
+      "summary": "Exact prompt.submit accepted."
+    },
+    {
+      "id": "J0057",
+      "sequence": "57",
+      "event_type": "observation",
+      "evidence_class": "native world message",
+      "summary": "Guard Ally reply and begins-following transition."
+    },
+    {
+      "id": "J0060",
+      "sequence": "60",
+      "event_type": "observation",
+      "evidence_class": "native world message",
+      "summary": "Guard reply and begins-following transition."
+    },
+    {
+      "id": "J0071",
+      "sequence": "71",
+      "event_type": "observation",
+      "evidence_class": "native world message",
+      "summary": "Patrol reply and begins-following transition."
+    },
+    {
+      "id": "J0138/J0134/J0130",
+      "sequence": "51/49/47",
+      "event_type": "observation",
+      "evidence_class": "native actor inspection",
+      "summary": "All three post-sequence states restored GUARD_ALLY with guard posts."
+    },
+    {
+      "id": "J0160/J0158",
+      "sequence": "160/158",
+      "event_type": "guarded_move_relative/observation",
+      "evidence_class": "native movement and final observation",
+      "summary": "Six-square westward separation completed; actors retained their posts."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r031-competing-ownership-003-witness.json",
+      "sha256": "d3faf4c8231ba73615ea6653fe426b2df857975bb90a431c3bd8c546497b0b59",
+      "role": "mechanically valid witness statement"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-0d1050d001384b96b2a367cd7ea524e2/cockpit-evidence.sqlite",
+      "sha256": "11cebb96fbfd664b2718ac8d17f9be9e919b74ae5b2e22359d8f9fd406b7fc50",
+      "role": "immutable journal/evidence store; journal_sha256 04b8c1dbb913d5b9b5044b5e11b18ff85b5a98e61588322812f3f6dd9ad4c90d"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-0d1050d001384b96b2a367cd7ea524e2/game-process-exit.json",
+      "sha256": "15d5ed958d9c86529899c136f5710dd44c36382e08c91df9ea40c6849c3b714a",
+      "role": "bound game PID exit_code 0"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-0d1050d001384b96b2a367cd7ea524e2/responses/play-b7ce8e9e451e494099b4c0bc06a29f40.json",
+      "sha256": "d9307a6aea5235e51da849e375c64fea65d60fb88c04348ef80eb75ffef0d35e",
+      "role": "finish/witness/cleanup response"
+    },
+    {
+      "path": "config/llm_intent_runner.log",
+      "sha256": "2e45dcb047a6e6665dcd35227d284af840103f70d2631c8ddc56e852cad3fe97",
+      "role": "runner request/reply/application corroboration; process_instance 1ba659263dda4c55a97e268696f6a4b7"
+    },
+    {
+      "path": "config/llm_intent_events.log",
+      "sha256": "d611437f098fa0f6e2395a2453698e489771e1b3e1875cbc2ad8ccb26083fdef",
+      "role": "native intent event corroboration"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Earlier mission-null non-camp follow evidence was not replayed; this run used a fresh bound competing-ownership scenario.",
+    "The retained run was sealed and finished; no gameplay replay or replacement generation was started.",
+    "Visibility of actors 19/20 was initially occluded by the native visible-entities surface; ordinary native movement exposed inspect targets, proving an observation/LOS gap rather than failed materialization."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Separate durable mission-7 versus mission-8 semantics after both normalize to GUARD_ALLY, behavior without hold_position restoration, and save/reload persistence remain untested.",
+  "narrow_queries": [
+    "Coordinator should register this as the bounded competing-ownership result and preserve the explicit normalization caveat.",
+    "Do not replay the sealed run; any future mission-7 versus mission-8 comparison requires a separately authorized fresh scenario."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/play_cli.py",
+    "tools/llm_runner/runner.py",
+    "config/llm_intent_runner.log",
+    "config/llm_intent_events.log"
+  ],
+  "context_metrics": {}
+}

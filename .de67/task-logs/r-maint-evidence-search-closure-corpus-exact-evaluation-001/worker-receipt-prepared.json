@@ -1,0 +1,71 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-EVIDENCE-SEARCH-closure-corpus-exact-evaluation-001",
+  "claim_id": "R-MAINT-EVIDENCE-SEARCH",
+  "worker_id": "01a08299-9f82-7001-9963-d2668af1b7af",
+  "disposition": "completed",
+  "verdict": "Corpus exact-evaluation closure verified; semantic usefulness remains unproved.",
+  "outcome": "Verify current corpus inventory, exact and literal R-033 ranking, cold/incremental measurements, bounded passages, visible partial coverage, and focused regression tests without gameplay replay.",
+  "summary": "The current ledger records 56 sources, 1,108 current occurrences, 1,328 bounded passages, 0.299-second cold rebuild, and 0.0044-second unchanged reconciliation. Exact/literal R-033 retrieval ranked the verified source first. One 276-byte incomplete tail remains visibly partial. The focused index/query/evidence suites passed 28 tests.",
+  "material_changes": [],
+  "tests": [
+    "python3 -m unittest tools.openclaw_harness.evidence_search_index_test tools.openclaw_harness.evidence_search_query_test tools.openclaw_harness.cockpit_evidence_test: 28 tests passed.",
+    "Brief SHA-256 verified as 8a472857a9896e973ce273da6e284fcb8ca586f6123dfa3d556db5105704a1ef."
+  ],
+  "live_actions": [
+    "No game, harness broker, embedding backend, service, package, or gameplay process was launched; no live ownership or retained session changed."
+  ],
+  "evidence_ceiling": [
+    "Exact/structured retrieval, bounded chunking, corpus coverage/cost, visible partial tail, and verified-original expansion only.",
+    "Semantic usefulness, semantic miss rate, embedding latency/storage, savings, and default adoption remain unproved because the authorized embedding runtime is unavailable.",
+    "No gameplay was replayed and no OCR was used as proof."
+  ],
+  "bindings": {
+    "assignment_packet_sha256": "8a472857a9896e973ce273da6e284fcb8ca586f6123dfa3d556db5105704a1ef",
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-MAINT-EVIDENCE-SEARCH-closure-corpus-exact-evaluation-001",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/work-ledger.md",
+      "sha256": "c55799d484b895fd0e91bec5672d0a9a3429a88bd3120073f92856d2c5c60b20",
+      "role": "current corpus measurements and exact/literal R-033 evaluation record"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_index_test.py",
+      "sha256": "a8d5adf4859bc38b266d5345c5d42d4b182391997a3939277974c95350ee7f4f",
+      "role": "focused index regression suite"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_query_test.py",
+      "sha256": "2ca9754a7a8485e2a87201d2a5277e76e29d6bcfb015c9510d9d1616fb29039d",
+      "role": "focused query regression suite"
+    },
+    {
+      "path": "tools/openclaw_harness/cockpit_evidence_test.py",
+      "sha256": "2f92741ae2ea9a6bf615dc8dbc3d805713b3cf6aefee5bcc4c1bfa6334a713cc",
+      "role": "verified-original evidence surface suite"
+    }
+  ],
+  "first_divergence": {
+    "class": "semantic_runtime_unavailable",
+    "summary": "The formerly used local llama.cpp executable is absent and the unchanged shared Ollama service rejects /api/embed with HTTP 501; semantic ranking and adoption cannot be evaluated in this environment."
+  },
+  "accepted_no_replay": [
+    "No accepted gameplay was replayed; this closure audit used repository evidence and focused tooling tests only."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Authorized isolated embedding runtime is required for semantic-versus-exact comparison and any usefulness/adoption decision.",
+  "narrow_queries": [
+    "Repeat the same R-033 semantic-versus-exact comparison after an authorized isolated embedding runtime is available."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/evidence_search_index.py",
+    "tools/openclaw_harness/evidence_search_query.py",
+    ".de67/work-ledger.md"
+  ],
+  "context_metrics": {}
+}

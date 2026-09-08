@@ -1,0 +1,69 @@
+{
+  "disposition": "completed",
+  "verdict": "The bounded session/context-selection repair is implemented and isolated transport checks prove owner/review separation, exact same-review recovery, durable delayed owner input, correlated advisory delivery, failure preservation, and single-lock ownership.",
+  "outcome": "Separate standalone supervisor-review working context from the durable owner conversation while retaining current authority/bindings, recovery and input delivery.",
+  "summary": "The app-server runner now selects the owner thread only for owner input and an explicit gate/lineage context only for a review. An exact interrupted review resumes; a different unfinished review rejects before App Server launch. The relay keeps owner input pending during review and submits it once the owner context returns. No naturally authorized review was manufactured and no token savings is claimed.",
+  "material_changes": [
+    "Installed runner/session now persist separate owner and review selections in the existing mutator-session state, with review gate/lineage/context/run metadata retained in the active binding.",
+    "Supervisor supplies machine-readable mutation-gate bindings; the direct-input relay delays owner messages while a review owns the mutator slot.",
+    "Evidence source and isolated-test log record the implementation hashes, adoption boundary and no-savings ceiling."
+  ],
+  "tests": [
+    "test_codex_app_server_runner.py: 11 passed",
+    "test_agent_mailbox.py: 3 passed",
+    "test_coordinator_supervisor.py: 73 passed",
+    "test_de67_agent_relay.py: 18 passed",
+    "py_compile passed for runner, session, supervisor and relay"
+  ],
+  "live_actions": [
+    "No game, harness broker, supervisor review, owner conversation, or retained process was launched for this repair; current live bindings were inspected only.",
+    "No coordinator ledger, session identity, mailbox receipt, supervisor state, or owner input was overwritten."
+  ],
+  "evidence_ceiling": [
+    "Fake-RPC/runner and relay tests establish selected transport, persistence, recovery and failure behavior but do not establish a naturally authorized review's eventual use of the selected context.",
+    "The listed accounting sources retain context-heavy baseline totals, but no comparable post-repair native review exists; therefore no removable-token attribution or savings claim is proved."
+  ],
+  "bindings": {
+    "assignment_packet_sha256": "e21d1dc6715b5a3a0458162688d98b72ccacb65c96e81392fa53705d0fc3e2d0",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev",
+    "source_runner_sha256": "db2a8cb6201d7937fbe841a45afce1e1b6c51863c3e204d853015fd7e1145a8c",
+    "source_session_sha256": "74050aea57bb4ff90e32870e3080a0df814c8c319b00cb83a6b9302a3b81c223",
+    "source_supervisor_sha256": "bae60e086a0f1df124ce55c3bb133e75b799270de4c3826d8464fe52d8d3061f",
+    "source_relay_sha256": "f27e0bab60afe07211da5b0f545a838dce5cfb1f6a80f52e48223cf6e35fbf37"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/state/worker-dispatch/task_522d4d41494e542d5245564945572d434f4e544558542d303031-e21d1dc6715b5a3a0458162688d98b72ccacb65c96e81392fa53705d0fc3e2d0.md",
+      "sha256": "e21d1dc6715b5a3a0458162688d98b72ccacb65c96e81392fa53705d0fc3e2d0",
+      "role": "assigned task packet"
+    },
+    {
+      "path": ".de67/state/review-random-cycle-12/review-context-source.json",
+      "sha256": "641d54608970ab16ae1e391fb123861fb1826f562f3b2090f9795b2b033b56a0",
+      "role": "source identity and natural-adoption boundary"
+    },
+    {
+      "path": ".de67/state/review-random-cycle-12/session-selection-test.log",
+      "sha256": "924a7f9c7b5d67c7b469895979af219b4ce83cae9b3ceb3212e5f399ce682722",
+      "role": "isolated transport and failure test evidence"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "No prior review, owner conversation, mailbox receipt, gameplay run or native context was replayed or treated as a new authorization."
+  ],
+  "active_work": [],
+  "first_open_boundary": "The next naturally authorized supervisor review must show its retained review binding and subsequent permitted use, then be compared against the listed context-heavy accounting on comparable work before any authority-preservation-in-use or token-savings conclusion.",
+  "narrow_queries": [
+    "After a naturally authorized review completes, retrieve its retained runner binding, current prompt/use evidence and full-tree input/cached/output/helper/retry accounting; compare only with the named baseline sources."
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/codex_app_server_runner.py",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/mutator_session.py",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/agent_mailbox.py",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py",
+    "/Users/josefhorvath/.codex/skills/de67/integrations/direct_input/de67_agent_relay.py"
+  ],
+  "context_metrics": {}
+}

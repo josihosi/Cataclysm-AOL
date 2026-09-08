@@ -1,0 +1,41 @@
+{
+  "name": "r031_competing_ownership_v1",
+  "source_fixture": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "source_profile": "live-debug",
+  "description": "R-031 zero-credit footing: clone three nearby allied NPCs with independent guard/Patrol mission ownership for a native free-text follow precedence test.",
+  "save_transforms": [
+    {
+      "kind": "overmap_npcs_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offsets_ms": [[2, -2, 0]],
+      "name_prefix": "R031 Guard Ally",
+      "clone_follower_template": true,
+      "scan_all_overmaps_for_ids": true,
+      "clear_camp_assignment": true,
+      "npc_mission": 6,
+      "chat_topic": "TALK_FRIEND_GUARD"
+    },
+    {
+      "kind": "overmap_npcs_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offsets_ms": [[3, -2, 0]],
+      "name_prefix": "R031 Guard",
+      "clone_follower_template": true,
+      "scan_all_overmaps_for_ids": true,
+      "clear_camp_assignment": true,
+      "npc_mission": 7,
+      "chat_topic": "TALK_FRIEND_GUARD"
+    },
+    {
+      "kind": "overmap_npcs_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offsets_ms": [[4, -2, 0]],
+      "name_prefix": "R031 Patrol",
+      "clone_follower_template": true,
+      "scan_all_overmaps_for_ids": true,
+      "clear_camp_assignment": true,
+      "npc_mission": 8,
+      "chat_topic": "TALK_FRIEND_GUARD"
+    }
+  ]
+}
