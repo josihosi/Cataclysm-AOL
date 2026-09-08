@@ -1,0 +1,57 @@
+{
+  "decision": "Approved repaired candidate for activation through the existing exclusive owner-authorized review, not ordinary worker installation. No active installation performed.",
+  "candidate_method": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/owner-approvals-20260908/candidate-method",
+  "method_files": [
+    {
+      "path": "scripts/coordinator_supervisor.py",
+      "baseline_sha256": "841d4add9e91515a1dbbfcf64142c72ad22eb9268927f27ba83a8122e13a0461",
+      "candidate_sha256": "292033e5a6b7c17d176613cb7bb26b60efe40040a57773fa3692c0b21b7e15e6"
+    },
+    {
+      "path": "scripts/deadline_harness.py",
+      "baseline_sha256": "b680ad5eccebce82efb5b7a391c5d68b2b104a99c43d27b3c86341fabbf9e341",
+      "candidate_sha256": "1ec89c05222314aaac709dd8400412026af776928578202815f0e35301cff635"
+    },
+    {
+      "path": "scripts/method_provenance.py",
+      "baseline_sha256": "844270ba1453fe088434f147440e45033fd8f0467aabf8917db1696464f6a030",
+      "candidate_sha256": "b15c6b525aa9dfdfe48b129fe909a2fa446adbb6c308f0cade3ad7f03ecc4e80"
+    },
+    {
+      "path": "scripts/mutation_guard.py",
+      "baseline_sha256": "72166779646e22abcd5a8063b8c009ea0ce83da2fe999b86279c08ec02b8c63c",
+      "candidate_sha256": "ee36e16fbdc7951d5fb1086d049c88e1657b07d5703e4ddbf55c2ade4239720b"
+    },
+    {
+      "path": "scripts/policy_kernel.py",
+      "baseline_sha256": "8356ca3717382df43a0147f9c5fad47f027b1e4504cc36b6cf1811fd7ebb3b47",
+      "candidate_sha256": "b7ed42721be8219e512c95039a0f295371f76a8a586d550cc27b48aaa593747d"
+    },
+    {
+      "path": "scripts/specification.py",
+      "baseline_sha256": null,
+      "candidate_sha256": "84cee503d65848f71ad89fb9c0197959b705104789076be7642e0b0e80d931e3"
+    },
+    {
+      "path": "tests/test_deadline_harness.py",
+      "baseline_sha256": "aaf747c774cff38b8847a2ece4a98e192542687e478070e171f62feac8c134af",
+      "candidate_sha256": "92e945857970daf052df6d70161a5815217d2ded55bab37210e297e49f1c507f"
+    },
+    {
+      "path": "tests/test_specification_migration.py",
+      "baseline_sha256": null,
+      "candidate_sha256": "1d48ba880e2a6e96862612a276bddad6709bebc208d2d8426e9809af75f2c8e9"
+    }
+  ],
+  "candidate_workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/owner-approvals-20260908/workspace-candidate",
+  "workspace_baselines": {
+    "DFS.md": "74f7dbe2b8688d6bd524bb9e5aff3ce61a0bf2edecc888dd15d8639860706d97",
+    "work-ledger.md": "e3bf7222831517cfdea1330d83e36e594f532f9ddcc119dadbf834f4aeae6950"
+  },
+  "dashboard_candidates": [
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/owner-approvals-20260908/dashboard-source.candidate.py",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/owner-approvals-20260908/dashboard-deployed.candidate.py"
+  ],
+  "patch_sha256": "e674c2dd667b3e3783f49ea7d36c4bf4ae7aecc11fb034ed63a0fbbe4833c112",
+  "requirements": "Rebase staged ledger onto any new valid delivery results; preserve current queued authority. Activate FS/compat pointer/status projections and both dashboard consumers together under quiet exclusive ownership. Preserve owner persistent context; no unrelated process or method changes."
+}

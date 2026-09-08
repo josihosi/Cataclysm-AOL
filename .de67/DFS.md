@@ -1176,6 +1176,15 @@ implementation and focused verification, with exclusive file/runtime ownership p
 ## Owner-authorized advisory integration — review d1cfc813605b
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-CONSULT-S001 claim=R-MAINT-CONSULT -->
+`integrations/openclaw_advisory/advisory_consult.py` sends a task-bound request through the
+configured Gateway route and correlates its non-authoritative reply. The request binds current
+coordinator ownership, workspace, lineage, run, task, assignment revision, sender, recipient and
+correlation identity. Stale, rebound, duplicate, unavailable, echo and authority-escalation cases
+must remain distinguishable. A transport acknowledgement or timeout leaves the request unresolved;
+only a correlated reply changes its durable state to replied. Advice cannot promote the owner queue,
+change acceptance, grant repair authority or impersonate an owner decision. The existing adapter's
+focused tests and retained harmless round trip discriminate these boundaries without resending it.
+
 Implementation status:
 
 <!-- DE67:DELIVERY-STATUS:BEGIN claim=R-MAINT-CONSULT -->
@@ -1444,10 +1453,14 @@ proof remains at its exact existing artifact, receipt, Git revision or SQLite ha
 acceptance owns acceptance/reopen transitions. `deadline_harness` projects that state into the ledger
 without requiring an implementation-status prose block inside the FS. Missing or invalid acceptance
 evidence still fails; an absent decorative FS status block cannot obstruct otherwise valid acceptance.
-Supervisor open-work/completion, provenance and guard baselines resolve the same contract and ledger.
-Legacy `selected_lane='DFS.md'` records remain valid scheduling/receipt identities; a filename change
-must not silently alter their meaning. Migrate status baselines deliberately, preserving accepted
-claims and reopening behavior rather than resetting proof or clocks.
+Supervisor open-work/completion, provenance and every guard baseline resolve the same contract
+and ledger. Legacy `selected_lane='DFS.md'` and path arguments retain their receipt identities while
+validation inspects canonical FS content: a changed target with stale pointer fails, and a valid
+pointer cannot hide protected content or slice changes. The running supervisor's post-review status
+projection must adopt the migrated representation before its one successor launch; refreshing child
+prompt text alone does not update an already-imported `DeadlineHarness`. Migrate status baselines
+without resetting proof or clocks. Extract behavior embedded in old status blocks into its existing
+slice before relocating tracking; retaining an empty slice ID alone does not preserve its contract.
 
 Prove on isolated copies: ordered multi-slice dispatch and independent same-claim assignments;
 old references/issued packets unchanged; missing/conflicting/cross-claim rejection; durable accept

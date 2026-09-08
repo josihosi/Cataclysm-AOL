@@ -1,0 +1,25 @@
+{
+  "stale_pointer_guard": {
+    "result": [],
+    "rejected": false
+  },
+  "resolver_same_input": {
+    "rejected": true,
+    "error": "DFS.md compatibility pointer does not match FS.md"
+  },
+  "valid_pointer_changed_contract_guard": {
+    "rejected": true,
+    "error": "DFS must contain exactly one '## Functional contract' section"
+  },
+  "running_supervisor_code": {
+    "exit_code": 1,
+    "stdout": "",
+    "stderr": "Traceback (most recent call last):\n  File \"<string>\", line 3, in <module>\n  File \"/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/owner-approvals-20260908/method-baseline/scripts/deadline_harness.py\", line 1629, in synchronize_dfs_statuses\n    raise DeadlineError(f\"DFS has no implementation status block for {claim_id}\")\ndeadline_harness.DeadlineError: DFS has no implementation status block for R-027\n"
+  },
+  "fresh_candidate_code": {
+    "exit_code": 0,
+    "stdout": "[]\n",
+    "stderr": ""
+  },
+  "functional_consult_slice": "<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-CONSULT-S001 claim=R-MAINT-CONSULT -->\n<!-- DE67:FS-SLICE-IDENTITY delivery=work-ledger.md -->\n"
+}
