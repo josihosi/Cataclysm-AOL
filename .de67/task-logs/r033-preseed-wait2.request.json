@@ -1,0 +1,1 @@
+{"action":"game.wait","wait":{"enabled":true,"target_delta_game_minutes":5,"danger_handling":"ignore_danger_and_interruptions","recipe":["world.pause"],"bound":{"basis":"scheduler_boundary","source":"advance from observed minute 8225 to staffed cadence 8230 after native fire persistence","unit":"game_minutes","maximum":5,"progress_required":true}}}

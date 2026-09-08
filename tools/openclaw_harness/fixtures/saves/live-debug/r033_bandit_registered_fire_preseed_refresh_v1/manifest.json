@@ -1,0 +1,40 @@
+{
+  "name": "r033_bandit_registered_fire_preseed_refresh_v1",
+  "source_fixture": "r033_bandit_registered_fire_samelevel_v1",
+  "source_profile": "live-debug",
+  "description": "R-033 zero-credit preseed validation. The inherited maintained-fire footing is unchanged; this transform adds one durable signal lead with the exact native smoke identity but intentionally low confidence. The native fire callback must refresh that lead; the authored lead is setup only.",
+  "save_transforms": [
+    {
+      "kind": "bandit_camp_map_lead",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:bandit_camp@140,40,0",
+      "lead_id": "overmap_special:bandit_camp@140,40,0#lead:smoke_signal:camp-smoke@(140,41,0)@140,41,0",
+      "lead_kind": "smoke_signal",
+      "origin": "signal",
+      "status": "suspected",
+      "target_id": "camp-smoke@(140,41,0)",
+      "target_omt": [140,41,0],
+      "radius_omt": 2,
+      "source_key": "camp-signal:camp-smoke@(140,41,0)",
+      "source_summary": "smoke weather: verdict=allowed, weather=clear, range_penalty=0, confidence_penalty=0, source_precision_penalty=0, displacement_bias=0, vertical_offset=0, vertical_sightline=no, nearby_cross_z_visible=no, vertical_range_bonus=0, origin_hint=localized, projected_range_omt=12, visibility_score=4",
+      "first_seen_minutes": 8220,
+      "last_seen_minutes": 8220,
+      "last_checked_minutes": 8220,
+      "last_scouted_minutes": -1,
+      "bounty": 0,
+      "threat": 0,
+      "confidence": 1,
+      "threat_confirmed": false,
+      "target_alert": false,
+      "scout_seen": false,
+      "generated_by_this_camp_routine": true,
+      "prior_bandit_losses": 0,
+      "prior_defender_losses": 0,
+      "times_checked_empty": 0,
+      "times_harvested": 0,
+      "last_outcome": "camp_observer_smoke",
+      "clear_active_pressure": true,
+      "mark_cleared_active_members_unready": false
+    }
+  ]
+}

@@ -6,6 +6,49 @@ import json
 from pathlib import Path
 
 
+def _staffed_camp_signal_leads_observation(steps: Sequence[Mapping[str, Any]]) -> dict | None:
+    """Project the native read-only lead payload at the before/after boundary."""
+    observations = []
+    for step in steps:
+        if not isinstance(step, Mapping):
+            continue
+        # A collected action records both sides; prefer its post-action frame,
+        # while retaining the first current frame as the explicit baseline.
+        frames = [step.get("current_frame"), step.get("next_frame")]
+        for frame in frames:
+            if not isinstance(frame, Mapping) or frame.get("kind") != "world":
+                continue
+            payload = frame.get("payload")
+            value = payload.get("staffed_camp_signal_leads") if isinstance(payload, Mapping) else None
+            if isinstance(value, str):
+                try:
+                    value = json.loads(value)
+                except json.JSONDecodeError:
+                    continue
+            if not isinstance(value, Mapping):
+                continue
+            observations.append({
+                "frame_id": frame.get("frame_id"),
+                "game_minutes": frame.get("game_minutes"),
+                "game_turn": frame.get("game_turn"),
+                "payload": dict(value),
+            })
+    if not observations:
+        return None
+    # Collapse repeated current/next copies, preserving exact first/last data.
+    distinct = []
+    for observation in observations:
+        if not distinct or observation["payload"] != distinct[-1]["payload"]:
+            distinct.append(observation)
+    return {
+        "schema": "caol-staffed-camp-signal-leads-evidence-v1",
+        "initial": distinct[0],
+        "latest": distinct[-1],
+        "distinct_observations": len(distinct),
+        "source": "native_world_surface_payload.staffed_camp_signal_leads",
+    }
+
+
 def _run_observation(report: Mapping[str, Any], *, run_id: str,
                      receipt_id: str | None = None) -> dict:
     """Project one run receipt into a compact, explicitly bounded observation.
@@ -20,6 +63,7 @@ def _run_observation(report: Mapping[str, Any], *, run_id: str,
     steps = report.get("_semantic_steps", report.get("steps", []))
     if not isinstance(steps, list):
         steps = []
+    staffed_camp_signal_leads = _staffed_camp_signal_leads_observation(steps)
     pay_receipts = []
     for step in steps:
         if not isinstance(step, Mapping):
@@ -74,6 +118,8 @@ def _run_observation(report: Mapping[str, Any], *, run_id: str,
         "run_observations": {
             "artifact_patterns": artifact_lines,
             "actor_ids_source": "run artifact lines",
+            **({"staffed_camp_signal_leads": staffed_camp_signal_leads}
+               if staffed_camp_signal_leads is not None else {}),
         },
     }
 

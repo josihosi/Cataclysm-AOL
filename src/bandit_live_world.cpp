@@ -15449,6 +15449,11 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                 // otherwise the five-minute cadence would manufacture revision
                 // churn and keep the signal alive indefinitely.
                 camp_map_lead comparison = learned;
+                // Compare the durable representation, not the transient read.  The
+                // persistence route bounds summaries to 256 characters; leaving the
+                // fresh value unbounded makes an otherwise identical long read look
+                // like a payload change on every staffed cadence.
+                bound_camp_map_lead_strings( comparison );
                 comparison.first_seen_minutes = existing->first_seen_minutes;
                 comparison.last_seen_minutes = existing->last_seen_minutes;
                 comparison.last_checked_minutes = existing->last_checked_minutes;

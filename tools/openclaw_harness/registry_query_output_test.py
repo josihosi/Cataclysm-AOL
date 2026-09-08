@@ -17,6 +17,22 @@ from registry_query_output import _run_observation
 
 
 class RegistryQueryOutputTest(unittest.TestCase):
+    def test_run_bound_projection_captures_staffed_camp_lead_before_after_payload(self):
+        before = {"schema": "caol-staffed-camp-signal-leads-v1", "known": True,
+                  "current_minutes": 10, "sites": [], "provenance": "native"}
+        after = {"schema": "caol-staffed-camp-signal-leads-v1", "known": True,
+                 "current_minutes": 20, "sites": [{"site_id": "camp", "leads": []}],
+                 "provenance": "native"}
+        frame = lambda minutes, value: {"kind": "world", "frame_id": f"frame-{minutes}",
+                                        "game_minutes": minutes, "game_turn": minutes * 10,
+                                        "payload": {"staffed_camp_signal_leads": json.dumps(value)}}
+        result = _run_observation({"steps": [{"current_frame": frame(10, before),
+                                               "next_frame": frame(20, after)}]}, run_id="run")
+        evidence = result["run_observations"]["staffed_camp_signal_leads"]
+        self.assertEqual(evidence["initial"]["payload"], before)
+        self.assertEqual(evidence["latest"]["payload"], after)
+        self.assertEqual(evidence["distinct_observations"], 2)
+
     def test_run_bound_compact_projection_keeps_missing_trade_and_declarations_explicit(self):
         report = {
             "steps": [{"action_id": "shakedown.pay", "accepted": True,

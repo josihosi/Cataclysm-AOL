@@ -943,6 +943,51 @@ static std::string openclaw_harness_structural_outing_owner_snapshot()
     return result.str();
 }
 
+// Read-only authoritative camp-memory projection for semantic playtests.  This
+// deliberately exposes the durable lead fields rather than deriving a verdict
+// from elapsed time in the cockpit.  Empty/missing maps remain explicit.
+static std::string openclaw_harness_staffed_camp_signal_leads_snapshot()
+{
+    const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const int now_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    std::ostringstream result;
+    result << "{\"schema\":\"caol-staffed-camp-signal-leads-v1\",\"known\":true"
+           << ",\"current_minutes\":" << now_minutes << ",\"sites\":[";
+    bool first_site = true;
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        if( !first_site ) {
+            result << ',';
+        }
+        first_site = false;
+        result << "{\"site_id\":" << openclaw_harness_quote_action_value( site.site_id )
+               << ",\"anchor\":[" << site.anchor.x() << ',' << site.anchor.y() << ','
+               << site.anchor.z() << "],\"leads\":[";
+        bool first_lead = true;
+        for( const bandit_live_world::camp_map_lead &lead : site.intelligence_map.leads ) {
+            if( !first_lead ) {
+                result << ',';
+            }
+            first_lead = false;
+            result << "{\"lead_id\":"
+                   << openclaw_harness_quote_action_value( lead.lead_id )
+                   << ",\"kind\":" << openclaw_harness_quote_action_value(
+                       bandit_live_world::to_string( lead.kind ) )
+                   << ",\"status\":" << openclaw_harness_quote_action_value(
+                       bandit_live_world::to_string( lead.status ) )
+                   << ",\"confidence\":" << lead.confidence
+                   << ",\"last_seen_minutes\":" << lead.last_seen_minutes
+                   << ",\"last_checked_minutes\":" << lead.last_checked_minutes
+                   << ",\"source_key\":" << openclaw_harness_quote_action_value(
+                       lead.source_key )
+                   << ",\"last_outcome\":" << openclaw_harness_quote_action_value(
+                       lead.last_outcome ) << '}';
+        }
+        result << "]}";
+    }
+    result << "],\"provenance\":\"diagnostic_read_only_global_bandit_live_world_camp_intelligence\"}";
+    return result.str();
+}
+
 // This is a read-only view of the storage destination which native camp
 // gathering uses.  The normal pickup selector describes display names and
 // local selection affordances, but not an item's faction owner.  Keep this
@@ -1260,6 +1305,7 @@ static std::map<std::string, std::string> openclaw_harness_world_payload()
         { "overmap", overmap.str() },
         { "current_site_camp", openclaw_harness_current_site_camp( player ) },
         { "structural_outing_owner", openclaw_harness_structural_outing_owner_snapshot() },
+        { "staffed_camp_signal_leads", openclaw_harness_staffed_camp_signal_leads_snapshot() },
         { "current_site_camp_storage", openclaw_harness_current_site_camp_storage( player ) },
         { "visible_entities", openclaw_harness_visible_entities( player ) },
         { "visible_zones", openclaw_harness_visible_zones( here, avatar_pos ) },

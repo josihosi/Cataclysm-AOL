@@ -268,6 +268,14 @@ Apply the runtime/finish contract and inspect actual cleanup; no time/RSS kill l
 The review's five observed exits and four retained automation bindings are in
 `.de67/state/review-owner-f918d28be953/process-recovery.json`; owner freeplay is separate.
 
+The R033-F002 worker acknowledged and applied the OCR, no-replay and runtime-cleanup corrections.
+Receipt `df8d84806a3395b87181cf465a8bf57e955dbca534786b1ae86690e5b9a11494` proves the bounded
+repair, native unchanged-source deduplication, same-key refresh and exact cleanup. Failed fixture
+and ignition attempts remain preserved as zero-credit diagnostics. Broader R-033 aging and boundary
+tests remained pending at that receipt. The follow-on aging worker also applied the OCR, no-replay
+and runtime-cleanup corrections. Receipt `e2d5b9076ff5a7b409fee16c1ac81daa9dee6446fb0e3b379301a704ce15ad83`
+proves the six-hour stale transition and exact cleanup. Later pruning and broader boundary tests remain.
+
 The next coordinator delivers still-relevant corrections to the responsible worker and retains this
 handoff until applied evidence or an explicit remaining limitation is returned. Full original owner
 wording remains in the review's `baseline/mutation-suggestions.md`, as evidence rather than a queue.

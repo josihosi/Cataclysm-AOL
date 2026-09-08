@@ -1,0 +1,23 @@
+{
+  "manifest_version": 2,
+  "name": "bandit.r033_registered_fire_preseed_refresh_mcw",
+  "description": "R-033 zero-credit preseed validation: native maintained fire must refresh the exact preseeded smoke lead without creating a duplicate.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r033_bandit_registered_fire_preseed_refresh_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "semantic_only_startup": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {"capabilities.r033.preseed_refresh": "registered_staffed_observer_native_fire_refresh_same_lead", "runtime.entry_mode": "cockpit_live_session"},
+  "runtime_contract": {"permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:run.quit", "cockpit:run.witness", "cockpit:run.finish"], "forbidden_input": ["debug:emit_sound", "debug:inject_signal", "debug:inject_target_knowledge", "debug:inject_dispatch", "raw-save-rewrite-after-install", "direct-state-mutation"], "setup_only_debug": true, "disposable_copy": true, "helpers": ["native file bridge"], "permissions": [], "platform": ["macos"], "profile": "dev-harness", "fixture": "r033_bandit_registered_fire_preseed_refresh_v1", "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r033_bandit_registered_fire_preseed_refresh_v1", "helper": "native file bridge", "peekaboo": false, "input": ["advertised native actions"], "ocr": false, "cleanup": true}, "grants_gameplay_proof": false},
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r033_bandit_registered_fire_preseed_refresh_v1/manifest.json", "native_source": "src/do_turn.cpp", "native_executable": "cataclysm-tiles"},
+  "proof_gates": [{"id": "r033_preseed_refresh_bound", "label": "R-033 preseed refresh reaches one source-bound live session", "boundary_step": "operate_r033_preseed_refresh", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": false}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r033_preseed_refresh_bound"], "terminal": ["r033_preseed_refresh_bound"]},
+  "steps": [{"kind": "wait", "label": "load_r033_preseed_refresh", "seconds": 2.0, "capture_after": true}, {"kind": "native_semantic_bootstrap", "label": "bind_r033_preseed_refresh_native_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}}, {"kind": "cockpit_live_session", "label": "operate_r033_preseed_refresh", "objective": "Use only advertised native actions to ignite the inherited brazier, then wait for the ordinary staffed-camp callback. The preseeded lead is setup-only; credit only a same-ID native refresh with changed durable revision/hash and no duplicate lead.", "proof_targets": ["zero-credit preseed lead is present before native play", "native ignition creates fd_fire", "staffed callback uses observer 18 and exact smoke source", "same lead ID refreshes with changed durable payload", "lead count remains one and cleanup succeeds"], "authority": ["advertised native actions and worker-chosen bounded waits", "run.quit", "run.witness", "run.finish"], "invariants": ["fixture lead is setup-only", "no injected callback or signal", "native fire is the only credited source", "no duplicate lead is credited"], "live_operations": ["game.act", "game.wait"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}],
+  "evidence_contract": {"claim": "one source-bound native callback refreshes an exact preseeded smoke lead without duplicate", "failure_rule": "missing native ignition, callback, same lead ID, changed durable payload, or cleanup leaves refresh unproved"}
+}

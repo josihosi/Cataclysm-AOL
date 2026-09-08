@@ -1,0 +1,85 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-033-closure-memory-transitions-001",
+  "claim_id": "R-033",
+  "worker_id": "01a080b9-cadc-7182-b854-94991f7dc997",
+  "disposition": "completed",
+  "verdict": "proved",
+  "outcome": "Independently verified the repaired closure-memory transitions: bounded long-summary comparison, unchanged-source deduplication, same-key in-place refresh, and six-hour unsupported-memory aging.",
+  "summary": "Source repair bounds fresh summaries before durable comparison. Existing native receipts prove one unchanged maintained-fire smoke lead remains one lead, same-key refresh changes durable hash without duplication, and six-hour native time advancement changes the lead to stale with confidence zero while retaining timestamps.",
+  "material_changes": [
+    "Verified src/bandit_live_world.cpp bounded comparison repair.",
+    "Verified tests/bandit_live_world_test.cpp focused boundary, dedup, refresh, and aging cases.",
+    "Verified tools/openclaw_harness registry regression: 10 tests passed."
+  ],
+  "tests": [
+    "python3 -m unittest registry_query_output_test.py: 10 tests passed",
+    "C++ focused cases are present but were not rerun in this environment; prior source-bound build receipt retained."
+  ],
+  "live_actions": [
+    "Native unchanged-source run d164d7e9031c9333ec79c0e452eb36f0f06963f38998e92b79a02539eff6bdd0, binding ea56cd02914b326a1673b6918857948b51e4ae0f5f744311729f68727e6e1a6e2.",
+    "Native same-key refresh run eee5d3381a3d302ae0663db8a71b2b03c154e3071f75ed54ea1ddc19c9bf0935, binding 4423341de93143d6c9a9b2ba75e8e886d410a2ee684a446ca857c9c6300f0ba3; count 1->1 and durable hash changed.",
+    "Native six-hour aging run and exact cleanup are preserved by receipt e2d5b9076ff5a7b409fee16c1ac81daa9dee6446fb0e3b379301a704ce15ad83; post-wait minute 8590 reports stale/confidence 0, last_seen/checked 8220."
+  ],
+  "evidence_ceiling": [
+    "Preseed/fixture/bootstrap are zero-credit setup.",
+    "OCR, screenshots, rendered text, terminal bytes, replay, and inferred identities receive no credit.",
+    "The new C++ cases were not rerun here; verification relies on source inspection and prior source-bound receipt.",
+    "Thirty-day pruning and unrelated channels remain outside this gap."
+  ],
+  "bindings": {
+    "binding_id": "4423341de93143d6c9a9b2ba75e8e886d410a2ee684a446ca857c9c6300f0ba3",
+    "executable_sha256": "dc4cfa8583edcfe15ea19930645d2776a271ddc692886a87072d77353efc879e",
+    "run_id": "eee5d3381a3d302ae0663db8a71b2b03c154e3071f75ed54ea1ddc19c9bf0935",
+    "scenario_id": "bandit.r033_registered_fire_preseed_refresh_mcw",
+    "source_sha256": "e700b570166b6e474775b48304874b29fa1dd660c9a6d1a5c4d2f2a901113d69"
+  },
+  "journal_entries": [
+    {
+      "id": "J8225",
+      "sequence": "253",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Exact same-key smoke lead refreshed in place with one lead and changed durable hash."
+    },
+    {
+      "id": "J8590",
+      "sequence": "post-wait",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Six-hour stale transition retained identity/source and last_seen/last_checked timestamps; confidence became zero."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r033-coordinator-synthesis-20260908.md",
+      "sha256": "c0389c012e68defbd38e93b5c0a52be444acdb92e6a370ff092651e6a48e5ad0",
+      "role": "closure scope and evidence identities"
+    },
+    {
+      "path": ".de67/task-logs/r033-repair-journal-full.json",
+      "sha256": "2c50bbce0527b73c3c52b2194fea4f2a5d4c0e918116b9dd576fd2c16b86432d",
+      "role": "native transition journal"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserve accepted unchanged-source and same-key native runs.",
+    "Preserve accepted six-hour aging run."
+  ],
+  "active_work": [],
+  "first_open_boundary": "No boundary remains inside the assigned closure gap; thirty-day pruning, unrelated channels, and rerunning newly added C++ cases are outside this verification ceiling.",
+  "narrow_queries": [
+    "d164 unchanged callback",
+    "eee5 same-key refresh count/hash",
+    "e2d5 post-wait minute 8590 stale transition",
+    "exact cleanup identities"
+  ],
+  "entrypoints": [
+    "src/bandit_live_world.cpp",
+    "tests/bandit_live_world_test.cpp",
+    "tools/openclaw_harness/registry_query_output.py"
+  ],
+  "context_metrics": {}
+}

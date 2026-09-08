@@ -1,0 +1,45 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-033-closure-boundary-evidence-lifecycle-001",
+  "claim_id": "R-033",
+  "disposition": "completed",
+  "verdict": "proved_at_observed_frame_ceiling",
+  "outcome": "Independently reconciled the finite R-033 closure frontier: local-to-abstract and generation-1 reentry identities, source/executable/binding/run/frame provenance, accepted signal and memory evidence, and cleanup boundaries.",
+  "verification": {
+    "packet_sha256": "9c70d85e2cc063ae6ca67942eaf9189cf3304641383a1c0e1cccfc3c777433e4",
+    "synthesis_sha256": "c0389c012e68defbd38e93b5c0a52be444acdb92e6a370ff092651e6a48e5ad0",
+    "reentry_package_sha256": "ff2c59cd5bb1eeadc656e32b087d12b5cd452d07859ec67aa2697c80eb2a073c",
+    "reentry": {
+      "run_id": "f229669869b965550393e791f31a5e5a87fcae26e89bb44fe9e60c8cfdfc615e",
+      "binding_id": "c8c572cfef6dedf2e77d75fe864d45aa404c27350534b743704dcfa4cd417132",
+      "source_identity": "efe96eae9b593b5c1f7dc255e8f2de3048776cd094bde0cf9446c9e777a7138d",
+      "executable_identity": "c5102561e83bf6525e4bff1a9e186fbfd6156b4053c32cad1fd3434a0abd6b58",
+      "observation": "frame 1, minute 8285, generation 1, pair [4,5], abstract outing/cursor owner, no local clone or simultaneous owner"
+    },
+    "cleanup": {
+      "reentry_pid": 8937,
+      "reentry_birth_identity": "posix-lstart:Tue Sep  8 08:51:57 2026",
+      "broker_pid": 8493,
+      "final_process_state": "absent on exact PID check",
+      "native_exit_credit": false,
+      "basis": "SIGTERM terminalization; process absence is not native save/quit proof"
+    }
+  },
+  "evidence_ceiling": [
+    "Native semantic receipts only; OCR, screenshots, rendered text and terminal bytes establish no input, time, state or gameplay.",
+    "Accepted signal controls, unchanged-source deduplication, same-key refresh and six-hour aging are preserved without replay.",
+    "Reentry proves same-pair continuity only at the observed frame; later movement is not inferred.",
+    "Fixture/bootstrap/preseed actions are setup-only.",
+    "Thirty-day pruning, same-OMT smoke and unrelated channels remain outside this frontier."
+  ],
+  "artifacts": [
+    ".de67/task-logs/r033-coordinator-synthesis-20260908.md",
+    "build_logs/r033-phase4-rev5-reentry-package.json",
+    ".de67/task-logs/r033-closure-signal-controls-001-worker-receipt.json",
+    ".de67/task-logs/r033-closure-memory-transitions-001-worker-receipt.json"
+  ],
+  "material_changes": [],
+  "live_actions": ["Read-only exact-PID reconciliation; no game launch, replay or mutation."],
+  "first_open_boundary": "No remaining boundary inside the assigned closure lifecycle gap; stated out-of-scope limits remain explicit."
+}

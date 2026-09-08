@@ -1,0 +1,10 @@
+{
+  "schema":"caol-playtest-witness-charter-v1",
+  "claim":"R-033: a native maintained same-level fire source is remembered once by an eligible registered staffed observer and is deduplicated at the next authoritative cadence.",
+  "material_proof":"The disposable source-bound run begins at [3372,996,0] on verified solid floor with only a staged f_brazier and logs at reachable same-level [3371,996,0] and a fueled lighter. No fd_fire/fd_smoke is authored. Native ignition must be correlated with f_brazier plus fd_fire, then the first cadence must record an accepted clear-LOS callback and durable signal lead; the second cadence must retain exact lead identity and count/hash while recording unchanged/dedup.",
+  "current_uncertainty":"Whether native brazier ignition at the staffed camp anchor produces a persistent source that passes the real same-level observer path.",
+  "material_contradiction":["any authored fd_fire/fd_smoke, light, sound, lead, report, operation, contact, dispatch, or local projection","callback without actor, same-level LOS, range, or source binding","dedup without exact identity and before/after count/hash","fire absent before the second cadence"],
+  "forbidden_shortcuts":["debug signal injection","direct camp-memory or operation mutation","treating fixture staging as gameplay proof"],
+  "honest_stop_conditions":["first created callback plus second unchanged callback with durable state audit","native ignition, source-binding, or callback contradiction"],
+  "requested_evidence_ceiling":"focused"
+}

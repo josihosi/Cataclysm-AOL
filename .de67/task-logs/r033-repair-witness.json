@@ -1,0 +1,16 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The current-source native run observed and created one same-level smoke lead for observer 18 at camp OMT (140,40,0) at minute 8220; a native wait reached minute 8225, but no second staffed-camp callback occurred, so unchanged-source deduplication was not established.",
+  "causal_account": "J0001 binds the run, source, executable, and repair binding. J0020 records the isolated local-field smoke observation at minute 8220 and the first cadence. J0618 records the terminal minute 8225 after 300 accepted native pauses with no second callback. The source therefore did not remain observable through the required second cadence.",
+  "citations": [
+    {"citation_id":"J0001","meaning":"Run and source/executable binding.","checks":{"scenario_id":"bandit.r033_registered_smoke_samelevel_dedup_mcw"}},
+    {"citation_id":"J0020","meaning":"First isolated native smoke observation at the staffed camp anchor.","checks":{"value.game_minutes":8220,"value.production_channel_observation.status":"green","value.production_channel_observation.records.0.channel":"smoke","value.production_channel_observation.records.0.observed":true,"value.production_channel_observation.records.0.source_omt":"(140,40,0)"}},
+    {"citation_id":"J0618","meaning":"Second cadence boundary reached without a second callback.","checks":{"value.game_minutes":8225,"value.receipt_count":307,"value.latest_transition.outcome":"accepted"}}
+  ],
+  "material_deviations": ["The staged native smoke source was not observable at the second cadence boundary."],
+  "contradictions": [],
+  "remaining_unknowns": ["Strict unchanged/hash-preserving deduplication with a source persistent through two cadences."],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

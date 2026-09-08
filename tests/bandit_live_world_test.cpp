@@ -15399,6 +15399,77 @@ TEST_CASE( "staffed idle camp remembers a bounded structural signal without an o
     CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
 }
 
+TEST_CASE( "staffed camp signal dedup compares bounded durable summaries",
+           "[bandit][live_world][camp_signal][dedup]" )
+{
+    bandit_live_world::world_state world = make_structural_signal_test_world( false, 16139 );
+    bandit_live_world::site_record &site = world.sites.front();
+    site.active_outing.clear();
+    for( bandit_live_world::member_record &member : site.members ) {
+        member.state = bandit_live_world::member_state::at_home;
+        member.wounded_or_unready = false;
+    }
+    REQUIRE( site.roster().valid );
+    const tripoint_abs_omt source( site.anchor.x() + 3, site.anchor.y(), site.anchor.z() );
+    std::string summary( 256, 's' );
+    int confidence = 75;
+    const auto observe = [&summary, &confidence, source](
+    const bandit_live_world::site_record &,
+    const bandit_live_world::camp_signal_observer_request & ) {
+        bandit_live_world::structural_signal_read read = make_structural_signal_read(
+                    bandit_live_world::sortie_observation_sense::smoke, source, 6, 75, 2 );
+        read.summary = summary;
+        read.confidence = confidence;
+        return std::vector<bandit_live_world::structural_signal_read> { read };
+    };
+
+    const bandit_live_world::camp_signal_observation_result first =
+        bandit_live_world::record_staffed_camp_signal_observations( world, 220, observe );
+    REQUIRE( first.leads_created == 1 );
+    const bandit_live_world::camp_map_lead *lead = nullptr;
+    for( const bandit_live_world::camp_map_lead &candidate : site.intelligence_map.leads ) {
+        if( candidate.omt == source ) {
+            lead = &candidate;
+            break;
+        }
+    }
+    REQUIRE( lead != nullptr );
+    const std::string lead_id = lead->lead_id;
+    REQUIRE( lead->source_summary.size() == 256 );
+    const int initial_revision = lead->revision;
+    const std::string stable = serialize_camp_map_lead( *lead );
+
+    const bandit_live_world::camp_signal_observation_result repeated =
+        bandit_live_world::record_staffed_camp_signal_observations( world, 225, observe );
+    CHECK( repeated.unchanged_reads == 1 );
+    CHECK( repeated.leads_refreshed == 0 );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( serialize_camp_map_lead( *lead ) == stable );
+
+    // Content beyond the durable boundary is intentionally not part of identity.
+    summary.push_back( 'x' );
+    const bandit_live_world::camp_signal_observation_result boundary =
+        bandit_live_world::record_staffed_camp_signal_observations( world, 230, observe );
+    CHECK( boundary.unchanged_reads == 1 );
+    CHECK( boundary.leads_refreshed == 0 );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->revision == initial_revision );
+
+    // A meaningful source change remains a durable revision, even with the same
+    // bounded summary.
+    confidence = 50;
+    const bandit_live_world::camp_signal_observation_result changed =
+        bandit_live_world::record_staffed_camp_signal_observations( world, 235, observe );
+    CHECK( changed.unchanged_reads == 0 );
+    CHECK( changed.leads_refreshed == 1 );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->revision == initial_revision + 1 );
+    CHECK( lead->source_summary.size() == 256 );
+}
+
 TEST_CASE( "staffed camp signal reads emit actor-bound live transition receipts",
            "[bandit][live_world][camp_signal][transition_event][stream]" )
 {
@@ -31201,6 +31272,32 @@ TEST_CASE( "hostile_camp_intelligence_aging_is_bounded_authoritative_and_jump_st
                 midday, 60 + 30 * 24 * 60 );
         CHECK( midday_exact.leads_pruned == 1 );
         CHECK( midday.intelligence_map.leads.empty() );
+    }
+
+    SECTION( "missing lead timestamps remain explicitly unknown and untouched" ) {
+        bandit_live_world::site_record site;
+        site.site_id = "unknown-aging";
+        site.intelligence_map.last_daily_cleanup_minutes = 0;
+        bandit_live_world::camp_map_lead incomplete;
+        incomplete.lead_id = "incomplete-lead";
+        incomplete.kind = bandit_live_world::camp_lead_kind::smoke_signal;
+        incomplete.status = bandit_live_world::camp_lead_status::scout_confirmed;
+        incomplete.last_seen_minutes = -1;
+        incomplete.last_checked_minutes = -1;
+        site.intelligence_map.leads.push_back( incomplete );
+        bandit_live_world::world_state before_world;
+        before_world.sites.push_back( site );
+        const std::string before = serialize_world( before_world );
+        const auto result = bandit_live_world::advance_camp_intelligence_aging( site, 100000 );
+        CHECK( result.leads_aged == 0 );
+        CHECK( result.leads_pruned == 0 );
+        REQUIRE( site.intelligence_map.leads.size() == 1 );
+        CHECK( site.intelligence_map.leads.front().last_seen_minutes == -1 );
+        CHECK( site.intelligence_map.leads.front().last_checked_minutes == -1 );
+        bandit_live_world::world_state after;
+        after.sites.push_back( site );
+        CHECK( serialize_world( after ).find( "incomplete-lead" ) != std::string::npos );
+        CHECK( before.find( "incomplete-lead" ) != std::string::npos );
     }
 
     SECTION( "lead order does not change terminal state" ) {

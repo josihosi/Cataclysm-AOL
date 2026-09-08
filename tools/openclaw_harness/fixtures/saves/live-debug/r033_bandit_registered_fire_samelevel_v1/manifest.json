@@ -1,0 +1,17 @@
+{
+  "name": "r033_bandit_registered_fire_samelevel_v1",
+  "source_fixture": "r008_fire_signal_common_v1",
+  "source_profile": "live-debug",
+  "description": "R-033 maintained-fire successor. It retains the exact empty registered bandit site and at-home observer footing, then stages only a brazier and logs at reachable same-level solid floor [3371,996,0] plus a fueled lighter. No fd_fire/fd_smoke or signal state is authored; the source must be ignited through the native player action before the two staffed-observer cadences.",
+  "save_transforms": [
+    {"kind":"player_mutations","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","mutations":["DEBUG_LS","DEBUG_NOTEMP","DEBUG_STAMINA","DEBUG_CARDIO","DEBUG_CLAIRVOYANCE","DEBUG_NIGHTVISION"]},
+    {"kind":"seed_overmap_special_near_player","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","special_id":"bandit_camp","source_special_id":"bandit_camp","site_index":1,"offset_omt":[0,-1,0]},
+    {"kind":"overmap_npcs_near_player","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","offsets_ms":[[0,-24,0]],"source_npc_id":4,"clone_follower_template":false,"npc_faction":"hells_raiders","npc_mission":7,"chat_topic":"TALK_STRANGER_NEUTRAL","name_prefix":"R033 same-level fire observer"},
+    {"kind":"basecamp_assigned_npc_items","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","npc_id":18,"offset_ms":[0,-24,0],"assigned_camp_omt":[140,40,0],"ensure_follower":false,"items":[{"typeid":"binoculars","count":1,"slot":"inventory"}]},
+    {"kind":"bandit_registered_staffed_observer_bootstrap","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","footing":"same_level_clear_los_z0_v1"},
+    {"kind":"player_items","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","storage":"live_accessible_worn_pocket","items":[{"typeid":"lighter","count":1,"contents":{"contents":[{"pocket_type":1,"contents":[{"typeid":"butane","charges":100,"bday":0,"last_temp_check":0,"template_traits":[]}],"_sealed":false,"no_rigid":[]}],"additional_pockets":[]}}]},
+    {"kind":"map_furniture_near_player","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","furniture":[{"id":"f_brazier","offset_ms":[-1,0,0]},{"id":"f_brazier","offset_ms":[0,1,0]}]},
+    {"kind":"map_items_near_player","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","items":[{"typeid":"log","count":100,"offset_ms":[-1,0,0]},{"typeid":"log","count":100,"offset_ms":[0,1,0]}]},
+    {"kind":"source_firewood_zone_near_player","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","name":"R033 maintained fire fuel","zone_type":"SOURCE_FIREWOOD","faction":"your_followers","start_offset_ms":[-1,-1,0],"end_offset_ms":[1,1,0],"write_temp":true}
+  ]
+}

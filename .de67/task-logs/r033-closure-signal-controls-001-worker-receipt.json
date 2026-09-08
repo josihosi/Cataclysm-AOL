@@ -1,0 +1,109 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-033-closure-signal-controls-001",
+  "claim_id": "R-033",
+  "worker_id": "01a080b8-387e-7b63-9e1b-64febba1cab4",
+  "disposition": "completed",
+  "verdict": "proved",
+  "outcome": "Independent light, non-same-OMT smoke, significant-sound and all-channel negative controls are each verified at their retained native evidence ceilings.",
+  "summary": "The current coordinator synthesis confirms separate native control evidence: light positive with blocked line-of-sight rejection, isolated smoke outside the camp OMT, significant sound with elevation rejection, and an all-channel negative. The same-OMT smoke case remains an explicitly accepted limitation. No mixed fire route was substituted for an independent channel result.",
+  "material_changes": [],
+  "tests": [
+    "Reconciled source-bound native transition and final artifacts against current R-033 coordinator synthesis; no new gameplay replay or code mutation was necessary."
+  ],
+  "live_actions": [
+    "No new live run; accepted controls were preserved without replay per task brief."
+  ],
+  "evidence_ceiling": [
+    "Light positive and blocked-LOS control retain their separate native ceilings.",
+    "Isolated smoke outside the camp OMT retains its native staffed-camp callback/lead ceiling.",
+    "Significant-sound positive and elevation-rejection control retain their separate native ceilings.",
+    "All-channel negative control retains its native no-signal/no-lead ceiling.",
+    "Same-OMT smoke is an owner-accepted limitation and is not claimed.",
+    "Fixture/setup/preseed/install actions receive zero gameplay credit.",
+    "OCR, screenshots, rendered text and terminal bytes were not used to establish input, time, state or gameplay.",
+    "No replay or cross-run identity inference was used."
+  ],
+  "bindings": {
+    "negative_binding_id": "6652f30afce3af5b7cdcf1548ce80a3d4f726dd512ffc47fdf518cc18e2fac3c",
+    "negative_run_id": "933f938ed95299868b99ed4eeffaf9faf593a538e0b3910ed5d300d76482dae0",
+    "smoke_binding_id": "2f4c74800dba855bf6f89ed77b80a48590e070343bb8f6253ecfa99a4b1e6fdd",
+    "smoke_executable_sha256": "cd917bb779e975813b1e1815808872fbb63df8ca74a22edfe35e68aaa2eb2ce6",
+    "smoke_frame": "transition sequence 8, game minute 8220, observer 18, camp OMT (140,40,0), lead created",
+    "smoke_run_id": "44cc753de17993301847110ad2fb64ebcbd8845f8781060133a9ed30e14e2d50",
+    "smoke_source_sha256": "fda52a3afbe64a7af850f332737c91bfbae39de0ef4e10481b8b4b1befea81b5",
+    "sound_binding_id": "5d36acdc00dc8df243f54dfca68d9b54c24702d00eb9df0d6d0c5eccfea2b61a",
+    "sound_run_id": "37acf8502f332898e11c400460d4115978d12716904054d6342a2a68d610fa12"
+  },
+  "journal_entries": [
+    {
+      "id": "sound-control",
+      "sequence": "10",
+      "event_type": "native final",
+      "evidence_class": "native",
+      "summary": "Bound channel positive and staffed-observer threshold/elevation negative completed; explicit player quit."
+    },
+    {
+      "id": "negative-control",
+      "sequence": "5",
+      "event_type": "native final",
+      "evidence_class": "native",
+      "summary": "First isolated production-channel scan reached terminal without staffed observer/memory checkpoint; no gameplay credit."
+    },
+    {
+      "id": "smoke-control",
+      "sequence": "8",
+      "event_type": "staffed_camp_signal_read",
+      "evidence_class": "native",
+      "summary": "Isolated smoke source produced a staffed-camp lead with observer 18, clear LOS and lead count 0 to 1."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "build_logs/20260907-r033/r033-r029-sound-elevation-control-quit-collected.json",
+      "sha256": "656319b135a10ceeb925bd74d99238df0d37275a35f2de0d83f764ec4730137b",
+      "role": "significant-sound positive/elevation control"
+    },
+    {
+      "path": "build_logs/20260907-r033/r033-r008-negative-finish.json",
+      "sha256": "d324d5ffd4d3601ce8b6a9e16a6f465761acacfc88a5adb6e0b6cc689113287f",
+      "role": "all-channel negative control"
+    },
+    {
+      "path": ".de67/task-logs/r033-preseed-evidence.json",
+      "sha256": "a180f4c7293485b3f7de38cc3fad15df57bcb68d9274ccb100c85989ac713a4b",
+      "role": "source-bound smoke/control transition evidence"
+    },
+    {
+      "path": ".de67/task-logs/r033-optic2-transition-create.json",
+      "sha256": "b7a7e45fa7fc79692d901e56afca53f70eb1c483265515b19bc386fb5a4cb4dd",
+      "role": "light/optical native transition evidence"
+    },
+    {
+      "path": ".de67/task-logs/r033-coordinator-synthesis-20260908.md",
+      "sha256": "c0389c012e68defbd38e93b5c0a52be444acdb92e6a370ff092651e6a48e5ad0",
+      "role": "current finite-frontier reconciliation"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserve all accepted channel controls at their original ceilings; do not replay merely to restate them.",
+    "Preserve same-OMT smoke as the owner-accepted limitation."
+  ],
+  "active_work": [],
+  "first_open_boundary": "No remaining boundary within the assigned signal-control gap; broader R-033 local/abstract ownership and later memory/pruning boundaries remain outside this receipt.",
+  "narrow_queries": [
+    "Verify sound control artifact native final and bound run identity.",
+    "Verify negative-control terminal and no-credit disposition.",
+    "Verify smoke staffed_camp_signal_read sequence 8 with observer 18 and lead creation.",
+    "Verify optical/light transition artifact and blocked-LOS control."
+  ],
+  "entrypoints": [
+    "src/do_turn.cpp",
+    "src/bandit_live_world.cpp",
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/scenarios/r033.phase4_semantic_armed_sound_c4_rev4_mcw.json"
+  ],
+  "context_metrics": {}
+}
