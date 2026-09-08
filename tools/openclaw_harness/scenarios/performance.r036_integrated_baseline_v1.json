@@ -1,0 +1,34 @@
+{
+  "manifest_version": 1,
+  "name": "performance.r036_integrated_baseline_v1",
+  "description": "Fresh R-036 matched baseline: established living base with no hostile-ecology load, using native semantic local transitions and five one-minute waits.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r028_paired_baseline_base_v1",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "suppress_profile_startup_input": true,
+  "r028_render_trace": true,
+  "adaptive_semantic_autodrive": true,
+  "artifact_source": "debug.log",
+  "runtime_contract": {"permitted_input":["semantic:world.move.east","semantic:world.move.west","semantic:world.wait","semantic:menu.choose","semantic:wait.1m"],"forbidden_input":["physical-key","ocr-control","direct-state-mutation","direct-save-edit","fixture-restage"],"setup_only_debug":false,"disposable_copy":true,"helpers":["native-semantic-broker"],"permissions":["accessibility"],"platform":["macos"],"profile":"dev-harness","fixture":"r028_paired_baseline_base_v1","requirements":{"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"dev-harness","fixture":"r028_paired_baseline_base_v1","helper":"native-semantic-broker","peekaboo":false,"input":["frame-bound semantic requests"],"ocr":false,"cleanup":true},"grants_gameplay_proof":false},
+  "proof_route": {"precondition":["bind_r036_baseline_world"],"production_behavior":["r036_baseline_local_transitions","r036_baseline_wait_five"],"terminal_persistence":["r036_baseline_wait_five"],"artifact_verdict":["r036_baseline_local_transitions","r036_baseline_wait_five"],"disallowed_shortcuts":["bind_r036_baseline_world"]},
+  "capabilities": {
+    "runtime.entry_mode": "native_semantic_paired_performance",
+    "runtime.fixture": "r028_paired_baseline_base_v1",
+    "runtime.world": "McWilliams",
+    "capabilities.r036.variant": "integrated_living_base_baseline"
+  },
+  "steps": [
+    {"kind":"native_semantic_bootstrap","label":"bind_r036_baseline_world","native_semantic_checkpoint":{"required_actions":["world.move.east","world.move.west","world.wait"],"required_state":"world","require_initial_hud_world_ready_frame":false}},
+    {"kind":"adaptive_semantic_window","label":"r036_baseline_local_transitions","objective":"Use only current advertised east and west world actions, then one ordinary minute to bind the rendered transition samples to elapsed gameplay.","minimum_elapsed_minutes":1,"observation_timeout_seconds":60.0,"observation_interval_seconds":0.1,"required_action_chain":["world.move.east","world.move.west","world.move.east","world.move.west","world.move.east","world.move.west","world.move.east","world.move.west","world.move.east","world.move.west","world.wait","menu.choose","wait.1m"],"adaptive_interrupt_actions":[]},
+    {"kind":"adaptive_semantic_window","label":"r036_baseline_wait_one","objective":"Advance one ordinary minute through the advertised semantic wait owner.","minimum_elapsed_minutes":1,"observation_timeout_seconds":60.0,"observation_interval_seconds":0.1,"required_action_chain":["world.wait","menu.choose","wait.1m"],"adaptive_interrupt_actions":[]},
+    {"kind":"adaptive_semantic_window","label":"r036_baseline_wait_two","objective":"Continue the matched ordinary semantic wait window.","minimum_elapsed_minutes":1,"observation_timeout_seconds":60.0,"observation_interval_seconds":0.1,"required_action_chain":["world.wait","menu.choose","wait.1m"],"adaptive_interrupt_actions":[]},
+    {"kind":"adaptive_semantic_window","label":"r036_baseline_wait_three","objective":"Continue the matched ordinary semantic wait window.","minimum_elapsed_minutes":1,"observation_timeout_seconds":60.0,"observation_interval_seconds":0.1,"required_action_chain":["world.wait","menu.choose","wait.1m"],"adaptive_interrupt_actions":[]},
+    {"kind":"adaptive_semantic_window","label":"r036_baseline_wait_four","objective":"Continue the matched ordinary semantic wait window.","minimum_elapsed_minutes":1,"observation_timeout_seconds":60.0,"observation_interval_seconds":0.1,"required_action_chain":["world.wait","menu.choose","wait.1m"],"adaptive_interrupt_actions":[]},
+    {"kind":"adaptive_semantic_window","label":"r036_baseline_wait_five","objective":"Complete the matched five-minute semantic wait window.","minimum_elapsed_minutes":1,"observation_timeout_seconds":60.0,"observation_interval_seconds":0.1,"required_action_chain":["world.wait","menu.choose","wait.1m"],"adaptive_interrupt_actions":[]}
+  ]
+}

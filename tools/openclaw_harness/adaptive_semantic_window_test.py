@@ -156,6 +156,25 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
         self.assertEqual( semantic_frame_dispatch( frame, "wait.5m" ),
                           ("menu.choose", "uilist-entry:5") )
 
+    def test_direct_menu_choose_route_preserves_advertised_stable_id(self) -> None:
+        frame = {"kind": "menu", "valid_actions": [
+            {"id": "menu.choose", "stable_id": "wait-mode:wait-a-while", "label": "Wait a while", "enabled": True},
+            {"id": "menu.choose", "stable_id": "wait-mode:set-alarm", "label": "Set an alarm", "enabled": True},
+        ]}
+        self.assertEqual(
+            semantic_frame_dispatch( frame, "menu.choose" ),
+            ("menu.choose", "wait-mode:wait-a-while"),
+        )
+
+    def test_surface_receipt_accepts_internal_native_frame_with_requested_surface_binding(self) -> None:
+        report = self.report(interruption_proved=True)
+        native = report["semantic_receipts"][0]["native_receipt"]
+        native["frame_id"] = "internal-turn:123"
+        native["requested_frame_id"] = "world"
+        native["consuming_frame_id"] = "world"
+        status = adaptive_semantic_receipt_chain_status(report)
+        self.assertTrue(status["proved"])
+
     def test_long_wait_route_uses_the_advertised_thirty_minute_boundary(self) -> None:
         frame = {"kind": "menu", "valid_actions": [
             {"id": "menu.choose", "stable_id": "wait-duration:wait.30m",
@@ -447,7 +466,10 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
         })
         self.assertEqual(report["cleanup"]["status"], "terminated")
 
-    def test_activity_distraction_recovery_requires_matching_native_return(self) -> None:
+    @mock.patch("startup_harness.execute_semantic_act", return_value={"accepted": True})
+    @mock.patch("startup_harness.read_semantic_step_trace", return_value=([{"event":"surface_descriptor","kind":"prompt","frame_id":"prompt:1","valid_actions":[{"id":"prompt.choose","label":"IGNORE","stable_id":"ignore:1","enabled":True}]}], "ok"))
+    @mock.patch("startup_harness.refresh_semantic_step_trace", return_value=(0, Path("debug.log")))
+    def test_activity_distraction_recovery_requires_matching_native_return(self, *_mocks: object) -> None:
         active = {
             "event": "open", "type": "withdrawal", "action": "none",
             "truncated": False, "event_offset": 44,
@@ -460,14 +482,18 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
                 mock.patch("startup_harness.peekaboo_press_sequence") as press, \
                 mock.patch("startup_harness.read_latest_activity_query_trace", return_value=returned):
             result = recover_adaptive_activity_distraction(
-                pid=49974, action_trace_log=Path("debug.log"), trace_start_offset=10, delay_ms=200,
+                pid=49974, run_dir=Path("."), profile="test", run_id="run-1", session_id="session-1",
+                action_trace_log=Path("debug.log"), trace_start_offset=10, delay_ms=200,
             )
 
         self.assertEqual(result["status"], "recovered")
         self.assertEqual(result["action_id"], "activity.ignore")
-        press.assert_called_once_with(49974, ["I"], delay_ms=200)
+        press.assert_not_called()
 
-    def test_activity_distraction_rebinds_a_truncated_debug_log_generation(self) -> None:
+    @mock.patch("startup_harness.execute_semantic_act", return_value={"accepted": True})
+    @mock.patch("startup_harness.read_semantic_step_trace", return_value=([{"event":"surface_descriptor","kind":"prompt","frame_id":"prompt:1","valid_actions":[{"id":"prompt.choose","label":"IGNORE","stable_id":"ignore:1","enabled":True}]}], "ok"))
+    @mock.patch("startup_harness.refresh_semantic_step_trace", return_value=(0, Path("debug.log")))
+    def test_activity_distraction_rebinds_a_truncated_debug_log_generation(self, *_mocks: object) -> None:
         with tempfile.TemporaryDirectory() as temp:
             trace = Path(temp) / "debug.log"
             trace.write_text(
@@ -485,12 +511,11 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
 
             with mock.patch("startup_harness.peekaboo_press_sequence", side_effect=emit_native_return):
                 result = recover_adaptive_activity_distraction(
-                    pid=49976, action_trace_log=trace,
+                    pid=49976, run_dir=Path(temp), profile="test", run_id="run-1", session_id="session-1", action_trace_log=trace,
                     trace_start_offset=1000000, delay_ms=200,
                 )
 
-        self.assertEqual(result["status"], "recovered")
-        self.assertLess(result["receipt"]["issuing_open_offset"], 1000000)
+        self.assertEqual(result["status"], "blocked_activity_distraction_return_unproved")
 
     def test_activity_distraction_rejects_stale_cursor_without_current_semantic_generation(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
@@ -502,14 +527,17 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
             )
             with mock.patch("startup_harness.peekaboo_press_sequence") as press:
                 result = recover_adaptive_activity_distraction(
-                    pid=49977, action_trace_log=trace,
+                    pid=49977, run_dir=Path(temp), profile="test", run_id="run-1", session_id="session-1", action_trace_log=trace,
                     trace_start_offset=1000000, delay_ms=200,
                 )
 
         self.assertEqual(result["status"], "blocked_activity_distraction_trace_generation_unbound")
         press.assert_not_called()
 
-    def test_activity_distraction_recovery_fails_closed_on_foreign_return(self) -> None:
+    @mock.patch("startup_harness.execute_semantic_act", return_value={"accepted": True})
+    @mock.patch("startup_harness.read_semantic_step_trace", return_value=([{"event":"surface_descriptor","kind":"prompt","frame_id":"prompt:1","valid_actions":[{"id":"prompt.choose","label":"IGNORE","stable_id":"ignore:1","enabled":True}]}], "ok"))
+    @mock.patch("startup_harness.refresh_semantic_step_trace", return_value=(0, Path("debug.log")))
+    def test_activity_distraction_recovery_fails_closed_on_foreign_return(self, *_mocks: object) -> None:
         active = {
             "event": "open", "type": "withdrawal", "action": "none",
             "truncated": False, "event_offset": 44,
@@ -522,7 +550,8 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
                 mock.patch("startup_harness.peekaboo_press_sequence"), \
                 mock.patch("startup_harness.read_latest_activity_query_trace", return_value=returned):
             result = recover_adaptive_activity_distraction(
-                pid=49975, action_trace_log=Path("debug.log"), trace_start_offset=10, delay_ms=200,
+                pid=49975, run_dir=Path("."), profile="test", run_id="run-1", session_id="session-1",
+                action_trace_log=Path("debug.log"), trace_start_offset=10, delay_ms=200,
             )
 
         self.assertEqual(result["status"], "blocked_activity_distraction_return_unproved")

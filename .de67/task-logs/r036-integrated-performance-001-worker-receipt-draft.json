@@ -1,0 +1,70 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-036-integrated-performance-001",
+  "claim_id": "R-036",
+  "worker_id": "01a080ca-95d2-7781-94ab-ad8496feaf99",
+  "disposition": "finding",
+  "finding_kind": "unexpected",
+  "verdict": "finite_matched_comparison",
+  "outcome": "Fresh source-current matched baseline and hostile-ecology feature workloads completed end-to-end after narrow harness repair. The comparison is valid at its finite native evidence ceiling: repeated native action/update intervals and one identity-bound CPU/RSS interval per workload were captured; raw renderer pacing distribution and repeated resource samples remain open.",
+  "summary": "Brief digest verified. Current source-bound tiles build completed. New R-036 baseline and feature manifests preserve equivalent McWilliams living-base fixtures and identical native movement plus six one-minute waits, differing only in hostile-ecology load. The first reruns exposed and repaired two harness defects: direct menu.choose dropped advertised stable IDs, and adaptive receipt validation rejected internal native frame IDs despite requested-frame binding. Focused tests passed; fresh reruns then completed all 8/8 steps for both workloads. OCR was not used as proof; no prior R-028 result was replayed. Both game PIDs were explicitly routed through native save/quit and quit confirmation; current ps checks found them absent, but broker OS exit is not independently evidenced beyond run-local writer traces.",
+  "material_changes": [
+    "Added tools/openclaw_harness/scenarios/performance.r036_integrated_baseline_v1.json with current-source established-base fixture and matched native semantic workload.",
+    "Added tools/openclaw_harness/scenarios/performance.r036_integrated_feature_v1.json with the same world/profile/workload and r028_paired_feature_ecology_v1 hostile-ecology fixture.",
+    "Repaired the new scenario pair's stale wait action spelling from wait.duration_menu to current menu.choose and removed the invalid movement-only elapsed guard by binding movement to a subsequent one-minute wait; prior R-028 manifests were not changed.",
+    "Rebuilt cataclysm-tiles from the current worktree with build_source_bound_macos.py --renderer tiles."
+    ,"Repaired semantic_frame_dispatch to preserve stable IDs for direct menu.choose routes and adaptive_semantic_receipt_chain_status to accept exact requested/consuming frame binding when native receipt frame IDs are internal."
+  ],
+  "tests": [
+    "Source-bound Mac tiles build completed successfully; executable SHA-256 153b4a807356fb7b8649f2a9aa26b97392dedcb469bd90153d7dc582d0fb81ed.",
+    "Both new scenario manifests passed manifest validation and launched with runtime_binding_status matched.",
+    "Baseline movement boundary produced accepted native semantic receipts; the feature boundary reached the same wait-menu capability gap."
+    ,"Focused regression tests passed 3 cases covering stable menu target resolution, internal native frame binding, and adaptive receipt finalization.",
+    "Fresh baseline run 0ebb20ebc36f44879c01a1c9d9e5f152 and feature run c95fbe91626c4373b64efff8e52ea49a completed 8/8 green steps each."
+  ],
+  "live_actions": [
+    "Baseline run c6a0df870ef4436388a2c999275b14eb, session harness-85f23ba4426e4e8d83bbe4670f539779, PID 84011, birth posix-lstart:Tue Sep 8 13:42:15 2026; source report .userdata/dev-harness/harness_runs/20260908_134214_8bd8b8f3fb1d4285af015f3f3c13a90c/probe.report.json. Native movement receipts were accepted through frame 11; wait action failed before performance sampling. Manual native save/quit and quit confirmation used frames 12-16; current ps found PID absent.",
+    "Feature run 6088cc8eb37c43a1a53446b3e7848338, session harness-9aa4c694ad26470da5cbb58ef4325179, PID 84081, birth posix-lstart:Tue Sep 8 13:42:53 2026; source report .userdata/dev-harness/harness_runs/20260908_134253_d2bc74430ec44301b7be2ca808373026/probe.report.json. Native movement and world.wait reached frame 11; advertised menu selection was rejected. Cleanup used menu.cancel frame 12, world.save_quit frame 13, prompt.choose frame 14, main_menu.quit frame 15, prompt.choose frame 16; current ps found PID absent.",
+    "Feature cleanup native request identities include world.save_quit request cockpit:harness-9aa4c694ad26470da5cbb58ef4325179:6088cc8eb37c43a1a53446b3e7848338:frame:13:world.save_quit:59525e1979fb95ac and prompt.choose request cockpit:harness-9aa4c694ad26470da5cbb58ef4325179:6088cc8eb37c43a1a53446b3e7848338:frame:14:prompt.choose:6a53c10057e77aa7; transition trace preserves the earlier accepted movement request/frame identities.",
+    "Baseline cleanup used the same native save/quit and quit-confirmation route; complete request identities are retained in its transition.events.jsonl and semantic.wake.observation.jsonl artifacts."
+  ],
+  "evidence_ceiling": [
+    "A valid finite matched comparison was produced: 27 repeated native inter-receipt intervals per workload (baseline median 172 ms, p95 275 ms, max 292 ms; feature median 169 ms, p95 279 ms, max 290 ms), plus one identity-bound CPU/RSS interval per workload (baseline 19.236% / 1,127,432,192 bytes; feature 19.852% / 1,127,858,176 bytes).",
+    "Raw renderer pacing distribution and repeated CPU/RSS samples beyond one interval per workload were not captured; no universal performance target or regression label is inferred.",
+    "Movement receipts and loaded living-base/hostile operation observations are mechanical/setup evidence only; they do not prove integrated performance or gameplay feel.",
+    "OCR, screenshots, terminal/rendered text, startup, fixture installation and accepted input were not used as gameplay proof.",
+    "PID birth identities are retained in each probe report and current OS absence was checked after native quit, but no durable broker PID/birth/exit artifact was retained for these runs; broker lifecycle evidence ceiling is current absence plus run-local writer identities, not independently proven graceful broker exit.",
+    "No automatic time/RSS termination was used."
+  ],
+  "bindings": {
+    "executable_sha256": "153b4a807356fb7b8649f2a9aa26b97392dedcb469bd90153d7dc582d0fb81ed",
+    "source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+    "baseline_scenario": "performance.r036_integrated_baseline_v1",
+    "feature_scenario": "performance.r036_integrated_feature_v1",
+    "world": "McWilliams",
+    "profile": "dev-harness",
+    "baseline_fixture": "r028_paired_baseline_base_v1",
+    "feature_fixture": "r028_paired_feature_ecology_v1"
+  },
+  "artifacts": [
+    {"path":".userdata/dev-harness/harness_runs/20260908_134214_8bd8b8f3fb1d4285af015f3f3c13a90c/probe.report.json","role":"fresh baseline report and PID/birth cleanup record"},
+    {"path":".userdata/dev-harness/harness_runs/20260908_134214_8bd8b8f3fb1d4285af015f3f3c13a90c/transition.events.jsonl","role":"baseline native transition receipts and request/frame identities"},
+    {"path":".userdata/dev-harness/harness_runs/20260908_134253_d2bc74430ec44301b7be2ca808373026/probe.report.json","role":"fresh hostile-ecology feature report and PID/birth cleanup record"},
+    {"path":".userdata/dev-harness/harness_runs/20260908_134253_d2bc74430ec44301b7be2ca808373026/transition.events.jsonl","role":"feature native transition receipts and request/frame identities"},
+    {"path":".userdata/dev-harness/harness_runs/20260908_134253_d2bc74430ec44301b7be2ca808373026/semantic.wake.observation.jsonl","role":"feature native request writer identities including cleanup requests"},
+    {"path":"tools/openclaw_harness/scenarios/performance.r036_integrated_baseline_v1.json","role":"fresh matched baseline scenario"},
+    {"path":"tools/openclaw_harness/scenarios/performance.r036_integrated_feature_v1.json","role":"fresh matched hostile-ecology scenario"}
+  ],
+  "first_divergence": {"class":"harness_capability_gap_repaired","summary":"Initial fresh matched runs diverged at wait-menu target resolution and receipt frame binding; both defects were repaired and focused-tested before the successful matched reruns."},
+  "narrow_queries": ["advertised wait-menu entries and stable IDs", "adaptive action-chain target resolution", "PID/birth/broker cleanup evidence", "current-source matched performance boundary"],
+  "entrypoints": ["tools/openclaw_harness/startup_harness.py", "tools/openclaw_harness/process_performance.py", "tools/openclaw_harness/scenarios/performance.r036_integrated_baseline_v1.json", "tools/openclaw_harness/scenarios/performance.r036_integrated_feature_v1.json"],
+  "journal_entries": [{"id":"J0001","sequence":1,"event_type":"identity","evidence_class":"native","summary":"Source/executable, scenario, world/profile and run identities bound."},{"id":"J0010","sequence":10,"event_type":"observation","evidence_class":"native","summary":"Baseline and feature movement boundaries accepted native receipts; wait-menu selection diverged."},{"id":"J0020","sequence":20,"event_type":"lifecycle","evidence_class":"native","summary":"Both owned games were routed through native save/quit and quit confirmation; current OS absence checked."}],
+  "accepted_no_replay": [
+    "Fresh runs only; historical R-028 results were preserved and not substituted.",
+    "OCR/rendered text was not used as proof.",
+    "No automatic time/RSS kill and no synthetic performance scorer were used."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Extend the finite matched comparison with raw native renderer pacing distribution and repeated CPU/RSS samples per workload; preserve the current native timing/resource observations as the stated evidence ceiling until that additional sampling exists."
+}

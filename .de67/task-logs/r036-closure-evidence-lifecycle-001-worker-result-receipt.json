@@ -1,0 +1,37 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-036-closure-evidence-lifecycle-001",
+  "claim_id": "R-036",
+  "worker_id": "01a080ef-34bd-7791-9531-c34ebe310c55",
+  "disposition": "completed",
+  "verdict": "evidence_lifecycle_verified_at_explicit_ceiling",
+  "outcome": "Closure evidence lifecycle verified: the repaired focused harness suite passes 28/28, all matched-performance identities are reconciled, and lifecycle evidence is honestly bounded to current OS absence because native quit and graceful broker exit are not durably proven.",
+  "summary": "Harness repair callers and semantic fixtures were updated; all 28 focused adaptive semantic tests pass. Fresh matched-performance artifacts retain exact scenario, source, executable, run, PID/birth, and current-absence identities. Reports record retained-at-cleanup processes and no native-exit credit; graceful native game and broker exit remain unproved.",
+  "material_changes": ["tools/openclaw_harness/adaptive_semantic_window_test.py sha256 bb83980a724bc60e1d127e138f0e88be32bdc26f26f5dc967382f7747f49a1c5", "tools/openclaw_harness/startup_harness.py sha256 97df6a01508c5bb702683f8d142af02763b93e8b9f03d5ef79a2f21097e14b6c"],
+  "tests": ["python3 -m unittest tools.openclaw_harness.adaptive_semantic_window_test", "28/28 OK"],
+  "live_actions": ["Read-only inspection of preserved run reports and current ps absence; no gameplay replay or new process launch."],
+  "accepted_no_replay": ["OCR/rendered text excluded from proof", "No historical R-028 replay or substitution", "No gameplay replay during closure audit"],
+  "acknowledgment": {"packet_sha256":"5e754efc56739b61102955f9461b6d02adbb27de85711728e7015407e1b3d0d8", "ocr_non_proof":"Applied", "no_replay":"Applied", "lifecycle":"Applied exact PID/birth and native-route limits; no exit credit invented."},
+  "bindings": {"world":"McWilliams", "profile":"dev-harness", "baseline_run":"3b371b4fa5494a12b31440241fbe8337", "feature_run":"f67f7e01822e4b6982aa08dd36186ed3"},
+  "first_open_boundary": "Native player quit and durable broker graceful exit remain unproved retrospectively; subjective feel remains outside this lifecycle closure.",
+  "entrypoints": ["tools/openclaw_harness/startup_harness.py", "tools/openclaw_harness/adaptive_semantic_window_test.py", "tools/openclaw_harness/scenarios/performance.r036_integrated_baseline_v1.json", "tools/openclaw_harness/scenarios/performance.r036_integrated_feature_v1.json"],
+  "journal_entries": [],
+  "narrow_queries": ["Verify preserved PID/birth identities and current OS absence", "Verify broker lifecycle artifact availability"],
+  "active_work": [],
+  "artifacts": [{"path":"tools/openclaw_harness/adaptive_semantic_window_test.py","role":"focused tests; sha256 bb83980a724bc60e1d127e138f0e88be32bdc26f26f5dc967382f7747f49a1c5"},{"path":"tools/openclaw_harness/startup_harness.py","role":"production harness; sha256 97df6a01508c5bb702683f8d142af02763b93e8b9f03d5ef79a2f21097e14b6c"}],
+  "exact_artifacts": {
+    "baseline_scenario":{"path":"tools/openclaw_harness/scenarios/performance.r036_integrated_baseline_v1.json","sha256":"9aa1a38b3224e6298fd51b6184ae68c2675e0ce433aeae9080e1bc30cf9bbe33"},
+    "feature_scenario":{"path":"tools/openclaw_harness/scenarios/performance.r036_integrated_feature_v1.json","sha256":"3ac8a1a0a4dd7ef391c1edffdf0cd58fdec9831a71731bf9923a5f574924e3ef"},
+    "baseline_report":{"path":".userdata/dev-harness/harness_runs/20260908_140202_5c2119663f384439b48970e3a0e93cad/probe.report.json","sha256":"8cff1b2c5adb0d02d2b53205bf1db20e90faead55ae538de547405b3d38824c5"},
+    "feature_report":{"path":".userdata/dev-harness/harness_runs/20260908_140509_92896cecfeac44fb85086d45b8363002/probe.report.json","sha256":"e3c84efc282613f6fa1a2d07ceec4e6601b8bfe908dcda615793abdd217be18e"},
+    "source_sha256":"4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e", "executable_sha256":"153b4a807356fb7b8649f2a9aa26b97392dedcb469bd90153d7dc582d0fb81ed"
+  },
+  "process_lifecycle": {
+    "baseline":{"pid":86069,"birth_identity":"posix-lstart:Tue Sep 8 14:02:03 2026","report_cleanup_status":"retained_waiting_for_player_quit","alive_at_report_cleanup":true,"native_exit_credit":false,"current_os_absent":true},
+    "feature":{"pid":86362,"birth_identity":"posix-lstart:Tue Sep 8 14:05:10 2026","report_cleanup_status":"retained_waiting_for_player_quit","alive_at_report_cleanup":true,"native_exit_credit":false,"current_os_absent":true},
+    "broker_ceiling":"No durable broker PID/birth/exit artifact; graceful broker and native game exit remain unproved."
+  },
+  "evidence_ceiling":["Mechanical evidence only; no subjective feel claim.","Current OS absence is observed, not proof of native quit or graceful broker exit."],
+  "receipt_id":"r036-closure-evidence-lifecycle-001-01a080ef-34bd-7791-9531-c34ebe310c55"
+}

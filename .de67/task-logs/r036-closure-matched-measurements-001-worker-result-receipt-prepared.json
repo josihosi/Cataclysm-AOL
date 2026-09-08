@@ -1,0 +1,40 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-036-closure-matched-measurements-001",
+  "claim_id": "R-036",
+  "worker_id": "01a080ee-e109-78e1-846d-2c67e7f4a44b",
+  "disposition": "completed",
+  "verdict": "finite_matched_measurement_comparison",
+  "outcome": "Fresh source-current baseline and hostile-ecology feature workloads are equivalently constructed and have matching native workload boundaries. Mechanical measurements are finite and descriptive; they do not establish subjective feel or a performance regression verdict.",
+  "summary": "Fresh current-source baseline and hostile-ecology feature workloads match in world, profile, semantic action chain, and six one-minute wait windows; only the intended ecology fixture/variant differs. Measurements are finite and descriptive. OCR and historical replay were excluded, and broker lifecycle evidence remains bounded to retained writer identities and current OS absence.",
+  "material_changes": [],
+  "tests": [],
+  "live_actions": [],
+  "evidence_ceiling": [
+    "Mechanical/setup evidence only; no subjective visual smoothness or gameplay-feel claim.",
+    "Broker graceful exit independently unproven as stated above."
+  ],
+  "bindings": {
+    "baseline_run": "3b371b4fa5494a12b31440241fbe8337",
+    "feature_run": "f67f7e01822e4b6982aa08dd36186ed3",
+    "profile": "dev-harness",
+    "world": "McWilliams"
+  },
+  "journal_entries": [],
+  "artifacts": [],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Fresh current-source continuation runs only",
+    "OCR/rendered text excluded from proof",
+    "No automatic time/RSS termination"
+  ],
+  "active_work": [],
+  "first_open_boundary": "Subjective feel, broader repeated-run statistics, and durable broker graceful-exit verification remain unproved.",
+  "narrow_queries": [],
+  "entrypoints": [
+    "tools/openclaw_harness/scenarios/performance.r036_integrated_baseline_v1.json",
+    "tools/openclaw_harness/scenarios/performance.r036_integrated_feature_v1.json"
+  ],
+  "context_metrics": {}
+}

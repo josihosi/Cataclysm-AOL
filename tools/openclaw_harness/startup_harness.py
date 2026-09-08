@@ -18970,7 +18970,11 @@ def adaptive_semantic_receipt_chain_status(report: Mapping[str, Any]) -> Dict[st
         response = receipt.get("semantic_response")
         if str(receipt.get("run_id", "")).strip() != run_id or str(receipt.get("session_id", "")).strip() != session_id or not action_id or not frame_id or not isinstance(native, Mapping) or not isinstance(response, Mapping) or not isinstance(receipt.get("next_frame"), Mapping):
             continue
-        if native.get("accepted") is True and response.get("accepted") is True and str(native.get("frame_id", "")).strip() == frame_id and str(native.get("action_id", "")).strip() == action_id and str(response.get("frame_id", "")).strip() == frame_id and str(response.get("action_id", "")).strip() == action_id:
+        native_frame_bound = any(
+            str(native.get(field, "")).strip() == frame_id
+            for field in ("frame_id", "requested_frame_id", "consuming_frame_id")
+        )
+        if native.get("accepted") is True and response.get("accepted") is True and native_frame_bound and str(native.get("action_id", "")).strip() == action_id and str(response.get("frame_id", "")).strip() == frame_id and str(response.get("action_id", "")).strip() == action_id:
             accepted_actions.add(str(receipt.get("declared_action_id", action_id)).strip())
             accepted_receipts.append(receipt)
     missing = [action for action in required_actions + required_interruptions + recovery_actions if action not in accepted_actions]
@@ -19064,7 +19068,23 @@ def semantic_frame_action_ids( frame: Mapping[str, Any] ) -> List[str]:
 
 def semantic_frame_dispatch( frame: Mapping[str, Any], declared_action: str ) -> tuple[str, str] | None:
     """Bind the declared wait route to one advertised native menu entry."""
-    if declared_action in semantic_frame_action_ids( frame ):
+    # A generic menu.choose action is only a transport owner.  When the
+    # native descriptor advertises stable entries, preserve the exact stable
+    # target instead of returning an under-specified request that the native
+    # owner must reject.  This also keeps direct action ids with no stable
+    # target compatible with legacy frames.
+    direct_action_advertised = False
+    for action in frame.get( "valid_actions", [] ):
+        if isinstance( action, Mapping ) and action.get( "id" ) == declared_action:
+            direct_action_advertised = True
+            if action.get( "enabled" ) is not False:
+                stable_id = str( action.get( "stable_id", "" ) ).strip()
+                if stable_id:
+                    return declared_action, stable_id
+            continue
+        if not isinstance( action, Mapping ) and str( action ).strip() == declared_action:
+            direct_action_advertised = True
+    if direct_action_advertised:
         return declared_action, ""
     labels = {
         "wait.duration_menu": "Wait a while",

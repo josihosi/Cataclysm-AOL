@@ -1,0 +1,132 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-036-integrated-performance-001",
+  "claim_id": "R-036",
+  "worker_id": "01a080ca-95d2-7781-94ab-ad8496feaf99",
+  "disposition": "finding",
+  "verdict": "capability_gap",
+  "outcome": "Fresh source-current matched baseline and hostile-ecology feature workloads were bound and launched, but both reached the same narrow adaptive wait-menu request defect before elapsed gameplay sampling; no performance comparison is claimed.",
+  "summary": "Brief digest verified. Current source-bound tiles build completed. New R-036 baseline and feature manifests preserve equivalent McWilliams living-base fixtures and identical native movement plus one-minute wait workload, differing only in hostile-ecology load. Both native runs accepted the movement boundary and failed at the advertised wait-menu selection with blocked_adaptive_semantic_receipt_rejected / required_action menu.choose. This is the first remaining repository-owned harness capability gap after repairing the stale R-028 elapsed-time and wait action labels. OCR was not used as proof; no prior R-028 result was replayed. Both game PIDs were explicitly routed through native save/quit and quit confirmation; current ps checks found them absent, but the retained report cleanup records do not independently prove broker OS exit or a durable graceful-closure receipt.",
+  "material_changes": [
+    "Added tools/openclaw_harness/scenarios/performance.r036_integrated_baseline_v1.json with current-source established-base fixture and matched native semantic workload.",
+    "Added tools/openclaw_harness/scenarios/performance.r036_integrated_feature_v1.json with the same world/profile/workload and r028_paired_feature_ecology_v1 hostile-ecology fixture.",
+    "Repaired the new scenario pair's stale wait action spelling from wait.duration_menu to current menu.choose and removed the invalid movement-only elapsed guard by binding movement to a subsequent one-minute wait; prior R-028 manifests were not changed.",
+    "Rebuilt cataclysm-tiles from the current worktree with build_source_bound_macos.py --renderer tiles."
+  ],
+  "tests": [
+    "Source-bound Mac tiles build completed successfully; executable SHA-256 153b4a807356fb7b8649f2a9aa26b97392dedcb469bd90153d7dc582d0fb81ed.",
+    "Both new scenario manifests passed manifest validation and launched with runtime_binding_status matched.",
+    "Baseline movement boundary produced accepted native semantic receipts; the feature boundary reached the same wait-menu capability gap."
+  ],
+  "live_actions": [
+    "Baseline run c6a0df870ef4436388a2c999275b14eb, session harness-85f23ba4426e4e8d83bbe4670f539779, PID 84011, birth posix-lstart:Tue Sep 8 13:42:15 2026; source report .userdata/dev-harness/harness_runs/20260908_134214_8bd8b8f3fb1d4285af015f3f3c13a90c/probe.report.json. Native movement receipts were accepted through frame 11; wait action failed before performance sampling. Manual native save/quit and quit confirmation used frames 12-16; current ps found PID absent.",
+    "Feature run 6088cc8eb37c43a1a53446b3e7848338, session harness-9aa4c694ad26470da5cbb58ef4325179, PID 84081, birth posix-lstart:Tue Sep 8 13:42:53 2026; source report .userdata/dev-harness/harness_runs/20260908_134253_d2bc74430ec44301b7be2ca808373026/probe.report.json. Native movement and world.wait reached frame 11; advertised menu selection was rejected. Cleanup used menu.cancel frame 12, world.save_quit frame 13, prompt.choose frame 14, main_menu.quit frame 15, prompt.choose frame 16; current ps found PID absent.",
+    "Feature cleanup native request identities include world.save_quit request cockpit:harness-9aa4c694ad26470da5cbb58ef4325179:6088cc8eb37c43a1a53446b3e7848338:frame:13:world.save_quit:59525e1979fb95ac and prompt.choose request cockpit:harness-9aa4c694ad26470da5cbb58ef4325179:6088cc8eb37c43a1a53446b3e7848338:frame:14:prompt.choose:6a53c10057e77aa7; transition trace preserves the earlier accepted movement request/frame identities.",
+    "Baseline cleanup used the same native save/quit and quit-confirmation route; complete request identities are retained in its transition.events.jsonl and semantic.wake.observation.jsonl artifacts."
+  ],
+  "evidence_ceiling": [
+    "No valid matched CPU/RSS, renderer pacing, native update-latency distribution, repeated sample comparison, correctness verdict, or gameplay-feel verdict was produced because both workloads stopped before the first elapsed wait window.",
+    "Movement receipts and loaded living-base/hostile operation observations are mechanical/setup evidence only; they do not prove integrated performance or gameplay feel.",
+    "OCR, screenshots, terminal/rendered text, startup, fixture installation and accepted input were not used as gameplay proof.",
+    "PID birth identities are retained in each probe report and current OS absence was checked after native quit, but no durable broker PID/birth/exit artifact was retained for these runs; broker lifecycle evidence ceiling is current absence plus run-local writer identities, not independently proven graceful broker exit.",
+    "No automatic time/RSS termination was used."
+  ],
+  "bindings": {
+    "baseline_fixture": "r028_paired_baseline_base_v1",
+    "baseline_scenario": "performance.r036_integrated_baseline_v1",
+    "executable_sha256": "153b4a807356fb7b8649f2a9aa26b97392dedcb469bd90153d7dc582d0fb81ed",
+    "feature_fixture": "r028_paired_feature_ecology_v1",
+    "feature_scenario": "performance.r036_integrated_feature_v1",
+    "profile": "dev-harness",
+    "source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+    "world": "McWilliams"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": "1",
+      "event_type": "identity",
+      "evidence_class": "native",
+      "summary": "Source/executable, scenario, world/profile and run identities bound."
+    },
+    {
+      "id": "J0010",
+      "sequence": "10",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Baseline and feature movement boundaries accepted native receipts; wait-menu selection diverged."
+    },
+    {
+      "id": "J0020",
+      "sequence": "20",
+      "event_type": "lifecycle",
+      "evidence_class": "native",
+      "summary": "Both owned games were routed through native save/quit and quit confirmation; current OS absence checked."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_134214_8bd8b8f3fb1d4285af015f3f3c13a90c/probe.report.json",
+      "sha256": "1d1bb5636c45a506fb8b7f598ef0ee4cbb71ceee475e321a54e42f6057664ac4",
+      "role": "fresh baseline report and PID/birth cleanup record"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_134214_8bd8b8f3fb1d4285af015f3f3c13a90c/transition.events.jsonl",
+      "sha256": "ae453d6c39a18350f019006a59d8640397bee5f172bc18519388429d81af5d63",
+      "role": "baseline native transition receipts and request/frame identities"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_134253_d2bc74430ec44301b7be2ca808373026/probe.report.json",
+      "sha256": "6b001fd1d95b7c50404f5583fe5e9846486180967c028d0be8951fe7d1416007",
+      "role": "fresh hostile-ecology feature report and PID/birth cleanup record"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_134253_d2bc74430ec44301b7be2ca808373026/transition.events.jsonl",
+      "sha256": "9bdfb31673782e0badb5258e4750f921406494f571dffba59baaa0479597afeb",
+      "role": "feature native transition receipts and request/frame identities"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_134253_d2bc74430ec44301b7be2ca808373026/semantic.wake.observation.jsonl",
+      "sha256": "c290c6eb2e0592a1fa1e84187ba09940ff43022a045d644444ffbd9348c88b6f",
+      "role": "feature native request writer identities including cleanup requests"
+    },
+    {
+      "path": "tools/openclaw_harness/scenarios/performance.r036_integrated_baseline_v1.json",
+      "sha256": "9aa1a38b3224e6298fd51b6184ae68c2675e0ce433aeae9080e1bc30cf9bbe33",
+      "role": "fresh matched baseline scenario"
+    },
+    {
+      "path": "tools/openclaw_harness/scenarios/performance.r036_integrated_feature_v1.json",
+      "sha256": "3ac8a1a0a4dd7ef391c1edffdf0cd58fdec9831a71731bf9923a5f574924e3ef",
+      "role": "fresh matched hostile-ecology scenario"
+    }
+  ],
+  "first_divergence": {
+    "class": "harness_capability_gap",
+    "summary": "Both fresh matched runs accepted the movement boundary but diverged at the current wait-menu target resolution: menu.choose received no accepted native receipt after world.wait, blocking elapsed gameplay and all performance sampling."
+  },
+  "accepted_no_replay": [
+    "Fresh runs only; historical R-028 results were preserved and not substituted.",
+    "OCR/rendered text was not used as proof.",
+    "No automatic time/RSS kill and no synthetic performance scorer were used."
+  ],
+  "active_work": [
+    "Repair exact stable-ID wait-menu target resolution and add focused regression coverage, then rerun only the affected matched sampling boundary."
+  ],
+  "first_open_boundary": "Repository-owned adaptive wait-menu request binding: inspect advertised wait-menu entries and target stable IDs, repair the smallest action-chain resolver, add focused regression coverage, then rerun both matched workloads through the first elapsed wait and native performance sampling.",
+  "narrow_queries": [
+    "advertised wait-menu entries and stable IDs",
+    "adaptive action-chain target resolution",
+    "PID/birth/broker cleanup evidence",
+    "current-source matched performance boundary"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/process_performance.py",
+    "tools/openclaw_harness/scenarios/performance.r036_integrated_baseline_v1.json",
+    "tools/openclaw_harness/scenarios/performance.r036_integrated_feature_v1.json"
+  ],
+  "context_metrics": {},
+  "finding_kind": "blocker"
+}
