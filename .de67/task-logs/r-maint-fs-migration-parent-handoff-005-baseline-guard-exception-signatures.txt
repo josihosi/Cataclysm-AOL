@@ -1,0 +1,3 @@
+de67_phase3_deadline_harness.DeadlineError: Random improvement review is due; resolve it before dispatching a new task
+de67_phase3_mutation_guard.GuardError: Incident guideline candidate makes no change
+de67_phase3_mutation_guard.GuardError: Method mutation candidate makes no change

@@ -1,0 +1,108 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-FS-MIGRATION-parent-handoff-repair-005",
+  "claim_id": "R-MAINT-FS-MIGRATION",
+  "worker_id": "01a0824c-8f0a-78d3-aa7f-9df89842c2b2",
+  "disposition": "completed",
+  "verdict": "staged_reviewer_only_parent_adoption_with_live_baseline_limit",
+  "outcome": "The isolated FS-migration candidate now has a reviewer-only replacement-parent control plane that hash-binds the method/specification/ledger/dashboard release, preserves a validated journal owner and worker-session accounting, prohibits a successor while the old PID/birth is live, and permits exactly one live successor with an exited-only retry. The active parent remains baseline and was not adopted.",
+  "summary": "Focused isolated tests prove complete-bundle validation, atomic prepared/adopted state, rollback before parent exit, exact PID/birth exit gating, retained owner identity, stale-epoch handling, worker-accounting preservation, duplicate successor rejection and safe retry. The candidate supervisor claims an adoption before creating a new journal owner. PID 89829 remains the baseline parent and still lacks any callable reload/exec/RPC hook, so the real gate-controlled promotion and handoff remain unperformed.",
+  "material_changes": [
+    "Added isolated candidate parent_adoption.py with SQLite-serialized bundle identity, parent binding, worker-session snapshot, rollback, sole-successor and exited-only retry transitions.",
+    "Updated the isolated candidate supervisor to claim a reviewed parent adoption before journal initialization and retain the old journal owner on that route.",
+    "Added the reviewer-only protocol with atomicity, rollback, exact process binding, projection-before-successor, worker accounting and verification requirements."
+  ],
+  "tests": [
+    "parent_adoption.py focused suite: 7 tests passed.",
+    "candidate coordinator supervisor suite: 74 tests passed.",
+    "Candidate parent-adoption and supervisor sources compiled with Python 3.14."
+  ],
+  "live_actions": [
+    "Read-only observation confirmed PID 89829 remains the active baseline coordinator supervisor, started Tue Sep 8 14:34:08 2026, with latest journal owner supervisor-89829-b42a6ebd38c44220b4d7888c3459de92.",
+    "No active method, FS/DFS/ledger/dashboard, deadline state, mutation gate, service session or process was modified, stopped, replaced or launched."
+  ],
+  "evidence_ceiling": [
+    "The isolated candidate proves only the guarded replacement design and its tests; it does not promote the complete release, resolve a mutation gate, or adopt PID 89829.",
+    "The current baseline parent has no callable reload, signal, exec or owner-transfer hook. Replacing its files would leave the loaded baseline functions in memory, so an exclusive reviewer must perform the protocol's observed equivalent-owner replacement."
+  ],
+  "bindings": {
+    "active_parent": "PID 89829; birth Tue Sep 8 14:34:08 2026; journal owner supervisor-89829-b42a6ebd38c44220b4d7888c3459de92",
+    "active_worker": "R-MAINT-FS-MIGRATION-parent-handoff-repair-005 -> worker 01a0824c-8f0a-78d3-aa7f-9df89842c2b2, coordinator session 01a0822a-a05f-7191-b7f5-fa64f1a7f896, supervisor 89829",
+    "candidate_method": ".de67/state/owner-approvals-20260908/candidate-method",
+    "candidate_protocol": ".de67/state/owner-approvals-20260908/candidate-method/references/parent-adoption.md"
+  },
+  "journal_entries": [
+    {
+      "id": "baseline-adoption-limit",
+      "sequence": "1",
+      "event_type": "read_only_runtime_diagnosis",
+      "evidence_class": "exact_parent_identity_and_source_inspection",
+      "summary": "The live baseline parent has no adoption seam; active source was preserved.",
+      "artifact_ref": ".de67/state/owner-approvals-20260908/candidate-method/references/parent-adoption.md"
+    },
+    {
+      "id": "isolated-owner-transfer",
+      "sequence": "2",
+      "event_type": "isolated_candidate_repair",
+      "evidence_class": "candidate_source_and_tests",
+      "summary": "The candidate serializes a complete release and an owner-preserving parent replacement before any successor claims execution.",
+      "artifact_ref": ".de67/state/owner-approvals-20260908/candidate-method/scripts/parent_adoption.py"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/state/owner-approvals-20260908/candidate-method/references/parent-adoption.md",
+      "sha256": "f5c5f8727ecefaa109d7ec13ac47d9c423e599ac153d598d6db7f8366c33dfe8",
+      "role": "reviewer-only live adoption protocol and evidence boundary"
+    },
+    {
+      "path": ".de67/state/owner-approvals-20260908/candidate-method/scripts/parent_adoption.py",
+      "sha256": "83bc9fac5a2f01b23c35c55ebc1508d8f34934adb8c872de15ae96d9386e52e0",
+      "role": "isolated parent-adoption control plane"
+    },
+    {
+      "path": ".de67/state/owner-approvals-20260908/candidate-method/scripts/coordinator_supervisor.py",
+      "sha256": "088033d88e626c77cdb251f423effa5137e1f7ff2f28e2ce508e5a5635bfd271",
+      "role": "candidate supervisor bootstrap retaining a adopted journal owner"
+    },
+    {
+      "path": ".de67/state/owner-approvals-20260908/candidate-method/tests/test_parent_adoption.py",
+      "sha256": "b268dff80fd71b119037d9d8325880eba1376b3bda2ec3b7f7dbc38dddbf16ed",
+      "role": "focused adoption/rollback/worker/retry proof"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-parent-handoff-005-parent-adoption-tests.log",
+      "sha256": "229344702a6e96d842b52077def5d1b42a7830ee67b969430befa6431eb283da",
+      "role": "focused test output"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-parent-handoff-005-supervisor-tests.log",
+      "sha256": "e307b4b0972c3f31b75c2834e1af86ae49beb41be7198a75de4b3f5f0be524b4",
+      "role": "candidate supervisor regression output"
+    }
+  ],
+  "first_divergence": {
+    "class": "live_parent_adoption_boundary",
+    "summary": "The active PID 89829 baseline cannot invoke candidate supervisor adoption after file promotion; its replacement needs the exclusive reviewer protocol and a fresh observed successor."
+  },
+  "accepted_no_replay": [
+    "Prior FS migration staging and dynamic-writer evidence were preserved; no historical candidate/full-regression replay was claimed.",
+    "No protected active installation, mutation resolution, PID 89829 stop or ordinary-worker activation was attempted."
+  ],
+  "active_work": [
+    "An exclusive reviewer must promote a complete immutable method/FS/ledger/dashboard release, prepare the adoption from current parent bindings, run the promoted delivery projection, then perform and observe the equivalent-owner successor protocol."
+  ],
+  "first_open_boundary": "Exclusive reviewer-controlled live release promotion and parent replacement remain required; the ordinary worker task must become terminal before the mutation gate can run.",
+  "narrow_queries": [
+    "At review time, what exact PID/birth, journal owner, restart generation and worker-session snapshot does PID 89829 expose?",
+    "Does the reviewer launcher provide a gated separate candidate session so it can wait for old-parent exit before the adoption claim?",
+    "After promotion, does canonical delivery projection prove the promoted FS/ledger and dashboard identities before exactly one successor is claimed?"
+  ],
+  "entrypoints": [
+    ".de67/state/owner-approvals-20260908/candidate-method/scripts/parent_adoption.py",
+    ".de67/state/owner-approvals-20260908/candidate-method/scripts/coordinator_supervisor.py",
+    ".de67/state/owner-approvals-20260908/candidate-method/references/parent-adoption.md"
+  ],
+  "context_metrics": {}
+}
