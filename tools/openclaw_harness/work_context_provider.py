@@ -6,6 +6,118 @@ import json
 from pathlib import Path
 import sys
 import time
+from typing import Any, Mapping, Sequence
+
+
+class CurrentResultsError(ValueError):
+    """The coordinator's selected result set is not safely reusable."""
+
+
+def _receipt_id(receipt: Mapping[str, Any]) -> str:
+    """Return an explicitly durable receipt identity; never invent one."""
+    identity = receipt.get('receipt_id', receipt.get('id'))
+    if identity is None and isinstance(receipt.get('identity'), Mapping):
+        identity = receipt['identity'].get('receipt_id', receipt['identity'].get('id'))
+    identity = str(identity or '').strip()
+    if not identity:
+        raise CurrentResultsError('receipt is missing an explicit durable receipt_id')
+    return identity
+
+
+def select_current_results(evidence: Mapping[str, Any], receipt_ids: Sequence[str],
+                           conclusions: Sequence[str] = (),
+                           boundaries: Sequence[str] = (),
+                           dependencies: Mapping[str, str] | None = None) -> dict:
+    """Select coordinator-named receipts and conclusions without judging them.
+
+    Receipt objects are copied verbatim and retain their exact identity.  This
+    function deliberately does not infer acceptance, proof, or a latest result.
+    """
+    receipts = evidence.get('receipts', ())
+    by_id = {}
+    for receipt in receipts:
+        if not isinstance(receipt, Mapping):
+            continue
+        rid = _receipt_id(receipt)
+        if rid in by_id:
+            raise CurrentResultsError('duplicate durable receipt identity: ' + rid)
+        by_id[rid] = dict(receipt)
+    ids = [str(item) for item in receipt_ids]
+    if len(set(ids)) != len(ids):
+        raise CurrentResultsError('selected receipt identities must be distinct')
+    missing = [rid for rid in ids if rid not in by_id]
+    if missing:
+        raise CurrentResultsError('selected receipt identity is not in the supplied evidence: ' + ', '.join(missing))
+    deps = {str(Path(path).resolve()): str(digest) for path, digest in (dependencies or {}).items()}
+    for path, expected in deps.items():
+        source = Path(path)
+        if not source.is_file():
+            raise CurrentResultsError('source dependency is unavailable: ' + path)
+        actual = hashlib.sha256(source.read_bytes()).hexdigest()
+        if actual != expected:
+            raise CurrentResultsError('stale source dependency: ' + path)
+    return {
+        'schema': 'caol-current-results-v1',
+        'selected_receipts': [by_id[rid] for rid in ids],
+        'current_conclusions': [str(item) for item in conclusions],
+        'remaining_boundaries': [str(item) for item in boundaries],
+        'source_dependencies': deps,
+    }
+
+
+def export_current_results(selection: Mapping[str, Any], destination: Path) -> dict:
+    """Write the current coordinator selection and return its immutable digest.
+
+    Destination is the replaceable current projection; context_library.put
+    creates the immutable revision, so prior projections remain retrievable.
+    """
+    if selection.get('schema') != 'caol-current-results-v1':
+        raise CurrentResultsError('unsupported current-results schema')
+    receipts = selection.get('selected_receipts', [])
+    if not isinstance(receipts, list):
+        raise CurrentResultsError('selected_receipts must be a list')
+    ids = [_receipt_id(item) for item in receipts if isinstance(item, Mapping)]
+    if len(ids) != len(receipts) or len(ids) != len(set(ids)):
+        raise CurrentResultsError('selected receipts must retain distinct explicit identities')
+    lines = ['# Current results', '', '## Current conclusions']
+    lines += ['- ' + str(item) for item in selection.get('current_conclusions', [])]
+    lines += ['', '## Remaining boundaries']
+    lines += ['- ' + str(item) for item in selection.get('remaining_boundaries', [])]
+    lines += ['', '## Selected durable receipts']
+    for receipt in receipts:
+        lines.append('### receipt ' + _receipt_id(receipt))
+        lines.append('```json')
+        lines.append(json.dumps(receipt, ensure_ascii=False, sort_keys=True, indent=2))
+        lines.append('```')
+    lines += ['', '## Source dependencies', '```json',
+              json.dumps(selection.get('source_dependencies', {}), ensure_ascii=False, sort_keys=True, indent=2),
+              '```', '']
+    raw = '\n'.join(lines).encode('utf-8')
+    destination = Path(destination)
+    destination.parent.mkdir(parents=True, exist_ok=True)
+    temporary = destination.with_name('.' + destination.name + '.tmp')
+    temporary.write_bytes(raw)
+    temporary.replace(destination)
+    return {'path': str(destination), 'bytes': len(raw), 'sha256': hashlib.sha256(raw).hexdigest(),
+            'receipt_ids': ids}
+
+
+def prepare_current_results(workspace: Path, task: str, selection: Mapping[str, Any],
+                            destination: Path, brief: str, handoff: str = '') -> dict:
+    """Export then feed the saved projection through context_library put/prepare."""
+    result = export_current_results(selection, destination)
+    library = Path('/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/context_library.py')
+    import importlib.util
+    spec = importlib.util.spec_from_file_location('context_library', library)
+    module = importlib.util.module_from_spec(spec)
+    assert spec.loader is not None
+    spec.loader.exec_module(module)
+    revision = module.put(workspace, task, 'current-results', destination,
+                          references=tuple(result['receipt_ids']),
+                          dependencies=tuple(selection.get('source_dependencies', {}).keys()))
+    module.prepare(workspace, task, brief, ('current-results',), handoff)
+    result['revision'] = revision
+    return result
 
 
 def session_context(workspace: Path, evidence: dict) -> dict:
