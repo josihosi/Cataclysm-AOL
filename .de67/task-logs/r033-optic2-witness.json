@@ -1,0 +1,46 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The bound native run created a smoke lead for observer 18 at the staffed camp anchor OMT (140,40,0) at minute 8220, then recorded a same-identity refreshed read at minute 8225 with the same lead identity and count remaining three after unrelated opportunity contamination.",
+  "causal_account": "The launch-bound transition artifact is authoritative for callback, source, observer, LOS, lead identity, and before/after memory counts and hashes. Native world.pause waits reached both cadence boundaries. The second read was refreshed and changed the durable hash, so unchanged/hash-preserving deduplication is not established; later memory contamination prevents an isolated count conclusion beyond this bound.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Bound run identity and executable/source binding.",
+      "checks": {
+        "scenario_id": "bandit.r033_registered_smoke_proximity_dedup_mcw",
+        "run_id": "44cc753de17993301847110ad2fb64ebcbd8845f8781060133a9ed30e14e2d50"
+      }
+    },
+    {
+      "citation_id": "J0020",
+      "meaning": "First production cadence retained isolated native smoke at the camp anchor.",
+      "checks": {
+        "value.game_minutes": 8220,
+        "value.production_channel_observation.status": "green",
+        "value.production_channel_observation.records.0.channel": "smoke",
+        "value.production_channel_observation.records.0.observed": true,
+        "value.production_channel_observation.records.0.source_omt": "(140,40,0)"
+      }
+    },
+    {
+      "citation_id": "J0668",
+      "meaning": "Second production cadence retained the same smoke source at minute 8225.",
+      "checks": {
+        "value.game_minutes": 8225,
+        "value.production_channel_observation.status": "green",
+        "value.production_channel_observation.records.0.channel": "smoke",
+        "value.production_channel_observation.records.0.observed": true,
+        "value.production_channel_observation.records.0.source_omt": "(140,40,0)"
+      }
+    }
+  ],
+  "material_deviations": [],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "Strict unchanged/hash-preserving deduplication with a clean isolated lead set.",
+    "Changed-source refresh without unrelated player-opportunity leads.",
+    "Unsupported-memory aging and same-identity reentry/no-clone ownership boundaries."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

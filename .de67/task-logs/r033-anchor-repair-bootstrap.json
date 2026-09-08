@@ -1,0 +1,1 @@
+{"command": "registry-repair-bootstrap", "ok": true, "registry": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/openclaw_harness/scenario_registry.sqlite3", "result": {"accepted": false, "reason": "manifest_source_changed", "runtime_binding": null, "scenario": "", "source_path": "", "token_id": ""}}

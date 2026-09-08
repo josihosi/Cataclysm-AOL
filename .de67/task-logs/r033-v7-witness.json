@@ -1,0 +1,25 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The bound native run reached the diagnostic terminal observation at game minute 8226 without a debug intervention or harness startup interruption; the focused feature claim is not accepted because the production diagnostic log records a refreshed smoke lead rather than unchanged deduplication.",
+  "causal_account": "The terminal native observation establishes the run boundary and clean gameplay path. The run-bound diagnostic artifact records the exact payload mismatch: persisted source_summary is truncated at the 256-character camp-lead bound while the fresh summary is full, causing the identical smoke source to enter the refresh path. This is a production persistence/comparison defect, not a harness transport failure. No gameplay fix was applied in this run.",
+  "citations": [
+    {
+      "citation_id": "J0740",
+      "meaning": "Native wait reached the requested terminal game minute and reports no debug intervention in the terminal surface.",
+      "checks": {
+        "result.stop_reason": "target_reached",
+        "result.terminal_observation.game_minutes": 8226,
+        "result.terminal_observation.surface.facts.last_debug_intervention": "none_this_run"
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "The second cadence was classified refreshed, not unchanged, so the R-033 dedup claim is not proven."
+  ],
+  "remaining_unknowns": [
+    "Whether canonicalizing source_summary before camp_map_lead_payload_matches restores unchanged/hash-preserving behavior across aging and reentry.",
+    "Whether the source-summary bound should be increased or comparison should use the bounded persisted representation."
+  ],
+  "evidence_ceiling": "focused"
+}

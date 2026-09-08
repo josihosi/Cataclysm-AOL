@@ -1,0 +1,25 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The repaired native run reached game minute 8221 and its isolated production channel recorded local smoke at OMT (140,40,0), but no durable lead or deduplication result was established.",
+  "causal_account": "The authoritative launch-bound transition artifact records the staffed observer callback as bounded blocked_line_of_sight with sight_points 3, so the callback was invoked but could not create a lead. This witness does not promote setup, transport, or the observer's angry message into feature proof.",
+  "citations": [
+    {
+      "citation_id": "J0139",
+      "meaning": "The native world reached minute 8221 and the bound production channel observed isolated local smoke from the camp anchor OMT.",
+      "checks": {
+        "value.observation_id": "a49bcfcb30c6db1ad82d01dfccdc24e40b17b6405b0760d834d9bab92e5c3257:frame:68",
+        "value.game_minutes": 8221,
+        "value.production_channel_observation.status": "green"
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "The staffed callback was invoked but rejected by native terrain LOS; no lead identity, count increase, or before/after hash was produced."
+  ],
+  "remaining_unknowns": [
+    "Whether the same source succeeds with an observer optic or a source OMT whose native terrain route is visible.",
+    "Lead creation, refresh, unchanged deduplication, aging, and re-entry remain untested."
+  ],
+  "evidence_ceiling": "focused"
+}

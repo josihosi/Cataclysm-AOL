@@ -1,0 +1,18 @@
+{
+  "preferences": [
+    {
+      "key": "runtime.entry_mode",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "cockpit_live_session"
+    }
+  ],
+  "requirements": [
+    {
+      "key": "capabilities.r033.isolated_smoke_channel",
+      "minimum_evidence": "declared",
+      "op": "eq",
+      "value": "registered_staffed_observer_same_level_create_then_dedup"
+    }
+  ]
+}

@@ -1,0 +1,39 @@
+{
+  "schema": "caol-playtest-witness-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The repaired live route accepted native selection and activation of the currently advertised smoke-grenade item, and one ordinary staffed-camp cadence recorded a source-matched smoke observation and created the exact smoke-signal lead. A later native activation after moving across the adjacent OMT boundary reached a no-source cadence, and a native six-hour wait reached game minute 8592.",
+  "causal_account": "J0001 binds the run to the registered scenario, source, executable, and cockpit session. J0060 and J0064 show the advertised inventory owner/action and the green R008 smoke-only observation at game minute 8225, with sound and light absent; the immutable transition log records sequence 56 as a source-matched smoke lead creation at OMT (140,40,0), observer 18, and sequence 133 at game minute 8230 as no_signal_source with unchanged lead count/hash. The second activation was therefore not an unchanged-source repeat: it crossed the OMT boundary and the subsequent cadence had no usable source. J0223 records accepted native wait.6h and J0222 records the resulting game minute 8592 observation. The six-hour interval demonstrates continued observation after the no-source boundary, but does not by itself prove lead aging/removal.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Immutable scenario/run/binding identity for the registered R-033 session."
+    },
+    {
+      "citation_id": "J0060",
+      "meaning": "Native inventory surface advertised the smoke grenade owner and an enabled stable activate target; R008 recorded smoke observed at (140,40,0) and (140,41,0) at game minute 8225, with sound/light absent."
+    },
+    {
+      "citation_id": "J0064",
+      "meaning": "Accepted native activation returned to the World surface at game minute 8225 with the active smoke item and the same green channel audit."
+    },
+    {
+      "citation_id": "J0223",
+      "meaning": "Native wait.6h was advertised and accepted."
+    },
+    {
+      "citation_id": "J0222",
+      "meaning": "Post-wait native observation reached game minute 8592."
+    }
+  ],
+  "remaining_unknowns": [
+    "Whether an unchanged, same-source second cadence performs dedup while preserving the exact lead identity and count/hash.",
+    "Whether the retained source-matched lead ages out or is removed after six hours; the run only established a six-hour observation after the no-source boundary.",
+    "How the pre-existing terrain-opportunity leads affect the aggregate lead count independently of the source-matched smoke lead."
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "The second activation changed the source across the adjacent OMT boundary; the next cadence recorded no_signal_source rather than an unchanged-source callback.",
+    "The six-hour wait followed a no-source boundary, so it cannot establish aging or removal of the source-matched lead."
+  ],
+  "evidence_ceiling": "focused"
+}

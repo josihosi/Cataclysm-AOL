@@ -33125,8 +33125,6 @@ def execute_probe_steps(
                     world_dir,
                     player_save=player_save,
                     required_items=required_items,
-                    required_active_items=required_active_items,
-                    required_countdown_points=required_countdown_points,
                     required_weapon=required_weapon,
                     required_weapon_ammo_type=required_weapon_ammo_type,
                     required_weapon_ammo_min=required_weapon_ammo_min,

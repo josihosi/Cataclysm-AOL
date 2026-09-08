@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-033: an unchanged native same-level smoke source in the staffed camp's anchor OMT is remembered once by an eligible registered observer and is deduplicated at the next authoritative cadence.",
+  "material_proof": "The disposable source-bound run begins at [3372,996,0] on a verified solid floor with one active smokebomb_act at [3374,983,0], ground terrain in OMT [140,40,0]. Its exact registered site is overmap_special:bandit_camp@140,40,0 with observer id 18 at home, no lead/report/operation/outing, and source expiry beyond two five-minute cadences. The first cadence must record source smoke, an accepted same-level clear-LOS callback, and a durable signal lead. With no source change, the second cadence must retain the exact lead identity and count/hash while recording unchanged/dedup.",
+  "current_uncertainty": "Whether the verified ground source inside the staffed camp anchor OMT clears the native terrain LOS route and produces an independently durable smoke signal lead.",
+  "material_contradiction": ["any authored fd_smoke/fd_fire, light, sound, lead, report, operation, contact, dispatch, or local projection", "a callback whose actor, same-level LOS, range, or binding is absent", "a dedup claim without exact identity and before/after count/hash", "a changed source between the two cadences"],
+  "forbidden_shortcuts": ["debug signal injection", "direct camp-memory or operation mutation", "treating fixture registration or item activation as gameplay proof"],
+  "honest_stop_conditions": ["first created callback plus second unchanged callback with durable state audit", "a source-binding, fixture-isolation, source-expiry, or first/second callback contradiction"],
+  "requested_evidence_ceiling": "focused"
+}

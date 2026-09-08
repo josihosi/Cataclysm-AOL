@@ -1,0 +1,118 @@
+{
+  "schema": "r033-dynamic-reentry-gap-v1",
+  "run": {
+    "run_id": "f02117b55842456c933b1512428d411b4eef0412696d88d80de43bd5f79fa5b5",
+    "binding_id": "06b59d9484c7f6227f634c06d0dd7f9e99ef79bc800798646aa3c4eac25a6886",
+    "source_sha256": "57cfe2e9f1d5af6f4d9ca10c4968e4c5945d3dffa1d9dfa57080604f1cdb7896",
+    "executable_sha256": "c5102561e83bf6525e4bff1a9e186fbfd6156b4053c32cad1fd3434a0abd6b58",
+    "scenario_id": "bandit.r033_registered_smoke_proximity_dedup_mcw"
+  },
+  "lead_observations": {
+    "first_source_matched_creation": {
+      "artifact": "transition.events.jsonl#sequence=56",
+      "game_minutes": 8225,
+      "status": "created",
+      "reason": "staffed camp signal read",
+      "observer": {"id": "18", "at_home": true, "eligible": true, "capability": "smoke"},
+      "camp_omt": "(140,40,0)",
+      "source_omt": "(140,40,0)",
+      "channel": "smoke",
+      "range": {"actual": 0, "cap": 12},
+      "line_of_sight": true,
+      "visibility": {"sight_points": 6, "result": true, "weather_visibility_score": 4},
+      "lead_id": "overmap_special:bandit_camp@140,40,0#lead:smoke_signal:camp-smoke@(140,40,0)@140,40,0",
+      "emitted_minutes": -1,
+      "lead_count_before": 1,
+      "lead_count_after": 2,
+      "lead_hash_before": "74434410489498017",
+      "lead_hash_after": "11114482998449879368",
+      "confidence": null,
+      "confidence_note": "The retained transition schema does not emit a numeric lead-confidence field; visibility/sight-points are the available authoritative confidence footing."
+    },
+    "failed_adjacent_omt_control": {
+      "artifact": "transition.events.jsonl#sequence=133",
+      "game_minutes": 8230,
+      "status": "bounded",
+      "reason": "no_signal_source",
+      "observer": {"id": "18", "at_home": true, "eligible": true, "capability": ""},
+      "camp_omt": "(140,40,0)",
+      "source_omt": "",
+      "channel": "",
+      "range": {"actual": -1, "cap": -1},
+      "line_of_sight": false,
+      "visibility": {"sight_points": -1, "result": false},
+      "lead_id": "",
+      "emitted_minutes": -1,
+      "lead_count_before": 3,
+      "lead_count_after": 3,
+      "lead_hash_before": "5003591558130147114",
+      "lead_hash_after": "5003591558130147114",
+      "confidence": null
+    },
+    "last_authoritative_no_source_before_terminal_wait": {
+      "artifact": "transition.events.jsonl#sequence=208",
+      "game_minutes": 8590,
+      "status": "bounded",
+      "reason": "no_signal_source",
+      "source_omt": "",
+      "lead_id": "",
+      "lead_count_before": 9,
+      "lead_count_after": 9,
+      "lead_hash_before": "10728659708080019091",
+      "lead_hash_after": "10728659708080019091",
+      "confidence": null
+    },
+    "terminal_wait": {
+      "artifact": "J0223 / native wait.6h receipt",
+      "accepted": true,
+      "game_minutes_after": 8592,
+      "note": "The terminal frame at 8592 is a native observation, not a new staffed_camp_signal_read event."
+    }
+  },
+  "continuation_gap": {
+    "declared_reentry_ready": false,
+    "scenario_declares_post_relaunch_continuation": false,
+    "finish_cleanup": "safe_to_cleanup",
+    "child_exit_code": 0,
+    "game_pid": 20916,
+    "game_birth_identity": "posix-lstart:Tue Sep 8 09:40:02 2026",
+    "native_exit_credit": false,
+    "saved_world_path": ".userdata/dev-harness/save/McWilliams",
+    "player_save_marker": ".userdata/dev-harness/save/McWilliams/#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "player_save_mtime": "2026-09-08 09:45:19 CEST",
+    "exact_gap": "No run-bound save/re-entry artifact represents game minute 8592. The saved world was installed/updated before terminalization, the sealed final reports declared_reentry_ready=false, and finish terminated the only bound process. Re-launching it would require a new fixture-backed run rather than an exact continuation."
+  },
+  "smallest_observable_second_source": {
+    "avatar_source_omt": "(141,40,0)",
+    "observer_camp_omt": "(140,40,0)",
+    "distance_omt": 1,
+    "native_activation_window": "activate the current advertised wielded item at game minute 8229, immediately before the 8230 staffed cadence",
+    "required_predicates": [
+      "local field smoke intensity > 0",
+      "viable R008 smoke packet with source_omt=(141,40,0)",
+      "projected range_cap_omt in [1,40]",
+      "observer 18 at_home and eligible",
+      "staffed-camp callback line_of_sight.result=true",
+      "current inventory descriptor/action stable IDs selected after refresh"
+    ],
+    "failed_control_explanation": "The prior second activation was accepted at game minute 8225, then the 8230 cadence found no source. It was not a changed-source refresh because it was emitted too early and no adjacent source predicate survived to the cadence."
+  },
+  "next_executable_route": {
+    "required": "new repair-owned run after registry re-query; do not replay or relabel the finished run",
+    "steps": [
+      "Launch a fresh disposable v7 run with the repaired scenario; fixture installation is setup only.",
+      "Create the first source-matched lead using current advertised item/action IDs.",
+      "Move to avatar OMT (141,40,0), wait natively to 8229-equivalent timing, refresh descriptor, and activate the currently advertised wielded smoke item.",
+      "At the next cadence, accept the second source only if all current source predicates are present; otherwise preserve no-source as the control.",
+      "For aging, use a separate continuation-enabled scenario that performs native save/quit at the desired boundary and relaunches with --post-relaunch-continuation."
+    ],
+    "forbidden": ["fixture reinstall presented as continuation", "direct save or lead mutation", "unpromoted R033-F002 gameplay-code changes"]
+  },
+  "artifacts": {
+    "run_dir": ".userdata/dev-harness/harness_runs/20260908_094001_df960567990e4f618b01b1faad65b18c",
+    "transition_events": ".userdata/dev-harness/harness_runs/20260908_094001_df960567990e4f618b01b1faad65b18c/transition.events.jsonl",
+    "production_channels": ".userdata/dev-harness/harness_runs/20260908_094001_df960567990e4f618b01b1faad65b18c/r008.production.channels.jsonl",
+    "final_report": ".userdata/dev-harness/harness_runs/20260908_094001_df960567990e4f618b01b1faad65b18c/operate_r033_registered_smoke_proximity_dedup.cockpit.live.final.json",
+    "scenario": "tools/openclaw_harness/scenarios/bandit.r033_registered_smoke_proximity_dedup_mcw.json"
+  }
+}

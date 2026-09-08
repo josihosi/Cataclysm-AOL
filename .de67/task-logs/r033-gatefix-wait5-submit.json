@@ -1,0 +1,1 @@
+{"ok":false,"error":"journal_is_sealed: submit finish --witness FILE","presentation":{"budget_bytes":8192,"full_evidence":{"sha256":"0f7dab551ce29fb2fc74edb6f7c56edff5a556ce324e1c5bdff30ab7158fb6d1","json_bytes":70},"retrieve":"python3 tools/openclaw_harness/evidence_display.py --sha256 HASH [--selector FIELD] [--offset N --limit N] [--export FILE]"}}

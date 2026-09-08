@@ -1,0 +1,20 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_game_minutes": 8225,
+    "danger_handling": "ignore_danger_and_interruptions",
+    "recipe": [
+      "world.wait",
+      {"action_id": "menu.choose", "stable_id": "wait-mode:wait-a-while", "label": "Wait a while"},
+      "wait.1m"
+    ],
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "first staffed observer cadence at the next observed five-minute game-minute boundary",
+      "unit": "game_minutes",
+      "maximum": 1,
+      "progress_required": true
+    }
+  }
+}

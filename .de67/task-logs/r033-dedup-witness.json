@@ -1,0 +1,34 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The source-bound native run reached minute 8220 with an isolated smoke scan at source OMT (140,40,0), while sound and light were absent. The sealed cockpit journal does not contain a positive callback or lead, so deduplication was not reached.",
+  "causal_account": "The accepted native waits reached minute 8220. The run used no direct state or injected signal. The separate launch-bound transition log records the callback's native blocked-line-of-sight decision, but the witness citation is limited to the sealed journal's production scan.",
+  "citations": [
+    {
+      "citation_id": "J0138",
+      "meaning": "First cadence production scan with isolated smoke and absent sound/light.",
+      "checks": {
+        "value.game_minutes": 8221,
+        "value.production_channel_observation.status": "green",
+        "value.production_channel_observation.records.0.channel": "smoke",
+        "value.production_channel_observation.records.0.observed": true,
+        "value.production_channel_observation.records.0.source_omt": "(140,40,0)",
+        "value.production_channel_observation.records.2.channel": "sound",
+        "value.production_channel_observation.records.2.observed": false,
+        "value.production_channel_observation.records.3.channel": "light",
+        "value.production_channel_observation.records.3.observed": false
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "The intended positive callback cannot be evaluated with sight_points 3 because native line of sight is blocked."
+  ],
+  "remaining_unknowns": [
+    "positive smoke lead creation",
+    "unchanged-source deduplication",
+    "changed-source refresh",
+    "unsupported-memory aging",
+    "same-identity reentry"
+  ],
+  "evidence_ceiling": "focused"
+}

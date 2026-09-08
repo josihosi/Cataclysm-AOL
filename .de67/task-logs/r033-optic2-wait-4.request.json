@@ -1,0 +1,1 @@
+{"action":"game.wait","wait":{"enabled":true,"target_delta_game_minutes":4,"danger_handling":"handle_classified_non_dangerous","recipe":["world.pause"],"bound":{"basis":"scheduler_boundary","source":"chosen target is four game minutes after the starting observation at 8221","unit":"game_minutes","maximum":4,"progress_required":true}}}

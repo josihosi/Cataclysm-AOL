@@ -1,0 +1,16 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_game_minutes": 8225,
+    "danger_handling": "handle_classified_non_dangerous",
+    "recipe": ["world.pause"],
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "native wait to the next two staffed-signal cadence boundaries from observed minute 8219",
+      "unit": "game_minutes",
+      "maximum": 6,
+      "progress_required": true
+    }
+  }
+}

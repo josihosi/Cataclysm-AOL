@@ -1,0 +1,36 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "Within the declared two-cadence native window, the repaired same-level source produced one valid smoke lead at minute 8220 and the same lead remained singular at minute 8225. The run therefore establishes create plus no duplicate-count growth, but not the charter's stricter unchanged/hash-preserving receipt.",
+  "causal_account": "The launch-bound transition artifact records observer 18 with native binocular visibility (sight_points 6), a created smoke lead at 8220, and a same-identity refreshed read at 8225 with lead count remaining 1. The repeated read changed the durable hash, so it is not honest to call it unchanged. A later 8230 cadence also introduced an unrelated player-opportunity lead; that post-boundary contamination is kept separate from the two-cadence result.",
+  "citations": [
+    {
+      "citation_id": "J0620",
+      "meaning": "Second declared cadence boundary reached at minute 8225 with a green bound production observation.",
+      "checks": {
+        "value.observation_id": "ac8f89a53188e7f374e27b9c2754e57f2984af5d646e27cbb5398fee218ee664:frame:308",
+        "value.game_minutes": 8225,
+        "value.production_channel_observation.status": "green",
+        "value.production_channel_observation.eligible": true
+      }
+    },
+    {
+      "citation_id": "J1344",
+      "meaning": "Later observation retained separately to bound the post-window contamination and cleanup state.",
+      "checks": {
+        "value.observation_id": "ac8f89a53188e7f374e27b9c2754e57f2984af5d646e27cbb5398fee218ee664:frame:668",
+        "value.game_minutes": 8231,
+        "value.production_channel_observation.status": "green"
+      }
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": [
+    "The second callback is refreshed rather than unchanged and changes the durable hash despite preserving lead count and identity.",
+    "A later cadence adds an unrelated player-opportunity lead, so extended lead-count evidence is not isolated to smoke deduplication."
+  ],
+  "remaining_unknowns": [
+    "Whether the intended unchanged/hash-preserving branch can be reached with the source payload stabilized against refresh.",
+    "Aging and save/re-entry remain untested."
+  ],
+  "evidence_ceiling": "focused"
+}

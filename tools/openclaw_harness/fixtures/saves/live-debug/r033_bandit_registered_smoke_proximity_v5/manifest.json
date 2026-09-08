@@ -8,6 +8,7 @@
     {"kind": "seed_overmap_special_near_player", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "special_id": "bandit_camp", "source_special_id": "bandit_camp", "site_index": 1, "offset_omt": [0, -1, 0]},
     {"kind": "overmap_npcs_near_player", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "offsets_ms": [[0, -24, 0]], "source_npc_id": 4, "clone_follower_template": false, "npc_faction": "hells_raiders", "npc_mission": 7, "chat_topic": "TALK_STRANGER_NEUTRAL", "name_prefix": "R033 proximity smoke observer"},
     {"kind": "bandit_registered_staffed_observer_bootstrap", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "footing": "same_level_registered_pair_z0_v2"},
+    {"kind": "basecamp_assigned_npc_items", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "npc_id": 18, "offset_ms": [0, -24, 0], "assigned_camp_omt": [140, 40, 0], "ensure_follower": false, "items": [{"typeid": "binoculars", "count": 1, "slot": "inventory"}]},
     {"kind": "map_items_near_player", "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip", "items": [{"typeid": "smokebomb_act", "offset_ms": [2, -13, 0], "active": true, "countdown_offset_turns": 700}]}
   ]
 }

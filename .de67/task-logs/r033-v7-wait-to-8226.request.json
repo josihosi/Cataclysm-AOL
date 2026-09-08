@@ -1,0 +1,1 @@
+{"action":"game.wait","wait":{"enabled":true,"target_game_minutes":8226,"danger_handling":"handle_classified_non_dangerous","recipe":["world.pause"],"bound":{"basis":"scheduler_boundary","source":"chosen target is one game minute after the terminal observation at 8225","unit":"game_minutes","maximum":1,"progress_required":true}}}

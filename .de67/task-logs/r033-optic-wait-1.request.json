@@ -1,0 +1,16 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 1,
+    "danger_handling": "handle_classified_non_dangerous",
+    "recipe": ["world.pause"],
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "one game minute to the first staffed observer cadence boundary from native frame 8219",
+      "unit": "game_minutes",
+      "maximum": 1,
+      "progress_required": true
+    }
+  }
+}

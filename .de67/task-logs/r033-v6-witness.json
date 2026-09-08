@@ -1,0 +1,42 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The isolated v6 native run observed the same local smoke source at (140,40,0) on two staffed-camp cadences, but the second callback refreshed the lead and changed its durable hash; strict unchanged/hash-preserving deduplication is therefore unproved.",
+  "causal_account": "The bound production-channel record retains smoke observations at minutes 8220 and 8225 with the same source OMT. The launch-bound transition stream records observer 18 with clear LOS and the same lead identity, first created at 8220 and then refreshed at 8225; the second receipt changes the durable lead hash, so it cannot honestly be classified as unchanged. The v6 player offset keeps player-opportunity adoption rejected, isolating this contradiction from the earlier contamination path.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Bound scenario, source, executable, run, and bridge identity.",
+      "checks": {
+        "scenario_id": "bandit.r033_registered_smoke_proximity_dedup_mcw",
+        "run_id": "73bc778d4dba455069a78af961a89bb96c3661cd010e0ffbec713bd2f3f8f9ef"
+      }
+    },
+    {
+      "citation_id": "J0743",
+      "meaning": "The sealed terminal observation retains green, isolated smoke-channel records for both cadence minutes and the source OMT.",
+      "checks": {
+        "value.game_minutes": 8226,
+        "value.production_channel_observation.status": "green",
+        "value.production_channel_observation.records.0.scan.game_minutes": 8220,
+        "value.production_channel_observation.records.0.channel": "smoke",
+        "value.production_channel_observation.records.0.observed": true,
+        "value.production_channel_observation.records.0.source_omt": "(140,40,0)",
+        "value.production_channel_observation.records.7.scan.game_minutes": 8225,
+        "value.production_channel_observation.records.7.channel": "smoke",
+        "value.production_channel_observation.records.7.observed": true,
+        "value.production_channel_observation.records.7.source_omt": "(140,40,0)"
+      }
+    }
+  ],
+  "material_deviations": [],
+  "contradictions": [
+    "The second staffed-camp callback is refreshed rather than unchanged and its durable lead hash differs from the first callback.",
+    "The strict unchanged/hash-preserving witness is not established even though the source identity and lead identity remain stable."
+  ],
+  "remaining_unknowns": [
+    "Which source-derived payload field changes between the two callbacks.",
+    "Changed-source refresh with a clean isolated fixture, plus aging and save/re-entry/no-clone boundaries."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

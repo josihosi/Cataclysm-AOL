@@ -11277,7 +11277,12 @@ void overmap_npc_move()
     // Idle staffed camps receive the same bounded signal packet on the existing
     // five-minute cadence.  This is discovery and memory only: the normal
     // structural/drive scheduler remains the sole dispatch decision owner.
-    if( signal_cadence_due && bootstrapped_sites == 0 ) {
+    // Registration and observation are independent ownership boundaries.  A cadence may
+    // discover an unrelated abstract source while an already staffed site is eligible for
+    // its production read; suppressing the observer here made that valid callback depend on
+    // whether registration happened to run first.  Newly created/empty sites remain ineligible
+    // inside record_staffed_camp_signal_observations through their roster/observer checks.
+    if( signal_cadence_due ) {
         const bandit_live_world::camp_signal_observation_result camp_signals =
             bandit_live_world::record_staffed_camp_signal_observations(
                 bandit_state, live_bandit_current_minutes(),

@@ -1718,6 +1718,46 @@ bool camp_map_lead_payload_matches( const camp_map_lead &lhs, const camp_map_lea
            lhs.times_harvested == rhs.times_harvested && lhs.last_outcome == rhs.last_outcome;
 }
 
+// Diagnostic-only companion for the staffed-signal dedup boundary.  It deliberately
+// reports the compared durable fields without changing the comparison or persistence.
+static std::string camp_map_lead_payload_diff( const camp_map_lead &lhs,
+        const camp_map_lead &rhs )
+{
+    std::ostringstream out;
+    const auto field = [&out]( const char *name, const auto &left, const auto &right ) {
+        if( left != right ) {
+            out << ' ' << name << "=[" << left << "]->[" << right << ']';
+        }
+    };
+    field( "lead_id", lhs.lead_id, rhs.lead_id );
+    field( "kind", static_cast<int>( lhs.kind ), static_cast<int>( rhs.kind ) );
+    field( "origin", static_cast<int>( lhs.origin ), static_cast<int>( rhs.origin ) );
+    field( "status", static_cast<int>( lhs.status ), static_cast<int>( rhs.status ) );
+    field( "target_id", lhs.target_id, rhs.target_id );
+    field( "omt", lhs.omt.to_string(), rhs.omt.to_string() );
+    field( "radius_omt", lhs.radius_omt, rhs.radius_omt );
+    field( "source_key", lhs.source_key, rhs.source_key );
+    field( "source_summary", lhs.source_summary, rhs.source_summary );
+    field( "first_seen", lhs.first_seen_minutes, rhs.first_seen_minutes );
+    field( "last_seen", lhs.last_seen_minutes, rhs.last_seen_minutes );
+    field( "last_checked", lhs.last_checked_minutes, rhs.last_checked_minutes );
+    field( "last_scouted", lhs.last_scouted_minutes, rhs.last_scouted_minutes );
+    field( "bounty", lhs.bounty, rhs.bounty );
+    field( "threat", lhs.threat, rhs.threat );
+    field( "confidence", lhs.confidence, rhs.confidence );
+    field( "threat_confirmed", lhs.threat_confirmed, rhs.threat_confirmed );
+    field( "target_alert", lhs.target_alert, rhs.target_alert );
+    field( "scout_seen", lhs.scout_seen, rhs.scout_seen );
+    field( "generated_by_routine", lhs.generated_by_this_camp_routine,
+           rhs.generated_by_this_camp_routine );
+    field( "prior_bandit_losses", lhs.prior_bandit_losses, rhs.prior_bandit_losses );
+    field( "prior_defender_losses", lhs.prior_defender_losses, rhs.prior_defender_losses );
+    field( "times_checked_empty", lhs.times_checked_empty, rhs.times_checked_empty );
+    field( "times_harvested", lhs.times_harvested, rhs.times_harvested );
+    field( "last_outcome", lhs.last_outcome, rhs.last_outcome );
+    return out.str().empty() ? " none" : out.str();
+}
+
 void update_target_lead_reference( bandit_live_world::active_outing_state &outing,
                                    const std::string &lead_id, const int old_revision,
                                    const int new_revision )
@@ -15452,6 +15492,11 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                     }
                     continue;
                 }
+                DebugLog( D_INFO, DC_ALL ) << "bandit_live_world staffed_camp_signal_payload_mismatch"
+                                           << " site=" << site.site_id
+                                           << " lead=" << existing->lead_id
+                                           << camp_map_lead_payload_diff( *existing, comparison )
+                                           << '\n';
                 learned.first_seen_minutes = existing->first_seen_minutes;
             }
             const std::string learned_lead_id = learned.lead_id;
