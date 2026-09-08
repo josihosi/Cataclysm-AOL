@@ -1214,7 +1214,21 @@ commissioning history are retrievable at the pre-review Git baseline above and i
 
 Implementation status:
 
-- [ ] 🔴 R-MAINT-PROMPT-DELIVERY — Each supervisor-launched coordinator receives the current guarded role prompt after a method promotion, without restarting or duplicating the supervisor.
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-MAINT-PROMPT-DELIVERY -->
+- [x] R-MAINT-PROMPT-DELIVERY — Current guarded prompts are loaded for each authorized child transition, and naturally authorized coordinator input confirms observable live adoption.
+  - DFS slices: `R-MAINT-PROMPT-DELIVERY-S002`
+  - Assignment R-MAINT-PROMPT-DELIVERY-001: Deliver current guarded prompts to coordinator and mutation-reviewer children after on-disk promotion without restarting the supervisor. Actual producers are `coordinator_supervisor.py::run_child` (fresh/continuation), `run_mutation_reviewer` (override), and their prompt functions; the previous `run_coordinator` entrypoint does not exist. Own the narrow loader repair and focused tests in installed Phase-3 scripts. Follow current DFS S002: prove post-import on-disk change through isolated fake-runner output, stale/corrupt/missing text failure, exact role/gate/bindings/restart reason and one authorized child. Preserve owner stop and exclusive lifecycle; no extra live launch. Current review changes the reviewer source text, not the existing process's loaded function; observe the next naturally authorized child input before claiming live delivery.
+  - Current prompt proof: Implementation receipt `d193034a63642833354c61a41d60f84bfc495c454a9a34ebf46c5184dff97579` and independent source/guard receipt `568f266b5bfa4f3a5b7f0e5f103016d4ab878396605830eec921d1882a7b0a31` preserve 72-test freshness/failure proof. Live receipt `9ae3342b06a1abdf94b5d8812fe1edd35f3dfe5ec1ad07fb23f3938f99bf3c27` proves exact retained continuation input and observable use. Restart 41 also received and used the current FS/code-review context; the fresh runner regenerates canonical coordinator prompts through `codex_runner.py::current_coordinator_prompt`. Evidence and limits: `state/review-random-cycle-12/delivery.md`. No extra launch or invisible internal-ingestion proof is asserted.
+  - Durable result: The source/guard and live-adoption closure gaps are closed. Receipt `568f266b5bfa4f3a5b7f0e5f103016d4ab878396605830eec921d1882a7b0a31` verifies fresh loading, failure guards, exact bindings, 72 focused tests, and process exit. Receipt `9ae3342b06a1abdf94b5d8812fe1edd35f3dfe5ec1ad07fb23f3938f99bf3c27` verifies exact naturally authorized input and observable subsequent use. Internal role-ingestion semantics remain unobservable and are not claimed. No extra launch is required.
+  - Assignment R-MAINT-PROMPT-DELIVERY-closure-source-guards-001: Independently verify the current installed loader and source hashes, fresh per-launch loading for coordinator, continuation, and reviewer, invalid-source failure before launch, exact bindings, and the 72 focused tests. Use receipt `d193034a63642833354c61a41d60f84bfc495c454a9a34ebf46c5184dff97579`; do not launch or restart a live child.
+  - Assignment R-MAINT-PROMPT-DELIVERY-closure-live-adoption-001: Independently verify naturally authorized coordinator run `initial-4ea0ed667ba7491fafde71cf4a6a2585` and its retained runner input against the repaired producer. Preserve the distinction between observed user continuation input and unobservable role ingestion. Do not manufacture a launch, restart the supervisor, or claim more than the artifacts prove.
+  - Subtasks:
+    - [done] refresh-child-role-input :: Deliver promoted current prompt text at each owned child launch with unchanged lifecycle.
+    - [done] verify-prompt-freshness :: Prove changed/stale input, restart-reason preservation and one owned successor through an isolated fake runner.
+    - [done] audit-prompt-source-guards :: Independently verify current loading, failures, bindings and focused tests.
+    - [done] audit-live-prompt-adoption :: Independently verify the current naturally authorized child at the exact artifact ceiling.
+  - Durable acceptance: #1 via `R-MAINT-PROMPT-DELIVERY-closure-live-adoption-001`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-MAINT-PROMPT-DELIVERY-S001 claim=R-MAINT-PROMPT-DELIVERY -->
 
 

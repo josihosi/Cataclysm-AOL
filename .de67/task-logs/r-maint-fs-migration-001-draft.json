@@ -1,0 +1,55 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-FS-MIGRATION-001",
+  "claim_id": "R-MAINT-FS-MIGRATION",
+  "disposition": "completed",
+  "verdict": "staged_and_validated_candidate_requires_exclusive_universal_mutation_review_for_activation",
+  "outcome": "Staged an isolated functional-only FS migration candidate with a hash-bound DFS compatibility pointer, resolver-backed consumers, ledger-only acceptance projection, and same-claim independent-task guard reconciliation. It cannot be activated by the normal route because it changes protected deadline/guard surfaces.",
+  "summary": "The candidate resolves FS.md only when DFS.md is a hash-bound redirect, fails closed on conflicting dual content or an invalid pointer, preserves all 32 current slice IDs/claim bindings in the staged FS, and removes actual implementation-status sections. Isolated execution reached the selected FS slice through policy routing and accepted a claim by appending the durable receipt to the ledger without any FS status block. No active method/workspace contract, state, packet, or process was changed.",
+  "material_changes": [
+    "Created only an isolated candidate method tree and staged FS workspace outside the active workspace.",
+    "Prepared a review-ready candidate patch covering specification resolver, mutation guard, policy kernel, deadline harness, supervisor, and provenance."
+  ],
+  "tests": [
+    "Functional resolver/packet/ledger-only acceptance isolated exercise: passed.",
+    "Candidate policy kernel suite: 67 tests passed.",
+    "Candidate coordinator supervisor suite: 72 tests passed.",
+    "Candidate method provenance suite: 2 tests passed.",
+    "Candidate Python compilation: passed.",
+    "Current DFS-to-FS staging preserved 32 slice IDs and claim bindings and emitted no actual Implementation status heading."
+  ],
+  "live_actions": [
+    "No game, broker, harness, coordinator, or worker process launched or owned.",
+    "No active DFS, ledger, SQLite clock, packet, or installed method file was modified."
+  ],
+  "evidence_ceiling": [
+    "The result proves isolated compatibility behavior and a staged current-FS transform, not active adoption.",
+    "Legacy full-suite behaviors remain governed by the active method; the normal guard refuses this protected-surface migration."
+  ],
+  "bindings": {
+    "active_method": "/Users/josefhorvath/.codex/skills/de67/de-67-3",
+    "candidate_method": "/tmp/de67-fs-migration-candidate.DtTbAZ",
+    "candidate_workspace": "/tmp/de67-fs-workspace-candidate.p53kJj",
+    "staged_source_sha256": "74f7dbe2b8688d6bd524bb9e5aff3ce61a0bf2edecc888dd15d8639860706d97",
+    "staged_fs_sha256": "086bfb6854832b1174259ff26068df320d24650e12da9c3d1e2b81b79e6a4559"
+  },
+  "journal_entries": [
+    {"id":"fs-migration-stage","sequence":1,"event_type":"validation","evidence_class":"isolated_candidate","artifact_ref":".de67/task-logs/r-maint-fs-migration-001-functional-stage.log","summary":"Current DFS transformed into a functional FS candidate with 32 stable slices and a hash-bound legacy pointer."},
+    {"id":"fs-migration-guard","sequence":2,"event_type":"boundary","evidence_class":"isolated_candidate","artifact_ref":".de67/task-logs/r-maint-fs-migration-001-guard-boundary.log","summary":"Normal activation rejected protected deadline/guard changes; universal review is required."}
+  ],
+  "artifacts": [
+    {"path":".de67/task-logs/r-maint-fs-migration-001-candidate.patch","sha256":"1d9ca0b51ae558b1d7a6e98642327ad5b45ddb56de80276dfbdec1135c6e02f0","role":"review-ready isolated method candidate"},
+    {"path":".de67/task-logs/r-maint-fs-migration-001-functional-stage.log","sha256":"98b743d9c997ff2b56da2c040def9390482fd228b7fa42d8b7a7436e3ca299f2","role":"current DFS to functional FS staging proof"},
+    {"path":".de67/task-logs/r-maint-fs-migration-001-guard-boundary.log","sha256":"6d81eaf225ef756d0a8198591507569ce62a00bb496f738161f2a3fa578076cc","role":"normal versus universal guard boundary"},
+    {"path":".de67/task-logs/r-maint-fs-migration-001-supervisor.log","sha256":"c23c69370644eee4e8645b73e67e6a9f5c1707a58b83658a9cd109afef2b7fba","role":"candidate supervisor suite output"},
+    {"path":".de67/task-logs/r-maint-fs-migration-001-method-provenance.log","sha256":"c17939e73479002a60f1c096eb74dd08159b3ee7225dd5a58f72ab99675d03fb","role":"candidate provenance suite output"}
+  ],
+  "first_divergence": {"class":"guarded_activation","summary":"Normal method validation rejects candidate changes to scripts/deadline_harness.py and scripts/mutation_guard.py; activation requires the exclusive universal mutation-review route."},
+  "accepted_no_replay": ["No historical packet or receipt was rewritten.", "COMPACT-IO and RESULT-REUSE accepted evidence was not replayed or altered."],
+  "active_work": ["Exclusive universal mutation review must validate and promote the candidate before active FS/DFS adoption."],
+  "first_open_boundary": "Exclusive reviewer promotion plus active-file adoption and the resulting full current-method regression run.",
+  "narrow_queries": ["Review resolver conflict/pointer failure behavior.", "Review ledger-only accept/reopen projection and old selected_lane DFS compatibility.", "Review method candidate patch against the universal guard."],
+  "entrypoints": ["scripts/specification.py","scripts/mutation_guard.py","scripts/policy_kernel.py","scripts/deadline_harness.py","scripts/coordinator_supervisor.py","scripts/method_provenance.py"],
+  "context_metrics": {}
+}

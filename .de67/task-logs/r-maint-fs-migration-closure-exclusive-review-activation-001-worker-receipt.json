@@ -1,0 +1,56 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-001",
+  "claim_id": "R-MAINT-FS-MIGRATION",
+  "worker_id": "01a08207-67f0-7720-bcdc-357fec265e38",
+  "disposition": "completed",
+  "verdict": "exclusive_review_pending",
+  "outcome": "Read-only comparison found candidate 445 tests with 6 failures and 19 errors versus active baseline 445 tests with 5 failures and 20 errors; no authenticated mutator or owner disposition exists, so activation remains pending.",
+  "summary": "The candidate's isolated suites and 32-slice staging proof passed, but full current-method regression is not green. DEFER is this worker's review recommendation only, not an authenticated mutator decision.",
+  "material_changes": [],
+  "tests": [
+    "Candidate unittest discover: 445 run, 6 failures, 19 errors.",
+    "Active baseline unittest discover: 445 run, 5 failures, 20 errors."
+  ],
+  "live_actions": [
+    "No task-owned processes launched; no active files, state, or coordination records changed."
+  ],
+  "evidence_ceiling": [
+    "Read-only review; no promotion authority exercised."
+  ],
+  "bindings": {
+    "candidate_method": "/tmp/de67-fs-migration-candidate.DtTbAZ",
+    "candidate_workspace": "/tmp/de67-fs-workspace-candidate.p53kJj",
+    "prior_receipt": ".de67/task-logs/r-maint-fs-migration-001-worker-receipt.json"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-001-worker-receipt.json",
+      "sha256": "d86d03ecffe2da15a8ff3ea757990165607e4e5095034b10d468fc870c3ae1d9",
+      "role": "prior exploration receipt"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-001-candidate.patch",
+      "sha256": "1d9ca0b51ae558b1d7a6e98642327ad5b45ddb56de80276dfbdec1135c6e02f0",
+      "role": "candidate patch"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Prior exploration receipt and candidate artifacts preserved without replay or overwrite."
+  ],
+  "active_work": [
+    "Await authenticated exclusive disposition and regression reconciliation."
+  ],
+  "first_open_boundary": "Authenticated exclusive disposition and full regression reconciliation before activation.",
+  "narrow_queries": [
+    "Reconcile candidate and baseline full-suite failures before activation."
+  ],
+  "entrypoints": [
+    ".de67/task-logs/r-maint-fs-migration-001-worker-receipt.json",
+    ".de67/task-logs/r-maint-fs-migration-001-candidate.patch"
+  ],
+  "context_metrics": {}
+}

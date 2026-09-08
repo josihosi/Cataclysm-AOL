@@ -1,0 +1,76 @@
+--- /Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/mutation_guard.py	2026-09-08 05:11:02
++++ /tmp/de67-fs-migration-candidate.DtTbAZ/scripts/mutation_guard.py	2026-09-08 19:26:24
+@@ -14,6 +14,11 @@
+ import tempfile
+ import time
+ from typing import NamedTuple
++
++SCRIPT_ROOT = str(Path(__file__).resolve().parent)
++if SCRIPT_ROOT not in sys.path:
++    sys.path.insert(0, SCRIPT_ROOT)
++from specification import SpecificationError, resolve_path
+ 
+ 
+ TASK_GUIDELINES = "test-and-task-guidelines.md"
+@@ -1814,7 +1819,10 @@
+     if len(slice_ids) != len(set(slice_ids)):
+         raise GuardError("DFS slice extraction cannot request a duplicate id")
+     claim_id = _selected_claim_id(selected_claim)
+-    text = _read_utf8_exact(dfs)
++    try:
++        text = resolve_path(dfs).text
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
+     lines = text.splitlines(keepends=True)
+     by_id = {item.slice_id: item for item in parse_dfs_slices(text)}
+     blocks: list[str] = []
+@@ -1841,6 +1849,19 @@
+     return tuple(claims)
+ 
+ 
++def specification_claims(specification_text: str) -> tuple[str, ...]:
++    """Return active legacy lamps or canonical claim identities from slices.
++
++    A functional-only FS intentionally has no implementation-status block.  Its
++    durable slice claims replace status prose for ledger binding; a legacy DFS
++    retains its stricter red-lamp interpretation unchanged.
++    """
++    legacy = red_dfs_claims(specification_text)
++    if legacy:
++        return legacy
++    return tuple(dict.fromkeys(item.claim_id for item in parse_dfs_slices(specification_text)))
++
++
+ def active_work_items(ledger_text: str) -> tuple[str, ...]:
+     items: list[str] = []
+     for _, line in _outside_fences(ledger_text):
+@@ -1901,8 +1922,12 @@
+ 
+     ledger_text = read_markdown(ledger)
+     blocks = _active_work_blocks(ledger_text)
+-    dfs_text = read_markdown(dfs)
+-    red_claims = red_dfs_claims(dfs_text)
++    try:
++        specification = resolve_path(dfs)
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
++    dfs_text = specification.text
++    red_claims = specification_claims(dfs_text)
+     slices_by_id = {item.slice_id: item for item in parse_dfs_slices(dfs_text)}
+     statuses: list[tuple[str, str, str]] = []
+     for reference, block in blocks:
+@@ -1984,8 +2009,12 @@
+     ledger_text = read_markdown(ledger)
+     blocks = _active_work_blocks(ledger_text)
+     items = tuple(reference for reference, _ in blocks)
+-    dfs_text = read_markdown(dfs)
+-    red_claims = red_dfs_claims(dfs_text)
++    try:
++        specification = resolve_path(dfs)
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
++    dfs_text = specification.text
++    red_claims = specification_claims(dfs_text)
+     slices = parse_dfs_slices(dfs_text)
+     slices_by_id = {item.slice_id: item for item in slices}
+     selected_claims: list[str] = []

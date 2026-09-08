@@ -1,0 +1,69 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-001",
+  "claim_id": "R-MAINT-FS-MIGRATION",
+  "worker_id": "01a08207-67f0-7720-bcdc-357fec265e38",
+  "disposition": "completed",
+  "verdict": "exclusive_review_pending",
+  "outcome": "Read-only comparison found candidate 445 tests with 6 failures and 19 errors versus active baseline 445 tests with 5 failures and 20 errors; no authenticated mutator or owner disposition exists, so activation remains pending.",
+  "summary": "Restored the omitted task-identity validation block in the isolated candidate only. Focused repair plus migration tests passed; post-repair full candidate suite is 448 run, 5 failures, 19 errors. Active baseline is 445 run, 5 failures, 20 errors. No authenticated mutator or owner disposition exists.",
+  "material_changes": [
+    "Repaired isolated candidate mutation_guard.py task-identity validation; active method untouched."
+  ],
+  "tests": [
+    "Focused repaired task-identity plus 3 migration tests: 4 passed.",
+    "Candidate post-repair unittest discover: 448 run, 5 failures, 19 errors, 4 skipped.",
+    "Active baseline unittest discover: 445 run, 5 failures, 20 errors, 2 skipped."
+  ],
+  "live_actions": [
+    "No task-owned processes launched; no active files, state, or coordination records changed."
+  ],
+  "evidence_ceiling": [
+    "Read-only review; no promotion authority exercised."
+  ],
+  "bindings": {
+    "candidate_method": "/tmp/de67-fs-migration-candidate.DtTbAZ",
+    "candidate_workspace": "/tmp/de67-fs-workspace-candidate.p53kJj",
+    "prior_receipt": ".de67/task-logs/r-maint-fs-migration-001-worker-receipt.json"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-001-worker-receipt.json",
+      "sha256": "d86d03ecffe2da15a8ff3ea757990165607e4e5095034b10d468fc870c3ae1d9",
+      "role": "prior exploration receipt"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-001-candidate.patch",
+      "sha256": "1d9ca0b51ae558b1d7a6e98642327ad5b45ddb56de80276dfbdec1135c6e02f0",
+      "role": "original candidate patch"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-closure-exclusive-review-activation-001-repaired-candidate.patch",
+      "sha256": "7ee0d0748a6e96854f09abb4924c69a498093ddb89553caa469b0866219a1d7f",
+      "role": "isolated candidate repair diff"
+    },
+    {
+      "path": ".de67/task-logs/r-maint-fs-migration-closure-exclusive-review-activation-001-candidate-full-postrepair.log",
+      "sha256": "f57d58c710b7f1b18baa61c42c7db15e2a767a992983ccf1a23ddafdd2c78692",
+      "role": "complete post-repair candidate suite log"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Prior exploration receipt and candidate artifacts preserved without replay or overwrite."
+  ],
+  "active_work": [
+    "Await authenticated exclusive disposition and regression reconciliation."
+  ],
+  "first_open_boundary": "Authenticated mutator/exclusive disposition remains pending; active method/FS/DFS adoption is not authorized.",
+  "narrow_queries": [
+    "Reconcile candidate and baseline full-suite failures before activation."
+  ],
+  "entrypoints": [
+    ".de67/task-logs/r-maint-fs-migration-001-worker-receipt.json",
+    ".de67/task-logs/r-maint-fs-migration-001-candidate.patch"
+  ],
+  "context_metrics": {}
+}
