@@ -1,0 +1,547 @@
+{
+  "ok": true,
+  "status": "partial",
+  "query": "source_summary is truncated at the 256-character camp-lead bound",
+  "filters": {},
+  "rows": [
+    {
+      "occurrence_id": "b429cf6fd4046acbc6b9c5b9652482a210fe0ba445aa17622d885f3ab78e715b",
+      "excerpt": "{\n  \"verdict\": \"inconclusive\",\n  \"smallest_supported_claim\": \"The bound native run reached the diagnostic terminal observation at game minute 8226 without a debug intervention or harness startup interruption; the focused feature claim is not accepted because the production diagnostic log records a refreshed smoke lead rather than unchanged deduplication.\",\n  \"causal_account\": \"The terminal native observation establishes the run boundary and clean gameplay path. The run-bound diagnostic artifact records the exact payload mismatch: persisted source_summary is truncated at the 256-character camp-lead bound while the fresh summary is full, causing the identical smoke source to enter the refresh path. This is a production persistence/comparison defect, not a harness transport failure. No gameplay fix was applied in this run.\",\n  \"citations\": [\n    {\n      \"citation_id\": \"J0740\",\n      \"meaning\": \"Native wait reached the requested terminal game minute and reports no debug intervention in the terminal surface.\",\n      \"checks\": {\n        \"result.stop_reason\": \"target_reached\",\n        \"result.terminal_observation.game_minutes\": 8226,\n        \"result.terminal_observation.surface.facts.last_debug_intervention\": \"none_this_run\"\n      }\n    }\n  ],\n  \"recommended_disposition\": \"repair\",\n  \"contradictions\": [\n    \"The second cadence was classified refreshed, not unchanged, so the R-033 dedup claim is not proven.\"\n  ],\n  \"remaining_unknowns\": [\n    \"Whether canonicalizing source_summary before camp_map_lead_payload_matches restores unchanged/hash-preserving behavior across aging and reentry.\",\n    \"Whether the source-summary bound should be increased or comparison should use the bounded persisted representation.\"\n  ],\n  \"evidence_ceiling\": \"focused\"\n}\n",
+      "match_reason": "exact text",
+      "score": 8.0,
+      "source": {
+        "length": 1768,
+        "offset": 0,
+        "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-v7-witness.json",
+        "sha256": "f38ff19529d4567d3cba9c13455aee4685f86c6ea3ed296c68bd4f2d1b22abb0"
+      },
+      "generation": 1,
+      "generation_status": "current",
+      "bindings": {
+        "run_id": null,
+        "actor_id": null,
+        "request_id": null
+      },
+      "freshness": "current"
+    }
+  ],
+  "matched": 487,
+  "scanned": 1108,
+  "unavailable": [],
+  "coverage": [
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/DFS.md",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 1,
+      "committed_bytes": 112,
+      "file_bytes": 112,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/WEC.md",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 2,
+      "committed_bytes": 19263,
+      "file_bytes": 19263,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/debug-findings.md",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 3,
+      "committed_bytes": 4754,
+      "file_bytes": 4754,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/worker-receipts/R-029-exploration-033.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 4,
+      "committed_bytes": 6959,
+      "file_bytes": 6959,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/worker-receipts/R-029-exploration-034.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 5,
+      "committed_bytes": 7648,
+      "file_bytes": 7648,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/worker-receipts/R-029-exploration-035.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 6,
+      "committed_bytes": 5256,
+      "file_bytes": 5256,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/worker-receipts/R-029-exploration-038.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 7,
+      "committed_bytes": 6004,
+      "file_bytes": 6004,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/worker-receipts/R-030-closure-006.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 8,
+      "committed_bytes": 3973,
+      "file_bytes": 3973,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/worker-receipts/R-030-closure-007.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 9,
+      "committed_bytes": 3173,
+      "file_bytes": 3173,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/worker-receipts/R-030-closure-008.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 10,
+      "committed_bytes": 2741,
+      "file_bytes": 2741,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/worker-receipts/R-030-exploration-002.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 11,
+      "committed_bytes": 4237,
+      "file_bytes": 4237,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-dedup-query-2.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 12,
+      "committed_bytes": 4583,
+      "file_bytes": 4583,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-dynamic-owner-journal-collect.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 13,
+      "committed_bytes": 4958,
+      "file_bytes": 4958,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-dynamic-reentry-gap-and-second-source.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 14,
+      "committed_bytes": 6404,
+      "file_bytes": 6404,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-v7-journal.full.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 15,
+      "committed_bytes": 508,
+      "file_bytes": 508,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-v7-witness.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 16,
+      "committed_bytes": 1768,
+      "file_bytes": 1768,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/work-ledger.md",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 17,
+      "committed_bytes": 108781,
+      "file_bytes": 108781,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/dev-harness/harness_runs/20260908_091611_2252aab1bd76422daba95e948f8282e8/debug.final.log",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 18,
+      "committed_bytes": 181941,
+      "file_bytes": 182217,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/dev-harness/harness_runs/20260908_091611_2252aab1bd76422daba95e948f8282e8/r008.production.channels.jsonl",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 19,
+      "committed_bytes": 9860,
+      "file_bytes": 9860,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/dev-harness/harness_runs/20260908_091611_2252aab1bd76422daba95e948f8282e8/semantic.native.log",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 20,
+      "committed_bytes": 221294,
+      "file_bytes": 221294,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/dev-harness/harness_runs/20260908_091611_2252aab1bd76422daba95e948f8282e8/transition.events.jsonl",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 21,
+      "committed_bytes": 103786,
+      "file_bytes": 103786,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-gatefix-wait.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 22,
+      "committed_bytes": 451,
+      "file_bytes": 451,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-gatefix-wait5.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 23,
+      "committed_bytes": 440,
+      "file_bytes": 440,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-gatefix-witness.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 24,
+      "committed_bytes": 3202,
+      "file_bytes": 3202,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-phase4-repair-query-current.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 25,
+      "committed_bytes": 598,
+      "file_bytes": 598,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-phase4-rev5-c-witness.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 26,
+      "committed_bytes": 1397,
+      "file_bytes": 1397,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-phase4-rev5-coordinator-brief-b.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 27,
+      "committed_bytes": 997,
+      "file_bytes": 997,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-phase4-rev5-coordinator-brief.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 28,
+      "committed_bytes": 858,
+      "file_bytes": 858,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-phase4-rev5-d-reentry-witness.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 29,
+      "committed_bytes": 1242,
+      "file_bytes": 1242,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-phase4-rev5-d-witness.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 30,
+      "committed_bytes": 1101,
+      "file_bytes": 1101,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-smoke-coordinator.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 31,
+      "committed_bytes": 585,
+      "file_bytes": 585,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-smoke-query.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 32,
+      "committed_bytes": 309,
+      "file_bytes": 309,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-smoke-witness.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 33,
+      "committed_bytes": 3208,
+      "file_bytes": 3208,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-smoke2-witness.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 34,
+      "committed_bytes": 3938,
+      "file_bytes": 3938,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-task-coordinator-brief-reentry-v2.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 35,
+      "committed_bytes": 1081,
+      "file_bytes": 1081,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-task-coordinator-brief-reentry-v3.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 36,
+      "committed_bytes": 1190,
+      "file_bytes": 1190,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-task-coordinator-brief-reentry.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 37,
+      "committed_bytes": 972,
+      "file_bytes": 972,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-task-coordinator-brief.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 38,
+      "committed_bytes": 990,
+      "file_bytes": 990,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-task-witness-charter.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 39,
+      "committed_bytes": 2276,
+      "file_bytes": 2276,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-wait-2min.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 40,
+      "committed_bytes": 465,
+      "file_bytes": 465,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-wait1.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 41,
+      "committed_bytes": 428,
+      "file_bytes": 428,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-wait5.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 42,
+      "committed_bytes": 432,
+      "file_bytes": 432,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-wait6.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 43,
+      "committed_bytes": 451,
+      "file_bytes": 451,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r033-witness.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 44,
+      "committed_bytes": 2633,
+      "file_bytes": 2633,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/evidence-search-evaluation-001/semantic-server.log",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 45,
+      "committed_bytes": 1394,
+      "file_bytes": 1394,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/evidence-search-index-001/focused-tests.log",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 46,
+      "committed_bytes": 123,
+      "file_bytes": 123,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/evidence-search-index-001/isolated-embedding-probe.log",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 47,
+      "committed_bytes": 3218,
+      "file_bytes": 3218,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/evidence-search-index-001/worker-receipt-draft.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 48,
+      "committed_bytes": 4381,
+      "file_bytes": 4381,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/evidence-search-index-001/worker-receipt-prepared.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 49,
+      "committed_bytes": 5434,
+      "file_bytes": 5434,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/evidence-search-query-001/live-semantic.log",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 50,
+      "committed_bytes": 2801,
+      "file_bytes": 2801,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/evidence-search-query-001/unittest.log",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 51,
+      "committed_bytes": 107,
+      "file_bytes": 107,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/evidence-search-query-001/worker-receipt.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 52,
+      "committed_bytes": 5651,
+      "file_bytes": 5651,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/result-reuse-001/policy-kernel-worker-packet.md",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 53,
+      "committed_bytes": 17317,
+      "file_bytes": 17317,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/result-reuse-001/verification.log",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 54,
+      "committed_bytes": 1703,
+      "file_bytes": 1703,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/build_logs/result-reuse-evidence-lifecycle-test.log",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 55,
+      "committed_bytes": 434,
+      "file_bytes": 434,
+      "generation_status": "current"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/scenarios/bandit.r033_registered_smoke_proximity_dedup_mcw.json",
+      "status": "current",
+      "last_error": null,
+      "active_generation": 56,
+      "committed_bytes": 8393,
+      "file_bytes": 8393,
+      "generation_status": "current"
+    }
+  ],
+  "semantic_backend": {
+    "requested": false,
+    "available": false,
+    "errors": []
+  },
+  "next_offset": 1,
+  "exact_fallback": {
+    "available": true,
+    "hint": "use text with filters for literal matching"
+  }
+}

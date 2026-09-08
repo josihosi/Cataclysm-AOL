@@ -20,6 +20,7 @@ class EvidenceSearchQueryTest(unittest.TestCase):
         rows = [
             {"event": "text", "run_id": "run-a", "actor_id": "player", "feature": "crafting", "text": "payment completed and peace held"},
             {"event": "text", "run_id": "run-b", "actor_id": "npc", "text": "payment failed; attack followed"},
+            {"event": "text", "run_id": "run-c", "feature": None, "text": "explicitly null feature marker"},
             {"event": "text", "run_id": "run-a", "text": "a quiet weather camp note"},
         ]
         self.path.write_bytes(b"".join((json.dumps(row) + "\n").encode() for row in rows))
@@ -42,7 +43,7 @@ class EvidenceSearchQueryTest(unittest.TestCase):
         self.path.write_bytes(self.path.read_bytes().replace(b"payment completed", b"tampered completed"))
         changed = self.search.query("payment", limit=5)
         self.assertEqual(changed["status"], "degraded")
-        self.assertEqual(len(changed["unavailable"]), 3)
+        self.assertEqual(len(changed["unavailable"]), 4)
 
     def test_exact_fallback_and_no_match(self):
         result = self.search.query("attack followed", filters={"run_id": "run-b"})
@@ -61,6 +62,20 @@ class EvidenceSearchQueryTest(unittest.TestCase):
         self.assertFalse(degraded["semantic_backend"]["available"])
         self.assertIn("embedding_backend_unavailable", degraded["semantic_backend"]["errors"])
 
+    def test_semantic_query_reads_the_bounded_occurrence_chunks(self):
+        class Backend:
+            backend_id = "fixture-semantic"
+            model_id, model_version = "m", "1"
+            def embed(self, values):
+                return [[1.0, float(len(value))] for value in values]
+
+        backend = Backend()
+        self.index.embed_missing(backend)
+        found = EvidenceSearch(self.index, backend).query("payment")
+        self.assertEqual(found["status"], "matched")
+        self.assertEqual(found["rows"][0]["match_reason"], "semantic similarity")
+        self.assertTrue(found["semantic_backend"]["available"])
+
     def test_original_record_filter_is_applied_after_occurrence_prefilter(self):
         found = self.search.query("payment", filters={"feature": "crafting"})
         self.assertEqual(found["status"], "matched")
@@ -70,6 +85,12 @@ class EvidenceSearchQueryTest(unittest.TestCase):
         absent = self.search.query("payment", filters={"feature": "missing"})
         self.assertEqual(absent["status"], "no_match")
         self.assertEqual(absent["matched"], 0)
+
+    def test_original_null_filter_does_not_match_an_absent_key(self):
+        found = self.search.query("feature marker", filters={"feature": None})
+        self.assertEqual(found["status"], "matched")
+        self.assertEqual(found["matched"], 1)
+        self.assertIn("explicitly null", found["rows"][0]["excerpt"])
 
 
 if __name__ == "__main__":

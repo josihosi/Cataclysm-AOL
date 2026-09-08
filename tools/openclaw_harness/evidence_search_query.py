@@ -55,11 +55,6 @@ class EvidenceSearch:
             except (RuntimeError, ValueError, KeyError, IndexError) as error:
                 semantic_errors.append(str(error))
         for row in rows:
-            vector_row = self.index.db.execute(
-                "SELECT embedding_json FROM chunks WHERE chunk_sha256=? AND model_id=? AND model_version=? AND chunking_version=?",
-                (row["chunk_sha256"], self.index.model_id, self.index.model_version,
-                 self.index.chunking_version)).fetchone()
-            row["embedding_json"] = vector_row["embedding_json"] if vector_row else None
             if any(row.get(key) != expected for key, expected in filters.items()
                    if key in _OCCURRENCE_FILTER_FIELDS):
                 continue
@@ -78,7 +73,9 @@ class EvidenceSearch:
                                       "error": original.get("error", "source_unavailable")})
                 continue
             record = original.get("record", {})
-            if any(record.get(key) != expected for key, expected in filters.items()
+            # A filter for null means an explicit JSON null.  It must not
+            # quietly match a producer that omitted the key altogether.
+            if any(key not in record or record[key] != expected for key, expected in filters.items()
                    if key not in _OCCURRENCE_FILTER_FIELDS):
                 continue
             body = row.get("event", "") + " " + json.dumps(record, sort_keys=True)
@@ -87,21 +84,35 @@ class EvidenceSearch:
             if self.backend and query_vector is not None:
                 # Stored vectors are intentionally optional.  Querying with a
                 # backend is allowed to fail into an explicit lexical result.
-                vector = row.get("embedding_json")
+                vectors: list[str] = []
                 try:
-                    if vector:
-                        candidate_vector = json.loads(vector)
+                    vector_rows = self.index.db.execute(
+                        "SELECT c.embedding_json FROM occurrence_chunks oc JOIN chunks c "
+                        "ON c.chunk_sha256=oc.chunk_sha256 AND c.model_id=oc.model_id "
+                        "AND c.model_version=oc.model_version AND c.chunking_version=oc.chunking_version "
+                        "WHERE oc.occurrence_id=? AND oc.model_id=? AND oc.model_version=? "
+                        "AND oc.chunking_version=? ORDER BY oc.chunk_ordinal",
+                        (row["occurrence_id"], self.index.model_id, self.index.model_version,
+                         self.index.chunking_version),
+                    ).fetchall()
+                    vectors = [item["embedding_json"] for item in vector_rows if item["embedding_json"]]
+                    if vectors:
                         norm = math.sqrt(sum(value * value for value in query_vector))
-                        candidate_norm = math.sqrt(sum(value * value for value in candidate_vector))
-                        score = (sum(a * b for a, b in zip(query_vector, candidate_vector)) /
-                                 (norm * candidate_norm)) if norm and candidate_norm else 0.0
+                        score = max(
+                            (sum(a * b for a, b in zip(query_vector, json.loads(vector))) /
+                             (norm * math.sqrt(sum(value * value for value in json.loads(vector)))))
+                            if norm and math.sqrt(sum(value * value for value in json.loads(vector))) else 0.0
+                            for vector in vectors
+                        )
+                        if len(vectors) != len(vector_rows):
+                            semantic_errors.append("indexed_embedding_missing")
                     else:
                         semantic_errors.append("indexed_embedding_missing")
                         score = float(overlap)
                 except (RuntimeError, ValueError, KeyError, IndexError) as error:
                     semantic_errors.append(str(error))
                     score = float(overlap)
-                reason = "semantic similarity" if vector and query_vector is not None else "term overlap fallback"
+                reason = "semantic similarity" if vectors and query_vector is not None else "term overlap fallback"
             else:
                 score, reason = float(overlap), ("exact text" if exact else "term overlap")
             if score <= 0 and not exact:

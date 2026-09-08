@@ -10,7 +10,7 @@ import unittest
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
 from cockpit_evidence import record_artifact
-from evidence_search_index import EvidenceIndex
+from evidence_search_index import EvidenceIndex, MAX_SEMANTIC_CHARS
 
 
 class EvidenceSearchIndexTest(unittest.TestCase):
@@ -120,7 +120,7 @@ class EvidenceSearchIndexTest(unittest.TestCase):
                     (str(second.resolve()), "b-replacement")}),
         )
 
-    def test_v1_generation_pointer_migration_repairs_cross_source_reference(self) -> None:
+    def test_v1_generation_pointer_migration_requires_explicit_rebuild(self) -> None:
         first = self.root / "a.jsonl"
         second = self.root / "b.jsonl"
         first.write_bytes(self.line(request_id="a"))
@@ -142,13 +142,23 @@ class EvidenceSearchIndexTest(unittest.TestCase):
 
         migrated = EvidenceIndex(self.root / "index.sqlite3", model_id="local-model", model_version="v1")
         self.addCleanup(migrated.close)
+        coverage = {row["path"]: row for row in migrated.coverage()}
+        self.assertEqual(coverage[str(second.resolve())]["status"], "rebuild_required")
+        # The unaffected source remains available; the mismatched source is
+        # quarantined until its actual original is read again.
+        self.assertEqual(
+            {(row["path"], row["request_id"]) for row in migrated.occurrences()},
+            {(str(first.resolve()), "a")},
+        )
+        rebuilt = migrated.rebuild_sources()
+        self.assertEqual([row["status"] for row in rebuilt], ["current", "current"])
         self.assertEqual(
             {(row["path"], row["request_id"]) for row in migrated.occurrences()},
             {(str(first.resolve()), "a"), (str(second.resolve()), "b")},
         )
         self.assertEqual(migrated.db.execute(
             "SELECT value FROM index_meta WHERE key='schema_version'"
-        ).fetchone()[0], "2")
+        ).fetchone()[0], "3")
 
     def test_duplicate_text_reuses_chunk_but_keeps_every_occurrence(self) -> None:
         repeated = self.line(request_id="same")
@@ -200,6 +210,31 @@ class EvidenceSearchIndexTest(unittest.TestCase):
         backend.model_version = "wrong"
         with self.assertRaisesRegex(ValueError, "model_identity"):
             index.embed_missing(backend)
+
+    def test_oversized_record_uses_bounded_embedding_chunks(self) -> None:
+        oversized = self.line(text="signal " + ("ordinary diagnostic context " * 600))
+        self.path.write_bytes(oversized)
+        index = self.index()
+        index.ingest(self.path)
+        chunks = index.db.execute(
+            "SELECT c.text FROM occurrence_chunks oc JOIN chunks c ON c.chunk_sha256=oc.chunk_sha256 "
+            "AND c.model_id=oc.model_id AND c.model_version=oc.model_version AND c.chunking_version=oc.chunking_version"
+        ).fetchall()
+        self.assertGreater(len(chunks), 1)
+        self.assertTrue(all(len(row["text"]) <= MAX_SEMANTIC_CHARS for row in chunks))
+
+        class Backend:
+            backend_id = "bounded-fixture"
+            model_id, model_version = "local-model", "v1"
+            def __init__(self): self.batches = []
+            def embed(self, values):
+                self.batches.append(values)
+                return [[1.0, float(len(value))] for value in values]
+
+        backend = Backend()
+        index.embed_missing(backend)
+        self.assertTrue(all(len(value) <= MAX_SEMANTIC_CHARS
+                            for batch in backend.batches for value in batch))
 
 
 if __name__ == "__main__":

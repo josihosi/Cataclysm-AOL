@@ -20,8 +20,12 @@ from cockpit_evidence import parse_record
 from evidence_events import envelopes, parse
 
 
-SCHEMA_VERSION = 2
-CHUNKING_VERSION = "complete-record-v1"
+SCHEMA_VERSION = 3
+# The embedding server receives bounded semantic passages, while every result
+# still expands from the complete source-bound record.  This keeps one large
+# JSON artifact from consuming an unbounded model context.
+CHUNKING_VERSION = "bounded-record-v2"
+MAX_SEMANTIC_CHARS = 2048
 DEFAULT_SUFFIXES = frozenset({".jsonl", ".log", ".md", ".json"})
 
 
@@ -79,6 +83,13 @@ class EvidenceIndex:
           run_id TEXT, actor_id TEXT, request_id TEXT, source_handle TEXT NOT NULL,
           UNIQUE(generation_id, offset, raw_sha256)
         );
+        CREATE TABLE IF NOT EXISTS occurrence_chunks (
+          occurrence_id TEXT NOT NULL REFERENCES occurrences(occurrence_id),
+          model_id TEXT NOT NULL, model_version TEXT NOT NULL,
+          chunking_version TEXT NOT NULL, chunk_ordinal INTEGER NOT NULL,
+          chunk_sha256 TEXT NOT NULL,
+          PRIMARY KEY(occurrence_id, model_id, model_version, chunking_version, chunk_ordinal)
+        );
         CREATE TABLE IF NOT EXISTS index_meta (key TEXT PRIMARY KEY, value TEXT NOT NULL);
         CREATE INDEX IF NOT EXISTS occurrences_generation ON occurrences(generation_id, ordinal);
         CREATE INDEX IF NOT EXISTS occurrences_event ON occurrences(event, run_id, actor_id);
@@ -100,6 +111,8 @@ class EvidenceIndex:
         ).fetchone()
         if previous is None or int(previous[0]) < 2:
             self._migrate_generation_references()
+        if previous is None or int(previous[0]) < 3:
+            self._assess_legacy_source_integrity()
         self.db.execute("INSERT OR REPLACE INTO index_meta(key, value) VALUES (?, ?)",
                         ("schema_version", str(SCHEMA_VERSION)))
         self.db.commit()
@@ -114,8 +127,12 @@ class EvidenceIndex:
         source is unavailable or an interrupted legacy write left no current
         status.  No occurrence or chunk data is rewritten.
         """
-        rows = self.db.execute("SELECT path, status FROM sources").fetchall()
+        rows = self.db.execute("SELECT path, active_generation, status FROM sources").fetchall()
         for row in rows:
+            previous_target = self.db.execute(
+                "SELECT path FROM generations WHERE generation_id=?",
+                (row["active_generation"],),
+            ).fetchone() if row["active_generation"] is not None else None
             generation = self.db.execute(
                 "SELECT generation_id FROM generations "
                 "WHERE path=? AND status='current' ORDER BY generation DESC, generation_id DESC LIMIT 1",
@@ -131,6 +148,38 @@ class EvidenceIndex:
                 self.db.execute(
                     "UPDATE sources SET active_generation=? WHERE path=?",
                     (generation["generation_id"], row["path"]),
+                )
+            # A cross-source v1 pointer is evidence that a retry may already
+            # have made another source stale.  Do not present that legacy
+            # state as repaired merely because the pointer can be corrected.
+            if previous_target is not None and previous_target["path"] != row["path"]:
+                self.db.execute(
+                    "UPDATE sources SET status='rebuild_required', "
+                    "last_error='legacy_generation_reference_mismatch_requires_rebuild' WHERE path=?",
+                    (row["path"],),
+                )
+
+    def _assess_legacy_source_integrity(self) -> None:
+        """Quarantine v1/v2 source state that cannot be safely repaired in place.
+
+        The old active-generation bug could stale one source while another was
+        refreshed.  A pointer repair alone cannot prove the retained rows are
+        the desired current originals, so affected sources stay visibly
+        degraded until :meth:`rebuild_sources` re-ingests their actual files.
+        """
+        rows = self.db.execute("SELECT path, active_generation, status FROM sources").fetchall()
+        for row in rows:
+            if row["status"] == "unavailable":
+                continue
+            generation = self.db.execute(
+                "SELECT path, status FROM generations WHERE generation_id=?",
+                (row["active_generation"],),
+            ).fetchone() if row["active_generation"] is not None else None
+            if generation is None or generation["path"] != row["path"] or generation["status"] != "current":
+                self.db.execute(
+                    "UPDATE sources SET status='rebuild_required', "
+                    "last_error='legacy_generation_state_requires_rebuild' WHERE path=?",
+                    (row["path"],),
                 )
 
     @staticmethod
@@ -203,23 +252,45 @@ class EvidenceIndex:
                 yield position, part
             position += len(part)
 
+    @staticmethod
+    def _semantic_chunks(text: str) -> Iterator[str]:
+        """Split only the embedding representation; source records stay whole."""
+        start = 0
+        while start < len(text):
+            end = min(len(text), start + MAX_SEMANTIC_CHARS)
+            if end < len(text):
+                # Prefer a nearby structural/word boundary, without allowing
+                # a pathological unbroken value to exceed the hard bound.
+                boundary = max(text.rfind("\n", start, end), text.rfind(" ", start, end))
+                if boundary > start + (MAX_SEMANTIC_CHARS // 2):
+                    end = boundary + 1
+            yield text[start:end]
+            start = end
+
     def _store_record(self, generation: sqlite3.Row, ordinal: int, offset: int, raw: bytes) -> None:
         record = parse(raw)
         source = {"path": generation["path"], "offset": offset, "length": len(raw),
                   "sha256": _sha(raw), "producer": Path(generation["path"]).name}
         event = next(envelopes(record, source))
         text = _line_text(raw)
-        chunk = _sha(text.encode("utf-8"))
-        self.db.execute("INSERT OR IGNORE INTO chunks(chunk_sha256, model_id, model_version, chunking_version, text) VALUES (?, ?, ?, ?, ?)",
-                        (chunk, self.model_id, self.model_version, self.chunking_version, text))
         occurrence = _sha((str(generation["generation_id"]) + ":" + str(offset) + ":" + source["sha256"]).encode())
+        chunks = list(self._semantic_chunks(text))
+        first_chunk = _sha(chunks[0].encode("utf-8")) if chunks else _sha(b"")
         handle = {key: source[key] for key in ("path", "offset", "length", "sha256")}
         self.db.execute("INSERT OR IGNORE INTO occurrences VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)",
                         (occurrence, generation["generation_id"], ordinal, generation["path"], offset, len(raw),
-                         source["sha256"], chunk, event.get("event_id"), event.get("event"), event.get("run_id"),
+                         source["sha256"], first_chunk, event.get("event_id"), event.get("event"), event.get("run_id"),
                          event.get("actor_id"), event.get("request_id"), json.dumps(handle, sort_keys=True)))
+        for chunk_ordinal, chunk_text in enumerate(chunks):
+            chunk = _sha(chunk_text.encode("utf-8"))
+            self.db.execute("INSERT OR IGNORE INTO chunks(chunk_sha256, model_id, model_version, chunking_version, text) VALUES (?, ?, ?, ?, ?)",
+                            (chunk, self.model_id, self.model_version, self.chunking_version, chunk_text))
+            self.db.execute("INSERT OR IGNORE INTO occurrence_chunks VALUES (?, ?, ?, ?, ?, ?)",
+                            (occurrence, self.model_id, self.model_version, self.chunking_version,
+                             chunk_ordinal, chunk))
 
-    def ingest(self, path: Path, *, fail_after_records: int | None = None) -> dict[str, Any]:
+    def ingest(self, path: Path, *, fail_after_records: int | None = None,
+               force_rebuild: bool = False) -> dict[str, Any]:
         """Reconcile one source. ``fail_after_records`` is a test-only crash seam."""
         path = str(Path(path).resolve())
         try:
@@ -234,6 +305,9 @@ class EvidenceIndex:
             generation = None
             if source and source["active_generation"]:
                 generation = self.db.execute("SELECT * FROM generations WHERE generation_id=?", (source["active_generation"],)).fetchone()
+            if force_rebuild and generation is not None:
+                self.db.execute("UPDATE generations SET status='stale' WHERE generation_id=?", (generation["generation_id"],))
+                generation = None
             if generation is None:
                 generation = self._new_generation(path, raw)
             elif len(raw) < generation["committed_bytes"] or _sha(raw[:generation["committed_bytes"]]) != generation["prefix_sha256"]:
@@ -263,6 +337,20 @@ class EvidenceIndex:
                 results.append(self.ingest(Path(row["path"])))
         return results
 
+    def rebuild_sources(self, paths: Iterable[Path] | None = None) -> list[dict[str, Any]]:
+        """Explicitly re-ingest originals after a quarantined legacy index.
+
+        This is intentionally opt-in: a schema migration identifies damaged
+        derived state but never claims an in-place pointer rewrite is a full
+        recovery.  Old generations remain historical/stale; active results
+        come only from freshly read originals.
+        """
+        if paths is None:
+            paths = [Path(row["path"]) for row in self.db.execute(
+                "SELECT path FROM sources WHERE status != 'unavailable' ORDER BY path"
+            )]
+        return [self.ingest(Path(path), force_rebuild=True) for path in sorted(paths, key=lambda item: str(item))]
+
     def rebuild_model_cache(self) -> dict[str, Any]:
         """Populate this model/chunking namespace from retained current originals.
 
@@ -288,7 +376,7 @@ class EvidenceIndex:
         return {"model_id": self.model_id, "model_version": self.model_version,
                 "chunking_version": self.chunking_version, "rebuilt_records": rebuilt}
 
-    def embed_missing(self, backend: Any, *, batch_size: int = 32) -> dict[str, Any]:
+    def embed_missing(self, backend: Any, *, batch_size: int = 4) -> dict[str, Any]:
         """Persist vectors once per content/model/chunker identity.
 
         Embedding happens after source publication, so a local model outage
@@ -319,9 +407,11 @@ class EvidenceIndex:
                 "backend": getattr(backend, "backend_id", type(backend).__name__)}
 
     def occurrences(self, *, include_stale: bool = False) -> list[dict[str, Any]]:
-        where = "" if include_stale else "WHERE g.status = 'current'"
-        rows = self.db.execute("SELECT o.*, g.generation, g.status AS generation_status FROM occurrences o JOIN generations g ON g.generation_id=o.generation_id " + where + " ORDER BY o.path, o.offset").fetchall()
+        if include_stale:
+            rows = self.db.execute("SELECT o.*, g.generation, g.status AS generation_status FROM occurrences o JOIN generations g ON g.generation_id=o.generation_id ORDER BY o.path, o.offset").fetchall()
+        else:
+            rows = self.db.execute("SELECT o.*, g.generation, g.status AS generation_status FROM occurrences o JOIN generations g ON g.generation_id=o.generation_id JOIN sources s ON s.path=g.path AND s.active_generation=g.generation_id WHERE g.status='current' AND s.status='current' ORDER BY o.path, o.offset").fetchall()
         return [dict(row) | {"source_handle": json.loads(row["source_handle"])} for row in rows]
 
     def coverage(self) -> list[dict[str, Any]]:
-        return [dict(row) for row in self.db.execute("SELECT s.path, s.status, s.active_generation, g.committed_bytes, g.file_bytes, g.status AS generation_status FROM sources s LEFT JOIN generations g ON g.generation_id=s.active_generation ORDER BY s.path")]
+        return [dict(row) for row in self.db.execute("SELECT s.path, s.status, s.last_error, s.active_generation, g.committed_bytes, g.file_bytes, g.status AS generation_status FROM sources s LEFT JOIN generations g ON g.generation_id=s.active_generation ORDER BY s.path")]

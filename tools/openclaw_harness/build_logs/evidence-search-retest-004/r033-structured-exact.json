@@ -1,0 +1,70 @@
+{
+  "elapsed_seconds": 0.0077343329903669655,
+  "result": {
+    "contains": "source_summary",
+    "diagnostics": "Unparsed/unscoped records are counted, not attributed to a run. Query event=unparsed or event=text to inspect them; raw files are unchanged.",
+    "filters": {},
+    "matched": 2,
+    "ok": true,
+    "page": {
+      "limit": 8,
+      "next_offset": null,
+      "offset": 0,
+      "omitted_matches": 0
+    },
+    "records_without_run_id": 25,
+    "retrieval": "record-artifact --path PATH --offset OFFSET --length LENGTH --sha256 SHA256 [--select FIELD]",
+    "rows": [
+      {
+        "artifact": {
+          "length": 475,
+          "offset": 359,
+          "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-v7-witness.json",
+          "sha256": "01b9b87a27b6580a7322d8c7e1e697ec82255373ffb199ad0e5e614bd008f985"
+        },
+        "record": {
+          "causal_account": {
+            "error": "field_unavailable"
+          },
+          "recommended_disposition": {
+            "error": "field_unavailable"
+          },
+          "verdict": {
+            "error": "field_unavailable"
+          }
+        }
+      },
+      {
+        "artifact": {
+          "length": 152,
+          "offset": 1455,
+          "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-v7-witness.json",
+          "sha256": "da299443e1a8d695f342b5ff80a9802f25bfc6aaaa5e2b061998d0ff0e5ddbfe"
+        },
+        "record": {
+          "causal_account": {
+            "error": "field_unavailable"
+          },
+          "recommended_disposition": {
+            "error": "field_unavailable"
+          },
+          "verdict": {
+            "error": "field_unavailable"
+          }
+        }
+      }
+    ],
+    "scanned": 25,
+    "snapshot": "16e338de734b6b445b15f87c0147c75859c1786a12078844536a526862797f7a",
+    "snapshot_paging": "Repeat this query with --snapshot HASH and --offset next_offset. Appends are excluded; replaced source prefixes fail hash verification.",
+    "source_bytes": 1768,
+    "source_count": 1,
+    "sources_on_page": [
+      {
+        "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-v7-witness.json",
+        "snapshot_bytes": 1768
+      }
+    ],
+    "unparsed_records": 3
+  }
+}

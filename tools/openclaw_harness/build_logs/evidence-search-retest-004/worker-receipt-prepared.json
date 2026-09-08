@@ -1,0 +1,127 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-EVIDENCE-SEARCH-revise-retest-004",
+  "claim_id": "R-MAINT-EVIDENCE-SEARCH",
+  "worker_id": "01a08283-b818-7e93-be52-d4fe990668cf",
+  "disposition": "completed",
+  "verdict": "revise_and_retest_incomplete_semantic_runtime",
+  "outcome": "Complete the owner-approved evidence-search revision: distinguish absent original keys from explicit null, quarantine legacy cross-source generation corruption pending verified re-ingestion, and bound semantic passages while retaining complete verified originals.",
+  "summary": "The revised index passes 34 focused tests. A fresh 56-source corpus rebuild created 1,108 current occurrences and 1,328 bounded semantic passages, with no passage above 2,048 characters. It correctly retains a visible 276-byte incomplete log tail, and lexical plus literal queries ranked the exact R-033 source first and expanded its SHA-bound original. Semantic usefulness remains unproved: the formerly used local llama.cpp executable is absent and the already-running shared Ollama service returns HTTP 501 for /api/embed because it was not started with embeddings. No service, package, model, gameplay run, broker, or retained session was changed.",
+  "material_changes": [
+    "Schema v3 adds occurrence-to-bounded-semantic-chunk mappings under chunking_version bounded-record-v2; each chunk is at most 2,048 characters and complete source records remain the expansion/provenance boundary.",
+    "Semantic query ranks the best current occurrence chunk rather than a single unbounded record vector.",
+    "Original-record filters now distinguish an omitted key from an explicit JSON null.",
+    "Legacy cross-source generation-pointer/state inconsistencies become rebuild_required and are excluded from current results until explicit rebuild_sources() re-ingests originals."
+  ],
+  "tests": [
+    "PYTHONPATH=tools/openclaw_harness python3.14 -m unittest evidence_search_index_test evidence_search_query_test cockpit_evidence_test evidence_display_test: 34 passed.",
+    "python3.14 -m py_compile evidence_search_index.py evidence_search_query.py: passed.",
+    "git diff --check: passed.",
+    "Fresh corpus cold reconcile: 56 registered sources, 1,108 occurrences, 1,328 semantic chunks, 0.299 seconds; incremental reconcile inserted 0 records in 0.0044 seconds.",
+    "Real lexical and literal R-033 queries returned the SHA-bound r033-v7-witness.json first; verified structured expansion returned verdict=inconclusive, recommended_disposition=repair, and the exact 256-character causal account."
+  ],
+  "live_actions": [
+    "No game, broker, embedding server, or helper process was launched.",
+    "Read-only local runtime checks found the retained Gemma GGUF and a currently running Ollama service, but no llama-server executable at the prior Homebrew route. A read-only POST to Ollama /api/embed returned HTTP 501: server does not support embeddings and would need --embeddings at start; it was not restarted or altered."
+  ],
+  "evidence_ceiling": [
+    "Repairs, exact/structured retrieval, source identity, bounded chunk construction, visible partial coverage, and cold/incremental ingestion cost are proved.",
+    "No real semantic embedding, semantic rank comparison, semantic relevance/miss rate, embedding latency, embedding storage cost, token savings, or default-adoption value is proved in this environment.",
+    "The refreshed corpus is not byte-identical to the earlier evaluation manifest: current DFS.md and work-ledger.md hashes differ; results retain current source/occurrence handles rather than claiming snapshot equivalence.",
+    "One registered debug.final.log ends in a 276-byte incomplete tail, so all real query results correctly report partial coverage."
+  ],
+  "bindings": {
+    "assignment_packet_sha256": "6c119554f7ed637ad8bb2aac0869c609da272fb77a8c11095f1c4160d7551533",
+    "chunking_version": "bounded-record-v2",
+    "corpus_manifest": ".userdata/evidence-search-evaluation-001/corpus-manifest.json",
+    "fresh_index": ".userdata/evidence-search-retest-004/index.sqlite3",
+    "model_id": "gemma-local",
+    "model_version": "sha256-fa401b55b07ee70a54c6dae3903c783a6e65064312529ea57175cb5f8dec6634"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/evidence_search_index.py",
+      "sha256": "321ba514ac2cf70013080fa9f799317888cd7012682559965132257c28a61cc9",
+      "role": "schema-v3 bounded chunking and explicit legacy rebuild implementation"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_query.py",
+      "sha256": "4c842556cbaa87040e9b810cdefbb99f2237e85d58a00da66ed91ff85f1ec4b7",
+      "role": "explicit-null filtering and best-chunk semantic ranking"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_index_test.py",
+      "sha256": "a8d5adf4859bc38b266d5345c5d42d4b182391997a3939277974c95350ee7f4f",
+      "role": "legacy recovery and oversized-record regression coverage"
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_search_query_test.py",
+      "sha256": "2ca9754a7a8485e2a87201d2a5277e76e29d6bcfb015c9510d9d1616fb29039d",
+      "role": "null-presence and bounded semantic retrieval regression coverage"
+    },
+    {
+      "path": "tools/openclaw_harness/build_logs/evidence-search-retest-004/focused-tests.log",
+      "sha256": "749187a823c6280a3e66e2fe61650c03ec06b2d45a78c03aaeb51c7c43041d3f",
+      "role": "34-test focused output"
+    },
+    {
+      "path": "tools/openclaw_harness/build_logs/evidence-search-retest-004/corpus-index.log",
+      "sha256": "832d365e967eb08fa102637027457afedbd2a1bdb9e2cea37275564ae1418547",
+      "role": "fresh corpus cold and incremental ingestion metrics"
+    },
+    {
+      "path": "tools/openclaw_harness/build_logs/evidence-search-retest-004/r033-query-summary.json",
+      "sha256": "e736cf14456dbc2af40f2041166d1d40704212e22823f59eee26440c0fe45d06",
+      "role": "real-corpus lexical relevance and partial-coverage summary"
+    },
+    {
+      "path": "tools/openclaw_harness/build_logs/evidence-search-retest-004/r033-literal-query-summary.json",
+      "sha256": "c6b8913a17e560192ec2b9a9d199dbd4535ceddc3b2744646ee659d373dd4b36",
+      "role": "literal query interpretation and exact-fallback summary"
+    },
+    {
+      "path": "tools/openclaw_harness/build_logs/evidence-search-retest-004/r033-verified-structured-expansion.json",
+      "sha256": "f9a5d70d2e5920c97c817151ea340f47673537565a476ef13bb6b7a1690444fc",
+      "role": "verified original structured expansion"
+    },
+    {
+      "path": ".userdata/evidence-search-retest-004/index.sqlite3",
+      "sha256": "7a4ddd492973be1927cc054e1a5eb6c3cbeb34f75e235adb3c909edaf29cf5d1",
+      "role": "fresh derived source-bound corpus index"
+    }
+  ],
+  "first_divergence": {
+    "class": "missing_authorized_local_semantic_runtime",
+    "summary": "The prior local llama.cpp runtime path is absent; the only running local service explicitly refuses embeddings. Bounded records remove the earlier oversized-record blocker, but no authorized installed executable can now evaluate the retained Gemma model."
+  },
+  "accepted_no_replay": [
+    "No accepted gameplay was replayed or used as retrieval credit.",
+    "Default adoption, scope expansion, spending, and shared-service changes remain unapproved."
+  ],
+  "active_work": [
+    "Await an authorized existing isolated embedding runtime before semantic usefulness can be retested."
+  ],
+  "first_open_boundary": "Restore or point the task at an already-authorized isolated llama.cpp embedding executable without installing packages or altering shared Ollama, then run embed_missing() on the fresh derived index and repeat the two R-033 queries against their exact/structured baselines. Record semantic relevance/misses, embedding cold/incremental time, storage, and final runtime identity before any keep/revise/retire adoption decision.",
+  "narrow_queries": [
+    "Use the existing fresh index with model gemma-local/version sha256-fa401b55... after an isolated embedding server is made available; call rebuild_model_cache only if its model/chunk namespace changes, then embed_missing and repeat the R-033 queries.",
+    "Inspect coverage-details.json before treating a partial result as corpus-complete; the debug.final.log tail remains intentionally unindexed until a newline-complete record exists."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/evidence_search_index.py::EvidenceIndex",
+    "tools/openclaw_harness/evidence_search_query.py::EvidenceSearch",
+    "tools/openclaw_harness/cockpit_evidence.py::record_artifact"
+  ],
+  "context_metrics": {
+    "cold_reconcile_seconds": 0.2991703749867156,
+    "complete_sources": 55,
+    "current_occurrences": 1108,
+    "database_bytes": 3207168,
+    "incremental_reconcile_seconds": 0.0044180830009281635,
+    "max_semantic_chars": 2048,
+    "partial_sources": 1,
+    "registered_sources": 56,
+    "semantic_chunks": 1328
+  }
+}

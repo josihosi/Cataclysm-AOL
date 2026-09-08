@@ -1,0 +1,31 @@
+{
+  "coverage": {
+    "incomplete": [
+      {
+        "committed_bytes": 181941,
+        "file_bytes": 182217,
+        "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/dev-harness/harness_runs/20260908_091611_2252aab1bd76422daba95e948f8282e8/debug.final.log"
+      }
+    ],
+    "source_count": 56
+  },
+  "lexical": {
+    "first_reason": "term overlap",
+    "first_score": 7.0,
+    "first_source": {
+      "length": 1768,
+      "offset": 0,
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-v7-witness.json",
+      "sha256": "f38ff19529d4567d3cba9c13455aee4685f86c6ea3ed296c68bd4f2d1b22abb0"
+    },
+    "matched": 174,
+    "scanned": 1108,
+    "verified_context_rows": 1
+  },
+  "semantic_surface": {
+    "available": false,
+    "errors": [],
+    "requested": false,
+    "status": "partial"
+  }
+}

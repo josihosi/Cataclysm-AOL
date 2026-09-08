@@ -1,0 +1,19 @@
+{
+  "exact_fallback": {
+    "available": true,
+    "hint": "use text with filters for literal matching"
+  },
+  "first": {
+    "match_reason": "exact text",
+    "score": 8.0,
+    "source": {
+      "length": 1768,
+      "offset": 0,
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/r033-v7-witness.json",
+      "sha256": "f38ff19529d4567d3cba9c13455aee4685f86c6ea3ed296c68bd4f2d1b22abb0"
+    }
+  },
+  "matched": 487,
+  "query": "source_summary is truncated at the 256-character camp-lead bound",
+  "status": "partial"
+}
