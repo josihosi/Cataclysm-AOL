@@ -22,6 +22,21 @@ This refreeze replaces its stale code map and separates fresh proof obligations 
 - `[ ] 🔴 R-...` records missing, wrong, or unproved behavior at this refreeze. A proof gap can require
   testing without any gameplay implementation change.
 
+<!-- DE67:DFS-SLICE:BEGIN id=DE67-MAINT-CADENCE-S001 claim=DE67-MAINT-CADENCE -->
+
+### Coordinator review cadence maintenance
+
+- [ ] DE67-MAINT-CADENCE — Temporarily schedule periodic evidence-led workflow review after an
+  inclusive 10–20 completed worker attempts. Preserve the current cycle's already-counted progress,
+  count each terminal attempt once, persist the schedule across coordinator restart, and leave active
+  workers and product-claim acceptance unchanged. The next review chooses a useful improvement from
+  current evidence; legacy random-lane metadata does not prescribe the inquiry.
+- Proof: focused boundary and counting tests pass, the current lineage cycle retains elapsed progress
+  while adopting the shorter interval, and a fresh status/restart observation reports the effective
+  interval and next due count without interrupting workers.
+
+<!-- DE67:DFS-SLICE:END id=DE67-MAINT-CADENCE-S001 claim=DE67-MAINT-CADENCE -->
+
 ## Functional contract
 
 CDDA is the semantic authority. The current input owner publishes the semantic surface, surface
