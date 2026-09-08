@@ -1084,6 +1084,69 @@ TEST_CASE("camp_patrol_empty_cache_revives_when_worker_is_enabled",
   CHECK(enabled_plan->roster == std::vector<character_id>({worker.getID()}));
 }
 
+TEST_CASE( "camp_patrol_cached_view_is_read_only_for_unavailable_and_stale_cache",
+           "[camp][patrol]" )
+{
+  restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+  clear_avatar();
+  clear_map_without_vision();
+  clear_creatures();
+  zone_manager::get_manager().clear();
+  on_out_of_scope clear_zones( []() { zone_manager::get_manager().clear(); } );
+
+  map &here = get_map();
+  const tripoint_abs_ms patrol_abs = here.get_abs( tripoint_bub_ms{ 10, 10, 0 } );
+  create_tile_zone( "Patrol Post", zone_type_CAMP_PATROL, patrol_abs );
+
+  basecamp test_camp( "Patrol Camp", project_to<coords::omt>( patrol_abs ) );
+  test_camp.set_owner( your_fac );
+  test_camp.set_bb_pos( patrol_abs );
+  npc &worker = spawn_npc( tripoint_bub_ms{ 6, 5, 0 }.xy(), "thug" );
+  worker.set_mission( NPC_MISSION_CAMP_RESIDENT );
+  static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+  REQUIRE( worker.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+  test_camp.add_assignee( worker.getID() );
+
+  calendar::turn = sunrise( calendar::turn_zero ) + 2_hours;
+  const npc_mission worker_mission = worker.mission;
+  const auto worker_guard_post = worker.get_guard_post();
+  const auto worker_move_target = worker.goto_to_this_pos;
+  const time_point observation_turn = calendar::turn;
+
+  const camp_patrol_shift_cache_view unavailable =
+      test_camp.get_cached_current_patrol_shift_plan();
+  CHECK( unavailable.freshness == camp_patrol_cache_freshness::unavailable );
+  CHECK( unavailable.plan == nullptr );
+  CHECK( calendar::turn == observation_turn );
+  CHECK( worker.mission == worker_mission );
+  CHECK( worker.get_guard_post() == worker_guard_post );
+  CHECK( worker.goto_to_this_pos == worker_move_target );
+  CHECK_FALSE( worker.has_camp_patrol_order() );
+
+  const camp_patrol_shift_plan *const refreshed = test_camp.get_current_patrol_shift_plan();
+  REQUIRE( refreshed != nullptr );
+  const std::vector<character_id> cached_roster = refreshed->roster;
+  const camp_patrol_guard_plan cached_active_guard = refreshed->active_guards.front();
+  calendar::turn = sunset( calendar::turn_zero ) + 2_hours;
+  const time_point stale_observation_turn = calendar::turn;
+
+  const camp_patrol_shift_cache_view stale = test_camp.get_cached_current_patrol_shift_plan();
+  REQUIRE( stale.plan != nullptr );
+  CHECK( stale.freshness == camp_patrol_cache_freshness::stale );
+  CHECK( stale.plan->roster == cached_roster );
+  REQUIRE( stale.plan->active_guards.size() == 1 );
+  CHECK( stale.plan->active_guards.front().worker_id == cached_active_guard.worker_id );
+  CHECK( stale.plan->active_guards.front().cluster_indices == cached_active_guard.cluster_indices );
+  CHECK( stale.plan->active_guards.front().duty_percent == cached_active_guard.duty_percent );
+  CHECK( stale.plan->active_guards.front().duty_slot == cached_active_guard.duty_slot );
+  CHECK( stale.plan->active_guards.front().duty_slots == cached_active_guard.duty_slots );
+  CHECK( calendar::turn == stale_observation_turn );
+  CHECK( worker.mission == worker_mission );
+  CHECK( worker.get_guard_post() == worker_guard_post );
+  CHECK( worker.goto_to_this_pos == worker_move_target );
+  CHECK_FALSE( worker.has_camp_patrol_order() );
+}
+
 TEST_CASE( "camp_patrol_roster_backfills_ineligible_manual_guards",
            "[camp][patrol]" )
 {

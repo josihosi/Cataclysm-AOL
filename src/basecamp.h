@@ -280,6 +280,19 @@ struct camp_patrol_shift_plan {
     std::vector<camp_patrol_cluster_plan> clusters;
 };
 
+// A diagnostic-only view of the already-materialized patrol cache.  Unlike the
+// gameplay accessor below, this never validates assignees or rebuilds the plan.
+enum class camp_patrol_cache_freshness : int {
+    unavailable = 0,
+    stale,
+    current,
+};
+
+struct camp_patrol_shift_cache_view {
+    const camp_patrol_shift_plan *plan = nullptr;
+    camp_patrol_cache_freshness freshness = camp_patrol_cache_freshness::unavailable;
+};
+
 struct camp_patrol_plan {
     camp_patrol_shift_plan day;
     camp_patrol_shift_plan night;
@@ -923,6 +936,7 @@ public:
   }
   bool has_locker_zone() const;
   bool has_patrol_zone() const;
+  camp_patrol_shift_cache_view get_cached_current_patrol_shift_plan() const;
   const camp_patrol_shift_plan *get_current_patrol_shift_plan();
   std::optional<camp_patrol_guard_runtime> get_current_patrol_runtime(
       const character_id &worker_id, const time_point &turn = calendar::turn);

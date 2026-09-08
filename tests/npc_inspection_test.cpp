@@ -5,9 +5,12 @@
 
 #include "avatar.h"
 #include "bodypart.h"
+#include "basecamp.h"
 #include "calendar.h"
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
 #include "character_id.h"
+#include "clzones.h"
 #include "game.h"
 #include "imgui/imgui.h"
 #include "item.h"
@@ -18,6 +21,7 @@
 #include "map_helpers.h"
 #include "npc.h"
 #include "npc_inspection.h"
+#include "overmapbuffer.h"
 #include "player_helpers.h"
 #include "pocket_type.h"
 #include "semantic_surface.h"
@@ -49,6 +53,78 @@ class inspection_imgui_context
         bool owns;
 };
 } // namespace
+
+TEST_CASE( "NPC inspection reads patrol cache without initializing or refreshing it",
+           "[semantic_surface][npc_inspection][camp][patrol]" )
+{
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    clear_avatar();
+    clear_map();
+    clear_creatures();
+    zone_manager::get_manager().clear();
+    on_out_of_scope clear_zones( []() { zone_manager::get_manager().clear(); } );
+
+    map &here = get_map();
+    const tripoint_abs_ms patrol_abs = here.get_abs( tripoint_bub_ms{ 10, 10, 0 } );
+    static const zone_type_id zone_type_CAMP_PATROL( "CAMP_PATROL" );
+    zone_manager::get_manager().add( "Patrol Post", zone_type_CAMP_PATROL, your_fac, false,
+                                     true, patrol_abs, patrol_abs, nullptr, false );
+    const tripoint_abs_omt camp_omt = project_to<coords::omt>( patrol_abs );
+    here.add_camp( camp_omt, "faction_camp" );
+    const std::optional<basecamp *> found_camp = overmap_buffer.find_camp( camp_omt.xy() );
+    REQUIRE( found_camp );
+    basecamp &camp = **found_camp;
+    camp.set_owner( your_fac );
+    camp.set_bb_pos( patrol_abs );
+
+    npc &actor = spawn_npc( tripoint_bub_ms{ 6, 5, 0 }.xy(), "thug" );
+    actor.set_mission( NPC_MISSION_CAMP_RESIDENT );
+    actor.assigned_camp = camp_omt;
+    static const activity_id ACT_CAMP_PATROL( "ACT_CAMP_PATROL" );
+    REQUIRE( actor.job.set_task_priority( ACT_CAMP_PATROL, 9 ) );
+    camp.add_assignee( actor.getID() );
+    calendar::turn = sunrise( calendar::turn_zero ) + 2_hours;
+
+    const npc_mission mission_before = actor.mission;
+    const auto guard_post_before = actor.get_guard_post();
+    const auto move_target_before = actor.goto_to_this_pos;
+    const time_point unavailable_observation_turn = calendar::turn;
+    CHECK( camp.get_cached_current_patrol_shift_plan().freshness ==
+           camp_patrol_cache_freshness::unavailable );
+    const auto unavailable_facts = npc_inspection_payload( actor, get_avatar() );
+    const JsonObject unavailable =
+        json_loader::from_string( unavailable_facts.at( "diagnostic_camp_patrol" ) );
+    unavailable.allow_omitted_members();
+    CHECK( unavailable.get_string( "shift_cache_state" ) == "unavailable" );
+    CHECK_FALSE( unavailable.get_bool( "shift_cache_available" ) );
+    CHECK( camp.get_cached_current_patrol_shift_plan().freshness ==
+           camp_patrol_cache_freshness::unavailable );
+    CHECK( calendar::turn == unavailable_observation_turn );
+    CHECK( actor.mission == mission_before );
+    CHECK( actor.get_guard_post() == guard_post_before );
+    CHECK( actor.goto_to_this_pos == move_target_before );
+    CHECK_FALSE( actor.has_camp_patrol_order() );
+
+    const camp_patrol_shift_plan *const refreshed = camp.get_current_patrol_shift_plan();
+    REQUIRE( refreshed != nullptr );
+    const std::vector<character_id> cached_roster = refreshed->roster;
+    calendar::turn = sunset( calendar::turn_zero ) + 2_hours;
+    const time_point stale_observation_turn = calendar::turn;
+    const auto stale_facts = npc_inspection_payload( actor, get_avatar() );
+    const JsonObject stale = json_loader::from_string( stale_facts.at( "diagnostic_camp_patrol" ) );
+    stale.allow_omitted_members();
+    CHECK( stale.get_string( "shift_cache_state" ) == "stale" );
+    CHECK( stale.get_string( "runtime_state" ) == "stale" );
+    const camp_patrol_shift_cache_view stale_view = camp.get_cached_current_patrol_shift_plan();
+    REQUIRE( stale_view.plan != nullptr );
+    CHECK( stale_view.freshness == camp_patrol_cache_freshness::stale );
+    CHECK( stale_view.plan->roster == cached_roster );
+    CHECK( calendar::turn == stale_observation_turn );
+    CHECK( actor.mission == mission_before );
+    CHECK( actor.get_guard_post() == guard_post_before );
+    CHECK( actor.goto_to_this_pos == move_target_before );
+    CHECK_FALSE( actor.has_camp_patrol_order() );
+}
 
 TEST_CASE( "NPC inspection retains exact health orders and every stored item UID",
            "[semantic_surface][npc_inspection]" )

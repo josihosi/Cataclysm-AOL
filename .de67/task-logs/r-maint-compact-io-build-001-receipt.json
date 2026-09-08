@@ -1,0 +1,64 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-MAINT-COMPACT-IO-build-001",
+  "claim_id": "R-MAINT-COMPACT-IO",
+  "lineage_id": "semantic-surface-cockpit",
+  "worker_id": "01a08105-29e2-74e2-a8f3-7269a0b9fe36",
+  "disposition": "completed",
+  "outcome": "Retain complete source-bound macOS build output and expose compact, exact success and failure evidence.",
+  "verdict": "The helper now preserves complete version and build output, reports phase and exit status with exact log handles, and keeps the existing renderer, build-prefix, and fail-closed source-binding behavior.",
+  "summary": "A source-bound build now writes separate stdout, stderr, and combined logs for both version and build phases. Failures return a compact structured diagnostic with the failing phase, exit status, and exact full-log handles. Successful receipts carry the same log handles. Controlled success, version-failure, and compiler/linker-failure fixtures all pass.",
+  "first_divergence": null,
+  "first_open_boundary": "The build-output assignment is complete. The separate native-view and observation-workbench assignments remain open under R-MAINT-COMPACT-IO.",
+  "material_changes": [
+    "Updated tools/openclaw_harness/build_source_bound_macos.py to retain complete phase output and emit structured compact results.",
+    "Added tools/openclaw_harness/build_source_bound_macos_test.py with controlled success and failure fixtures."
+  ],
+  "journal_entries": [],
+  "tests": [
+    "python3 -m unittest build_source_bound_macos_test.py passed 3 tests.",
+    "python3 -m py_compile passed for the helper and its focused test.",
+    "git diff --check passed."
+  ],
+  "live_actions": [
+    "No game, broker, shared executable, helper agent, or persistent runtime process was launched.",
+    "Controlled test fixtures used temporary directories and cleaned them on exit.",
+    "OCR and gameplay replay were not used and received no proof credit."
+  ],
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/build_source_bound_macos.py",
+      "role": "Implemented build-output retention and compact result surface.",
+      "sha256": "19ae7344624b0b22c679a6404d5df5350eabf579c48d45a8fcb1c4666855f0eb"
+    },
+    {
+      "path": "tools/openclaw_harness/build_source_bound_macos_test.py",
+      "role": "Focused controlled-fixture verification.",
+      "sha256": "8b738d217275d85b212d38cd428c7ed308514c17eede10e45b63722a6f3cedd9"
+    }
+  ],
+  "bindings": {
+    "task_packet_sha256": "c4fcd549f2ab872829638c4930b6a19b4b2e2be6a43665b32f09c8313a6d81ad"
+  },
+  "evidence_ceiling": [
+    "Controlled subprocess fixtures prove helper behavior without performing a fresh full game build.",
+    "This result proves build evidence handling only and provides no gameplay acceptance.",
+    "One unrelated existing r008_fire_signal_family_test failure was observed by the worker and does not contradict the focused passing tests."
+  ],
+  "accepted_no_replay": [
+    "Do not repeat the controlled build-helper fixtures as a substitute for the remaining native-view or observation-workbench outcomes."
+  ],
+  "active_work": [
+    "Deliver the read-only Patrol native view prerequisite.",
+    "Deliver the selected native-state comparison and request-result workbench."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/build_source_bound_macos.py",
+    "tools/openclaw_harness/build_source_bound_macos_test.py"
+  ],
+  "narrow_queries": [
+    "Run python3 -m unittest build_source_bound_macos_test.py from tools/openclaw_harness.",
+    "Inspect run_logged and emit_failure in tools/openclaw_harness/build_source_bound_macos.py."
+  ],
+  "context_metrics": {}
+}

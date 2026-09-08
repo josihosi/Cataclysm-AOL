@@ -320,7 +320,7 @@ std::map<std::string, std::string> npc_inspection_payload( npc &actor, avatar &v
             } ) },
         { "diagnostic_camp_patrol", json_text( [&]( JsonOut & json ) {
                 json.start_object();
-                json.member( "provenance", "Current assigned-camp patrol shift-cache diagnostic; it may refresh the camp plan but does not synchronize or mutate this actor's patrol order." );
+                json.member( "provenance", "Read-only assigned-camp patrol shift-cache diagnostic; it never refreshes the plan or synchronizes this actor's patrol order." );
                 const std::optional<basecamp *> camp = actor.assigned_camp ?
                                                      overmap_buffer.find_camp( actor.assigned_camp->xy() ) :
                                                      std::nullopt;
@@ -332,7 +332,14 @@ std::map<std::string, std::string> npc_inspection_payload( npc &actor, avatar &v
                 basecamp *const current_camp = *camp;
                 json.member( "camp_site", current_camp->camp_omt_pos() );
                 json.member( "patrol_zone_defined", current_camp->has_patrol_zone() );
-                const camp_patrol_shift_plan *const plan = current_camp->get_current_patrol_shift_plan();
+                const camp_patrol_shift_cache_view cached_plan =
+                    current_camp->get_cached_current_patrol_shift_plan();
+                const char *const cache_state = cached_plan.freshness ==
+                                                camp_patrol_cache_freshness::current ? "current" :
+                                                cached_plan.freshness ==
+                                                camp_patrol_cache_freshness::stale ? "stale" : "unavailable";
+                json.member( "shift_cache_state", cache_state );
+                const camp_patrol_shift_plan *const plan = cached_plan.plan;
                 json.member( "shift_cache_available", plan != nullptr );
                 if( plan == nullptr ) {
                     json.end_object();
@@ -352,8 +359,14 @@ std::map<std::string, std::string> npc_inspection_payload( npc &actor, avatar &v
                 json.member( "actor_active_guard", active != plan->active_guards.end() );
                 json.member( "actor_reserve_guard", std::find( plan->reserve_guards.begin(),
                              plan->reserve_guards.end(), actor.getID() ) != plan->reserve_guards.end() );
+                if( cached_plan.freshness != camp_patrol_cache_freshness::current ) {
+                    json.member( "runtime_state", "stale" );
+                    json.end_object();
+                    return;
+                }
                 const std::optional<camp_patrol_guard_runtime> runtime =
                     describe_camp_patrol_guard_runtime( *plan, actor.getID(), calendar::turn );
+                json.member( "runtime_state", runtime ? "available" : "not_assigned" );
                 json.member( "runtime_available", runtime.has_value() );
                 if( runtime ) {
                     json.member( "behavior", runtime->behavior == camp_patrol_guard_behavior::loop ?

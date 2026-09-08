@@ -4043,6 +4043,18 @@ const camp_patrol_shift_plan *basecamp::get_current_patrol_shift_plan() {
   return &patrol_shift_cache;
 }
 
+camp_patrol_shift_cache_view basecamp::get_cached_current_patrol_shift_plan() const
+{
+    if( !patrol_shift_cache_valid ) {
+        return {};
+    }
+    const bool current = patrol_shift_cache_day == camp_patrol_shift_cache_day( calendar::turn ) &&
+                         patrol_shift_cache_kind == camp_patrol_shift_for_turn( calendar::turn ) &&
+                         patrol_shift_cache_alarm_active == is_patrol_alarm_active();
+    return { &patrol_shift_cache, current ? camp_patrol_cache_freshness::current :
+             camp_patrol_cache_freshness::stale };
+}
+
 std::optional<camp_patrol_guard_runtime>
 basecamp::get_current_patrol_runtime( const character_id &worker_id,
                                      const time_point &turn )

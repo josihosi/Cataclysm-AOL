@@ -1,0 +1,81 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-COMPACT-IO-native-views-001",
+  "claim_id": "R-MAINT-COMPACT-IO",
+  "worker_id": "01a0810b-577e-77e2-a877-2f704da41851",
+  "disposition": "completed",
+  "verdict": "NPC inspection now uses a const cached-plan view and labels the view current, stale, or unavailable; it neither refreshes the Patrol cache nor invokes runtime/order synchronization.",
+  "outcome": "Provide a Patrol cache inspection path that reports only already-materialized state without triggering gameplay cache maintenance.",
+  "summary": "A narrow basecamp cache-view API exposes the existing plan and freshness without validation or mutation. The inspector publishes freshness through its existing diagnostic schema, retains cached plan facts when stale, and withholds derived runtime facts as stale. Focused tests prove unavailable and stale observations leave cache contents, actor order fields, and observation time unchanged.",
+  "material_changes": [
+    "Added camp_patrol_shift_cache_view and a const non-refreshing basecamp accessor.",
+    "Switched diagnostic_camp_patrol to the cached view and explicit unavailable/stale/current plus runtime state fields.",
+    "Added focused cache and inspector integration tests for unavailable and stale observations."
+  ],
+  "tests": [
+    "make -j2 obj/basecamp.o obj/npc_inspection.o completed successfully.",
+    "make -C tests ODIR=build/r_surface_001_closure026_curses/obj CXXFLAGS='-std=c++17' build/r_surface_001_closure026_curses/obj/faction_camp_test.o completed successfully.",
+    "make -C tests ODIR=build/r_surface_001_closure026_curses/obj CXXFLAGS='-std=c++17' build/r_surface_001_closure026_curses/obj/npc_inspection_test.o completed successfully.",
+    "git diff --check completed successfully."
+  ],
+  "live_actions": [
+    "No game, broker, semantic-session runtime, or OCR route was launched.",
+    "An owned source archive rebuild was interrupted with SIGINT after focused source and test-object compilation had completed; its make process exited and no compiler child remained."
+  ],
+  "evidence_ceiling": [
+    "Source and focused test-object compilation prove the changed paths type-check, while an executable focused-test run was not linked in this workspace.",
+    "This is native tooling evidence only; it creates no new Patrol gameplay acceptance."
+  ],
+  "bindings": {
+    "task_packet_sha256": "729924a7d0cc1db8331149f34f3cb8684c0200f0ba318a01262990851a0ba39c"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "src/basecamp.h",
+      "sha256": "8a9ec472e7f3111df0e5cca858daa7bd7c02a3005890fa4401430b300bb27355",
+      "role": "Read-only Patrol cache-view schema and accessor declaration."
+    },
+    {
+      "path": "src/basecamp.cpp",
+      "sha256": "cd438dad7b4a3096cfd3149298b3a1b5ea3f3199b42bc9ac5e834afad62f376a",
+      "role": "Const cache-view implementation with explicit freshness."
+    },
+    {
+      "path": "src/npc_inspection.cpp",
+      "sha256": "6af369362278fdb9fef299c82dbec6c9a6c7dea52cb42c8f45c2bf42078b0dbd",
+      "role": "Existing inspector schema now uses the non-refreshing cached view."
+    },
+    {
+      "path": "tests/faction_camp_test.cpp",
+      "sha256": "ed63ed2fcaafe8df84a971dcf13015a00f6f88fe98fa51bce0508bd46d887e0a",
+      "role": "Direct unavailable/stale cache snapshot test."
+    },
+    {
+      "path": "tests/npc_inspection_test.cpp",
+      "sha256": "26a4f09d97a2387db783563c92ec656728034feee0b9af1be92501d129020029",
+      "role": "Inspector integration snapshot test."
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not treat the source/tooling checks as a replacement for the separately assigned observation workbench or a fresh Patrol campaign."
+  ],
+  "active_work": [
+    "The coordinator may consume shift_cache_state and runtime_state through the existing inspector schema."
+  ],
+  "first_open_boundary": "Executable focused-test linking/running remains available if the coordinator requires stronger runtime proof; the observation-workbench assignment remains separately open.",
+  "narrow_queries": [
+    "Inspect basecamp::get_cached_current_patrol_shift_plan and diagnostic_camp_patrol.",
+    "Run the named faction-camp and NPC-inspection test cases from a fully linked current cata_test binary."
+  ],
+  "entrypoints": [
+    "src/basecamp.h",
+    "src/basecamp.cpp",
+    "src/npc_inspection.cpp",
+    "tests/faction_camp_test.cpp",
+    "tests/npc_inspection_test.cpp"
+  ],
+  "context_metrics": {}
+}
