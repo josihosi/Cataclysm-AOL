@@ -1,0 +1,89 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-CONSULT-closure-evidence-lifecycle-001",
+  "claim_id": "R-MAINT-CONSULT",
+  "worker_id": "01a081ad-12f9-71f0-a0bb-33196fd4a3f2",
+  "disposition": "completed",
+  "verdict": "The closure audit independently verifies advisory evidence and lifecycle boundaries at the assigned scope.",
+  "outcome": "Verify the bounded advisory adapter closure without replaying consultation or mutating shared state.",
+  "summary": "Seven focused tests and py_compile pass. Durable advisory state has one replied correlated request. SQLite shows this closure task's active worker binding and the historical consultation terminal/released state. Exact retained artifacts and source/config hashes were checked. No resend, gameplay launch, queue/DFS/DE67 mutation, or task-owned advisory process remains.",
+  "material_changes": [
+    "Added only this worker receipt draft/output and the retained focused-test log; no source, owner, queue, DFS, ledger, or live request changes."
+  ],
+  "tests": [
+    "PYTHONPATH=.../integrations/openclaw_advisory python3.14 test_advisory_consult.py: 7 tests OK.",
+    "python3.14 py_compile advisory_consult.py __init__.py: OK.",
+    "Read-only SQLite checks matched lineage, task, coordinator session, supervisor, terminal historical task and released worker claim.",
+    "Source/config hashes match retained evidence: advisory_consult.py 4f32049f362e1000fb29320e50c9fb2b114edbd2caec120a91b37046d8f39825; tests 93bd98f36148c765a08409993e462c1fee19b28312881c97e54693420bba09f1; README 8a38ce80c2b0a66fc575deb522889ec95d06151708f8d0709553a173bca67f19; host config c0378146c8da9e2de197368a242ebf43b8bf1f1aa0912b632f680e2d1a1fb0c5."
+  ],
+  "live_actions": [
+    "No live consultation, retry, game launch, gameplay input, or owner-state mutation was performed.",
+    "No advisory_consult.py, openclaw-agent request, or request-ID process is live; unrelated shared OpenClaw and owner harness processes were not touched."
+  ],
+  "evidence_ceiling": [
+    "SQLite plus pinned host guidance validate the caller boundary but are not cryptographic caller authentication.",
+    "The correlated Gateway reply proves configured delivery/correlation only; it does not establish gameplay or product acceptance.",
+    "Advice is non-authoritative and cannot alter owner intent, repair authority, DFS, gates, queue provenance, or shared files."
+  ],
+  "bindings": {
+    "coordinator_session_id": "01a08151-5c05-7e82-942d-217ad2db826e",
+    "durable_state_sha256": "9970dcce134994ebe91cecb941277363302cfb7ef6096ca6f4ddd2fe1bc977e7",
+    "host_config_sha256": "c0378146c8da9e2de197368a242ebf43b8bf1f1aa0912b632f680e2d1a1fb0c5",
+    "lineage_id": "semantic-surface-cockpit",
+    "recipient_role": "astra-mutator-relay",
+    "request_id": "33594eb69f7ce7161862984b438ce279ca0ba2042ada894bacb7d7f0d0e43bb9",
+    "supervisor_id": "89829",
+    "task_id": "R-MAINT-CONSULT-closure-evidence-lifecycle-001",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r-maint-consult-closure-evidence-lifecycle-001-focused-tests.log",
+      "sha256": "bc8e6cb14ecaa458caee4f3b488fa22e61ccf9bcc2a1353da3ad3f85e41c89e1",
+      "role": "fresh focused test output"
+    },
+    {
+      "path": ".de67/task-logs/consultation-roundtrip-request.json",
+      "sha256": "687564c148ab5499bc64ea38ba19eb0f47f1ef6e0beaff279f79283a06311856",
+      "role": "bounded harmless packet"
+    },
+    {
+      "path": ".de67/task-logs/consultation-roundtrip-retry.log",
+      "sha256": "36fb2d3e4c7cf02f6590accf3509cf14c0352a457497a9efa13e15e686006f4f",
+      "role": "Gateway result and returned advisory"
+    },
+    {
+      "path": ".de67/state/advisory-consultations.json",
+      "sha256": "9970dcce134994ebe91cecb941277363302cfb7ef6096ca6f4ddd2fe1bc977e7",
+      "role": "durable replied request state"
+    },
+    {
+      "path": ".de67/task-logs/consultation-adapter/result-receipt.json",
+      "sha256": "05f3273c9ebb719673901a0f087201225797fe2833b9936eafb13488cad6efab",
+      "role": "historical implementation receipt"
+    },
+    {
+      "path": ".de67/task-logs/consultation-adapter/validated-worker-receipt.json",
+      "sha256": "33ed883b2ffb7c97b3dc54d3e36a83645e0ee874d455b080531486772ab26ec1",
+      "role": "validated historical receipt"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "The terminal historical request was not resent; no gameplay or live process was launched during this audit."
+  ],
+  "active_work": [
+    "Future consultations remain optional, consequential-only, locally diagnosed, and advisory."
+  ],
+  "first_open_boundary": "Cryptographic caller authentication, authoritative advice, and product gameplay acceptance remain explicitly unclaimed.",
+  "narrow_queries": [
+    "Inspect retained request/retry/state artifacts; recompute current binding; rerun focused tests only."
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/advisory_consult.py",
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/test_advisory_consult.py"
+  ],
+  "context_metrics": {}
+}

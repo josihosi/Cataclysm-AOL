@@ -1,0 +1,85 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-CONSULT-closure-roundtrip-001",
+  "claim_id": "R-MAINT-CONSULT",
+  "worker_id": "01a081ac-595d-7e23-9ba9-51ea3a96fa77",
+  "disposition": "completed",
+  "verdict": "Closure audit independently verifies the retained harmless Gateway roundtrip, first-unavailable retention, single explicit retry, correlation, and no-duplicate/no-mutation boundaries.",
+  "outcome": "Independently verify the bounded advisory roundtrip closure without sending another consultation or mutating shared state.",
+  "summary": "Seven focused advisory tests pass. Exactly one durable request 33594eb69f7ce7161862984b438ce279ca0ba2042ada894bacb7d7f0d0e43bb9 is replied and correlated to Gateway run/turn 0d77b475-cd09-426e-a85b-d9dcc3d110a5 and session a95e7db4-a1f3-491b-8c4c-e963ce64e898. Historical evidence records the first unavailable attempt and one explicit retry; no resend was performed by this audit.",
+  "material_changes": [
+    "No source, owner, queue, DFS, ledger, request, or DE67 state changes were made."
+  ],
+  "tests": [
+    "test_advisory_consult.py: 7 focused tests passed.",
+    "py_compile advisory_consult.py __init__.py: OK.",
+    "Read-only state and SQLite identity checks matched current binding.",
+    "Source/evidence hashes verified against retained artifacts."
+  ],
+  "live_actions": [
+    "No live consultation, retry, game launch, or gameplay input was performed.",
+    "Historical consultation processes were confirmed absent; no owned process remains."
+  ],
+  "evidence_ceiling": [
+    "SQLite ownership plus pinned host role guidance validate the caller boundary, not cryptographic caller authentication.",
+    "Gateway delivery and request correlation do not establish product/gameplay acceptance.",
+    "Advice remains non-authoritative and cannot alter owner intent, repair authority, DFS, gates, live ownership, queue provenance, or shared files."
+  ],
+  "bindings": {
+    "assignment_revision": "8372ffd798a6118ef40346e22183fe9d2ce8ff053aaa480476e0a7f76669099b",
+    "gateway_run_id": "0d77b475-cd09-426e-a85b-d9dcc3d110a5",
+    "gateway_session_id": "a95e7db4-a1f3-491b-8c4c-e963ce64e898",
+    "host_config_sha256": "c0378146c8da9e2de197368a242ebf43b8bf1f1aa0912b632f680e2d1a1fb0c5",
+    "lineage_id": "semantic-surface-cockpit",
+    "recipient_role": "astra-mutator-relay",
+    "request_id": "33594eb69f7ce7161862984b438ce279ca0ba2042ada894bacb7d7f0d0e43bb9",
+    "role_source_sha256": "042a21eb9a2b6bed064287d0e23e293fbf412ff84e1e98beb0539738dd677aeb",
+    "task_id": "R-MAINT-CONSULT-closure-roundtrip-001",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/consultation-roundtrip-request.json",
+      "sha256": "687564c148ab5499bc64ea38ba19eb0f47f1ef6e0beaff279f79283a06311856",
+      "role": "harmless packet"
+    },
+    {
+      "path": ".de67/task-logs/consultation-roundtrip-retry.log",
+      "sha256": "36fb2d3e4c7cf02f6590accf3509cf14c0352a457497a9efa13e15e686006f4f",
+      "role": "Gateway result and retry reply"
+    },
+    {
+      "path": ".de67/state/advisory-consultations.json",
+      "sha256": "9970dcce134994ebe91cecb941277363302cfb7ef6096ca6f4ddd2fe1bc977e7",
+      "role": "durable replied state"
+    },
+    {
+      "path": ".de67/task-logs/consultation-adapter/tests.log",
+      "sha256": "05f54e4eeac5cd0ff6a7aef1b305b0460321bf5c59ca3b4a49aad16d51a36324",
+      "role": "focused test output"
+    }
+  ],
+  "first_divergence": {
+    "class": "transport-envelope",
+    "summary": "Initial Gateway result used a nested result envelope; parser repair was followed by exactly one explicit unavailable retry, with no implicit replay."
+  },
+  "accepted_no_replay": [
+    "First unavailable was retained; only one explicit retry occurred historically.",
+    "No consultation was resent during this closure audit."
+  ],
+  "active_work": [
+    "Future consultations remain optional, locally diagnosed, and advisory."
+  ],
+  "first_open_boundary": "Cryptographic caller authentication, authoritative advice, and product gameplay acceptance remain unclaimed.",
+  "narrow_queries": [
+    "Inspect retained packet, retry log and durable state; rerun focused tests only; do not resend terminal request."
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/advisory_consult.py",
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/test_advisory_consult.py",
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/README.md"
+  ],
+  "context_metrics": {}
+}

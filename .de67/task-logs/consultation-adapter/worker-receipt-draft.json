@@ -1,0 +1,79 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-CONSULT-001",
+  "claim_id": "R-MAINT-CONSULT",
+  "worker_id": "01a08183-6830-7db2-87b3-a06c1cca565a",
+  "disposition": "completed",
+  "verdict": "The installed adapter validates the current DE67 coordinator/task binding, sends one bounded advisory request through the supported OpenClaw Gateway agent interface, durably correlates and returns the conversational reply, and fails closed on stale, rebound, duplicate, unavailable, or echo cases.",
+  "outcome": "Deliver a task/run-bound advisory path from Sol to Josef's persistent conversational Astra Mutator, separate from exclusive review and owner authority.",
+  "summary": "Seven isolated tests pass. A harmless ordinary Sol request reached the configured Astra conversational session and returned a reply correlated to request 33594eb69f7ce7161862984b438ce279ca0ba2042ada894bacb7d7f0d0e43bb. The first attempt exposed the real nested OpenClaw result envelope and was retained unavailable; one explicit retry after the parser repair returned status=replied. Advice remained non-authoritative and no owner queue or product/ledger state changed.",
+  "material_changes": [
+    "Added a separate integrations/openclaw_advisory adapter with SQLite ownership and current assignment-revision validation.",
+    "Added durable request identity, atomic locked state, explicit unavailable retry fencing, nested Gateway result extraction, echo rejection, and host role-guidance pinning.",
+    "Added focused tests and host-owned endpoint configuration; direct_input and mutator_mailbox remain untouched."
+  ],
+  "tests": [
+    "Seven focused advisory adapter tests passed; complete output is retained in consultation-adapter/tests.log.",
+    "python3 -m py_compile advisory_consult.py __init__.py passed.",
+    "Read-only production SQLite authorization accepted current task/run/session/supervisor/revision.",
+    "Wrong sender/workspace/revision, duplicate, unavailable, explicit retry, mixed writers, nested envelope, echo, --deliver and owner-mailbox checks passed."
+  ],
+  "live_actions": [
+    "One harmless request and one explicit retry used the configured OpenClaw Gateway route; no --deliver flag was sent.",
+    "Initial wrapper/adapter/OpenClaw PIDs 15924/15925/15926/15928 and retry PIDs 16767/16770/16777 were absent after completion; unrelated dashboard PID 89838 was retained.",
+    "No game process, gameplay input, owner mailbox enqueue, DFS/work-ledger mutation, coordinator launch, or supervisor restart was performed by this task."
+  ],
+  "evidence_ceiling": [
+    "Gateway delivery and returned reply are correlated by request ID 33594eb69f7ce7161862984b438ce279ca0ba2042ada894bacb7d7f0d0e43bb and retained Gateway run/session identity.",
+    "SQLite ownership and pinned host role guidance validate the caller boundary; this is not cryptographic caller authentication.",
+    "Advice is non-authoritative and does not establish product gameplay acceptance or authorize shared-state changes."
+  ],
+  "bindings": {
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev",
+    "lineage_id": "semantic-surface-cockpit",
+    "task_id": "R-MAINT-CONSULT-001",
+    "run_id": "initial-21bc0676c77e493db28b63a7220c4776",
+    "coordinator_session_id": "01a08151-5c05-7e82-942d-217ad2db826e",
+    "supervisor_id": "89829",
+    "assignment_revision": "8372ffd798a6118ef40346e22183fe9d2ce8ff053aaa480476e0a7f76669099b",
+    "recipient_role": "astra-mutator-relay",
+    "session_key": "agent:astra-mutator-relay:discord:channel:1546286063335510147",
+    "role_source_sha256": "042a21eb9a2b6bed064287d0e23e293fbf412ff84e1e98beb0539738dd677aeb",
+    "host_config_sha256": "c0378146c8da9e2de197368a242ebf43b8bf1f1aa0912b632f680e2d1a1fb0c5",
+    "request_id": "33594eb69f7ce7161862984b438ce279ca0ba2042ada894bacb7d7f0d0e43bb9",
+    "gateway_run_id": "0d77b475-cd09-426e-a85b-d9dcc3d110a5",
+    "gateway_session_id": "a95e7db4-a1f3-491b-8c4c-e963ce64e898"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": ".de67/task-logs/consultation-adapter/tests.log", "sha256": "05f54e4eeac5cd0ff6a7aef1b305b0460321bf5c59ca3b4a49aad16d51a36324", "role": "complete focused test output"},
+    {"path": ".de67/task-logs/consultation-roundtrip-request.json", "sha256": "687564c148ab5499bc64ea38ba19eb0f47f1ef6e0beaff279f79283a06311856", "role": "bounded harmless packet"},
+    {"path": ".de67/task-logs/consultation-roundtrip-retry.log", "sha256": "36fb2d3e4c7cf02f6590accf3509cf14c0352a457497a9efa13e15e686006f4f", "role": "Gateway result and returned advisory"},
+    {"path": ".de67/state/advisory-consultations.json", "sha256": "9970dcce134994ebe91cecb941277363302cfb7ef6096ca6f4ddd2fe1bc977e7", "role": "durable replied request state"}
+  ],
+  "first_divergence": {
+    "class": "transport-envelope",
+    "summary": "Initial successful Gateway response nested final/payloads under top-level result; parser repair was followed by one explicit unavailable retry, with no automatic replay."
+  },
+  "accepted_no_replay": [
+    "The first unavailable record was not retried implicitly; only the single explicit retry after parser repair was allowed.",
+    "Submitting/uncertain records are fenced against replay; duplicate completed requests return the retained reply."
+  ],
+  "active_work": [
+    "Use future consultations only for consequential advisory questions after local diagnosis; preserve Sol ownership and non-authoritative advice boundary."
+  ],
+  "first_open_boundary": "The Gateway proves configured conversational delivery and returned payload correlation, not cryptographic caller authentication beyond SQLite ownership checks and pinned host role guidance. Future consequential consultations remain advisory and must not become a mandatory gate.",
+  "narrow_queries": [
+    "Inspect worker-receipt-draft.json and run worker_receipt.py prepare against the current deadlines.sqlite3 binding.",
+    "Inspect consultation-roundtrip-retry.log and advisory-consultations.json for request and Gateway identities.",
+    "Run the focused advisory adapter unittest suite; do not resend request 33594eb69f7ce7161862984b438ce279ca0ba2042ada894bacb7d7f0d0e43bb."
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/advisory_consult.py sha256=4f32049f362e1000fb29320e50c9fb2b114edbd2caec120a91b37046d8f39825",
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/test_advisory_consult.py sha256=93bd98f36148c765a08409993e462c1fee19b28312881c97e54693420bba09f1",
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/README.md sha256=8a38ce80c2b0a66fc575deb522889ec95d06151708f8d0709553a173bca67f19",
+    "/Users/josefhorvath/.openclaw/workspaces/astra-mutator-relay/de67-advisory-config.json sha256=c0378146c8da9e2de197368a242ebf43b8bf1f1aa0912b632f680e2d1a1fb0c5"
+  ],
+  "context_metrics": {}
+}

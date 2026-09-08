@@ -1,0 +1,13 @@
+52ef9214695d8e907bcda0c8d1592369a975683f32c07f255bb4e50ab66d2bc1  .de67/task-logs/r-maint-compact-io-closure-build-patrol-001/current-cata-test-build.log
+998866cfcc6800d57675595688928c242f3500e961f673d3d179456a2d59052f  .de67/task-logs/r-maint-compact-io-closure-build-patrol-001/current-tests-build-pch0.log
+368d2878ae544a8b60aef21f889c813b378ae7aacd69c1ac5aaa1d3d90128acd  .de67/task-logs/r-maint-compact-io-closure-build-patrol-001/current-tests-build.log
+db44f1d98c68a03dc06a2770311d4bca1f83793efba325eeb24b032b20710289  .de67/task-logs/r-maint-compact-io-closure-build-patrol-001/focused-python-tests-corrected.log
+93c528317bf131d3d9ab18409f73a0cb0be9e7f45eb217ca2f261e26d511dc8e  .de67/task-logs/r-maint-compact-io-closure-build-patrol-001/focused-python-tests.log
+c8160e0c59aa1a9d76779b01415046ec4dcb8834ca03425312ad64ad933134e0  .de67/task-logs/r-maint-compact-io-closure-build-patrol-001/npc-inspection-patrol-test.log
+19ae7344624b0b22c679a6404d5df5350eabf579c48d45a8fcb1c4666855f0eb  tools/openclaw_harness/build_source_bound_macos.py
+8b738d217275d85b212d38cd428c7ed308514c17eede10e45b63722a6f3cedd9  tools/openclaw_harness/build_source_bound_macos_test.py
+9e48d1d8d83141e4e8b6c7d1ec42b86e2703de5fb07db008d38ee8333eed7d83  tools/openclaw_harness/compact_io_observation_test.py
+8a9ec472e7f3111df0e5cca858daa7bd7c02a3005890fa4401430b300bb27355  src/basecamp.h
+cd438dad7b4a3096cfd3149298b3a1b5ea3f3199b42bc9ac5e834afad62f376a  src/basecamp.cpp
+6af369362278fdb9fef299c82dbec6c9a6c7dea52cb42c8f45c2bf42078b0dbd  src/npc_inspection.cpp
+26a4f09d97a2387db783563c92ec656728034feee0b9af1be92501d129020029  tests/npc_inspection_test.cpp

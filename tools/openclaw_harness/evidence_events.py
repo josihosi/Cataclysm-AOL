@@ -33,20 +33,30 @@ def parse(raw):
 
 
 def envelopes(record, source):
+    receipt = record.get("receipt", {}) if isinstance(record, dict) else {}
+    receipt = receipt if isinstance(receipt, dict) else {}
+    native = receipt.get("native_receipt", {})
+    native = native if isinstance(native, dict) else {}
+    observed = record.get("observation", record.get("result", {})) if isinstance(record, dict) else {}
+    observed = observed if isinstance(observed, dict) else {}
     base = {"schema": "caol-evidence-event-v1", "producer": source["producer"],
             "event_id": hashlib.sha256((source.get("path", source["producer"]) + ":" + source["sha256"] + ":" + str(source["offset"])).encode()).hexdigest(),
             "sequence": record.get("sequence", record.get("seq")),
-            "run_id": record.get("run_id"),
-            "process_instance": record.get("process_instance"),
+            "run_id": record.get("run_id", observed.get("run_id", native.get("run_id"))),
+            "binding_id": record.get("binding_id", receipt.get("binding_id", native.get("binding_id"))),
+            "session_generation": record.get("session_generation", receipt.get("session_generation")),
+            "process_instance": record.get("process_instance", native.get("process_instance")),
+            "frame_id": record.get("frame_id", observed.get("frame_id", observed.get("observation_id", native.get("frame_id")))),
             "process_pid": record.get("runner_pid", record.get("pid")),
-            "game_time": {"minutes": record.get("game_minutes"), "turn": record.get("game_turn")},
+            "game_time": {"minutes": record.get("game_minutes", observed.get("game_minutes")),
+                           "turn": record.get("game_turn", observed.get("game_turn", observed.get("turn")))},
             "wall_time": {"unix_ms": record.get("wall_time"), "unix_seconds": record.get("timestamp"), "iso8601": record.get("created_at")},
             "actor_id": record.get("actor_id", record.get("npc_id")),
             "actor_name": record.get("npc", record.get("npc_name")),
-            "request_id": record.get("request_id", record.get("request")),
+            "request_id": record.get("request_id", receipt.get("request_id", native.get("request_id", record.get("request")))),
             "action": record.get("action", record.get("kind")),
             "causal_ref": record.get("causal_ref", record.get("prompt_sha256")),
-            "event": record.get("event", record.get("schema", "record")),
+            "event": record.get("event", "cockpit_response" if receipt else record.get("schema", "record")),
             "changed_fields": record.get("changed_fields", record.get("delta")),
             "source": source, "payload": record}
     yield base
@@ -88,8 +98,47 @@ def envelopes(record, source):
                    "payload": entity, "observation_id": observed.get("observation_id")}
 
 
+def _request_result_links(events):
+    """Group only explicit request/run/process identities; never infer joins by time."""
+    groups = {}
+    for event in events:
+        request_id = event.get("request_id")
+        if not request_id:
+            continue
+        key = (event.get("run_id"), event.get("process_instance"), request_id)
+        groups.setdefault(key, []).append(event)
+    links = []
+    for (run_id, process_instance, request_id), matching in groups.items():
+        stages = {"acceptance": [], "rejection": [], "result": []}
+        writers = set()
+        for event in matching:
+            payload = event.get("payload", {})
+            accepted = payload.get("accepted") if isinstance(payload, dict) else None
+            rejection = payload.get("rejection_reason") if isinstance(payload, dict) else None
+            kind = str(event.get("event", "")).casefold()
+            if accepted is True:
+                stages["acceptance"].append(event["event_id"])
+            if accepted is False or rejection:
+                stages["rejection"].append(event["event_id"])
+            if any(token in kind for token in ("result", "completed", "applied", "outcome")):
+                stages["result"].append(event["event_id"])
+            writer = (event.get("producer"), event.get("actor_id"))
+            if writer != (None, None):
+                writers.add(writer)
+        missing = [name for name, ids in stages.items() if not ids]
+        links.append({"request_id": request_id, "run_id": run_id,
+                      "process_instance": process_instance,
+                      "status": "complete" if not missing else "partial",
+                      "stages": stages, "missing": missing,
+                      "competing_writers": [{"producer": producer, "actor_id": actor}
+                                             for producer, actor in sorted(writers, key=str)] if len(writers) > 1 else [],
+                      "event_ids": [event["event_id"] for event in matching],
+                      "note": "Linkage uses explicit request/run/process identity only; no time-adjacency or spoken-OK causality is inferred."})
+    return links
+
+
 def query(sources, filters, contains=None, selectors=(), limit=20):
-    rows, unavailable = [], []
+    rows, events, unavailable = [], [], []
     scanned = 0
     for metadata in sources:
         path = Path(metadata["path"])
@@ -123,6 +172,7 @@ def query(sources, filters, contains=None, selectors=(), limit=20):
                       "sha256": hashlib.sha256(original).hexdigest(),
                       "producer": metadata.get("producer", path.name)}
             for event in envelopes(record, source):
+                events.append(event)
                 try:
                     if any(select(event, k) != v for k, v in filters.items()):
                         continue
@@ -142,11 +192,12 @@ def query(sources, filters, contains=None, selectors=(), limit=20):
                     rows.append({"event_id": event["event_id"], "source": source, "fields": fields})
                 else:
                     rows.append(event)
-    snapshot = {"rows": rows, "unavailable_sources": unavailable, "filters": filters,
+    links = _request_result_links(events)
+    snapshot = {"rows": rows, "links": links, "unavailable_sources": unavailable, "filters": filters,
                 "contains": contains, "scanned_records": scanned,
                 "correlation": "Null means unavailable. Shared request IDs or actor names alone do not establish cross-process identity. Observations are not inferred changes."}
     artifact = retain(snapshot)
     return {"ok": True, "status": "partial" if unavailable else "matched" if rows else "no_match",
-            "matched": len(rows), "rows": rows[:limit], "unavailable_sources": unavailable,
+            "matched": len(rows), "rows": rows[:limit], "links": links, "unavailable_sources": unavailable,
             "snapshot": artifact, "next": {"sha256": artifact["sha256"], "selector": "rows",
             "offset": limit} if len(rows) > limit else None, "correlation": snapshot["correlation"]}

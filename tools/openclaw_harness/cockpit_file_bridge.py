@@ -877,7 +877,130 @@ class FileBackedCockpitBridge:
         return {"ok": True, "cancel_id": cancel_id, "request_id": request_id}
 
     @staticmethod
-    def response_status(session_dir: Path, request_id: str, *, summary: bool = True) -> dict[str, Any]:
+    def startup_diagnostics(session_dir: Path) -> dict[str, Any]:
+        """Expose recorded startup/lifecycle uncertainty and exact recovery handles.
+
+        This reads the bridge's already-published metadata only.  It never
+        probes, dismisses, kills, or otherwise changes the owned process.
+        Missing health is deliberately ``unknown`` rather than a guessed
+        ready/failed value.
+        """
+        session_dir = Path(session_dir).resolve()
+        def read_object(path: Path) -> dict[str, Any]:
+            try:
+                value = json.loads(path.read_text(encoding="utf-8"))
+                return dict(value) if isinstance(value, Mapping) else {}
+            except (OSError, UnicodeDecodeError, ValueError, TypeError):
+                return {}
+        status = read_object(session_dir / "status.json")
+        owner = read_object(session_dir / "game-process.json")
+        progress = status.get("startup_progress") if isinstance(status.get("startup_progress"), Mapping) else {}
+        failure = status.get("startup_failure") if isinstance(status.get("startup_failure"), Mapping) else {}
+        identity = owner.get("process_identity")
+        if not isinstance(identity, Mapping):
+            identity = owner.get("birth_identity")
+        if not isinstance(identity, Mapping):
+            for key in ("process_generation", "expected_process_generation", "observed_process_generation"):
+                if isinstance(owner.get(key), Mapping):
+                    identity = owner[key]
+                    break
+        if not isinstance(identity, Mapping) and owner.get("birth_identity"):
+            identity = {"birth_identity": owner.get("birth_identity"), "pid": owner.get("pid")}
+        if not isinstance(identity, Mapping):
+            for key in ("process_generation", "expected_process_generation", "observed_process_generation"):
+                if isinstance(status.get(key), Mapping):
+                    identity = status[key]
+                    break
+        identity = dict(identity) if isinstance(identity, Mapping) else None
+        handles = []
+        candidates = [
+            ("child_stderr", status.get("child_stderr")),
+            ("startup_output", failure.get("artifact", "child.startup.stdout.jsonl")),
+            ("startup_report", failure.get("report_path")),
+            ("bridge_stderr", str(session_dir) + ".bridge.stderr.log"),
+        ]
+        for name, raw in candidates:
+            if not raw:
+                continue
+            path = Path(str(raw))
+            if not path.is_absolute():
+                path = session_dir / path
+            path = path.resolve()
+            handles.append({"name": name, "path": str(path), "present": path.is_file(),
+                            "role": "recovery_artifact"})
+        diagnostics = {
+            "schema": "caol-startup-diagnostics-v1",
+            "lifecycle_state": status.get("state"),
+            "health": status.get("health", "unknown"),
+            "pid": status.get("child_pid", owner.get("pid")),
+            "bridge_pid": status.get("bridge_pid"),
+            "birth": identity,
+            "process_identity": identity,
+            "run_id": owner.get("run_id", status.get("session_descriptor", {}).get("run_id")
+                              if isinstance(status.get("session_descriptor"), Mapping) else None),
+            "binding_id": status.get("binding_id"),
+            "generation": status.get("session_generation"),
+            "phase": status.get("phase", progress.get("state")),
+            "error": status.get("error", status.get("reason", failure.get("reason"))),
+            "startup_progress": progress or None,
+            "startup_failure": failure or None,
+            "recovery": {"handles": handles,
+                         "note": "Handles point to retained diagnostics; unavailable health or absent files remain unknown."},
+        }
+        return diagnostics
+
+    @staticmethod
+    def request_artifact(session_dir: Path, request_id: str) -> dict[str, Any]:
+        """Recover the exact submitted request envelope for one request id."""
+        session_dir = Path(session_dir).resolve()
+        path = session_dir / "requests" / (request_id + ".json")
+        try:
+            raw = path.read_bytes()
+            value = json.loads(raw)
+        except OSError:
+            return {"ok": False, "error": "request_artifact_unavailable"}
+        except (TypeError, ValueError, json.JSONDecodeError):
+            return {"ok": False, "error": "request_artifact_is_not_json"}
+        if not isinstance(value, Mapping) or value.get("request_id") != request_id:
+            return {"ok": False, "error": "request_artifact_identity_mismatch"}
+        receipt_path = session_dir / "responses" / (request_id + ".receipt.json")
+        try:
+            receipt = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except (OSError, ValueError, json.JSONDecodeError):
+            receipt = None
+        if isinstance(receipt, Mapping) and receipt.get("request_sha256") and \
+                receipt.get("request_sha256") != _digest((json.dumps(value.get("request", {}), ensure_ascii=False,
+                                                                    separators=(",", ":")) + "\n").encode("utf-8")):
+            return {"ok": False, "error": "request_artifact_hash_mismatch"}
+        return {"ok": True, "request_id": request_id, "request": value.get("request"),
+                "envelope": value, "sha256": _digest(raw), "artifact": str(path.relative_to(session_dir))}
+
+    @staticmethod
+    def request_result(session_dir: Path, request_id: str) -> dict[str, Any]:
+        """Join only the recorded request envelope and its verified response."""
+        request = FileBackedCockpitBridge.request_artifact(session_dir, request_id)
+        if not request.get("ok"):
+            return request
+        receipt = FileBackedCockpitBridge.response_status(session_dir, request_id, summary=False)
+        if not receipt.get("ok"):
+            return {"ok": False, "request": request, "result": receipt,
+                    "links": {"request_to_result": "pending_or_missing"}}
+        response = FileBackedCockpitBridge.response_artifact(session_dir, request_id,
+                                                              receipt["receipt"]["response_sha256"])
+        if not response.get("ok"):
+            return {"ok": False, "request": request, "result": response,
+                    "links": {"request_to_result": "response_unavailable"}}
+        return {"ok": True, "request": request, "receipt": receipt["receipt"],
+                "response": response["response"],
+                "links": {"request_to_result": "recorded",
+                          "request_id": request_id,
+                          "ordering": {"request": request.get("sha256"),
+                                       "response": receipt["receipt"].get("response_sha256")}},
+                "note": "This records request/result linkage; it does not infer gameplay causality from adjacency or spoken text."}
+
+    @staticmethod
+    def response_status(session_dir: Path, request_id: str, *, summary: bool = True,
+                        selectors: Sequence[str] = ()) -> dict[str, Any]:
         path = Path(session_dir) / "responses" / (request_id + ".receipt.json")
         if not path.is_file():
             return {"ok": False, "error": "response_not_available_or_stale"}
@@ -890,12 +1013,21 @@ class FileBackedCockpitBridge:
         if not isinstance(receipt.get("response_sha256"), str) or not receipt.get("response_artifact"):
             return {"ok": False, "error": "response_receipt_unavailable_or_invalid"}
         result = {"ok": True, "receipt": receipt}
+        result["startup_diagnostics"] = FileBackedCockpitBridge.startup_diagnostics(session_dir)
         if summary:
             recovered = FileBackedCockpitBridge.response_artifact(
                 session_dir, request_id, receipt["response_sha256"])
             if not recovered.get("ok"):
                 return {**recovered, "receipt": receipt}
             result["response"] = cockpit_evidence.compact(recovered["response"])
+            selected = cockpit_evidence.selected_view(recovered["response"], selectors)
+            if selected["selectors"]:
+                result["selected"] = selected
+            result["request_result"] = {
+                "request_id": request_id,
+                "status": "recorded" if (Path(session_dir) / "requests" / (request_id + ".json")).is_file() else "unavailable",
+                "retrieve": "request-result --session-dir SESSION --request-id REQUEST",
+            }
             result["retrieval"] = {
                 "fields": "response-slice --session-dir SESSION --request-id REQUEST --selector FIELD [--contains TEXT] [--offset N --limit N]",
                 "full": ["response-artifact", "--session-dir", str(session_dir),
@@ -1024,6 +1156,33 @@ class FileBackedCockpitBridge:
             value = value[offset:end]
         return {**result, "slice": value}
 
+    @staticmethod
+    def response_compare(session_dir: Path, before_request_id: str, after_request_id: str,
+                         selectors: Sequence[str] = ()) -> dict[str, Any]:
+        """Compare two retained responses without replaying either request."""
+        if before_request_id == after_request_id:
+            return {"ok": False, "error": "comparison_requires_distinct_request_ids"}
+        before = FileBackedCockpitBridge.response_status(session_dir, before_request_id, summary=False)
+        after = FileBackedCockpitBridge.response_status(session_dir, after_request_id, summary=False)
+        if not before.get("ok") or not after.get("ok"):
+            return {"ok": False, "error": "comparison_response_unavailable",
+                    "before": before, "after": after}
+        before_full = FileBackedCockpitBridge.response_artifact(
+            session_dir, before_request_id, before["receipt"]["response_sha256"])
+        after_full = FileBackedCockpitBridge.response_artifact(
+            session_dir, after_request_id, after["receipt"]["response_sha256"])
+        if not before_full.get("ok") or not after_full.get("ok"):
+            return {"ok": False, "error": "comparison_response_artifact_unavailable",
+                    "before": before_full, "after": after_full}
+        comparison = cockpit_evidence.compare_selected(before_full["response"], after_full["response"], selectors)
+        comparison["requests"] = {
+            "before": {"request_id": before_request_id, "response_sha256": before["receipt"]["response_sha256"]},
+            "after": {"request_id": after_request_id, "response_sha256": after["receipt"]["response_sha256"]},
+            "retrieve": "request-result --session-dir SESSION --request-id REQUEST",
+        }
+        return {"ok": True, "comparison": comparison,
+                "startup_diagnostics": FileBackedCockpitBridge.startup_diagnostics(session_dir)}
+
 
 class FileBackedCockpitClient:
     """Submit a live request once and collect its retained response separately.
@@ -1136,6 +1295,19 @@ def main(argv: Sequence[str] | None = None) -> int:
     status = commands.add_parser("response-status", help="Verified compact observation, action availability, outcomes and field discovery")
     status.add_argument("--session-dir", required=True)
     status.add_argument("--request-id", required=True)
+    status.add_argument("--select", "--selection", action="append", default=[], metavar="FIELD",
+                        help="Optional exact field path(s) to expose without rendering the whole response")
+    compare = commands.add_parser("response-compare", aliases=["compare"], help="Compare selected fields from two retained responses")
+    compare.add_argument("--session-dir", required=True)
+    compare.add_argument("--before-request-id", "--before", dest="before_request_id", required=True)
+    compare.add_argument("--after-request-id", "--after", dest="after_request_id", required=True)
+    compare.add_argument("--select", action="append", default=[], metavar="FIELD")
+    request_result = commands.add_parser("request-result", help="Retrieve one recorded request and its verified result")
+    request_result.add_argument("--session-dir", required=True)
+    request_result.add_argument("--request-id", required=True)
+    request_artifact = commands.add_parser("request-artifact", help="Retrieve one exact submitted request envelope")
+    request_artifact.add_argument("--session-dir", required=True)
+    request_artifact.add_argument("--request-id", required=True)
     response = commands.add_parser("response-slice")
     response.add_argument("--session-dir", required=True)
     response.add_argument("--request-id", required=True)
@@ -1266,8 +1438,24 @@ def main(argv: Sequence[str] | None = None) -> int:
                                                               binding_id=args.binding_id, request=value)))
         return 0
     if args.command == "response-status":
-        emit(FileBackedCockpitBridge.response_status(Path(args.session_dir), args.request_id))
+        selectors = [part.strip() for value in args.select for part in value.split(",") if part.strip()]
+        emit(FileBackedCockpitBridge.response_status(Path(args.session_dir), args.request_id,
+                                                      selectors=selectors))
         return 0
+    if args.command in {"response-compare", "compare"}:
+        selectors = [part.strip() for value in args.select for part in value.split(",") if part.strip()]
+        result = FileBackedCockpitBridge.response_compare(
+            Path(args.session_dir), args.before_request_id, args.after_request_id, selectors)
+        emit(result)
+        return 0 if result.get("ok") else 1
+    if args.command == "request-result":
+        result = FileBackedCockpitBridge.request_result(Path(args.session_dir), args.request_id)
+        emit(result)
+        return 0 if result.get("ok") else 1
+    if args.command == "request-artifact":
+        result = FileBackedCockpitBridge.request_artifact(Path(args.session_dir), args.request_id)
+        emit(result)
+        return 0 if result.get("ok") else 1
     if args.command == "cleanup":
         print(json.dumps(FileBackedCockpitBridge.cleanup(Path(args.session_dir), args.binding_id)))
         return 0

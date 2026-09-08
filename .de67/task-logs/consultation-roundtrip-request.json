@@ -1,0 +1,19 @@
+{
+  "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-CONSULT-001",
+  "sender_run_id": "initial-21bc0676c77e493db28b63a7220c4776",
+  "sender_session_id": "01a08151-5c05-7e82-942d-217ad2db826e",
+  "sender_supervisor_id": "89829",
+  "assignment_revision": "8372ffd798a6118ef40346e22183fe9d2ce8ff053aaa480476e0a7f76669099b",
+  "intended_outcome": "Validate the advisory path without changing product or coordination state.",
+  "current_state": "Adapter implementation is locally verified; round-trip adoption remains unobserved.",
+  "first_divergence": "No native conversational reply has yet been observed.",
+  "evidence_refs": [
+    ".de67/task-logs/consultation-interface.md",
+    ".de67/state/deadlines.sqlite3"
+  ],
+  "tried_learned": "Focused isolation proved binding, duplicate, unavailable, echo, and no-authority cases.",
+  "constraints_live_owner": "Sol retains task and all repair, queue, DFS, and live-ownership authority; diagnostic only.",
+  "decision_needed": "Advise whether the adapter evidence boundary is sufficient for next-run adoption; make no changes."
+}

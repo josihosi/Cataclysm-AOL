@@ -487,6 +487,14 @@ class PlayerClient:
             return {"ok": False, "error": "response_binding_mismatch"}
         return Bridge.response_slice(self.session, request_id, selector, offset, limit, contains)
 
+    def compare(self, before_request_id: str, after_request_id: str, selectors: list[str]):
+        """Read-only comparison of two retained response artifacts."""
+        return Bridge.response_compare(self.session, before_request_id, after_request_id, selectors)
+
+    def request_result(self, request_id: str):
+        """Retrieve the recorded request/result link without sending input."""
+        return Bridge.request_result(self.session, request_id)
+
 
 def main(argv=None):
     parser = PresentationParser(description=__doc__)
@@ -522,6 +530,13 @@ def main(argv=None):
     evidence.add_argument("--select", action="append", default=[], help="Exact envelope field path; repeat or separate fields with commas")
     evidence.add_argument("--contains")
     evidence.add_argument("--limit", type=int, default=20)
+    compare = commands.add_parser("compare", aliases=["response-compare"], help="Compare selected fields from two retained responses")
+    compare.add_argument("--before-request-id", "--before", dest="before_request_id", required=True)
+    compare.add_argument("--after-request-id", "--after", dest="after_request_id", required=True)
+    compare.add_argument("--select", action="append", default=[],
+                         help="Exact response field path; repeat or separate fields with commas")
+    request_result = commands.add_parser("request-result", help="Retrieve a recorded request and its verified result")
+    request_result.add_argument("--request-id", required=True)
     commands.add_parser("controls", help="Read wait/movement request examples, permissions and interruption behavior without sending input")
     call = commands.add_parser("call", help="Submit an existing structured game.* request; service authorization still applies")
     call.add_argument("--request", type=Path, required=True,
@@ -543,6 +558,11 @@ def main(argv=None):
             raise ValueError("wait_seconds_must_be_finite_and_nonnegative")
         if args.command == "evidence":
             result = PlayerClient(args.session).evidence(args)
+        elif args.command in {"compare", "response-compare"}:
+            selectors = [part.strip() for value in args.select for part in value.split(",") if part.strip()]
+            result = PlayerClient(args.session).compare(args.before_request_id, args.after_request_id, selectors)
+        elif args.command == "request-result":
+            result = PlayerClient(args.session).request_result(args.request_id)
         elif args.command == "performance":
             # Independent telemetry must remain readable while another CLI is
             # waiting with the request-ownership lock. It never edits that state.

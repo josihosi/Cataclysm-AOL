@@ -1,0 +1,92 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-COMPACT-IO-closure-build-patrol-001",
+  "claim_id": "R-MAINT-COMPACT-IO",
+  "worker_id": "01a0819e-d583-7442-8873-78406ded5087",
+  "disposition": "checkpoint",
+  "verdict": "tooling_and_source_review_verified_native_patrol_execution_open",
+  "outcome": "Preserved the six passing compact-I/O/build-log tests and exact native Patrol source-review boundary; continuation remains required for fresh C++ Patrol execution.",
+  "summary": "The corrected focused Python invocation passed all 6 tests. The stale native binary matched zero Patrol inspection cases. A current PCH-enabled build failed on stale __OPTIMIZE_SIZE__ PCH metadata; a PCH-disabled retry reached link and failed on unresolved SDL3 MIX_* symbols under the SOUND=0/object configuration. No source files were changed by this worker. The retry refreshed build objects, which is a material side effect and not gameplay evidence.",
+  "material_changes": [
+    "No source changes made by this worker.",
+    "PCH=0 build refreshed compiled objects under obj/; this side effect is preserved as a build-state limitation."
+  ],
+  "tests": [
+    "tools/openclaw_harness/build_source_bound_macos_test.py and compact_io_observation_test.py: 6/6 passed; focused-python-tests-corrected.log SHA-256 db44f1d98c68a03dc06a2770311d4bca1f83793efba325eeb24b032b20710289.",
+    "PCH=1 current native tests build failed on __OPTIMIZE_SIZE__ predefined macro mismatch; current-tests-build.log SHA-256 368d2878ae544a8b60aef21f889c813b378ae7aacd69c1ac5aaa1d3d90128acd.",
+    "PCH=0 retry reached link but failed unresolved SDL3 MIX_* symbols; current-tests-build-pch0.log SHA-256 998866cfcc6800d57675595688928c242f3500e961f673d3d179456a2d59052f.",
+    "Existing tests/r031-nosound-cata_test matched zero cases for the new Patrol inspection test; npc-inspection-patrol-test.log SHA-256 c8160e0c59aa1a9d76779b01415046ec4dcb8834ca03425312ad64ad933134e0."
+  ],
+  "live_actions": [
+    "No game, harness, broker, or bridge process launched; no process cleanup required.",
+    "Native execution was not claimed from the stale binary or failed builds."
+  ],
+  "evidence_ceiling": [
+    "Build-log handling and compact selected-view/comparison behavior are proven by focused Python tests only.",
+    "Patrol unavailable/stale non-mutation is source-reviewed and represented by tests/npc_inspection_test.cpp, but fresh native C++ execution remains unproved.",
+    "Build failures are configuration/toolchain evidence, not gameplay evidence; terminal output and stale binary zero-match are not semantic proof.",
+    "No OCR, screenshots, terminal bytes, or rendered text were used as proof."
+  ],
+  "bindings": {
+    "brief_sha256": "f98b22541defa77bd853a6d7c4d207fd8b17ea4be8a04d9cb206d3b013875001",
+    "build_source_bound_sha256": "19ae7344624b0b22c679a6404d5df5350eabf579c48d45a8fcb1c4666855f0eb",
+    "build_source_bound_test_sha256": "8b738d217275d85b212d38cd428c7ed308514c17eede10e45b63722a6f3cedd9",
+    "compact_io_test_sha256": "9e48d1d8d83141e4e8b6c7d1ec42b86e2703de5fb07db008d38ee8333eed7d83"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r-maint-compact-io-closure-build-patrol-001/focused-python-tests-corrected.log",
+      "sha256": "db44f1d98c68a03dc06a2770311d4bca1f83793efba325eeb24b032b20710289",
+      "role": "Six passing focused Python tests."
+    },
+    {
+      "path": ".de67/task-logs/r-maint-compact-io-closure-build-patrol-001/current-tests-build.log",
+      "sha256": "368d2878ae544a8b60aef21f889c813b378ae7aacd69c1ac5aaa1d3d90128acd",
+      "role": "PCH-enabled native build failure."
+    },
+    {
+      "path": ".de67/task-logs/r-maint-compact-io-closure-build-patrol-001/current-tests-build-pch0.log",
+      "sha256": "998866cfcc6800d57675595688928c242f3500e961f673d3d179456a2d59052f",
+      "role": "PCH-disabled SDL3 MIX linker failure."
+    },
+    {
+      "path": ".de67/task-logs/r-maint-compact-io-closure-build-patrol-001/npc-inspection-patrol-test.log",
+      "sha256": "c8160e0c59aa1a9d76779b01415046ec4dcb8834ca03425312ad64ad933134e0",
+      "role": "Stale native binary zero-match result."
+    },
+    {
+      "path": ".de67/task-logs/r-maint-compact-io-closure-build-patrol-001/hashes.sha256",
+      "sha256": "172ae09df8bc065e738c1ad879cb60627a7451777cf8444d673026835070ec29",
+      "role": "Exact source, test, and log hashes."
+    }
+  ],
+  "first_divergence": {
+    "class": "repository_build_obstruction",
+    "summary": "Fresh native Patrol execution could not be reached because the available binary was stale and current builds were blocked by PCH metadata followed by SDL3 MIX linker configuration."
+  },
+  "accepted_no_replay": [
+    "Do not treat the stale binary zero-match result as native Patrol proof.",
+    "Do not replay focused Python tests as a substitute for native Patrol execution.",
+    "Do not treat build output, terminal bytes, OCR, or rendered text as gameplay proof."
+  ],
+  "active_work": [
+    "Fresh current-source native C++ Patrol test execution."
+  ],
+  "first_open_boundary": "Produce a correctly configured current native test binary (resolving stale PCH and SDL3 SOUND/object mismatch), then run the unavailable/stale Patrol inspection case and capture its semantic result.",
+  "narrow_queries": [
+    "native test build configuration PCH SOUND SDL3 MIX",
+    "NPC inspection reads patrol cache without initializing or refreshing it",
+    "fresh current-source C++ Patrol test binary"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/build_source_bound_macos.py",
+    "tools/openclaw_harness/build_source_bound_macos_test.py",
+    "src/basecamp.h",
+    "src/basecamp.cpp",
+    "src/npc_inspection.cpp",
+    "tests/npc_inspection_test.cpp"
+  ],
+  "context_metrics": {}
+}

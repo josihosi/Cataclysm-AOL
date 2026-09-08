@@ -1,0 +1,97 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-CONSULT-closure-binding-001",
+  "claim_id": "R-MAINT-CONSULT",
+  "worker_id": "01a081a6-f2f2-7a33-a1d4-9016430875db",
+  "disposition": "completed",
+  "verdict": "The closure audit independently verifies the task-bound advisory adapter's coordinator, workspace, lineage, run, task, assignment revision, sender, recipient, correlation, stale, duplicate, unavailable, echo, and no-escalation boundaries.",
+  "outcome": "Independently verify the bounded advisory adapter closure behavior without sending another consultation or mutating shared state.",
+  "summary": "The seven focused tests pass again; current assignment revision and production SQLite bindings match the retained packet; exact source and evidence hashes match the prior receipt; the durable request is replied and correlated to the retained Gateway run/session. The task is now terminal, so no resend was performed. The Gateway reply text contains a stale-state presentation nuance (it says Duplicate received and retained state submitting) while the adapter durable state is replied; this does not raise the evidence ceiling.",
+  "material_changes": [
+    "No source, owner, queue, DFS, ledger, or live request changes were made by this audit."
+  ],
+  "tests": [
+    "PYTHONPATH=.../integrations/openclaw_advisory python3.14 unittest discovery: 7 tests OK.",
+    "python3.14 py_compile advisory_consult.py __init__.py: OK.",
+    "Read-only production SQLite checks matched lineage, task claim, coordinator session, supervisor, run owner, and current assignment revision.",
+    "Exact artifact hashes for adapter, tests, README, test log, request packet, retry log, and durable state match the retained receipt."
+  ],
+  "live_actions": [
+    "No live consultation, retry, game launch, or gameplay input was performed.",
+    "Historical consultation PIDs 15924, 15925, 15926, 15928, 16767, 16770, and 16777 were independently confirmed absent.",
+    "No owner mailbox, queue, DE67 state, or shared implementation mutation occurred."
+  ],
+  "evidence_ceiling": [
+    "SQLite ownership and pinned host role guidance verify the caller boundary but do not provide cryptographic caller authentication.",
+    "The durable Gateway reply and request ID provide configured conversational delivery and correlation, not product or gameplay acceptance.",
+    "Advice remains non-authoritative and cannot change owner intent, repair authority, DFS, gates, live ownership, queue provenance, or shared files."
+  ],
+  "bindings": {
+    "assignment_revision": "8372ffd798a6118ef40346e22183fe9d2ce8ff053aaa480476e0a7f76669099b",
+    "coordinator_session_id": "01a08151-5c05-7e82-942d-217ad2db826e",
+    "gateway_run_id": "0d77b475-cd09-426e-a85b-d9dcc3d110a5",
+    "gateway_session_id": "a95e7db4-a1f3-491b-8c4c-e963ce64e898",
+    "historical_sender_run_id": "initial-21bc0676c77e493db28b63a7220c4776",
+    "historical_task_id": "R-MAINT-CONSULT-001",
+    "host_config_sha256": "c0378146c8da9e2de197368a242ebf43b8bf1f1aa0912b632f680e2d1a1fb0c5",
+    "lineage_id": "semantic-surface-cockpit",
+    "recipient_role": "astra-mutator-relay",
+    "request_id": "33594eb69f7ce7161862984b438ce279ca0ba2042ada894bacb7d7f0d0e43bb9",
+    "role_source_sha256": "042a21eb9a2b6bed064287d0e23e293fbf412ff84e1e98beb0539738dd677aeb",
+    "supervisor_id": "89829",
+    "task_id": "R-MAINT-CONSULT-closure-binding-001",
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/consultation-adapter/tests.log",
+      "sha256": "05f54e4eeac5cd0ff6a7aef1b305b0460321bf5c59ca3b4a49aad16d51a36324",
+      "role": "complete focused test output"
+    },
+    {
+      "path": ".de67/task-logs/consultation-roundtrip-request.json",
+      "sha256": "687564c148ab5499bc64ea38ba19eb0f47f1ef6e0beaff279f79283a06311856",
+      "role": "bounded harmless packet"
+    },
+    {
+      "path": ".de67/task-logs/consultation-roundtrip-retry.log",
+      "sha256": "36fb2d3e4c7cf02f6590accf3509cf14c0352a457497a9efa13e15e686006f4f",
+      "role": "Gateway result and returned advisory"
+    },
+    {
+      "path": ".de67/state/advisory-consultations.json",
+      "sha256": "9970dcce134994ebe91cecb941277363302cfb7ef6096ca6f4ddd2fe1bc977e7",
+      "role": "durable replied request state"
+    },
+    {
+      "path": ".de67/task-logs/consultation-adapter/result-receipt.json",
+      "sha256": "05f3273c9ebb719673901a0f087201225797fe2833b9936eafb13488cad6efab",
+      "role": "historical implementation receipt"
+    }
+  ],
+  "first_divergence": {
+    "class": "reply-presentation",
+    "summary": "The retained Gateway reply says Duplicate received and describes retained state as submitting, while the adapter durable consultation record is replied; this is a presentation nuance and does not strengthen authentication or authority."
+  },
+  "accepted_no_replay": [
+    "The terminal task state fences any new consultation; the historical explicit retry remains the only retry.",
+    "No consultation was resent during this audit, and no gameplay or live process was launched."
+  ],
+  "active_work": [
+    "Future consultations remain optional, consequential-only, locally diagnosed, and advisory; coordinator ownership and non-authority boundaries remain in force."
+  ],
+  "first_open_boundary": "The finite closure is verified at its stated ceiling; cryptographic caller authentication, authoritative advice, and product gameplay acceptance remain explicitly unclaimed.",
+  "narrow_queries": [
+    "Inspect the retained request packet, retry log, and durable advisory state for exact request and Gateway identities.",
+    "Recompute assignment revision and inspect current SQLite lineage, claim, task, and run rows read-only.",
+    "Rerun only the focused advisory unit tests; do not resend the terminal request."
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/advisory_consult.py",
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/test_advisory_consult.py",
+    "/Users/josefhorvath/.codex/skills/de67/integrations/openclaw_advisory/README.md"
+  ],
+  "context_metrics": {}
+}

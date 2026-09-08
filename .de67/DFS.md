@@ -1208,25 +1208,27 @@ implementation and focused verification, with exclusive file/runtime ownership p
 <!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-CONSULT-S001 claim=R-MAINT-CONSULT -->
 Implementation status:
 
-- [ ] 🔴 R-MAINT-CONSULT — Sol can request bounded architectural/method advice from Josef's persistent conversational Astra Mutator and receive an authenticated task-bound reply.
-  - The supported OpenClaw agent/session interface is transport, not proof of task authorization.
-    Bind sender to current coordinator/workspace/lineage/run and task/assignment revision, recipient
-    to the configured conversational role, and replies to stable request/source identities. Preserve
-    pending work; acknowledge results, deduplicate retries and reject stale, cross-workspace or
-    unauthorized messages. Failures expose the exact unavailable capability and continuation.
-  - Consult for consequential cross-task obstruction, ambiguous responsibility, contradictory
-    specification/evidence, architectural judgment or scope/ownership conflict after local diagnosis.
-    Send concise outcome/state/first divergence, evidence, attempted lessons, constraints/live owner
-    and decision needed when evidence changes. Routine worker repairs/allocation need no consultation.
-  - Advice grants no owner/DFS/repair authority, queue promotion, gate resolution or shared-state
-    edits. Keep conversational advice distinct from exclusive mutation review. Agent-authored
-    recommendations never become Owner-authorized entries. No raw Codex UUID, impersonation, global
-    access change, credential collection, indiscriminate transcripts, echo loop or second coordinator.
-  - Proof: isolated wrong-sender/workspace, stale-revision, duplicate, unavailable-endpoint and
-    no-authority-escalation cases, then one harmless actual Sol request/reply on the next ordinary run.
-    Inspect/preserve/merge existing host surfaces; name any actual host-owned setup requirement.
-    No channel is claimed complete until the round trip is verified. Workbench/channel delivery
-    grants no gameplay acceptance. See R-MAINT-CONSULT-001 and its selected task context.
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-MAINT-CONSULT -->
+- [x] R-MAINT-CONSULT — Sol can send a bounded task-bound request through the configured conversational route and receive a correlated non-authoritative reply. The adapter rejects stale, rebound, duplicate, unavailable, echo, and authority-escalation cases at the tested ceiling.
+  - DFS slices: `R-MAINT-CONSULT-S001`
+  - Assignment R-MAINT-CONSULT-001: Implement and test a narrow repository advisory adapter using the supported OpenClaw Gateway agent interface. `.de67/task-logs/consultation-interface.md` records the verified CLI/session route and the missing sender/task/revision/reply validation. Keep endpoint configuration host-owned, preserve existing messaging files, and merge only authorized role guidance. Validate sender against current coordinator ownership, workspace/lineage/run/task/assignment revision, correlation and duplicate retries; return advice to the originating Sol call and reject stale/cross-workspace/unbound replies. No raw Codex UUID, full transcript forwarding, queue promotion, plugin install, credential collection or new permissions. Deliver a harmless round trip on the next ordinary Sol run after isolated wrong-sender/workspace/revision/duplicate/unavailable/no-escalation tests; do not spawn a competing coordinator to prove it. A transport acknowledgement, running request or timeout leaves the task open with an exact continuation.
+  - Current capability: OpenClaw exposes `agent --agent --session-key --message-file --json`; configured conversational Astra exists. No inspected interface yet authenticates Sol's assignment revision or validates its correlated advisory reply. The owner-authorized implementation route is open; no new host grant is currently identified. If existing gateway access rejects the ordinary caller, name that exact setup gap and continue independent work.
+  - Applied advisory adapter: Receipt `497a50e594395f76b0bce34b2dc4c89c94dc7575b8b1cdefd339966c08e00c81` proves task-, run-, workspace-, lineage-, revision-, sender-, and correlation-bound requests and replies. Seven focused tests pass. One harmless ordinary Sol request returned a correlated reply after one explicit retry. Advice remains non-authoritative and cannot change the queue, delivery state, owner decisions, or DE67 state. The initial and retry processes exited.
+  - Assignment R-MAINT-CONSULT-closure-binding-001: Independently verify coordinator, workspace, lineage, run, task, revision, sender, recipient, correlation, stale, duplicate, unavailable, echo, and no-escalation behavior from receipt `497a50e594395f76b0bce34b2dc4c89c94dc7575b8b1cdefd339966c08e00c81`. Use exact artifacts and focused tests. Do not send another live consultation or mutate owner, queue, or DE67 state.
+  - Assignment R-MAINT-CONSULT-closure-roundtrip-001: Independently verify the harmless Gateway request and correlated returned reply, including the retained first unavailable attempt and single explicit retry without duplicate delivery. Do not resend the request or treat advice as authority.
+  - Assignment R-MAINT-CONSULT-closure-evidence-lifecycle-001: Independently verify changed files and hashes, focused tests, durable advisory state, non-authority limits, no queue or DE67 mutation, and absence of task-owned processes. Do not launch gameplay or another consultation.
+  - Advisory binding audit: Receipt `647c592a59d28d17cabc4a640198fc54151856128a034cb2f8843a45abcfe35e` independently verifies the configured coordinator, workspace, lineage, run, task, revision, sender, recipient, and reply correlation. Seven tests cover stale, duplicate, unavailable, echo, mixed-writer, and authority-escalation rejection. No request was resent and no shared state changed. The retained reply wording contains a stale-state presentation nuance, while the durable adapter state is replied. Authentication remains SQLite ownership plus pinned host guidance, not cryptographic identity, and advice remains non-authoritative.
+  - Advisory round-trip audit: Receipt `d3cf244ddd2d9319936edd261432eddaeb756c3e0d85533fc5080672f2b265de` verifies exactly one durable request, its correlated Gateway reply, the retained first unavailable attempt, and one explicit retry. Seven tests pass. No request was resent, no task-owned process remains, and no queue, DFS, or DE67 state changed. Advice and authentication remain limited as stated above.
+  - Advisory evidence and lifecycle audit: Receipt `fa57de6c99706172c0da381d6c7e92727a025e4c90899c3dbdaa6785f13acedb` verifies exact implementation, configuration, request, retry, durable state, SQLite lifecycle, and process identities. Seven tests and compilation pass. No consultation was resent, no gameplay or task-owned process launched, and no queue, DFS, or DE67 state changed.
+  - Subtasks:
+    - [done] bind-advisory-request :: Authenticate current coordinator/task and the configured conversational recipient without borrowing owner authority.
+    - [done] correlate-advisory-reply :: Preserve request/revision/source attribution, deduplicate and expose stale or failed delivery.
+    - [done] verify-advisory-use :: Adversarial cases and one harmless ordinary Sol round trip passed without gameplay or queue mutation.
+    - [done] audit-consult-binding :: Receipt 647c592a59d28d17cabc4a640198fc54151856128a034cb2f8843a45abcfe35e verifies identity binding and fail-closed behavior.
+    - [done] audit-consult-roundtrip :: Receipt d3cf244ddd2d9319936edd261432eddaeb756c3e0d85533fc5080672f2b265de verifies the retained request, reply, and explicit retry path.
+    - [done] audit-consult-evidence-lifecycle :: Receipt fa57de6c99706172c0da381d6c7e92727a025e4c90899c3dbdaa6785f13acedb verifies artifacts, tests, authority limits, state isolation, and process cleanup.
+  - Durable acceptance: #1 via `R-MAINT-CONSULT-closure-evidence-lifecycle-001`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-MAINT-CONSULT-S001 claim=R-MAINT-CONSULT -->
 
 Scoped refreeze 2026-09-08, review d1cfc813605b: owner relays6f6a959b0eab,4673b7453329,

@@ -1,0 +1,201 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-COMPACT-IO-closure-observation-integrity-001",
+  "claim_id": "R-MAINT-COMPACT-IO",
+  "worker_id": "01a0819f-824f-7631-965b-7d527f28fe00",
+  "disposition": "completed",
+  "verdict": "The compact observation workbench is independently verified at its tooling-only ceiling: selected native views preserve unavailable versus false/empty values, comparisons classify compatible and uncertain or incompatible identities without asserting atomicity, request/result links and omitted/full handles are recoverable by exact hashes, and startup diagnostics preserve unknown health and recovery evidence.",
+  "outcome": "Independently verify compact observation projections, comparisons, request-to-result links, omitted/full handles, incompatible or unknown states, and startup diagnostic uncertainty without replaying gameplay or inferring causality.",
+  "summary": "Read-only audit of the retained R033 session plus isolated edge cases and the dependency suite verified the selected-view, comparison, retrieval, omission, hash recovery, and startup diagnostic contracts. The retained native adoption covers game.observe frame 43 and world.inventory resulting frame 44; it is not fresh gameplay proof.",
+  "material_changes": [
+    "No source or retained-session implementation changes were made; this worker independently validated the existing compact observation implementation.",
+    "Recorded the exact selected, omitted, full-recovery, request/result, comparison, and startup identities used by the audit."
+  ],
+  "tests": [
+    "PYTHONPATH=tools/openclaw_harness python3 -m unittest -v tools/openclaw_harness/compact_io_observation_test.py passed all 3 focused tests.",
+    "PYTHONPATH=tools/openclaw_harness python3 -m unittest -v tools.openclaw_harness.cockpit_evidence_test tools.openclaw_harness.cockpit_file_bridge_test tools.openclaw_harness.play_cli_test tools.openclaw_harness.compact_io_observation_test ran 80 dependency tests in 22.328s; all passed.",
+    "Read-only edge audit classified an absent field and incomplete identity as unknown, a process mismatch as incompatible, rejected same-request comparison, and kept missing request-result artifacts explicit.",
+    "Read-only retained-session commands response-status, response_slice, response_artifact, request-result, response-compare, and startup_diagnostics returned the identities and hashes recorded in bindings."
+  ],
+  "live_actions": [
+    "No game launch, bridge launch, replay, setup intervention, time advancement, or gameplay input occurred in this audit; only retained response/request artifacts were read.",
+    "No OCR, terminal bytes, or rendered text were used as proof; semantic receipts, authoritative response artifacts, and exact request/frame identities were used.",
+    "No retained-session mutation or cleanup command was issued. Startup diagnostics were read-only and reported safe_to_cleanup with health unknown."
+  ],
+  "evidence_ceiling": [
+    "This audit proves compact I/O behavior and retrieval integrity only; it does not prove gameplay acceptance, startup health, or causal interpretation.",
+    "Retained native adoption establishes interface ergonomics and request/result linkage for game.observe frame 43 and world.inventory resulting frame 44, not a fresh independent scenario or run.",
+    "Large response surfaces are compacted with selector/type/size metadata and remain recoverable through exact response SHA-256 handles; comparisons are explicitly non-atomic.",
+    "Startup health remains unknown even when lifecycle state, PID/birth identity, and recovery handles are present."
+  ],
+  "bindings": {
+    "binding_id": "f0e518e0f65970b831f840745e67997e8f8614a1682a65decaa32b28d2636fa4",
+    "birth_identity": "posix-lstart:Tue Sep  8 10:51:03 2026",
+    "bridge_pid": "38209",
+    "compare_after_request_id": "play-e69e1b0200d84087bf69bf4c2ff3e3e2",
+    "compare_after_response_sha256": "eeae8bd69eb4f3649a1eeb002b999af0d185e6602bd6829bf7db1c4058d92e43",
+    "compare_atomic": "false",
+    "compare_before_request_id": "play-0e6155b58e7443be850e8eaeab1fb794",
+    "compare_before_response_sha256": "73a747fedfdbacbde7cbcd7ff1d99d926286a0db3e6dd55b9c077137d82c5305",
+    "compare_binding_status": "unknown",
+    "compare_changed_fields": "result.game_turn,result.surface.facts.messages",
+    "compare_status": "compatible",
+    "compare_unchanged_fields": "result.surface.facts.visible_entities",
+    "full_recovery_sha256": "eeae8bd69eb4f3649a1eeb002b999af0d185e6602bd6829bf7db1c4058d92e43",
+    "game_pid": "38260",
+    "inventory_request_id": "play-1b95493bd69c4fc2aeffd97e06e75693",
+    "inventory_result_frame": "f622e2d8945efece7709840bd98ec1ea41a12c7ddfed3dc5b9b77c42ea1be926:frame:44",
+    "observe_frame": "f622e2d8945efece7709840bd98ec1ea41a12c7ddfed3dc5b9b77c42ea1be926:frame:43",
+    "observe_request_id": "play-e69e1b0200d84087bf69bf4c2ff3e3e2",
+    "omitted_response_sha256": "eeae8bd69eb4f3649a1eeb002b999af0d185e6602bd6829bf7db1c4058d92e43",
+    "omitted_selector": "result.surface.facts.messages",
+    "process_instance": "1788857476047553",
+    "request_result_request_sha256": "c1ef216187dcf31150e45260443483b455157690a69fba8461e0054bbbc5fb78",
+    "request_result_response_sha256": "9c0d21a211bcf77a53c8b9bcd228438c17487f3539c409df7f8660ceaf4c7e88",
+    "request_result_status": "recorded",
+    "run_id": "f622e2d8945efece7709840bd98ec1ea41a12c7ddfed3dc5b9b77c42ea1be926",
+    "selected_messages_count": "256",
+    "selected_messages_selector": "result.surface.facts.messages",
+    "selected_missing_field_status": "unavailable",
+    "selected_turn": "5245443",
+    "session_dir": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908",
+    "startup_health": "unknown",
+    "startup_lifecycle_state": "safe_to_cleanup",
+    "startup_recovery_handles": "startup_output,bridge_stderr",
+    "task_packet_sha256": "1214e8911a69a4a56f2d83a4b46f580e1a9a87f3edd20be18290061c6fc444a0"
+  },
+  "journal_entries": [
+    {
+      "id": "compact-io-closure-focused-tests",
+      "sequence": "1",
+      "event_type": "test",
+      "evidence_class": "isolated_test",
+      "summary": "Focused compact I/O tests passed 3/3; dependency suite passed 80/80.",
+      "artifact_ref": "tools/openclaw_harness/compact_io_observation_test.py"
+    },
+    {
+      "id": "compact-io-closure-native-selection",
+      "sequence": "2",
+      "event_type": "native_integration",
+      "evidence_class": "retained_native_artifact",
+      "summary": "Selected native fields distinguish available values from an unavailable selector and compact large messages with recoverable metadata.",
+      "artifact_ref": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/responses/play-e69e1b0200d84087bf69bf4c2ff3e3e2.json"
+    },
+    {
+      "id": "compact-io-closure-links-and-uncertainty",
+      "sequence": "3",
+      "event_type": "native_integration",
+      "evidence_class": "retained_native_artifact",
+      "summary": "Request/result hashes, compatible non-atomic comparison, unknown/incompatible edge states, and startup health uncertainty were verified.",
+      "artifact_ref": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/responses/play-1b95493bd69c4fc2aeffd97e06e75693.receipt.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/state/worker-dispatch/task_522d4d41494e542d434f4d504143542d494f2d636c6f737572652d6f62736572766174696f6e2d696e746567726974792d303031-1214e8911a69a4a56f2d83a4b46f580e1a9a87f3edd20be18290061c6fc444a0.md",
+      "sha256": "1214e8911a69a4a56f2d83a4b46f580e1a9a87f3edd20be18290061c6fc444a0",
+      "role": "Integrity-verified task brief governing this closure audit."
+    },
+    {
+      "path": "tools/openclaw_harness/cockpit_evidence.py",
+      "sha256": "5b490b00e3f25c321b15eeeacfb274704e7e97aa8e709ae49d416cdab57c85f1",
+      "role": "Compact selected-view, identity/freshness, and comparison implementation audited read-only."
+    },
+    {
+      "path": "tools/openclaw_harness/cockpit_file_bridge.py",
+      "sha256": "ae2412dc3fea093ce7c61a1b2e37ada2d5be8bdcf243cbd535c402ea8ec00be0",
+      "role": "Read-only startup diagnostics, request/result retrieval, response status, and response comparison implementation audited read-only."
+    },
+    {
+      "path": "tools/openclaw_harness/evidence_events.py",
+      "sha256": "24e13fed9e9c408a4a47d5abe46bbf586d6281ad8a48be142f6ba7b392bb5853",
+      "role": "Response identity and request/result event-link implementation audited read-only."
+    },
+    {
+      "path": "tools/openclaw_harness/play_cli.py",
+      "sha256": "8b8140b190ffdb23e39597313488590b51601a5b0e8c59dfaf58be7216bb6cc6",
+      "role": "Player compare and request-result presentation implementation audited read-only."
+    },
+    {
+      "path": "tools/openclaw_harness/compact_io_observation_test.py",
+      "sha256": "9e48d1d8d83141e4e8b6c7d1ec42b86e2703de5fb07db008d38ee8333eed7d83",
+      "role": "Three focused compact-observation tests."
+    },
+    {
+      "path": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/status.json",
+      "sha256": "bcf5f4e7d7715dbc52f75004a281b0ed8fa502b74373e179c8dfd48b42e6c20b",
+      "role": "Retained lifecycle/binding status; safe_to_cleanup with health unknown."
+    },
+    {
+      "path": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/game-process.json",
+      "sha256": "fd801a840cb25a38c6f9634b79157019b0e7532dd87a0ba7cb7913adcb7b92ed",
+      "role": "Retained native process PID/birth identity artifact."
+    },
+    {
+      "path": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/child.startup.stdout.jsonl",
+      "sha256": "279174aa7417e2d7d1df912ea37f5352b820f2bc6213fcec5c52204692342ca1",
+      "role": "Retained startup recovery output handle."
+    },
+    {
+      "path": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/requests/play-e69e1b0200d84087bf69bf4c2ff3e3e2.json",
+      "sha256": "60dd41977a93c47974c8d15ebc9d0229bea881ce56a54702c8e664bdf82db686",
+      "role": "Recorded game.observe request envelope."
+    },
+    {
+      "path": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/responses/play-e69e1b0200d84087bf69bf4c2ff3e3e2.receipt.json",
+      "sha256": "d89a314d17f79d9c4b8206ebbe134e7f08c1f24956ed5268b389ff558794281a",
+      "role": "Verified game.observe response receipt and exact response hash."
+    },
+    {
+      "path": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/responses/play-e69e1b0200d84087bf69bf4c2ff3e3e2.json",
+      "sha256": "eeae8bd69eb4f3649a1eeb002b999af0d185e6602bd6829bf7db1c4058d92e43",
+      "role": "Hash-backed game.observe response used for compact omission and full recovery."
+    },
+    {
+      "path": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/requests/play-1b95493bd69c4fc2aeffd97e06e75693.json",
+      "sha256": "c1ef216187dcf31150e45260443483b455157690a69fba8461e0054bbbc5fb78",
+      "role": "Recorded world.inventory request envelope."
+    },
+    {
+      "path": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/responses/play-1b95493bd69c4fc2aeffd97e06e75693.receipt.json",
+      "sha256": "c5fea8adeed3f346969002adc38fd251b146feaf7777b4af6a130b8a4cdfd4a2",
+      "role": "Verified world.inventory request/result receipt."
+    },
+    {
+      "path": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/responses/play-1b95493bd69c4fc2aeffd97e06e75693.json",
+      "sha256": "9c0d21a211bcf77a53c8b9bcd228438c17487f3539c409df7f8660ceaf4c7e88",
+      "role": "Hash-backed world.inventory response with resulting frame 44."
+    },
+    {
+      "path": ".userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908/requests/play-0e6155b58e7443be850e8eaeab1fb794.json",
+      "sha256": "f08ec38d99c903c0b37a63a14111133caf4747f020052b3bdf3c3ffe4290ebe0",
+      "role": "Recorded before-comparison request envelope."
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not replay or relaunch the retained session, or treat retained adoption as fresh gameplay proof.",
+    "Do not use OCR, terminal bytes, or rendered text as proof of accepted input, elapsed time, gameplay state, or passing checkpoints.",
+    "Do not infer gameplay causality from request/result adjacency, spoken text, or unchanged values across non-atomic observations."
+  ],
+  "active_work": [
+    "No further work is active for this finite closure audit; the coordinator may record the validated receipt.",
+    "A fresh independent native scenario remains a separate adoption boundary if stronger gameplay coverage is required."
+  ],
+  "first_open_boundary": "Fresh independent native scenario/run exercising compact I/O on a new gameplay route remains outside this closure audit; retained R033 adoption validates interfaces only and does not discharge fresh gameplay coverage.",
+  "narrow_queries": [
+    "Use response-status --session-dir .userdata/openclaw_harness/sessions/r033-smoke-dedup-native-20260908 --request-id REQUEST --select FIELD for explicit selected fields.",
+    "Use response-compare --session-dir SESSION --before REQUEST --after REQUEST --select FIELD for compatible selected comparisons.",
+    "Use request-result --session-dir SESSION --request-id REQUEST to recover recorded request, receipt, response, and exact hashes.",
+    "Use response-artifact --session-dir SESSION --request-id REQUEST --sha256 HASH for complete response recovery."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/cockpit_evidence.py",
+    "tools/openclaw_harness/cockpit_file_bridge.py",
+    "tools/openclaw_harness/evidence_events.py",
+    "tools/openclaw_harness/play_cli.py",
+    "tools/openclaw_harness/compact_io_observation_test.py"
+  ],
+  "context_metrics": {}
+}

@@ -32,6 +32,158 @@ def select(value: Any, selector: str) -> Any:
     return decode(value)
 
 
+def select_optional(value: Any, selector: str) -> dict[str, Any]:
+    """Read one optional field without turning an unavailable field into a fact.
+
+    Retained native views intentionally have different schemas (and older
+    records may not contain newer fields).  Callers need a stable result shape
+    that distinguishes an absent field from a false/empty/zero value.
+    """
+    selector = str(selector).strip()
+    if not selector:
+        return {"selector": selector, "available": False, "reason": "selector_required"}
+    try:
+        return {"selector": selector, "available": True, "value": select(value, selector)}
+    except (KeyError, IndexError, TypeError, ValueError):
+        return {"selector": selector, "available": False, "reason": "field_unavailable"}
+
+
+def selected_view(value: Any, selectors: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
+    """Project explicitly selected fields while retaining the source identity.
+
+    This is presentation-only: ``value`` is never rewritten and omitted
+    fields remain explicitly unavailable.  The complete source can still be
+    recovered through the caller's artifact handle.
+    """
+    normalized = []
+    for selector in selectors:
+        selector = str(selector).strip()
+        if selector and selector not in normalized:
+            normalized.append(selector)
+    binding = observation_binding(value)
+    return {"schema": "caol-selected-view-v1",
+            "identity": {key: binding[key] for key in
+                          ("run_id", "binding_id", "process_instance", "session_generation", "frame_id")},
+            "freshness": {key: binding[key] for key in
+                           ("turn", "game_minutes", "timestamp")},
+            "selectors": {selector: select_optional(value, selector) for selector in normalized},
+            "note": "Selected values are from one retained response; absent identity/freshness is unknown."}
+
+
+_MISSING = object()
+
+
+def _first_mapping(value: Any, *paths: str) -> Any:
+    for path in paths:
+        try:
+            found = select(value, path)
+        except (KeyError, IndexError, TypeError, ValueError):
+            continue
+        if found is not None:
+            return found
+    return None
+
+
+def observation_binding(value: Any) -> dict[str, Any]:
+    """Extract comparable identity from a response/observation without inference."""
+    observed = value
+    if isinstance(observed, dict):
+        observed = observed.get("observation", observed.get("result", observed))
+        if isinstance(observed, dict) and not observed.get("observation_id") and isinstance(observed.get("terminal_observation"), dict):
+            observed = observed["terminal_observation"]
+    observed = observed if isinstance(observed, dict) else {}
+    receipt = value.get("receipt", {}) if isinstance(value, dict) else {}
+    authority = value.get("authority", {}) if isinstance(value, dict) else {}
+    if not isinstance(receipt, dict):
+        receipt = {}
+    if not isinstance(authority, dict):
+        authority = {}
+    native = receipt.get("native_receipt", {})
+    native = native if isinstance(native, dict) else {}
+    wall_time = observed.get("wall_time")
+    if isinstance(wall_time, dict):
+        timestamp = observed.get("timestamp", observed.get("created_at", wall_time.get("iso8601", wall_time.get("unix_ms", wall_time.get("unix_seconds")))))
+    else:
+        timestamp = observed.get("timestamp", observed.get("created_at"))
+    process_instance = observed.get("process_instance", authority.get("process_instance", native.get("process_instance")))
+    return {
+        "run_id": observed.get("run_id", authority.get("run_id", native.get("run_id"))),
+        "binding_id": observed.get("binding_id", receipt.get("binding_id", native.get("binding_id"))),
+        "process_instance": process_instance,
+        "session_generation": observed.get("session_generation", receipt.get("session_generation")),
+        "frame_id": observed.get("frame_id", observed.get("observation_id", authority.get("observation_id"))),
+        "turn": observed.get("game_turn", observed.get("turn")),
+        "game_minutes": observed.get("game_minutes"),
+        "timestamp": timestamp,
+    }
+
+
+def compare_selected(before: Any, after: Any, selectors: list[str] | tuple[str, ...] = ()) -> dict[str, Any]:
+    """Compare selected native facts and classify uncertainty explicitly.
+
+    A process/run/binding mismatch makes the views incompatible; no transient
+    actor IDs are joined across such a boundary.  Same-content observations
+    remain ``unchanged`` even when their timestamps differ.
+    """
+    before_binding, after_binding = observation_binding(before), observation_binding(after)
+    binding_fields = ("run_id", "binding_id", "process_instance", "session_generation")
+    incompatibilities = []
+    for field in binding_fields:
+        left, right = before_binding.get(field), after_binding.get(field)
+        if left is not None and right is not None and left != right:
+            incompatibilities.append({"field": field, "before": left, "after": right, "reason": "unequal"})
+    compatible = not incompatibilities
+    identity_unknown = [field for field in binding_fields
+                        if before_binding.get(field) is None or after_binding.get(field) is None]
+    normalized = []
+    for selector in selectors:
+        selector = str(selector).strip()
+        if selector and selector not in normalized:
+            normalized.append(selector)
+    fields = {}
+    summary = {name: [] for name in ("changed", "unchanged", "added", "removed", "unknown", "incompatible")}
+    for selector in normalized:
+        left, right = select_optional(before, selector), select_optional(after, selector)
+        if not compatible:
+            status = "incompatible"
+        elif not left["available"] and not right["available"]:
+            status = "unknown"
+        elif not left["available"]:
+            status = "added"
+        elif not right["available"]:
+            status = "removed"
+        elif left["value"] == right["value"]:
+            status = "unchanged"
+        else:
+            status = "changed"
+        row = {"status": status, "before": left, "after": right}
+        fields[selector] = row
+        summary[status].append(selector)
+    timestamp_changed = (before_binding.get("timestamp") is not None and
+                         after_binding.get("timestamp") is not None and
+                         before_binding.get("timestamp") != after_binding.get("timestamp"))
+    return {
+        "schema": "caol-selected-comparison-v1",
+        "status": "compatible" if compatible else "incompatible",
+        "binding": {"status": "compatible" if compatible and not identity_unknown else
+                     "unknown" if compatible else "incompatible",
+                     "before": before_binding, "after": after_binding,
+                     "incompatibilities": incompatibilities,
+                     "unknown_fields": identity_unknown},
+        "fields": fields,
+        "summary": summary,
+        "timestamp_changed": timestamp_changed,
+        "atomic": False,
+        "note": "Different-time observations are not atomic snapshots; unchanged content with a changed timestamp remains unchanged.",
+    }
+
+
+# Descriptive aliases keep the helper usable from focused inspectors without
+# creating another evidence/query framework.
+select_view = selected_view
+compare_observations = compare_selected
+
+
 def describe(value: Any, path: str) -> dict[str, Any]:
     if isinstance(value, ArchiveSequence):
         return {"omitted": True, "selector": path, "type": "list",
