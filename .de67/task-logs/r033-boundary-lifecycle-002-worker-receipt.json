@@ -1,0 +1,69 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "claim_id": "R-033",
+  "task_id": "R-033-closure-boundary-evidence-lifecycle-002",
+  "worker_id": "01a0813e-8085-7d61-a6e2-d7206230f56c",
+  "disposition": "completed",
+  "verdict": "boundary_lifecycle_verified_at_observed_frame_ceiling",
+  "outcome": "The independent read-only audit verifies generation-1 reentry identity, route, waypoint, abstract outing and cursor ownership, and absence of a local clone or simultaneous owner at the observed frame. It also verifies exact cleanup while preserving that SIGTERM-based absence is not native save-and-quit proof.",
+  "summary": "The cited synthesis and reentry package hashes match. Run f229669869b965550393e791f31a5e5a87fcae26e89bb44fe9e60c8cfdfc615e at frame 1 and minute 8285 preserves pair [4,5], generation 1, structural_sortie returning_home, waypoint [137,51,0], abstract simulation and cursor ownership, and no local clone. Game PID 8937 with exact birth identity and broker PID 8493 are absent. Their SIGTERM cleanup receives no native-exit credit.",
+  "first_divergence": null,
+  "first_open_boundary": "No boundary remains inside this closure gap. Later movement, same-OMT smoke, thirty-day pruning, unrelated channels, and native save-and-quit credit remain outside the verified ceiling.",
+  "bindings": {
+    "brief_sha256": "804c1dcaeb9569499ff98bd5107a2c9316b344030c805eb88faa6b2867fa5128",
+    "checkpoint_receipt": "e7e9fd0d4eb2040fb4e226ac5d75d507df97a8a1fe38933f50aa7b12c49adda3",
+    "run_id": "f229669869b965550393e791f31a5e5a87fcae26e89bb44fe9e60c8cfdfc615e",
+    "binding_id": "c8c572cfef6dedf2e77d75fe864d45aa404c27350534b743704dcfa4cd417132",
+    "source_identity": "efe96eae9b593b5c1f7dc255e8f2de3048776cd094bde0cf9446c9e777a7138d",
+    "executable_identity": "c5102561e83bf6525e4bff1a9e186fbfd6156b4053c32cad1fd3434a0abd6b58",
+    "game_pid": "8937",
+    "game_birth": "posix-lstart:Tue Sep 8 08:51:57 2026",
+    "broker_pid": "8493"
+  },
+  "entrypoints": [
+    ".de67/task-logs/r033-coordinator-synthesis-20260908.md",
+    "build_logs/r033-phase4-rev5-reentry-package.json"
+  ],
+  "material_changes": [],
+  "tests": [
+    "Read-only package assertions verified frame 1, minute 8285, generation 1, pair [4,5], structural_sortie returning_home, waypoint [137,51,0], abstract ownership, and no local clone.",
+    "Exact process identity reconciliation verified game PID 8937 and broker PID 8493 absent."
+  ],
+  "journal_entries": [],
+  "live_actions": [
+    "No game, broker, helper runtime, or GUI process was launched. No file was edited by the worker."
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r033-coordinator-synthesis-20260908.md",
+      "role": "finite R-033 closure frontier",
+      "sha256": "c0389c012e68defbd38e93b5c0a52be444acdb92e6a370ff092651e6a48e5ad0"
+    },
+    {
+      "path": "build_logs/r033-phase4-rev5-reentry-package.json",
+      "role": "generation-1 reentry evidence package",
+      "sha256": "ff2c59cd5bb1eeadc656e32b087d12b5cd452d07859ec67aa2697c80eb2a073c"
+    }
+  ],
+  "evidence_ceiling": [
+    "Reentry continuity and owner exclusivity are proved only at the observed frame; later movement is not inferred.",
+    "SIGTERM-based process absence proves cleanup only and receives no native save-and-quit credit.",
+    "The retained witness is inconclusive for lead and memory transitions because those are outside this artifact; this does not contradict the separate accepted signal and memory receipts.",
+    "OCR, screenshots, rendered text, and terminal bytes received no proof credit.",
+    "Fixture, bootstrap, and preseed actions remain zero-credit setup.",
+    "Same-OMT smoke, thirty-day pruning, and unrelated channels remain outside this gap."
+  ],
+  "accepted_no_replay": [
+    "Accepted signal controls and memory transitions were preserved without replay.",
+    "No game or broker was launched.",
+    "OCR and presentation output received no proof credit."
+  ],
+  "active_work": [],
+  "narrow_queries": [
+    "reentry frame and pair identity",
+    "abstract outing and cursor owner exclusivity",
+    "exact cleanup identities and native-exit ceiling"
+  ],
+  "context_metrics": {}
+}

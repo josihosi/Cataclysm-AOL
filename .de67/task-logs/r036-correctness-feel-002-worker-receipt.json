@@ -1,0 +1,57 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "claim_id": "R-036",
+  "task_id": "R-036-closure-correctness-feel-002",
+  "worker_id": "01a08135-16d4-7871-a0d8-c13291803ec2",
+  "disposition": "completed",
+  "verdict": "mechanical_correctness_verified_subjective_feel_unproved",
+  "outcome": "The bounded audit independently verifies the matched baseline and hostile-ecology feature action windows have the same authoritative native movement result. It also verifies that the retained evidence supports no subjective smoothness, responsiveness, redraw-timing, avatar-presentation, or gameplay-feel claim.",
+  "summary": "Baseline run 665b16046551460184abc3da8adddc4b and feature run bf61e0502b5b407e816fa3ad16794ed7 each accepted world.move.east at game minute 8159 and moved from [3372,996,0] to [3373,996,0]. The continuation pair completed 8/8 steps under the same source, executable, world, profile, and matched scenario construction. All four presentation captures are byte-identical, so the worker's no-stutter statement remains an observation only and no subjective-feel result is claimed.",
+  "first_divergence": null,
+  "first_open_boundary": "Subjective feel would require reproducible time-aware perceptual evidence. Broader statistics and durable broker graceful-exit evidence remain separate stated limits and do not invalidate this bounded correctness-and-feel audit.",
+  "bindings": {
+    "brief_sha256": "ee901ae80ff0934d2c1ed03ab78651b0f80d67acd20addd04284d1616e51bd97",
+    "baseline_run": "665b16046551460184abc3da8adddc4b",
+    "feature_run": "bf61e0502b5b407e816fa3ad16794ed7",
+    "baseline_continuation_run": "3b371b4fa5494a12b31440241fbe8337",
+    "feature_continuation_run": "f67f7e01822e4b6982aa08dd36186ed3",
+    "predecessor_receipt": "58a9b44d38843eb30a2849a80dfe7cce7c30a2906dcc4aa16da431b4b0a0670f",
+    "exploration_receipt": "4771c9c22aa60427fc61f6d86105c0edacf757cbb99b116f9504a5e82af03bd7"
+  },
+  "entrypoints": [
+    ".userdata/dev-harness/harness_runs/20260908_141909_fea37a85c23241edadd96da05255fd7e/transition.events.jsonl",
+    ".userdata/dev-harness/harness_runs/20260908_142122_7a8f8c9d253346e68cb9563c5a51b1c8/transition.events.jsonl"
+  ],
+  "material_changes": [],
+  "tests": [
+    "Read-only native transition audit confirmed accepted matched movement at minute 8159 for both variants.",
+    "Read-only receipt audit confirmed the continuation pair completed 8/8 steps with retained renderer and CPU/RSS measurements.",
+    "Read-only artifact comparison confirmed all four presentation captures share SHA-256 2db4341c44cae89d098d5c335edf94ef6986635d1227d70bf4b18f32ef13d4f4."
+  ],
+  "journal_entries": [],
+  "live_actions": [
+    "No game, broker, helper runtime, or GUI process was launched. No production or DE67 state file was edited by the worker."
+  ],
+  "artifacts": [],
+  "evidence_ceiling": [
+    "Native movement receipts prove mechanical action and coordinate change, not subjective feel.",
+    "Byte-identical static captures cannot prove redraw timing, smoothness, responsiveness, avatar presentation, or stutter absence.",
+    "The earlier worker's no-visible-stutter statement remains an observation only.",
+    "OCR, terminal bytes, and rendered text were not used as proof.",
+    "The finite measurement pair does not establish a universal performance threshold or broader statistical conclusion.",
+    "Durable broker graceful-exit proof remains limited as already recorded."
+  ],
+  "accepted_no_replay": [
+    "No gameplay was replayed for this audit.",
+    "Existing fresh native results were independently inspected at their recorded ceilings.",
+    "OCR and rendered text received no proof credit."
+  ],
+  "active_work": [],
+  "narrow_queries": [
+    "matched world.move.east receipts at minute 8159",
+    "continuation 8/8 workload identity",
+    "presentation artifact SHA-256 equality"
+  ],
+  "context_metrics": {}
+}

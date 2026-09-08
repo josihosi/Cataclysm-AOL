@@ -1,0 +1,110 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "claim_id": "R-036",
+  "task_id": "R-036-closure-correctness-feel-001",
+  "worker_id": "01a080ef-0b5c-7931-8ad7-f4efadc5f2cb",
+  "disposition": "checkpoint",
+  "verdict": "restart_preserved_result",
+  "outcome": "The matched baseline and hostile-ecology feature windows each produced an accepted native east-movement receipt from the same starting coordinates and game minute. Both moved the avatar from [3372,996,0] to [3373,996,0] at minute 8159. This verifies the bounded mechanical transition. The retained screenshots are byte-identical across both before/after pairs, so they do not prove redraw, responsiveness, smoothness, or subjective gameplay feel. The worker reported seeing no visible stutter, but that report is retained only as a direct observation at a non-reproducible perceptual ceiling. The restarted coordinator completed the feature run's advertised native save-and-quit, main-menu quit, and final confirmation route and verified the exact PID absent.",
+  "summary": "Both matched action windows have exact native movement receipts with identical starting state and outcome. Static screenshot files cannot establish timing or perceptual feel because all four comparison images have the same SHA-256. The honest package result is mechanical correctness with subjective feel left unclaimed. The baseline PID exited under the worker, and the feature PID exited after restart recovery through native semantic quit actions.",
+  "first_divergence": {
+    "class": "evidence_ceiling",
+    "summary": "The visual captures are byte-identical and cannot substantiate the worker's no-visible-stutter observation or any matched feel comparison."
+  },
+  "first_open_boundary": "A reproducible time-aware perceptual capture would be required for a subjective smoothness or responsiveness claim. R-036 can retain that as an explicit non-claim because the assigned closure outcome was to verify the honest feel ceiling, not to invent a universal feel threshold.",
+  "bindings": {
+    "baseline_run": "665b16046551460184abc3da8adddc4b",
+    "baseline_pid": "88377",
+    "baseline_birth": "posix-lstart:Tue Sep  8 14:19:10 2026",
+    "feature_run": "bf61e0502b5b407e816fa3ad16794ed7",
+    "feature_pid": "88775",
+    "feature_birth": "posix-lstart:Tue Sep  8 14:21:23 2026",
+    "world": "McWilliams",
+    "profile": "dev-harness"
+  },
+  "entrypoints": [
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/scenarios/performance.r036_integrated_baseline_v1.json",
+    "tools/openclaw_harness/scenarios/performance.r036_integrated_feature_v1.json"
+  ],
+  "material_changes": [],
+  "tests": [
+    "Baseline native world.move.east accepted from frame 1 and moved [3372,996,0] to [3373,996,0] at game minute 8159.",
+    "Feature native world.move.east accepted from frame 1 and moved [3372,996,0] to [3373,996,0] at game minute 8159.",
+    "Baseline PID 88377 was absent after the worker's native quit route.",
+    "Feature PID 88775 accepted world.save_quit at frame 3, YES at frame 4, main_menu.quit at frame 5, and final YES at frame 6; exact PID/birth was absent afterward."
+  ],
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": "1",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Matched baseline and feature movement receipts bind identical start, action, outcome, and game minute."
+    },
+    {
+      "id": "J0010",
+      "sequence": "10",
+      "event_type": "lifecycle",
+      "evidence_class": "native",
+      "summary": "Restart recovery completed the retained feature game's native quit route and verified exact process absence."
+    }
+  ],
+  "live_actions": [
+    "Baseline run 665b16046551460184abc3da8adddc4b, PID 88377, birth posix-lstart:Tue Sep 8 14:19:10 2026, accepted world.move.east from frame 1 to frame 2 and later exited through the worker's native quit route.",
+    "Feature run bf61e0502b5b407e816fa3ad16794ed7, PID 88775, birth posix-lstart:Tue Sep 8 14:21:23 2026, accepted world.move.east from frame 1 to frame 2. After restart, the coordinator recovered current frame 3 and completed native save/quit and application quit through frames 3-6."
+  ],
+  "artifacts": [
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_141909_fea37a85c23241edadd96da05255fd7e/transition.events.jsonl",
+      "role": "baseline native transition and cleanup identities",
+      "sha256": "49f75622ca7500a8c4963dbe393ac7661268e9698b26f2e2e69030598676988c"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_141909_fea37a85c23241edadd96da05255fd7e/semantic.native.events.jsonl",
+      "role": "baseline native descriptor and receipt stream",
+      "sha256": "648bec06ff36a9dabaefa98e92db6cfe1b7b71f2a3e2f8aacfd63b338a321432"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_142122_7a8f8c9d253346e68cb9563c5a51b1c8/transition.events.jsonl",
+      "role": "feature native transition and restart cleanup identities",
+      "sha256": "e6b99db8e429aeaf8165fa788d991bd7c1b29e9f19ac846794bb96fc636efc81"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_142122_7a8f8c9d253346e68cb9563c5a51b1c8/semantic.native.events.jsonl",
+      "role": "feature native descriptor and receipt stream",
+      "sha256": "51c5fd264682bd264e1e4efc9f41edc074479f0472a41c1338577a4a4341bb43"
+    },
+    {
+      "path": ".openclaw/tmp/r036-b2-before.png",
+      "role": "baseline presentation observation before movement",
+      "sha256": "2db4341c44cae89d098d5c335edf94ef6986635d1227d70bf4b18f32ef13d4f4"
+    },
+    {
+      "path": ".openclaw/tmp/r036-f3-before.png",
+      "role": "feature presentation observation before movement",
+      "sha256": "2db4341c44cae89d098d5c335edf94ef6986635d1227d70bf4b18f32ef13d4f4"
+    }
+  ],
+  "evidence_ceiling": [
+    "Native semantic receipts prove accepted movement and authoritative position change only; accepted input does not itself prove visual smoothness or subjective feel.",
+    "All retained before/after screenshots for both variants are byte-identical. They cannot prove redraw timing, avatar displacement presentation, stutter absence, or a comparative feel result.",
+    "The worker's direct no-visible-stutter statement is preserved as an observation but is not promoted into a reproducible package claim.",
+    "OCR, terminal bytes, and rendered text were not used to prove accepted input, elapsed game time, gameplay state, or a passing checkpoint.",
+    "No automatic time or RSS termination was used.",
+    "The feature game's final accepted quit confirmation returned no successor because the process exited; exact PID/birth absence was verified immediately afterward."
+  ],
+  "accepted_no_replay": [
+    "The worker used fresh baseline and feature action windows rather than replaying prior accepted gameplay.",
+    "The restart recovery only finished the already-running feature game and did not repeat its movement action.",
+    "OCR and rendered text received no proof credit."
+  ],
+  "active_work": [],
+  "narrow_queries": [
+    "exact native movement receipt and coordinate transition",
+    "byte identity of retained presentation captures",
+    "PID/birth-bound native cleanup after coordinator restart"
+  ],
+  "context_metrics": {}
+}

@@ -1049,23 +1049,24 @@ controller/bridge memory, retained evidence size and NPC-runner/model work.
 
 Implementation status:
 
-- [ ] 🔴 R-036 — The fresh combined living-base/hostile-ecology package lacks matched performance evidence.
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-036 -->
+- [x] R-036 — Fresh matched living-base and hostile-ecology performance evidence is complete at its finite descriptive ceiling.
   - DFS slices: `R-036-S001`
-  - Code/proof gap: R-028's old pair and qualification's finite CPU/RSS/action samples or parser
-    allocation experiment are not fresh integrated gameplay comparison.
-  - Required mechanism: pair equivalent current-source fixture states/workloads with and without
-    the particular feature load being compared. Include rendered local transitions, established
-    camp and hostile activity; an idle/action-only versus visible-bandit question requires matched
-    input/simulation context, not two unrelated periods with those labels.
-  - Proof: retain source/build/world/scenario identity, active actors/operations, native action and
-    update latency, raw renderer pacing distribution, CPU/RSS, repeated comparable observations
-    sufficient to expose variability and associated gameplay-feel observations. Report measured
-    differences and uncertainty. Investigate profiling only if a reproduced cost/feel concern gives
-    it a concrete question. Preserve independent test results if a gameplay bug prevents one load.
-  - Controls: no universal FPS/RSS/time target, automatic time/RSS game kill, unmatched scene,
-    average-only result, synthetic-only scorer/trace test, or profiler-only claim. Source/binary
-    matching is necessary but not behavioral evidence. Cleanup records distinguish explicit finish
-    from native save/quit and exact process exit; native exit credit needs that native route.
+  - Assignment R-036-integrated-performance-001: Build and run one source-current matched comparison of equivalent local gameplay workloads with and without the selected combined living-base and hostile-ecology load. Bind world, scenario, source, executable, active actors and operations, native actions, update latency, renderer pacing, CPU/RSS, and repeated samples. Preserve independent correctness and gameplay-feel verdicts, variability, and uncertainty. Repair repository-owned harness, fixture, scenario, registry, or observation faults when needed. Do not infer a universal performance target, use automatic time/RSS termination, substitute unmatched scenes, or replay accepted feature behavior merely to restate it. Own every game attempt, replacement, and broker through exact PID/birth exit or an explicit retained-session handoff. Exit with a valid matched comparison at its stated evidence ceiling, or the first code-grounded repository capability gap that prevents that assigned outcome after authorized repair.
+  - Applied exploration: Receipt `4771c9c22aa60427fc61f6d86105c0edacf757cbb99b116f9504a5e82af03bd7` proves a fresh current-source matched baseline and hostile-ecology comparison after two narrow harness repairs. Both workloads completed eight native steps. The result includes repeated action timing, raw renderer pacing, ten identity-bound CPU/RSS samples per workload, bounded mechanical observations, and native quit confirmation for every game PID. The finite measurements do not establish a universal regression or subjective visual feel. Durable broker graceful-exit proof is also limited to run-local writer identity and observed absence.
+  - Assignment R-036-closure-matched-measurements-001: Independently verify that baseline and feature scenarios are equivalent except for the selected hostile-ecology load, and that repeated native action timing, raw renderer pacing, CPU/RSS sampling, variability, and reported comparisons remain bound to exact current source, executable, world, run and process identities. Preserve the finite descriptive ceiling and identify any unmatched workload or attribution defect. Do not rerun accepted gameplay merely to restate it.
+  - Assignment R-036-closure-correctness-feel-001: Independently verify the mechanical correctness observations and the honest gameplay-feel ceiling. Determine whether the retained native and renderer evidence supports any bounded smoothness or responsiveness observation without OCR or invented thresholds. If direct perceptual evidence is required, return that exact boundary; do not broaden mechanical setup into subjective proof or replay unrelated feature behavior.
+  - Assignment R-036-closure-correctness-feel-002: Close only the remaining correctness-and-feel audit after restart-normalized task 001. Verify receipt `58a9b44d38843eb30a2849a80dfe7cce7c30a2906dcc4aa16da431b4b0a0670f` against the retained baseline and feature native streams. Both fresh action windows already prove the same mechanical east move from `[3372,996,0]` to `[3373,996,0]` at minute 8159, and both exact game processes have exited. The four presentation captures are byte-identical, so they cannot prove redraw timing, smoothness, responsiveness, or subjective feel. Do not replay gameplay. Exit when the mechanical correctness result and the explicit no-subjective-feel ceiling are independently verified, or when a concrete artifact defect prevents that audit.
+  - Assignment R-036-closure-evidence-lifecycle-001: Independently verify the harness repairs and focused tests, scenario/source/executable and artifact hashes, no-replay and OCR limits, every game PID/birth plus native quit route, and the exact broker lifecycle ceiling. Identify any process or artifact discrepancy without erasing valid matched-performance evidence.
+  - Current handoff: The finite comparison and all three independent closure checks are complete at their stated ceilings. Receipt `f820c12cbf8a7af88b26c93e89975fee41b7d33978c3784bcb3b6354fabf843b` verifies matched native mechanical movement and confirms that byte-identical static captures do not prove smoothness, responsiveness, redraw timing, or subjective feel. The package therefore keeps subjective feel, broader statistics, and durable broker graceful-exit proof as explicit non-claims rather than overstating the finite measurements. Whole-claim acceptance is ready.
+  - Subtasks:
+    - [done] bind-matched-workloads :: Equivalent current-source fixture states, actions, actors and operations differ only by the selected feature load.
+    - [done] capture-native-performance :: Repeated identity-bound action timing, renderer pacing and CPU/RSS samples preserve variability for both workloads.
+    - [done] judge-correctness-and-feel :: Mechanical observations are retained, while subjective visual feel and universal thresholds remain unclaimed.
+    - [done] reconcile-game-lifecycle :: Every game PID/birth has a native quit route and observed OS exit; broker graceful-exit durability remains limited.
+    - [done] audit-finite-comparison :: Independent audits verified matched measurements, mechanical correctness, evidence limits, and lifecycle at their stated ceilings.
+  - Durable acceptance: #1 via `R-036-closure-correctness-feel-002`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-036-S001 claim=R-036 -->
 
 ## Competing systems and override direction
