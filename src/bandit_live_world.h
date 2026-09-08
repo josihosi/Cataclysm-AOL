@@ -1880,6 +1880,11 @@ std::string render_evidence_debug_report( const world_state &state, int current_
 bool apply_dispatch_plan( site_record &site, const dispatch_plan &plan );
 local_gate_decision choose_local_gate_posture( const site_record &site,
         const local_gate_input &input );
+// A normal shakedown negotiates on the first eligible sight of either the
+// player or a nearby follower.  Rolling travel remains the explicit ambush
+// exception.
+bool normal_shakedown_first_sight_requires_parley( bool player_contact,
+        bool follower_sight, bool rolling_travel_scene );
 std::optional<int> target_footprint_watch_distance(
     const tripoint_abs_omt &observer_omt,
     const std::vector<tripoint_abs_omt> &target_footprint );
@@ -2052,7 +2057,8 @@ bool is_valid_hostile_operation_phase_transition( hostile_operation_phase previo
 hostile_operation_transition_result transition_hostile_operation_phase( site_record &site,
         const simulation_advance_cursor &expected_cursor,
         hostile_operation_phase expected_phase, hostile_operation_phase next_phase,
-        int current_minutes, const std::string &reason );
+        int current_minutes, const std::string &reason,
+        bool allow_same_minute_committed_return = false );
 bool record_hostile_operation_approach_progress( site_record &site,
         const simulation_advance_cursor &expected_cursor, int current_minutes );
 hostile_operation_plan plan_hostile_operation( const site_record &site,

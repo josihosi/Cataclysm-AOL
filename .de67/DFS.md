@@ -844,6 +844,13 @@ Implementation status:
     bandage materials through authorized fixture/debug setup after checking actor roles, recipe,
     resource ownership/location and source binding; setup has zero proof credit. Bind native
     craft request/result to the reply, keeping persistence under R-034 separate.
+  - Applied camp-craft repair: receipt
+    `34681646df11e45a133cb3eee507287f23719021b376dec2f2142bc6aee3189e` proves the
+    eligible resident route, silence from an explicitly addressed unassigned follower, correct
+    mixed-listener handling, and three follower-owned bandages returned through the advertised
+    semantic camp action in fresh run `55098ec37b3868099fa04fdb5626a57a3f043ac3d30b791a44af2c811d53c33b`.
+    Authorized ingredient setup has zero credit, and the earlier direct-key return is excluded.
+    Free-text follow, relationship snapshots, competing ownership and R-034 continuity remain open.
 <!-- DE67:DFS-SLICE:END id=R-031-S001 claim=R-031 -->
 
 ### 16. Fresh camp establishment, missions and zones
@@ -873,35 +880,27 @@ must invalidate the affected plan and yield to the correct native owner without 
 
 Implementation status:
 
-- [ ] 🔴 R-032 — Camp establishment, mission completion and Locker/Patrol/Food/Storage behavior lack fresh proof.
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-032 -->
+- [x] R-032 — Fresh camp establishment, mission completion, Food, Locker, Storage, enabled Patrol, priority-zero release, and repaired-release persistence are proved at their stated ceilings.
   - DFS slices: `R-032-S001`
-  - Code/proof gap: prepared-base and zone-editor qualification prove management footing and
-    mutations, not natural establishment, worker services or completed missions.
-  - Required mechanism: exercise native establishment on an eligible site and independently use
-    the established-base management branch. Source-bound controlled derivatives may establish
-    supplies/geometry, with their manufactured transitions explicitly excluded from credit.
-  - Proof questions: can the player establish and recognize a camp, assign the intended worker,
-    start an available mission, observe resource/time/worker changes and recover its result? Does
-    Locker policy lead to real eligible equipment/ammo/medical service without changing bystanders?
-    Do connected/disconnected Patrol zones produce their native plan and physical behavior through
-    shift/alarm or reassignment? Do enabled Food/Storage zones actually affect native supply and
-    item use; does disabling/moving the relevant zone change availability after cache rebuild?
-    Keep establishment, mission, Locker, Patrol, Food and Storage verdicts separate.
-  - Controls: compare absent/disabled/wrong-faction zones or unavailable resources where they
-    distinguish the route; preserve rejected stale revisions and unaffected actors/items. Inspect
-    actual item location, ammunition and clothing coverage, not just a trade pane or desired plan.
-    `locker.package5_robbie_e2e_verified_mcw` stages items; `patrol.connected_live` and
-    `patrol.disconnected_live` stage priorities/geometry. They supply downstream route seeds only.
-  - Persistence: R-034 proves saved policy/assignment/zone/mission facts and rebuilt services in a
-    new process; it must not require transient cache bytes to persist.
-- Owner-promoted R032-F001 repair: on the next ordinary AI update, Patrol priority zero
-    invalidates affected cached roster membership and releases that worker's patrol assignment
-    and order to appropriate ordinary reassignment. `camp_patrol_cached_roster_is_eligible`
-    currently omits the current priority even though new-roster selection checks it. Preserve
-    unrelated missions, camp policy and valid enabled Patrol proof. Distinguish cache invalidation
-    from the durable guard mission/order. Prove enable -> actual patrol -> disable -> ordinary
-    reassignment, including relevant save/reload behavior; historical regression provenance is
-    unproved and unnecessary for the repair verdict.
+  - Assignment R-032-patrol-release-repair-001: Repair promoted R032-F001 so priority zero invalidates cached membership and releases the current patrol assignment/order on the next ordinary AI update. Prove enable/patrol/disable/reassignment and relevant persistence, preserving unrelated missions and accepted enabled-Patrol proof. Source entrypoints: basecamp.cpp camp_patrol_cached_roster_is_eligible, refresh_patrol_shift_cache, sync_camp_patrol_worker_order, and npcmove.cpp patrol runtime.
+  - Assignment R-032-fresh-camp-package-001: Freshly prove native establishment, actual mission completion, Food, Storage, Locker and Patrol behavior as independent results. Repair repository-owned harness, fixture, scenario, registry or observation paths when needed. Finish only when each behavior has source-bound native evidence or a named assigned-outcome exit; preparation and opened selectors remain zero-credit.
+  - Applied repair: Receipt `508f2d1a263a86dc61561a26e4634ceed303338e428b4de2f2539cd857d9e5e7` proves the owner-promoted Patrol release. Priority 9 produced an active `GUARD_PATROL` order and runtime. Priority 0 followed by one ordinary update returned Katharina to `CAMP_RESIDENT`, cleared the Patrol order and guard post, and removed the active runtime. The focused test passed 18 assertions and the full test build succeeded. Five failed, diagnostic, replacement, and final runs are reconciled by exact PID/birth/broker identity. OCR and rendered text received no proof credit.
+  - Durable closure: Receipt `b6f86843e4d69dbccc3410f72f687943d3ea840a3f63269a2a621382a9f444a1` independently verifies the camp-service results. Receipt `0921e53d3357b9e3f1fec55d8439cb9401fb5243fa77f1ef6eb140a3b7a49819` independently verifies the repair's identities, tests, evidence limits, material changes, and five-attempt cleanup record. Receipt `4a1ee0a32aac15442ec86e34b2f3581e8368528d9f721910aea827c3743f5a42` proves Katharina became the actual active Patrol owner, released at priority zero, accepted ordinary reassignment, saved, reloaded, and did not regain a stale order, guard mission, runtime, or cache. The first persistence setup remains inconclusive because Robbie retained the cache. Bridge birth identities are not available in the retained schema; exact game births, bindings, exits, and safe-cleanup dispositions remain preserved.
+  - Assignment R-032-closure-camp-services-001: Independently verify the fresh establishment, assignment, Food, Survey completion, bounded Locker, enabled Patrol, and exact Storage-placement results at their separate evidence ceilings. Confirm the repaired priority-zero release does not erase these accepted sibling results.
+  - Assignment R-032-closure-patrol-persistence-001: Freshly verify the repaired Patrol enable, actual runtime, priority-zero release, ordinary reassignment, and relevant save/reload behavior on current source. Transient caches need not persist, but no stale Patrol order, guard mission, or runtime may return after reload.
+  - Assignment R-032-closure-evidence-lifecycle-001: Independently verify source and executable identities, the focused and full tests, zero-credit setup and presentation limits, changed files, and exact cleanup for every R-032 repair attempt and broker.
+  - Current handoff: Durable receipt `38862ed5c00aefd8fe24b9f414eecb3fc7435791d8d74ed2c4ebef85b87f8010` completes task `R-032-fresh-camp-package-001`. Fresh native runs prove camp establishment, worker assignment, Food accounting from 0 to 48,160 kcal, Survey Expansion completion after the strict 3h+1m boundary, bounded Locker service, Patrol assignment/runtime at priority 9, and Gather Materials placement of four exact camp-owned item types at the first Storage-zone center. Looting remains correctly classified as `ACT_MOVE_LOOT`, not a companion mission. R032-F001 preserves the remaining contradiction: native Patrol priority zero was accepted, but Katharina still had `GUARD_PATROL` and an active patrol order after another native minute because cached-roster eligibility ignores the zero priority. No gameplay repair was made. OCR, terminal text and presentation were not used as proof. Owner receipt70c4632e512e promotes the Patrol release repair below; independent sibling tests and the valid enabled-Patrol proof remain accepted at their original ceilings.
+
+  - Addressed-craft retest: R026-F006/R-034 parser-to-durable-state continuation, distinct from generic R-032 establishment proof. R026-F006 run f74aa980 is removed from active bug intake and remains investigation here. Current `src/npctalk.cpp` strips the addressed prefix before `basecamp::handle_heard_camp_request`; that source change alone does not prove current gameplay. Recover the reported earlier successful craft conditions, use `r026.living_npc_package_v001_mcw.json` with current binding, and inspect exact post-prefix text, recipe/resources, request ID/status and durable camp craft state through a new process. A parsed but resource-blocked order is distinct from parser failure. `.de67/state/review-owner-d5004a80c4e8/resume-a7d18ef4/bug-evidence.md` retains the original run, current source and log evidence; no successful durable craft/reload receipt has yet been located. Coordinate continuity with R-034 rather than duplicate its acceptance work.
+  - Subtasks:
+    - [done] prove-fresh-camp-services :: Fresh native results cover establishment, assignment, Food, Survey, Locker, enabled Patrol, and Storage at separate ceilings.
+    - [done] repair-priority-zero-release :: Current source releases the stale Patrol order and runtime on the next ordinary update.
+    - [done] prove-repaired-release-persistence :: Native save and generation-1 reload preserved ordinary state without a Patrol order, guard mission, runtime, or cache resurrection.
+    - [done] audit-camp-service-evidence :: Independent review preserved each accepted sibling result without broadening its evidence ceiling.
+    - [done] audit-repair-evidence-and-cleanup :: Independent review verified code, tests, zero-credit limits, and every task-owned process disposition.
+  - Durable acceptance: #1 via `R-032-closure-patrol-persistence-001`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-032-S001 claim=R-032 -->
 
 ### 17. Fresh signal controls and world boundaries
@@ -959,22 +958,27 @@ reinstalled. Native saving, original-process exit, restored state and later beha
 
 Implementation status:
 
-- [ ] 🔴 R-034 — Fresh package changes lack new-process persistence and continued-behavior evidence.
+<!-- DE67:DELIVERY-STATUS:BEGIN claim=R-034 -->
+- [x] R-034 — Fresh native persistence and continued behavior are proved for the tested camp, storage, actor, authority, and lifecycle boundary.
   - DFS slices: `R-034-S001`
-  - Code/proof gap: qualification's restored bench item, follower override and disabled Food zone
-    are narrow historical observations. The fresh package must prove its own changed durable state.
-  - Required mechanism: choose meaningful naturally produced state from living-base, zones/items,
-    active hostile travel and paid departure; save through native input, exit and reload that exact
-    world in a new bound process, then resume ordinary behavior.
-  - Proof: compare actor identity/rules/camp assignment and mission, item type/count/location,
-    zone enabled/revision/bounds and camp policy/resources, relevant camp lead/report/operation/
-    member/route state before save and after reload. Subsequent turns must honor the saved state,
-    rebuild derived storage/Patrol/Locker caches and preserve safe paid return. Include raptor
-    held-destination/movement state when that trajectory supplies a persistence claim.
-  - Controls: unchanged bystanders remain unchanged; old frame/UID grants cannot target new-process
-    owners; reload must not redispatch the same report, double-apply payment/terminal aftermath or
-    reinstall the fixture. Transient LLM queue, surface IDs and caches are not required to survive.
-    Missing or failed save/reentry evidence remains unproved, even if explicit cleanup succeeds.
+  - Assignment R-034-fresh-new-process-continuity-001: Produce meaningful current package state through native play, preferably reusing established camp, actor assignment/rules, Food or Storage/zone state, and a safe active service without replaying the Patrol priority-zero contradiction. Record authoritative before-save state, save through native input, exit the original process, reload the exact world in a new source-bound process without fixture reinstall, reject stale prior-process grants, compare durable identities and values, and prove later ordinary behavior rebuilds derived services without double application. Repository-owned harness, fixture, scenario, registry, observation, and implementation repairs are authorized. Finish only with source-bound native evidence for the independent persistence facts or a named assigned-outcome exit.
+  - Assignment R-034-owned-process-lifecycle-002: Continue the remaining native lifecycle proof after review-f918d28be953's current-generation cleanup repair. The prior lifecycle closure attempt was abandoned; restored-state closure completed independently. Old finish for afd0c247 named PID95044 while failed replacement95452 survived until the reviewer explicitly quit it. Preserve original valid d7929b persistence/restored-state proof and this precise correction; on the next useful native lifecycle route verify current/replacement process exit and brokers, without replaying unrelated camp state tests.
+  - Assignment R-034-closure-native-lifecycle-001: Independently verify native save/quit, original process exit, exact-world generation-1 reload without fixture reinstall, and distinct source, run, binding, and process identities.
+  - Assignment R-034-closure-native-lifecycle-002: Preserve the accepted generation-0 lifecycle proof from receipt `794e17572b780cac27f1378aab4c8b9cffa21d6ce6b790aefa5d3b9ff6e8ca9a`. Diagnose and repair or isolate the shared `fonts.json` temporary-file rename race that blocked the replacement process. Then rerun only the generation-1 exact-world startup, native semantic continuation, and full PID/birth/broker cleanup boundary. Do not replay the accepted restored-state comparison. OCR, terminal bytes, and rendered text receive no gameplay or lifecycle proof credit.
+  - Assignment R-034-closure-restored-state-001: Independently verify the authoritative pre/post camp, storage/zone, actor identity, mission/assignment, follower rule, priority, and inventory values at the stated focused ceiling.
+  - Assignment R-034-closure-authority-evidence-cleanup-001: Independently verify stale prior-process authority rejection, accepted later ordinary turns, semantic-bootstrap repair, OCR and invalid-report limits, observed-only control classification, and exact cleanup.
+  - Current handoff: All three finite closure gaps are closed. Receipt `070d614ef3abac30339ca7a7e271a2774fbcbddea06c8dd9c448ecff25d4bd2e` verifies the exact restored camp, storage, actor assignment, rule, priority, and inventory values. Receipt `73c163cde60d6b4ff29e22d87eb83935b80675b2285c2351ee06f3d94f732d30` verifies stale-authority rejection, accepted later native turns, the semantic bootstrap, honest evidence limits, and cleanup. Receipt `e81ca33e034bfb6b0b8f7908d25d72a125da83e42738ab97e072e0a9c6528e7a` proves a fresh native generation-0 exit and exact-world generation-1 reload without fixture restaging, followed by native continuation and exact PID/broker cleanup. The earlier shared `fonts.json` temporary-file race remains preserved as a failed attempt. OCR, terminal bytes, and rendered text received no proof credit.
+  - Subtasks:
+    - [done] select-current-durable-state :: A current source-bound living-base scenario exposed meaningful camp, actor, storage, zone, and policy state.
+    - [done] capture-before-save :: Native evidence binds actor, camp/mission, storage items, zone, policy, and inventory state before save.
+    - [done] replace-native-process :: Native save/quit closed generation 0 and generation 1 reloaded the same world without fixture reinstall.
+    - [done] compare-restored-state :: Durable identities and values survived while stale prior-process authority was rejected.
+    - [done] prove-continued-behavior :: Later native pauses were accepted and the tested state remained stable without duplicate item mutation.
+    - [done] close-restored-state-and-authority :: Independent receipts closed restored state and authority/evidence/cleanup at their focused ceilings.
+    - [done] repair-and-close-native-lifecycle :: A fresh route avoided the shared temporary-file race, proved generation-1 native continuation, and reconciled every owned process and broker.
+    - [done] accept-finite-closure :: All three independent closure gaps are durably closed at their stated evidence ceilings.
+  - Durable acceptance: #1 via `R-034-closure-native-lifecycle-002`; SQLite evidence is authoritative.
+<!-- DE67:DELIVERY-STATUS:END -->
 <!-- DE67:DFS-SLICE:END id=R-034-S001 claim=R-034 -->
 
 ### 19. Fresh flesh-raptor behavior

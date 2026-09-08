@@ -1,0 +1,53 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-032-closure-camp-services-001",
+  "claim_id": "R-032",
+  "disposition": "completed",
+  "verdict": "proved",
+  "outcome": "Fresh native evidence independently establishes camp identity, worker assignment, Food accounting, Survey completion, bounded Locker service, repaired Patrol release, and Gather Materials Storage placement at their separate evidence ceilings.",
+  "summary": "Verified the historical camp-service witness bundles and the owner-promoted Patrol repair using native semantic receipts and authoritative state observations only. OCR, terminal bytes, rendered presentation, setup fixtures, startup, and menu reachability were not used as gameplay proof. The repaired Patrol receipt was independently checked, all listed artifact hashes matched, and the focused release test passed. No game process was launched or owned by this verifier.",
+  "material_changes": [],
+  "tests": [
+    "./tests/cata_test camp_patrol_only_blocks_other_jobs_during_active_runtime passed with 29 assertions in 1 test case; verifier log: build_logs/r032-verifier-focused-test-20260907.log.",
+    "git diff --check passed for the repaired Patrol source, test, and scenario paths.",
+    "All 11 artifacts listed by the repaired Patrol receipt matched their recorded SHA-256 values."
+  ],
+  "live_actions": [
+    "No game, harness, broker, or bridge process was launched or owned by this verifier; existing unrelated processes were left untouched."
+  ],
+  "evidence_ceiling": [
+    "Establishment proves the named camp record only; worker assignment is separate.",
+    "Food proves camp accounting from zero to 48,160 kcal; fixture food remains zero-credit setup.",
+    "Survey proves one native mission and recovery at the strict 3h+1m boundary; the invisible departure timestamp is not exposed or inferred.",
+    "Locker proves bounded native policy/service and item-state evidence; it does not prove all Locker automation or helmet transfer.",
+    "Patrol proves repaired priority-nine runtime and priority-zero release for Katharina Leach only; it does not prove persistence/reload, every worker, or wider camp behavior.",
+    "Storage proves only the four same-return Gather additions at the first zone center; unrelated autonomous sorting additions are excluded.",
+    "OCR, terminal bytes, rendered presentation, fixtures, startup, and menu reachability do not establish accepted input, elapsed time, or gameplay state."
+  ],
+  "bindings": {
+    "camp_service_witnesses": "32e4bc9b518ffbe9913e42de12a7aab8cb1a5688de997becbf52709e8909d751;91f607680c0f9314ae4c92a84868622edc0f5f3ba6dc0a60a5e15a39182c1cad;7c5ef5b586c0290d76d2eb1892aafc2f8994d8c23ebaf7dbf375ea49782eb7e8;280478d7ab9627cf8e57c721f5ac521adb1017d1a315740edcbba6f986a7a516;ed55a3b327551d211763f21cfea8f71a51a43c1390fe43a049a52502f4de08ae;663af31dc5b9829deb3f2d1f5b916e71a3f42c035ac02eefae0ca77378071339;b1269b78a5ff7154e9279d41580f41de4a773ac33b4008de4c2a81d09e9d319e",
+    "patrol_repair_receipt": "508f2d1a263a86dc61561a26e4634ceed303338e428b4de2f2539cd857d9e5e7"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-8539d355328a4dc493d77ab312bfc587/r032-establishment-witness.json", "role": "Fresh native camp establishment witness."},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-ec7c9bd51257433697b9587684769a8a/r032-assignment-witness.json", "role": "Fresh native worker assignment witness."},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-71dbe8ce402d466aa61421dbc353011f/r032-food-and-looting-limited-witness.json", "role": "Food accounting witness."},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-44eb3a5689f04b1a96564ccb94cc88ff/r032-prepared-camp-mission-witness.json", "role": "Survey mission completion witness."},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-1d3537ed7e5a4c78afe04881be1a3571/r032-prepared-camp-locker-witness.json", "role": "Bounded Locker service witness."},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-124de5e70036455dbb319bd3c13ac5d4/r032-prepared-camp-storage-gather-witness.json", "role": "Gather Materials Storage placement witness."},
+    {"path": ".de67/task-logs/r032-patrol-release-repair-001-worker-receipt.json", "role": "Owner-promoted Patrol repair and native verification receipt."},
+    {"path": "build_logs/r032-verifier-focused-test-20260907.log", "role": "Independent focused release test log."}
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserve each camp-service result at its original independent ceiling.",
+    "Do not treat OCR, terminal/rendered presentation, fixtures, or setup as gameplay proof.",
+    "Do not broaden the promoted Patrol repair beyond receipt 508f2d1a263a86dc61561a26e4634ceed303338e428b4de2f2539cd857d9e5e7."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Persistence/reload and broader worker/shift coverage remain outside this focused closure verification.",
+  "narrow_queries": ["R-032 camp-service witness claims", "Patrol receipt 508f2d1a…", "camp_patrol_only_blocks_other_jobs_during_active_runtime"],
+  "entrypoints": ["src/basecamp.cpp", "src/npcmove.cpp", "tests/faction_camp_test.cpp"]
+}

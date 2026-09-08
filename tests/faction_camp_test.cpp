@@ -1021,8 +1021,8 @@ TEST_CASE("camp_patrol_shift_roster_latches_until_boundary",
   const camp_patrol_shift_plan *still_day_plan =
       test_camp.get_current_patrol_shift_plan();
   REQUIRE(still_day_plan != nullptr);
-  CHECK(still_day_plan->roster == std::vector<character_id>({day_guard.getID(),
-                                                             second_day_guard.getID()}));
+  CHECK(still_day_plan->roster == std::vector<character_id>({day_guard.getID()}));
+  CHECK_FALSE(test_camp.is_worker_on_patrol_shift(second_day_guard));
   CHECK_FALSE(test_camp.is_worker_on_patrol_shift(replacement_guard));
 
   calendar::turn = sunset(calendar::turn_zero) + 2_hours;
@@ -1903,6 +1903,24 @@ TEST_CASE("camp_patrol_only_blocks_other_jobs_during_active_runtime",
   REQUIRE(test_camp->get_current_patrol_runtime(worker.getID(), calendar::turn));
   CHECK_FALSE(worker.find_job_to_perform());
   CHECK(!worker.activity);
+
+  REQUIRE(worker.has_camp_patrol_order());
+  REQUIRE(worker.job.set_task_priority(ACT_CAMP_PATROL, 0));
+  // A stale guard mission chooses guard behavior before worker_downtime, so
+  // release has to occur at the ordinary NPC decision boundary.
+  worker.set_moves(100);
+  worker.move();
+  CHECK_FALSE(worker.has_camp_patrol_order());
+  CHECK(worker.mission == NPC_MISSION_CAMP_RESIDENT);
+  CHECK_FALSE(worker.guard_pos.has_value());
+  CHECK_FALSE(test_camp->get_current_patrol_runtime(worker.getID(), calendar::turn));
+  CHECK(worker.find_job_to_perform());
+  CHECK(worker.activity.id() == ACT_MOVE_LOOT);
+  worker.revert_after_activity();
+  REQUIRE(worker.mission == NPC_MISSION_CAMP_RESIDENT);
+  REQUIRE_FALSE(worker.activity);
+
+  REQUIRE(worker.job.set_task_priority(ACT_CAMP_PATROL, 2));
 
   calendar::turn = day_start + duty_duration + 1_turns;
   REQUIRE_FALSE(test_camp->get_current_patrol_runtime(worker.getID(), calendar::turn));
@@ -8783,6 +8801,47 @@ TEST_CASE("camp_request_speech_parsing", "[camp][basecamp_ai]") {
 
     listener.assigned_camp.reset();
     CHECK_FALSE( basecamp_ai::uses_basecamp_request_routing( listener ) );
+  }
+
+  SECTION( "camp request handler leaves follower and unassigned craft orders for ordinary routing" ) {
+    clear_avatar();
+    clear_map_without_vision();
+    Messages::clear_messages();
+
+    const tripoint_abs_omt origin( 1706, 1706, 0 );
+    overmap_buffer.clear_mongroups();
+    for( int dy = -2; dy <= 2; ++dy ) {
+        for( int dx = -2; dx <= 2; ++dx ) {
+            overmap_buffer.ter_set( tripoint_abs_omt( origin.x() + dx, origin.y() + dy, origin.z() ),
+                                    oter_id( "field" ) );
+        }
+    }
+    get_map().add_camp( origin, "faction_camp", false );
+    const std::optional<basecamp *> found_camp = overmap_buffer.find_camp( origin.xy() );
+    REQUIRE( found_camp.has_value() );
+    REQUIRE( *found_camp != nullptr );
+
+    npc &listener = spawn_npc( tripoint_bub_ms{ 6, 6, 0 }.xy(), "thug" );
+    clear_character( listener, true );
+    listener.assigned_camp = origin;
+    listener.mission = NPC_MISSION_CAMP_RESIDENT;
+
+    // A stationed resident still owns ordinary camp-board speech.
+    REQUIRE( ( *found_camp )->handle_heard_camp_request( listener, "what needs making" ) );
+    REQUIRE_FALSE( Messages::recent_messages( 0 ).empty() );
+
+    Messages::clear_messages();
+    listener.set_attitude( NPCATT_FOLLOW );
+    CHECK_FALSE( ( *found_camp )->handle_heard_camp_request( listener, "craft bandages" ) );
+    CHECK( Messages::recent_messages( 0 ).empty() );
+
+    listener.set_attitude( NPCATT_NULL );
+    listener.assigned_camp.reset();
+    CHECK_FALSE( ( *found_camp )->handle_heard_camp_request( listener, "craft bandages" ) );
+    CHECK( Messages::recent_messages( 0 ).empty() );
+
+    overmap_buffer.clear_camps( origin.xy() );
+    overmap_buffer.clear_mongroups();
   }
 
   SECTION("camp request router keeps structured next=job follow-through on the job snapshot path") {

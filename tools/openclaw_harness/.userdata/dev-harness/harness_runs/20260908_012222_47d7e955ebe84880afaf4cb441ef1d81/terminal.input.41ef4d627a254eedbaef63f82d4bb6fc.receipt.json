@@ -1,0 +1,12 @@
+{
+  "keys": [
+    "/"
+  ],
+  "ok": true,
+  "owner": "run_bound_pty",
+  "payload_sha256": "8a5edab282632443219e051e4ade2d1d5bbc671c781051bf1437897cbdfea0f1",
+  "pid": 60714,
+  "request_id": "41ef4d627a254eedbaef63f82d4bb6fc",
+  "run_id": "11446e1c4ac225e950f6048105bb378f58c89f37643a1a7618f845b7b0adbf09",
+  "input_owner": "run_bound_pty"
+}

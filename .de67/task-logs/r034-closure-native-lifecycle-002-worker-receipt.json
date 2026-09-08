@@ -1,0 +1,124 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-034-closure-native-lifecycle-002",
+  "claim_id": "R-034",
+  "worker_id": "01a07d8f-9924-7cd0-aaf6-2fd0977e704e",
+  "disposition": "completed",
+  "verdict": "proved",
+  "outcome": "Fresh native generation-0 save/quit/menu exit and generation-1 exact-world reload were independently verified for the source-bound r026 living-NPC route.",
+  "summary": "Run 471292157f4731eaea4099605a90dfd069579ec1302fdfc4c7e87679e7810f27 used binding a6a0b23a4f82ad9034d8ef9cb5945ad30eff0cb8c74b39b48fb03dccffa59b66. Generation 0 PID 12172 exited code 0 after accepted quicksave, save_quit, main_menu.quit and confirmations. Declared continuation relaunched McWilliams as generation 1 PID 12552 with birth identity posix-lstart:Mon Sep 7 22:32:48 2026, no fixture restage. Native post-reload observations restored Bugchaser central, seven Storage entries, Katharina character:2 CAMP_RESIDENT assignment [140,41,0], priority 8, follow_close enabled/overridden, and 17-item inventory. A stale frame-4 request was rejected unknown_or_stale_observation; fresh pauses were accepted. Generation-1 cleanup terminated PID 12552 and bridge status reached safe_to_cleanup.",
+  "material_changes": [],
+  "tests": [
+    "Native semantic look and NPC inspection before save.",
+    "Native world.quicksave, world.save_quit, prompt confirmation, main_menu.quit, prompt confirmation; original PID 12172 exit_code 0.",
+    "Declared post-relaunch continuation; native generation-1 world observation, storage inspection, NPC inspection, stale-frame rejection, and world.pause resumes.",
+    "Generation-1 run.finish cleanup; process generation observed alive=false and bridge safe_to_cleanup; ps verified no owned bridge/child/game PIDs remain."
+  ],
+  "live_actions": [
+    "No helper or unrelated retained session was used; all processes launched here were reconciled."
+  ],
+  "evidence_ceiling": [
+    "Focused R-034 lifecycle/persistence only; no broader movement, ecology, or whole-package claim."
+  ],
+  "bindings": {
+    "binding_id": "a6a0b23a4f82ad9034d8ef9cb5945ad30eff0cb8c74b39b48fb03dccffa59b66",
+    "executable_sha256": "aa25a0fc58fdb80db1898e4fb7b26df58b675a4c24e8f1bf3292ae1d47596ff7",
+    "run_id": "471292157f4731eaea4099605a90dfd069579ec1302fdfc4c7e87679e7810f27",
+    "scenario_id": "r026.living_npc_package_v001_mcw",
+    "source_sha256": "aeb8bbdb195a8cd10f3e9a36845464e02a9da4a012a457b44f3937bd2120e2cb"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001-gen0",
+      "sequence": "1",
+      "event_type": "identity",
+      "evidence_class": "native",
+      "summary": "Generation-0 source/run/binding identity; journal a11ba9ad35d465dbd3b2105608ddb5938ba1ae5499c5499cca5d67fb639bd24b."
+    },
+    {
+      "id": "J0015-gen0",
+      "sequence": "15",
+      "event_type": "process_exited",
+      "evidence_class": "native",
+      "summary": "Original PID 12172 exited code 0 after native save/menu route."
+    },
+    {
+      "id": "J0003-gen1",
+      "sequence": "3",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Generation-1 exact world and seven-entry storage observed; journal 80073c4aeac5f7181cae34a326c7306466cdbede983c71e32cee4005ba8a8d8c."
+    },
+    {
+      "id": "J0006-gen1",
+      "sequence": "6",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Generation-1 Katharina identity, assignment, rules and inventory observed."
+    },
+    {
+      "id": "stale-frame-gen1",
+      "sequence": "14",
+      "event_type": "rejection",
+      "evidence_class": "native",
+      "summary": "Old frame-4 request rejected as unknown_or_stale_observation.",
+      "artifact_ref": ".userdata/openclaw_harness/bridge-sessions/selected-4c7faff9107c46f0b5594f31d5b72ef5/responses/play-065916ea2a0a429ea3ab5cb16db882f8.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r034-fresh-gen0-journal.json",
+      "sha256": "0b58d7aef271289a2f789ff38b744d99d66b2d0021b8d3734345d3963ec195be",
+      "role": "generation-0 native journal"
+    },
+    {
+      "path": ".de67/task-logs/r034-fresh-gen0-witness.json",
+      "sha256": "fcdd92e90a63bcf52a83f71c4fa40619e6dc84262c5acdf373292ebb76512b91",
+      "role": "generation-0 witness"
+    },
+    {
+      "path": ".de67/task-logs/r034-fresh-full-journal.json",
+      "sha256": "1103348b7efeab7636c6a460621546aaa4a5dc9898f9f449ff5db73909593af5",
+      "role": "generation-1 native journal"
+    },
+    {
+      "path": ".de67/task-logs/r034-fresh-gen1-witness.json",
+      "sha256": "7bd5175fae37cbabcfa9b95cabe0880ebfb8451b94564f223b89740cb543529c",
+      "role": "generation-1 witness"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-4c7faff9107c46f0b5594f31d5b72ef5/responses/play-065916ea2a0a429ea3ab5cb16db882f8.json",
+      "sha256": "04d528f23a1ad54f9bf4aea1c535c6d007a4398dba65cb4d04fef8e86addd3e6",
+      "role": "native stale-frame rejection response"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-4c7faff9107c46f0b5594f31d5b72ef5/game-process.generations.jsonl",
+      "sha256": "1cb8a85ae0b435ea878182d1e6bfce293747cd5b13b85de52d9d19d35e9443dd",
+      "role": "distinct process generation identities"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-4c7faff9107c46f0b5594f31d5b72ef5/cockpit.bridge.safe_to_cleanup.json",
+      "sha256": "fe69296d650d0b12b84fc139f48358f3054f7e2b16087381903d57f938cc5255",
+      "role": "bridge cleanup reconciliation"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserve accepted generation-0 and restored-state evidence; rerun only the changed generation-1 lifecycle boundary."
+  ],
+  "active_work": [],
+  "first_open_boundary": "",
+  "narrow_queries": [
+    "generation-1",
+    "unknown_or_stale_observation",
+    "process_generation",
+    "current_site_camp_storage",
+    "character:2"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness",
+    "tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json"
+  ],
+  "context_metrics": {}
+}

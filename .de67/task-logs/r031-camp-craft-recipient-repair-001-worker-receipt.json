@@ -1,0 +1,197 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-031-camp-craft-recipient-repair-001",
+  "claim_id": "R-031",
+  "worker_id": "01a07e4c-7fb1-7d70-90f6-b0dac24c1f95",
+  "disposition": "completed",
+  "verdict": "recipient_routing_repaired_and_native_craft_completed",
+  "outcome": "A directly addressed unassigned GUARD_ALLY no longer promises or accepts a camp-craft request, while the eligible CAMP_RESIDENT accepts and completes the same native bandage craft.  A mixed broadcast reaches the eligible resident's native craft route without an ally promise.  The fresh source-bound run returned three bandages to CAMP_STORAGE.",
+  "summary": "The initial contradiction was reproduced: R031 Route Ally 1, a GUARD_ALLY with no assigned camp, was placed in the LLM-hearer path and replied that bandages were under way.  The repair preserves direct camp handling for valid residents and, only for recognized camp-craft speech, excludes listeners that fail camp-routing eligibility or have no live camp from LLM enqueue.  Supporting semantic-surface repairs expose the native inventory selection/drop route and a current-camp board route for a completed off-map crafting worker; they do not issue guessed keys.  In fresh run 55098ec..., native food distribution used a saved tortilla (16,052 kcal); only gauze, duct tape, and antiseptic were debug-spawned as authorized zero-credit setup.  Katharina then accepted the one-kcal native craft, elapsed six game hours, returned through the advertised camp.return_crafting action, and CAMP_STORAGE contained three bandage entries.  The run was quit through its bound endpoint and the exact owned game PID exited.",
+  "material_changes": [
+    "src/faction_camp.cpp makes the authoritative heard-camp-craft handler reject a listener that is not eligible for basecamp routing, lacks an assigned camp, or is not assigned to the addressed camp.",
+    "src/npctalk.cpp recognizes the narrow camp-craft grammar after direct-address stripping and keeps an ineligible or missing-camp listener out of llm_intent enqueue; ordinary non-craft follower speech remains on the LLM route.",
+    "src/inventory_ui.cpp keeps per-item inventory.toggle adjacent to inventory.select and emits one visible commit action; src/handle_action.cpp exposes native world.drop and permits the current accessible camp's assigned roster to open its native mission board even when a craft worker is off-map.",
+    "src/mission_companion.cpp exposes an enabled camp.return_crafting semantic action only when the native board has a completed crafting mission; tests/faction_camp_test.cpp and tests/pickup_semantic_test.cpp cover the relevant parser and selection surfaces."
+  ],
+  "tests": [
+    "Focused camp_request_speech_parsing passed: 378 assertions in 1 case; build_logs/r031-camp-craft-recipient-repair-tests-routing-run-20260908.log.",
+    "Focused [world_owner] semantic suite passed: 79 assertions in 5 cases; build_logs/r031-camp-craft-recipient-repair-camp-return-owner-world-owner-test-20260908.log.",
+    "The final source-bound TILES/SOUND=0/RELEASE build with BUILD_SHADER_FORMATS=msl completed and produced the bound cataclysm-tiles executable; build_logs/r031-camp-craft-recipient-repair-camp-return-owner-main-build-20260908.log."
+  ],
+  "live_actions": [
+    "Fresh registry-authorized run 55098ec37b3868099fa04fdb5626a57a3f043ac3d30b791a44af2c811d53c33b, binding fb035a4e82a0d7800562b54174046d4d5cdbd875b6c2fdb25a09047af7e0b29b, distributed ordinary saved food natively, then used only authorized zero-credit gauze 1, duct tape 20, and antiseptic 1 setup.",
+    "The run accepted Katharina's native bandage job at one kcal, advanced 8160 to 8520 game minutes, advertised and accepted camp.return_crafting, and observed three resulting bandages in CAMP_STORAGE.",
+    "The fresh directly addressed Route Ally craft utterance produced only the player's message, not an ally promise.  The fresh mixed yell produced Katharina's native missing-components reply only, not an ally promise.",
+    "run.quit terminalized the exact owned game PID 4173 with the recorded birth identity; SIGTERM cleanup reported terminated and bridge status reached safe_to_cleanup."
+  ],
+  "evidence_ceiling": [
+    "Native semantic receipts and authoritative CAMP_STORAGE inspection establish accepted actions, game-time advance, recipient replies, and resulting items.  OCR, terminal bytes, screenshots, rendered presentation, registry selection, and fixture setup have zero gameplay credit.",
+    "The debug-spawned gauze, duct tape, and antiseptic are authorized zero-credit resource setup only.  The tortilla and the 16,052-kcal distribution were ordinary saved-world/native actions; no debug food was spawned.",
+    "Direct-key seq4 craft return is explicitly excluded from credited evidence.  The credited completion is the fresh semantic camp.return_crafting route in run 55098ec... .",
+    "This receipt proves the named unassigned follower, named resident, direct craft grammar, broadcast case, one bandage recipe/result, and current-camp board recovery.  It does not prove every LLM utterance, every recipe, persistence/reload, or broader R-031 follow/relationship behavior."
+  ],
+  "bindings": {
+    "authority_packet_sha256": "bf788e144079386ecaf1e820a30594f7a8f6ee745ac85b47546b3c13a5190b18",
+    "binding_id": "fb035a4e82a0d7800562b54174046d4d5cdbd875b6c2fdb25a09047af7e0b29b",
+    "executable_sha256": "b53c23cccedfadafad796c7573b4c2f63d130b45fae2064132a923011d73a8b7",
+    "product_source_sha256": "9a0cf400e68e6a995f981ff94a3f3e4cf539e9707446c3679368ef937395ff6d",
+    "run_id": "55098ec37b3868099fa04fdb5626a57a3f043ac3d30b791a44af2c811d53c33b",
+    "scenario_id": "r026.living_npc_package_v001_mcw",
+    "source_binding_receipt_sha256": "ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50"
+  },
+  "journal_entries": [
+    {
+      "id": "play-fa6387978590425dba9deff7e50b0077",
+      "sequence": "1",
+      "event_type": "native_craft_food_acceptance",
+      "evidence_class": "native_semantic_receipt",
+      "actor_id": "character:2",
+      "action_id": "prompt.choose",
+      "artifact_ref": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-resident-order-food-yes-20260908.json",
+      "summary": "Accepted the native one-kcal food cost for Katharina's bandage craft."
+    },
+    {
+      "id": "play-b1c343cd9faa45dbb19e610d413f7020",
+      "sequence": "2",
+      "event_type": "native_elapsed_time",
+      "evidence_class": "native_semantic_observation",
+      "action_id": "wait.6h",
+      "artifact_ref": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-resident-after-wait-look-20260908.json",
+      "summary": "Fresh observation records the native six-hour advance from 8160 to 8520 minutes."
+    },
+    {
+      "id": "play-3f450bab8b8c4bbfbc9a58d01ff4870e",
+      "sequence": "3",
+      "event_type": "native_completed_craft_board",
+      "evidence_class": "native_semantic_observation",
+      "actor_id": "character:2",
+      "action_id": "camp.return_crafting",
+      "artifact_ref": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-return-board-look-20260908.json",
+      "summary": "Current-camp board advertised enabled Finish completed camp crafting for the off-map resident."
+    },
+    {
+      "id": "play-ec7711c766a24df7a4c99fe5df7d612f",
+      "sequence": "4",
+      "event_type": "native_craft_result_inspection",
+      "evidence_class": "authoritative_native_state",
+      "action_id": "inspect",
+      "artifact_ref": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-output-storage-inspect-20260908.json",
+      "summary": "Authoritative current accessible CAMP_STORAGE inspection contains three bandage entries owned by your_followers."
+    },
+    {
+      "id": "play-8657a8e5686440a096755e034a359044",
+      "sequence": "5",
+      "event_type": "addressed_ineligible_follower_check",
+      "evidence_class": "native_messages",
+      "actor_id": "character:18",
+      "action_id": "world.chat",
+      "artifact_ref": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-follower-bandage-messages-20260908.json",
+      "summary": "The fresh addressed Route Ally order has only the player utterance and no ally promise."
+    },
+    {
+      "id": "play-f073b36d43bb4b0cbbf98056070ac585",
+      "sequence": "6",
+      "event_type": "mixed_broadcast_recipient_check",
+      "evidence_class": "native_messages",
+      "action_id": "world.chat",
+      "artifact_ref": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-mixed-bandage-messages-20260908.json",
+      "summary": "The mixed yell received Katharina's native resource-blocked reply and no Route Ally promise."
+    },
+    {
+      "id": "play-9c9c6ac016fe43709d543259428579ee",
+      "sequence": "7",
+      "event_type": "run_terminalization",
+      "evidence_class": "run_bound_cleanup_receipt",
+      "action_id": "run.quit",
+      "artifact_ref": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-final-quit-collect-20260908.json",
+      "summary": "The run-bound terminal receipt records PID 4173 terminated and releases unused authority."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "build_logs/r031-camp-craft-recipient-repair-tests-routing-run-20260908.log",
+      "sha256": "a6caa5598a42ba4f7526f386b862b3b058c94240ff7d18b3c751a894485097df",
+      "role": "focused camp speech parsing test result"
+    },
+    {
+      "path": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-world-owner-test-20260908.log",
+      "sha256": "f8a8e1c7861657812c437f2f7a8abdd32c45a1b2a3de5c745e5acd8747ad9779",
+      "role": "focused semantic world-owner test result"
+    },
+    {
+      "path": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-main-build-20260908.log",
+      "sha256": "f7165acc9a259966933047c704394666d2fbe4042b34cab11276ff79edd20737",
+      "role": "final source-bound main build log"
+    },
+    {
+      "path": ".userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1.json",
+      "sha256": "ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50",
+      "role": "final executable and product-source binding receipt"
+    },
+    {
+      "path": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-resident-order-food-yes-20260908.json",
+      "sha256": "f7743a768e1eaf6ebd0e02938ac34c94b9290b544ef26f625abe2a5f0772dc00",
+      "role": "native resident craft food acceptance"
+    },
+    {
+      "path": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-resident-after-wait-look-20260908.json",
+      "sha256": "c7c8e8f2f189d4a3f77e8301bf8e68a8fb061fc2c7dc926661551a6b31345b77",
+      "role": "native elapsed-time observation"
+    },
+    {
+      "path": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-return-board-look-20260908.json",
+      "sha256": "fc78a3514741e4243a5090a1a11e3602ffd87dfb60d6d7a8ba2c6fa620a24f0b",
+      "role": "enabled semantic craft-return board observation"
+    },
+    {
+      "path": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-output-storage-inspect-20260908.json",
+      "sha256": "f9d1f09cde3ae7a192eb00dcfb7244de25b7d652c0e05f780ce89930b373ec05",
+      "role": "authoritative CAMP_STORAGE result inspection"
+    },
+    {
+      "path": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-follower-bandage-messages-20260908.json",
+      "sha256": "6f52b69ac3f721cd7f05189db88a9e84dd893bc2823566a52a9e9bb9485d942f",
+      "role": "addressed ineligible follower native-message check"
+    },
+    {
+      "path": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-mixed-bandage-messages-20260908.json",
+      "sha256": "1af0efd8db077718cca49a629a929c18cc5b2f6fd7412fb575d5f2e6e4ef7bf3",
+      "role": "mixed broadcast native-message check"
+    },
+    {
+      "path": "build_logs/r031-camp-craft-recipient-repair-camp-return-owner-final-quit-collect-20260908.json",
+      "sha256": "e908b84b61a81248c1e3dc7d7a6c3e80094769a3986952b932842b27c834e108",
+      "role": "run-bound exact PID cleanup receipt"
+    }
+  ],
+  "first_divergence": {
+    "class": "incorrect_llm_recipient_enqueue",
+    "summary": "Before repair, an unassigned GUARD_ALLY received recognized camp-craft speech through llm_intent and promised bandages despite being unable to perform camp crafting."
+  },
+  "accepted_no_replay": [
+    "Do not replay direct-key seq4: it is retained only as an excluded historical route, not completion evidence.",
+    "Do not replay the completed fresh craft merely to repeat its three-bandage inspection, addressed no-promise result, mixed broadcast distinction, or PID cleanup.",
+    "Preserve unrelated R-034 persistence proof and broader R-031 follow/relationship work as independent scope."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Broader R-031 free-text follow, relationship-snapshot fidelity, competing ownership, and continuity/persistence remain outside this camp-craft recipient repair.",
+  "narrow_queries": [
+    "uses_basecamp_request_routing",
+    "parse_heard_camp_craft_order",
+    "llm_intent enqueue_requests",
+    "camp.return_crafting",
+    "R031 Route Ally 1 craft bandages",
+    "CAMP_STORAGE bandage"
+  ],
+  "entrypoints": [
+    "src/faction_camp.cpp",
+    "src/npctalk.cpp",
+    "src/inventory_ui.cpp",
+    "src/handle_action.cpp",
+    "src/mission_companion.cpp",
+    "tests/faction_camp_test.cpp",
+    "tests/pickup_semantic_test.cpp"
+  ],
+  "context_metrics": {}
+}

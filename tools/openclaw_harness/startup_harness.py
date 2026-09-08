@@ -23063,6 +23063,35 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             })
             continue
 
+        if kind == "basecamp_npc_patrol_priority":
+            raw_npc_ids = raw.get("npc_ids", [])
+            if not isinstance(raw_npc_ids, list) or not raw_npc_ids:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] basecamp_npc_patrol_priority needs non-empty npc_ids in {manifest_path}"
+                )
+            try:
+                npc_ids = sorted({int(value) for value in raw_npc_ids})
+                priority = int(raw.get("priority", 0))
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] basecamp_npc_patrol_priority needs integer npc_ids/priority in {manifest_path}"
+                )
+            if any(value <= 0 for value in npc_ids):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] basecamp_npc_patrol_priority npc_ids must be positive in {manifest_path}"
+                )
+            if priority < 0:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] basecamp_npc_patrol_priority priority must be non-negative in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "npc_ids": npc_ids,
+                "priority": priority,
+            })
+            continue
+
         if kind == "basecamp_assigned_npc_items":
             raw_offset = raw.get("offset_ms", [16, 0, 0])
             if not isinstance(raw_offset, list) or len(raw_offset) != 3:
@@ -23626,7 +23655,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "supported kinds: player_mutations, player_remove_addiction, clear_avatar_auto_move, clear_avatar_activity, player_items, player_worn_items, player_condition, player_location_offset_ms, player_basecamp_at_omt, player_near_overmap_special, "
             "overmap_terrain_id_at_abs_omt, player_view_seen_omt, seed_overmap_special_near_player, map_fields_near_player, map_terrain_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
-            "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_assigned_npc_items, "
+            "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_npc_patrol_priority, basecamp_assigned_npc_items, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_camp_supply, bandit_clear_site_evidence, "
                 "bandit_clone_site, bandit_site_roster_shape, bandit_registered_staffed_observer_bootstrap, bandit_projection_leases, bandit_structural_homeward_reentry, bandit_post_handoff_abstract_bootstrap, bandit_scheduler_response_candidate"
@@ -26237,6 +26266,78 @@ def apply_repair_basecamp_npc_assignments_transform(
     }
 
 
+def apply_basecamp_npc_patrol_priority_transform(
+    world_dir: Path, transform: Dict[str, Any]
+) -> Dict[str, Any]:
+    """Set the setup-only initial Patrol priority for named camp workers.
+
+    This is intentionally narrow: it only changes ACT_CAMP_PATROL in the
+    serialized NPC job data, allowing a live native run to establish ownership
+    from an empty shift cache instead of inheriting a stale roster.
+    """
+    requested_ids = {int(value) for value in transform.get("npc_ids", [])}
+    priority = int(transform.get("priority", 0))
+    changed: List[Dict[str, Any]] = []
+    found_ids: set[int] = set()
+
+    for overmap_path in sorted((world_dir / "overmaps").glob("o.*.zzip")):
+        plain_path: Optional[Path] = None
+        payload: Dict[str, Any] = {}
+        touched = False
+        try:
+            plain_path, version_line, payload = extract_overmap_payload(overmap_path)
+            npcs = payload.get("npcs", [])
+            if not isinstance(npcs, list):
+                continue
+            for npc_payload in npcs:
+                if not isinstance(npc_payload, dict):
+                    continue
+                try:
+                    npc_id = int(npc_payload.get("id", 0) or 0)
+                except (TypeError, ValueError):
+                    continue
+                if npc_id not in requested_ids:
+                    continue
+                found_ids.add(npc_id)
+                job = npc_payload.setdefault("job", {})
+                if not isinstance(job, dict):
+                    raise SystemExit(f"NPC {npc_id} job is not an object in {overmap_path}")
+                priorities = job.setdefault("task_priorities", {})
+                if not isinstance(priorities, dict):
+                    raise SystemExit(f"NPC {npc_id} task_priorities is not an object in {overmap_path}")
+                before = int(priorities.get("ACT_CAMP_PATROL", 0) or 0)
+                priorities["ACT_CAMP_PATROL"] = priority
+                changed.append({
+                    "npc_id": npc_id,
+                    "npc_name": npc_payload.get("name"),
+                    "before": before,
+                    "after": priority,
+                })
+                touched = True
+            if touched:
+                write_overmap_payload(plain_path, version_line, payload)
+        finally:
+            if plain_path is not None and plain_path.exists():
+                cleanup_extracted_overmap(
+                    plain_path,
+                    keep=not bool(payload.get("_created_plain", False)),
+                )
+
+    missing_ids = sorted(requested_ids - found_ids)
+    if missing_ids:
+        raise SystemExit(
+            f"Basecamp Patrol-priority transform could not find NPC ids {missing_ids} in {world_dir / 'overmaps'}"
+        )
+    changed.sort(key=lambda row: int(row["npc_id"]))
+    return {
+        "kind": "basecamp_npc_patrol_priority",
+        "world": world_dir.name,
+        "priority": priority,
+        "changed_npcs": changed,
+        "setup_only": True,
+    }
+
+
 def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
     selected_player_save = str(transform.get("player_save", "") or "").strip()
     if not selected_player_save:
@@ -28666,6 +28767,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "repair_basecamp_npc_assignments":
             reports.append(apply_repair_basecamp_npc_assignments_transform(world_dir, transform))
+            continue
+        if kind == "basecamp_npc_patrol_priority":
+            reports.append(apply_basecamp_npc_patrol_priority_transform(world_dir, transform))
             continue
         if kind == "basecamp_assigned_npc_items":
             reports.append(apply_basecamp_assigned_npc_items_transform(world_dir, transform))

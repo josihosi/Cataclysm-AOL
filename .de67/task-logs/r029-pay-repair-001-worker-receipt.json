@@ -1,0 +1,93 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-pay-repair-001",
+  "claim_id": "R-029",
+  "worker_id": "01a07e16-4211-7421-80c3-ca0a762c89fd",
+  "disposition": "completed",
+  "verdict": "same_minute_paid_return_repaired",
+  "outcome": "The owner-promoted same-minute Pay failure is repaired: an accepted native payment can now transition its committed shakedown to returning_home without changing the ordinary same-minute transition rule.",
+  "summary": "The narrow source change allows only committed_contact -> returning_home, at equality with the reservation cursor, when the caller explicitly identifies the paid-return path.  A source-bound native run opened the trade UI, paid the 18,724-cent demand with a $193.20 coin stack, recorded `shakedown_trade_ui result=paid` and `shakedown_surface paid ... return=physical`, and saved the exact operation in returning_home with members 18 and 19.  A fresh post-relaunch run a8dad951e2b94932a7c1a0d64a4885f6 used the saved world, advanced 120 ordinary turns, and has four green step-local records: native World bootstrap, deferred ordinary-turn proof, no resumed member-18/19 fight path, and clean feature debug guard.  OCR, terminal text, and presentation were not used as proof.  The post-relaunch-only classifier is yellow `inconclusive_no_artifact_match` because it deliberately has no same-run positive payment artifact; its local continuation proof is green and the payment evidence is retained in the preceding source-bound run.",
+  "material_changes": [
+    "src/do_turn.cpp permits the paid return planner at the current reservation minute and calls the narrowly opted-in same-minute committed return transition.",
+    "src/bandit_live_world.{h,cpp} adds the explicit allow_same_minute_committed_return argument and keeps all ordinary same-minute transitions rejected.",
+    "tests/bandit_live_world_test.cpp covers both ordinary rejection and the explicitly authorized paid same-minute return.",
+    "The committed-contact fixture now supplies five tradeable Hub 01 Gold Coins instead of unusable gold watches.",
+    "The continuation scenario uses native semantic World bootstrap and a no-OCR continuation guard: its 120-turn row defers to the exact forbidden-fight audit rather than rendered HUD text."
+  ],
+  "tests": [
+    "Current Curses source-bound rebuild completed successfully; build_logs/r029-pay-repair-001-source-bound-curses-rebuild.log.",
+    "Fixture scenario JSON parsed and registry rebuild completed after the scenario changes.",
+    "Fresh source-bound payment run recorded native trade completion and persisted returning_home; build_logs/r029-pay-repair-001-coin-paid-save-audit.json.",
+    "Fresh post-relaunch continuation run has 4/4 green step-local ledger records; .userdata/dev-harness/harness_runs/20260908_013216_e847ada9fa2944a681106a7c303e18d2/probe.report.json.",
+    "git diff --check was run; the only reported whitespace was pre-existing unrelated .de67/mutation-suggestions.md content."
+  ],
+  "live_actions": [
+    "Payment run 11446e1c4ac5...b0adbf09 was saved and quit through its run-bound PTY; its game and broker were absent afterward.",
+    "Continuation PIDs 61313, 61569, and 61770 were each saved/quit through their exact run-bound PTY endpoints; final OS checks found them absent.  No process was force-killed."
+  ],
+  "evidence_ceiling": [
+    "The fixture is setup-only and proves no natural signal, discovery, operation admission, or approach.",
+    "The repaired native evidence covers paid player-facing trade, exact operation transition, persisted returning_home, and a fresh 120-turn no-fight continuation.  It does not expand to every follower conversation, all refusal/combat aftermath, or broader R-029 ecology.",
+    "OCR, screenshots, terminal bytes, rendered trade/HUD text, startup, and registry selection carry zero gameplay credit."
+  ],
+  "bindings": {
+    "continuation_run_dir": ".userdata/dev-harness/harness_runs/20260908_013216_e847ada9fa2944a681106a7c303e18d2",
+    "continuation_run_id": "a8dad951e2b94932a7c1a0d64a4885f6",
+    "scenario_id": "bandit.extortion_committed_paid_departure_continuation_mcw",
+    "scenario_source_sha256": "990ce44b0362815cea982b6abb785a00a2e2118fbe75571e075492da7f317b0a"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "build_logs/r029-pay-repair-001-source-bound-curses-rebuild.log",
+      "sha256": "3d3244cf7bd5193b831d615f7e7040d259bc4d4015484a796dd835e2ab30ca2e",
+      "role": "current source-bound Curses rebuild"
+    },
+    {
+      "path": "build_logs/r029-pay-repair-001-coin-paid-save-audit.json",
+      "sha256": "a7788f4ebaf24840eacec9acef6533291636210e1062abc0df9f7f8e8667dac7",
+      "role": "persisted paid returning-home save audit"
+    },
+    {
+      "path": "build_logs/r029-pay-repair-001-coin-post-relaunch-green.log",
+      "sha256": "f13602ae8fbbdb612b8ee389ebb18dee3321dffc6d929ba8d9c97e4747280705",
+      "role": "fresh post-relaunch runner output"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_013216_e847ada9fa2944a681106a7c303e18d2/probe.report.json",
+      "sha256": "de36d10c884546444f378d68b4204e469c7307e941d7805f375f5bc1934cc442",
+      "role": "four-green-row native continuation report"
+    },
+    {
+      "path": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_r029_committed_shakedown_fixture_v1/manifest.json",
+      "sha256": "d48b1cd4b8318fe246d62f39e6e8982af9b531211a28a8da62e42b31d99ac599",
+      "role": "tradeable coin fixture"
+    },
+    {
+      "path": "tools/openclaw_harness/scenarios/bandit.extortion_committed_paid_departure_continuation_mcw.json",
+      "sha256": "990ce44b0362815cea982b6abb785a00a2e2118fbe75571e075492da7f317b0a",
+      "role": "native semantic no-OCR payment/continuation contract"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserve the paid source-bound run and green continuation run; do not replay them merely to eliminate the classifier's expected cross-run positive-artifact limitation.",
+    "Keep the ordinary same-minute transition rejection test: the exception is confined to an explicit paid committed return."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Integrating the paid and post-relaunch artifacts into one final positive-artifact classifier, and any broader follower/refusal/aftermath coverage, are coordinator-level remaining work rather than evidence this narrow repair claims.",
+  "narrow_queries": [
+    "same-minute paid return",
+    "shakedown_trade_ui result=paid",
+    "returning_home",
+    "audit_later_paid_departure_no_fight"
+  ],
+  "entrypoints": [
+    "src/do_turn.cpp",
+    "src/bandit_live_world.cpp",
+    "tests/bandit_live_world_test.cpp",
+    "tools/openclaw_harness/scenarios/bandit.extortion_committed_paid_departure_continuation_mcw.json"
+  ],
+  "context_metrics": {}
+}

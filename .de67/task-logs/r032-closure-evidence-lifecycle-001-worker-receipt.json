@@ -1,0 +1,162 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-032-closure-evidence-lifecycle-001",
+  "claim_id": "R-032",
+  "worker_id": "01a07dd9-bbcc-7d00-ae0d-d1a7b4ffe083",
+  "disposition": "completed",
+  "verdict": "proved",
+  "outcome": "Independently verified current R-032 Patrol repair source/executable identity, focused and full test evidence, zero-credit boundaries, material changes, and lifecycle dispositions for all five repair attempts and brokers.",
+  "summary": "Receipt 508f2d1a263a86dc61561a26e4634ceed303338e428b4de2f2539cd857d9e5e7 is applied: owner-promoted Patrol priority-zero release is proved from native semantic receipts and authoritative state; OCR, startup, fixture, registry, terminal, rendered presentation, and menu reachability receive no gameplay credit. Current executable SHA-256 is 43e6828546720c1a0b5d9eefa1c3ff0e5cb9733b7e233e79865b0a4a0854ae03. The final source-bound run is 4eaf27cdfe63ebd8daa7cc7bcb88025298b5d836a905053dc69891aff696afd3 with binding 4a60d15e479d47034b45f6524673147b4fe8ad34e1c739f7e4b4b6c2c44fed7e and source ef675ed0b3c4f36e5457185d2a5a5fb9919fd7bccd92fd36b4234b1ff8558b79. All five R032 game and broker PIDs are currently absent. The two failed-startup artifacts historically recorded retained-startup-failure requiring explicit quit; current absence does not prove the graceful closure method. Replacement and final artifacts record already-exited/safe-to-cleanup dispositions.",
+  "material_changes": [
+    "Verified R032 implementation changes in src/basecamp.cpp, src/npcmove.cpp, tests/faction_camp_test.cpp, and tools/openclaw_harness/scenarios/r032.prepared_camp_patrol_v001_mcw.json.",
+    "Verified focused test passed 1 case and 18 assertions.",
+    "Verified full native test build log and source/executable binding log hashes against receipt 508f2d1a."
+  ],
+  "tests": [
+    "build_logs/r032-release-repair-focused-test-20260907.log: passed 1 test case with 18 assertions.",
+    "build_logs/r032-release-repair-tests-build-20260907.log: full native test build completed successfully; linker warnings only.",
+    "cataclysm-tiles SHA-256 independently rechecked as 43e6828546720c1a0b5d9eefa1c3ff0e5cb9733b7e233e79865b0a4a0854ae03."
+  ],
+  "live_actions": [
+    "PID 15655, broker 15620, binding ff487bfeb45fb5ec9658c818436ff6f5c9275b5f675e677284c995cb20e7aa0b: failed startup; historical artifact retained it for explicit quit and later recorded broker process_dead. Current ps check finds both absent; graceful closure method is not independently evidenced.",
+    "PID 16984, broker 16955, binding c45cf7a63497373f8308c30c589da19b0558f9229b8c9b0bb99aad3bf10d3470: failed startup; historical artifact retained it for explicit quit and later recorded broker process_dead. Current ps check finds both absent; graceful closure method is not independently evidenced.",
+    "PID 18550, broker 18520, binding 52b37d580af830f1961209d4692d16f637d6c57f694cff44b2fd6f07a3dce5fe: replacement startup; artifact records already_exited/process_dead and current ps confirms absence.",
+    "PID 23249, broker 23217, binding 5109a7f31578df88ca5e6db2470cb77b04590783227c7eddb2420963ea784783: diagnostic replacement; artifact records native quit, already_exited and broker safe_to_cleanup; current ps confirms absence.",
+    "PID 28903, broker 28868, binding 4a60d15e479d47034b45f6524673147b4fe8ad34e1c739f7e4b4b6c2c44fed7e: final proof run; sealed witness then run.finish; artifact records already_exited/safe_to_cleanup and current ps confirms absence."
+  ],
+  "evidence_ceiling": [
+    "This lifecycle audit does not expand focused gameplay proof beyond Katharina Leach priority-nine runtime and priority-zero release.",
+    "OCR, screenshots, physical keys, terminal/rendered text, setup, fixture transforms, startup, registry authority selection and menu reachability are zero-credit for gameplay.",
+    "Current OS absence proves no listed R032 PID remains, but cannot retroactively establish graceful closure for the two historical retained-startup artifacts.",
+    "Fresh Patrol save/reload persistence and broader worker/shift behavior remain open."
+  ],
+  "bindings": {
+    "binding_id": "4a60d15e479d47034b45f6524673147b4fe8ad34e1c739f7e4b4b6c2c44fed7e",
+    "executable_sha256": "43e6828546720c1a0b5d9eefa1c3ff0e5cb9733b7e233e79865b0a4a0854ae03",
+    "run_id": "4eaf27cdfe63ebd8daa7cc7bcb88025298b5d836a905053dc69891aff696afd3",
+    "scenario_id": "r032.prepared_camp_patrol_v001_mcw",
+    "source_sha256": "ef675ed0b3c4f36e5457185d2a5a5fb9919fd7bccd92fd36b4234b1ff8558b79"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": "1",
+      "event_type": "identity",
+      "evidence_class": "native",
+      "summary": "Sealed source/executable/run/binding identity."
+    },
+    {
+      "id": "J0013",
+      "sequence": "13",
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "Priority-nine submission accepted."
+    },
+    {
+      "id": "J0141",
+      "sequence": "141",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Direct active GUARD_PATROL runtime observation."
+    },
+    {
+      "id": "J0156",
+      "sequence": "156",
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "Priority-zero submission accepted."
+    },
+    {
+      "id": "J0165",
+      "sequence": "165",
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "Ordinary post-zero update accepted."
+    },
+    {
+      "id": "J0166",
+      "sequence": "166",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Direct release observation: CAMP_RESIDENT, no order/guard/runtime."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "build_logs/r032-release-repair-source-binding-20260907.log",
+      "sha256": "ad9618ea0d9f3f71817a02f0dba9afad5b63d7f1392c33ba13ba8b0631add81c",
+      "role": "source/executable binding"
+    },
+    {
+      "path": "build_logs/r032-release-repair-tests-build-20260907.log",
+      "sha256": "91349c4bd1922fab382865560bfc335e26ba43c98aa01c68ff3a5ae1e230484d",
+      "role": "full native test build"
+    },
+    {
+      "path": "build_logs/r032-release-repair-focused-test-20260907.log",
+      "sha256": "d03574320182ad16973f35ec2ddbeac71e24318c59e7de876c9de703af4bc7fc",
+      "role": "focused test"
+    },
+    {
+      "path": "build_logs/r032-final-journal-20260907.json",
+      "sha256": "0c7e5bd19a2fa7c4e8ea287ce1dfd039bc4162dab28cd9876e32c195cc0e0840",
+      "role": "sealed native journal"
+    },
+    {
+      "path": "build_logs/r032-final-witness-20260907.json",
+      "sha256": "f723200c24cca4f8406f2b8edb5d36a32c19605392081cbe2d41a16003fb100a",
+      "role": "focused witness"
+    },
+    {
+      "path": "build_logs/r032-final-finish-collect-20260907.json",
+      "sha256": "f008bafc808ee9b5d5833d55ad52678292488ddb170f0a66a8631d41a6eeaa6b",
+      "role": "finish and cleanup response"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-d8fe2a535e7749a480e36b2abda5fba3/cockpit.bridge.safe_to_cleanup.json",
+      "sha256": "7671d2ef3072771b69e441ef903125dc0fc37f562b552e0386a66464814c6422",
+      "role": "PID 15655 cleanup"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-9f7d50bc520c49209b21135d6724bb72/cockpit.bridge.safe_to_cleanup.json",
+      "sha256": "a3e85edd1d7e96f05a75d2811bf1fec417a85b51400ba81907183aa093eee33a",
+      "role": "PID 16984 cleanup"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-001d7b12f6434e56b93d86b6efa453dd/cockpit.bridge.safe_to_cleanup.json",
+      "sha256": "92d6c3113a15fd10555f4b6cc9e15696644e49cafc8ce74c49712bf62477aaea",
+      "role": "PID 18550 cleanup"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-8a298349e29446a8bf92e39d95ca672c/cockpit.bridge.safe_to_cleanup.json",
+      "sha256": "31c802ac69597c52ae7007c3335537319fd73722b8a426eacbf2d45e8622af98",
+      "role": "PID 23249 cleanup"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-267234dc048840e9a6233112ba9b5f4d/cockpit.bridge.safe_to_cleanup.json",
+      "sha256": "7afbf579212e38e0fff164cf0505e6259482aa8873d19c17138d8f6120221c94",
+      "role": "PID 28903 cleanup"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserve the accepted sibling camp-service evidence and prior enabled-Patrol proof; this audit does not replay them.",
+    "Do not treat current absence as proof of a historical graceful closure route for failed startups."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Fresh repaired-Patrol persistence/reload verification and broader R-032 behavior.",
+  "narrow_queries": [
+    "R032 lifecycle artifact hashes",
+    "J0141 J0166",
+    "five attempt PID/broker identity and current ps absence",
+    "focused/full test logs"
+  ],
+  "entrypoints": [
+    "src/basecamp.cpp",
+    "src/npcmove.cpp",
+    "tests/faction_camp_test.cpp",
+    "tools/openclaw_harness/scenarios/r032.prepared_camp_patrol_v001_mcw.json"
+  ],
+  "context_metrics": {}
+}

@@ -1956,17 +1956,33 @@ void game::chat( const std::optional<tripoint_bub_ms> &p )
                             llm_hearers.push_back( guy );
                             continue;
                         }
+                        // A camp-craft order is owned by a stationed camp
+                        // recipient.  Let ordinary follower speech keep its
+                        // LLM route, but do not ask an ineligible listener to
+                        // improvise an acknowledgement for work it cannot
+                        // accept.
+                        const std::string camp_utterance = strip_llm_direct_address_prefix( utterance, *guy );
+                        const bool is_camp_craft_order =
+                            basecamp_ai::parse_heard_camp_craft_order( camp_utterance ).has_value();
                         const bool uses_basecamp = basecamp_ai::uses_basecamp_request_routing( *guy );
                         if( !uses_basecamp ) {
-                            log_camp_routing_state( *guy, "ordinary_llm_hearer", false, false );
-                            llm_hearers.push_back( guy );
+                            log_camp_routing_state( *guy, is_camp_craft_order ?
+                                                    "ineligible_camp_craft_suppressed" :
+                                                    "ordinary_llm_hearer", false, false );
+                            if( !is_camp_craft_order ) {
+                                llm_hearers.push_back( guy );
+                            }
                             continue;
                         }
                         std::optional<basecamp *> camp = overmap_buffer.find_camp( guy->assigned_camp->xy() );
                         const bool camp_found = camp.has_value() && *camp != nullptr;
                         if( !camp_found ) {
-                            log_camp_routing_state( *guy, "assigned_camp_without_live_basecamp", true, false );
-                            llm_hearers.push_back( guy );
+                            log_camp_routing_state( *guy, is_camp_craft_order ?
+                                                    "camp_craft_without_live_basecamp_suppressed" :
+                                                    "assigned_camp_without_live_basecamp", true, false );
+                            if( !is_camp_craft_order ) {
+                                llm_hearers.push_back( guy );
+                            }
                             continue;
                         }
                         log_camp_routing_state( *guy, "camp_grouped", true, true );

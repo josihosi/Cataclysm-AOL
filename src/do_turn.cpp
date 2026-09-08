@@ -449,6 +449,7 @@ bandit_live_world::local_gate_input live_bandit_make_gate_input(
 
     map &here = get_map();
     int closest_member_distance = rl_dist( site.anchor, u.pos_abs_omt() );
+    bool follower_sight = false;
     const bandit_live_world::active_outing_state *outing = site.active_external_outing();
     if( outing != nullptr ) {
         for( const character_id &member_id : outing->member_ids ) {
@@ -460,8 +461,10 @@ bandit_live_world::local_gate_input live_bandit_make_gate_input(
                 continue;
             }
             const tripoint_bub_ms member_pos = member_npc->pos_bub( here );
+            const bool follower_sees_member = live_bandit_seen_by_nearby_ally( here, u, member_pos );
             input.current_exposure |= get_player_view().sees( here, member_pos ) ||
-                                      live_bandit_seen_by_nearby_ally( here, u, member_pos );
+                                      follower_sees_member;
+            follower_sight |= follower_sees_member;
             const bool smoke_on_member = live_bandit_tile_has_smoke( here, member_pos );
             const bool smoke_on_sightline = live_bandit_smoke_between( here, u.pos_bub( here ),
                                                 member_pos );
@@ -473,7 +476,9 @@ bandit_live_world::local_gate_input live_bandit_make_gate_input(
             const bandit_live_world::member_record *member = site.find_member( member_id );
             const bool saved_local_contact = member != nullptr &&
                                              member->state == bandit_live_world::member_state::local_contact;
-            input.local_contact_established |= distance <= 1 || saved_local_contact;
+            input.local_contact_established |= bandit_live_world::normal_shakedown_first_sight_requires_parley(
+                                                  distance <= 1 || saved_local_contact,
+                                                  follower_sight, input.rolling_travel_scene );
         }
     }
     input.standoff_distance = closest_member_distance;
@@ -870,7 +875,7 @@ std::optional<live_bandit_paid_return_plan> live_bandit_prepare_paid_return(
         site.active_hostile_operation.phase !=
         bandit_live_world::hostile_operation_phase::committed_contact ||
         outing->owner != bandit_live_world::simulation_owner::local || !cursor ||
-        live_bandit_current_minutes() <= cursor->last_advanced_minutes ) {
+        live_bandit_current_minutes() < cursor->last_advanced_minutes ) {
         return std::nullopt;
     }
     live_bandit_paid_return_plan plan;
@@ -905,7 +910,7 @@ bool live_bandit_commit_paid_return( bandit_live_world::site_record &site,
     if( bandit_live_world::transition_hostile_operation_phase( site, plan.cursor,
             bandit_live_world::hostile_operation_phase::committed_contact,
             bandit_live_world::hostile_operation_phase::returning_home,
-            live_bandit_current_minutes(), summary ) !=
+            live_bandit_current_minutes(), summary, true ) !=
         bandit_live_world::hostile_operation_transition_result::applied ) {
         return false;
     }

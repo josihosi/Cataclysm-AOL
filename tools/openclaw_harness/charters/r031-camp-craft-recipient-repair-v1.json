@@ -1,0 +1,29 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On current source, an incapable or unassigned follower does not promise or accept a camp-craft order, while an eligible resident retains the native camp-craft route.",
+  "material_proof": "One current-source native run inspects the named follower and resident, delivers an addressed camp-craft utterance to each through the native chat owner, passes the ordinary applying turn, and correlates recipient, request/application evidence, messages, and the resident's actual camp-craft interaction. Any ingredient setup is recorded as zero-credit; an honest stored-food block remains a result boundary rather than a fabricated craft success.",
+  "current_uncertainty": "The existing fixture may lack stored food, so a resident's route can be proven through its native component and food-gate interaction without claiming a completed crafted item.",
+  "material_contradiction": [
+    "The named unassigned or incapable follower emits a camp-craft acknowledgement or promise after the addressed order.",
+    "The follower reaches a camp-craft component or work route despite lacking the required camp routing eligibility.",
+    "The inspected eligible resident no longer receives the native camp-craft route.",
+    "An ordinary non-craft follower command is suppressed by the camp-craft repair."
+  ],
+  "already_accepted_evidence": [
+    "Earlier source and focused-test evidence narrowed the direct camp handler boundary but did not settle the follower LLM acknowledgement path.",
+    "Fixture installation and any explicitly authorized ingredient spawn are zero-credit setup, not craft-result evidence.",
+    "Earlier ambient and persistence receipts retain their independently bounded conclusions."
+  ],
+  "forbidden_shortcuts": [
+    "Direct save, NPC, camp, request, or response mutation.",
+    "Synthetic LLM response injection, physical-key, OCR, guessed-control, or rendered-text proof.",
+    "Debug food or any other resource not authorized by the dispatch packet.",
+    "Treating a prompt, setup intervention, or promise as a completed craft result."
+  ],
+  "honest_stop_conditions": [
+    "The source-bound native session cannot reach the named recipients or applying turn.",
+    "The native food gate prevents craft completion after an eligible resident's actual route is observed.",
+    "A named contradiction is observed and retained with its actual recipient and request evidence."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

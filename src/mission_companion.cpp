@@ -1049,6 +1049,11 @@ bool talk_function::display_and_choose_opts(
             const mission_entry *const survey_return = find_mission( Camp_Survey_Expansion, true );
             const mission_entry *const gathering_mission = find_mission( Camp_Gather_Materials, false );
             const mission_entry *const gathering_return = find_mission( Camp_Gather_Materials, true );
+            // A completed craft is a real return mission, not a new recipe
+            // selection.  Keep the semantic owner able to dispatch that exact
+            // native return entry so a worker's results follow the same
+            // finish_return path as the visible board.
+            const mission_entry *const crafting_return = find_mission( Camp_Crafting, true );
             const bool food_available = food_mission != nullptr && food_mission->possible;
             const bool looting_available = looting_mission != nullptr && looting_mission->possible;
             const bool locker_policy_available = locker_policy_mission != nullptr && locker_policy_mission->possible;
@@ -1057,6 +1062,7 @@ bool talk_function::display_and_choose_opts(
             const bool survey_return_available = survey_return != nullptr && survey_return->possible;
             const bool gathering_available = gathering_mission != nullptr && gathering_mission->possible;
             const bool gathering_return_available = gathering_return != nullptr && gathering_return->possible;
+            const bool crafting_return_available = crafting_return != nullptr && crafting_return->possible;
             faction *const camp_faction = g->faction_manager_ptr->get( expected_faction );
             const int food_kcal = camp_faction ? camp_faction->food_supply().kcal() : 0;
             const std::map<std::string, std::string> payload = {
@@ -1079,7 +1085,8 @@ bool talk_function::display_and_choose_opts(
                 { "survey_expansion_available", survey_available ? "true" : "false" },
                 { "survey_expansion_return_available", survey_return_available ? "true" : "false" },
                 { "gather_materials_available", gathering_available ? "true" : "false" },
-                { "gather_materials_return_available", gathering_return_available ? "true" : "false" }
+                { "gather_materials_return_available", gathering_return_available ? "true" : "false" },
+                { "crafting_return_available", crafting_return_available ? "true" : "false" }
             };
             const std::vector<semantic_action_descriptor> actions = {
                 { "camp.distribute_food", expected_camp_id, _( "Distribute camp food" ), food_available },
@@ -1096,12 +1103,14 @@ bool talk_function::display_and_choose_opts(
                   _( "Start three-hour materials gathering" ), gathering_available },
                 { "camp.return_gather_materials", expected_camp_id,
                   _( "Recover completed materials gatherer" ), gathering_return_available },
+                { "camp.return_crafting", expected_camp_id,
+                  _( "Finish completed camp crafting" ), crafting_return_available },
                 { "camp.close", "", _( "Close Base Missions" ), true }
             };
             semantic_scope.emplace( *manager, "basecamp_mission_selector", _( "Base Missions" ), payload, actions,
-            [ &mission_key, &semantic_native_action, expected_camp, expected_camp_id, expected_faction,
+              [ &mission_key, &semantic_native_action, expected_camp, expected_camp_id, expected_faction,
               food_available, looting_available, locker_policy_available, job_assignment_available, survey_available, survey_return_available,
-              gathering_available, gathering_return_available ]( const semantic_action_request &request ) {
+              gathering_available, gathering_return_available, crafting_return_available ]( const semantic_action_request &request ) {
                 if( request.action_id == "camp.close" ) {
                     semantic_native_action = "QUIT";
                     return semantic_action_dispatch_result{ true, "", "" };
@@ -1142,6 +1151,10 @@ bool talk_function::display_and_choose_opts(
                     expected_kind = Camp_Gather_Materials;
                     expected_return = true;
                     expected_available = gathering_return_available;
+                } else if( request.action_id == "camp.return_crafting" ) {
+                    expected_kind = Camp_Crafting;
+                    expected_return = true;
+                    expected_available = crafting_return_available;
                 } else {
                     return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
                 }

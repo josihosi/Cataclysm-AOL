@@ -25347,6 +25347,10 @@ TEST_CASE( "bandit_live_world_builds_a_bounded_pay_or_fight_shakedown_surface", 
     REQUIRE( gate_decision.valid );
     REQUIRE( gate_decision.posture == bandit_live_world::local_gate_posture::open_shakedown );
     REQUIRE( gate_decision.opens_shakedown_surface );
+    CHECK( bandit_live_world::normal_shakedown_first_sight_requires_parley( true, false, false ) );
+    CHECK( bandit_live_world::normal_shakedown_first_sight_requires_parley( false, true, false ) );
+    CHECK_FALSE( bandit_live_world::normal_shakedown_first_sight_requires_parley( false, false, false ) );
+    CHECK_FALSE( bandit_live_world::normal_shakedown_first_sight_requires_parley( true, true, true ) );
 
     bandit_live_world::shakedown_goods_pool basecamp_pool;
     basecamp_pool.player_carried_value = 100;
@@ -25457,6 +25461,25 @@ TEST_CASE( "bandit_live_world_builds_a_bounded_pay_or_fight_shakedown_surface", 
     }
     CHECK_FALSE( bandit_live_world::release_shakedown_combat_on_player_attack(
                      combat_world, character_id( 953 ) ) );
+    bandit_live_world::site_record same_minute_default_site = site;
+    CHECK( transition_test_hostile_operation(
+               same_minute_default_site,
+               bandit_live_world::hostile_operation_phase::committed_contact,
+               bandit_live_world::hostile_operation_phase::returning_home, 106,
+               "ordinary same-minute return remains rejected" ) ==
+           bandit_live_world::hostile_operation_transition_result::rejected );
+    bandit_live_world::site_record same_minute_paid_site = site;
+    const bandit_live_world::simulation_advance_cursor same_minute_paid_cursor =
+        require_current_simulation_cursor( same_minute_paid_site );
+    CHECK( bandit_live_world::transition_hostile_operation_phase(
+               same_minute_paid_site, same_minute_paid_cursor,
+               bandit_live_world::hostile_operation_phase::committed_contact,
+               bandit_live_world::hostile_operation_phase::returning_home, 106,
+               "same-minute paid shakedown return", true ) ==
+           bandit_live_world::hostile_operation_transition_result::applied );
+    CHECK( same_minute_paid_site.active_hostile_operation.reservation.last_advanced_minutes == 106 );
+    CHECK( same_minute_paid_site.active_hostile_operation.reservation.owner ==
+           bandit_live_world::simulation_owner::abstract );
     REQUIRE( transition_test_hostile_operation(
                  site, bandit_live_world::hostile_operation_phase::committed_contact,
                  bandit_live_world::hostile_operation_phase::returning_home, 107,

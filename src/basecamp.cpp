@@ -165,6 +165,7 @@ bool camp_patrol_cached_roster_is_eligible(
         const npc_ptr worker = overmap_buffer.find_npc( worker_id );
         return worker && worker->assigned_camp &&
                *worker->assigned_camp == camp_pos &&
+               worker->job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 &&
                camp_patrol_worker_is_eligible( *worker );
     } );
 }

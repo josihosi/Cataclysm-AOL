@@ -3,6 +3,7 @@
   "name": "r032.prepared_camp_patrol_v001_mcw",
   "description": "R-032 focused established-camp Patrol route.  A disposable prepared fixture adds a single CAMP_PATROL tile as zero-credit footing.  The live run must use the native camp board's job-assignment modal, select its advertised patrol priority entry, submit priority 9 through the native numeric prompt so it outranks the prepared workers' existing priority-8 work, observe the assigned worker's runtime state and position after native elapsed time, then submit priority 0 and observe native release.",
   "profile": "dev-harness",
+  "config_profile": "r032-patrol-semantic-load",
   "world": "McWilliams",
   "fixture": "r032_prepared_camp_patrol_v1",
   "fixture_profile": "live-debug",
@@ -64,6 +65,43 @@
       "observe_interval_seconds": 0.1
     }
   ],
+  "post_relaunch": {
+    "terminal_save_step_label": "operate_r032_patrol_assignment",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "native_semantic_bootstrap",
+        "label": "bind_r032_patrol_saved_world_after_process_reload",
+        "native_semantic_checkpoint": {
+          "required_actions": ["world.wait"],
+          "required_state": "world",
+          "require_initial_hud_world_ready_frame": false
+        }
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "observe_r032_patrol_saved_world_and_continue",
+        "cleanup_on_finish": true,
+        "objective": "After native save and process replacement, inspect the same camp worker and verify the released priority-zero state persists without a stale Patrol order, guard mission, guard post, or runtime resurrection; continue only with ordinary native observation/actions.",
+        "proof_targets": [
+          "native save/quit boundary and process replacement",
+          "post-reload direct camp-worker identity and ordinary reassignment state",
+          "post-reload absence of stale Patrol order, guard mission, guard post, and runtime",
+          "accepted cleanup"
+        ],
+        "authority": ["currently advertised native semantic actions", "game.act", "run.witness", "run.finish"],
+        "invariants": [
+          "fixture setup and startup earn zero feature credit",
+          "the fixture is not reinstalled during reentry",
+          "native state observations, not OCR or rendered presentation, carry persistence evidence",
+          "preserve any stale-order or runtime-resurrection contradiction as its own result"
+        ],
+        "live_operations": ["game.act"],
+        "transition_timeout_seconds": 20.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
   "proof_route": {
     "precondition": ["bind_r032_prepared_camp_patrol_world"],
     "production_behavior": ["operate_r032_patrol_assignment"],

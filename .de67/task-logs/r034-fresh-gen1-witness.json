@@ -1,0 +1,16 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "The fresh source-bound run saved and exited generation 0, then reentered the exact McWilliams world in generation 1 without fixture restage. Native post-reload observations restored Bugchaser central, its accessible seven-entry Storage boundary, Katharina Leach character:2 with CAMP_RESIDENT assignment [140,41,0], priority 8, follow_close enabled/overridden, and 17-item inventory. A stale old-frame request was rejected outside the sealed journal, and fresh native pause actions were accepted after reload.",
+  "causal_account": "The generation-0 journal proves native quicksave/save-quit/main-menu exit and PID 12172 code-0 exit. The generation-1 journal is bound to the same run and binding while the bridge process-generation records show a distinct PID 12552 birth identity. The saved world and durable state are read through native semantic observations; OCR, terminal bytes, and rendered text are not used as proof.",
+  "citations": [
+    {"citation_id":"J0001","meaning":"Exact source, executable, scenario, run, and binding identity for the sealed continuation.","checks":{"run_id":"471292157f4731eaea4099605a90dfd069579ec1302fdfc4c7e87679e7810f27","binding_id":"a6a0b23a4f82ad9034d8ef9cb5945ad30eff0cb8c74b39b48fb03dccffa59b66"}},
+    {"citation_id":"J0003","meaning":"After the first fresh native post-reload pause, the same world exposed Bugchaser central and seven accessible Storage entries.","checks":{"value.surface.kind":"world","value.surface.facts.current_site_camp.camp_name":"Bugchaser central","value.surface.facts.current_site_camp.site":[140,41,0],"value.surface.facts.current_site_camp_storage.accessible":true,"value.surface.facts.current_site_camp_storage.zones.0.items.0.type_id":"novel_coa","value.surface.facts.current_site_camp_storage.zones.0.items.6.type_id":"box_small","value.surface.facts.current_site_camp_storage.zones.0.items.6.count":1}},
+    {"citation_id":"J0004","meaning":"The first ordinary native pause after reload was accepted.","checks":{"native_receipt.action_id":"world.pause","native_receipt.accepted":true}},
+    {"citation_id":"J0006","meaning":"Post-reload native NPC inspection restored Katharina identity, assignment, priority, follow rule, and item count.","checks":{"value.surface.kind":"npc_inspection","value.surface.facts.actor_id":"character:2","value.surface.facts.actor_name":"Katharina Leach","value.surface.facts.diagnostic_item_count":"17","value.surface.facts.diagnostic_orders.mission":"CAMP_RESIDENT","value.surface.facts.diagnostic_orders.assigned_camp":[140,41,0],"value.surface.facts.diagnostic_orders.camp_patrol_order":false,"value.surface.facts.diagnostic_orders.camp_patrol_priority":8}},
+    {"citation_id":"J0012","meaning":"A later ordinary native pause was accepted after restored inspection.","checks":{"native_receipt.action_id":"world.pause","native_receipt.accepted":true}}
+  ],
+  "recommended_disposition": "accept",
+  "contradictions": [],
+  "remaining_unknowns": ["This focused run does not claim follower movement/separation, every camp cache, or broader R-034 ecology behavior."],
+  "evidence_ceiling": "focused"
+}

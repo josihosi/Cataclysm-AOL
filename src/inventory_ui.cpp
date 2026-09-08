@@ -3752,6 +3752,15 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
     const std::vector<semantic_action_descriptor> &mode_actions ) const
 {
     std::vector<semantic_action_descriptor> actions;
+    // Multi-select owners need their two-step route to remain visible in the
+    // compact surface, not merely present after every item in a long list.
+    // Otherwise an owner can advertise an item as selectable while hiding the
+    // required Toggle/Commit operations behind the presentation page boundary.
+    for( const semantic_action_descriptor &mode_action : mode_actions ) {
+        if( mode_action.id == "inventory.commit" ) {
+            actions.push_back( mode_action );
+        }
+    }
     std::vector<std::pair<std::string, std::string>> selectable_items;
     std::vector<std::pair<item_location, std::string>> all_items;
     for( inventory_column *column : get_all_columns() ) {
@@ -3780,6 +3789,12 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
                     label += " — " + *entry->denial;
                 }
                 actions.push_back( { "inventory.select", stable_id, label, enabled } );
+                for( const semantic_action_descriptor &mode_action : mode_actions ) {
+                    if( mode_action.id == "inventory.toggle" ) {
+                        actions.push_back( { mode_action.id, stable_id, mode_action.label,
+                                             mode_action.enabled && enabled } );
+                    }
+                }
                 actions.push_back( { "inventory.details", stable_id, _( "Details" ), true } );
                 if( location->is_container() ) {
                     actions.push_back( { "inventory.contents", stable_id, _( "Contents" ), enabled } );
@@ -3790,6 +3805,9 @@ std::vector<semantic_action_descriptor> inventory_selector::semantic_actions(
     actions.push_back( { "inventory.filter", "", _( "Filter" ), true } );
     actions.push_back( { "inventory.reset_filter", "", _( "Reset filter" ), !get_filter().empty() } );
     for( const semantic_action_descriptor &mode_action : mode_actions ) {
+        if( mode_action.id == "inventory.toggle" || mode_action.id == "inventory.commit" ) {
+            continue;
+        }
         if( !mode_action.stable_id.empty() || mode_action.id == "inventory.commit" ) {
             actions.push_back( mode_action );
             continue;

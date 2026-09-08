@@ -2216,6 +2216,15 @@ bool npc::apply_llm_intent_item_targets() {
 void npc::move() {
   const map &here = get_map();
 
+  // A worker can still be executing an issued patrol guard order after its
+  // priority was disabled.  Reconcile that stale order before guard behavior
+  // can select another turn, rather than waiting for worker_downtime (which a
+  // GUARD_PATROL mission does not necessarily reach).
+  if( has_camp_patrol_order() &&
+      job.get_priority_of_job( ACT_CAMP_PATROL ) <= 0 ) {
+    clear_camp_patrol_order();
+  }
+
   // don't just return from this function without doing something
   // that will eventually subtract moves, or change the NPC to a different type
   // of action. because this will result in an infinite loop
@@ -4860,10 +4869,12 @@ void npc::worker_downtime() {
         camp && *camp ) {
       ( *camp )->process_camp_locker_downtime( *this );
 
-      const bool patrol_worker =
+      const bool patrol_enabled =
           job.get_priority_of_job( ACT_CAMP_PATROL ) > 0 &&
           ( *camp )->has_patrol_zone();
-      if( patrol_worker ) {
+      // An issued patrol order must be reconciled even after its priority is
+      // disabled, so the ordinary AI update can release the worker.
+      if( patrol_enabled || has_camp_patrol_order() ) {
         const bool had_camp_patrol_order = has_camp_patrol_order();
         const std::optional<camp_patrol_guard_runtime> patrol_runtime =
             ( *camp )->get_current_patrol_runtime( getID(), calendar::turn );

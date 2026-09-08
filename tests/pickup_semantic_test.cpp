@@ -1,3 +1,4 @@
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -60,6 +61,20 @@ TEST_CASE( "pickup selection publishes native quantities before completing toggl
         if( publications == 1 ) {
             initial_frame = descriptor.frame_id;
             CHECK( descriptor.payload.at( "selected_items" ) == "{}" );
+            const auto toggle = std::find_if( descriptor.valid_actions.begin(),
+            descriptor.valid_actions.end(), [&uid]( const semantic_action_descriptor &action ) {
+                return action.id == "inventory.toggle" && action.stable_id == uid;
+            } );
+            REQUIRE( toggle != descriptor.valid_actions.end() );
+            const auto select = std::find_if( descriptor.valid_actions.begin(), toggle,
+            [&uid]( const semantic_action_descriptor &action ) {
+                return action.id == "inventory.select" && action.stable_id == uid;
+            } );
+            CHECK( select != toggle );
+            CHECK( std::count_if( descriptor.valid_actions.begin(), descriptor.valid_actions.end(),
+            []( const semantic_action_descriptor &action ) {
+                return action.id == "inventory.commit";
+            } ) == 1 );
             REQUIRE( manager.submit_request( { "pickup-run", descriptor.surface_id,
                                                descriptor.frame_id, "toggle", "inventory.toggle", uid, {} } ) );
         } else {

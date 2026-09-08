@@ -1,0 +1,128 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-032-patrol-release-repair-001",
+  "claim_id": "R-032",
+  "worker_id": "01a07d9b-ac74-7990-8319-5a53b77689bb",
+  "disposition": "completed",
+  "verdict": "proved",
+  "outcome": "The owner-promoted R-032 Patrol priority-zero release is repaired and freshly verified: disabling Katharina Leach's Patrol priority releases the issued Patrol order on the next ordinary NPC update, permits normal reassignment, and does not disturb active-priority Patrol runtime.",
+  "summary": "Owner correction acknowledged and applied: native semantic receipts and authoritative state are the proof; OCR, terminal bytes, rendered text, fixture transforms, startup, and menu reachability receive zero gameplay credit. The current-source final run was `4eaf27cdfe63ebd8daa7cc7bcb88025298b5d836a905053dc69891aff696afd3`, binding `4a60d15e479d47034b45f6524673147b4fe8ad34e1c739f7e4b4b6c2c44fed7e`, source `ef675ed0b3c4f36e5457185d2a5a5fb9919fd7bccd92fd36b4234b1ff8558b79`, executable `43e6828546720c1a0b5d9eefa1c3ff0e5cb9733b7e233e79865b0a4a0854ae03`. J0141 directly reports character:2 GUARD_PATROL, Patrol order true, priority 9, active runtime and loop target/route after native elapsed time. After the native zero-priority submission and one ordinary native update, J0166 directly reports CAMP_RESIDENT, order false, priority 0, null guard post, inactive guard and unavailable Patrol runtime. The sealed journal/witness was mechanically valid, and run.finish terminated PID 28903; the bridge reached safe_to_cleanup.",
+  "material_changes": [
+    "src/basecamp.cpp now excludes a worker whose ACT_CAMP_PATROL priority is nonpositive from cached Patrol-roster eligibility.",
+    "src/npcmove.cpp reconciles an issued Patrol order at the ordinary npc::move decision boundary when ACT_CAMP_PATROL priority is nonpositive; worker_downtime also retains issued-order reconciliation so a stale GUARD_PATROL mission cannot remain latched.",
+    "tests/faction_camp_test.cpp extends camp_patrol_only_blocks_other_jobs_during_active_runtime with priority-zero release, ordinary worker.move(), cleared guard/order/runtime assertions, and ordinary job reassignment assertions.",
+    "tools/openclaw_harness/scenarios/r032.prepared_camp_patrol_v001_mcw.json selects config_profile r032-patrol-semantic-load; that profile raises only native semantic startup timeout to 360 seconds.",
+    "The prepared fixture remains zero-credit footing only; it did not set Patrol priority or actor order after launch."
+  ],
+  "tests": [
+    "Full native test build: make -j6 RELEASE=1 LTO=0 TILES=1 TESTS=1 tests exited successfully; complete log build_logs/r032-release-repair-tests-build-20260907.log.",
+    "Focused test: ./tests/cata_test camp_patrol_only_blocks_other_jobs_during_active_runtime passed one test case and 18 assertions; complete log build_logs/r032-release-repair-focused-test-20260907.log.",
+    "Fresh registry-bootstrap native semantic run: J0013 accepted priority-nine numeric submission; J0141 directly observed active GUARD_PATROL Patrol runtime; J0156 accepted priority-zero submission; J0165 accepted ordinary world.pause; J0166 directly observed release.",
+    "run.finish collected a mechanically valid focused witness with eight cited entries and cleaned the final game process; complete response build_logs/r032-final-finish-collect-20260907.json."
+  ],
+  "live_actions": [
+    "PID 15655, birth posix-lstart:Mon Sep 7 22:49:23 2026, binding ff487bfeb45fb5ec9658c818436ff6f5c9275b5f675e677284c995cb20e7aa0b: startup_proof_red with no semantic frame. Its contemporaneous cleanup artifact correctly retained it for explicit quit rather than killing it; broker 15620 later recorded process_dead. This failed startup is zero credit.",
+    "PID 16984, birth posix-lstart:Mon Sep 7 22:59:11 2026, binding c45cf7a63497373f8308c30c589da19b0558f9229b8c9b0bb99aad3bf10d3470: repeated startup_proof_red with no semantic frame. Its contemporaneous cleanup artifact retained it; broker 16955 later recorded process_dead. This failed startup is zero credit.",
+    "PID 18550, birth posix-lstart:Mon Sep 7 23:08:16 2026, binding 52b37d580af830f1961209d4692d16f637d6c57f694cff44b2fd6f07a3dce5fe: r032-patrol-semantic-load reached readiness then exited; cleanup artifact records already_exited and broker 18520 process_dead. No native exit credit or gameplay claim was taken from it.",
+    "PID 23249, birth posix-lstart:Mon Sep 7 23:25:17 2026, binding 5109a7f31578df88ca5e6db2470cb77b04590783227c7eddb2420963ea784783: diagnostic replacement run explicitly used native quit; cleanup artifact records already_exited and broker 23217 safe_to_cleanup. It preserved the stale-order diagnostic but is not the final proof run.",
+    "PID 28903, birth posix-lstart:Mon Sep 7 23:36:43 2026, binding 4a60d15e479d47034b45f6524673147b4fe8ad34e1c739f7e4b4b6c2c44fed7e: final source-bound proof run. run.finish sent SIGTERM only after the sealed witness; final process generation is alive=false, broker 28868 is safe_to_cleanup, and the post-close ps check found no listed game or broker PID.",
+    "The early recipe_groups startup failure was handled as a startup/profile problem, not credited behavior. The final run used a normal active source-matched registry bootstrap token; candidate/repair bootstrap authority was not used as proof and no registry/bootstrap path was promoted beyond launch identity."
+  ],
+  "evidence_ceiling": [
+    "Focused R-032 Patrol priority-nine runtime and priority-zero release for Katharina Leach only; it does not prove persistence across process replacement, every worker, or wider camp/ecology behavior.",
+    "OCR, screenshots, physical keys, terminal/rendered text, coordinates, direct NPC/camp/save mutation after fixture installation, and synthetic receipts are zero-credit and were not used for the conclusion.",
+    "Startup outcomes, registry authority selection, prepared fixture zone, and menu reachability are setup/precondition evidence only; native action receipts plus direct state observations carry the claim."
+  ],
+  "bindings": {
+    "binding_id": "4a60d15e479d47034b45f6524673147b4fe8ad34e1c739f7e4b4b6c2c44fed7e",
+    "executable_sha256": "43e6828546720c1a0b5d9eefa1c3ff0e5cb9733b7e233e79865b0a4a0854ae03",
+    "run_id": "4eaf27cdfe63ebd8daa7cc7bcb88025298b5d836a905053dc69891aff696afd3",
+    "scenario_id": "r032.prepared_camp_patrol_v001_mcw",
+    "source_sha256": "ef675ed0b3c4f36e5457185d2a5a5fb9919fd7bccd92fd36b4234b1ff8558b79"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": 1,
+      "event_type": "identity",
+      "evidence_class": "native",
+      "summary": "Sealed journal identity for scenario, source, executable, run and binding; journal sha256 670cb15581ce89e3d9e5cf3ed5be6f7950a700613cdb8791fafcbf43485a1548."
+    },
+    {
+      "id": "J0013",
+      "sequence": 13,
+      "event_type": "action",
+      "evidence_class": "native",
+      "action_id": "prompt.submit",
+      "summary": "Native priority-nine prompt submission accepted."
+    },
+    {
+      "id": "J0141",
+      "sequence": 141,
+      "event_type": "observation",
+      "evidence_class": "native",
+      "actor_id": "character:2",
+      "summary": "Direct camp-worker inspection: GUARD_PATROL, camp_patrol_order true, priority 9, active runtime true, loop behavior, target [3357,994,0] and current route."
+    },
+    {
+      "id": "J0156",
+      "sequence": 156,
+      "event_type": "action",
+      "evidence_class": "native",
+      "action_id": "prompt.submit",
+      "summary": "Native priority-zero prompt submission accepted."
+    },
+    {
+      "id": "J0165",
+      "sequence": 165,
+      "event_type": "action",
+      "evidence_class": "native",
+      "action_id": "world.pause",
+      "summary": "Ordinary native post-zero update accepted."
+    },
+    {
+      "id": "J0166",
+      "sequence": 166,
+      "event_type": "observation",
+      "evidence_class": "native",
+      "actor_id": "character:2",
+      "summary": "Direct post-update inspection: CAMP_RESIDENT, camp_patrol_order false, priority 0, guard_post null, actor_active_guard false, and runtime_available false."
+    }
+  ],
+  "artifacts": [
+    {"path": "build_logs/r032-release-repair-source-binding-20260907.log", "role": "current source/executable binding evidence"},
+    {"path": "build_logs/r032-release-repair-tests-build-20260907.log", "role": "complete full native test build log"},
+    {"path": "build_logs/r032-release-repair-focused-test-20260907.log", "role": "focused Patrol release test result"},
+    {"path": "build_logs/r032-final-journal-20260907.json", "role": "sealed final native evidence journal"},
+    {"path": "build_logs/r032-final-witness-20260907.json", "role": "final focused witness statement"},
+    {"path": "build_logs/r032-final-finish-collect-20260907.json", "role": "mechanically valid witness and final cleanup response"},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-d8fe2a535e7749a480e36b2abda5fba3/cockpit.bridge.safe_to_cleanup.json", "role": "PID 15655 retained-startup-failure disposition"},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-9f7d50bc520c49209b21135d6724bb72/cockpit.bridge.safe_to_cleanup.json", "role": "PID 16984 retained-startup-failure disposition"},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-001d7b12f6434e56b93d86b6efa453dd/cockpit.bridge.safe_to_cleanup.json", "role": "PID 18550 replacement-startup exit disposition"},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-8a298349e29446a8bf92e39d95ca672c/cockpit.bridge.safe_to_cleanup.json", "role": "PID 23249 diagnostic-run cleanup disposition"},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-267234dc048840e9a6233112ba9b5f4d/cockpit.bridge.safe_to_cleanup.json", "role": "PID 28903 final-run bridge cleanup disposition"}
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserve prior accepted enabled-Patrol proof and the stale-order diagnostic; the final run repeated only the changed priority-zero release boundary on current source.",
+    "The early startup failures and normal registry selection were not replayed as gameplay evidence. The repaired source was rebuilt and independently exercised through one fresh source-matched registry bootstrap run."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Fresh persistence/reload coverage for the repaired Patrol release and broader R-032 worker/shift behavior remain outside this focused assignment.",
+  "narrow_queries": [
+    "ACT_CAMP_PATROL priority zero npc::move release",
+    "J0141 J0166",
+    "camp_patrol_cached_roster_is_eligible",
+    "r032-patrol-semantic-load",
+    "source-bound registry bootstrap"
+  ],
+  "entrypoints": [
+    "src/basecamp.cpp",
+    "src/npcmove.cpp",
+    "tests/faction_camp_test.cpp",
+    "tools/openclaw_harness/scenarios/r032.prepared_camp_patrol_v001_mcw.json",
+    "tools/openclaw_harness/profiles/r032-patrol-semantic-load.json"
+  ],
+  "context_metrics": {}
+}

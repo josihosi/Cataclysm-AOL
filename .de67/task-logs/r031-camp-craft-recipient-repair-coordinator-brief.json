@@ -1,0 +1,31 @@
+{
+  "outcome": "On current source, an incapable or unassigned follower does not promise or accept a camp-craft order, while an eligible resident retains the native camp-craft route.",
+  "scenario_id": "r026.living_npc_package_v001_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "runtime.fixture",
+        "op": "eq",
+        "value": "r031_living_non_camp_follower_v1",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "runtime.world",
+        "op": "eq",
+        "value": "McWilliams",
+        "minimum_evidence": "declared"
+      },
+      {
+        "key": "capabilities.r026.living_npc_package",
+        "op": "eq",
+        "value": "follower_ambient_snapshot_basecamp_context",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  },
+  "authority_packet": {
+    "path": ".de67/state/worker-dispatch/task_522d3033312d63616d702d63726166742d726563697069656e742d7265706169722d303031-bf788e144079386ecaf1e820a30594f7a8f6ee745ac85b47546b3c13a5190b18.md",
+    "sha256": "bf788e144079386ecaf1e820a30594f7a8f6ee745ac85b47546b3c13a5190b18"
+  }
+}

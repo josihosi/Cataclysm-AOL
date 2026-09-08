@@ -1,0 +1,71 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-activation-plan-001",
+  "claim_id": "R-029",
+  "worker_id": "01a07e46-d10c-7490-a689-b63fc7fc0dd5",
+  "disposition": "completed",
+  "verdict": "activation_fault_and_targeted_repair_plan_proved",
+  "outcome": "R029-F004 is now grounded in the current materialization call order.  The exact shakedown members are relocated through Creature::setpos but never pass through game::load_npcs, so they do not enter the active creature tracker.  The narrow candidate repair, its active-identity postconditions, failure boundary, owner invariants, focused/native proof route, and one unresolved strategic-order policy for Josef are recorded without changing gameplay.",
+  "summary": "The retained source-bound run 9f8137c9254c4d56b6671f7289551c9a/receipt 83459f43b78d9a86e4a8ab09ac3d3f26e0624b8526a8b56e4b34cbbe5c759fce proved exact members 18 and 19 existed overmap-side but were inactive, absent from the active NPC registry, and absent from semantic visible entities after relocation.  Current code confirms the causal sequence: committed_contact gives the reservation local ownership; materialize_committed_bandit_shakedown validates the exact shared pointers and calls setpos only; Creature::setpos changes location but does not activate; game::load_npcs is the separate same-shared_ptr registration/on_load path.  game::find_npc returns the overmap record irrespective of active status, so current downstream contact/stalk gates also need an explicit is_active predicate.  No game was launched because no remaining premise discriminates the plan; no source files were changed under the investigation-and-planning-only authorization.",
+  "material_changes": [
+    "Added build_logs/r029-activation-plan-001.md, a scoped evidence and implementation plan."
+  ],
+  "tests": [
+    "Read-only source trace verified current materialization, activation, tracker, contact-gate, local stalking, generic routing, and paid-return handoff paths.  No build was appropriate because no code changed.",
+    "The plan artifact SHA-256 is 767244ddd175b861db0ae771ae5967d596e83eb250f3d1f53c2fd84c56654995; git diff --check on that artifact exited successfully."
+  ],
+  "live_actions": [
+    "None.  No game, helper, broker, or other process was launched by this task."
+  ],
+  "evidence_ceiling": [
+    "This establishes the current causal activation defect and a bounded repair/test plan only.  It does not prove refusal, player attack, combat, casualty, aftermath, persistence, gameplay feel, or a successful repaired activation.",
+    "No OCR, screenshots, terminal bytes, or rendered UI were used as gameplay proof.",
+    "The existing Pay repair receipt ab383ab50726156a5948882c5c74fefc0853945cd7c06f7cc44a963c380a34ee remains accepted at its ceiling and was not changed or replayed."
+  ],
+  "bindings": {
+    "brief_sha256": "3d69a435ae7f9f7eaec3924025def6b4be379c2f1be81a5878d719504f8e6d1d",
+    "historical_receipt_id": "83459f43b78d9a86e4a8ab09ac3d3f26e0624b8526a8b56e4b34cbbe5c759fce",
+    "historical_run_id": "9f8137c9254c4d56b6671f7289551c9a",
+    "plan_sha256": "767244ddd175b861db0ae771ae5967d596e83eb250f3d1f53c2fd84c56654995"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "build_logs/r029-activation-plan-001.md",
+      "sha256": "767244ddd175b861db0ae771ae5967d596e83eb250f3d1f53c2fd84c56654995",
+      "role": "current source-grounded repair plan and evidence boundary"
+    },
+    {
+      "path": ".de67/state/r029-refusal-attack-aftermath-061-worker-receipt.json",
+      "sha256": "2a2eaa19f3111c17b027f329b9f0338653b7429fd2e4955f07be88fa5d9a1bf8",
+      "role": "historical source-bound R029-F004 evidence, if retained at this standard receipt path"
+    },
+    {
+      "path": ".de67/debug-findings.md",
+      "sha256": "6dec51395d656b9895f31db8a2ac33de8de104a7a90373d3bfe8d75606356fee",
+      "role": "current owner-facing R029-F004 entry"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not replay completed firearm, Fight, sound-threshold, same-minute Pay, or paid-continuation routes merely for activation planning.",
+    "Do not implement the activation gameplay change without Josef's promotion; the current authorization is investigation and repair planning only."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Josef must select strategic-order handling at activation: clear/hold any inherited travelling state at local committed admission, or explicitly exclude the exact locally committed hostile IDs from generic overmap routing until returning-home handoff.  The mechanically necessary load_npcs activation and downstream is_active gate are otherwise specified but await repair authorization.",
+  "narrow_queries": [
+    "materialize_committed_bandit_shakedown load_npcs is_active",
+    "game::find_npc overmap record active tracker",
+    "committed hostile generic overmap routing",
+    "paid returning_home owner handoff"
+  ],
+  "entrypoints": [
+    "src/do_turn.cpp",
+    "src/game.cpp",
+    "src/creature.cpp",
+    "src/npc.cpp",
+    "src/bandit_live_world.cpp"
+  ],
+  "context_metrics": {}
+}

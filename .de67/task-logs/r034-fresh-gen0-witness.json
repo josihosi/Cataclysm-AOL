@@ -1,0 +1,17 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "Fresh generation-0 native semantic play exposed Katharina Leach and her camp/follower diagnostics, accepted native quicksave, save-and-quit, main-menu quit, and exited the original process with code 0. The declared generation-1 reload and resumed behavior remain pending.",
+  "causal_account": "All credited observations are bound to the native journal for run 471292157f4731eaea4099605a90dfd069579ec1302fdfc4c7e87679e7810f27 and binding a6a0b23a4f82ad9034d8ef9cb5945ad30eff0cb8c74b39b48fb03dccffa59b66. OCR, terminal bytes, and rendered text are not used as proof.",
+  "citations": [
+    {"citation_id":"J0001","meaning":"Exact current source, executable, scenario, run, and binding identity.","checks":{"run_id":"471292157f4731eaea4099605a90dfd069579ec1302fdfc4c7e87679e7810f27","binding_id":"a6a0b23a4f82ad9034d8ef9cb5945ad30eff0cb8c74b39b48fb03dccffa59b66"}},
+    {"citation_id":"J0003","meaning":"Native NPC inspection exposed Katharina identity and durable candidate fields before save.","checks":{"value.surface.kind":"npc_inspection","value.surface.facts.actor_id":"character:2","value.surface.facts.actor_name":"Katharina Leach"}},
+    {"citation_id":"J0008","meaning":"Native quicksave action was accepted.","checks":{"native_receipt.action_id":"world.quicksave","native_receipt.accepted":true}},
+    {"citation_id":"J0010","meaning":"Native save-and-quit action was accepted and opened confirmation.","checks":{"native_receipt.action_id":"world.save_quit","native_receipt.accepted":true}},
+    {"citation_id":"J0014","meaning":"Native main-menu quit action was accepted.","checks":{"native_receipt.action_id":"main_menu.quit","native_receipt.accepted":true}},
+    {"citation_id":"J0015","meaning":"Original bound process exited with code 0; exit alone does not establish durability.","checks":{"value.surface.kind":"process_exited","value.surface.facts.pid":12172,"value.surface.facts.alive":false,"value.surface.facts.exit_code":0,"value.surface.facts.save_outcome":"not_established_by_process_exit"}}
+  ],
+  "recommended_disposition": "continue",
+  "contradictions": [],
+  "remaining_unknowns": ["Declared generation-1 exact-world reload, stale-grant rejection, durable value comparison, resumed ordinary native behavior, and generation-1 cleanup."],
+  "evidence_ceiling": "focused"
+}

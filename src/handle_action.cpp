@@ -1094,6 +1094,7 @@ static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_a
         { "world.save_quit", "save" },
         { "world.inventory", "inventory" },
         { "world.pickup", "pickup" },
+        { "world.drop", "drop" },
         { "world.zone_manager", "zones" },
         { "world.overmap", "map" },
         { "world.messages", "messages" },
@@ -1161,10 +1162,22 @@ void openclaw_harness_semantic_initial_world_frame_if_ready( const input_context
     }
 }
 
-static std::vector<character_id> openclaw_harness_basecamp_mission_candidates()
+// A camp's assigned-worker roster remains authoritative while a worker is out
+// on a mission.  Keep the npc_ptr rather than resolving its id through the
+// local creature tracker later: a completed camp job deliberately removes the
+// worker from the nearby map before its return entry becomes available.
+static std::vector<npc_ptr> openclaw_harness_basecamp_mission_candidates()
 {
-    std::vector<character_id> result;
+    std::vector<npc_ptr> result;
     avatar &you = get_avatar();
+    const auto append_unique = [&result]( const npc_ptr & candidate ) {
+        if( candidate && std::none_of( result.begin(), result.end(),
+        [&candidate]( const npc_ptr & existing ) {
+            return existing && existing->getID() == candidate->getID();
+        } ) ) {
+            result.push_back( candidate );
+        }
+    };
     for( const shared_ptr_fast<npc> &candidate : overmap_buffer.get_npcs_near_player( HALF_MAPSIZE ) ) {
         if( !candidate || candidate->is_dead() || !candidate->assigned_camp ) {
             continue;
@@ -1176,7 +1189,21 @@ static std::vector<character_id> openclaw_harness_basecamp_mission_candidates()
         }
         std::optional<basecamp *> camp = overmap_buffer.find_camp( candidate->assigned_camp->xy() );
         if( camp && ( *camp )->allowed_access_by( you ) ) {
-            result.push_back( candidate->getID() );
+            append_unique( candidate );
+        }
+    }
+    // At the camp itself the visible Base Missions board is also valid for a
+    // worker who is presently away.  This is especially important for a
+    // completed craft: its return entry cannot be collected through the
+    // nearby-contact-only route above.  Do not use this as a remote-contact
+    // route; the fallback is confined to the avatar's current camp.
+    std::optional<basecamp *> current_camp = overmap_buffer.find_camp( you.pos_abs_omt().xy() );
+    if( current_camp && ( *current_camp )->allowed_access_by( you ) ) {
+        for( const npc_ptr &worker : ( *current_camp )->get_npcs_assigned() ) {
+            if( worker && !worker->is_dead() && worker->assigned_camp &&
+                worker->assigned_camp->xy() == ( *current_camp )->camp_omt_pos().xy() ) {
+                append_unique( worker );
+            }
         }
     }
     return result;
@@ -4683,7 +4710,7 @@ bool game::handle_action()
     // pre-modal dispatch; the selector itself is invoked below, after that
     // receipt is observable.  Taking and resetting this value makes the
     // handoff single-use even if transport retries the completed request.
-    std::optional<character_id> semantic_basecamp_mission_actor;
+    npc_ptr semantic_basecamp_mission_actor;
     bool semantic_debug_creature_killed = false;
     // Check if we have an auto-move destination
     if( player_character.has_destination() ) {
@@ -4725,14 +4752,13 @@ bool game::handle_action()
                     openclaw_harness_world_actions( world_context );
                 std::vector<semantic_action_descriptor> semantic_actions =
                     semantic_surface_actions( native_world_actions );
-                const std::vector<character_id> basecamp_mission_candidates =
+                const std::vector<npc_ptr> basecamp_mission_candidates =
                     openclaw_harness_basecamp_mission_candidates();
-                for( const character_id candidate : basecamp_mission_candidates ) {
-                    const npc *const actor = find_npc( candidate );
-                    if( actor != nullptr ) {
+                for( const npc_ptr &candidate : basecamp_mission_candidates ) {
+                    if( candidate ) {
                         semantic_actions.push_back( { "world.basecamp_missions",
-                                                      std::to_string( candidate.get_value() ),
-                                                      string_format( _( "Open Base Missions with %s" ), actor->name ), true } );
+                                                      std::to_string( candidate->getID().get_value() ),
+                                                      string_format( _( "Open Base Missions with %s" ), candidate->name ), true } );
                     }
                 }
                 const auto debug_actions = harness_creature_debug_actions( player_character );
@@ -4774,6 +4800,11 @@ bool game::handle_action()
                         act = ACTION_INVENTORY;
                     } else if( request.action_id == "world.pickup" ) {
                         act = ACTION_PICKUP;
+                    } else if( request.action_id == "world.drop" ) {
+                        // Preserve the native multidrop selector and its item
+                        // ownership checks; the semantic owner only exposes
+                        // the ordinary World action that enters it.
+                        act = ACTION_DROP;
                     } else if( request.action_id == "world.zone_manager" ) {
                         act = ACTION_ZONES;
                     } else if( request.action_id == "world.debug_kill_creature" ) {
@@ -4814,15 +4845,14 @@ bool game::handle_action()
                     } else if( request.action_id == "world.basecamp_missions" ) {
                         const std::string candidate_id = request.stable_id.value_or( "" );
                         const auto candidate = std::find_if( basecamp_mission_candidates.begin(),
-                        basecamp_mission_candidates.end(), [ &candidate_id ]( const character_id id ) {
-                            return std::to_string( id.get_value() ) == candidate_id;
+                        basecamp_mission_candidates.end(), [ &candidate_id ]( const npc_ptr &candidate ) {
+                            return candidate && std::to_string( candidate->getID().get_value() ) == candidate_id;
                         } );
                         if( candidate == basecamp_mission_candidates.end() ) {
                             return semantic_action_dispatch_result{ false, "invalid_basecamp_actor", "" };
                         }
-                        npc *const actor = g->find_npc( *candidate );
-                        if( actor == nullptr || actor->is_dead() || !actor->assigned_camp ||
-                            rl_dist( get_avatar().pos_abs_omt(), actor->pos_abs_omt() ) > 3 ) {
+                        const npc_ptr &actor = *candidate;
+                        if( !actor || actor->is_dead() || !actor->assigned_camp ) {
                             return semantic_action_dispatch_result{ false, "stale_basecamp_actor", "" };
                         }
                         std::optional<basecamp *> camp = overmap_buffer.find_camp( actor->assigned_camp->xy() );
@@ -4834,7 +4864,7 @@ bool game::handle_action()
                         // the authoritative owner once it opens, while this
                         // one-shot identity prevents a replayed receipt from
                         // invoking a second modal.
-                        semantic_basecamp_mission_actor = actor->getID();
+                        semantic_basecamp_mission_actor = actor;
                         semantic_manager.withhold_parent_authority_until_recreated( request.surface_id );
                         return semantic_action_dispatch_result{ true, "", "", false, false,
                                                                 "modal_dispatch_queued" };
@@ -4920,11 +4950,8 @@ bool game::handle_action()
         return false;
     }
     if( semantic_basecamp_mission_actor ) {
-        const character_id actor_id = *semantic_basecamp_mission_actor;
-        semantic_basecamp_mission_actor.reset();
-        if( npc *const actor = g->find_npc( actor_id ) ) {
-            talk_function::basecamp_mission( *actor );
-        }
+        npc_ptr actor = std::move( semantic_basecamp_mission_actor );
+        talk_function::basecamp_mission( *actor );
         return false;
     }
 

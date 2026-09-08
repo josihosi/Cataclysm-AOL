@@ -6214,7 +6214,7 @@ hostile_operation_transition_result transition_hostile_operation_phase(
     site_record &site, const simulation_advance_cursor &expected_cursor,
     const hostile_operation_phase expected_phase,
     const hostile_operation_phase next_phase, const int current_minutes,
-    const std::string &reason )
+    const std::string &reason, const bool allow_same_minute_committed_return )
 {
     const hostile_operation_state &operation = site.active_hostile_operation;
     const active_outing_state &reservation = operation.reservation;
@@ -6232,7 +6232,11 @@ hostile_operation_transition_result transition_hostile_operation_phase(
     if( expected_phase == next_phase ) {
         return hostile_operation_transition_result::unchanged;
     }
-    if( current_minutes <= reservation.last_advanced_minutes ) {
+    const bool same_minute_committed_return = allow_same_minute_committed_return &&
+            expected_phase == hostile_operation_phase::committed_contact &&
+            next_phase == hostile_operation_phase::returning_home &&
+            current_minutes == reservation.last_advanced_minutes;
+    if( current_minutes <= reservation.last_advanced_minutes && !same_minute_committed_return ) {
         return hostile_operation_transition_result::rejected;
     }
 
@@ -18422,6 +18426,12 @@ local_gate_decision choose_local_gate_posture( const site_record &site,
     decision.posture = local_gate_posture::stalk;
     decision.notes.push_back( "pressure stays readable as stalking until the scene changes" );
     return decision;
+}
+
+bool normal_shakedown_first_sight_requires_parley( const bool player_contact,
+        const bool follower_sight, const bool rolling_travel_scene )
+{
+    return !rolling_travel_scene && ( player_contact || follower_sight );
 }
 
 std::optional<int> target_footprint_watch_distance(

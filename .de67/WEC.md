@@ -237,7 +237,21 @@ targeted R029-F004 activation/arbitration investigation and repair planning, plu
 bounded repair of false follower camp-craft promises under R-031. No global AI shutdown or blanket
 camp-listener veto is authorized. The refrozen named DFS slices and separate same-claim assignments
 carry the mechanisms and tests; earlier pending-promotion restrictions yield only for these outcomes.
-These repairs are not yet implemented or proved.
+The R032-F001 Patrol release repair is now implemented and freshly proved by worker receipt
+`508f2d1a263a86dc61561a26e4634ceed303338e428b4de2f2539cd857d9e5e7`. The R029-F003
+same-minute Pay repair is now implemented and proved at its stated mixed native and focused-test
+ceilings by worker receipt `ab383ab50726156a5948882c5c74fefc0853945cd7c06f7cc44a963c380a34ee`.
+Both workers acknowledged and applied the OCR, no-replay, and runtime cleanup corrections. The
+R029-F004 activation fault and targeted repair plan are proved by worker receipt
+`58e6879974cd7923a97f81904ed6fd4b6e24838434efb940e3a508e8d737667f`. Gameplay
+implementation remains pending Josef's choice between clearing inherited strategic travel on local
+admission and excluding exact locally committed hostile IDs from generic routing. The R-031
+camp-craft correction is implemented and freshly proved by worker receipt
+`34681646df11e45a133cb3eee507287f23719021b376dec2f2142bc6aee3189e`. It preserves valid
+resident handling, prevents an unassigned follower from promising the job, and produced three
+bandages through the native camp mission and advertised semantic return route. The authorized
+ingredient setup and the earlier direct-key return received no gameplay credit. Exact task-owned
+processes exited.
 
 Same-OMT camp smoke is an accepted scope limitation; other smoke, local perception and unperformed
 tests remain required. Sound detection stands, but recent-check cooldown precedes drive347.

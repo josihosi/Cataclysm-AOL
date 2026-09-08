@@ -65,7 +65,7 @@
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "storage": "live_accessible_worn_pocket",
       "items": [
-        { "typeid": "gold_watch", "count": 101 }
+        { "typeid": "RobofacCoin", "count": 5 }
       ]
     },
     {

@@ -30,7 +30,7 @@
     "capabilities.persistence": "full_save_exit_relaunch_same_world"
   },
   "runtime_contract": {
-    "permitted_input": ["advance_turns", "press:p", "press:tab", "press:/", "type:gold watch", "press:F1", "press:enter", "press:Y", "press:S", "press:left"],
+    "permitted_input": ["advance_turns", "press:p", "press:tab", "press:/", "type:gold coin", "press:F1", "press:enter", "press:Y", "press:S", "press:left"],
     "forbidden_input": ["debug:spawn", "raw-save-rewrite", "fixture-save-transform"],
     "setup_only_debug": true,
     "disposable_copy": true,
@@ -49,7 +49,7 @@
       "helper": "CursesTerminalTransport",
       "peekaboo": false,
       "ocr": false,
-      "input": ["advance_turns", "semantic:shakedown.pay", "press:tab", "press:/", "type:gold watch", "press:F1", "press:enter", "press:Y", "press:S", "press:left"],
+      "input": ["advance_turns", "semantic:shakedown.pay", "press:tab", "press:/", "type:gold coin", "press:F1", "press:enter", "press:Y", "press:S", "press:left"],
       "cleanup": true
     },
     "grants_gameplay_proof": false
@@ -75,6 +75,16 @@
       "seconds": 2.0,
       "capture_after": true,
       "expected_visible_fact": "the following source-bound semantic descriptor, rather than a partial terminal redraw, establishes the native World HUD"
+    },
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_paid_departure_native_world",
+      "expected_visible_fact": "a current native World descriptor binds both the initial payment route and its saved-world continuation without replaying setup",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.wait"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
     },
     {
       "kind": "audit_saved_bandit_live_world_state",
@@ -129,15 +139,15 @@
     },
     {
       "kind": "type",
-      "label": "filter_fixture_gold_watch_payment_stack",
-      "text": "gold watch",
+      "label": "filter_fixture_hub_gold_coin_payment_stack",
+      "text": "gold coin",
       "submit": true,
       "submit_key": "enter",
       "submit_delay_ms": 200,
       "settle_seconds": 0.5,
       "capture_after": true,
       "extract_text_after_capture": true,
-      "expected_screen_text_after_contains": ["gold watch"],
+      "expected_screen_text_after_contains": ["Hub 01 Gold Coin"],
       "abort_on_screen_text_expectation_failure": true,
       "abort_verdict": "blocked_fixture_payment_stack_not_visible",
       "abort_reason": "the current committed-contact fixture did not expose its declared tradeable payment stack in the native Pay UI"
@@ -243,9 +253,7 @@
         "count": 120,
         "settle_seconds": 0.5,
         "auto_acknowledge_interruptions": true,
-        "capture_after": true,
-        "extract_text_after_capture": true,
-        "expected_screen_text_after_contains": ["Move:", "Wield:"],
+        "proof_deferred_to_label": "audit_later_paid_departure_no_fight",
         "expected_visible_fact": "a fresh native process advances ordinary turns after the persisted paid return without reopening the shakedown"
       },
       {

@@ -3950,7 +3950,12 @@ int basecamp::queue_crafting_request( const recipe &making, int batch_size, cons
 
 bool basecamp::handle_heard_camp_request( npc &listener, const std::string &utterance )
 {
-    if( !listener.assigned_camp || listener.assigned_camp->xy() != omt_pos.xy() ) {
+    // Speech normally reaches this handler through the same routing predicate,
+    // but keep the camp boundary authoritative too.  A follower can retain a
+    // camp assignment while travelling with the player; it must fall through
+    // to its ordinary command route instead of acknowledging camp work.
+    if( !basecamp_ai::uses_basecamp_request_routing( listener ) ||
+        !listener.assigned_camp || listener.assigned_camp->xy() != omt_pos.xy() ) {
         return false;
     }
 

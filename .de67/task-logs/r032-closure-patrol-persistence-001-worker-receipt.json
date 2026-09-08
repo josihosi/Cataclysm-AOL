@@ -1,0 +1,209 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-032-closure-patrol-persistence-001",
+  "claim_id": "R-032",
+  "worker_id": "01a07dd9-93fc-7763-ab3b-c64b0af57285",
+  "disposition": "completed",
+  "verdict": "proved",
+  "outcome": "Fresh current-source native evidence proves the repaired R-032 Patrol persistence boundary: Katharina Leach became the actual active Patrol owner, priority zero released her to ordinary CAMP_RESIDENT state, ordinary loot reassignment was accepted, and the saved state survived native process replacement without Patrol resurrection.",
+  "summary": "The first changed-route attempt is preserved as inconclusive because its inherited shift cache kept Robbie as the roster owner; it was finished and cleaned without gameplay credit. The corrected gen2 route used setup-only fixture priority-zero transforms for both prepared workers, then native assignment and state observation. Gen2 run 6f5b51d6280eca234d4e37d18663a1a56bac11b20ea30874e8bb366d342ca955, binding 12fe3c0a7cab58c6dd1aed8d919adc3a0ffb9c1fccfb50b885d21138635ea49b, source 53c3fd5ba1d2291bd9b1d66d29240d32e6cb2f75d5f4fcc6dbfbc17b8af09c09, executable 43e6828546720c1a0b5d9eefa1c3ff0e5cb9733b7e233e79865b0a4a0854ae03. J0189 directly reports GUARD_PATROL, issued order, priority 9, active guard runtime, target and route; J0203 accepts native priority zero; J0256 reports released CAMP_RESIDENT with no order, guard post or runtime; J0270 accepts ordinary loot priority 7; J0285 accepts native save/quit; the declared reentry J0003 reports the same released state after reload. Both runs reached safe_to_cleanup and no owned game or bridge process remains.",
+  "material_changes": [
+    "tools/openclaw_harness/startup_harness.py adds the setup-only basecamp_npc_patrol_priority transform parser, validation, application and dispatch.",
+    "tools/openclaw_harness/fixtures/saves/live-debug/r032_prepared_camp_patrol_v1/manifest.json sets ACT_CAMP_PATROL to priority 0 for prepared NPC ids 2 and 3, clearing inherited stale Patrol eligibility before native play without setting a live assignment or order.",
+    "tools/openclaw_harness/scenarios/r032.prepared_camp_patrol_v001_mcw.json selects config_profile r032-patrol-semantic-load and adds a post_relaunch native continuation for save/reload persistence observation.",
+    "No game-source behavior was changed by this persistence task; the native release behavior under test is the existing repaired source bound to executable 43e6828546720c1a0b5d9eefa1c3ff0e5cb9733b7e233e79865b0a4a0854ae03."
+  ],
+  "tests": [
+    "python3 -m py_compile tools/openclaw_harness/startup_harness.py passed.",
+    "Fixture manifest resolution and transform assertions passed, including ScenarioFixtureContractTest.test_basecamp_assignment_repair_preserves_game_owned_schedule.",
+    "git diff --check passed for the persistence fixture, scenario and startup-harness changes.",
+    "Fresh native gen2 evidence: J0017 accepted Patrol priority 9; J0189 directly observed active GUARD_PATROL runtime; J0203 accepted priority 0; J0256 directly observed release; J0270 accepted ordinary loot priority 7; J0285 accepted native save/quit; post-reload J0003 directly observed no Patrol resurrection.",
+    "run.finish and collect returned mechanically valid terminalization with bridge state safe_to_cleanup; final report is .userdata/dev-harness/harness_runs/20260908_004328_fbc0810f71be42fab93e1b248363ad09/probe.report.json."
+  ],
+  "live_actions": [
+    "Initial changed-route run e3f2969beeeed486caa97b9457f017792e79737d0f3812d78b606d37a43a1de4, binding 13a1078f2698bc49d4194475d8405346df4edaea7ab0b3bf3b32cff2f5ae4910: bridge PID 32658; bridge process birth identity was not retained in the bridge artifacts; initial game PID 32687 birth posix-lstart:Mon Sep 7 23:53:54 2026; replacement game PID 33606 birth posix-lstart:Mon Sep 7 23:59:24 2026, exit_code 0 at 2026-09-07T22:28:49.919+00:00. The run was inconclusive, finished, and safe_to_cleanup; no gameplay conclusion was promoted from it.",
+    "Final gen2 run 6f5b51d6280eca234d4e37d18663a1a56bac11b20ea30874e8bb366d342ca955, binding 12fe3c0a7cab58c6dd1aed8d919adc3a0ffb9c1fccfb50b885d21138635ea49b: bridge PID 47193; bridge process birth identity was not retained in the bridge artifacts; initial game PID 47224 birth posix-lstart:Tue Sep 8 00:35:25 2026; reloaded game PID 50074 birth posix-lstart:Tue Sep 8 00:43:29 2026, exit_code 0 at 2026-09-07T22:45:07.055+00:00. The terminalization artifact records bridge child_exit_code 0, game already_exited, and state safe_to_cleanup.",
+    "The final report and both bridge cleanup artifacts were retained; post-close process inspection found no listed owned game, bridge or broker process. Bridge birth identities remain an evidence ceiling because the session status/manifest schema records the bridge PID but not its posix-lstart identity."
+  ],
+  "evidence_ceiling": [
+    "The focused proof covers Katharina Leach's active Patrol runtime, native priority-zero release, ordinary loot reassignment, and absence of Patrol resurrection after one native save/reload continuation; it does not prove every worker, every shift, or wider camp/ecology behavior.",
+    "Fixture transforms, startup, registry selection, configuration profiles, menu reachability, OCR, screenshots, terminal bytes and rendered text are setup or presentation evidence and earn zero gameplay credit. Native action receipts and direct authoritative state observations carry the claim.",
+    "The initial stale-cache attempt is preserved as inconclusive evidence and is not replayed or silently merged into the proved gen2 route.",
+    "Bridge process birth identities were not emitted into retained artifacts; exact game process birth identities, exit codes/times, binding identities and safe-to-cleanup dispositions are recorded."
+  ],
+  "bindings": {
+    "binding_id": "12fe3c0a7cab58c6dd1aed8d919adc3a0ffb9c1fccfb50b885d21138635ea49b",
+    "executable_sha256": "43e6828546720c1a0b5d9eefa1c3ff0e5cb9733b7e233e79865b0a4a0854ae03",
+    "initial_inconclusive_binding_id": "13a1078f2698bc49d4194475d8405346df4edaea7ab0b3bf3b32cff2f5ae4910",
+    "initial_inconclusive_run_id": "e3f2969beeeed486caa97b9457f017792e79737d0f3812d78b606d37a43a1de4",
+    "run_id": "6f5b51d6280eca234d4e37d18663a1a56bac11b20ea30874e8bb366d342ca955",
+    "scenario_id": "r032.prepared_camp_patrol_v001_mcw",
+    "source_sha256": "53c3fd5ba1d2291bd9b1d66d29240d32e6cb2f75d5f4fcc6dbfbc17b8af09c09"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": "1",
+      "event_type": "identity",
+      "evidence_class": "native",
+      "summary": "Sealed scenario, source, executable, run and binding identity for gen2."
+    },
+    {
+      "id": "J0003",
+      "sequence": "3",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Fresh bootstrap before assignment: Katharina CAMP_RESIDENT, Patrol priority 0, no order; cache unavailable."
+    },
+    {
+      "id": "J0017",
+      "sequence": "17",
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "Native numeric Patrol priority-nine prompt accepted.",
+      "action_id": "prompt.submit"
+    },
+    {
+      "id": "J0024",
+      "sequence": "24",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Priority-nine observation shows Katharina in the refreshed Patrol roster with active runtime available.",
+      "actor_id": "character:2"
+    },
+    {
+      "id": "J0189",
+      "sequence": "189",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "After 80 native pauses, direct inspection reports GUARD_PATROL, issued order true, priority 9, guard post, active loop runtime, target and route.",
+      "actor_id": "character:2"
+    },
+    {
+      "id": "J0203",
+      "sequence": "203",
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "Native numeric Patrol priority-zero prompt accepted.",
+      "action_id": "prompt.submit"
+    },
+    {
+      "id": "J0256",
+      "sequence": "256",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "After 20 native pauses, direct inspection reports CAMP_RESIDENT, priority 0, no Patrol order, no guard post and no runtime/cache.",
+      "actor_id": "character:2"
+    },
+    {
+      "id": "J0270",
+      "sequence": "270",
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "Native ordinary loot priority-seven prompt accepted.",
+      "action_id": "prompt.submit"
+    },
+    {
+      "id": "J0280",
+      "sequence": "280",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Direct inspection after ordinary reassignment retains CAMP_RESIDENT, priority 0, no Patrol order or runtime.",
+      "actor_id": "character:2"
+    },
+    {
+      "id": "J0285",
+      "sequence": "285",
+      "event_type": "action",
+      "evidence_class": "native",
+      "summary": "Native save/quit receipt accepted at the terminal save boundary.",
+      "action_id": "world.save_quit"
+    },
+    {
+      "id": "J0003",
+      "sequence": "3",
+      "event_type": "observation",
+      "evidence_class": "native",
+      "summary": "Post-reload direct Katharina inspection preserves CAMP_RESIDENT, priority 0, no Patrol order, guard post, runtime or cache resurrection.",
+      "actor_id": "character:2"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "build_logs/r032-patrol-persistence-gen2-witness.json",
+      "sha256": "81399d34ee0a4670ac45fcdfde9da3c76ef0178ab7e66898550d7979cdc7021d",
+      "role": "gen2 native Patrol/release/reassignment witness"
+    },
+    {
+      "path": "build_logs/r032-patrol-persistence-gen2-final-witness.json",
+      "sha256": "83aa50d4cde82207b47dac8b7161401412dcd7165eede9663bea5fd22192f3bf",
+      "role": "post-reload continuation witness"
+    },
+    {
+      "path": "build_logs/r032-gen2-journal.json",
+      "sha256": "f9c42a65cc7000f184fc67be7065af67ef21558c81448b7188360c06a4c78244",
+      "role": "gen2 sealed native journal"
+    },
+    {
+      "path": "build_logs/r032-gen2-journal-reentry.json",
+      "sha256": "18458fc4a115fd82199b6722108fa4cd8049276257c09c51492e1f8bb0045f47",
+      "role": "gen2 post-reload journal"
+    },
+    {
+      "path": "build_logs/r032-patrol-persistence-gen1-witness.json",
+      "sha256": "c52818f6758ee07d836b40086e86799bf18335aeb927f0b803af12f1888840c4",
+      "role": "preserved inconclusive stale-cache predecessor witness"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260908_004328_fbc0810f71be42fab93e1b248363ad09/probe.report.json",
+      "sha256": "23b90123397ddfddec89a8bcaf9dc5d342c848f34fd191626fa90f95e4825e60",
+      "role": "final native run report"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-cf89a2c26447488daf6e204cf41625b5/cockpit.bridge.safe_to_cleanup.json",
+      "sha256": "8508a9d7489c11cbf9ad311b76ef88f5155b0349be3a6783df2d79bc537571dc",
+      "role": "gen2 terminalization and cleanup disposition"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-a06194a478a94431a6a1298f5b850313/cockpit.bridge.safe_to_cleanup.json",
+      "sha256": "3800e070f82c3bb5c1323fc49a9979e218b9a132f24b2d83cd3ea395b0752a28",
+      "role": "inconclusive predecessor cleanup disposition"
+    },
+    {
+      "path": "tools/openclaw_harness/startup_harness.py",
+      "sha256": "da2a2352d5b712df16ff9a0963f9dd42a1709a4dfeb5b65651930ffb2376a8fe",
+      "role": "setup-transform implementation"
+    },
+    {
+      "path": "tools/openclaw_harness/fixtures/saves/live-debug/r032_prepared_camp_patrol_v1/manifest.json",
+      "sha256": "b86434c8c1ad9773344c280a09f3d1656a50dae45c09257045ed8a6b79e72d4a",
+      "role": "setup-only fixture transform manifest"
+    },
+    {
+      "path": "tools/openclaw_harness/scenarios/r032.prepared_camp_patrol_v001_mcw.json",
+      "sha256": "743e4285952c70bfd7531a8c4a7ca2df65a580af59eb6717d788ccbed57dff21",
+      "role": "scenario post-relaunch/configuration contract"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserve the first changed-route run's stale-cache contradiction and inconclusive witness; do not replay it as reassurance.",
+    "Preserve accepted J0201/J1666 narrow observations from the predecessor, but rely on the changed gen2 route for the actual active-owner and persistence proof.",
+    "Do not claim native exit credit from run.finish; the artifacts record already_exited and safe_to_cleanup with game exit_code 0."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Broader R-032 worker/shift coverage and multi-cycle persistence remain outside this focused proof; bridge process birth identities are not retained by the current bridge artifact schema.",
+  "narrow_queries": [
+    "J0189 J0203 J0256 J0270 J0285 postreload J0003",
+    "ACT_CAMP_PATROL setup-only priority transform",
+    "r032.prepared_camp_patrol_v001_mcw post_relaunch",
+    "game process generation and bridge safe_to_cleanup identities"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/fixtures/saves/live-debug/r032_prepared_camp_patrol_v1/manifest.json",
+    "tools/openclaw_harness/scenarios/r032.prepared_camp_patrol_v001_mcw.json"
+  ],
+  "context_metrics": {}
+}
