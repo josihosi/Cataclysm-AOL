@@ -1,0 +1,38 @@
+# Functional Specification activation
+
+Owner gate `44b1fc1f8d95`, current reviewer `mutation-861d6640363740d5ab056d797a86de4b`, lineage `semantic-surface-cockpit`, supervisor 65243. The complete pending entry was reviewed and consumed after installed-code and live-dashboard validation. No new approval was requested.
+
+The active specification is now `.de67/FS.md`. `.de67/DFS.md` is a hash-bound compatibility pointer, not a second mutable specification. Delivery status and historical accepted projections are in the existing work ledger; original proof remains at its retained receipt, artifact, Git and SQLite identity. All 32 slice identities and 65 assignment IDs were preserved. Thirteen previously omitted historical accepted ledger rows were restored from the exact pre-migration FS and aligned to existing durable acceptance; no new acceptance was manufactured.
+
+The owner removed the requirement to retain the same supervisor PID, journal owner or runtime epoch. The release excludes `parent_adoption.py`, its tests, protocol and supervisor hook; that completed experiment remains in its original staging location as evidence. Current FS, ledger and bootstrap instructions reflect canonical FS identity and the permitted normal service restart. Earlier activation assignments remain recoverable, but their obsolete same-owner instructions no longer direct current work.
+
+## Behavior and validation
+
+The integration repair from receipt `2c5490b929d62f7d5e8a1a5ca28dcca1685276bcd5f900e63ed0d4b1451cf359` resolves legacy-path random-review inputs to actual FS content, rejects stale pointers, and preserves the consultation behavior outside its old delivery-status block. The corrected reopen and lineage-scoped acceptance queries remain in the release.
+
+Full-workspace migration exposed two remaining representation mismatches, repaired within the authorized activation package:
+
+- Canonical FS contains behavior rather than red delivery lamps. `workspace_facts` now obtains canonical open-work state from the ledger; legacy workspaces retain their existing interpretation. The regression failed before the change and passes for both open and accepted ledger states afterward. This changes representation reading, not routing policy data.
+- The state-aware ledger guard rejected multiple task identities for one claim despite `coordinator_ledger_contract()` explicitly permitting independent assignments and recoverable earlier work. The count restriction was deleted; every mentioned task still undergoes claim-ownership validation. The preservation regression failed before the deletion and passes afterward, while wrong-claim rejection still passes. The actual copied and installed ledgers now pass state-aware validation.
+
+The reduced release's supervisor suite passed 73 tests; specification migration passed four; the three focused guard/projection tests passed. Both additional regression routes passed after their demonstrated failures. The final full comparison ran 454 release tests and 445 baseline tests. Both report five failures, 19 errors and four skips, with identical failure/error identities and no new failures. These inherited failures are not described as passing; exact identities and complete logs are retained.
+
+Every active claim's selected slices extract successfully from legacy paths into canonical content, including independent index/query packets for the same evidence-search claim. Installed-code verification confirms pointer identity, state-aware ledger bindings, acceptance projection, open-work facts and non-premature supervisor completion. Provenance reports identical canonical content hashes under FS and legacy DFS labels. The supplied policy guard argument array was executed without a shell after promotion: 15 rules validated, with byte-identical existing compiled policy (2,046 bytes). No policy source, contract corpus, clock semantics or historical receipt was rewritten.
+
+Both dashboard variants passed legacy/canonical reads, escaping, read-only source and stale-panel checks. The exact owned dashboard pane was restarted with its existing configuration. The live `/dfs` compatibility route now displays the canonical FS, the preserved consultation contract, and an FS navigation label rather than the compatibility pointer. Dashboard source identities, complete HTML and verification remain in the activation evidence directory.
+
+## Service handoff
+
+Exactly one fresh-coordinator request was created: generation **44** (request count 43 → 44). No coordinator was manually launched. The owner explicitly authorized a normal external service stop/start for this upgrade, preserving completed work and evidence while allowing a new runtime owner.
+
+The current reviewer/app-server is a descendant of supervisor 65243. Stopping that service during the review would terminate it mid-write. A one-shot maintenance command therefore waits for this exact reviewer to return successfully and for the old parent's checkpoint/exit, then uses the existing `supervisor_service.py stop` and `start` commands. It verifies old PID/birth exit before start and records the coordinator's acknowledgement of generation 44. It is a temporary execution of the authorized restart, not an installed parent-adoption control plane. Controlled sequence checks prove one stop/start on success, no action with a live worker, and no start if the old parent survives stop.
+
+At reviewer closeout, the files and live dashboard are verified; the new supervisor/coordinator observation necessarily follows reviewer exit. The authoritative live result will be `state/review-owner-fs-activation-20260908/restart-verification.json`, with `maintenance-stop.json`, `maintenance-start.json` and `maintenance.log`. A failure records its exact gap and performs no competing retry. Sol should reconcile the existing migration closure gap against that result; the old same-owner gap wording is superseded, and no further approval or waiting-observer task is required.
+
+## Context and evidence
+
+The FS body decreased from 142,519 to 87,070 bytes (55,449 bytes smaller). Restoring accepted history increased the ledger from 101,864 to 107,615 bytes. The combined FS/ledger content is therefore 49,698 bytes smaller before accounting for the small compatibility pointer and consumed queue. These are measured file sizes, not measured runtime-token savings. Worker extraction already excluded many old status spans, so the whole-file reduction must not be claimed for every worker packet. No workload-equivalent post-activation savings measurement exists yet.
+
+Full current review-tree accounting as of **2026-09-08 19:26:06 UTC** is **7,511,771 tokens**: 7,475,429 input, including 7,340,928 cached, plus 36,342 output. It includes 53 root/helper calls and retries recorded by that cutoff; reasoning is a subset of output. Parent usage is 7,079,966 total; the fresh read-only Luna extraction is 431,805 total. Later closeout calls are excluded. The helper retrieved bounded prior integration evidence; additional full traces could not change the supported correction. This review's cost is disclosed, not presented as savings.
+
+The evidence root is `.de67/state/review-owner-fs-activation-20260908/`. It retains the pre-migration documents and method, release candidate, exact install manifest/backups, complete test logs, failed counterexamples and corrected results, two actual packets, live dashboard result, supplied policy-guard output and service handoff. `installed-method.patch` and the copied summaries beside this report preserve the installed delta in Git. The original parent-adoption experiment and prior worker receipts remain retrievable. The queue has no consumed-history section.

@@ -112,6 +112,7 @@ Two maintenance outcomes have complete independent closure evidence but cannot e
     - [done] audit-consult-binding :: Receipt 647c592a59d28d17cabc4a640198fc54151856128a034cb2f8843a45abcfe35e verifies identity binding and fail-closed behavior.
     - [done] audit-consult-roundtrip :: Receipt d3cf244ddd2d9319936edd261432eddaeb756c3e0d85533fc5080672f2b265de verifies the retained request, reply, and explicit retry path.
     - [done] audit-consult-evidence-lifecycle :: Receipt fa57de6c99706172c0da381d6c7e92727a025e4c90899c3dbdaa6785f13acedb verifies artifacts, tests, authority limits, state isolation, and process cleanup.
+  - Durable acceptance: #1 via `R-MAINT-CONSULT-closure-evidence-lifecycle-001`; SQLite evidence is authoritative.
 
 - [x] R-MAINT-PROMPT-DELIVERY — Current guarded prompts are loaded for each authorized child transition, and naturally authorized coordinator input confirms observable live adoption.
   - DFS slices: `R-MAINT-PROMPT-DELIVERY-S002`
@@ -125,24 +126,23 @@ Two maintenance outcomes have complete independent closure evidence but cannot e
     - [done] verify-prompt-freshness :: Prove changed/stale input, restart-reason preservation and one owned successor through an isolated fake runner.
     - [done] audit-prompt-source-guards :: Independently verify current loading, failures, bindings and focused tests.
     - [done] audit-live-prompt-adoption :: Independently verify the current naturally authorized child at the exact artifact ceiling.
+  - Durable acceptance: #1 via `R-MAINT-PROMPT-DELIVERY-closure-live-adoption-001`; SQLite evidence is authoritative.
 
 - [ ] R-MAINT-FS-MIGRATION — Move the specification to its intended FS name and functional purpose without breaking dispatch, evidence or acceptance.
   - DFS slices: `R-MAINT-FS-MIGRATION-S001`
   - Assignment R-MAINT-FS-MIGRATION-001: Sol commissions the source-grounded compatibility migration in FS S001, including the narrow resolver, installed consumer/status-projection changes, repository references and isolated tests. Owner authority covers the necessary reader/writer/guard representation changes; preserve policy semantics, clock integrity, evidence validation, stable claim/slice identities and independent assignments. Own overlapping installed files exclusively and sequence with other method-tool repairs. First stage and validate a candidate functional-only FS and moved ledger/proof projection; use the established guarded migration route for activation, returning to exclusive review if that route cannot promote the owner-authorized representation. Do not duplicate mutable specs or rewrite historical packets. The baseline guard also rejects multiple stored same-claim task identities despite the coordinator ledger contract; preserve independent assignments while reconciling that check. The existing missing-status-block obstruction for COMPACT-IO and RESULT-REUSE is a required counterexample, not a reason to redo their accepted evidence. Return exact compatibility results and active-file adoption boundary.
-  - Current candidate: `.de67/task-logs/owner-approvals-20260908/approved-candidate.json` retains the repaired regex/lineage projections, isolated same-claim proof and staged dashboard support. Original implementation and closure evidence remain at receipts `ee4d6d56acf28a29454634c137ed7048fe671c596dd38a4fd297183536b7cc03` and `40145dec41aee3e9f8015430d2d324bfe1d7677e7045fbb268ede1d383ab3297`; active migration has not occurred.
-  - Assignment R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-001: Close only the activation boundary after the exclusive universal mutation reviewer acts. Do not review, apply, resolve, or bypass the mutation. Observe the authenticated mutator disposition and active source identities. If the candidate is promoted, independently verify the active FS/DFS identity, ledger-only acceptance projection, packet and supervisor consumers, provenance, independent same-claim tasks, full current-method regression, and absence of stray processes. If review remains pending or is deferred, return the exact durable state, candidate identity, and first action still requiring exclusive authority without manufacturing another implementation attempt.
-  - Assignment R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-002: Continue revised gap revision 2 from the repaired candidate and authenticated requests `606c996a952b48128348d65cba4c706c` and `92171fe96d034fbcab256b3076383af9`. Observe the durable mutator disposition without claiming that an ordinary worker can review or authorize it. If promotion occurs, independently verify active identities, ledger-only acceptance, packet/supervisor/provenance consumers, same-claim task behavior, comparable full regression, and cleanup. If still pending, retain the exact message state and wait without rerunning the candidate or inventing a disposition. Do not review, apply, resolve, or bypass the mutation.
-  - Exclusive disposition: Gate `44b1fc1f8d95` reproduced remaining integration defects in `.de67/task-logs/review-owner-44b1fc1f8d95/reproduction.json`. Legacy-path random review accepts a stale canonical target as unchanged, a valid pointer fails section validation, and the running supervisor's imported projection fails on the migrated FS before successor launch. The renderer also removes the consultation behavior with its status block. Owner authority is sufficient; candidate correctness is the remaining boundary. Do not commission another waiting observer.
-  - Assignment R-MAINT-FS-MIGRATION-integration-003: Sol commissions the bounded candidate repair against FS S001 and the reproduced cases above. Complete guard canonical-target/baseline resolution and prove legacy/canonical rejection and content preservation; provide a supervisor-owned adoption path covering the already-running parent's post-review projection without a competing launch; preserve behavior embedded in old status blocks before extracting tracking. Reuse corrected projections, dashboard candidates, current functional refinements and valid independent proof. Stage tooling and test the actual transition with an isolated long-lived supervisor/fake child. Return corrected source identities and precise activation steps for the next exclusive reviewer; owner approval persists, no repeated permission request or waiting-worker cycle is needed. Ordinary work does not install active protected changes.
-  - Integration repair result: Receipt `2c5490b929d62f7d5e8a1a5ca28dcca1685276bcd5f900e63ed0d4b1451cf359` proves the corrected isolated candidate. Legacy DFS review paths now validate canonical FS content and reject stale pointers. The staged FS preserves all 32 slices and the consultation behavior while moving delivery tracking to the ledger. Eleven focused transition checks pass. The candidate adds eight tests and has the same 22 full-suite failure and error identities as the baseline. Active protected files remain unchanged. The remaining action requires the exclusive reviewer to make the live parent load the promoted delivery writer before status projection, install the complete bundle, and preserve the single-successor handoff.
-  - Assignment R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-004: Verify the finite supervisor-owned activation route for closure-gap revision 4 without reviewing, installing or resolving the mutation. Inspect the active external-supervisor lifecycle and the staged candidate's fresh delivery-writer transition. Prove an existing reviewer-controlled parent replacement, exec or pre-projection reload hook can preserve the current state, journal and sole-successor ownership, or return the exact source-grounded missing capability that prevents activation. Reuse receipt `2c5490b929d62f7d5e8a1a5ca28dcca1685276bcd5f900e63ed0d4b1451cf359`; do not rerun candidate implementation, create a competing supervisor, or wait for a random review cadence.
-  - Activation readiness result: Receipt `5a5639ee45e72d03e5bb7c492ce09fdaac18fc3b45df9590b79490da0003ec03` proves the active supervisor has no safe in-place activation mechanism. The only service controls are stop and start. Stop would terminate the current owner and can abandon live work; start creates a different owner. The staged candidate's fresh delivery-writer hook is not active. The exclusive reviewer must add and use an in-place reload, exec or equivalent owner-preserving handoff before promotion. Active supervisor PID 89829, its journal owner, protected files and worker state were unchanged.
-  - Assignment R-MAINT-FS-MIGRATION-parent-handoff-repair-005: Add the missing owner-preserving activation handoff to the isolated FS-migration candidate. Use receipt `5a5639ee45e72d03e5bb7c492ce09fdaac18fc3b45df9590b79490da0003ec03` as the counterexample. The staged mechanism must let the already-running parent adopt the promoted delivery writer before status projection without changing its journal owner, state database, live worker accounting or sole-successor authority. Prove the route with an isolated long-lived supervisor and fake child, including failure rollback, duplicate-signal or retry controls, and exact process ownership. Return a review-ready candidate and activation sequence. Do not edit the active method, install the FS bundle, stop or signal PID 89829, resolve the mutation, or launch a competing supervisor.
+  - Current release: The exclusive reviewer validated the canonical FS/compatibility pointer, retained functional content, ledger acceptance projection, guard and dispatch readers, provenance and passive dashboard. Release manifest, tests and service-restart verification are retained under `state/review-owner-fs-activation-20260908/`; the current acceptance claim still follows its durable closure transition.
+  - Assignment R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-001: Retained independent activation audit and its original evidence ceiling. The owner subsequently authorized ordinary quiet service restart; in-place exec/reload or same-owner replacement is not required. Original assignment and receipts remain in the pre-activation ledger baseline.
+  - Assignment R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-002: Retained independent activation audit and its original evidence ceiling. The owner subsequently authorized ordinary quiet service restart; in-place exec/reload or same-owner replacement is not required. Original assignment and receipts remain in the pre-activation ledger baseline.
+  - Assignment R-MAINT-FS-MIGRATION-integration-003: Completed isolated canonical-guard and functional-content repair. Reuse receipt `2c5490b929d62f7d5e8a1a5ca28dcca1685276bcd5f900e63ed0d4b1451cf359`; runtime-identity preservation is superseded. Current release validates ledger-derived open work and uses the owner-authorized service restart.
+  - Assignment R-MAINT-FS-MIGRATION-closure-exclusive-review-activation-004: Retained independent activation audit and its original evidence ceiling. The owner subsequently authorized ordinary quiet service restart; in-place exec/reload or same-owner replacement is not required. Original assignment and receipts remain in the pre-activation ledger baseline.
+  - Assignment R-MAINT-FS-MIGRATION-parent-handoff-repair-005: Completed staged owner-preserving handoff experiment. Retain its source/tests and receipt as historical evidence; the owner superseded runtime-identity continuity and this mechanism is excluded from the release.
+  - Owner decision: Normal controlled service stop/start is authorized at this quiet migration boundary. Preserve completed work, evidence, claim/slice identities and semantic restart ownership; a new supervisor PID, journal owner and runtime epoch are permitted. The staged parent-adoption control plane is excluded. No further permission request, waiting observer or custom owner-transfer implementation is required. Reconcile the existing activation closure gap against `activation-result.json` and `restart-verification.json` in the release evidence after the service handoff; do not redo the candidate or accepted gameplay.
   - Subtasks:
-    - [done] resolve-fs-identity :: The isolated shared resolver rejects conflicting and stale pointers.
-    - [done] project-delivery-in-ledger :: Corrected candidate reopen and lineage regressions pass.
-    - [done] verify-consumers :: Legacy-path guard, functional-content preservation, dashboard compatibility and the fresh delivery-writer transition pass in isolation.
-    - [open] promote-through-exclusive-review :: Activate the corrected representation under existing owner authority after integration proof.
+    - [done] resolve-fs-identity :: The canonical functional FS and hash-bound legacy pointer are validated together.
+    - [done] project-delivery-in-ledger :: Durable acceptance/reopen projection preserves independent assignments and historical accepted rows.
+    - [done] verify-consumers :: Legacy-path guards, actual packet extraction, ledger-based open-work facts, provenance and passive dashboard checks pass.
+    - [open] promote-through-exclusive-review :: The reviewed release is applied and verified by the authorized maintenance handoff; consume its exact result for closure.
 
 - [ ] R-MAINT-REVIEW-CONTEXT — Reduce repeated review context while preserving the owner's conversation and current authority.
   - DFS slices: `R-MAINT-REVIEW-CONTEXT-S001`
@@ -153,8 +153,7 @@ Two maintenance outcomes have complete independent closure evidence but cannot e
 
 ## Current contract and evidence
 
-The FS is the code's Functional Specification, temporarily stored at `.de67/DFS.md` for runtime
-compatibility. Before settling consequential new code, Sol reviews its data flow, interfaces,
+The FS is the code's Functional Specification, stored at `.de67/FS.md` with a hash-bound `.de67/DFS.md` compatibility pointer. Before settling consequential new code, Sol reviews its data flow, interfaces,
 state ownership, maintainability and tests against that contract, using bounded independent
 engineering review when useful. Passing tests and a receipt do not by themselves cover the whole
 contract. Briefs name the data identities, functions, transitions and errors that matter; source
@@ -210,6 +209,7 @@ its isolated profile; the retained R-029 run remains separate.
   - message-log-parity: Receipt 4bad63572c8e1a1fb5623148315ece5b0c5c480f98d449de747c2df88a48b1df independently confirms current source-bound Tiles and curses viewer entry, controls, filter prompt cancellation back to MESSAGE_LOG, close to World, and explicit cleanup with passing focused suites.
   - npc-inspection-parity: Receipt 55e3dd74b64cbb6b72699b9aac6c490c705b6e059ca89763bfbf8a52ccf711d4 binds fresh current source-bound Tiles and curses runs proving inspector entry, stale item rejection, valid item child, child and parent restoration, and explicit cleanup.
   - Evidence ceiling: input-owner inventory and native semantic operation only; no CAOL gameplay or message-content claim. Earlier implementation and diagnostic receipts remain durable at their original scope.
+  - Durable acceptance: #1 via `R-SURFACE-011-closure-004`; SQLite evidence is authoritative.
 
 - [ ] R-026 — No current-source integrated CAOL feature package yet binds the living-base,
   bandit, cannibal, signal-control, and flesh-raptor families through one audited established-base
@@ -284,6 +284,7 @@ its isolated profile; the retained R-029 run remains separate.
     - [done] prove-repaired-release-persistence :: Native save and generation-1 reload preserved ordinary state without a Patrol order, guard mission, runtime, or cache resurrection.
     - [done] audit-camp-service-evidence :: Independent review preserved each accepted sibling result without broadening its evidence ceiling.
     - [done] audit-repair-evidence-and-cleanup :: Independent review verified code, tests, zero-credit limits, and every task-owned process disposition.
+  - Durable acceptance: #1 via `R-032-closure-patrol-persistence-001`; SQLite evidence is authoritative.
 
 - [ ] R-033 — Physical signal controls, camp memory and local/overmap boundary behavior need fresh evidence.
   - DFS slices: `R-033-S001`
@@ -326,6 +327,7 @@ its isolated profile; the retained R-029 run remains separate.
     - [done] close-restored-state-and-authority :: Independent receipts closed restored state and authority/evidence/cleanup at their focused ceilings.
     - [done] repair-and-close-native-lifecycle :: A fresh route avoided the shared temporary-file race, proved generation-1 native continuation, and reconciled every owned process and broker.
     - [done] accept-finite-closure :: All three independent closure gaps are durably closed at their stated evidence ceilings.
+  - Durable acceptance: #1 via `R-034-closure-native-lifecycle-002`; SQLite evidence is authoritative.
 
 - [x] R-035 — Fresh native flesh-raptor orbit, blocked-route fallback, committed swoop, melee pressure, encounter feel, controls, exclusions, and cleanup are proved at their stated evidence ceilings.
   - DFS slices: `R-035-S001`
@@ -341,6 +343,7 @@ its isolated profile; the retained R-029 run remains separate.
     - [done] verify-controls-exclusions-and-tests :: Fixture controls are zero-credit setup, excluded creatures are absent, and 7 focused cases with 61 assertions pass.
     - [done] close-owned-processes :: All four R-035 game attempts and their brokers were explicitly closed; the omitted exploratory process was recovered before completion.
     - [done] audit-finite-closure :: Independent orbit-control, fallback-pressure, and evidence-lifecycle checks all closed before claim acceptance.
+  - Durable acceptance: #1 via `R-035-closure-evidence-lifecycle-001`; SQLite evidence is authoritative.
 
 - [x] R-036 — Fresh matched living-base and hostile-ecology performance evidence is complete at its finite descriptive ceiling.
   - DFS slices: `R-036-S001`
@@ -357,6 +360,7 @@ its isolated profile; the retained R-029 run remains separate.
     - [done] judge-correctness-and-feel :: Mechanical observations are retained, while subjective visual feel and universal thresholds remain unclaimed.
     - [done] reconcile-game-lifecycle :: Every game PID/birth has a native quit route and observed OS exit; broker graceful-exit durability remains limited.
     - [done] audit-finite-comparison :: Independent audits verified matched measurements, mechanical correctness, evidence limits, and lifecycle at their stated ceilings.
+  - Durable acceptance: #1 via `R-036-closure-correctness-feel-002`; SQLite evidence is authoritative.
 
 ## Execution and closure
 
@@ -367,3 +371,100 @@ its own output is a non-credit bootstrap followed by independent validation, not
 R-026 collects the independent results; package closure requires every specified outcome, a usable
 guide, and honest persistence/cleanup/feel evidence. Gameplay contradictions remain suspected bugs
 until Josef promotes them. Preserve evidence and waiting state without manufacturing completion.
+
+
+- [x] R-027 — Independently validate the current staffed-camp structural-signal observation and
+  memory path from a saved physical source through bounded controls and an ordinary response.
+  - DFS slices: `R-027-S001`
+  - Historical acceptance: #1 via `R-027-closure-008`. Native runs established smoke/light leads,
+    absent/blocked/range controls, deduplication, aging and changed-source refresh. Run
+    `3fd920fc…0a100` selected a retained light lead and dispatched actors 4 and 18; the separate
+    `bandit_live_world_retained_signal_dispatch_survives_save_round_trip` test passed 23 assertions.
+    Combined report SHA `17058a17…328dfb` keeps live and deterministic persistence evidence separate.
+    Exact earlier artifacts and acceptance history remain unchanged in the prior DFS/package.
+  - Durable acceptance: #1 via `R-027-closure-008`; SQLite evidence is authoritative.
+
+
+- [x] R-028 — Qualify the current package's performance under paired combined workloads including
+  rendered local transitions, mechanical context, and gameplay feel.
+  - DFS slices: `R-028-S001`
+  - Historical acceptance: #1 via `R-028-closure-008`. Baseline report
+    `20260903_183103_938dff78278a4cd8926c2ba74a1f856b` and feature report
+    `20260903_183420_7782a0e532dd43ce9d449bb06eb0a404` bound equivalent prepared state and one rebuilt
+    Tiles executable, rendered transitions, native save/quit and original-process exits. Earlier
+    paired raw distributions and native counters remain evidence. The conclusion was only that no
+    material difference was observed on that route; it did not establish a universal threshold.
+  - Durable acceptance: #1 via `R-028-closure-008`; SQLite evidence is authoritative.
+
+
+- [x] R-030 — Make CAOL and DE67 worker evidence quiet by default without losing any full-fidelity
+  artifact: compact command receipts, indexed journal lookup, outcome-sized progressive briefs, and
+  durable successor continuation must preserve exact identity and binding while the full digest-bound
+  payload remains explicitly retrievable.
+  - DFS slices: `R-030-S001`
+  - Historical acceptance: #1 via `R-030-closure-008`, receipt `0e2afae0…a96625`. The original broader
+    acceptance and full attempt history remain in the prior Git version and durable evidence.
+    Coordination-side mechanics are outside this product DFS.
+  - Durable acceptance: #1 via `R-030-closure-008`; SQLite evidence is authoritative.
+
+
+- [x] R-SURFACE-001 — The live Tiles and curses routes prove the renderer-neutral semantic surface stack, exact top-owner
+  exclusivity, fresh frame IDs, breadcrumbs, and actionless unsupported hard stop through the live
+  Tiles and curses routes.
+  - DFS slices: `R-SURFACE-001-S001`
+  - Final proof: `.userdata/r-surface-001-inventory-prompt-curses/harness_runs/20260901_050125_2b12535db356419b8761e63b5e18fb79/probe.report.json` is feature-path proof and 46 focused harness tests passed.
+  - Durable acceptance: #1 via `R-SURFACE-001-closure-033`; SQLite evidence is authoritative.
+
+
+- [x] R-SURFACE-002 — The source-current native route proves that only the active input owner consumes semantic requests and returns exact receipts without keyboard, mouse, focus, or screenshot control.
+  - DFS slices: `R-SURFACE-002-S001`
+  - Final proof: run `20260901_062147_6936ef4aad934189826b83b042bfb41a` is source-current feature-path proof and 40 focused semantic-step tests pass.
+  - Durable acceptance: #1 via `R-SURFACE-002-closure-003`; SQLite evidence is authoritative.
+
+
+- [x] R-SURFACE-003 — The shared native menu and prompt family is proven on the accepted semantic request boundary.
+  - DFS slices: `R-SURFACE-003-S001`
+  - Final proof: run `20260901_080338_00e8f9d5a1d847a8bbd15e9d55d3c8c4` is source-current feature proof, and the native suite passes 15 cases with 102 assertions.
+  - Durable acceptance: #1 via `R-SURFACE-003-closure-002`; SQLite evidence is authoritative.
+
+
+- [x] R-SURFACE-004 — The live Tiles and curses routes prove the renderer-neutral World owner, complete native payload, child exclusivity, and exact child-return receipts.
+  - DFS slices: `R-SURFACE-004-S001`
+  - Final proof: closure-001 settles the World source contract. Closure-002 settles the Tiles child-return gap with source-bound run `20260901_084803_c48c48ab407b4bb2b4aae7a32ad3b867`. Closure-003 settles the matching curses child-return gap with source-bound run `20260901_085008_8c8797aa81674128abe4b32aae7b66ff`. Each renderer proves World, Inventory, fresh World, Debug menu, and fresh World through four exact receipts. Durable acceptance 1 settles the whole claim after all three gaps closed.
+  - Durable acceptance: #1 via `R-SURFACE-004-closure-003`; SQLite evidence is authoritative.
+
+
+- [x] R-SURFACE-005 — The live Tiles and curses routes prove the renderer-neutral Overmap owner, discovered-only payload, stable targets, exact native receipts, and fail-closed hidden terrain.
+  - DFS slices: `R-SURFACE-005-S001`
+  - Final proof: The source contract, Tiles route, and curses route are independently closed. Tiles run `20260901_092728_1c7efc46c4904460a53759d6ec17f664` and curses run `20260901_094019_a6462e09cd8f4481abc4400634209a9c` prove matching native Overmap behavior, exact receipts, hidden-terrain omission, and fresh World restoration. Durable acceptance 1 settles the whole claim after all three gaps closed.
+  - Durable acceptance: #1 via `R-SURFACE-005-closure-003`; SQLite evidence is authoritative.
+
+
+- [x] R-SURFACE-006 — The live Tiles and curses routes prove the renderer-neutral inventory-selector family, stable UID targeting, nested ownership, exact receipts, and fail-closed invalid identities.
+  - DFS slices: `R-SURFACE-006-S001`
+  - Final proof: All four closure gaps are independently closed. Current-source tests prove exact UID behavior, collated same-purpose entries, disabled actions, wrong identity rejection, nested restoration, and successor receipts. The curses and Tiles routes canonically ingest with mechanically valid witness evidence and accepted cleanup. Durable acceptance 1 settles the whole claim.
+  - Durable acceptance: #1 via `R-SURFACE-006-closure-009`; SQLite evidence is authoritative.
+
+
+- [x] R-SURFACE-007 — The focused dialogue-response surface is proven on the accepted native ownership and stable-target foundations.
+  - DFS slices: `R-SURFACE-007-S001`
+  - Final proof: Source controls, the Tiles route, and the curses route are independently closed. Durable acceptance 1 uses closure-003 after all three sequence-2 gaps closed.
+  - Durable acceptance: #1 via `R-SURFACE-007-closure-003`; SQLite evidence is authoritative.
+
+
+- [x] R-SURFACE-008 — Direction and targeting screens expose and consume their own stable native choices.
+  - DFS slices: `R-SURFACE-008-S001`
+  - Final proof: Source controls, both Tiles routes, and both curses routes are independently closed. Durable acceptance 1 uses closure-010 after all three sequence-2 gaps closed.
+  - Durable acceptance: #1 via `R-SURFACE-008-closure-010`; SQLite evidence is authoritative.
+
+
+- [x] R-SURFACE-009 — Every required discovered input owner operates semantically, and every new or incomplete owner stops automation without fallback.
+  - DFS slices: `R-SURFACE-009-S001`
+  - Final proof: Four independent revision-1 gaps are closed. The source gate classifies all 73 discovered direct-input sources. Fresh source-bound Tiles debug-spell and map-editor routes prove stable native actions, exact receipts, restoration, and cleanup. The curses map-editor route proves renderer parity. Fresh ingested unsupported run `20260901_203737_669628fd73db436ca5d51d9e6f09509d` proves stable DEBUG_CONSOLE ownership, zero actions, zero submitted requests, no parent fallback, and accepted cleanup.
+  - Durable acceptance: #1 via `R-SURFACE-009-closure-004`; SQLite evidence is authoritative.
+
+
+- [x] R-SURFACE-010 — The cockpit replaces its active presentation from the exact top descriptor across World, Overmap, Inventory, Dialogue, Menu/Prompt, Direction, Target, and Unsupported surfaces.
+  - DFS slices: `R-SURFACE-010-S001`
+  - Final outcome: Current source and focused tests enforce exact descriptor-only projection. Fresh source-bound Tiles, Overmap, Dialogue, curses, and Unsupported witnesses prove stable identities, isolated actions, exact receipts, complete breadcrumbs, restored ownership, renderer parity, and hard-stop behavior.
+  - Durable acceptance: #1 via `R-SURFACE-010-closure-005`; SQLite evidence is authoritative.

@@ -1,0 +1,976 @@
+--- a/scripts/coordinator_supervisor.py
++++ b/scripts/coordinator_supervisor.py
+@@ -30,6 +30,7 @@
+ from agent_mailbox import communication_contract
+ from deadline_harness import DeadlineError, DeadlineHarness
+ from policy_kernel import current_owner_contract, worker_selection_contract
++from specification import SpecificationError, resolve
+ from repository_checkpoint import (
+     RepositoryCheckpointError,
+     checkpoint_repository,
+@@ -507,8 +508,13 @@
+             ).fetchall()
+         ]
+     documents: dict[str, str | None] = {}
++    try:
++        specification = resolve(workspace / ".de67")
++        specification_document = str(specification.path.relative_to(workspace))
++    except SpecificationError:
++        specification_document = ".de67/DFS.md"
+     for relative in (
+-        ".de67/DFS.md",
++        specification_document,
+         ".de67/work-ledger.md",
+         ".de67/mutation-suggestions.md",
+         ".de67/phase3-policy.d67",
+@@ -694,11 +700,14 @@
+     lineage_id: str,
+ ) -> bool:
+     """Derive completion from the DFS, current ledger, and live clock gates."""
+-    dfs = workspace / ".de67" / "DFS.md"
+     ledger = workspace / ".de67" / "work-ledger.md"
+-    if not dfs.is_file() or not ledger.is_file() or not state_path.is_file():
++    if not ledger.is_file() or not state_path.is_file():
+         return False
+-    if RED_DFS_CLAIM.search(dfs.read_text(encoding="utf-8")):
++    try:
++        specification = resolve(workspace / ".de67")
++    except SpecificationError:
++        return False
++    if specification.legacy and RED_DFS_CLAIM.search(specification.text):
+         return False
+     if ACTIVE_LEDGER_ITEM.search(ledger.read_text(encoding="utf-8")):
+         return False
+@@ -794,10 +803,16 @@
+ 
+ 
+ def dfs_has_open_work(workspace: Path) -> bool:
+-    """Return whether the frozen DFS still has a red product claim."""
+-    dfs = workspace / ".de67" / "DFS.md"
+-    return dfs.is_file() and RED_DFS_CLAIM.search(
+-        dfs.read_text(encoding="utf-8")
++    """Return whether the functional contract/ledger still has open work."""
++    try:
++        specification = resolve(workspace / ".de67")
++    except SpecificationError:
++        return False
++    if specification.legacy:
++        return RED_DFS_CLAIM.search(specification.text) is not None
++    ledger = workspace / ".de67" / "work-ledger.md"
++    return ledger.is_file() and ACTIVE_LEDGER_ITEM.search(
++        ledger.read_text(encoding="utf-8")
+     ) is not None
+ 
+ 
+@@ -934,13 +949,17 @@
+ 
+ def recovery_frontier_snapshot(workspace: Path) -> str:
+     """Render the small durable frontier a recovery coordinator must resolve."""
+-    dfs = workspace / ".de67" / "DFS.md"
++    try:
++        specification = resolve(workspace / ".de67")
++        dfs_text = specification.text
++        label = "DFS" if specification.legacy else "FS"
++    except SpecificationError:
++        dfs_text = ""
++        label = "FS/DFS"
+     ledger = workspace / ".de67" / "work-ledger.md"
+     red_lamps = (
+-        [line for line in dfs.read_text(encoding="utf-8").splitlines()
++        [line for line in dfs_text.splitlines()
+          if line.startswith("- [ ] 🔴 ")]
+-        if dfs.is_file()
+-        else []
+     )
+     executable_entries = (
+         [line for line in ledger.read_text(encoding="utf-8").splitlines()
+@@ -949,7 +968,7 @@
+         else []
+     )
+     return (
+-        "DFS red lamps:\n"
++        label + " red lamps:\n"
+         + ("\n".join(red_lamps) if red_lamps else "(none)")
+         + "\nLedger executable entries:\n"
+         + ("\n".join(executable_entries) if executable_entries else "(none)")
+@@ -1033,7 +1052,7 @@
+         "The hash-bound .de67/phase3-policy.d67 file is the machine-canonical routing policy.",
+         "Before each coordinator routing transition, execute the argument array in DE67_POLICY_DECIDE_ARGV_JSON as a subprocess without a shell.",
+         current_owner_contract(workspace),
+-        "The FS (Functional Specification, currently at .de67/DFS.md) defines code behavior; the ledger owns delivery assignments and evidence references. Read the relevant contract and reconcile changed outcomes. Historical acceptance retains its scope; the current owner contract decides fresh proof.",
++        "The FS (Functional Specification, resolved from .de67/FS.md with legacy .de67/DFS.md compatibility) defines code behavior; the ledger owns delivery assignments and evidence references. Read the relevant contract and reconcile changed outcomes. Historical acceptance retains its scope; the current owner contract decides fresh proof.",
+         coordinator_context_contract(),
+         "Current work, independent task results, receipt search, recorded dispatch relationships and runner "
+         "metadata and latest-assigned coordinator-tree token usage are available from this argument array: " + json.dumps([
+@@ -1238,7 +1257,11 @@
+         if remaining is not None:
+             gate = remaining
+             continue
+-        with DeadlineHarness(state_path) as harness:
++        # The reviewer may have atomically promoted the method while this
++        # parent was alive.  Its imported DeadlineHarness must not decide the
++        # post-review projection: load the installed source from disk before
++        # the one authorized successor is claimed.
++        with _fresh_deadline_harness()(state_path) as harness:
+             harness.synchronize_dfs_statuses()
+         restart = read_clock(state_path, lineage_id)
+         if not restart.required or restart.generation is None:
+@@ -1273,6 +1296,38 @@
+             f"Current supervisor prompt source could not be loaded: {error}"
+         ) from error
+     return module
++
++
++def _fresh_deadline_harness() -> type[DeadlineHarness]:
++    """Load the post-review delivery writer from the installed source.
++
++    This mirrors fresh prompt loading.  It keeps a long-lived supervisor from
++    using a pre-promotion status writer for the one post-review handoff, while
++    retaining the same parent, state database, journal, and child-launch
++    authority.
++    """
++    source_path = Path(__file__).with_name("deadline_harness.py")
++    try:
++        source = source_path.read_text(encoding="utf-8")
++        code = compile(source, str(source_path), "exec")
++    except (OSError, SyntaxError, UnicodeError) as error:
++        raise SupervisorError(
++            f"Current delivery projection source is unavailable or corrupt: {error}"
++        ) from error
++    module = types.ModuleType(f"_de67_delivery_source_{uuid.uuid4().hex}")
++    module.__file__ = str(source_path)
++    module.__package__ = None
++    sys.modules[module.__name__] = module
++    try:
++        exec(code, module.__dict__)
++    except Exception as error:
++        raise SupervisorError(
++            f"Current delivery projection source could not be loaded: {error}"
++        ) from error
++    harness_type = getattr(module, "DeadlineHarness", None)
++    if not isinstance(harness_type, type):
++        raise SupervisorError("Current delivery projection source has no DeadlineHarness")
++    return harness_type
+ 
+ 
+ def run_child(
+--- a/scripts/deadline_harness.py
++++ b/scripts/deadline_harness.py
+@@ -16,6 +16,11 @@
+ import time
+ from pathlib import Path
+ from typing import Any
++
++SCRIPT_ROOT = str(Path(__file__).resolve().parent)
++if SCRIPT_ROOT not in sys.path:
++    sys.path.insert(0, SCRIPT_ROOT)
++from specification import SpecificationError, resolve
+ 
+ SCRIPT_ROOT = str(Path(__file__).resolve().parent)
+ if SCRIPT_ROOT not in sys.path:
+@@ -74,6 +79,19 @@
+     )
+     match = pattern.search(ledger)
+     return match.group(0).rstrip() if match else None
++
++
++def _replace_ledger_claim_block(ledger: str, claim_id: str, replacement: str) -> str:
++    current = _ledger_claim_block(ledger, claim_id)
++    if current is None:
++        raise DeadlineError(f"Claim {claim_id} has no work-ledger projection")
++    return ledger.replace(current, replacement.rstrip(), 1)
++
++
++def _open_ledger_baseline(block: str) -> str:
++    """Recover a reopenable open projection without treating FS prose as evidence."""
++    block = re.sub(r"(?m)^  - Durable acceptance:.*\n?", "", block)
++    return re.sub(r"\A- \[x\] ", "- [ ] ", block, count=1)
+ 
+ 
+ def _dfs_claim_status_span(dfs: str, claim_id: str) -> tuple[int, int, str] | None:
+@@ -1585,7 +1603,7 @@
+                     ),
+                 )
+ 
+-    def synchronize_dfs_statuses(self, *, persist: bool = True) -> tuple[str, ...]:
++    def _synchronize_legacy_dfs_statuses(self, *, persist: bool = True) -> tuple[str, ...]:
+         """Project durable claim acceptance into agent-facing DFS status blocks."""
+         workspace = _workspace_for_state(self.state_path)
+         if workspace is None:
+@@ -1600,15 +1618,17 @@
+             """
+             SELECT accepted.* FROM claim_acceptances AS accepted
+             JOIN (
+-              SELECT claim_id, MAX(acceptance_number) AS acceptance_number
+-              FROM claim_acceptances GROUP BY claim_id
+-            ) AS latest
+-              ON latest.claim_id = accepted.claim_id
++              SELECT lineage_id, claim_id, MAX(acceptance_number) AS acceptance_number
++              FROM claim_acceptances
++              WHERE lineage_id = ?
++              GROUP BY lineage_id, claim_id
++            ) AS latest ON latest.lineage_id = accepted.lineage_id
++             AND latest.claim_id = accepted.claim_id
+              AND latest.acceptance_number = accepted.acceptance_number
+             WHERE accepted.lineage_id = ?
+             ORDER BY accepted.claim_id
+             """,
+-            (self._bound_lineage_id(),),
++            (self._bound_lineage_id(), self._bound_lineage_id()),
+         ).fetchall()
+         if not rows:
+             return ()
+@@ -1687,6 +1707,72 @@
+         )
+         os.replace(baseline_temporary, baseline_path)
+         return tuple(changed)
++
++    def synchronize_delivery_statuses(self, *, persist: bool = True) -> tuple[str, ...]:
++        """Project durable acceptance into the ledger for a functional-only FS.
++
++        The legacy DFS writer is retained byte-for-byte for pre-migration
++        workspaces.  Once the hash-bound compatibility pointer is present, no
++        implementation-status span in the functional document is consulted.
++        """
++        workspace = _workspace_for_state(self.state_path)
++        if workspace is None:
++            return ()
++        try:
++            specification = resolve(workspace / ".de67")
++        except SpecificationError as error:
++            raise DeadlineError(str(error)) from error
++        if specification.legacy:
++            return self._synchronize_legacy_dfs_statuses(persist=persist)
++        ledger_path = workspace / ".de67" / "work-ledger.md"
++        if not ledger_path.is_file():
++            raise DeadlineError("FS status projection requires work-ledger.md")
++        ledger = ledger_path.read_text(encoding="utf-8")
++        rows = self.connection.execute(
++            """
++            SELECT accepted.* FROM claim_acceptances AS accepted
++            JOIN (
++              SELECT lineage_id, claim_id, MAX(acceptance_number) AS acceptance_number
++              FROM claim_acceptances
++              WHERE lineage_id = ?
++              GROUP BY lineage_id, claim_id
++            ) AS latest ON latest.lineage_id = accepted.lineage_id
++             AND latest.claim_id = accepted.claim_id
++              AND latest.acceptance_number = accepted.acceptance_number
++            WHERE accepted.lineage_id = ? ORDER BY accepted.claim_id
++            """,
++            (self._bound_lineage_id(), self._bound_lineage_id()),
++        ).fetchall()
++        changed: list[str] = []
++        for acceptance in rows:
++            claim_id = str(acceptance["claim_id"])
++            current = _ledger_claim_block(ledger, claim_id)
++            if current is None:
++                raise DeadlineError(f"Accepted claim {claim_id} lacks a work-ledger projection")
++            receipt = (
++                f"  - Durable acceptance: #{acceptance['acceptance_number']} via "
++                f"`{acceptance['task_id']}`; SQLite evidence is authoritative."
++            )
++            if acceptance["invalidated_at"] is None:
++                if not current.startswith(f"- [x] {claim_id}"):
++                    raise DeadlineError(
++                        f"Accepted claim {claim_id} lacks a checked work-ledger projection"
++                    )
++                projected = current if receipt in current else current + "\n" + receipt
++            else:
++                projected = _open_ledger_baseline(current)
++            if projected != current:
++                ledger = _replace_ledger_claim_block(ledger, claim_id, projected)
++                changed.append(claim_id)
++        if persist and changed:
++            temporary = ledger_path.with_name(f".{ledger_path.name}.{os.getpid()}.tmp")
++            temporary.write_text(ledger, encoding="utf-8")
++            os.replace(temporary, ledger_path)
++        return tuple(changed)
++
++    def synchronize_dfs_statuses(self, *, persist: bool = True) -> tuple[str, ...]:
++        """Compatibility API; status projection now selects the resolved surface."""
++        return self.synchronize_delivery_statuses(persist=persist)
+ 
+     def _bound_lineage_id(self) -> str:
+         rows = self.connection.execute("SELECT lineage_id FROM lineage_binding").fetchall()
+--- a/scripts/method_provenance.py
++++ b/scripts/method_provenance.py
+@@ -11,10 +11,15 @@
+ import platform
+ import sqlite3
+ import subprocess
++import sys
+ from typing import Any
+ from urllib.parse import quote
+ 
+ import mutation_guard
++SCRIPT_ROOT = str(Path(__file__).resolve().parent)
++if SCRIPT_ROOT not in sys.path:
++    sys.path.insert(0, SCRIPT_ROOT)
++from specification import SpecificationError, resolve
+ 
+ 
+ def _git_state(path: Path) -> dict[str, Any]:
+@@ -103,13 +108,30 @@
+     if workspace is not None:
+         workspace = workspace.resolve()
+         local = workspace / ".de67"
++        try:
++            specification = resolve(local)
++            guidance = {
++                "FS.md": _sha256(specification.path),
++                "DFS.md": _sha256(specification.path),
++            }
++            compatibility = {
++                "canonical": specification.path.name,
++                "legacy": specification.legacy,
++            }
++        except SpecificationError as error:
++            guidance = {"FS.md": None, "DFS.md": None}
++            compatibility = {"error": str(error)}
+         result["workspace"] = {
+             "path": str(workspace),
+             "git": _git_state(workspace),
+             "guidance_sha256": {
+-                name: _sha256(local / name)
+-                for name in ("DFS.md", "orchestrator-guidelines.md", "test-and-task-guidelines.md")
++                **guidance,
++                **{
++                    name: _sha256(local / name)
++                    for name in ("orchestrator-guidelines.md", "test-and-task-guidelines.md")
++                },
+             },
++            "specification_compatibility": compatibility,
+             "clock": _clock_state(_workspace_clock(workspace)),
+         }
+     return result
+--- a/scripts/mutation_guard.py
++++ b/scripts/mutation_guard.py
+@@ -14,6 +14,11 @@
+ import tempfile
+ import time
+ from typing import NamedTuple
++
++SCRIPT_ROOT = str(Path(__file__).resolve().parent)
++if SCRIPT_ROOT not in sys.path:
++    sys.path.insert(0, SCRIPT_ROOT)
++from specification import SpecificationError, resolve_path
+ 
+ 
+ TASK_GUIDELINES = "test-and-task-guidelines.md"
+@@ -825,12 +830,24 @@
+         raise GuardError(f"Unsupported random mutation lane: {selected_lane}")
+     baseline_files = {
+         name: read_markdown(baseline_root / name)
+-        for name in (*GUIDELINE_FILES, DFS_FILE)
++        for name in GUIDELINE_FILES
+     }
+     candidate_files = {
+         name: read_markdown(candidate_root / name)
+-        for name in (*GUIDELINE_FILES, DFS_FILE)
++        for name in GUIDELINE_FILES
+     }
++    # ``DFS.md`` remains the durable lane/receipt label, but after migration it
++    # is a hash-bound compatibility handle rather than the contract itself.
++    # Resolve both roots before comparing them so a stale redirect cannot make
++    # a changed FS invisible, and so a valid redirect is checked against the
++    # canonical content instead of being parsed as a specification.
++    try:
++        baseline_specification = resolve_path(baseline_root / DFS_FILE)
++        candidate_specification = resolve_path(candidate_root / DFS_FILE)
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
++    baseline_files[DFS_FILE] = baseline_specification.text
++    candidate_files[DFS_FILE] = candidate_specification.text
+     changed = tuple(
+         name
+         for name in (*GUIDELINE_FILES, DFS_FILE)
+@@ -841,7 +858,9 @@
+             if _meaningful_markdown(baseline_files[name]) == _meaningful_markdown(candidate_files[name]):
+                 raise GuardError("Random guideline mutation cannot be whitespace-only")
+         elif name == DFS_FILE:
+-            validate_random_dfs_mutation(baseline_root / DFS_FILE, candidate_root / DFS_FILE)
++            validate_random_dfs_mutation(
++                baseline_specification.path, candidate_specification.path
++            )
+     return changed
+ 
+ 
+@@ -1814,7 +1833,10 @@
+     if len(slice_ids) != len(set(slice_ids)):
+         raise GuardError("DFS slice extraction cannot request a duplicate id")
+     claim_id = _selected_claim_id(selected_claim)
+-    text = _read_utf8_exact(dfs)
++    try:
++        text = resolve_path(dfs).text
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
+     lines = text.splitlines(keepends=True)
+     by_id = {item.slice_id: item for item in parse_dfs_slices(text)}
+     blocks: list[str] = []
+@@ -1841,6 +1863,19 @@
+     return tuple(claims)
+ 
+ 
++def specification_claims(specification_text: str) -> tuple[str, ...]:
++    """Return active legacy lamps or canonical claim identities from slices.
++
++    A functional-only FS intentionally has no implementation-status block.  Its
++    durable slice claims replace status prose for ledger binding; a legacy DFS
++    retains its stricter red-lamp interpretation unchanged.
++    """
++    legacy = red_dfs_claims(specification_text)
++    if legacy:
++        return legacy
++    return tuple(dict.fromkeys(item.claim_id for item in parse_dfs_slices(specification_text)))
++
++
+ def active_work_items(ledger_text: str) -> tuple[str, ...]:
+     items: list[str] = []
+     for _, line in _outside_fences(ledger_text):
+@@ -1901,8 +1936,12 @@
+ 
+     ledger_text = read_markdown(ledger)
+     blocks = _active_work_blocks(ledger_text)
+-    dfs_text = read_markdown(dfs)
+-    red_claims = red_dfs_claims(dfs_text)
++    try:
++        specification = resolve_path(dfs)
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
++    dfs_text = specification.text
++    red_claims = specification_claims(dfs_text)
+     slices_by_id = {item.slice_id: item for item in parse_dfs_slices(dfs_text)}
+     statuses: list[tuple[str, str, str]] = []
+     for reference, block in blocks:
+@@ -1979,13 +2018,17 @@
+     state: Path | None = None,
+     lineage_id: str | None = None,
+ ) -> tuple[str, ...]:
+-    """Require current entries to bind red DFS slices and reject stored attempt history."""
++    """Bind current entries to specification slices and preserve task ownership."""
+ 
+     ledger_text = read_markdown(ledger)
+     blocks = _active_work_blocks(ledger_text)
+     items = tuple(reference for reference, _ in blocks)
+-    dfs_text = read_markdown(dfs)
+-    red_claims = red_dfs_claims(dfs_text)
++    try:
++        specification = resolve_path(dfs)
++    except SpecificationError as error:
++        raise GuardError(str(error)) from error
++    dfs_text = specification.text
++    red_claims = specification_claims(dfs_text)
+     slices = parse_dfs_slices(dfs_text)
+     slices_by_id = {item.slice_id: item for item in slices}
+     selected_claims: list[str] = []
+@@ -2021,12 +2064,9 @@
+                 for task_id, task_claim in task_rows
+                 if _mentions_task(block, task_id)
+             }
+-            if len(mentioned) > 1:
+-                raise GuardError(
+-                    f"Work item keeps multiple task identities instead of one current frontier: {reference}"
+-                )
+-            if mentioned:
+-                _, task_claim = next(iter(mentioned))
++            # Independent assignments and valid earlier evidence may share a
++            # claim. Their count does not change task-to-claim ownership.
++            for _, task_claim in mentioned:
+                 if _stable_key(task_claim) != _stable_key(claim):
+                     raise GuardError(
+                         f"Work item mentions a task owned by another DFS claim: {reference}"
+--- a/scripts/policy_kernel.py
++++ b/scripts/policy_kernel.py
+@@ -25,6 +25,7 @@
+ from agent_mailbox import communication_contract
+ from work_context import context_view, provider_context, record_dispatch, dispatch_evidence_index
+ from mutation_guard import extract_dfs_slices, _active_work_blocks, _ledger_slice_ids, GuardError
++from specification import SpecificationError, resolve
+ 
+ 
+ MAGIC = b"D67P"
+@@ -372,7 +373,7 @@
+         })
+     plan.extend([
+         {
+-            "source": f".de67/DFS.md slice for {claim_id}",
++            "source": f".de67/FS.md slice for {claim_id} (legacy DFS.md resolver compatible)",
+             "reason": "read on demand if the compact packet leaves the product or proof boundary ambiguous",
+         },
+         {
+@@ -385,7 +386,11 @@
+ 
+ def _exploration_route(workspace: Path, claim_id: str, task_id: str) -> tuple[str, str]:
+     ledger_path = workspace / ".de67/work-ledger.md"
+-    dfs_path = workspace / ".de67/DFS.md"
++    try:
++        specification = resolve(workspace / ".de67")
++    except SpecificationError as error:
++        raise PolicyError(str(error)) from error
++    dfs_path = specification.path
+     ledger = ledger_path.read_text(encoding="utf-8")
+     # Assignments are nested under the owning active claim item; cross-reference
+     # mentions elsewhere must not become an assignment route.  The guard owns
+@@ -607,12 +612,15 @@
+                         f"Unbound closure task {task_id} references missing gap revision"
+                     )
+                 outcome, proof_route = str(gap["description"]), str(gap["proof_route"])
+-                dfs_path = workspace / ".de67/DFS.md"
+-                if dfs_path.is_file():
++                try:
++                    specification = resolve(workspace / ".de67")
++                except SpecificationError as error:
++                    raise PolicyError(str(error)) from error
++                if specification.path.is_file():
+                     match = re.search(
+                         r"<!-- DE67:DFS-SLICE:BEGIN[^>]*claim=" + re.escape(claim_id)
+                         + r"(?=\s|-->)[^>]*-->\n(.*?)\n<!-- DE67:DFS-SLICE:END[^>]*-->",
+-                        dfs_path.read_text(encoding="utf-8"), re.DOTALL,
++                        specification.text, re.DOTALL,
+                     )
+                     if match is None:
+                         raise PolicyError(f"Closure task {task_id} has no current DFS slice")
+@@ -1226,12 +1234,13 @@
+             for entry in entries
+         ):
+             facts.add("pending_suggestions")
+-    dfs = workspace / ".de67" / "DFS.md"
+-    dfs_text = dfs.read_text(encoding="utf-8") if dfs.is_file() else ""
+-    if "🔴" in dfs_text:
+-        facts.add("red_dfs_work")
+-    else:
+-        facts.add("dfs_complete")
++    try:
++        specification = resolve(workspace / ".de67")
++        open_work = ("🔴" in specification.text if specification.legacy
++                     else bool(_active_work_blocks(ledger_text)))
++    except SpecificationError:
++        open_work = False
++    facts.add("red_dfs_work" if open_work else "dfs_complete")
+     return frozenset(facts)
+ 
+ 
+--- a/scripts/specification.py
++++ b/scripts/specification.py
+@@ -0,0 +1,88 @@
++#!/usr/bin/env python3
++"""Resolve the single functional specification across the DFS-to-FS migration.
++
++The compatibility file is deliberately a small, hash-bound redirect.  It is not
++a second editable copy of the specification: consumers must call this module
++instead of reading ``DFS.md`` directly once ``FS.md`` exists.
++"""
++
++from __future__ import annotations
++
++import hashlib
++import re
++from dataclasses import dataclass
++from pathlib import Path
++
++
++FS_FILE = "FS.md"
++LEGACY_DFS_FILE = "DFS.md"
++_POINTER = re.compile(
++    r"\A<!-- DE67:FS-COMPAT canonical=FS\.md sha256=(?P<sha>[0-9a-f]{64}) -->\n?\Z"
++)
++_STATUS = re.compile(
++    r"(?ms)^Implementation status:\s*\n.*?(?=^<!-- DE67:DFS-SLICE:END )"
++)
++_EMPTY_SLICE = re.compile(
++    r"(?m)(<!-- DE67:DFS-SLICE:BEGIN[^>]*-->\n)(?=<!-- DE67:DFS-SLICE:END )"
++)
++
++
++class SpecificationError(RuntimeError):
++    """The workspace has no unambiguous functional specification."""
++
++
++@dataclass(frozen=True)
++class Specification:
++    path: Path
++    text: str
++    legacy: bool
++
++    @property
++    def label(self) -> str:
++        return f".de67/{self.path.name}"
++
++
++def _sha256(path: Path) -> str:
++    return hashlib.sha256(path.read_bytes()).hexdigest()
++
++
++def compatibility_pointer(fs_path: Path) -> str:
++    return f"<!-- DE67:FS-COMPAT canonical=FS.md sha256={_sha256(fs_path)} -->\n"
++
++
++def render_functional_specification(legacy_text: str) -> str:
++    """Remove delivery projections while preserving all functional/slice bytes."""
++    functional = _STATUS.sub("", legacy_text)
++    return _EMPTY_SLICE.sub(
++        r"\1<!-- DE67:FS-SLICE-IDENTITY delivery=work-ledger.md -->\n",
++        functional,
++    )
++
++
++def resolve(de67_root: Path) -> Specification:
++    """Return the canonical FS or a pre-migration DFS, fail-closed on dual content."""
++    fs_path = de67_root / FS_FILE
++    dfs_path = de67_root / LEGACY_DFS_FILE
++    if fs_path.is_file():
++        if not dfs_path.is_file():
++            raise SpecificationError(
++                "FS.md requires the hash-bound DFS.md compatibility pointer"
++            )
++        pointer = _POINTER.fullmatch(dfs_path.read_text(encoding="utf-8"))
++        if pointer is None:
++            raise SpecificationError("FS.md and DFS.md are conflicting mutable specifications")
++        if pointer.group("sha") != _sha256(fs_path):
++            raise SpecificationError("DFS.md compatibility pointer does not match FS.md")
++        return Specification(fs_path, fs_path.read_text(encoding="utf-8"), legacy=False)
++    if dfs_path.is_file():
++        return Specification(dfs_path, dfs_path.read_text(encoding="utf-8"), legacy=True)
++    raise SpecificationError("Missing FS.md and legacy DFS.md")
++
++
++def resolve_path(path: Path) -> Specification:
++    """Resolve a legacy CLI path without making an arbitrary file ambiguous."""
++    if path.name in (FS_FILE, LEGACY_DFS_FILE):
++        return resolve(path.parent)
++    if not path.is_file():
++        raise SpecificationError(f"Missing functional specification: {path}")
++    return Specification(path, path.read_text(encoding="utf-8"), legacy=path.name == LEGACY_DFS_FILE)
+--- a/tests/test_coordinator_supervisor.py
++++ b/tests/test_coordinator_supervisor.py
+@@ -23,6 +23,7 @@
+     SupervisionEvent,
+     SupervisorError,
+     _complete_mutation_review,
++    _fresh_deadline_harness,
+     _supervisor_lock,
+     build_parser,
+     coordinator_context_contract,
+@@ -549,6 +550,19 @@
+ 
+ 
+ class CoordinatorSupervisorTests(unittest.TestCase):
++    def test_post_review_projection_loads_the_installed_delivery_writer(self) -> None:
++        # A long-lived parent keeps its ordinary import, but the sole
++        # post-review projection must use the exact on-disk writer that the
++        # exclusive reviewer promoted before it can authorize one successor.
++        fresh = _fresh_deadline_harness()
++        self.assertIsNot(fresh, DeadlineHarness)
++        self.assertEqual(
++            Path(sys.modules[fresh.__module__].__file__).resolve(),
++            (SCRIPTS / "deadline_harness.py").resolve(),
++        )
++        with fresh(self.state_path) as harness:
++            self.assertEqual(harness.synchronize_dfs_statuses(persist=False), ())
++
+     def test_packaged_ledger_refills_until_dfs_is_green_without_batch_cap(self) -> None:
+         template = (
+             SCRIPTS.parent / "assets" / "environment" / "work-ledger.md"
+--- a/tests/test_deadline_harness.py
++++ b/tests/test_deadline_harness.py
+@@ -25,6 +25,7 @@
+     protected_method_digest,
+     workspace_method_digest,
+ )
++from specification import compatibility_pointer  # noqa: E402
+ 
+ 
+ class DeadlineHarnessTests(unittest.TestCase):
+@@ -2446,6 +2447,32 @@
+         self.harness.complete_task("project", "closure", "proof complete", now=4)
+         return workspace, red_status
+ 
++    def functional_projection_workspace(self) -> tuple[Path, str]:
++        self.harness.close()
++        workspace = Path(self.temporary.name) / "functional-workspace"
++        environment = workspace / ".de67"
++        environment.mkdir(parents=True)
++        functional_specification = (
++            "# Functional Specification\n\n"
++            "The owner route must retain this functional requirement.\n"
++        )
++        fs_path = environment / "FS.md"
++        fs_path.write_text(functional_specification, encoding="utf-8")
++        (environment / "DFS.md").write_text(
++            compatibility_pointer(fs_path), encoding="utf-8"
++        )
++        (environment / "work-ledger.md").write_text(
++            "# Work ledger\n\n"
++            "- [x] R-001 — Owner assignment remains active.\n"
++            "  - Assignment: closure owner\n"
++            "  - Functional reference: owner route\n",
++            encoding="utf-8",
++        )
++        self.state_path = environment / "state" / "deadlines.sqlite3"
++        self.state_path.parent.mkdir()
++        self.harness = DeadlineHarness(self.state_path)
++        return workspace, functional_specification
++
+     def test_acceptance_recovers_missing_baseline_from_committed_dfs(self) -> None:
+         workspace, red_status = self.projected_acceptance_workspace(
+             commit_red_baseline=True
+@@ -2486,6 +2513,69 @@
+         ).fetchone()
+         self.assertIsNone(acceptance)
+         self.assertIsNone(gap["closed_at"])
++
++    def test_functional_ledger_reopens_and_removes_durable_acceptance(self) -> None:
++        workspace, functional_specification = self.functional_projection_workspace()
++        self.establish_accepted_claim()
++
++        self.harness.start_task(
++            "project", "closure-check", "R-001", 100, phase="closure", now=6
++        )
++        self.harness.report_worker_finding(
++            "project",
++            "closure-check",
++            "unexpected",
++            "The owner route returns the finished outcome premise is contradicted.",
++            now=7,
++        )
++        reopened = self.harness.reopen_claim_exploration(
++            "project",
++            "R-001",
++            "closure-check",
++            "The owner route returns the finished outcome",
++            now=8,
++        )
++
++        ledger = (workspace / ".de67" / "work-ledger.md").read_text(encoding="utf-8")
++        self.assertEqual(reopened["dfs_status_synchronized"], ["R-001"])
++        self.assertIn("- [ ] R-001 — Owner assignment remains active.", ledger)
++        self.assertIn("  - Assignment: closure owner", ledger)
++        self.assertIn("  - Functional reference: owner route", ledger)
++        self.assertNotIn("Durable acceptance:", ledger)
++        self.assertEqual(
++            (workspace / ".de67" / "FS.md").read_text(encoding="utf-8"),
++            functional_specification,
++        )
++
++    def test_functional_ledger_projects_latest_acceptance_from_bound_lineage(self) -> None:
++        workspace, _functional_specification = self.functional_projection_workspace()
++        self.establish_accepted_claim()
++        self.harness.connection.execute("PRAGMA foreign_keys = OFF")
++        self.harness.connection.execute(
++            """
++            INSERT INTO claim_acceptances (
++                lineage_id, claim_id, acceptance_number, task_id,
++                closure_sequence, accepted_at, evidence
++            ) VALUES ('other', 'R-001', 2, 'other-closure', 1, 6, 'other evidence')
++            """
++        )
++        self.harness.connection.commit()
++        self.harness.connection.execute("PRAGMA foreign_keys = ON")
++        ledger_path = workspace / ".de67" / "work-ledger.md"
++        ledger_path.write_text(
++            "\n".join(
++                line for line in ledger_path.read_text(encoding="utf-8").splitlines()
++                if "Durable acceptance:" not in line
++            ) + "\n",
++            encoding="utf-8",
++        )
++
++        changed = self.harness.synchronize_delivery_statuses()
++
++        ledger = ledger_path.read_text(encoding="utf-8")
++        self.assertEqual(changed, ("R-001",))
++        self.assertIn("Durable acceptance: #1 via `closure`", ledger)
++        self.assertNotIn("Durable acceptance: #2 via `other-closure`", ledger)
+ 
+     def test_failed_late_acceptance_preserves_the_new_deadline_miss(self) -> None:
+         self.harness.start_task("project", "explore", "R-LATE", 5, now=0)
+--- a/tests/test_mutation_guard.py
++++ b/tests/test_mutation_guard.py
+@@ -7,11 +7,11 @@
+ from pathlib import Path
+ import shutil
+ import sqlite3
++import sys
+ import tempfile
+ import unittest
+ from contextlib import redirect_stderr, redirect_stdout
+ from unittest.mock import patch
+-
+ 
+ ROOT = Path(__file__).resolve().parents[1]
+ MODULE_PATH = ROOT / "scripts" / "mutation_guard.py"
+@@ -19,6 +19,7 @@
+ assert SPEC is not None and SPEC.loader is not None
+ guard = importlib.util.module_from_spec(SPEC)
+ SPEC.loader.exec_module(guard)
++from specification import compatibility_pointer  # noqa: E402
+ 
+ DEADLINE_MODULE_PATH = ROOT / "scripts" / "deadline_harness.py"
+ DEADLINE_SPEC = importlib.util.spec_from_file_location(
+@@ -68,6 +69,31 @@
+ 
+     def test_canonical_work_ledger_template_has_no_fake_active_item(self) -> None:
+         self.assertEqual(guard.active_work_items(WORK_LEDGER_TEXT), ())
++
++    def test_legacy_random_lane_resolves_and_guards_the_canonical_target(self) -> None:
++        source = self.expansion_dfs(new_claim="")
++        for root in (self.baseline, self.candidate):
++            fs = root / "FS.md"
++            fs.write_text(source, encoding="utf-8")
++            (root / guard.DFS_FILE).write_text(
++                compatibility_pointer(fs), encoding="utf-8"
++            )
++        candidate_fs = self.candidate / "FS.md"
++        candidate_fs.write_text(source + "\nChanged canonical contract.\n", encoding="utf-8")
++
++        with self.assertRaisesRegex(guard.GuardError, "compatibility pointer"):
++            guard.validate_random_review_mutation(
++                self.baseline, self.candidate, selected_lane=guard.DFS_FILE
++            )
++
++        (self.candidate / guard.DFS_FILE).write_text(
++            compatibility_pointer(candidate_fs), encoding="utf-8"
++        )
++        with self.assertRaises(guard.GuardError) as rejected:
++            guard.validate_random_review_mutation(
++                self.baseline, self.candidate, selected_lane=guard.DFS_FILE
++            )
++        self.assertNotIn("must contain exactly one", str(rejected.exception))
+ 
+     @staticmethod
+     def write_guidelines(root: Path, task_text: str, orchestrator_text: str) -> None:
+@@ -473,7 +499,7 @@
+             ("R-001 — First route", "R-001 — Second route"),
+         )
+ 
+-    def test_work_ledger_rejects_multiple_stored_task_identities(self) -> None:
++    def test_work_ledger_preserves_multiple_same_claim_task_identities(self) -> None:
+         dfs = self.write_dfs("# DFS\n\n- [ ] 🔴 R-001 — Still open\n")
+         state = self.root / "ledger-history.sqlite"
+         with deadline.DeadlineHarness(state) as harness:
+@@ -488,10 +514,12 @@
+             "- [ ] R-001 — Still open\n\n"
+             "  R001-M1 found the old premise. R001-M2 is the current route.\n"
+         )
+-        with self.assertRaisesRegex(guard.GuardError, "multiple task identities"):
++        self.assertEqual(
+             guard.validate_work_ledger(
+                 historical, dfs, state=state, lineage_id="project"
+-            )
++            ),
++            ("R-001 — Still open",),
++        )
+ 
+         current = self.write_ledger(
+             "# Work ledger\n\n## Active work\n\n"
+--- a/tests/test_policy_kernel.py
++++ b/tests/test_policy_kernel.py
+@@ -71,6 +71,27 @@
+ 
+ 
+ class PolicyKernelTests(unittest.TestCase):
++    def test_canonical_fs_open_work_comes_from_the_ledger(self) -> None:
++        from specification import compatibility_pointer
++        with tempfile.TemporaryDirectory() as directory:
++            workspace = Path(directory)
++            root = workspace / ".de67"
++            root.mkdir()
++            state = root / "clock.sqlite3"
++            sqlite3.connect(state).close()
++            fs = root / "FS.md"
++            fs.write_text("# Functional contract\nBehavior remains after delivery.\n")
++            (root / "DFS.md").write_text(compatibility_pointer(fs))
++            ledger = root / "work-ledger.md"
++            ledger.write_text("# Ledger\n- [ ] R-001 — Remaining behavior\n")
++            facts = kernel.workspace_facts(workspace, state, "project", now=0)
++            self.assertIn("red_dfs_work", facts)
++            self.assertNotIn("dfs_complete", facts)
++            ledger.write_text("# Ledger\n- [x] R-001 — Accepted behavior\n")
++            facts = kernel.workspace_facts(workspace, state, "project", now=0)
++            self.assertNotIn("red_dfs_work", facts)
++            self.assertIn("dfs_complete", facts)
++
+     def test_worker_outcome_contract_keeps_bootstrap_and_validation_in_one_outcome(self) -> None:
+         contract = kernel.worker_outcome_contract()
+ 
+--- a/tests/test_specification_migration.py
++++ b/tests/test_specification_migration.py
+@@ -0,0 +1,52 @@
++import hashlib
++import tempfile
++import unittest
++import sys
++from pathlib import Path
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1] / "scripts"))
++from specification import SpecificationError, compatibility_pointer, render_functional_specification, resolve
++
++
++class SpecificationMigrationTests(unittest.TestCase):
++    def test_hash_bound_pointer_resolves_fs_and_rejects_stale_pointer(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            fs = root / "FS.md"
++            fs.write_text("# Functional\n<!-- DE67:DFS-SLICE:BEGIN claim=R-X -->\nImplementation status:\n- [ ] stale\n<!-- DE67:DFS-SLICE:END claim=R-X -->\n", encoding="utf-8")
++            (root / "DFS.md").write_text(compatibility_pointer(fs), encoding="utf-8")
++            self.assertFalse(resolve(root).legacy)
++            fs.write_text(fs.read_text(encoding="utf-8") + "x", encoding="utf-8")
++            with self.assertRaises(SpecificationError):
++                resolve(root)
++
++    def test_dual_mutable_content_and_missing_pointer_fail_closed(self):
++        with tempfile.TemporaryDirectory() as tmp:
++            root = Path(tmp)
++            (root / "FS.md").write_text("# FS\n", encoding="utf-8")
++            (root / "DFS.md").write_text("# DFS\n", encoding="utf-8")
++            with self.assertRaises(SpecificationError):
++                resolve(root)
++
++    def test_functional_render_removes_delivery_status_only(self):
++        text = "# FS\nImplementation status:\n- [x] delivered\n<!-- DE67:DFS-SLICE:END claim=R-X -->\n"
++        rendered = render_functional_specification(text)
++        self.assertNotIn("Implementation status:", rendered)
++        self.assertIn("# FS", rendered)
++
++    def test_functional_render_preserves_contract_before_status_tracking(self):
++        text = (
++            "<!-- DE67:DFS-SLICE:BEGIN id=R-X-S001 claim=R-X -->\n"
++            "The adapter binds sender, workspace, and revision before delivery.\n\n"
++            "Implementation status:\n"
++            "- [x] R-X — historical delivery projection\n"
++            "<!-- DE67:DFS-SLICE:END id=R-X-S001 claim=R-X -->\n"
++        )
++        rendered = render_functional_specification(text)
++        self.assertIn("The adapter binds sender, workspace, and revision", rendered)
++        self.assertNotIn("Implementation status:", rendered)
++        self.assertNotIn("historical delivery projection", rendered)
++
++
++if __name__ == "__main__":
++    unittest.main()
+--- a/SKILL.md
++++ b/SKILL.md
+@@ -7,16 +7,18 @@
+ 
+ This file routes Phase 3; it is not the coordinator procedure.
+ 
+-The invocation authorizes implementation of the frozen DFS in the named working repository. Do not
++The invocation authorizes implementation of the frozen FS in the named working repository. Do not
+ read `de-67-1/` or `de-67-2/`. Never inventory, search, or read `.de67/no-go-zone/`.
+ 
+ This router is bootstrap material. A launcher may read it to initialize Phase 3. Runtime decisions
+ come from the compiled policy kernel, not packaged or workspace guideline prose. Packaged scripts
+ may be executed as tools.
+ 
+-Inspect `.de67/state/workspace.json` and verify that `.de67/DFS.md` records `Frozen` or `Refrozen`
+-against an inspected source baseline. A missing configuration, draft DFS, unresolved material owner
+-choice, or changed user outcome returns to de67 2.
++Inspect `.de67/state/workspace.json` and verify that the canonical Functional Specification
++(`.de67/FS.md`, or `.de67/DFS.md` in a legacy workspace) records `Frozen` or `Refrozen` against an
++inspected source baseline. A migrated `DFS.md` is a hash-bound pointer to `FS.md`, not a draft or a
++second specification. A missing configuration, draft FS, unresolved material owner choice, or
++changed user outcome returns to de67 2.
+ 
+ Copy each missing environment artifact individually. Never overwrite an existing project file.
+ Machine state stays under `.de67/state/`; the DFS and ledgers remain ordinary project artifacts.

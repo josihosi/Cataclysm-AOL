@@ -1,0 +1,38 @@
+{
+  "root_turn_id": "01a08269-2b15-7a91-b196-2188ad5c0d49",
+  "as_of_utc": "2026-09-08T19:26:06.180157+00:00",
+  "calls": 53,
+  "totals": {
+    "input_tokens": 7475429,
+    "cached_input_tokens": 7340928,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 36342,
+    "reasoning_output_tokens": 15521,
+    "total_tokens": 7511771
+  },
+  "by_thread": {
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "calls": 44,
+      "input_tokens": 7046271,
+      "cached_input_tokens": 6965376,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 33695,
+      "reasoning_output_tokens": 15033,
+      "total_tokens": 7079966
+    },
+    "01a08269-a0f1-70a3-b81d-589f1a7014bd": {
+      "calls": 9,
+      "input_tokens": 429158,
+      "cached_input_tokens": 375552,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 2647,
+      "reasoning_output_tokens": 488,
+      "total_tokens": 431805
+    }
+  },
+  "sources": [
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T21-05-55-01a08269-a0f1-70a3-b81d-589f1a7014bd.jsonl"
+  ],
+  "scope": "Exact current root turn; unique response IDs; helper and retry costs included. Excludes later closeout. Reasoning is a subset of output; cached input remains included in total input."
+}

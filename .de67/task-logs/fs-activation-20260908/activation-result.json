@@ -1,0 +1,12 @@
+{
+  "status": "activated",
+  "time": 1788895167.250325,
+  "files": 17,
+  "live_validation": true,
+  "policy_guard_exit": 0,
+  "policy_bytecode_unchanged": true,
+  "queue_consumption": "one completed entry consumed after live validation",
+  "supervisor_restart": "authorized existing-service stop/start after this review returns",
+  "restart_generation": 44,
+  "restart_status": "pending authorized service handoff after reviewer exit"
+}

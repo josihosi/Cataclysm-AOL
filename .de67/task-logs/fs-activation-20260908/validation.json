@@ -1,0 +1,85 @@
+{
+  "changed_method_files": [
+    "SKILL.md",
+    "scripts/coordinator_supervisor.py",
+    "scripts/deadline_harness.py",
+    "scripts/method_provenance.py",
+    "scripts/mutation_guard.py",
+    "scripts/policy_kernel.py",
+    "scripts/specification.py",
+    "tests/test_coordinator_supervisor.py",
+    "tests/test_deadline_harness.py",
+    "tests/test_mutation_guard.py",
+    "tests/test_policy_kernel.py",
+    "tests/test_specification_migration.py"
+  ],
+  "method_guard_scope": "Broad candidate validation under explicit owner authority for necessary protected migration changes; no universal cadence or gate is asserted.",
+  "consumed_entries": 1,
+  "active_ledger_items": 8,
+  "canonical_specification": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/workspace-release/.de67/FS.md",
+  "slices_preserved": 32,
+  "all_active_claims_extract": [
+    {
+      "claim": "R-MAINT-CONTEXT-ROUTING",
+      "slice_ids": [
+        "R-MAINT-CONTEXT-ROUTING-S001"
+      ],
+      "bytes": 1206
+    },
+    {
+      "claim": "R-MAINT-EVIDENCE-SEARCH",
+      "slice_ids": [
+        "R-MAINT-EVIDENCE-SEARCH-S001"
+      ],
+      "bytes": 10800
+    },
+    {
+      "claim": "R-MAINT-FS-MIGRATION",
+      "slice_ids": [
+        "R-MAINT-FS-MIGRATION-S001"
+      ],
+      "bytes": 3179
+    },
+    {
+      "claim": "R-MAINT-REVIEW-CONTEXT",
+      "slice_ids": [
+        "R-MAINT-REVIEW-CONTEXT-S001"
+      ],
+      "bytes": 2686
+    },
+    {
+      "claim": "R-026",
+      "slice_ids": [
+        "R-026-S001"
+      ],
+      "bytes": 1643
+    },
+    {
+      "claim": "R-029",
+      "slice_ids": [
+        "R-029-S001"
+      ],
+      "bytes": 4898
+    },
+    {
+      "claim": "R-031",
+      "slice_ids": [
+        "R-031-S001"
+      ],
+      "bytes": 1152
+    },
+    {
+      "claim": "R-033",
+      "slice_ids": [
+        "R-033-S001"
+      ],
+      "bytes": 1043
+    }
+  ],
+  "independent_packet_extraction": true,
+  "ledger_projection_matches_durable_state": true,
+  "canonical_open_work_from_ledger": true,
+  "supervisor_completion_not_premature": true,
+  "provenance_compatibility_hashes": true,
+  "policy_data_unchanged": true
+}

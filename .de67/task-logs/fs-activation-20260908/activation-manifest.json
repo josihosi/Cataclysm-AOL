@@ -1,0 +1,121 @@
+[
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/scripts/coordinator_supervisor.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py",
+    "before_sha256": "841d4add9e91515a1dbbfcf64142c72ad22eb9268927f27ba83a8122e13a0461",
+    "after_sha256": "ee0af3aeeb9881ceb1a300ec022f95567260e6de8e8b4b308573f129df6d2eb6",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/0"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/scripts/deadline_harness.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py",
+    "before_sha256": "b680ad5eccebce82efb5b7a391c5d68b2b104a99c43d27b3c86341fabbf9e341",
+    "after_sha256": "1ec89c05222314aaac709dd8400412026af776928578202815f0e35301cff635",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/1"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/scripts/method_provenance.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/method_provenance.py",
+    "before_sha256": "844270ba1453fe088434f147440e45033fd8f0467aabf8917db1696464f6a030",
+    "after_sha256": "b15c6b525aa9dfdfe48b129fe909a2fa446adbb6c308f0cade3ad7f03ecc4e80",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/2"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/scripts/mutation_guard.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/mutation_guard.py",
+    "before_sha256": "72166779646e22abcd5a8063b8c009ea0ce83da2fe999b86279c08ec02b8c63c",
+    "after_sha256": "b643bff59b7a8dc06875036affb757ce7473b840e41a62bf0705034aff95fde9",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/3"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/scripts/policy_kernel.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/policy_kernel.py",
+    "before_sha256": "8356ca3717382df43a0147f9c5fad47f027b1e4504cc36b6cf1811fd7ebb3b47",
+    "after_sha256": "c0789dc15909d8138448a0a5efcbecef976f762747863de71766bc586529dbb1",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/4"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/scripts/specification.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/specification.py",
+    "before_sha256": null,
+    "after_sha256": "84cee503d65848f71ad89fb9c0197959b705104789076be7642e0b0e80d931e3",
+    "backup": null
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/tests/test_coordinator_supervisor.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_coordinator_supervisor.py",
+    "before_sha256": "6f179cfabeb97949385144d318cc679b9a3f93632c5561303af8ff4f5a0e0d03",
+    "after_sha256": "b0a753ba0485d04ce537ea15fdeb3cc46cf99d3d7f59c8234fc260092cf3b007",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/6"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/tests/test_deadline_harness.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_deadline_harness.py",
+    "before_sha256": "aaf747c774cff38b8847a2ece4a98e192542687e478070e171f62feac8c134af",
+    "after_sha256": "92e945857970daf052df6d70161a5815217d2ded55bab37210e297e49f1c507f",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/7"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/tests/test_mutation_guard.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_mutation_guard.py",
+    "before_sha256": "1bd18f1b957842b1efb5184df65b2c4bd9c0e951490dd9ff08fd46245623917e",
+    "after_sha256": "9d000ae70d241cce130c14b4f80cbc8e4f52dfacba73241248f2f62f471a1c61",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/8"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/tests/test_policy_kernel.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_policy_kernel.py",
+    "before_sha256": "b3d74bcb0763e37fcfe823bbc14e0ab15aa24440f318a8fabd7ad93b5b82a185",
+    "after_sha256": "f7b514e481bf191e2f7ccb45aa8c67b09bf0fa492d6aec7ba3463e0f4e1770e5",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/9"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/tests/test_specification_migration.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_specification_migration.py",
+    "before_sha256": null,
+    "after_sha256": "b7d0b6e3e59b107ebb1ddd90ae7a1d061e93db1c264d9bcf758c0117215b17ed",
+    "backup": null
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/workspace-release/.de67/FS.md",
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/FS.md",
+    "before_sha256": null,
+    "after_sha256": "d8c7d41afeed7d0b12577fdb3d3bd57c513ad96bea0563b97ee9fe3f44812eee",
+    "backup": null
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/workspace-release/.de67/DFS.md",
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/DFS.md",
+    "before_sha256": "06a9d7881577c49472304518c48329a99ec790856affa67610c418604e272166",
+    "after_sha256": "fbc631290fbfb64667c70402ccfe4f3bcd2d05815335317444ff3662853c60ff",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/12"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/workspace-release/.de67/work-ledger.md",
+    "target": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/work-ledger.md",
+    "before_sha256": "a5803e6219d83a92f6c2e08f36a8575af77ad038b94564111201779d4d44e21a",
+    "after_sha256": "168a2ffa77870d0c312c72b80796fac19adad7fd78868d0ac572dca874c1c35b",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/13"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/dashboard-source.candidate.py",
+    "target": "/Users/josefhorvath/.codex/skills/de67/integrations/dashboard/de67_dashboard.py",
+    "before_sha256": "bffc990e08913a506df518014589670bb46a18fb136f6af4de448e26961c85b2",
+    "after_sha256": "4879331070dc4f70629de24d36cfaf854bcda3dc082573ade5084257d3b0e4e9",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/14"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/dashboard-deployed.candidate.py",
+    "target": "/Users/josefhorvath/Library/Application Support/DE67 Dashboard/de67_dashboard.py",
+    "before_sha256": "7a1dab5cc5489c7763f52649791743d0a3d1af7915bab0e8f25d9e61306d7c6c",
+    "after_sha256": "195c08e50cd7bf7fb505a115e683ba9919b007d2a886f6056bc7e1dfba06e0f6",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/15"
+  },
+  {
+    "source": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/method-release/SKILL.md",
+    "target": "/Users/josefhorvath/.codex/skills/de67/de-67-3/SKILL.md",
+    "before_sha256": "7a30876e5992c9cd934d491ecdb2088ecce802021615801446a4b0fc208b9cca",
+    "after_sha256": "0b050c1b756320585006ec3d4422527fed5271347a13cbbbd67c2c6f0bd5356b",
+    "backup": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/activation-backup/SKILL.md"
+  }
+]

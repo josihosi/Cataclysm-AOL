@@ -1,0 +1,35 @@
+{
+  "slices": 32,
+  "assignment_ids_preserved": 65,
+  "historical_ledger_rows_restored": [
+    "R-027",
+    "R-028",
+    "R-030",
+    "R-SURFACE-001",
+    "R-SURFACE-002",
+    "R-SURFACE-003",
+    "R-SURFACE-004",
+    "R-SURFACE-005",
+    "R-SURFACE-006",
+    "R-SURFACE-007",
+    "R-SURFACE-008",
+    "R-SURFACE-009",
+    "R-SURFACE-010"
+  ],
+  "projection_changes": [
+    "R-032",
+    "R-034",
+    "R-035",
+    "R-036",
+    "R-MAINT-CONSULT",
+    "R-MAINT-PROMPT-DELIVERY",
+    "R-SURFACE-011"
+  ],
+  "sizes": {
+    "old_dfs": 142519,
+    "new_fs": 87070,
+    "old_ledger": 101864,
+    "new_ledger": 107615
+  },
+  "validation_only_state": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-fs-activation-20260908/workspace-release/.de67/state/deadlines.sqlite3"
+}

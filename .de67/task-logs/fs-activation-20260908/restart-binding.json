@@ -1,0 +1,10 @@
+{
+  "lineage_id": "semantic-surface-cockpit",
+  "generation": 44,
+  "requested_at": 1788895336.4327428,
+  "reason": "owner FS migration activated; authorized ordinary service restart adopts installed consumers and preserves completed work",
+  "claimed_at": null,
+  "expected_run_id": null,
+  "acknowledged_at": null,
+  "run_id": null
+}
