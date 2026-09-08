@@ -1,10 +1,12 @@
-# Semantic-Surface Cockpit and Fresh CAOL Feature Package DE-67 Functional Specification
+# Semantic-Surface Cockpit and Fresh CAOL Feature Package FS — Functional Specification
 
 Status: Refrozen
 WEC: `.de67/WEC.md`
 Source baseline: `Cataclysm-AOL-hostile-ecology-dev | dev | 1bfcf283417d63ae407bc66fc9950a90a68dd5b5 | tree 1bbb62eebc15bc887c133b26055f8b5f8720c5ec | inspected 2026-09-06 | no tracked product changes; unrelated untracked run.witness.json excluded`
 
 ## Document authority
+
+The FS (Functional Specification) describes code behavior in terms of data, functions, ownership, interactions and errors. `.de67/DFS.md` and `DE67:DFS-SLICE` remain compatibility identifiers until the existing readers and writers are migrated; they do not name a different specification. Delivery assignments belong in `work-ledger.md`; retained status blocks currently serve the acceptance projection, not additional functional requirements.
 
 This is the mechanistic product contract derived from the owner-authorized WEC and current source.
 The WEC decides intended behavior and authorization; source decides what the implementation does.
@@ -107,13 +109,6 @@ Tests named here supply mechanism evidence unless explicitly described as live g
 | Persistence | `src/savegame_json.cpp :: npc::serialize/deserialize`, `monster::serialize/deserialize`; `src/bandit_live_world.cpp :: site_record::serialize/deserialize`, `hostile_operation_state::serialize/deserialize`; `src/overmapbuffer.cpp`; `src/clzones.cpp` | Durable actors/rules/camp/zone/ecology state has production save paths. Frame identities, LLM queues and camp caches do not become durable truth. Reload must use a new process and the saved world without fixture reinstall. |
 | Flesh raptors | `src/monmove.cpp :: is_flesh_raptor`, `apply_flesh_raptor_plan`; `src/flesh_raptor_ai.cpp :: choose_orbit_destination`; `tests/flesh_raptor_test.cpp` | Native monster planning selects orbit/swoop/fallback with visibility, occupancy, cadence and held-destination state. Pure scorer and staged monster tests are not fresh encounter proof. |
 | Performance | `tools/hostile_camp_benchmark.py`; `tools/openclaw_harness/process_performance.py :: ProcessPerformance`, `sample_owned_session`, `compare_records`; native renderer and hostile-camp timing | Exact process CPU/RSS and native-action timings are available. Finite qualification samples and parser-allocation experiments do not qualify integrated gameplay performance. |
-
-## External research sweep
-
-No unresolved product ownership edge requires an external mechanism or new design in this testing
-refreeze. The source, current qualification documentation and explicit owner decisions determine the
-routes and limits. External Codex runtime documentation used for workspace probes is preparation,
-not product evidence or a DFS dependency.
 
 ## Mechanistic requirements
 
@@ -1125,41 +1120,16 @@ limits. It does not close this new campaign. The selected Mac scenarios do not c
 Windows/Linux game runtime; renderer or platform claims require their own applicable production
 route and source-bound executable.
 
-## Freeze record
+## Freeze and retained evidence
 
-- Status: Refrozen
-- Frozen source baseline: `1bfcf283417d63ae407bc66fc9950a90a68dd5b5`, tree `1bbb62eebc15bc887c133b26055f8b5f8720c5ec`, branch `dev`, inspected 2026-09-06.
-  No tracked product/test changes were present. Unrelated `run.witness.json` is excluded and preserved.
-- WEC identity: SHA-256 `c5dde703601afc5562874f4fbf4548b08b0994ab0f503b5f894be7e60ef8c456`.
-  The supplied file extends the previous WEC exactly; its authorized import preserves every old byte.
-- User-owned choices: all compatible semantic-surface and hostile-ecology intent remains binding;
-  comprehensive fresh in-scope CAOL testing supersedes old acceptance exemptions; independent
-  verdicts, zero-credit preparation, exclusions, native lifecycle and the WEC fault/promotion
-  boundary remain unchanged.
-- Source reconciliation: native surface adapters and request transport exist; wait duration ownership
-  is real; the cannibal-only dispatcher has no live caller; exact shakedown parley/paid departure
-  already override generic hostility. Their stale absence descriptions are retired, not implemented
-  again. The source-inventory omission and unsupported-owner coverage are explicit in R-SURFACE-011.
-- Historical preservation: all prior claim IDs/statuses and acceptance strength are retained; full
-  old prose, source manifests and freeze/attempt history remain at `1bfcf283417d63ae407bc66fc9950a90a68dd5b5:.de67/DFS.md` and the
-  existing immutable package evidence. R-031–R-036 are fresh proof obligations, not retroactive
-  rejection of R-027/R-028. No historical scenario, report, witness or durable state is replaced.
-- Proof at refreeze: source inspection and 74 existing Python checks (73 pass; one source-inventory
-  omission described in R-SURFACE-011). No gameplay campaign was run and no new gameplay acceptance
-  is asserted. Source/path, stable-ID/status preservation, WEC identity and scoped-diff checks passed.
-  Independent source reviews were resolved before freeze.
-
-After freeze, named proof can close a red item without changing acceptance strength. Evidence may
-clarify mechanisms only within the WEC. Product intent, vocabulary, required behavior and material
-design alternatives remain user-owned. The WEC's promotion boundary applies to CAOL suspected bugs;
-this DFS supplies no automatic gameplay-fix authority.
-
-Owner-scoped refreeze 2026-09-07: same product outcome and stable claim/slice identities retained.
-Inspected source HEAD `f4df8bf70e22bf2e1bd2f3beff264869ec26a40c`; gameplay source unchanged by this
-review. Owner receipt `70c4632e512e` promotes the bounded repairs above and accepts the same-OMT
-smoke exception. Existing accepted proof and full original observations remain intact; these are
-repair/verification obligations, not completed gameplay results.
-Current owner-contract SHA-256: `af6ce90990e4c5358aeedee16bd37ea9ebd979c3a8f2ff2aa874f234975a99df`.
+Status: Refrozen. Original inspected baseline, WEC identities, source reconciliation, acceptance
+scope and complete freeze history are retained exactly at `2f7d9ea2bcd7643a6e64d44e9adc703a91c6070f:.de67/DFS.md`
+and `state/review-incident-prompt-delivery-20260908/baseline/DFS.md`.
+The 2026-09-08 owner-scoped refinement changes functional descriptions and tooling representation;
+it grants no new gameplay acceptance. Original R-SURFACE/R-027/R-028/R-030 proof retains its scope;
+R-031–R-036 require fresh independent proof. Named evidence may close a requirement without weakening
+it. The WEC owns intent, exclusions and gameplay-fix promotion authority; source/evidence may refine
+mechanisms within that contract. No scenario, witness, receipt, clock or accepted result is replaced.
 
 ## Owner-authorized delivery tooling — cycle 9
 
@@ -1238,19 +1208,13 @@ All existing stable claims/slices, accepted proof, clocks and independent assign
 This record grants the named implementation route, not completed capability or gameplay proof.
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-PROMPT-DELIVERY-S001 claim=R-MAINT-PROMPT-DELIVERY -->
+Legacy slice identity retained for existing references. S002 defines the current coordinator,
+continuation and reviewer prompt-loader behavior. The obsolete `run_coordinator` description and
+commissioning history are retrievable at the pre-review Git baseline above and in the ledger.
+
 Implementation status:
 
 - [ ] 🔴 R-MAINT-PROMPT-DELIVERY — Each supervisor-launched coordinator receives the current guarded role prompt after a method promotion, without restarting or duplicating the supervisor.
-  - `coordinator_supervisor.py::run_coordinator` currently invokes its process-loaded
-    `coordinator_prompt`; a fresh Codex child alone does not reload that Python function.
-    Authorize Sol to commission a narrow prompt-loading repair in that script and its tests.
-    Do not change the hard clock/guard, retirement/restart ownership, command bindings or policy.
-    Preserve the generation-specific durable restart reason and owner stop behavior.
-  - Prove with an isolated fake-runner test that an on-disk prompt promotion after supervisor load
-    reaches the next child, while stale/corrupt prompt input fails visibly and no duplicate child
-    launches. This is ordinary tool engineering under this explicit owner-scoped refinement;
-    unrelated method edits still require exclusive review. Current review's restart reason supplies
-    the compact immediate handoff; test-only rendering is not live successor adoption.
 <!-- DE67:DFS-SLICE:END id=R-MAINT-PROMPT-DELIVERY-S001 claim=R-MAINT-PROMPT-DELIVERY -->
 
 
@@ -1262,26 +1226,23 @@ experiment and clarifies effective prompt delivery. Prior claims, accepted proof
 assignments remain intact. Specification is not implementation or adoption evidence.
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-PROMPT-DELIVERY-S002 claim=R-MAINT-PROMPT-DELIVERY -->
-### Current prompt-delivery assignment contract
+### Current prompt delivery
 
-This selected slice supersedes S001's coordinator-only source description for current execution;
-S001 remains historical specification. The existing red R-MAINT-PROMPT-DELIVERY claim stays open.
-Current source entrypoints are `coordinator_supervisor.py::run_child` (fresh coordinator and
-continuation rendering), `run_mutation_reviewer` (review override), and their prompt producers.
-There is no current `run_coordinator` function. Both the coordinator and reviewer can otherwise
-receive stale process-loaded text after on-disk promotion.
+S002 supersedes S001's source description without rebinding either slice identity.
+`coordinator_supervisor.py::_fresh_prompt_module` reads the installed UTF-8 source anew at an
+authorized transition, compiles it and loads its prompt producers in an isolated module.
+`run_child` uses the resulting coordinator or continuation producer; `run_mutation_reviewer`
+uses its reviewer producer. A missing, undecodable, corrupt or load-failing source marks the run
+failed before Popen. Exact gate, workspace/state/lineage/run bindings and generation-specific
+restart reason flow to the sole authorized child. Owner stop, clock, policy and external-supervisor
+launch ownership remain authoritative. No extra child or supervisor restart is a test dependency.
 
-Sol commissions one narrow loader/freshness repair in the installed Phase-3 supervisor and focused
-tests, covering current guarded text for both roles and any shared continuation path it affects.
-Preserve exact invocation gate/bindings, generation-specific restart reason, owner stops, the hard
-clock/guard/policy and exclusive external-supervisor launch ownership. No live supervisor restart,
-extra reviewer/coordinator or unrelated method edit is authorized for testing. Validate an on-disk
-promotion after process load through an isolated fake runner, including stale/corrupt/unavailable
-input failure and exactly one child launch per authorized transition. Source rendering alone is
-not actual role delivery. Verify the next naturally authorized live child input when available;
-never manufacture a launch or replay gameplay to demonstrate it. The current review handoff gives
-Sol immediate instructions; the source prompt correction remains unproved in the long-lived
-supervisor until this delivery repair reaches its caller.
+The discriminating check loads a supervisor, changes on-disk prompt text and verifies fake-runner
+stdin at the next authorized transition for each role and continuation; unchanged process memory
+must not select the earlier text. Invalid source must launch zero children. Live adoption means
+retained input and use by a naturally authorized child, distinct from isolated rendering. Current
+implementation evidence and remaining adoption/closure work are in the ledger and receipt
+`d193034a63642833354c61a41d60f84bfc495c454a9a34ebf46c5184dff97579`.
 <!-- DE67:DFS-SLICE:END id=R-MAINT-PROMPT-DELIVERY-S002 claim=R-MAINT-PROMPT-DELIVERY -->
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-EVIDENCE-SEARCH-S001 claim=R-MAINT-EVIDENCE-SEARCH -->
@@ -1325,13 +1286,22 @@ revisions and make current versus historical lookup explicit.
 
 ### Implementation contract
 
-Build a workspace-local derived index with durable source manifest/cursors, content-addressed
-embedding reuse, occurrence/provenance metadata, and a real semantic ranking path combined with
-exact terms and structured filters. Backend/model selection belongs to the implementation worker,
-using an available locally runnable or already-authorized capability; no new paid service, upload
-or spending authority is granted. Record model/version and chunking identity so incompatible
-embeddings are not silently mixed. Deterministic lexical search is a useful fallback, not semantic
-proof. A hardcoded synonym table or stub does not deliver the natural-language route.
+`tools/openclaw_harness/evidence_search_index.py::EvidenceIndex` owns the derived SQLite state.
+`sources.path` identifies a registered original; `generations.generation_id` is globally unique,
+while `generations.generation` is only a per-path revision counter. `sources.active_generation`
+and `occurrences.generation_id` refer to the global ID and must resolve to that source's path.
+`_new_generation` publishes the source pointer and generation atomically. `ingest` must leave
+unrelated sources untouched; `coverage` joins this same global identity. Embedding cache identity
+includes content hash, model/version and chunking version, while each original occurrence retains
+its own source span and hash. Text deduplication must never merge occurrence identities.
+Schema migration may repair pointers only using that source's generations; if a legacy index has
+already lost current coverage or duplicated occurrences, recover from verified originals or expose
+the degraded state. A pointer rewrite alone must not claim repaired coverage.
+
+The semantic backend is an available local or already-authorized implementation, with visible
+model/version and failure state. No new spending or upload authority is granted. Lexical fallback
+remains usable but cannot establish semantic usefulness; hardcoded synonyms or stub ranking cannot
+deliver the natural-language route.
 
 For immutable completed artifacts, ingest once per content identity. For growing logs, checkpoint
 only committed complete records; retain a partial trailing record for the next pass. Detect source
@@ -1342,15 +1312,22 @@ only after its writes/cursor state are coherent. Rebuild from originals and reus
 where possible. Keep recovery/indexing automatic and independent of task lifecycle; bound resource
 use with adjustable execution settings, not acceptance quotas or worker waiting requirements.
 
-A query supplies text and optional explicit filters plus paging/expansion controls. Returned metadata
-must distinguish indexed coverage, last completed source position/generation, pending catch-up,
-partial/degraded results and no match. Fetch excerpts from verified original spans; reject changed
-bytes or return an explicit unavailable/stale hit instead of serving unverified cached prose. Explain
-ranking without invented causal claims. Retain alternate/contradictory hits. Respect literal filters;
-any inferred query interpretation must be visible and adjustable, never silently narrow away evidence.
-Absent index/model, corrupt state or missing sources must yield a clear error/degraded state with a
-usable existing exact-query route. No match on a partial index cannot establish that an event never
-happened. The index neither mutates source evidence nor becomes another game recorder or authority.
+`evidence_search_query.py::EvidenceSearch.query(text, filters, offset, limit, expand)` returns
+ranked verified originals and coverage. Negative offset/expansion or nonpositive limit returns
+`invalid_paging`. Occurrence metadata filters apply to explicitly supported stored fields;
+other keys select fields in the recovered original JSON. Recover with `record_artifact` and its
+exact path/offset/length/hash before evaluating original-only fields such as `feature=crafting`.
+Do not reject those fields because an occurrence row lacks them. An absent original key differs
+from a present JSON null; absent keys do not satisfy an explicit null filter. Literal filters
+must remain literal and any inferred interpretation must be visible and adjustable.
+
+Results expose source/occurrence identity, source generation, match reason and expansion handle,
+indexed coverage and committed position, pending catch-up and partial/degraded/no-match status.
+Changed bytes or missing originals produce visible stale/unavailable evidence, never unverified
+cached excerpts. Paging/expansion preserves the selected source generation. Missing model/index,
+corrupt state and backend failure expose errors/degradation with the existing exact-query route.
+Alternate or contradictory hits remain discoverable. Partial-index no-match cannot prove absence;
+retrieval confers no current instruction, acceptance or causal authority.
 
 ### Behavioral proof
 
@@ -1358,14 +1335,14 @@ Use existing `cockpit_evidence_test.py` exact filtering/hash-tamper fixtures and
 `evidence_display_test.py` append-stable/replaced-prefix fixtures as compatibility footing. Extend
 focused tests against the chosen implementation for:
 
-- Initial and repeated ingestion; append catch-up after process restart; interrupted writes/partial
+- Two sources A/B with local revision 1 but distinct global IDs: unchanged B re-ingestion preserves A/B once each and source-correct coverage, including database reopen and legacy migration. Initial and repeated ingestion; append catch-up after process restart; interrupted writes/partial
   records; crash between index and cursor commits; truncation, replacement, rotation and deletion.
   Verify exact occurrence counts/identities and recoverable positions, not only successful commands.
 - Content reuse across multiple run occurrences, model/chunking-version mismatch and rebuild,
   unparsed records, repetitive polling with retained rare/contradictory evidence, and missing inputs.
 - Natural paraphrases with little terminology overlap using the real selected semantic backend;
   misleading near-matches, conflicting outcomes and unrelated runs; exact task/run/revision/actor
-  filters, null identities and visible query interpretation. Controlled fixtures may test failure
+  filters, original-only `feature=crafting`, absent versus explicit-null keys, mixed stored/original selectors, null identities and visible query interpretation. Controlled fixtures may test failure
   mechanics, but mocked embeddings alone cannot prove semantic utility.
 - Original excerpt and surrounding-record round-trip, hash mismatch/source replacement after search,
   stable paging for a selected index generation, stale/partial coverage, no match, unavailable model,
@@ -1410,34 +1387,63 @@ Implementation status:
 
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-CONTEXT-ROUTING-S001 claim=R-MAINT-CONTEXT-ROUTING -->
-### Declared DFS slices reach worker context
+### Declared functional slices reach worker context
 
-The review's actual isolated packet reproduction shows that
-`policy_kernel.py::_exploration_route` matches the first DFS slice by claim and ignores the active
-ledger's `DFS slices:` selection. For R-MAINT-PROMPT-DELIVERY that chooses historical S001 instead
-of the selected S002. `_dfs_worker_boundary` then discards text after `Implementation status:`;
-that delimiter separates status from contract and must not be placed before new functional text.
-The new retrieval slice is formatted correctly. The existing prepared-context interface supplies
-S002 as an immediate source-bound worker brief without altering an issued packet.
+`policy_kernel.py::_exploration_route` finds the exact assignment's owning active ledger item,
+validates its `DFS slices:` selectors through `mutation_guard` slice APIs and extracts the selected
+claim-bound slices in declared order. Missing, duplicate, wrong-claim or malformed selection fails;
+no first-same-claim or stale-context fallback is valid. `_dfs_worker_boundary` removes only the
+projection after `Implementation status:`; all functional contract text precedes that delimiter.
+Independent same-claim assignments, issued packet hashes and prepared-context revisions remain bound
+to their owners. This affects context extraction, not policy rules, clocks, proof or launch ownership.
 
-Authorize Sol to commission the narrow context-extraction helper and its tests in installed
-`policy_kernel.py`, reusing `mutation_guard.py`'s existing slice parsing/extraction APIs. Honor the
-exact validated slice IDs on the owning ledger item, their claim and declared order; retain all
-selected contract sections while excluding only the status projection as intended. Do not invent
-source selection, silently choose the first same-claim slice, or fall back on stale context when
-an explicit slice is absent, mismatched or malformed. Preserve independent assignments, immutable
-packets and current context revisions. This is ordinary tooling engineering under this owner-scoped
-context correction, not authority to change policy bytecode, route predicates, clock/guard functions,
-proof acceptance or process ownership.
-
-Prove actual isolated packet/reference-context output with two same-claim slices where the ledger
-selects the second, multiple selected slices in order, wrong-claim/missing/duplicate selection and
-unrelated assignments, plus the status-delimiter boundary. Retain a representative single-slice
-route as a compatibility check. The baseline counterexample and prepared-context recovery are in
-`state/review-owner-c895367b1fc2/`; completion requires the corrected helper reaching packet output,
-not only a text change or a helper returning an unconsumed string.
+The counterexample selects S002 from a document containing earlier S001: actual packet reference
+context must contain S002 and exclude S001. Multiple selectors preserve order; invalid selectors
+fail before dispatch. Retained baseline and current isolated output are in
+`state/review-owner-c895367b1fc2/` and `state/review-incident-prompt-delivery-20260908/`.
+Implementation/acceptance progress belongs in the ledger; these tests define the functional result.
 
 Implementation status:
 
 - [ ] 🔴 R-MAINT-CONTEXT-ROUTING — Worker dispatch uses the ledger's declared DFS slices rather than the first same-claim slice, with validated original contract context.
 <!-- DE67:DFS-SLICE:END id=R-MAINT-CONTEXT-ROUTING-S001 claim=R-MAINT-CONTEXT-ROUTING -->
+
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-FS-MIGRATION-S001 claim=R-MAINT-FS-MIGRATION -->
+### Functional Specification identity and delivery projection
+
+One canonical `.de67/FS.md` holds functional behavior, source references and discriminating
+acceptance criteria. Existing `.de67/DFS.md` references resolve through an explicit compatibility
+mapping to that same content, never a second independently mutable specification. Keep durable
+claim/slice identities and existing marker/selector syntax readable; old packets and receipts
+retain their original bytes, hashes and historical meaning.
+
+A shared resolver used by `policy_kernel`, `mutation_guard`, `deadline_harness`,
+`coordinator_supervisor` and `method_provenance` selects the canonical specification or the legacy
+one during migration. Conflicting dual content, missing target and malformed identity fail visibly.
+Policy extraction passes the exact ordered, claim-bound slices selected by each independent ledger
+assignment to the worker. It rejects missing, duplicate and wrong-claim selectors. Prepared context
+revision checks remain effective; an old packet is not silently rewritten to a new specification.
+
+Delivery assignments and current progress are projected in the existing `work-ledger.md`; historical
+proof remains at its exact existing artifact, receipt, Git revision or SQLite handle. Durable SQLite
+acceptance owns acceptance/reopen transitions. `deadline_harness` projects that state into the ledger
+without requiring an implementation-status prose block inside the FS. Missing or invalid acceptance
+evidence still fails; an absent decorative FS status block cannot obstruct otherwise valid acceptance.
+Supervisor open-work/completion, provenance and guard baselines resolve the same contract and ledger.
+Legacy `selected_lane='DFS.md'` records remain valid scheduling/receipt identities; a filename change
+must not silently alter their meaning. Migrate status baselines deliberately, preserving accepted
+claims and reopening behavior rather than resetting proof or clocks.
+
+Prove on isolated copies: ordered multi-slice dispatch and independent same-claim assignments;
+old references/issued packets unchanged; missing/conflicting/cross-claim rejection; durable accept
+and reopen with a functional-only FS, including the current COMPACT-IO and RESULT-REUSE status-block
+counterexamples; supervisor completion/open-work and old receipt/provenance compatibility. Verify
+the migrated functional content actually reaches packet callers. Current consumer references are in
+`state/review-incident-prompt-delivery-20260908/fs-consumers.md`. This is an owner-authorized
+representation migration, not authority to weaken evidence, change product outcomes or launch a process.
+
+Implementation status:
+
+- [ ] 🔴 R-MAINT-FS-MIGRATION — One Functional Specification describes code behavior while the existing ledger and evidence surfaces own delivery tracking and proof, with compatible routing and lifecycle operations.
+<!-- DE67:DFS-SLICE:END id=R-MAINT-FS-MIGRATION-S001 claim=R-MAINT-FS-MIGRATION -->
