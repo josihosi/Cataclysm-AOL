@@ -1,0 +1,14 @@
+usage: scenario_registry_cli.py runtime-status [-h] [--executable EXECUTABLE]
+                                               [--isolated-harness-diagnosis]
+                                               [--full]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --executable EXECUTABLE
+                        exact executable binding to inspect; defaults to the
+                        detected executable
+  --isolated-harness-diagnosis
+                        allow only the explicitly provisional isolated-harness
+                        readiness route
+  --full                explicitly print the complete runtime-status payload
+                        instead of its artifact receipt

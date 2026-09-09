@@ -1,0 +1,76 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-026-route-binding-repair-010",
+  "claim_id": "R-026",
+  "worker_id": "01a08760-5d4b-7710-9bf9-b3e9b9872d16",
+  "disposition": "completed",
+  "verdict": "current-footing route release restored selectable R-026 declaration",
+  "outcome": "The authoritative registry accepted a current_bootstrap_revalidation for manifest 528693b6b7a8d33095b91dd8be52a5862f0d750d9d7ffa0e41d652ed37e62489. It bound the existing current declaration, fixture/profile sources, and the existing source-matched executable SHA 912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452 without modifying historical reports or creating gameplay evidence. The fresh exact query selected the manifest, marked it active/token_eligible=true, and issued the single-use selection token below.",
+  "summary": "The stale route remains visible as historical report-binding evidence (each legacy report continues to resolve stale because it has no binding facts). The repository-owned current-bootstrap release is the narrow valid authority for this stale-only route: it records current footing, not feature proof. No declaration, fixture, gameplay intent, executable, or historical report was edited; no game was launched.",
+  "material_changes": [
+    "authoritative registry current_bootstrap_revalidation release event for the exact R-026 stale route"
+  ],
+  "tests": [
+    "registry-revalidate-bootstrap exited 0 and accepted=true for the exact typed R-026 query; it recorded current manifest SHA 1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0 and executable SHA 912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452",
+    "fresh registry-query exited 0; selected_scenario_id=528693b6b7a8d33095b91dd8be52a5862f0d750d9d7ffa0e41d652ed37e62489, lifecycle=active, token_eligible=true",
+    "registry-query-page on fresh artifact 2459b4a6dd306b99988fdb40145b7373c8bd9b2a1d1f6be22f7571b0e50766fb confirmed release_event_ids=[1308], current_bootstrap_authority, current executable SHA, and the retained stale historical route bindings"
+  ],
+  "live_actions": [],
+  "evidence_ceiling": [
+    "registry declaration selection and current source/runtime/fixture/profile footing only",
+    "no gameplay behavior or feature proof"
+  ],
+  "bindings": {
+    "eligible_token": "551928a81cb4a71317603e528a0d30dd9dbfe919b76dd00420378fa5600f582e",
+    "executable_sha256": "912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452",
+    "fresh_query_artifact_sha256": "2459b4a6dd306b99988fdb40145b7373c8bd9b2a1d1f6be22f7571b0e50766fb",
+    "manifest_sha256": "1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0",
+    "product_source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+    "query_id": "19912adf8e6c0f08595f6c91eb1336dcea232de96d237bf2c9684d0a1905278a",
+    "query_sha256": "389aedb8237099a3a6a2732ca1a50462c03ef4756b914377c5a9a34d5b4c11c7",
+    "route_key": "0a48dfa1a381bbe6992f36300fa87ca58e36f91fca2304a8a4a12cd5f68c0c63",
+    "scenario_id": "528693b6b7a8d33095b91dd8be52a5862f0d750d9d7ffa0e41d652ed37e62489",
+    "scenario_name": "r026.living_npc_package_v001_mcw",
+    "selection_id": "3722a3dc75866fe814724f17d7b43d49c2b613ea2d24b125e351c609d5903f9b"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-026-route-binding-repair-010/revalidate-current-bootstrap.json",
+      "sha256": "4d3083987e540c0c3faa69f2270e00cb0fe9f5acb9d8d0cc7425d8a4a754b584",
+      "role": "authoritative current-footing release result"
+    },
+    {
+      "path": ".de67/task-logs/R-026-route-binding-repair-010/fresh-registry-query.json",
+      "sha256": "6e3eb1ffd5998351b67fea2b4093911d07b83ded28d6c45911432d8bda646dfa",
+      "role": "fresh compact selection receipt"
+    },
+    {
+      "path": ".de67/task-logs/R-026-route-binding-repair-010/fresh-query-target-page.json",
+      "sha256": "4f3eaf247d1470a6274bcbe8fc4674f5a0417f1a8d1fd85b77824fa29fe37d27",
+      "role": "fresh target-page binding and lifecycle proof"
+    },
+    {
+      "path": ".de67/task-logs/R-026-route-binding-repair-010/fresh-query-artifact.json",
+      "sha256": "2459b4a6dd306b99988fdb40145b7373c8bd9b2a1d1f6be22f7571b0e50766fb",
+      "role": "complete fresh query artifact"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "No game was launched; no gameplay, feature-proof, or acceptance-matrix conclusion is implied by this route-footing repair."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Provide the matching witness charter, then use the fresh selected token's canonical live-cockpit route if a subsequent authorized playtest is desired. This repair does not authorize or perform that launch.",
+  "narrow_queries": [
+    "prior query artifact 82166f863ef7775ba3d2d9e994eceefab67356761275d4d021bcb341cea1bb2e",
+    "prior status artifact d4d4facbab9d77abbbf3cad707109135fea7bfa0e64de0bf1c94267311426fe1",
+    "fresh query artifact 2459b4a6dd306b99988fdb40145b7373c8bd9b2a1d1f6be22f7571b0e50766fb"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/scenario_registry_cli.py",
+    "tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json"
+  ],
+  "context_metrics": {}
+}

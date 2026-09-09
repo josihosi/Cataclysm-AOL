@@ -1,0 +1,34 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "On the current source-bound McWilliams established-base footing, one fresh living-NPC route binds the intended actor, its relationship/context snapshot, a native request and reply, native reply application, the resulting action or state, and accepted lifecycle cleanup.",
+  "material_proof": "A single selected live-cockpit run must record the actor identity and relationship/context snapshot, a frame-bound native request receipt, the same-run request/reply record, native application, and an observed resulting action or state. Setup, fixture installation, startup, and owner waits receive zero feature credit. Finish and cleanup must be accepted at the scenario's focused ceiling; save/reload is credited only if this route actually changes persisted state.",
+  "material_contradiction": [
+    "the observed recipient is not the intended living NPC or cannot be bound to the same-run actor identity",
+    "relationship or context is inferred from labels rather than recorded in a native snapshot or actor-bound observation",
+    "a request, reply, or application lacks its independently matching native receipt",
+    "the resulting action/state is absent, belongs to another route, or is credited from an owner wait or setup transition",
+    "any response is synthetic, directly injected, or produced by physical/guessed input",
+    "source, executable, manifest, fixture, profile, world, or route binding drifts",
+    "cleanup or declared lifecycle termination is not accepted"
+  ],
+  "already_accepted_evidence": [
+    "The current selection 3722a3dc75866fe814724f17d7b43d49c2b613ea2d24b125e351c609d5903f9b and token 551928a81cb4a71317603e528a0d30dd9dbfe919b76dd00420378fa5600f582e are technical launch authority only; they are not gameplay proof.",
+    "The current manifest is r026.living_npc_package_v001_mcw (scenario 528693b6b7a8d33095b91dd8be52a5862f0d750d9d7ffa0e41d652ed37e62489), manifest SHA 1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0, with current-source executable SHA 912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452 and product-source SHA 4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e.",
+    "The established-base audit and prior narrow speech/follow probes establish readiness or separate bounded evidence only; they do not prove this fresh route."
+  ],
+  "current_uncertainty": "The current living-NPC owner may advertise a different actor, relationship/context, request route, or resulting state than historical probes. Ambient, basecamp, and sibling owner waits remain separate and are not silently substituted for this route.",
+  "forbidden_shortcuts": [
+    "physical keys, guessed controls, OCR, screenshots, coordinates, or rendered-text control",
+    "synthetic LLM response or callback injection",
+    "direct NPC, relationship, snapshot, camp, world, or save mutation",
+    "fixture restaging, setup/startup credit, or treating an owner wait as the requested route",
+    "combining ambient, basecamp, follower, or historical results into one aggregate verdict"
+  ],
+  "honest_stop_conditions": [
+    "stop before launch if the selected scenario, token, or current source/executable/fixture binding is absent or drifted",
+    "after launch, stop the affected route at the first missing native receipt, wrong owner, missing snapshot, application mismatch, or cleanup failure while retaining independent observations",
+    "wait for separately owned native actions only when the current frame advertises them; do not replay or attribute another owner's wait",
+    "seal the route-scoped witness once actor, context, request/reply/application, resulting action/state, and cleanup are honestly settled"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

@@ -1,0 +1,79 @@
+{
+  "built_at": "2026-09-09T17:58:52.770251+00:00",
+  "captured_head": "3ae2efab88",
+  "command": [
+    "make",
+    "-j8",
+    "TILES=1",
+    "SOUND=1",
+    "RELEASE=1",
+    "LOCALIZE=1",
+    "LANGUAGES=all",
+    "LINTJSON=0",
+    "ASTYLE=0",
+    "TESTS=0",
+    "cataclysm-tiles"
+  ],
+  "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/cataclysm-tiles",
+  "executable_sha256": "912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452",
+  "log_dir": ".de67/task-logs/R-026-source-bound-build-008",
+  "logs": {
+    "build": {
+      "command": [
+        "make",
+        "-j8",
+        "TILES=1",
+        "SOUND=1",
+        "RELEASE=1",
+        "LOCALIZE=1",
+        "LANGUAGES=all",
+        "LINTJSON=0",
+        "ASTYLE=0",
+        "TESTS=0",
+        "cataclysm-tiles"
+      ],
+      "diagnostic": "ld: warning: duplicate -rpath '/opt/homebrew/lib' ignored\nld: warning: ignoring duplicate libraries: '-lSDL3'\nld: warning: building for macOS-11.0, but linking with dylib '/opt/homebrew/opt/sdl3_image/lib/libSDL3_image.0.dylib' which was built for newer version 26.0\nld: warning: building for macOS-11.0, but linking with dylib '/opt/homebrew/opt/sdl3_ttf/lib/libSDL3_ttf.0.dylib' which was built for newer version 26.0\nld: warning: building for macOS-11.0, but linking with dylib '/opt/homebrew/opt/sdl3/lib/libSDL3.0.dylib' which was built for newer version 26.0\nld: warning: building for macOS-11.0, but linking with dylib '/opt/homebrew/opt/freetype/lib/libfreetype.6.dylib' which was built for newer version 26.0\nld: warning: building for macOS-11.0, but linking with dylib '/opt/homebrew/opt/sdl3_mixer/lib/libSDL3_mixer.0.dylib' which was built for newer version 26.0",
+      "exit_status": 0,
+      "full_log": ".de67/task-logs/R-026-source-bound-build-008/build.full.log",
+      "label": "build",
+      "stderr_log": ".de67/task-logs/R-026-source-bound-build-008/build.stderr.log",
+      "stdout_log": ".de67/task-logs/R-026-source-bound-build-008/build.stdout.log"
+    },
+    "version": {
+      "command": [
+        "make",
+        "-j8",
+        "TILES=1",
+        "SOUND=1",
+        "RELEASE=1",
+        "LOCALIZE=1",
+        "LANGUAGES=all",
+        "LINTJSON=0",
+        "ASTYLE=0",
+        "TESTS=0",
+        "version"
+      ],
+      "diagnostic": "// NOLINT(cata-header-guard)\n#define VERSION \"3ae2efab88-dirty\"",
+      "exit_status": 0,
+      "full_log": ".de67/task-logs/R-026-source-bound-build-008/version.full.log",
+      "label": "version",
+      "stderr_log": ".de67/task-logs/R-026-source-bound-build-008/version.stderr.log",
+      "stdout_log": ".de67/task-logs/R-026-source-bound-build-008/version.stdout.log"
+    }
+  },
+  "product_source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+  "schema": "caol-product-build-receipt-v1",
+  "version_command": [
+    "make",
+    "-j8",
+    "TILES=1",
+    "SOUND=1",
+    "RELEASE=1",
+    "LOCALIZE=1",
+    "LANGUAGES=all",
+    "LINTJSON=0",
+    "ASTYLE=0",
+    "TESTS=0",
+    "version"
+  ]
+}

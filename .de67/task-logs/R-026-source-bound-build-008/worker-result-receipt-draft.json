@@ -1,0 +1,96 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-026-source-bound-build-008",
+  "claim_id": "R-026",
+  "worker_id": "01a08752-036f-71f2-aca1-e4dc0bb6caa5",
+  "disposition": "completed",
+  "verdict": "source-bound executable ready; exact R-026 registry route not ready",
+  "outcome": "A fresh macOS Tiles build completed successfully from the audited current worktree. The authoritative runtime-status records its exact executable/source binding as ready. The current R-026 manifest is absent from the authoritative registry, so the requested scenario cannot currently be selected or launched.",
+  "summary": "The requested build command produced cataclysm-tiles SHA-256 912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452 at captured HEAD 3ae2efab88 with product source SHA-256 4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e. Its immutable source/executable receipt is preserved. Runtime status is ready and reports no binary-relevant committed or worktree changes. A fresh typed query for capabilities.r026.living_npc_package=follower_ambient_snapshot_basecamp_context returned zero matches because every active registry entry exposes that fact as unknown. Exact registry-status for the current manifest SHA-256 1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0 returned entry_count 0. No gameplay, fixture/scenario alteration, registry rebuild, or launch occurred.",
+  "material_changes": [],
+  "tests": [
+    "python3 tools/openclaw_harness/build_source_bound_macos.py --renderer tiles --log-dir .de67/task-logs/R-026-source-bound-build-008 exited 0; version and build subprocesses each exited 0.",
+    "runtime-status for the exact new executable exited 0 and reported status ready, reason source_matching_executable.",
+    "registry-query for the exact R-026 capability exited 0 and returned zero selected candidates; all 235 active candidates were rejected with unknown_fact.",
+    "registry-status for the current R-026 manifest SHA exited 0 and returned entry_count 0.",
+    "Pre/post source audits compare equal (cmp exit 0); unrelated pre-existing dirty state was preserved."
+  ],
+  "live_actions": [],
+  "journal_entries": [],
+  "evidence_ceiling": [
+    "This receipt proves the fresh source-bound build and the runtime/registry readiness observations only.",
+    "It does not prove any R-026 feature behavior, fixture validity, gameplay state, recipient handling, snapshots, basecamp context, persistence, or cleanup because no game process was launched."
+  ],
+  "bindings": {
+    "workspace": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev",
+    "source_head": "3ae2efab88",
+    "source_version": "3ae2efab88-dirty",
+    "product_source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+    "runtime_source_sha256": "aeb8bbdb195a8cd10f3e9a36845464e02a9da4a012a457b44f3937bd2120e2cb",
+    "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/cataclysm-tiles",
+    "executable_sha256": "912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452",
+    "source_binding_receipt_path": ".userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1-912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452-4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e-3f8ece9671537e91256446132600e25e1244019f2da37f8997ce19a8f2cd0232.json",
+    "source_binding_receipt_sha256": "3f8ece9671537e91256446132600e25e1244019f2da37f8997ce19a8f2cd0232",
+    "scenario_name": "r026.living_npc_package_v001_mcw",
+    "scenario_source_path": "tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json",
+    "current_manifest_sha256": "1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0",
+    "runtime_status_artifact_sha256": "698b264050107234979c8249194fcb88ec8be6a5b6a647bfca0299f2bdccb1a3",
+    "registry_query_artifact_sha256": "4fefac929be8c09cc340b635d589eb3ba0aa159711740b4900310c6ace1a5ac4",
+    "registry_status_artifact_sha256": "32db601336172cb09f680e11672405c7758e3430c042893a9ee32a068bb7fb1b"
+  },
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-026-source-bound-build-008/source-binding-receipt-copy.json",
+      "sha256": "3f8ece9671537e91256446132600e25e1244019f2da37f8997ce19a8f2cd0232",
+      "role": "task-scoped immutable source/executable receipt copy"
+    },
+    {
+      "path": ".de67/task-logs/R-026-source-bound-build-008/build.full.log",
+      "sha256": "cae706816fff20054b5ea3c66766a107e26579e541592019ec4f405a21635be4",
+      "role": "complete Tiles build log"
+    },
+    {
+      "path": ".de67/task-logs/R-026-source-bound-build-008/version.full.log",
+      "sha256": "a4032afd852cd7b5a7d018315bcf8c5b78e3d739282be5c6bcfe644decce4777",
+      "role": "complete source version log"
+    },
+    {
+      "path": ".de67/task-logs/R-026-source-bound-build-008/runtime-status.full.json",
+      "sha256": "51fd13a599944b50272d43c9a18c27acf2854c208a9801ac5864afc1e92a17ba",
+      "role": "full authoritative runtime-status payload"
+    },
+    {
+      "path": ".de67/task-logs/R-026-source-bound-build-008/registry-query.receipt.json",
+      "sha256": "939482f48aeb13d334556d16e33e3daf71c2ade011839c35bd9174e898d646eb",
+      "role": "fresh exact-capability registry query receipt"
+    },
+    {
+      "path": ".de67/task-logs/R-026-source-bound-build-008/registry-status-r026.full.json",
+      "sha256": "5eb49e08597b7c044590a3384ccd034671bb31e557547dbab9e1d9c5d71c7a3e",
+      "role": "full exact-manifest lifecycle status payload"
+    }
+  ],
+  "first_divergence": {
+    "class": "current-r026-manifest-absent-from-authoritative-registry",
+    "summary": "The current source manifest SHA-256 1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0 has no registry-status entry, and the fresh capability query has no eligible candidate."
+  },
+  "accepted_no_replay": [
+    "Do not rebuild while the current executable remains source-matching and runtime-status stays ready.",
+    "Do not reuse this non-launch query as gameplay authority or infer feature behavior from manifest declarations.",
+    "Preserve the failed zero-match query and exact absent-manifest lifecycle receipt."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Reproject/rebuild the authoritative registry from the audited current scenario declarations, then take a fresh exact R-026 registry query and exact-manifest registry-status. This worker did not perform that registry mutation.",
+  "narrow_queries": [
+    "After registry projection, query capabilities.r026.living_npc_package=follower_ambient_snapshot_basecamp_context anew.",
+    "Check registry-status with manifest SHA-256 1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0 before any launch decision.",
+    "Recheck runtime-status only if source or executable identity changes."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/build_source_bound_macos.py",
+    "tools/openclaw_harness/scenario_registry_cli.py",
+    "tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json"
+  ],
+  "context_metrics": {}
+}

@@ -1,0 +1,55 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-CHECKPOINT-CONTEXT-closure-integrity-001",
+  "claim_id": "R-MAINT-CHECKPOINT-CONTEXT",
+  "worker_id": "01a08742-e5d3-7c71-b982-18dd5b9b6619",
+  "disposition": "completed",
+  "verdict": "checkpoint_context_integrity_verified",
+  "outcome": "Independent closure verification confirms the optional checkpoint-worker template is exact, read-only, absent when inapplicable, caller-completed, and protected by execution-time ownership validation.",
+  "summary": "A live read-only query emitted optional=true and exact authoritative state, lineage, closure task, and current worker bindings while omitting kind and evidence. Focused temporary-state tests cover unknown, unclaimed, terminal and released absence, retrieval non-mutation, and stale or wrong-owner execution rejection. Eight work-context tests and 94 deadline-harness tests passed; both scripts compile.",
+  "material_changes": [
+    "Added task-scoped independent verification evidence only; installed implementation was not changed."
+  ],
+  "tests": [
+    "test_work_context.py: 8/8 passed",
+    "test_deadline_harness.py: 94/94 passed",
+    "py_compile work_context.py deadline_harness.py: passed"
+  ],
+  "live_actions": [
+    "Read-only live context query only; no checkpoint or authoritative task mutation."
+  ],
+  "evidence_ceiling": [
+    "Proves installed context and ownership behavior at the focused test and exact live-query ceiling.",
+    "Does not claim natural adoption, reduced corrective exchanges, token savings, or gameplay behavior."
+  ],
+  "bindings": {
+    "closure_gap": "checkpoint-context-integrity",
+    "closure_gap_revision": "1",
+    "implementation_receipt": "af64279c020b5c1830d734f82f8bfcaf8c89b033e0d8bec636bdb47419bad98c",
+    "installed_script_sha256": "c3bf279ab19f9746d6ae6fcc88af187482ab38461158a836984dbf104a5ff4e6",
+    "worker_id": "01a08742-e5d3-7c71-b982-18dd5b9b6619"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-MAINT-CHECKPOINT-CONTEXT-closure-integrity-001/worker-result.md",
+      "sha256": "cbf157316e622f35c26e313944788d9c908768966c2809764fef2f85c6eb622e",
+      "role": "independent closure verification"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [],
+  "active_work": [],
+  "first_open_boundary": "No open boundary remains in checkpoint-context-integrity.",
+  "narrow_queries": [
+    "checkpoint_worker_template",
+    "R-MAINT-CHECKPOINT-CONTEXT-closure-integrity-001",
+    "01a08742-e5d3-7c71-b982-18dd5b9b6619"
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/work_context.py",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py"
+  ],
+  "context_metrics": {}
+}

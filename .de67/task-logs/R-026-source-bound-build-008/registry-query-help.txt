@@ -1,0 +1,32 @@
+usage: scenario_registry_cli.py registry-query [-h]
+                                               (--query-file QUERY_FILE | --query-json QUERY_JSON)
+                                               [--include-state {quarantined,retired}]
+                                               [--isolated-harness-diagnosis]
+                                               [--coordinator-brief COORDINATOR_BRIEF]
+                                               [--witness-charter WITNESS_CHARTER]
+                                               [--page-size PAGE_SIZE]
+                                               [--full]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --query-file QUERY_FILE
+                        typed registry-query JSON file
+  --query-json QUERY_JSON
+                        typed registry-query JSON object
+  --include-state {quarantined,retired}
+                        include inspect-only lifecycle state; repeated values
+                        are accepted
+  --isolated-harness-diagnosis
+                        route a stale current contradiction only to a
+                        provisional harness-only diagnosis; no playtest
+                        outcome authority is issued
+  --coordinator-brief COORDINATOR_BRIEF
+                        coordinator brief JSON for explicit playtest authority
+  --witness-charter WITNESS_CHARTER
+                        validated witness charter JSON for explicit playtest
+                        authority
+  --page-size PAGE_SIZE
+                        matches per page (default: 5; owner-selected
+                        presentation preference)
+  --full                export the complete query evaluation as a file; return
+                        its receipt

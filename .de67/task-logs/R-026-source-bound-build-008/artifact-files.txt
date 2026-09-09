@@ -1,0 +1,16 @@
+.de67/task-logs/R-026-source-bound-build-008/artifact-files.txt
+.de67/task-logs/R-026-source-bound-build-008/build-help.txt
+.de67/task-logs/R-026-source-bound-build-008/build-invocation.exit-code.txt
+.de67/task-logs/R-026-source-bound-build-008/build-invocation.stderr.txt
+.de67/task-logs/R-026-source-bound-build-008/build-invocation.stdout.txt
+.de67/task-logs/R-026-source-bound-build-008/build.full.log
+.de67/task-logs/R-026-source-bound-build-008/build.stderr.log
+.de67/task-logs/R-026-source-bound-build-008/build.stdout.log
+.de67/task-logs/R-026-source-bound-build-008/git-status-before.txt
+.de67/task-logs/R-026-source-bound-build-008/registry-cli-help.txt
+.de67/task-logs/R-026-source-bound-build-008/registry-status-help.txt
+.de67/task-logs/R-026-source-bound-build-008/runtime-status-help.txt
+.de67/task-logs/R-026-source-bound-build-008/source-audit-before.txt
+.de67/task-logs/R-026-source-bound-build-008/version.full.log
+.de67/task-logs/R-026-source-bound-build-008/version.stderr.log
+.de67/task-logs/R-026-source-bound-build-008/version.stdout.log

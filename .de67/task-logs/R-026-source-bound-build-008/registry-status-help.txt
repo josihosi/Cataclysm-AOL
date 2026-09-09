@@ -1,0 +1,15 @@
+usage: scenario_registry_cli.py registry-status [-h]
+                                                [--manifest-id MANIFEST_ID]
+                                                [--full]
+                                                [--include-state {quarantined,retired}]
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --manifest-id MANIFEST_ID
+                        exact manifest identity; repeat to retrieve only named
+                        current entries
+  --full                explicitly print the complete status payload instead
+                        of its artifact receipt
+  --include-state {quarantined,retired}
+                        include non-active lifecycle rows; repeated values are
+                        accepted

@@ -1,0 +1,65 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-026-package-footing-audit-007",
+  "claim_id": "R-026",
+  "worker_id": "01a0874a-ad93-78b0-9ebf-12cb9135b036",
+  "disposition": "completed",
+  "verdict": "package_footing_audited_fresh_executable_required",
+  "outcome": "Current manifests, route seeds, and historical receipts remain usable only at their declared ceilings; the available Tiles executable is not source-matched, so fresh source-bound build and registry qualification precede any new R-026 gameplay route.",
+  "summary": "HEAD 3ae2efab8830ac49c15d6a6c29163640bc186224 has no binary-relevant worktree edits, but current runtime status is build_required: runtime source aeb8bbdb... does not match executable 89a724fd... or its retained receipt. The prepared-base transform remains setup-only, living-NPC is claim-capable when freshly bound, and Zone Manager/freeplay seeds grant no gameplay proof. No game was launched and no source or fixture changed.",
+  "material_changes": [
+    "Added task-scoped package-footing audit evidence only.",
+    "No gameplay source, fixture, manifest, scenario, executable, or registry state changed."
+  ],
+  "tests": [
+    "Read-only runtime-status, manifest, scenario, guide, repository, and receipt inspection."
+  ],
+  "live_actions": [
+    "None. No game, bridge, runner, broker, or build process was launched."
+  ],
+  "evidence_ceiling": [
+    "Historical receipts remain valid only at their original recorded ceilings.",
+    "Prepared-camp transforms do not prove establishment.",
+    "Zone Manager and freeplay scenarios grant no gameplay proof.",
+    "No current-source gameplay result is established until a fresh matching executable receipt exists."
+  ],
+  "bindings": {
+    "executable_sha256": "89a724fd5999ae27fa82116e324af5164ca12ad143e0cd962f32471875e9a95a",
+    "head": "3ae2efab8830ac49c15d6a6c29163640bc186224",
+    "prepared_manifest_sha256": "e93757578eee384de460e11be95141e29cb8cb2f2d4089fcbe5d52b810d16649",
+    "profile_manifest_sha256": "8351ff9f14ed3b40657b57cde0fd41b4f03a30e8b96c827476bac79fda4115af",
+    "runtime_source_sha256": "aeb8bbdb195a8cd10f3e9a36845464e02a9da4a012a457b44f3937bd2120e2cb",
+    "runtime_status": "build_required"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-026-package-footing-audit-007/worker-result.md",
+      "sha256": "462cad48c5129f02399ef7563bbad1a9c5e838fc887af0fa256c1af13cfab72d",
+      "role": "current package footing audit"
+    }
+  ],
+  "first_divergence": {
+    "class": "source_executable_binding",
+    "summary": "The available cataclysm-tiles executable is not bound to current runtime source."
+  },
+  "accepted_no_replay": [
+    "Do not relabel or replay historical witnesses merely to replace the missing current source/executable binding."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Build a fresh source-bound Tiles executable, rebuild/query the exact registry binding, then launch only the selected claim-bound route.",
+  "narrow_queries": [
+    "runtime source aeb8bbdb195a8cd10f3e9a36845464e02a9da4a012a457b44f3937bd2120e2cb",
+    "cataclysm-tiles executable 89a724fd5999ae27fa82116e324af5164ca12ad143e0cd962f32471875e9a95a",
+    "R026_PACKAGE_GUIDE",
+    "r026.living_npc_package_v001_mcw"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/R026_PACKAGE_GUIDE.md",
+    "tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json",
+    "tools/openclaw_harness/scenarios/r026.camp_zone_manager_v001_mcw.json",
+    "tools/openclaw_harness/scenarios/harness.living_camp_freeplay_mcw.json"
+  ],
+  "context_metrics": {}
+}

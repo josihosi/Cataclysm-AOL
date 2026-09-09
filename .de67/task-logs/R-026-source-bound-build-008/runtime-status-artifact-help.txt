@@ -1,0 +1,5 @@
+usage: scenario_registry_cli.py runtime-status-artifact [-h] --sha256 SHA256
+
+optional arguments:
+  -h, --help       show this help message and exit
+  --sha256 SHA256  exact SHA-256 from a runtime-status receipt

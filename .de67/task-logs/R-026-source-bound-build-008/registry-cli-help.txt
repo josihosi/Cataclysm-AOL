@@ -1,0 +1,105 @@
+usage: scenario_registry_cli.py [-h] [--registry REGISTRY]
+                                {rebuild,ingest-report,validate-production-observation,reconcile,final-gates,prepare-windows-feel-handoff,windows-feel-status,record-windows-feel,registry-bootstrap,registry-revalidate-bootstrap,registry-query,registry-query-page,registry-query-artifact,registry-status,runtime-status,runtime-status-artifact,retirement-candidates,registry-artifact,approve-retirement,retirement-action,registry-launch,registry-detached-launch,registry-record-witness,registry-review-witness,certification-launch,registry-bootstrap-launch,registry-bootstrap-detached-launch,capture-production-fixture,production-observe,registry-repair-bootstrap,registry-repair-launch,registry-repair-detached-launch,registry-repair-finalize-no-report,registry-repair-compatibility-terminal,registry-repair-r019-current-source-successor,registry-r019-aggregation-authorize,registry-r019-aggregation-finalize,registry-migrate-all}
+                                ...
+
+Thin maintenance CLI for the authoritative SQLite scenario registry.
+
+positional arguments:
+  {rebuild,ingest-report,validate-production-observation,reconcile,final-gates,prepare-windows-feel-handoff,windows-feel-status,record-windows-feel,registry-bootstrap,registry-revalidate-bootstrap,registry-query,registry-query-page,registry-query-artifact,registry-status,runtime-status,runtime-status-artifact,retirement-candidates,registry-artifact,approve-retirement,retirement-action,registry-launch,registry-detached-launch,registry-record-witness,registry-review-witness,certification-launch,registry-bootstrap-launch,registry-bootstrap-detached-launch,capture-production-fixture,production-observe,registry-repair-bootstrap,registry-repair-launch,registry-repair-detached-launch,registry-repair-finalize-no-report,registry-repair-compatibility-terminal,registry-repair-r019-current-source-successor,registry-r019-aggregation-authorize,registry-r019-aggregation-finalize,registry-migrate-all}
+    rebuild             project scenario declarations into the registry
+    ingest-report       ingest one immutable report reference
+    validate-production-observation
+                        revalidate one uncredited production-observation
+                        source report
+    reconcile           recompute report bindings from their authoritative
+                        owners
+    final-gates         derive automated-certification and Windows-feel
+                        eligibility
+    prepare-windows-feel-handoff
+                        prepare ordinary Windows play from one current
+                        certification pass
+    windows-feel-status
+                        display pending or externally attested Windows feel
+                        results
+    record-windows-feel
+                        store an external Josef-labelled result; local caller
+                        identity is not authenticated
+    registry-bootstrap  issue one manifest-SHA/query/runtime-bound first-
+                        evidence authority
+    registry-revalidate-bootstrap
+                        append one current-facts release for a valid stale
+                        bootstrap manifest
+    registry-query      evaluate typed requirements without launching the
+                        harness
+    registry-query-page
+                        read another page of one saved query
+    registry-query-artifact
+                        locate or export one complete query result
+    registry-status     inspect registry lifecycle, relation, and retirement
+                        history
+    runtime-status      inspect one build/runtime binding without launching
+                        gameplay
+    runtime-status-artifact
+                        retrieve one digest-bound runtime-status payload
+    retirement-candidates
+                        inspect review-only retirement candidates
+    registry-artifact   retrieve one digest-bound registry-status payload
+    approve-retirement  prepare one reviewer-approved SHA-bound retirement
+    retirement-action   resume one approved retirement source removal
+    registry-launch     reload one selection token and run its canonical probe
+                        route
+    registry-detached-launch
+                        start one selected live-cockpit scenario on its bound
+                        file bridge
+    registry-record-witness
+                        validate and append one cited witness over immutable
+                        reports
+    registry-review-witness
+                        record the coordinator's causal judgment of a valid
+                        witness
+    certification-launch
+                        launch one selected scenario under the registry-owned
+                        continuous-certification authority
+    registry-bootstrap-launch
+                        claim one bootstrap authority and run its canonical
+                        probe route
+    registry-bootstrap-detached-launch
+                        start one bootstrap-owned cockpit on the file-backed
+                        JSONL bridge
+    capture-production-fixture
+                        capture one normal production world with registry-
+                        owned focused provenance
+    production-observe  run one transform-free ordinary probe and write
+                        uncredited source evidence
+    registry-repair-bootstrap
+                        issue one exact manifest/route/red-verification repair
+                        authority
+    registry-repair-launch
+                        claim one repair authority and run its canonical probe
+                        route
+    registry-repair-detached-launch
+                        start one repair-owned cockpit on the file-backed
+                        JSONL bridge
+    registry-repair-finalize-no-report
+                        append accepted cleanup for one claimed repair that
+                        produced no probe report
+    registry-repair-compatibility-terminal
+                        record one zero-credit current-source/runtime repair
+                        terminal
+    registry-repair-r019-current-source-successor
+                        record the zero-credit current-source R-019 HUD repair
+                        successor
+    registry-r019-aggregation-authorize
+                        issue one separate authority for an exact zero-credit
+                        R-019 report pair
+    registry-r019-aggregation-finalize
+                        consume one R-019 aggregation authority and append its
+                        immutable zero-credit packet
+    registry-migrate-all
+                        claim and classify one immutable scenario inventory
+                        snapshot
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --registry REGISTRY   SQLite registry path; defaults to the shared harness
+                        registry

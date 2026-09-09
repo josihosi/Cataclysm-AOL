@@ -1,0 +1,76 @@
+CREATE TABLE verification_history (
+            verification_id TEXT PRIMARY KEY,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            report_id TEXT NOT NULL REFERENCES report_ingestion_history( report_id ) ON DELETE RESTRICT,
+            route_key TEXT NOT NULL,
+            binding_fingerprint TEXT NOT NULL,
+            outcome_kind TEXT NOT NULL,
+            proof_status TEXT NOT NULL,
+            report_timestamp TEXT NOT NULL DEFAULT '',
+            supersedes_verification_id TEXT REFERENCES verification_history( verification_id ) ON DELETE RESTRICT,
+            details_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( report_id, route_key, binding_fingerprint, outcome_kind )
+        );
+CREATE INDEX idx_verification_route ON verification_history( manifest_id, route_key, recorded_at );
+CREATE TRIGGER verification_history_no_update
+        BEFORE UPDATE ON verification_history
+        BEGIN
+            SELECT RAISE(ABORT, 'verification_history is append-only');
+        END;
+CREATE TRIGGER verification_history_no_delete
+        BEFORE DELETE ON verification_history
+        BEGIN
+            SELECT RAISE(ABORT, 'verification_history is append-only');
+        END;
+CREATE TABLE report_ingestion_history (
+            report_id TEXT PRIMARY KEY,
+            manifest_id TEXT REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            report_path TEXT NOT NULL,
+            report_sha256 TEXT NOT NULL,
+            report_kind TEXT NOT NULL,
+            ingestion_status TEXT NOT NULL,
+            error_text TEXT NOT NULL DEFAULT '',
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP,
+            UNIQUE ( report_path, report_sha256 )
+        );
+CREATE INDEX idx_report_manifest ON report_ingestion_history( manifest_id, recorded_at );
+CREATE TRIGGER report_ingestion_history_no_update
+        BEFORE UPDATE ON report_ingestion_history
+        BEGIN
+            SELECT RAISE(ABORT, 'report_ingestion_history is append-only');
+        END;
+CREATE TRIGGER report_ingestion_history_no_delete
+        BEFORE DELETE ON report_ingestion_history
+        BEGIN
+            SELECT RAISE(ABORT, 'report_ingestion_history is append-only');
+        END;
+CREATE TABLE binding_history (
+            binding_event_id INTEGER PRIMARY KEY,
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            binding_kind TEXT NOT NULL,
+            binding_fingerprint TEXT NOT NULL,
+            binding_status TEXT NOT NULL,
+            payload_json TEXT NOT NULL,
+            recorded_at TEXT NOT NULL DEFAULT CURRENT_TIMESTAMP, report_id TEXT,
+            UNIQUE ( manifest_id, binding_kind, binding_fingerprint, binding_status )
+        );
+CREATE INDEX idx_binding_manifest ON binding_history( manifest_id, binding_kind, binding_event_id );
+CREATE TRIGGER binding_history_no_delete
+        BEFORE DELETE ON binding_history
+        BEGIN
+            SELECT RAISE(ABORT, 'binding_history is append-only');
+        END;
+CREATE INDEX idx_binding_report_identity
+        ON binding_history(report_id, binding_kind, binding_event_id);
+CREATE TRIGGER binding_history_no_update
+        BEFORE UPDATE ON binding_history
+        BEGIN
+            SELECT RAISE(ABORT, 'binding_history is append-only');
+        END;
+CREATE TABLE manifest_proof_route_current (
+            manifest_id TEXT NOT NULL REFERENCES manifest_current( manifest_id ) ON DELETE RESTRICT,
+            route_role TEXT NOT NULL,
+            step_label TEXT NOT NULL,
+            PRIMARY KEY ( manifest_id, route_role, step_label )
+        );

@@ -1,0 +1,14 @@
+usage: build_source_bound_macos.py [-h] [--renderer {tiles,curses}]
+                                   [--build-prefix BUILD_PREFIX]
+                                   [--log-dir LOG_DIR]
+
+Build one macOS renderer and record its exact source binding.
+
+optional arguments:
+  -h, --help            show this help message and exit
+  --renderer {tiles,curses}
+  --build-prefix BUILD_PREFIX
+                        Optional isolated build prefix; required when
+                        preserving another renderer binary.
+  --log-dir LOG_DIR     Directory for complete version/build stdout, stderr,
+                        and combined logs.

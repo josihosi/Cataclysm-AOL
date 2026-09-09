@@ -1,0 +1,62 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-026-registry-reprojection-009",
+  "claim_id": "R-026",
+  "worker_id": "01a08758-a07d-7760-ab7e-257c339cd174",
+  "disposition": "completed",
+  "verdict": "registry reprojected; exact R-026 route remains quarantined and not ready",
+  "outcome": "The authoritative registry was rebuilt from current declarations (staged=370, changed=0, discovered=0, absent=0). A fresh exact capability query found no eligible candidate: the R-026 candidate is stale and quarantined. Exact current manifest SHA 1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0 is present at revision 5 and valid, but lifecycle is quarantined/route_stale with token_eligible=false. No scenario token or launch next_action is returned.",
+  "summary": "First exact registry defect/prerequisite: route evidence is stale because all current route bindings resolve stale (ingested reports have no binding facts); the R-026 capability evidence is therefore stale rather than declared-selectable. Resolve/reconcile the route evidence through its owning evidence/report path, then requery. This worker did not edit declarations, fixtures, or launch gameplay.",
+  "material_changes": [
+    "authoritative registry reprojection via documented rebuild route"
+  ],
+  "tests": [
+    "python3 tools/openclaw_harness/scenario_registry_cli.py rebuild --scenarios-root tools/openclaw_harness/scenarios exited 0; staged=370 changed=0 discovered=0 absent=0",
+    "fresh exact capability query (capabilities.r026.living_npc_package=follower_ambient_snapshot_basecamp_context, include-state quarantined) exited 0; returned=0, excluded=370, target reason=stale",
+    "exact lifecycle status for manifest identity 528693b6b7a8d33095b91dd8be52a5862f0d750d9d7ffa0e41d652ed37e62489 including quarantined exited 0; entry_count=1, source SHA matches requested SHA, lifecycle quarantined/route_stale, token_eligible=false"
+  ],
+  "live_actions": [],
+  "evidence_ceiling": [
+    "registry projection, capability selection, lifecycle and binding readiness only; no gameplay behavior"
+  ],
+  "bindings": {
+    "exact_status_artifact_sha256": "d4d4facbab9d77abbbf3cad707109135fea7bfa0e64de0bf1c94267311426fe1",
+    "executable_sha256": "912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452",
+    "fresh_query_artifact_sha256": "82166f863ef7775ba3d2d9e994eceefab67356761275d4d021bcb341cea1bb2e",
+    "fresh_query_id": "19912adf8e6c0f08595f6c91eb1336dcea232de96d237bf2c9684d0a1905278a",
+    "fresh_query_sha256": "389aedb8237099a3a6a2732ca1a50462c03ef4756b914377c5a9a34d5b4c11c7",
+    "manifest_sha256": "1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0",
+    "prior_zero_match_artifact_sha256": "4fefac929be8c09cc340b635d589eb3ba0aa159711740b4900310c6ace1a5ac4",
+    "product_source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+    "rebuild_log": ".de67/task-logs/R-026-registry-reprojection-009/rebuild.stdout.json",
+    "rebuild_log_sha256": "a694aba37fda1e6f55cc618b1ee56a615cd916a33b560f14e91de9c5b24fc898",
+    "route_key": "0a48dfa1a381bbe6992f36300fa87ca58e36f91fca2304a8a4a12cd5f68c0c63",
+    "scenario_id": "528693b6b7a8d33095b91dd8be52a5862f0d750d9d7ffa0e41d652ed37e62489",
+    "scenario_name": "r026.living_npc_package_v001_mcw"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-026-registry-reprojection-009/rebuild.stdout.json",
+      "sha256": "a694aba37fda1e6f55cc618b1ee56a615cd916a33b560f14e91de9c5b24fc898",
+      "role": "authoritative registry rebuild result"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Preserve the prior zero-match query and do not infer gameplay behavior from registry declaration readiness."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Repair or reconcile the route_stale evidence binding through its owning report path, then requery scenario 528693b6b7a8d33095b91dd8be52a5862f0d750d9d7ffa0e41d652ed37e62489 from query artifact 82166f863ef7775ba3d2d9e994eceefab67356761275d4d021bcb341cea1bb2e and status artifact d4d4facbab9d77abbbf3cad707109135fea7bfa0e64de0bf1c94267311426fe1.",
+  "narrow_queries": [
+    "scenario 528693b6b7a8d33095b91dd8be52a5862f0d750d9d7ffa0e41d652ed37e62489 route_stale",
+    "manifest 1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0",
+    "ingested report has no binding facts"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/scenario_registry_cli.py",
+    "tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json"
+  ],
+  "context_metrics": {}
+}

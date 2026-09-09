@@ -1,0 +1,30 @@
+{
+  "schema": "caol-witness-charter-validation-v1",
+  "ok": true,
+  "validator": "tools/openclaw_harness/playtest_witness.py:normalize_witness_charter",
+  "charter_path": ".de67/task-logs/R-026-living-route-charter-011/witness-charter.json",
+  "charter_sha256": "e488e8e3d70e22656da119868035be0728a883ff523cd897747febf088be7c2f",
+  "charter_id": "93585872c22fe4e37fbd19fd50eab61a4ed6e3ca9861dbcbd9f28fb2635a0fa5",
+  "requested_evidence_ceiling": "focused",
+  "selection_id": "3722a3dc75866fe814724f17d7b43d49c2b613ea2d24b125e351c609d5903f9b",
+  "token_id": "551928a81cb4a71317603e528a0d30dd9dbfe919b76dd00420378fa5600f582e",
+  "scenario_id": "528693b6b7a8d33095b91dd8be52a5862f0d750d9d7ffa0e41d652ed37e62489",
+  "launch_performed": false,
+  "token_consumed": false,
+  "session_dir_precondition": {
+    "path": ".userdata/openclaw_harness/bridge-sessions/selected-r026-living-route-charter-011",
+    "exists_before_launch": false
+  },
+  "canonical_launch_argv": [
+    "/Library/Developer/CommandLineTools/usr/bin/python3",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/scenario_registry_cli.py",
+    "--registry",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/openclaw_harness/scenario_registry.sqlite3",
+    "registry-detached-launch",
+    "551928a81cb4a71317603e528a0d30dd9dbfe919b76dd00420378fa5600f582e",
+    "--witness-charter",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/task-logs/R-026-living-route-charter-011/witness-charter.json",
+    "--session-dir",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/openclaw_harness/bridge-sessions/selected-r026-living-route-charter-011"
+  ]
+}

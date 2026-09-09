@@ -1,0 +1,12 @@
+tools/openclaw_harness/scenario_registry_cli.py:1285:    query_page_parser = commands.add_parser("registry-query-page", help="read another page of one saved query")
+tools/openclaw_harness/scenario_registry_cli.py:1293:    query_artifact = commands.add_parser("registry-query-artifact", help="locate or export one complete query result")
+tools/openclaw_harness/scenario_registry_cli.py:2069:    if args.command in {"registry-query-page", "registry-query-artifact"}:
+tools/openclaw_harness/scenario_registry_integration_test.py:48:        request = registry_store.parse_registry_query_request({"requirements": [{"key": "capabilities.x", "op": "eq", "value": "wanted"}], "preferences": []})
+tools/openclaw_harness/registry_query_output_test.py:66:            self.assertEqual(cli.main(["--registry", str(self.registry), "registry-query", "--query-json", json.dumps({"requirements": [], "preferences": []})]), 0)
+tools/openclaw_harness/registry_query_output_test.py:95:        return self.call("registry-query", "--query-json", json.dumps({
+tools/openclaw_harness/registry_query_output_test.py:151:        result = self.call("registry-query", "--query-json", json.dumps({
+tools/openclaw_harness/registry_query_output_test.py:181:        result = self.call("registry-query", "--query-json", json.dumps({
+tools/openclaw_harness/scenario_registry_cli_test.py:1508:                "--registry", str(registry_path), "registry-query", "--query-json", json.dumps({
+tools/openclaw_harness/scenario_registry_cli_test.py:1538:                "--registry", str(registry_path), "registry-query", "--query-file", str(no_match_path)
+tools/openclaw_harness/scenario_registry_cli_test.py:1576:                "--registry", str(other_registry_path), "registry-query", "--query-json", json.dumps({
+tools/openclaw_harness/scenario_registry_cli_test.py:2067:                "--registry", str(registry_path), "registry-query", "--query-json", "{",

@@ -1,0 +1,4 @@
+ M .de67/work-ledger.md
+?? .de67/task-logs/R-026-package-footing-audit-007/
+?? .de67/task-logs/R-026-source-bound-build-008/
+?? .de67/task-logs/R-MAINT-CHECKPOINT-CONTEXT-closure-integrity-001/

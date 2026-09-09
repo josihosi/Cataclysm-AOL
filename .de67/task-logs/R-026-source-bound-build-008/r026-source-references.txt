@@ -1,0 +1,5 @@
+./tools/openclaw_harness/charters/r026-living-npc-package-coordinator-brief-rev1.json:3:  "scenario": "r026.living_npc_package_v001_mcw",
+./tools/openclaw_harness/charters/r026-living-npc-package-stay-coordinator-brief-rev1.json:3:  "scenario": "r026.living_npc_package_v001_mcw",
+./tools/openclaw_harness/scenario_registry.py:362:            "r026.living_npc_package_v001_mcw",
+./tools/openclaw_harness/scenario_registry.py:451:            "r026.living_npc_package_v001_mcw",
+./tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json:3:  "name": "r026.living_npc_package_v001_mcw",

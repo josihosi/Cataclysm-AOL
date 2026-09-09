@@ -1,0 +1,1 @@
+1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0  tools/openclaw_harness/scenarios/r026.living_npc_package_v001_mcw.json

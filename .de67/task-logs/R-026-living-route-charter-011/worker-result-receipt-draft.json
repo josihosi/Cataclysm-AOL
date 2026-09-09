@@ -1,0 +1,68 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-026-living-route-charter-011",
+  "claim_id": "R-026",
+  "worker_id": "01a08766-1e88-77e0-8dd7-9d81324558fb",
+  "disposition": "completed",
+  "verdict": "matching compact witness charter created and mechanically validated; launch held",
+  "outcome": "Created a focused witness charter for one fresh living-NPC route. It binds intended actor, relationship/context snapshot, request/reply/application, resulting action or state, and lifecycle cleanup; setup remains zero credit, historical contradictions and separate owner waits remain explicit, and exact current source/executable/manifest/fixture bindings are recorded. The charter validator returned ok=true with charter_id 93585872c22fe4e37fbd19fd50eab61a4ed6e3ca9861dbcbd9f28fb2635a0fa5.",
+  "summary": "Charter validation completed without consuming token 551928a81cb4a71317603e528a0d30dd9dbfe919b76dd00420378fa5600f582e or launching gameplay. Canonical detached-launch argv is recorded only after validation; its new session directory remains absent until an authorized launcher invokes it.",
+  "material_changes": [
+    "Added .de67/task-logs/R-026-living-route-charter-011/witness-charter.json",
+    "Added .de67/task-logs/R-026-living-route-charter-011/charter-validation.json"
+  ],
+  "tests": [
+    "normalize_witness_charter returned ok=true, schema caol-playtest-witness-charter-v1, focused ceiling, and charter_id 93585872c22fe4e37fbd19fd50eab61a4ed6e3ca9861dbcbd9f28fb2635a0fa5",
+    "Target session directory was verified absent before any launch; no registry-detached-launch or gameplay command was run"
+  ],
+  "live_actions": [],
+  "accepted_no_replay": [
+    "No gameplay, setup, owner wait, token consumption, or lifecycle transition was performed"
+  ],
+  "active_work": [],
+  "journal_entries": [],
+  "evidence_ceiling": [
+    "Charter/readiness validation only; no gameplay behavior or feature outcome is claimed"
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-026-living-route-charter-011/witness-charter.json",
+      "sha256": "e488e8e3d70e22656da119868035be0728a883ff523cd897747febf088be7c2f",
+      "role": "matching compact witness charter"
+    },
+    {
+      "path": ".de67/task-logs/R-026-living-route-charter-011/charter-validation.json",
+      "role": "mechanical charter validation and canonical launch argv"
+    },
+    {
+      "path": ".de67/task-logs/R-026-route-binding-repair-010/fresh-query-target-page.json",
+      "role": "selection/token/scenario and source-executable readiness evidence"
+    }
+  ],
+  "bindings": {
+    "selection_id": "3722a3dc75866fe814724f17d7b43d49c2b613ea2d24b125e351c609d5903f9b",
+    "token_id": "551928a81cb4a71317603e528a0d30dd9dbfe919b76dd00420378fa5600f582e",
+    "scenario_id": "528693b6b7a8d33095b91dd8be52a5862f0d750d9d7ffa0e41d652ed37e62489",
+    "manifest_sha256": "1e85e6d1d16475ba43f23ebfbd813324ea2eff0001f33988657c9601f90e19b0",
+    "executable_sha256": "912593054e9d1b00b8235f2527eedacf7ecf5a65733f5c27a652e7b82a2e3452",
+    "product_source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+    "fixture": "r031_living_non_camp_follower_v1",
+    "fixture_source_sha256": "c67eb53257a4d86f0330655367f7f2cba4521a65c23480f33c1d3f3d12d0428e",
+    "profile_snapshot": "bandit_basecamp_prepared_base_v1_2026-04-22",
+    "profile_source_sha256": "91468bfda3eb48f7ae08a5c5a7f691ca4df81d007d1d46e364b0fa874549057e",
+    "world": "McWilliams",
+    "helper": "native-semantic-broker"
+  },
+  "first_open_boundary": "An authorized owner may invoke the recorded canonical detached launch; this worker did not consume the single-use token or launch gameplay.",
+  "entrypoints": [
+    "tools/openclaw_harness/playtest_witness.py",
+    "tools/openclaw_harness/scenario_registry_cli.py"
+  ],
+  "narrow_queries": [
+    "charter 93585872c22fe4e37fbd19fd50eab61a4ed6e3ca9861dbcbd9f28fb2635a0fa5",
+    "selection 3722a3dc75866fe814724f17d7b43d49c2b613ea2d24b125e351c609d5903f9b",
+    "token 551928a81cb4a71317603e528a0d30dd9dbfe919b76dd00420378fa5600f582e"
+  ],
+  "context_metrics": {}
+}
