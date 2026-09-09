@@ -169,11 +169,12 @@ Two maintenance outcomes have complete independent closure evidence but cannot e
     - [done] verify-context-and-lifecycle :: Prove selected input, recovery, mailbox and exclusive lifecycle while preserving the natural-adoption measurement boundary.
   - Durable acceptance: #1 via `R-MAINT-REVIEW-CONTEXT-closure-context-selection-integrity-001`; SQLite evidence is authoritative.
 
-- [ ] R-MAINT-CHECKPOINT-CONTEXT — Make the valid optional checkpoint command available from current task context without reconstructing ownership by hand.
+- [x] R-MAINT-CHECKPOINT-CONTEXT — Make the valid optional checkpoint command available from current task context without reconstructing ownership by hand.
   - DFS slices: `R-MAINT-CHECKPOINT-CONTEXT-S001`
   - Assignment R-MAINT-CHECKPOINT-CONTEXT-001: Implement the owner-approved optional checkpoint-worker argument-array template in installed `work_context.py::context_view()` for a specifically queried live task. Use authoritative state/lineage/task/current-worker bindings from one snapshot, leave kind/evidence to Sol, and make its optional nature clear. Preserve no-live-worker behavior, read-only authoritative retrieval, and execution-time stale/wrong-worker rejection. Reuse the existing response and CLI; no new receipt, mandatory action, or generic workflow abstraction. Own only the context tooling and focused tests, sequenced against shared method edits. Validate exact emitted argv, no authority mutation, inapplicable tasks and stale-template rejection using existing context/harness tests; retain the task-064 wrong-worker/retry events in review-owner-5a3101b86a3b. Natural use may show convenience; isolated tests cannot prove savings.
+  - Closure proof: Receipt `af64279c020b5c1830d734f82f8bfcaf8c89b033e0d8bec636bdb47419bad98c` verifies exact live bindings, honest absence for inapplicable tasks, preserved stale-owner rejection, 8 focused context tests, 94 deadline-harness tests and compilation. Natural adoption and savings remain unclaimed.
   - Subtasks:
-    - [open] expose-current-checkpoint-command :: Return an optional task-bound command from the existing context view with honest absence and preserved runtime validation.
+    - [done] expose-current-checkpoint-command :: Return an optional task-bound command from the existing context view with honest absence and preserved runtime validation.
 
 ## Current contract and evidence
 

@@ -1,0 +1,59 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-MAINT-CHECKPOINT-CONTEXT-001",
+  "claim_id": "R-MAINT-CHECKPOINT-CONTEXT",
+  "worker_id": "01a08737-18eb-7e90-89de-aa878869b7ae",
+  "disposition": "completed",
+  "verdict": "optional_checkpoint_worker_template_implemented",
+  "outcome": "Explicit live-task work-context queries now include a ready-to-complete optional checkpoint-worker argv template bound to the authoritative state, lineage, task, and actual worker.",
+  "summary": "The installed work_context.py derives checkpoint_worker_template from the authoritative task snapshot only for one explicitly queried live owned task. It emits optional true and omits kind and evidence for caller completion. Unknown, unclaimed, terminal, and released tasks produce no template, while the existing deadline-harness ownership check rejects stale retained argv. Focused tests pass.",
+  "material_changes": [
+    "Added optional checkpoint_worker_template emission to installed work_context.py.",
+    "Added focused work-context tests for applicable and inapplicable task states and stale ownership rejection."
+  ],
+  "tests": [
+    "python3 tests/test_work_context.py: 8 passed",
+    "python3 tests/test_deadline_harness.py: 94 passed",
+    "python3 -m py_compile scripts/work_context.py: passed",
+    "Live exact-task query emitted optional template bound to the current worker."
+  ],
+  "live_actions": [
+    "None. No game, helper, broker, or gameplay runner process was launched."
+  ],
+  "evidence_ceiling": [
+    "Verification covers work-context output and deadline-harness ownership rejection; it does not change deadline-harness checkpoint semantics.",
+    "No gameplay behavior is implicated or proved."
+  ],
+  "bindings": {
+    "dispatch_digest": "09de7d6095e36090cb676e6865fd7a15b32808dde248db7cd7166a99b2956f31",
+    "installed_script": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/work_context.py",
+    "installed_test": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_work_context.py",
+    "worker_id": "01a08737-18eb-7e90-89de-aa878869b7ae"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-MAINT-CHECKPOINT-CONTEXT-001-result.md",
+      "sha256": "9d7db76d369a6e22b59b91ceb9a4196d930cea8d34a7ce48b9918b441ff3e366",
+      "role": "implementation and verification result"
+    }
+  ],
+  "first_divergence": {
+    "class": "none",
+    "summary": "The requested maintenance slice is implemented and verified."
+  },
+  "accepted_no_replay": [],
+  "active_work": [],
+  "first_open_boundary": "None for this maintenance task.",
+  "narrow_queries": [
+    "R-MAINT-CHECKPOINT-CONTEXT-001",
+    "checkpoint_worker_template",
+    "01a08737-18eb-7e90-89de-aa878869b7ae"
+  ],
+  "entrypoints": [
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/work_context.py",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_work_context.py"
+  ],
+  "context_metrics": {}
+}
