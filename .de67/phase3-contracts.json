@@ -1,429 +1,511 @@
 {
-    "format": "de67.phase3.contracts",
-    "version": 1,
-    "decision_cases": [
+  "format": "de67.phase3.contracts",
+  "version": 1,
+  "decision_cases": [
+    {
+      "name": "unbound-task-spawns-worker",
+      "facts": [
+        "unbound_task"
+      ],
+      "action": "spawn_worker",
+      "required_obligations": [
+        "use_existing_deadline_task",
+        "call_spawn_agent_before_wait",
+        "do_not_merely_announce_assignment",
+        "spawn_worker_from_outcome_sized_packet_and_reasoned_read_plan",
+        "preserve_parallel_independent_dispatch"
+      ]
+    },
+    {
+      "name": "integrity-preempts-work",
+      "facts": [
+        "integrity_incident",
+        "live_task"
+      ],
+      "action": "wait_for_mutation_quiescence",
+      "required_obligations": [
+        "dispatch_no_new_worker",
+        "perform_no_mutation"
+      ]
+    },
+    {
+      "name": "integrity-retires-to-reviewer",
+      "facts": [
+        "integrity_incident"
+      ],
+      "action": "retire_for_mutation_review",
+      "required_obligations": [
+        "perform_no_mutation",
+        "dispatch_no_worker",
+        "exit_to_external_supervisor"
+      ]
+    },
+    {
+      "name": "deadline-preempts-result",
+      "facts": [
+        "deadline_incident",
+        "worker_completed"
+      ],
+      "action": "retire_for_mutation_review",
+      "required_obligations": [
+        "perform_no_mutation",
+        "dispatch_no_worker",
+        "exit_to_external_supervisor"
+      ]
+    },
+    {
+      "name": "restart",
+      "facts": [
+        "restart_requested",
+        "open_claim"
+      ],
+      "action": "acknowledge_restart",
+      "required_obligations": [
+        "set_fresh_post_mutation_clock_without_inheritance",
+        "estimate_from_current_ledger_with_uncertainty_margin"
+      ]
+    },
+    {
+      "name": "random-review",
+      "facts": [
+        "random_mutation_due"
+      ],
+      "action": "retire_for_mutation_review",
+      "required_obligations": [
+        "perform_no_mutation",
+        "exit_to_external_supervisor"
+      ]
+    },
+    {
+      "name": "dfs-review",
+      "facts": [
+        "dfs_review_due",
+        "pending_suggestions"
+      ],
+      "action": "retire_for_mutation_review",
+      "required_obligations": [
+        "perform_no_mutation",
+        "exit_to_external_supervisor"
+      ]
+    },
+    {
+      "name": "universal-review",
+      "facts": [
+        "universal_review_due"
+      ],
+      "action": "retire_for_mutation_review",
+      "required_obligations": [
+        "perform_no_mutation",
+        "exit_to_external_supervisor"
+      ]
+    },
+    {
+      "name": "acceptance",
+      "facts": [
+        "accepted_evidence"
+      ],
+      "action": "review_dfs_acceptance",
+      "required_obligations": [
+        "guard_and_apply_exact_dfs_completion",
+        "direct_coordinator_acceptance_without_independent_reviewer"
+      ]
+    },
+    {
+      "name": "completion",
+      "facts": [
+        "worker_completed"
+      ],
+      "action": "receive_worker_result",
+      "required_obligations": [
+        "keep_named_in_scope_repair_or_rerun_as_nonterminal_checkpoint",
+        "keep_same_task_and_worker_across_checkpoint",
+        "terminal_finding_requires_named_route_exit",
+        "record_identity_bound_worker_receipt_before_terminal_transition",
+        "project_successor_from_compact_receipt",
+        "evaluate_convergence_after_every_worker",
+        "transition_to_named_independently_provable_closure_gaps_when_finite",
+        "record_specific_uncertainty_before_more_exploration"
+      ]
+    },
+    {
+      "name": "finding",
+      "facts": [
+        "worker_finding"
+      ],
+      "action": "receive_worker_result",
+      "required_obligations": [
+        "record_identity_bound_worker_receipt_before_terminal_transition",
+        "project_successor_from_compact_receipt",
+        "evaluate_convergence_after_every_worker",
+        "transition_to_named_independently_provable_closure_gaps_when_finite",
+        "record_specific_uncertainty_before_more_exploration"
+      ]
+    },
+    {
+      "name": "abandonment",
+      "facts": [
+        "worker_abandoned"
+      ],
+      "action": "receive_worker_result",
+      "required_obligations": [
+        "record_identity_bound_worker_receipt_before_terminal_transition",
+        "project_successor_from_compact_receipt",
+        "evaluate_convergence_after_every_worker",
+        "transition_to_named_independently_provable_closure_gaps_when_finite",
+        "record_specific_uncertainty_before_more_exploration"
+      ]
+    },
+    {
+      "name": "owner-reply",
+      "facts": [
+        "owner_reply",
+        "blocked_ledger"
+      ],
+      "action": "consume_owner_reply"
+    },
+    {
+      "name": "blocker-audit",
+      "facts": [
+        "blocked_ledger"
+      ],
+      "action": "audit_blocker"
+    },
+    {
+      "name": "live-coordination",
+      "facts": [
+        "live_task"
+      ],
+      "action": "coordinate_live_work",
+      "required_obligations": [
+        "wake_no_later_than_item_deadline",
+        "keep_implementation_and_substantial_investigation_with_workers",
+        "preserve_exclusive_task_and_runtime_ownership",
+        "wait_when_no_useful_coordination_decision_remains",
+        "preserve_live_outcome_across_subtask_checkpoints"
+      ]
+    },
+    {
+      "name": "live-coordination-can-replan-independent-work",
+      "facts": [
+        "live_task",
+        "closure_ready",
+        "open_gap",
+        "executable_route"
+      ],
+      "action": "coordinate_live_work",
+      "required_obligations": [
+        "choose_useful_inspection_messages_replanning_or_independent_dispatch"
+      ]
+    },
+    {
+      "name": "live-coordination-dispatches-opened-independent-task",
+      "facts": [
+        "live_task",
+        "unbound_task"
+      ],
+      "action": "spawn_worker"
+    },
+    {
+      "name": "mutation-preempts-live-coordination-and-queued-dispatch",
+      "facts": [
+        "live_task",
+        "unbound_task",
+        "random_mutation_due"
+      ],
+      "action": "wait_for_mutation_quiescence",
+      "required_obligations": [
+        "dispatch_no_new_worker"
+      ]
+    },
+    {
+      "name": "closure-dispatch",
+      "facts": [
+        "closure_ready",
+        "open_gap",
+        "executable_route"
+      ],
+      "action": "dispatch_closure_worker",
+      "required_obligations": [
+        "delegate_executable_work_to_roster_worker",
+        "derive_claim_deadline_from_outcome_spokes_single_use_authority_and_repair",
+        "size_one_generous_claim_deadline_for_full_route",
+        "reject_attempt_estimate_shrunk_to_remaining_claim_clock",
+        "include_worker_lifecycle_and_uncertainty_margin",
+        "delegate_evidence_sized_worker_retrieval",
+        "prefer_compact_indexed_receipts_with_digest_bound_artifact_drilldown"
+      ]
+    },
+    {
+      "name": "explore-dispatch",
+      "facts": [
+        "open_claim",
+        "executable_route"
+      ],
+      "action": "dispatch_exploration_worker",
+      "required_obligations": [
+        "delegate_executable_work_to_roster_worker",
+        "derive_claim_deadline_from_outcome_spokes_single_use_authority_and_repair",
+        "size_one_generous_claim_deadline_for_full_route",
+        "reject_attempt_estimate_shrunk_to_remaining_claim_clock",
+        "include_worker_lifecycle_and_uncertainty_margin",
+        "delegate_evidence_sized_worker_retrieval",
+        "prefer_compact_indexed_receipts_with_digest_bound_artifact_drilldown"
+      ]
+    },
+    {
+      "name": "initial-explore-dispatch",
+      "facts": [
+        "ledger_work",
+        "executable_route"
+      ],
+      "action": "dispatch_exploration_worker",
+      "required_obligations": [
+        "delegate_executable_work_to_roster_worker",
+        "derive_claim_deadline_from_outcome_spokes_single_use_authority_and_repair",
+        "size_one_generous_claim_deadline_for_full_route",
+        "reject_attempt_estimate_shrunk_to_remaining_claim_clock",
+        "include_worker_lifecycle_and_uncertainty_margin",
+        "delegate_evidence_sized_worker_retrieval",
+        "prefer_compact_indexed_receipts_with_digest_bound_artifact_drilldown"
+      ]
+    },
+    {
+      "name": "ledger-refill",
+      "facts": [
+        "red_dfs_work"
+      ],
+      "action": "refill_ledger"
+    },
+    {
+      "name": "stop",
+      "facts": [
+        "dfs_complete"
+      ],
+      "action": "stop"
+    },
+    {
+      "name": "unknown",
+      "facts": [],
+      "action": "inspect_state"
+    },
+    {
+      "name": "owner_wait_is_not_executable",
+      "facts": [
+        "owner_wait",
+        "ledger_work",
+        "red_dfs_work"
+      ],
+      "action": "inspect_state"
+    },
+    {
+      "name": "owner_wait_allows_independent_exploration",
+      "facts": [
+        "owner_wait",
+        "ledger_work",
+        "executable_route",
+        "red_dfs_work"
+      ],
+      "action": "dispatch_exploration_worker"
+    },
+    {
+      "name": "owner_wait_allows_independent_closure",
+      "facts": [
+        "owner_wait",
+        "closure_ready",
+        "open_gap",
+        "executable_route"
+      ],
+      "action": "dispatch_closure_worker"
+    },
+    {
+      "name": "owner_wait_preserves_terminal_ingress",
+      "facts": [
+        "owner_wait",
+        "worker_completed",
+        "ledger_work"
+      ],
+      "action": "receive_worker_result"
+    },
+    {
+      "name": "owner_wait_preserves_mutation_gate",
+      "facts": [
+        "owner_wait",
+        "pending_suggestions",
+        "executable_route",
+        "ledger_work"
+      ],
+      "action": "retire_for_mutation_review"
+    }
+  ],
+  "trace_cases": [
+    {
+      "name": "ordinary-completion",
+      "events": [
         {
-            "name": "unbound-task-spawns-worker",
-            "facts": [
-                "unbound_task"
-            ],
-            "action": "spawn_worker",
-            "required_obligations": [
-                "use_existing_deadline_task",
-                "call_spawn_agent_before_wait",
-                "do_not_merely_announce_assignment",
-                "spawn_worker_from_outcome_sized_packet_and_reasoned_read_plan",
-                "preserve_parallel_independent_dispatch"
-            ]
+          "event": "task_started",
+          "task_id": "M1"
         },
         {
-            "name": "integrity-preempts-work",
-            "facts": [
-                "integrity_incident",
-                "live_task"
-            ],
-            "action": "wait_for_mutation_quiescence",
-            "required_obligations": [
-                "dispatch_no_new_worker",
-                "perform_no_mutation"
-            ]
+          "event": "worker_result_receipted"
         },
         {
-            "name": "integrity-retires-to-reviewer",
-            "facts": [
-                "integrity_incident"
-            ],
-            "action": "retire_for_mutation_review",
-            "required_obligations": [
-                "perform_no_mutation",
-                "dispatch_no_worker",
-                "exit_to_external_supervisor"
-            ]
+          "event": "task_completed",
+          "task_id": "M1"
         },
         {
-            "name": "deadline-preempts-result",
-            "facts": [
-                "deadline_incident",
-                "worker_completed"
-            ],
-            "action": "retire_for_mutation_review",
-            "required_obligations": [
-                "perform_no_mutation",
-                "dispatch_no_worker",
-                "exit_to_external_supervisor"
-            ]
-        },
-        {
-            "name": "restart",
-            "facts": [
-                "restart_requested",
-                "open_claim"
-            ],
-            "action": "acknowledge_restart",
-            "required_obligations": [
-                "set_fresh_post_mutation_clock_without_inheritance",
-                "estimate_from_current_ledger_with_uncertainty_margin"
-            ]
-        },
-        {
-            "name": "random-review",
-            "facts": [
-                "random_mutation_due"
-            ],
-            "action": "retire_for_mutation_review",
-            "required_obligations": [
-                "perform_no_mutation",
-                "exit_to_external_supervisor"
-            ]
-        },
-        {
-            "name": "dfs-review",
-            "facts": [
-                "dfs_review_due",
-                "pending_suggestions"
-            ],
-            "action": "retire_for_mutation_review",
-            "required_obligations": [
-                "perform_no_mutation",
-                "exit_to_external_supervisor"
-            ]
-        },
-        {
-            "name": "universal-review",
-            "facts": [
-                "universal_review_due"
-            ],
-            "action": "retire_for_mutation_review",
-            "required_obligations": [
-                "perform_no_mutation",
-                "exit_to_external_supervisor"
-            ]
-        },
-        {
-            "name": "acceptance",
-            "facts": [
-                "accepted_evidence"
-            ],
-            "action": "review_dfs_acceptance",
-            "required_obligations": [
-                "guard_and_apply_exact_dfs_completion",
-                "direct_coordinator_acceptance_without_independent_reviewer"
-            ]
-        },
-        {
-            "name": "completion",
-            "facts": [
-                "worker_completed"
-            ],
-            "action": "receive_worker_result",
-            "required_obligations": [
-                "keep_named_in_scope_repair_or_rerun_as_nonterminal_checkpoint",
-                "keep_same_task_and_worker_across_checkpoint",
-                "terminal_finding_requires_named_route_exit",
-                "record_identity_bound_worker_receipt_before_terminal_transition",
-                "project_successor_from_compact_receipt",
-                "evaluate_convergence_after_every_worker",
-                "transition_to_named_independently_provable_closure_gaps_when_finite",
-                "record_specific_uncertainty_before_more_exploration"
-            ]
-        },
-        {
-            "name": "finding",
-            "facts": [
-                "worker_finding"
-            ],
-            "action": "receive_worker_result",
-            "required_obligations": [
-                "record_identity_bound_worker_receipt_before_terminal_transition",
-                "project_successor_from_compact_receipt",
-                "evaluate_convergence_after_every_worker",
-                "transition_to_named_independently_provable_closure_gaps_when_finite",
-                "record_specific_uncertainty_before_more_exploration"
-            ]
-        },
-        {
-            "name": "abandonment",
-            "facts": [
-                "worker_abandoned"
-            ],
-            "action": "receive_worker_result",
-            "required_obligations": [
-                "record_identity_bound_worker_receipt_before_terminal_transition",
-                "project_successor_from_compact_receipt",
-                "evaluate_convergence_after_every_worker",
-                "transition_to_named_independently_provable_closure_gaps_when_finite",
-                "record_specific_uncertainty_before_more_exploration"
-            ]
-        },
-        {
-            "name": "owner-reply",
-            "facts": [
-                "owner_reply",
-                "blocked_ledger"
-            ],
-            "action": "consume_owner_reply"
-        },
-        {
-            "name": "blocker-audit",
-            "facts": [
-                "blocked_ledger"
-            ],
-            "action": "audit_blocker"
-        },
-        {
-            "name": "live-coordination",
-            "facts": [
-                "live_task"
-            ],
-            "action": "coordinate_live_work",
-            "required_obligations": [
-                "wake_no_later_than_item_deadline",
-                "keep_implementation_and_substantial_investigation_with_workers",
-                "preserve_exclusive_task_and_runtime_ownership",
-                "wait_when_no_useful_coordination_decision_remains",
-                "preserve_live_outcome_across_subtask_checkpoints"
-            ]
-        },
-        {
-            "name": "live-coordination-can-replan-independent-work",
-            "facts": ["live_task", "closure_ready", "open_gap", "executable_route"],
-            "action": "coordinate_live_work",
-            "required_obligations": [
-                "choose_useful_inspection_messages_replanning_or_independent_dispatch"
-            ]
-        },
-        {
-            "name": "live-coordination-dispatches-opened-independent-task",
-            "facts": ["live_task", "unbound_task"],
-            "action": "spawn_worker"
-        },
-        {
-            "name": "mutation-preempts-live-coordination-and-queued-dispatch",
-            "facts": ["live_task", "unbound_task", "random_mutation_due"],
-            "action": "wait_for_mutation_quiescence",
-            "required_obligations": [
-                "dispatch_no_new_worker"
-            ]
-        },
-        {
-            "name": "closure-dispatch",
-            "facts": [
-                "closure_ready",
-                "open_gap",
-                "executable_route"
-            ],
-            "action": "dispatch_closure_worker",
-            "required_obligations": [
-                "delegate_executable_work_to_roster_worker",
-                "derive_claim_deadline_from_outcome_spokes_single_use_authority_and_repair",
-                "size_one_generous_claim_deadline_for_full_route",
-                "reject_attempt_estimate_shrunk_to_remaining_claim_clock",
-                "include_worker_lifecycle_and_uncertainty_margin",
-                "delegate_evidence_sized_worker_retrieval",
-                "prefer_compact_indexed_receipts_with_digest_bound_artifact_drilldown"
-            ]
-        },
-        {
-            "name": "explore-dispatch",
-            "facts": [
-                "open_claim",
-                "executable_route"
-            ],
-            "action": "dispatch_exploration_worker",
-            "required_obligations": [
-                "delegate_executable_work_to_roster_worker",
-                "derive_claim_deadline_from_outcome_spokes_single_use_authority_and_repair",
-                "size_one_generous_claim_deadline_for_full_route",
-                "reject_attempt_estimate_shrunk_to_remaining_claim_clock",
-                "include_worker_lifecycle_and_uncertainty_margin",
-                "delegate_evidence_sized_worker_retrieval",
-                "prefer_compact_indexed_receipts_with_digest_bound_artifact_drilldown"
-            ]
-        },
-        {
-            "name": "initial-explore-dispatch",
-            "facts": [
-                "ledger_work",
-                "executable_route"
-            ],
-            "action": "dispatch_exploration_worker",
-            "required_obligations": [
-                "delegate_executable_work_to_roster_worker",
-                "derive_claim_deadline_from_outcome_spokes_single_use_authority_and_repair",
-                "size_one_generous_claim_deadline_for_full_route",
-                "reject_attempt_estimate_shrunk_to_remaining_claim_clock",
-                "include_worker_lifecycle_and_uncertainty_margin",
-                "delegate_evidence_sized_worker_retrieval",
-                "prefer_compact_indexed_receipts_with_digest_bound_artifact_drilldown"
-            ]
-        },
-        {
-            "name": "ledger-refill",
-            "facts": [
-                "red_dfs_work"
-            ],
-            "action": "refill_ledger"
-        },
-        {
-            "name": "stop",
-            "facts": [
-                "dfs_complete"
-            ],
-            "action": "stop"
-        },
-        {
-            "name": "unknown",
-            "facts": [],
-            "action": "inspect_state"
+          "event": "claim_accepted"
         }
-    ],
-    "trace_cases": [
+      ],
+      "main": true,
+      "lab": true
+    },
+    {
+      "name": "late-acceptance-before-review",
+      "events": [
         {
-            "name": "ordinary-completion",
-            "events": [
-                {
-                    "event": "task_started",
-                    "task_id": "M1"
-                },
-                {
-                    "event": "worker_result_receipted"
-                },
-                {
-                    "event": "task_completed",
-                    "task_id": "M1"
-                },
-                {
-                    "event": "claim_accepted"
-                }
-            ],
-            "main": true,
-            "lab": true
+          "event": "task_started",
+          "task_id": "M1"
         },
         {
-            "name": "late-acceptance-before-review",
-            "events": [
-                {
-                    "event": "task_started",
-                    "task_id": "M1"
-                },
-                {
-                    "event": "deadline_expired"
-                },
-                {
-                    "event": "worker_result_receipted"
-                },
-                {
-                    "event": "task_completed",
-                    "task_id": "M1"
-                },
-                {
-                    "event": "claim_accepted"
-                }
-            ],
-            "main": true,
-            "lab": false
+          "event": "deadline_expired"
         },
         {
-            "name": "late-acceptance-after-review",
-            "events": [
-                {
-                    "event": "task_started",
-                    "task_id": "M1"
-                },
-                {
-                    "event": "deadline_expired"
-                },
-                {
-                    "event": "worker_result_receipted"
-                },
-                {
-                    "event": "task_completed",
-                    "task_id": "M1"
-                },
-                {
-                    "event": "deadline_incident_reviewed"
-                },
-                {
-                    "event": "claim_accepted"
-                }
-            ],
-            "main": true,
-            "lab": true
+          "event": "worker_result_receipted"
         },
         {
-            "name": "worker-terminal-without-receipt",
-            "events": [
-                {
-                    "event": "task_started",
-                    "task_id": "M1"
-                },
-                {
-                    "event": "task_completed",
-                    "task_id": "M1"
-                }
-            ],
-            "main": true,
-            "lab": false
+          "event": "task_completed",
+          "task_id": "M1"
         },
         {
-            "name": "mutation-with-suggestion-disposition",
-            "events": [
-                {
-                    "event": "suggestion_added"
-                },
-                {
-                    "event": "mutation_started"
-                },
-                {
-                    "event": "suggestions_dispositioned"
-                },
-                {
-                    "event": "mutation_resolved"
-                }
-            ],
-            "main": true,
-            "lab": true
-        },
-        {
-            "name": "mutation-ignores-suggestion",
-            "events": [
-                {
-                    "event": "suggestion_added"
-                },
-                {
-                    "event": "mutation_started"
-                },
-                {
-                    "event": "mutation_resolved"
-                }
-            ],
-            "main": true,
-            "lab": false
-        },
-        {
-            "name": "proof-owner-replacement-rebases-projection",
-            "events": [
-                { "event": "suggestion_added" },
-                { "event": "mutation_started" },
-                { "event": "proof_owner_replaced" },
-                { "event": "affected_projection_rebased" },
-                { "event": "suggestions_dispositioned" },
-                { "event": "mutation_resolved" }
-            ],
-            "main": true,
-            "lab": true
-        },
-        {
-            "name": "proof-owner-replacement-leaves-stale-projection",
-            "events": [
-                { "event": "suggestion_added" },
-                { "event": "mutation_started" },
-                { "event": "proof_owner_replaced" },
-                { "event": "suggestions_dispositioned" },
-                { "event": "mutation_resolved" }
-            ],
-            "main": true,
-            "lab": false
+          "event": "claim_accepted"
         }
-    ]
+      ],
+      "main": true,
+      "lab": false
+    },
+    {
+      "name": "late-acceptance-after-review",
+      "events": [
+        {
+          "event": "task_started",
+          "task_id": "M1"
+        },
+        {
+          "event": "deadline_expired"
+        },
+        {
+          "event": "worker_result_receipted"
+        },
+        {
+          "event": "task_completed",
+          "task_id": "M1"
+        },
+        {
+          "event": "deadline_incident_reviewed"
+        },
+        {
+          "event": "claim_accepted"
+        }
+      ],
+      "main": true,
+      "lab": true
+    },
+    {
+      "name": "worker-terminal-without-receipt",
+      "events": [
+        {
+          "event": "task_started",
+          "task_id": "M1"
+        },
+        {
+          "event": "task_completed",
+          "task_id": "M1"
+        }
+      ],
+      "main": true,
+      "lab": false
+    },
+    {
+      "name": "mutation-with-suggestion-disposition",
+      "events": [
+        {
+          "event": "suggestion_added"
+        },
+        {
+          "event": "mutation_started"
+        },
+        {
+          "event": "suggestions_dispositioned"
+        },
+        {
+          "event": "mutation_resolved"
+        }
+      ],
+      "main": true,
+      "lab": true
+    },
+    {
+      "name": "mutation-ignores-suggestion",
+      "events": [
+        {
+          "event": "suggestion_added"
+        },
+        {
+          "event": "mutation_started"
+        },
+        {
+          "event": "mutation_resolved"
+        }
+      ],
+      "main": true,
+      "lab": false
+    },
+    {
+      "name": "proof-owner-replacement-rebases-projection",
+      "events": [
+        {
+          "event": "suggestion_added"
+        },
+        {
+          "event": "mutation_started"
+        },
+        {
+          "event": "proof_owner_replaced"
+        },
+        {
+          "event": "affected_projection_rebased"
+        },
+        {
+          "event": "suggestions_dispositioned"
+        },
+        {
+          "event": "mutation_resolved"
+        }
+      ],
+      "main": true,
+      "lab": true
+    },
+    {
+      "name": "proof-owner-replacement-leaves-stale-projection",
+      "events": [
+        {
+          "event": "suggestion_added"
+        },
+        {
+          "event": "mutation_started"
+        },
+        {
+          "event": "proof_owner_replaced"
+        },
+        {
+          "event": "suggestions_dispositioned"
+        },
+        {
+          "event": "mutation_resolved"
+        }
+      ],
+      "main": true,
+      "lab": false
+    }
+  ]
 }
