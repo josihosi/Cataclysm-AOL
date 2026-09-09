@@ -1,0 +1,10 @@
+{
+  "run_id": "mutation-828f338ca4ef457481e13fb120c46c9f",
+  "gate": "deadline-mutation R-026",
+  "pending_owner_entries": 0,
+  "new_protected_repair_authorization": false,
+  "generation_4_reviewed": true,
+  "generation_1_mirror_unresolved": true,
+  "live_worker_claims": 0,
+  "disposition": "Existing tested protected compatibility repair remains awaiting owner approval; no repeated investigation or live clock workaround."
+}

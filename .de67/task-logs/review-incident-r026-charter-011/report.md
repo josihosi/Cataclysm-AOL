@@ -1,3 +1,5 @@
+Current status: superseded by [successful installed recovery](../review-r026-installed-recovery/report.md). The earlier approval blocker below is historical.
+
 # R-026 charter incident review — candidate awaiting protected-code authority
 
 Current review: `mutation-f18f34928ded49c59bab1058a266804d`, incident task `R-026-living-route-charter-011`, lineage `semantic-surface-cockpit`, supervisor 95294. No coordinator or roster worker was active. The pending owner briefing entry remains intact until promotion. No coordinator was launched and no live restart was requested.

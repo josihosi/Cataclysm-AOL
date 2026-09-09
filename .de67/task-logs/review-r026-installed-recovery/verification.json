@@ -1,0 +1,42 @@
+{
+  "before": [
+    {
+      "claim_id": "R-026",
+      "deadline_generation": 4,
+      "source_task_id": "R-026-living-route-charter-011",
+      "recorded_at": 1788978599.503956,
+      "reviewed": true,
+      "pending_components": [
+        "micro",
+        "macro"
+      ],
+      "restart_generation": null
+    }
+  ],
+  "isolated_resolution": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-026",
+    "deadline_generation": 4,
+    "component": "macro",
+    "disposition": "no_change_required",
+    "receipt_id": null,
+    "pending_components": [],
+    "coordinator_restart": {
+      "generation": 48,
+      "pending": true,
+      "requested_at": 1788989944.3829288,
+      "reason": "deadline mutation resolved for R-026; successor must set a fresh clock without inheritance",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "gate_after": null,
+  "live_database_edited": false,
+  "source_hashes": {
+    "deadline_harness.py": "91756ae8f6db9798eb97c4fcb1d592b50c8dbe45acf7faaa93d3d3e76b6fe9ae",
+    "mutation_guard.py": "9a5b0ac1c3df95e873a16253fe6c54838e3762ebe19c1622b5d5f56d3e66281c"
+  }
+}

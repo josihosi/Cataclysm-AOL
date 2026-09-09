@@ -1,0 +1,47 @@
+{
+  "schema": "de67.review-accounting-asof.v1",
+  "root_thread_id": "01a08109-6d0f-7391-8d01-0209be85fbeb",
+  "root_turn_id": "01a0881a-3f86-77a3-b544-efcb85f5f6be",
+  "asof": "2026-09-09T21:41:39.942Z",
+  "calls": 29,
+  "usage": {
+    "input_tokens": 4542436,
+    "cached_input_tokens": 4434432,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 14790,
+    "reasoning_output_tokens": 4065,
+    "total_tokens": 4557226,
+    "uncached_input_tokens": 108004,
+    "uncached_input_plus_output_tokens": 122794
+  },
+  "threads": {
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "calls": 12,
+      "input_tokens": 3402077,
+      "cached_input_tokens": 3384064,
+      "output_tokens": 7002,
+      "reasoning_output_tokens": 2840,
+      "total_tokens": 3409079,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl"
+    },
+    "01a0881b-793f-71e3-bc81-d243e8a02b7f": {
+      "calls": 17,
+      "input_tokens": 1140359,
+      "cached_input_tokens": 1050368,
+      "output_tokens": 7788,
+      "reasoning_output_tokens": 1225,
+      "total_tokens": 1148147,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/09/rollout-2026-09-09T23-38-17-01a0881b-793f-71e3-bc81-d243e8a02b7f.jsonl"
+    }
+  },
+  "sources": [
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/09/rollout-2026-09-09T23-38-17-01a0881b-793f-71e3-bc81-d243e8a02b7f.jsonl"
+  ],
+  "deduplication": "Counted persisted token_usage_record usage by unique response_id across the exact root turn and this helper thread; excluded cumulative thread/root rollups.",
+  "gaps": [
+    "Limited to token_usage_record entries persisted by the as-of cutoff; later records are excluded.",
+    "No billing, quota, savings, or model attribution is inferred from telemetry."
+  ],
+  "boundary": "Full bounded accounting for the exact root turn and its observed helper record set, including this helper's records."
+}

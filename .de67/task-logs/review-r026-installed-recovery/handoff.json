@@ -1,0 +1,11 @@
+{
+  "gate_remaining": false,
+  "restart": {
+    "required": true,
+    "generation": 48,
+    "expected_run_id": null,
+    "run_id": null,
+    "reason": "deadline mutation resolved for R-026; successor must set a fresh clock without inheritance"
+  },
+  "successor_launched_by_reviewer": false
+}
