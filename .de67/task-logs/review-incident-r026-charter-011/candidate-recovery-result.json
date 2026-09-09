@@ -1,0 +1,41 @@
+{
+  "before_R026": [
+    {
+      "claim_id": "R-026",
+      "deadline_generation": 4,
+      "source_task_id": "R-026-living-route-charter-011",
+      "recorded_at": 1788978599.503956,
+      "reviewed": true,
+      "pending_components": [
+        "micro",
+        "macro"
+      ],
+      "restart_generation": null
+    }
+  ],
+  "resolution": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-026",
+    "deadline_generation": 4,
+    "component": "macro",
+    "disposition": "no_change_required",
+    "receipt_id": null,
+    "pending_components": [],
+    "coordinator_restart": {
+      "generation": 48,
+      "pending": true,
+      "requested_at": 1788979138.72863,
+      "reason": "deadline mutation resolved for R-026; successor must set a fresh clock without inheritance",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "historical_mirror_retained": true,
+  "gate_after_resolution": "None",
+  "startup_no_duplicate_recreated": true,
+  "distinct_older_incident_preserved": true,
+  "ceiling": "Isolated copy only. Existing completed task, deadlines, acceptance and historical duplicate rows preserved during recovery. Final distinct older incident is an isolated adversarial fixture."
+}

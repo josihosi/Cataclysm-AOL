@@ -1,0 +1,43 @@
+{
+  "root_thread_id": "01a08109-6d0f-7391-8d01-0209be85fbeb",
+  "root_turn_id": "01a0876f-72d2-7781-906f-c9fe191735e9",
+  "asof": "2026-09-09T18:41:05.770Z",
+  "calls": 67,
+  "usage": {
+    "input_tokens": 8434717,
+    "cached_input_tokens": 8091264,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 27681,
+    "reasoning_output_tokens": 9037,
+    "total_tokens": 8462398
+  },
+  "threads": {
+    "01a0876f-d3ae-7333-8d8c-178d0694db69": {
+      "calls": 38,
+      "input_tokens": 3155924,
+      "cached_input_tokens": 3014400,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 12590,
+      "reasoning_output_tokens": 2459,
+      "total_tokens": 3168514
+    },
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "calls": 29,
+      "input_tokens": 5278793,
+      "cached_input_tokens": 5076864,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 15091,
+      "reasoning_output_tokens": 6578,
+      "total_tokens": 5293884
+    }
+  },
+  "sources": [
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/09/rollout-2026-09-09T20-30-48-01a0876f-d3ae-7333-8d8c-178d0694db69.jsonl"
+  ],
+  "deduplication": "Counted token_usage_record usage by unique response_id; 67 unique records. Excluded cumulative history and records whose root_turn_id did not equal the requested review root.",
+  "gaps": [
+    "Token accounting is limited to persisted token_usage_record entries available at the as-of timestamp; later closeout records are excluded."
+  ],
+  "boundary": "Full-tree as-of measurement for the exact review root, including the root thread and all followups/retries carrying that root identity. No savings claim."
+}

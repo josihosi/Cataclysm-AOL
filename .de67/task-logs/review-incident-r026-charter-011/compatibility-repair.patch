@@ -1,0 +1,54 @@
+--- before/deadline_harness.py
++++ candidate/deadline_harness.py
+@@ -899,7 +899,15 @@
+             )
+             SELECT lineage_id, claim_id, 1, source_task_id, recorded_at,
+                    short_verdict, long_detail, reviewed_at, restart_generation
+-            FROM claim_deadline_incidents
++            FROM claim_deadline_incidents AS legacy
++            WHERE NOT EXISTS (
++                SELECT 1 FROM claim_deadline_generation_incidents AS current
++                WHERE current.lineage_id = legacy.lineage_id
++                  AND current.claim_id = legacy.claim_id
++                  AND current.generation > 1
++                  AND current.source_task_id = legacy.source_task_id
++                  AND current.recorded_at = legacy.recorded_at
++            )
+             """
+         )
+         self.connection.execute(
+@@ -2682,11 +2690,19 @@
+     def _pending_deadline_mutations(self, lineage_id: str) -> list[dict[str, Any]]:
+         rows = self.connection.execute(
+             """
+-            SELECT claim_id, generation, source_task_id, recorded_at, reviewed_at,
+-                   restart_generation
+-            FROM claim_deadline_generation_incidents
+-            WHERE lineage_id = ?
+-            ORDER BY recorded_at, claim_id
++            SELECT incident.claim_id, incident.generation, incident.source_task_id,
++                   incident.recorded_at, incident.reviewed_at, incident.restart_generation
++            FROM claim_deadline_generation_incidents AS incident
++            WHERE incident.lineage_id = ?
++              AND NOT (incident.generation = 1 AND EXISTS (
++                  SELECT 1 FROM claim_deadline_generation_incidents AS current
++                  WHERE current.lineage_id = incident.lineage_id
++                    AND current.claim_id = incident.claim_id
++                    AND current.generation > 1
++                    AND current.source_task_id = incident.source_task_id
++                    AND current.recorded_at = incident.recorded_at
++              ))
++            ORDER BY incident.recorded_at, incident.claim_id
+             """,
+             (lineage_id,),
+         ).fetchall()
+--- before/mutation_guard.py
++++ candidate/mutation_guard.py
+@@ -886,6 +886,7 @@
+                 SELECT short_verdict, long_detail, reviewed_at
+                 FROM claim_deadline_generation_incidents
+                 WHERE lineage_id = ? AND source_task_id = ?
++                ORDER BY generation DESC LIMIT 1
+                 """,
+                 (lineage_id, task_id),
+             ).fetchone()

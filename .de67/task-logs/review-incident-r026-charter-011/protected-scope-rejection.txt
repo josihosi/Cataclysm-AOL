@@ -1,0 +1,1 @@
+Normal method mutation cannot change the hard clock/guard surface: scripts/deadline_harness.py, scripts/mutation_guard.py

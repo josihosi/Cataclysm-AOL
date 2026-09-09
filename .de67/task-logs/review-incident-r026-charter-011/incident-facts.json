@@ -1,0 +1,12 @@
+{
+  "task_id": "R-026-living-route-charter-011",
+  "claim_id": "R-026",
+  "deadline_generation": 4,
+  "started_at": 1788977996.449836,
+  "deadline_at": 1788978599.469453,
+  "attempt_terminal_at": 1788978256.7896051,
+  "attempt_terminal_kind": "completed",
+  "completion_evidence": ".de67/task-logs/R-026-living-route-charter-011/charter-validation.json",
+  "seconds_before_deadline": 342.67984795570374,
+  "R026_acceptances": 0
+}

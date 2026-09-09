@@ -1,0 +1,38 @@
+--- before/coordinator_supervisor.py
++++ candidate/coordinator_supervisor.py
+@@ -869,14 +869,18 @@
+         "Before opening focused exploration, record its outcome and exit condition as "
+         "`  - Assignment TASK-ID: ...` in the existing ledger; keep independent assignments separate. "
+         "Whole-claim assignments remain valid; broader product scope is context for narrower tasks. "
+-        "Before an expensive or uncertain experiment, Sol gives the worker a compact code-grounded "
+-        "brief: requested behavior, expected causal route through actual actors and owners, unverified "
+-        "material assumptions, and the cheapest observation that distinguishes competing explanations. "
+-        "Carry the current question, decision and useful source references in ordinary prose through "
+-        "context_library.py prepare and selected_context; preserve accepted facts and evidence limits. "
+-        "Use bounded Luna research or Terra diagnosis when useful, without a mandatory scout chain. "
+-        "Refresh changed dependencies and verify packet input/use. A premise knowable only through "
+-        "execution belongs to that experiment; workers choose and adapt its detailed route. "
++        "For coding or testing, Sol turns the FS outcome and relevant source knowledge into "
++        "working guidance when it can reduce uncertainty, rework or error. Select what helps: "
++        "existing design, approach, interfaces and invariants for coding; behavior, material "
++        "premises and distinguishing observations for testing. Explain unresolved choices and "
++        "how correctness could be established where useful. Scale detail to uncertainty and "
++        "consequences; skip additional briefing when it adds no value. The FS is outcome authority; "
++        "the brief is revisable engineering guidance, distinguishing facts from hypotheses. "
++        "Use bounded Luna searches when helpful and synthesize their findings rather than forwarding "
++        "search history. Carry useful guidance and references through the existing context_library.py "
++        "prepare and selected_context route; preserve accepted facts and evidence limits, refresh "
++        "changed dependencies and verify packet input/use. Workers choose and adapt execution; "
++        "use returned evidence to revise the approach and inform Sol's review. "
+         "Opening a clock does not delegate. Actually call spawn_agent using the kernel's "
+         "exact task_name, fork_turns and hash-bound packet arguments and one explicit model_choices "
+         "capability; do not inherit coordinator history. The full packet is worker input, not coordinator context. "
+@@ -1026,7 +1030,7 @@
+ 
+ 
+ def live_coordination_contract() -> str:
+-    return "Use native send_message for live questions and steering; workers address /root. Use followup_task to start an idle bound worker. Sol owns direction and scope. While a worker owns execution, resolve an independent source, interface or acceptance question when its answer can change the experiment or successor, and send the useful finding through native messaging. Preserve exclusive input/edit ownership and do not duplicate the worker's investigation. If no such question remains, waiting is correct. When execution reveals a substantial independent tooling problem, decide who owns it without interrupting useful live state or handing off merely for a changed tactic. After hard diagnosis, reassess whether Luna can perform substantial remaining execution at lower total cost. Apply the returned-work judgment in the result ingress contract before settling consequential changes. Carry forward current findings, retiring source-specific advice once regression proof absorbs it. Notice recurring context/tool obstructions in worker evidence and commission a bounded repair through the existing work ledger; validate that it removes the demonstrated repetition. DE67 method edits retain exclusive mutation/guard ownership. Do not convert worker discovery transcripts into coordinator context or request parallel summaries, periodic reports or new receipts. Use current-root token_usage in work_context as feedback with helper/handoff costs; distinguish expected savings from measured use, never quotas. At worker return or a natural adoption event, reassess remaining whole-claim proof against its immutable deadline; schedule the unmet boundary with an honest estimate. When no useful decision remains, wait_agent, waking no later than the item deadline; apply policy at routing transitions."
++    return "Use native send_message for live questions and steering; workers address /root. Use followup_task to start an idle bound worker. Sol owns direction and scope. While a worker owns execution, resolve an independent source, interface or acceptance question when its answer can change the current work or successor, and send the useful finding through native messaging. Preserve exclusive input/edit ownership and do not duplicate the worker's investigation. If no such question remains, waiting is correct. When execution reveals a substantial independent tooling problem, decide who owns it without interrupting useful live state or handing off merely for a changed tactic. After hard diagnosis, reassess whether Luna can perform substantial remaining execution at lower total cost. Apply the returned-work judgment in the result ingress contract before settling consequential changes. Carry forward current findings, retiring source-specific advice once regression proof absorbs it. Notice recurring context/tool obstructions in worker evidence and commission a bounded repair through the existing work ledger; validate that it removes the demonstrated repetition. DE67 method edits retain exclusive mutation/guard ownership. Do not convert worker discovery transcripts into coordinator context or request parallel summaries, periodic reports or new receipts. Use current-root token_usage in work_context as feedback with helper/handoff costs; distinguish expected savings from measured use, never quotas. At worker return or a natural adoption event, reassess remaining whole-claim proof against its immutable deadline; schedule the unmet boundary with an honest estimate. When no useful decision remains, wait_agent, waking no later than the item deadline; apply policy at routing transitions."
+ 
+ 
+ def coordinator_continuation_prompt() -> str:

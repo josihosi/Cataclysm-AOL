@@ -1,0 +1,18 @@
+{
+  "method_changed": [
+    "scripts/coordinator_supervisor.py"
+  ],
+  "local_random_review": [],
+  "consumed_entries": 1,
+  "context_chars": {
+    "worker_handoff_contract": {
+      "baseline": 1921,
+      "candidate": 2217
+    },
+    "live_coordination_contract": {
+      "baseline": 1792,
+      "candidate": 1794
+    }
+  },
+  "ceiling": "Generated current coordinator input and unchanged handoff mechanism; future worker use and savings are not proved."
+}
