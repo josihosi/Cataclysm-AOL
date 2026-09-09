@@ -1,0 +1,43 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-031-closure-provenance-disposition-005",
+  "claim_id": "R-031",
+  "disposition": "finding",
+  "finding_kind": "blocker",
+  "verdict": "owner_disposition_required",
+  "outcome": "The R-031 closure package is verified at its honest evidence ceiling, but product closure is blocked on Josef's disposition. The accepted camp-craft result may either retain an explicit historical source-binding provenance limitation, or require fresh source-bound camp-craft evidence.",
+  "summary": "Prior receipt 33656681a25465607762bc4efcf348ecd0dea6ff183a2a85888b673604254944 is preserved as the completed evidence event. This successor records the owner-only blocker and does not alter gameplay, code or DE67 state.",
+  "material_changes": [],
+  "tests": [
+    "Verified dependency receipt c40bac408aa579d701ea7097a549a0d763b405aec51f70e87467de93a61af331 proving future provenance repair and focused checks.",
+    "Verified package audit: 22 artifact hashes match; one historical camp-craft source-binding artifact remains mismatched.",
+    "Targeted recovery found no immutable alternate carrying the expected binding, run and SHA-256 identities."
+  ],
+  "live_actions": ["No game, bridge, runner or product build was started; no processes were created or altered."],
+  "evidence_ceiling": [
+    "Historical expected bytes ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50 cannot be honestly recovered.",
+    "OCR, rendered text and terminal bytes received no proof credit.",
+    "No gameplay replay, evidence mutation or fresh source-bound build was performed."
+  ],
+  "bindings": {
+    "prior_receipt": "33656681a25465607762bc4efcf348ecd0dea6ff183a2a85888b673604254944",
+    "provenance_repair_receipt": "c40bac408aa579d701ea7097a549a0d763b405aec51f70e87467de93a61af331",
+    "camp_craft_binding_id": "fb035a4e82a0d7800562b54174046d4d5cdbd875b6c2fdb25a09047af7e0b29b",
+    "camp_craft_run_id": "55098ec37b3868099fa04fdb5626a57a3f043ac3d30b791a44af2c811d53c33b",
+    "historical_expected_sha256": "ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50",
+    "observed_legacy_sha256": "785edad70809f8dfbe5c5b67fb491f68b96d370872764b33ff32a41f781fd72b"
+  },
+  "artifacts": [
+    {"path": ".de67/task-logs/r031-closure-provenance-disposition-005/worker-receipt.json", "sha256": "5722a7a740ed8b7a9f2d419b0906f1789a44b1ffbdc2100c6c7e3f2431878c90", "role": "prior completed evidence event"},
+    {"path": ".de67/task-logs/r031-source-binding-provenance-repair-004/worker-receipt.json", "sha256": "a3d52da99670eafe895bc53a0808a30c1ede887f0a6aac6f0cb1377827296558", "role": "dependency receipt"}
+  ],
+  "first_divergence": {"class": "owner_blocker", "summary": "Josef has not yet chosen bounded acceptance or fresh source-bound evidence."},
+  "first_open_boundary": "Josef-only A/B decision: (A) explicitly accept the bounded camp-craft result with the historical provenance limitation recorded, or (B) authorize fresh source-bound camp-craft evidence.",
+  "accepted_no_replay": ["Do not replay accepted R-031 ambient, camp-craft, free-text-follow or competing-owner routes until owner disposition."],
+  "active_work": [],
+  "narrow_queries": [],
+  "entrypoints": [".de67/task-logs/r031-closure-provenance-disposition-005/worker-receipt.json"],
+  "journal_entries": [{"id": "J-CLOSURE-DISPOSITION-002", "sequence": "2", "event_type": "owner_blocker", "evidence_class": "closure integrity finding", "summary": "Prior completed receipt preserved; successor finding records the unresolved owner A/B disposition."}],
+  "context_metrics": {"gameplay_replay_count": 0, "ocr_credit": 0}
+}
