@@ -1,0 +1,72 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-029-sound-eligibility-002",
+  "claim_id": "R-029",
+  "worker_id": "01a08731-52c5-7c01-9162-0653cc286650",
+  "lineage_id": "semantic-surface-cockpit",
+  "disposition": "completed",
+  "verdict": "sound_recent_check_cooldown_precedes_candidate_and_drive",
+  "outcome": "The retained sound lead is rejected by the six-hour recent-check cooldown while it is still strong, and its three-hour lifetime ends before that cooldown can expire. Later route, policy, pair and drive gates remain unknown because no valid candidate is admitted.",
+  "summary": "Current source and receipt 01bbf939745acaba4fc874d500d88b669f15c2f528c717d6260372a892c9d87a bind lead camp-gunfire@(140,41,0), last_seen 8220, last_checked 8225 and attempt 8280. Signal strength is 399, but 55 minutes is below the 360-minute recent-check interval. The planner computes temporary fields and cheap score before gates, then applies recent-check after expiry and before effective interest, risk, route, policy and pair. The scheduler evaluates aggregate drive only after admitted cheap plans, so drive 347 is not the first causal gate. Natural sound sensing writes last_checked at observation time. The lead expires at 8400 and cooldown ends at 8585. No replay, source change or process was needed.",
+  "first_divergence": {
+    "class": "sound-sensing-cooldown-semantics-owner-choice",
+    "summary": "Current sensing starts a six-hour recent-check cooldown even though the sound expires after three hours, so this retained sound can never reach later candidate and drive gates."
+  },
+  "first_open_boundary": "Josef must decide whether distant sensing should stamp the same recent-check time as completed physical investigation. Later drive, risk, route, policy, pair and dispatch behavior must remain unknown until that policy is chosen and verified.",
+  "bindings": {
+    "source_head_at_ingress": "8837ef5ac9a8abc1a0f99dd6384d31c2a9334604",
+    "source_receipt": "01bbf939745acaba4fc874d500d88b669f15c2f528c717d6260372a892c9d87a",
+    "lead_identity": "camp-gunfire@(140,41,0)",
+    "last_seen_minutes": "8220",
+    "last_checked_minutes": "8225",
+    "attempt_minutes": "8280",
+    "signal_strength": "399",
+    "signal_expiry_minutes": "8400",
+    "cooldown_end_minutes": "8585",
+    "aggregate_drive_observation": "347"
+  },
+  "entrypoints": [
+    "src/bandit_live_world.cpp::plan_structural_bounty_outing_impl",
+    "src/bandit_live_world.cpp::record_staffed_camp_signal_observations",
+    ".de67/state/review-owner-f918d28be953/sound-code-reproduction.md"
+  ],
+  "material_changes": [
+    "Added a coordinator result summary and durable receipt only.",
+    "No gameplay, harness, fixture, scenario, registry or observation source changed."
+  ],
+  "tests": [
+    "Read-only source trace verified planner and scheduler gate order.",
+    "Retained exact values reproduce the recent-check rejection and show expiry before cooldown completion.",
+    "No build or native test was needed because no source changed and retained evidence resolves the predicate."
+  ],
+  "live_actions": [
+    "None. No game, helper, broker or runner process was launched."
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/R-029-sound-eligibility-002-result.md",
+      "role": "source- and evidence-bound gate-order result"
+    }
+  ],
+  "evidence_ceiling": [
+    "Source and retained receipt values prove the first rejecting gate and timing contradiction.",
+    "The result does not prove a candidate after cooldown, individual drive components, effective interest, risk, route, policy, pair, dispatch or gameplay response.",
+    "The result does not authorize a timestamp, cooldown, threshold or sound-policy change.",
+    "OCR and rendered presentation supplied no evidence."
+  ],
+  "accepted_no_replay": [
+    "Preserve accepted native sound detection without replaying the firearm.",
+    "Do not rerun merely to reproduce the arithmetic already bound by retained authoritative values.",
+    "After an owner policy choice, verify timestamp semantics first and then use one saved-lead harness run."
+  ],
+  "active_work": [],
+  "journal_entries": [],
+  "narrow_queries": [
+    "lead camp-gunfire@(140,41,0)",
+    "last_seen 8220 last_checked 8225 attempt 8280",
+    "signal expiry 8400 cooldown end 8585",
+    "plan_structural_bounty_outing_impl recent check",
+    "aggregate drive 347"
+  ],
+  "context_metrics": {}
+}
