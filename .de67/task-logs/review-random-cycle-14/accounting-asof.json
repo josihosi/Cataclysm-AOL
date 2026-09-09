@@ -1,0 +1,47 @@
+{
+  "schema": "de67.review-accounting-asof.v1",
+  "root_thread_id": "01a08109-6d0f-7391-8d01-0209be85fbeb",
+  "root_turn_id": "01a08857-60b8-7be0-aeaa-ca2dec80fbc2",
+  "asof": "2026-09-09T22:54:59.286Z",
+  "calls": 48,
+  "usage": {
+    "input_tokens": 9811934,
+    "cached_input_tokens": 9374720,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 23266,
+    "reasoning_output_tokens": 11057,
+    "total_tokens": 9835200,
+    "uncached_input_tokens": 437214,
+    "uncached_input_plus_output_tokens": 460480
+  },
+  "threads": {
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "calls": 30,
+      "input_tokens": 8340247,
+      "cached_input_tokens": 8015872,
+      "output_tokens": 16840,
+      "reasoning_output_tokens": 9589,
+      "total_tokens": 8357087,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl"
+    },
+    "01a08857-e480-7b62-b9f4-6a3eb05444fe": {
+      "calls": 18,
+      "input_tokens": 1471687,
+      "cached_input_tokens": 1358848,
+      "output_tokens": 6426,
+      "reasoning_output_tokens": 1468,
+      "total_tokens": 1478113,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/10/rollout-2026-09-10T00-44-16-01a08857-e480-7b62-b9f4-6a3eb05444fe.jsonl"
+    }
+  },
+  "sources": [
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/10/rollout-2026-09-10T00-44-16-01a08857-e480-7b62-b9f4-6a3eb05444fe.jsonl"
+  ],
+  "deduplication": "Counted persisted token_usage_record usage by unique response_id across the exact root turn and its helper/follow-up thread; 48 records were found and all response IDs were unique. Cumulative thread/root rollups were excluded.",
+  "gaps": [
+    "Limited to token_usage_record entries persisted by the as-of cutoff; later records are excluded.",
+    "No billing, quota, savings, or model attribution is inferred from telemetry."
+  ],
+  "boundary": "Full bounded accounting for the exact root turn and its observed helper/follow-up record set, including root-bound responses and follow-ups."
+}

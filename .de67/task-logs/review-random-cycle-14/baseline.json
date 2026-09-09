@@ -1,0 +1,9 @@
+{
+  "cycle": 14,
+  "run": "mutation-18d99bc7fd684effb178ae5f967d5559",
+  "supervisor": 10390,
+  "head": "f0ae46a0e7348f49c62b1a41559e85c2334682bc",
+  "pending_owner_entries": 0,
+  "live_roster_workers": 0,
+  "current_epoch_coordinators": 0
+}

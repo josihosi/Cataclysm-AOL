@@ -1,0 +1,18 @@
+{
+  "before": {
+    "required": false,
+    "generation": 48,
+    "expected_run_id": "restart-48-f755091c1833433fac4b573262c7b03d",
+    "run_id": "restart-48-f755091c1833433fac4b573262c7b03d",
+    "reason": "deadline mutation resolved for R-026; successor must set a fresh clock without inheritance"
+  },
+  "after": {
+    "required": true,
+    "generation": 49,
+    "expected_run_id": null,
+    "run_id": null,
+    "reason": "random mutation cycle 14 resolved"
+  },
+  "remaining_gate": null,
+  "successor_launched_by_reviewer": false
+}

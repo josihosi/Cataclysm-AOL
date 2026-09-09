@@ -1,0 +1,5 @@
+{
+  "initial_route_kind": "executable",
+  "revision_without_gap_worker": "Gap revision needs a terminal attempt from its current revision",
+  "ceiling": "Isolated API counterexample only; no live task, owner decision or acceptance was changed."
+}
