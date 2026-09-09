@@ -1,0 +1,37 @@
+{
+  "broad_owner_candidate": [
+    "assets/environment/orchestrator-guidelines.md",
+    "references/kernel.md",
+    "scripts/coordinator_supervisor.py",
+    "scripts/deadline_harness.py",
+    "scripts/method_provenance.py",
+    "scripts/mutation_guard.py",
+    "scripts/policy_compare.py",
+    "tests/test_deadline_harness.py",
+    "tests/test_method_provenance.py",
+    "tests/test_mutation_guard.py",
+    "tests/test_phase3_scenarios.py",
+    "tests/test_policy_compare.py",
+    "tests/test_policy_kernel.py"
+  ],
+  "deadline_functions_unchanged": true,
+  "old_guard_counterexample": "Method candidate is missing required file: references/kernel.md",
+  "local_combined_review": [],
+  "owner_entries_consumed": 2,
+  "rendered_briefing": true,
+  "historical_tables": {
+    "claim_acceptances": {
+      "rows": 26,
+      "sha256": "9515fbafaf74f3756bff624971d139b3bfa651cac7d50247231c12d1552f7be7"
+    },
+    "normal_method_receipts": {
+      "rows": 7,
+      "sha256": "53ff9a67529327007655db9dc75a373ba9c8e76a4607f145f0cb21e90577d85a"
+    },
+    "deadline_generation_mutation_components": {
+      "rows": 18,
+      "sha256": "d8be1b53ef9dc124905bbd6e4113dc4c2801a9273067a37bdb88840d4e74f78f"
+    }
+  },
+  "scope": "Owner-authorized removal validation, not a universal-review gate or waiver of live clock/receipt semantics."
+}

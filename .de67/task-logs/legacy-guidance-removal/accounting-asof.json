@@ -1,0 +1,54 @@
+{
+  "root_thread_id": "01a08109-6d0f-7391-8d01-0209be85fbeb",
+  "root_turn_id": "01a087e3-08a5-7e82-a4f9-5be066e52114",
+  "asof": "2026-09-09T20:48:59.300Z",
+  "calls": 64,
+  "usage": {
+    "input_tokens": 9905086,
+    "cached_input_tokens": 9689600,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 30786,
+    "reasoning_output_tokens": 11251,
+    "total_tokens": 9935872
+  },
+  "threads": {
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "calls": 29,
+      "input_tokens": 7215011,
+      "cached_input_tokens": 7151872,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 17315,
+      "reasoning_output_tokens": 7885,
+      "total_tokens": 7232326
+    },
+    "01a087e3-70fd-7dd1-9b28-a43e561f0a48": {
+      "calls": 27,
+      "input_tokens": 2292270,
+      "cached_input_tokens": 2177280,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 10772,
+      "reasoning_output_tokens": 2666,
+      "total_tokens": 2303042
+    },
+    "01a087ec-5d2b-7310-911c-c05663b58a4f": {
+      "calls": 8,
+      "input_tokens": 397805,
+      "cached_input_tokens": 360448,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 2699,
+      "reasoning_output_tokens": 700,
+      "total_tokens": 400504
+    }
+  },
+  "sources": [
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/09/rollout-2026-09-09T22-37-04-01a087e3-70fd-7dd1-9b28-a43e561f0a48.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/09/rollout-2026-09-09T22-46-49-01a087ec-5d2b-7310-911c-c05663b58a4f.jsonl"
+  ],
+  "deduplication": "Counted token_usage_record usage by unique response_id across the exact review root and its helper/followup threads. Excluded cumulative history and duplicate response IDs.",
+  "gaps": [
+    "Token accounting is limited to persisted token_usage_record entries available at the as-of timestamp; later closeout records are excluded.",
+    "Records appended after the as-of timestamp are excluded."
+  ],
+  "boundary": "Full bounded as-of measurement for the exact review root, including the root thread and helper/followup records. No savings claim."
+}

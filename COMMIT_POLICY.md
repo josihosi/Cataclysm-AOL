@@ -42,7 +42,6 @@ Contains only:
 - `.de67/DFS.md`
 - `.de67/work-ledger.md`
 - `.de67/test-and-task-guidelines.md`
-- `.de67/orchestrator-guidelines.md`
 - `.de67/mutation-suggestions.md`
 - maybe a small related note/doc file
 
@@ -99,8 +98,7 @@ Do not write “tested” when the relevant CI-shaped gate is merely hoped for. 
 
 - `.de67/DFS.md` defines the contract, proof, and stable red claims.
 - `.de67/work-ledger.md` names the current active projection.
-- `.de67/test-and-task-guidelines.md` and `.de67/orchestrator-guidelines.md` govern execution and
-  evidence review.
+- `.de67/test-and-task-guidelines.md` governs execution and evidence review.
 - `.de67/mutation-suggestions.md` records incident diagnoses, manual suggestions, and dispositions.
 - `COMMIT_POLICY.md` tells you when to checkpoint the work instead of letting it rot in the tree.
 

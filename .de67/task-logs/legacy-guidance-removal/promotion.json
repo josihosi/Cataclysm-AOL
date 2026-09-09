@@ -1,0 +1,82 @@
+{
+  "files": [
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/assets/environment/orchestrator-guidelines.md",
+      "before_sha256": "df493e2b8f2615928abd66d0c4d046d624a05457b6430a1c0f7c55fee7b10f95",
+      "deleted": true
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/references/kernel.md",
+      "before_sha256": "755a6841c2ca152bf5cfd9eca92e27163726f60538ee4f4c47dbb8c32cbe3bb4",
+      "deleted": true
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py",
+      "before_sha256": "0d731d7e6a578448eafddf5a9e6c66aecff9d76d7a60f380d2dbdcd1520ac948",
+      "after_sha256": "5bf53a8352aaab0f010f04cf27b1aa1f0dd648dc7fda0f1342aa9abde8717754"
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/deadline_harness.py",
+      "before_sha256": "97332c315db3297b643fd89b74cf66661189927e86791ec5f905874b482cec5c",
+      "after_sha256": "91756ae8f6db9798eb97c4fcb1d592b50c8dbe45acf7faaa93d3d3e76b6fe9ae"
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/method_provenance.py",
+      "before_sha256": "b15c6b525aa9dfdfe48b129fe909a2fa446adbb6c308f0cade3ad7f03ecc4e80",
+      "after_sha256": "6deab1f3f40b97eb3985b9d3c8483102f8fd22c803f4de4d2e6b6c03d4a43af3"
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/mutation_guard.py",
+      "before_sha256": "fec2ef7bcf79c093655c1b642bd076cc0a119e7bec18ea2a6c2986ae6fa00046",
+      "after_sha256": "9a5b0ac1c3df95e873a16253fe6c54838e3762ebe19c1622b5d5f56d3e66281c"
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/policy_compare.py",
+      "before_sha256": "fea39cd5ff4b29cad4d24890a8561310737956e85955b791a2bf9cc48fc20e6d",
+      "after_sha256": "48e45ff1066c1862efb06945f80d514701299fd655169a558fb7656389ce89c4"
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_deadline_harness.py",
+      "before_sha256": "92e945857970daf052df6d70161a5815217d2ded55bab37210e297e49f1c507f",
+      "after_sha256": "0dab973a91e8b5334a90521797ca0cdc48c6d4f2d5d6b80b71876ef9b0c0ffb9"
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_method_provenance.py",
+      "before_sha256": "0f0a43d181a1f16c95f2f521a521481aa69aef9188560dfa01e8191e134e594a",
+      "after_sha256": "490118eba2e162858827093cb786bd4600fbc25782332f1483e604e76530e906"
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_mutation_guard.py",
+      "before_sha256": "9d000ae70d241cce130c14b4f80cbc8e4f52dfacba73241248f2f62f471a1c61",
+      "after_sha256": "53b8afe2bd12b995fb1b43e5fec13eeb317bc93798fbef9162fc960bebd5c2f5"
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_phase3_scenarios.py",
+      "before_sha256": "fe6cfa418020d04920e87a4336407fbbaa71a26671ce32ee707241af87520358",
+      "after_sha256": "90198a4ef4f10a0b13be3dbf6eeb4148cd5df344fc18c655a094ace3f770888a"
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_policy_compare.py",
+      "before_sha256": "cf7c9468e0dee9bf70fdb7d385bc8f71d8844f4e912f35a5b9b98ed948c23d24",
+      "after_sha256": "c50083bed62d4faf6a1ad69cb5bbd7dcc10cc4abe862a5d5a8f04a13c27cf69a"
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/tests/test_policy_kernel.py",
+      "before_sha256": "881bd2770e124b704ccfbc5a12844a831bfc0203e12dc5ee61f2c7039be8eb5a",
+      "after_sha256": "0488afdc5fa1efe4c94ad10bc9891a53f38921130d9e8ec56788f7005f8277f7"
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/orchestrator-guidelines.md",
+      "before_sha256": "b20422dba979bf4ce6922e830a815ab39536f92eca0847e352ff4659e98b931e",
+      "deleted": true
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/mutation-suggestions.md",
+      "before_sha256": "6e4db69e19c3899b1685c5a56471c61c611593362e1b320d0838650e6bf5794b",
+      "after_sha256": "186e56fe091b3c657bddd0c2ea7e208d84a196b5d11dac6069b9b561b616f218"
+    }
+  ],
+  "historical_tables_unchanged": true,
+  "external_supervisor_reference_retained": true,
+  "queue_consumed": true
+}

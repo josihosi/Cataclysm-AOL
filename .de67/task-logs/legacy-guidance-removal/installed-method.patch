@@ -1,0 +1,1050 @@
+--- before/assets/environment/orchestrator-guidelines.md
++++ /dev/null
+@@ -1,176 +0,0 @@
+-# Orchestrator guidelines
+-
+-This is a legacy differential fixture. Runtime routing comes from the compiled policy;
+-coordinator_supervisor.py generates the coordinator role contract.
+-
+-## Read and route
+-
+-Ask the policy kernel for the next action. Read its named state plus any additional source or DFS
+-context genuinely needed to understand that action. Ordinary implementation, testing, builds,
+-fixtures, harness repair, and agent-operated playtests stay in the coordinator-worker route. Ask
+-the owner only for an expressly human outcome, unavailable external authority, credentials, or
+-irreversible user-data risk.
+-
+-The coordinator judges worker evidence and updates durable state directly. Settle each returned
+-result before routing a newly due mutation: terminalize it once, preserve its evidence, close a
+-proved bound gap or record the exact remaining uncertainty, and accept the claim only after every
+-gap closes. It does not add an acceptance reviewer. A mutation decision then retires the coordinator
+-to the exclusive reviewer.
+-
+-## Project current work
+-
+-`.de67/work-ledger.md` is the current projection, not attempt history. Keep every unfinished DFS
+-outcome visible with its accepted frontier, material uncertainty, and truthful next opportunity.
+-When an attempt closes, merge only its surviving proof, no-replay boundary, and first open causal
+-boundary into the affected subtask rows or current evidence; never append an attempt-by-attempt
+-chronology. SQLite and immutable artifacts retain the full history. Replace superseded tactics, and
+-show dependency-gated work with its exact wake condition. Freely split or merge independently
+-actionable work, including simultaneous entries for one red DFS claim. Choose subdivisions when
+-they help execution or explain progress; four to seven meaningful plot spokes are a presentation
+-preference, not a task constraint. Nested `  - Subtasks:` rows use
+-`    - [STATE] stable-lowercase-id :: description` with open, active, done, or finding. They are
+-progress subdivisions, not workers, deadlines, closure gaps, or acceptance gates. Preserve closed
+-diagnostic evidence and use existing durable transitions to project unfinished product proof.
+-Repository implementation, tooling, fixtures, scenarios, bindings, and executable proof routes are
+-ordinary recoverable work. A retry fuse retires a strategy, not the remaining outcome; the worker
+-and coordinator may invent a materially different route. Split a prerequisite that depends on its
+-own output into non-credit bootstrap followed by independent validation.
+-
+-Record durable acceptance once. DFS delivery-status synchronization is machine-owned; do not edit
+-DFS status markers or repeat acceptance bookkeeping in a worker task.
+-
+-Default to Luna for playtesting, clear execution and ordinary repairs. Choose Terra for a
+-concrete hard diagnosis or coupled implementation problem; a broad assignment's possible debugging
+-is not enough. After that problem, reassess substantial remaining Luna execution by total work,
+-including handoff and helper costs. Sol owns direction and scope, without quotas or forced handoffs.
+-Before opening focused exploration, record `  - Assignment TASK-ID: ...` in the existing ledger
+-with its outcome and exit condition. Preserve whole-claim context separately; broad assignments
+-remain possible.
+- Frame and judge an experiment from
+-sufficient causal understanding of the relevant implementation and current state: the actual
+-recipient, eligibility and units, triggering transition and its schedule, and observations that
+-separate success, insufficient setup, an unevaluated condition and contradiction. Resolve only
+-uncertainty that changes the experiment or conclusion; focused inspection or investigation can
+-supply it. Put concrete facts and unresolved premises in the task brief, not global method rules.
+-Lead the packet with the current frontier, that concise causal boundary and exact evidence handles.
+-Keep unrelated implementation background retrievable. Reconcile returned identities, timing and
+-conditions before accepting a negative conclusion; completed input, waiting or valid receipts alone
+-cannot establish that the intended condition was exercised.
+-
+-Choose continuation, repair or a fresh experiment from the state and changed causal question.
+-Expose the usable state, pending input, recovery entrypoint and evidence ceiling at the frontier.
+-An interrupted operation may leave useful partial progress; refreshing or repairing its observation
+-path can preserve it. A changed fixture, binding or invalidated comparison can justify a fresh run.
+-Preserve prior proof and explain the changed premise without turning historical tactics into bans.
+-
+-Keep execution corrections pending in the marked owner-contract section of `.de67/WEC.md`, which
+-new worker packets already include. Relevant live corrections also use native messaging. Retain
+-them through ledger rewrites until the responsible worker acknowledges and applies them with
+-evidence, or deliberately defers with a reason. File preservation alone does not prove delivery.
+-
+-Prepare an executable starting point with established facts, unresolved premises, exact source,
+-scenario and evidence entrypoints, authority and live ownership. Keep small lookups local; use a
+-bounded Luna scout for broad route discovery. Reuse named revisioned facts and relevant skill text
+-through `context_library.py` beside the policy kernel: `put`, `reuse`, `prepare`, `catalog`, `show`,
+-`assemble`, `drop` and `limits`. Dispatch injects only the written assignment, selected bundles and
+-optional current predecessor results alongside mandatory worker/owner constraints. Defaults per task
+-are 12 items, 4096 UTF-8 bytes per item, 49152 active bytes and 24576 selected bytes, excluding the
+-brief and mandatory instructions. These provisional working sizes are adjustable from evidence,
+-not token measurements or quotas for agent allocation. Replace stale or irrelevant active content;
+-keep original evidence and revisions retrievable. Never silently truncate constraints or contradictions.
+-Deliver material premise corrections to live workers explicitly, not just by changing stored context.
+-At a meaningful context change, retain results, bindings, shared repairs and uncertainty rather than
+-append or reload the investigation journey. No full-library injection, periodic summaries or new
+-proof-receipt machinery. `work_context.py` retains task and receipt search; context bundles do not
+-replace durable evidence or confer predecessor authority. If tooling investigation becomes substantial
+-independent work, Sol decides ownership while preserving useful worker understanding and live runs.
+-Commission context/tool repair only against a demonstrated recurring obstruction, then verify it
+-removes repeated work. DE67 method changes keep exclusive mutation/guard ownership.
+-
+-## Durable worker lifecycle
+-
+-Open one unique deadline task for each worker before spawning it. Use the task identity and exact
+-spawn metadata supplied by the kernel. Before any worker-owned terminal transition, persist one
+-identity-bound result receipt (use `worker_receipt.py prepare` to collect durable identities and
+-missing artifact hashes while rejecting supplied mismatches) carrying the outcome or first divergence, material changes, tests and
+-live actions, evidence ceiling, exact bindings, indexed journal identities, digest-bound artifact
+-references, accepted no-replay work, active work, first open boundary, useful narrow queries, and
+-entrypoints. The terminal transition must cite that receipt. Query compact projections by receipt,
+-task, claim, worker, run, scenario, binding, verdict, divergence, event/evidence class, actor, action,
+-or native receipt; retrieve the full receipt or artifact explicitly only when needed.
+-Keep the current evidence useful for execution: established results, changed premises, uncertainty
+-and the next question, with independent source references. Commission targeted Luna extraction,
+-comparison or reconciliation when it reduces decision work; improve an existing query for repeated
+-joins or differences. Replace obsolete handoff material as relevant facts change. Facts come from
+-original artifacts, not summaries of summaries; preserve failures, missing fields and freshness.
+-Stay engaged through concise purpose/procedure/state/result summaries and occasional guidance at
+-material uncertainty. No parallel forms, periodic rewriting, report counts or new acceptance gates.
+-Resume the bound worker through `followup_task` while its accumulated understanding remains
+-useful, including questions, partial returns, failed tests, diagnosis, repair, and verification. A
+-changed tactic alone does not require fresh context. Consider a fresh worker for substantially
+-different context or concrete evidence that the existing worker cannot continue effectively. Ending
+-an assignment and interrupting execution are separate decisions: completion, cancellation, a concrete
+-need to stop ongoing actions, or demonstrated inability can justify stopping; communication and partial
+-results alone do not. A material checkpoint stays with the same task and worker. If the execution
+-context is exhausted, the receipt ends only that attempt. Keep the unfinished ledger outcome visible and project its remaining frontier from the receipt to a fresh
+-worker task after any required incident review. Context exhaustion is not a formal finding or a
+-product outcome.
+-
+-Set an honest claim deadline only where the Phase-3 clock contract requires one. Estimate the
+-complete remaining outcome from its meaningful ledger subtasks and direct evidence. Calibrate with
+-multiple relevant elapsed observations when available, including handoff, diagnosis,
+-implementation, repair, proof, and evidence return. One prior attempt's duration is evidence, not a
+-successor estimate; never copy it or shrink an estimate to fit the remaining immutable clock.
+-
+-Parallel work must be genuinely independent. Final platform evidence waits when shared gameplay or
+-harness work can still change its binding; useful earlier builds remain provisional checkpoints.
+-
+-## Judge results
+-
+-Reconcile the result with the assignment’s causal boundary. Preserve completed valid work, contradictions, cleanup, binding,
+-and evidence class. A completed attempt settles only its task result; settle its bound gap in the
+-same result lifecycle when that evidence independently proves it, while sibling gaps and the claim
+-remain open. Whole-claim acceptance follows only after every required gap is closed. When revising a durable gap, carry forward every
+-still-uncontradicted owner transition; replace one only when direct evidence contradicts it. Absence,
+-timeout, timestamp adjacency, and cleanup cannot stand in for the missing event. A first divergence
+-is diagnostic evidence, not a terminal policy. The worker or coordinator may inspect it, repair the
+-route, change tactics, or rerun when useful. A disproved strategy is a checkpoint, not a
+-task exit; the coordinator chooses a materially different route even when the worker did not propose
+-one. A formal finding requires a contradicted assigned outcome, genuinely exhausted authorized route,
+-materially different owner outcome, real external decision, unavailable capability, or irreversible
+-risk. Do not treat fictional danger or injury as external safety. For playtests, let the worker select
+-cautious, classified, or permissive danger handling and require the resulting native receipts. Debug
+-interventions remain honestly zero-credit. Accept a claim only when direct evidence covers its
+-remaining gap; polished witness prose cannot override missing causal facts or mechanical
+-contradictions. Judge mixed outcomes independently and preserve completed proof. Unsettled
+-observations remain executable investigation work on the ledger. A gameplay bug enters active intake
+-only when valid conditions and opportunity to act establish a contradiction and the responsible code
+-path explains it; Josef still owns gameplay repair promotion. Harness repair stays recoverable work.
+-
+-## Mutate guidance
+-
+-At consequential decisions, ask whether the next act makes meaningful progress or whether missing
+-information or unnecessary obligations are causing a detour. Repair and test the earliest supported
+-cause within current authority; route DE67 method faults through the existing queue without waiting
+-for Josef to diagnose them. This is judgment in the delivery loop, not a new gate or checklist.
+-
+-The exclusive reviewer consumes the complete pending mutation queue. User-authored entries require
+-their outcome or an exact preserved conflict. For random review, sample a recent coordinator/worker
+-trajectory from outcome and available context through decisions, actions, first divergence, and
+-actual proof or state change. Ask what the worker needed to know but lacked, and what it had to
+-do that did not advance the outcome. Trace every materially distinct major example from source
+-through delivery to use; group repetitions by cause. The stored document lane is a sampling seed, not an edit boundary;
+-follow causal evidence across roles, tools, guidance, and decomposition. Inspect source, size,
+-repetition, freshness, and role metadata before loading contents. Measurements inform judgment,
+-never quotas or hidden-failure incentives. No finding or change is compulsory.
+-
+-Separate immediate recovery from repeatable method correction. Repair the earliest supported
+-systemic cause through deletion or generalization and a reproduction or counterexample. The random
+-guard permits combined local guideline changes and same-outcome DFS refinements; broader method
+-candidates retain their existing guard boundary. Preserve accepted proof, owner intent, accounting,
+-exclusive reviewer ownership, and lifecycle. Remove completed queue entries; immutable review
+-artifacts and durable receipts keep the evidence, rather than consumed-history sections.
+-
+-Promote policy source and compiled bytecode only after the kernel guard passes. Refreeze any changed
+-DFS outcome, disposition every reviewed ledger entry, resolve the durable gate, and request exactly
+-one restart. The external supervisor alone launches the successor.
+--- before/references/kernel.md
++++ /dev/null
+@@ -1,120 +0,0 @@
+-# DE-67-3 kernel
+-
+-Read `../../references/msw-kernel.md` completely before continuing. Execute it exactly as written.
+-It is a verbatim foundation; do not paraphrase, summarize, refactor, or replace its wording.
+-
+-This is the small hard layer. Roles and method tactics may evolve around it.
+-
+-## State vector
+-
+-```text
+-S = (U, E, D, O, P, R)
+-```
+-
+-- `U`: the user's outcome, language, permissions, and material choices.
+-- `E`: current code and directly observed facts.
+-- `D`: current design and execution strategy.
+-- `O`: authoritative owners and precedence over competing state.
+-- `P`: honest acceptance and proof routes.
+-- `R`: unresolved work and closure gaps.
+-
+-The DFS represents `S`; code and direct evidence may contradict its current mechanics. A
+-same-outcome candidate may refine `D`, `O`, `P`, or `R`. It may not silently change `U`.
+-
+-The compact work ledger points to one or more durable, claim-bound DFS slices. Slice markers are
+-structural indexes, not product semantics: the guard allocates their stable ids and proves that
+-marking changes no DFS content. Delivery coordinators and product workers read the ledger and use
+-only those extracted slices. Reading the whole DFS is reserved for first-time slice placement,
+-invalid slice state, or a concrete finding whose necessary context lies outside the current slices.
+-DFS stewards and mutators may inspect the whole relevant DFS when their named candidate-validation
+-route requires it.
+-
+-## Protected vector
+-
+-```text
+-K = (U, honest(P), permission, item_clock, attempt_accounting)
+-```
+-
+-Deleting or weakening any component of `K` makes a candidate inadmissible:
+-
+-- do not change the requested outcome, project language, permissions, or material owner choices;
+-- do not fabricate, hide, relabel, or weaken evidence to obtain a green verdict;
+-- each deadline generation keeps its lineage, claim id, start, estimate, deadline, and miss forever.
+-  After that miss is resolved and its successor acknowledges the restart, the successor's first
+-  dispatch may append one new generation; it never rewrites the prior one;
+-- retries use new task or attempt ids. Each attempt's recorded identity, dispatch, result, misses,
+-  integrity incidents, findings, and accepted evidence remain accounted for even when strategy,
+-  roles, tests, or DFS prose change.
+-
+-An accepted claim may be reopened by new contradictory evidence, but never erased as if its prior
+-attempt and evidence did not occur. If accepted evidence is invalidated by a guarded reopen or an
+-integrity breach, its DFS marker returns to red through the exact clock-backed transition before the
+-claim re-enters the ledger.
+-
+-## Work vector
+-
+-```text
+-unknown strategy -> exploration learning goal -> strategy + proof route
+-strategy + proof route -> frozen closure gaps -> implement / observe / close
+-```
+-
+-Exploration asks one causal question and ends with a usable strategy and honest proof route. Closure
+-freezes one or more finite named gaps. Every closure attempt binds exactly one active gap revision.
+-A completed or finding result consumes that revision: close it with matching completed evidence or
+-append a materially changed description and proof route tied to that terminal attempt. Abandonment
+-alone may retry the same revision. Gap revisions and closed dispositions are append-only.
+-
+-A later finding reopens exploration only when it falsifies a closure premise; it does not reset the
+-item clock or attempt history. If later integrity evidence invalidates a closed gap's owning proof,
+-retain that closed history and append an open successor gap. Acceptance remains invalid until the
+-successor is proved and the guarded DFS claim is restored to red while work remains.
+-
+-Admit work only when deleting it would leave `U` unmet or `P` unproved. A proof follows the real
+-route:
+-
+-```text
+-precondition -> authoritative owner -> transition -> observation -> artifact -> verdict
+-```
+-
+-Focused tests and debug probes may expose a seam. They do not replace an integrated route required
+-by the outcome.
+-
+-## Candidate and promotion
+-
+-```text
+-evidence -> isolated candidate -> independent check -> applicable guard -> promotion or rejection
+-```
+-
+-Role modules, guidance, DFS mechanics, task design, tests, debug facilities, and orchestration are
+-normal candidate surfaces. A candidate gains no authority by being broad, expensive, generated by a
+-strong model, or internally consistent.
+-
+-The active normal-method baseline is the workspace-local mutable guidance under `.de67/`.
+-Candidates begin from those exact files and successful local promotion returns to those files.
+-Packaged assets are bootstrap templates, not runtime policy. A separate owner-authorized promotion
+-may generalize a useful local rule into `de67-lab`; delivery does not depend on that publication.
+-
+-The exact rare universal route may challenge the kernel, item-clock representation, attempt schema,
+-guards, and supervisor architecture inside an isolated whole-method candidate. It never edits live
+-clock or evidence state and never promotes itself. No candidate may weaken `U` or honest `P`, falsify
+-evidence, exceed permissions or authority, erase recorded attempts, or claim that an inapplicable
+-guard validated a larger candidate.
+-
+-## Ownership and completion
+-
+-Workers change or inspect the task-authorized product surface. The coordinator owns routing and the
+-compact frontier. DFS and method mutations use their named roles. The external supervisor owns
+-successor processes; a retiring coordinator never launches or acknowledges one.
+-
+-DFS slice markers remain as durable reopen and history indexes after acceptance. Removing the
+-accepted item from the active ledger removes its live pointers; it does not rewrite the DFS merely
+-to delete markers.
+-
+-Completion is the fixed point:
+-
+-```text
+-U honestly proved AND R empty AND no unresolved incident or restart gate
+-```
+-
+-No miss, mutation, reviewer result, or coordinator retirement ends delivery while an authorized
+-materially different route remains. No cadence manufactures post-contract work after completion.
+--- before/scripts/coordinator_supervisor.py
++++ installed/scripts/coordinator_supervisor.py
+@@ -869,14 +869,18 @@
+         "Before opening focused exploration, record its outcome and exit condition as "
+         "`  - Assignment TASK-ID: ...` in the existing ledger; keep independent assignments separate. "
+         "Whole-claim assignments remain valid; broader product scope is context for narrower tasks. "
+-        "Before an expensive or uncertain experiment, Sol gives the worker a compact code-grounded "
+-        "brief: requested behavior, expected causal route through actual actors and owners, unverified "
+-        "material assumptions, and the cheapest observation that distinguishes competing explanations. "
+-        "Carry the current question, decision and useful source references in ordinary prose through "
+-        "context_library.py prepare and selected_context; preserve accepted facts and evidence limits. "
+-        "Use bounded Luna research or Terra diagnosis when useful, without a mandatory scout chain. "
+-        "Refresh changed dependencies and verify packet input/use. A premise knowable only through "
+-        "execution belongs to that experiment; workers choose and adapt its detailed route. "
++        "For coding or testing, Sol turns the FS outcome and relevant source knowledge into "
++        "working guidance when it can reduce uncertainty, rework or error. Select what helps: "
++        "existing design, approach, interfaces and invariants for coding; behavior, material "
++        "premises and distinguishing observations for testing. Explain unresolved choices and "
++        "how correctness could be established where useful. Scale detail to uncertainty and "
++        "consequences; skip additional briefing when it adds no value. The FS is outcome authority; "
++        "the brief is revisable engineering guidance, distinguishing facts from hypotheses. "
++        "Use bounded Luna searches when helpful and synthesize their findings rather than forwarding "
++        "search history. Carry useful guidance and references through the existing context_library.py "
++        "prepare and selected_context route; preserve accepted facts and evidence limits, refresh "
++        "changed dependencies and verify packet input/use. Workers choose and adapt execution; "
++        "use returned evidence to revise the approach and inform Sol's review. "
+         "Opening a clock does not delegate. Actually call spawn_agent using the kernel's "
+         "exact task_name, fork_turns and hash-bound packet arguments and one explicit model_choices "
+         "capability; do not inherit coordinator history. The full packet is worker input, not coordinator context. "
+@@ -1026,7 +1030,7 @@
+ 
+ 
+ def live_coordination_contract() -> str:
+-    return "Use native send_message for live questions and steering; workers address /root. Use followup_task to start an idle bound worker. Sol owns direction and scope. While a worker owns execution, resolve an independent source, interface or acceptance question when its answer can change the experiment or successor, and send the useful finding through native messaging. Preserve exclusive input/edit ownership and do not duplicate the worker's investigation. If no such question remains, waiting is correct. When execution reveals a substantial independent tooling problem, decide who owns it without interrupting useful live state or handing off merely for a changed tactic. After hard diagnosis, reassess whether Luna can perform substantial remaining execution at lower total cost. Apply the returned-work judgment in the result ingress contract before settling consequential changes. Carry forward current findings, retiring source-specific advice once regression proof absorbs it. Notice recurring context/tool obstructions in worker evidence and commission a bounded repair through the existing work ledger; validate that it removes the demonstrated repetition. DE67 method edits retain exclusive mutation/guard ownership. Do not convert worker discovery transcripts into coordinator context or request parallel summaries, periodic reports or new receipts. Use current-root token_usage in work_context as feedback with helper/handoff costs; distinguish expected savings from measured use, never quotas. At worker return or a natural adoption event, reassess remaining whole-claim proof against its immutable deadline; schedule the unmet boundary with an honest estimate. When no useful decision remains, wait_agent, waking no later than the item deadline; apply policy at routing transitions."
++    return "Use native send_message for live questions and steering; workers address /root. Use followup_task to start an idle bound worker. Sol owns direction and scope. While a worker owns execution, resolve an independent source, interface or acceptance question when its answer can change the current work or successor, and send the useful finding through native messaging. Preserve exclusive input/edit ownership and do not duplicate the worker's investigation. If no such question remains, waiting is correct. When execution reveals a substantial independent tooling problem, decide who owns it without interrupting useful live state or handing off merely for a changed tactic. After hard diagnosis, reassess whether Luna can perform substantial remaining execution at lower total cost. Apply the returned-work judgment in the result ingress contract before settling consequential changes. Carry forward current findings, retiring source-specific advice once regression proof absorbs it. Notice recurring context/tool obstructions in worker evidence and commission a bounded repair through the existing work ledger; validate that it removes the demonstrated repetition. DE67 method edits retain exclusive mutation/guard ownership. Do not convert worker discovery transcripts into coordinator context or request parallel summaries, periodic reports or new receipts. Use current-root token_usage in work_context as feedback with helper/handoff costs; distinguish expected savings from measured use, never quotas. At worker return or a natural adoption event, reassess remaining whole-claim proof against its immutable deadline; schedule the unmet boundary with an honest estimate. When no useful decision remains, wait_agent, waking no later than the item deadline; apply policy at routing transitions."
+ 
+ 
+ def coordinator_continuation_prompt() -> str:
+--- before/scripts/deadline_harness.py
++++ installed/scripts/deadline_harness.py
+@@ -39,21 +39,18 @@
+ UNIVERSAL_RANDOM_INTERVAL = 30
+ RANDOM_MUTATION_LANES = (
+     "test-and-task-guidelines.md",
+-    "orchestrator-guidelines.md",
+     "DFS.md",
+ )
+ RECENT_FAILURE_VERDICT_LIMIT = 10
+ INCIDENT_KINDS = ("deadline_miss", "integrity_breach")
+ METHOD_IGNORED_PARTS = {".git", "__pycache__", ".pytest_cache"}
+ NORMAL_METHOD_PROTECTED_FILES = (
+-    "references/kernel.md",
+     "scripts/deadline_harness.py",
+     "scripts/mutation_guard.py",
+     "tests/test_deadline_harness.py",
+     "tests/test_mutation_guard.py",
+ )
+ WORKSPACE_METHOD_GUIDELINE_FILES = (
+-    "orchestrator-guidelines.md",
+     "test-and-task-guidelines.md",
+ )
+ ACTIVE_SKILL_ROOT = Path(__file__).resolve().parents[1]
+--- before/scripts/method_provenance.py
++++ installed/scripts/method_provenance.py
+@@ -128,7 +128,7 @@
+                 **guidance,
+                 **{
+                     name: _sha256(local / name)
+-                    for name in ("orchestrator-guidelines.md", "test-and-task-guidelines.md")
++                    for name in ("test-and-task-guidelines.md",)
+                 },
+             },
+             "specification_compatibility": compatibility,
+--- before/scripts/mutation_guard.py
++++ installed/scripts/mutation_guard.py
+@@ -22,11 +22,12 @@
+ 
+ 
+ TASK_GUIDELINES = "test-and-task-guidelines.md"
+-ORCHESTRATOR_GUIDELINES = "orchestrator-guidelines.md"
+-GUIDELINE_FILES = (TASK_GUIDELINES, ORCHESTRATOR_GUIDELINES)
++GUIDELINE_FILES = (TASK_GUIDELINES,)
+ DFS_FILE = "DFS.md"
+ MUTATION_LEDGER = "mutation-suggestions.md"
+ RANDOM_MUTATION_LANES = (*GUIDELINE_FILES, DFS_FILE)
++# Previously stored lane labels are metadata, not files to load.
++LEGACY_RANDOM_MUTATION_LANES = ("orchestrator-guidelines.md",)
+ INCIDENT_KINDS = ("deadline_miss", "integrity_breach")
+ SKILL_ROOT = Path(__file__).resolve().parents[1]
+ CANONICAL_GUIDELINES_ROOT = SKILL_ROOT / "assets" / "environment"
+@@ -64,12 +65,10 @@
+ )
+ METHOD_REQUIRED_FILES = (
+     "SKILL.md",
+-    "references/kernel.md",
+     "scripts/deadline_harness.py",
+     "scripts/mutation_guard.py",
+ )
+ NORMAL_METHOD_PROTECTED_FILES = (
+-    "references/kernel.md",
+     "scripts/deadline_harness.py",
+     "scripts/mutation_guard.py",
+     "tests/test_deadline_harness.py",
+@@ -826,7 +825,7 @@
+ ) -> tuple[str, ...]:
+     """Validate trajectory-driven local changes; the stored lane is a review seed."""
+ 
+-    if selected_lane not in RANDOM_MUTATION_LANES:
++    if selected_lane not in (*RANDOM_MUTATION_LANES, *LEGACY_RANDOM_MUTATION_LANES):
+         raise GuardError(f"Unsupported random mutation lane: {selected_lane}")
+     baseline_files = {
+         name: read_markdown(baseline_root / name)
+--- before/scripts/policy_compare.py
++++ installed/scripts/policy_compare.py
+@@ -1,5 +1,5 @@
+ #!/usr/bin/env python3
+-"""Compare compiled Phase-3 behavior and context size with a preserved Git baseline."""
++"""Check compiled Phase-3 behavior against the contract corpus and report its encoded size."""
+ 
+ from __future__ import annotations
+ 
+@@ -53,7 +53,6 @@
+ def compare(
+     policy_path: Path,
+     contracts_path: Path,
+-    baseline_ref: str,
+ ) -> dict[str, Any]:
+     policy = kernel.load_policy(policy_path)
+     contracts = json.loads(contracts_path.read_text(encoding="utf-8"))
+@@ -73,23 +72,14 @@
+             "expected_main": case["main"], "expected_lab": case["lab"],
+             "match": main == case["main"] and lab == case["lab"],
+         })
+-    baseline_paths = (
+-        "de-67-3/assets/environment/orchestrator-guidelines.md",
+-        "de-67-3/assets/environment/test-and-task-guidelines.md",
+-    )
+-    baseline_bytes = sum(len(kernel.source_from_git(baseline_ref, path)) for path in baseline_paths)
+     compiled_bytes = policy_path.stat().st_size
+     normalized_source = kernel.canonical_bytes(policy)
+     instruction_tape = kernel.symbol_codec.encode(kernel._lower_policy(policy))
+     return {
+-        "baseline_ref": baseline_ref,
+-        "baseline_policy_bytes": baseline_bytes,
+         "compiled_policy_bytes": compiled_bytes,
+         "normalized_source_bytes": len(normalized_source),
+         "instruction_tape_bytes": len(instruction_tape),
+         "plain_json_compiled_bytes": kernel.HEADER.size + len(zlib.compress(normalized_source, 9)),
+-        "byte_reduction": baseline_bytes - compiled_bytes,
+-        "ratio": round(compiled_bytes / baseline_bytes, 4),
+         "decision_cases": decisions,
+         "trace_cases": traces,
+         "passed": all(case["match"] for case in decisions + traces),
+@@ -100,10 +90,9 @@
+     parser = argparse.ArgumentParser(description=__doc__)
+     parser.add_argument("--policy", type=Path, required=True)
+     parser.add_argument("--contracts", type=Path, required=True)
+-    parser.add_argument("--baseline-ref", default="backup/pre-lab-lab-20260822")
+     args = parser.parse_args(argv)
+     try:
+-        report = compare(args.policy, args.contracts, args.baseline_ref)
++        report = compare(args.policy, args.contracts)
+         print(json.dumps(report, indent=2, sort_keys=True))
+         return 0 if report["passed"] else 1
+     except (OSError, ValueError, json.JSONDecodeError, kernel.PolicyError) as error:
+--- before/tests/test_deadline_harness.py
++++ installed/tests/test_deadline_harness.py
+@@ -275,9 +275,9 @@
+         environment = workspace / ".de67"
+         environment.mkdir(parents=True)
+         packaged = Path(__file__).resolve().parents[1] / "assets" / "environment"
+-        for name in ("orchestrator-guidelines.md", "test-and-task-guidelines.md"):
++        for name in ("test-and-task-guidelines.md",):
+             content = (packaged / name).read_text(encoding="utf-8")
+-            if name == "orchestrator-guidelines.md":
++            if name == "test-and-task-guidelines.md":
+                 content += "\nWorkspace-local guarded rule.\n"
+             (environment / name).write_text(content, encoding="utf-8")
+ 
+@@ -292,7 +292,7 @@
+             )
+             candidate_digest = workspace_method_digest(state_path.resolve())
+             self.assertIsNotNone(candidate_digest)
+-            changed_paths = ["assets/environment/orchestrator-guidelines.md"]
++            changed_paths = ["assets/environment/test-and-task-guidelines.md"]
+             contract = {
+                 "lineage_id": "project",
+                 "task_id": "late",
+@@ -403,7 +403,7 @@
+ 
+     def record_universal_receipt(self, cycle_number: int = 1) -> str:
+         candidate_digest = "a" * 64
+-        changed_paths = ["references/kernel.md"]
++        changed_paths = ["scripts/deadline_harness.py"]
+         cycle = self.harness.connection.execute(
+             """
+             SELECT universal_capability_roster_digest
+@@ -1698,7 +1698,7 @@
+             schedule = self.harness.list_tasks(now=2)["random_mutation"]
+ 
+         self.assertEqual(schedule["interval_windows"], 14)
+-        self.assertEqual(schedule["selected_lane"], "orchestrator-guidelines.md")
++        self.assertEqual(schedule["selected_lane"], "DFS.md")
+         self.assertEqual(schedule["completed_terminal_windows"], 14)
+         self.assertTrue(schedule["due"])
+ 
+@@ -1754,7 +1754,6 @@
+         for lane_index, lane in enumerate(
+             (
+                 "test-and-task-guidelines.md",
+-                "orchestrator-guidelines.md",
+                 "DFS.md",
+             )
+         ):
+@@ -1813,7 +1812,7 @@
+         )
+ 
+     def test_due_review_blocks_new_dispatch_until_exactly_once_resolution(self) -> None:
+-        with patch("deadline_harness.secrets.randbelow", side_effect=[10, 2]):
++        with patch("deadline_harness.secrets.randbelow", side_effect=[10, 1]):
+             self.complete_windows(self.harness, 20)
+         schedule = self.harness.list_tasks(now=2)["random_mutation"]
+         self.assertTrue(schedule["due"])
+@@ -2129,7 +2128,7 @@
+             harness.start_task("project", "running", "R-001", 100, now=0)
+         self.strip_random_cadence(legacy)
+ 
+-        with patch("deadline_harness.secrets.randbelow", side_effect=[0, 2]), DeadlineHarness(
++        with patch("deadline_harness.secrets.randbelow", side_effect=[0, 1]), DeadlineHarness(
+             legacy
+         ) as migrated:
+             result = migrated.complete_task(
+@@ -2991,7 +2990,7 @@
+     def test_interval_thirty_dfs_requires_ordinary_and_universal_before_restart(self) -> None:
+         self.write_sol_ultra_capability()
+         with patch(
+-            "deadline_harness.secrets.randbelow", side_effect=[20, 2, 0, 0]
++            "deadline_harness.secrets.randbelow", side_effect=[20, 1, 0, 0]
+         ), patch("deadline_harness.time.time", return_value=12345):
+             for number in range(1, 31):
+                 self.harness.start_task(
+@@ -3049,7 +3048,7 @@
+ 
+     def test_rare_trigger_without_due_time_capability_is_visible_and_nonblocking(self) -> None:
+         with patch(
+-            "deadline_harness.secrets.randbelow", side_effect=[20, 2, 0, 0]
++            "deadline_harness.secrets.randbelow", side_effect=[20, 1, 0, 0]
+         ), patch("deadline_harness.time.time", return_value=23456):
+             for number in range(1, 31):
+                 self.harness.start_task(
+@@ -3092,7 +3091,7 @@
+ 
+     def test_legacy_ordinary_only_rare_cycle_cannot_become_zero_action_due_gate(self) -> None:
+         with patch(
+-            "deadline_harness.secrets.randbelow", side_effect=[20, 2, 0, 0]
++            "deadline_harness.secrets.randbelow", side_effect=[20, 1, 0, 0]
+         ):
+             for number in range(1, 31):
+                 self.harness.start_task(
+--- before/tests/test_method_provenance.py
++++ installed/tests/test_method_provenance.py
+@@ -27,7 +27,6 @@
+             state.mkdir(parents=True)
+             for name, text in (
+                 ("DFS.md", "# Frozen DFS\n"),
+-                ("orchestrator-guidelines.md", "orchestrate\n"),
+                 ("test-and-task-guidelines.md", "test\n"),
+             ):
+                 (local / name).write_text(text, encoding="utf-8")
+@@ -66,6 +65,7 @@
+             self.assertEqual(result["workspace"]["clock"]["restart_generation"], 4)
+             self.assertEqual(result["workspace"]["clock"]["mutation_receipts"], 2)
+             self.assertEqual(len(result["workspace"]["guidance_sha256"]["DFS.md"]), 64)
++            self.assertNotIn("orchestrator-guidelines.md", result["workspace"]["guidance_sha256"])
+             self.assertTrue(result["workspace"]["git"]["uncheckpointed"])
+             self.assertEqual(
+                 before,
+--- before/tests/test_mutation_guard.py
++++ installed/tests/test_mutation_guard.py
+@@ -33,11 +33,7 @@
+ TASK_GUIDANCE = guard.read_markdown(
+     guard.CANONICAL_GUIDELINES_ROOT / guard.TASK_GUIDELINES
+ )
+-ORCHESTRATOR_GUIDANCE = guard.read_markdown(
+-    guard.CANONICAL_GUIDELINES_ROOT / guard.ORCHESTRATOR_GUIDELINES
+-)
+ SKILL_TEXT = (ROOT / "SKILL.md").read_text(encoding="utf-8")
+-KERNEL_TEXT = (ROOT / "references" / "kernel.md").read_text(encoding="utf-8")
+ WORK_LEDGER_TEXT = (
+     ROOT / "assets" / "environment" / "work-ledger.md"
+ ).read_text(encoding="utf-8")
+@@ -51,8 +47,8 @@
+         self.candidate = self.root / "candidate"
+         self.baseline.mkdir()
+         self.candidate.mkdir()
+-        self.write_guidelines(self.baseline, TASK_GUIDANCE, ORCHESTRATOR_GUIDANCE)
+-        self.write_guidelines(self.candidate, TASK_GUIDANCE, ORCHESTRATOR_GUIDANCE)
++        self.write_guidelines(self.baseline, TASK_GUIDANCE)
++        self.write_guidelines(self.candidate, TASK_GUIDANCE)
+         dfs_text = self.expansion_dfs(new_claim="")
+         (self.baseline / guard.DFS_FILE).write_text(dfs_text, encoding="utf-8")
+         (self.candidate / guard.DFS_FILE).write_text(dfs_text, encoding="utf-8")
+@@ -70,6 +66,16 @@
+     def test_canonical_work_ledger_template_has_no_fake_active_item(self) -> None:
+         self.assertEqual(guard.active_work_items(WORK_LEDGER_TEXT), ())
+ 
++    def test_removed_guidance_is_not_required_for_a_stored_legacy_lane(self) -> None:
++        self.assertFalse((ROOT / "references" / "kernel.md").exists())
++        self.assertFalse((self.baseline / "orchestrator-guidelines.md").exists())
++        self.mutate_task()
++        changed = guard.validate_random_review_mutation(
++            self.baseline, self.candidate, selected_lane="orchestrator-guidelines.md"
++        )
++        self.assertEqual(changed, (guard.TASK_GUIDELINES,))
++        self.assertEqual(len(guard.protected_method_digest()), 64)
++
+     def test_legacy_random_lane_resolves_and_guards_the_canonical_target(self) -> None:
+         source = self.expansion_dfs(new_claim="")
+         for root in (self.baseline, self.candidate):
+@@ -96,11 +102,8 @@
+         self.assertNotIn("must contain exactly one", str(rejected.exception))
+ 
+     @staticmethod
+-    def write_guidelines(root: Path, task_text: str, orchestrator_text: str) -> None:
++    def write_guidelines(root: Path, task_text: str) -> None:
+         (root / guard.TASK_GUIDELINES).write_text(task_text, encoding="utf-8")
+-        (root / guard.ORCHESTRATOR_GUIDELINES).write_text(
+-            orchestrator_text, encoding="utf-8"
+-        )
+ 
+     def mutate_task(self) -> None:
+         path = self.candidate / guard.TASK_GUIDELINES
+@@ -109,17 +112,11 @@
+             encoding="utf-8",
+         )
+ 
+-    def mutate_orchestrator(self) -> None:
+-        path = self.candidate / guard.ORCHESTRATOR_GUIDELINES
+-        path.write_text(
+-            ORCHESTRATOR_GUIDANCE + "\nPrefer a current compact state query before dispatch.\n",
+-            encoding="utf-8",
+-        )
+ 
+     def test_guideline_heading_change_is_allowed(self) -> None:
+         path = self.candidate / guard.TASK_GUIDELINES
+         path.write_text(
+-            TASK_GUIDANCE.replace("## Own the assigned outcome", "## Own useful work"),
++            TASK_GUIDANCE.replace("## Own the outcome", "## Own useful work"),
+             encoding="utf-8",
+         )
+         self.assertEqual(
+@@ -130,7 +127,7 @@
+         )
+ 
+     def test_changed_baseline_heading_does_not_block_a_real_mutation(self) -> None:
+-        corrupt = TASK_GUIDANCE.replace("## Own the assigned outcome", "## Own useful work")
++        corrupt = TASK_GUIDANCE.replace("## Own the outcome", "## Own useful work")
+         baseline_corrupt = corrupt
+         candidate_corrupt = corrupt + "\nPreserve the useful local context.\n"
+         (self.baseline / guard.TASK_GUIDELINES).write_text(
+@@ -154,16 +151,16 @@
+         self.assertEqual(changed, (guard.TASK_GUIDELINES,))
+ 
+         self.setUp_candidate_again()
+-        self.mutate_orchestrator()
++        self.mutate_task()
+         changed = guard.validate_guideline_mutation(
+             self.baseline, self.candidate, broader_mutation=True
+         )
+-        self.assertEqual(changed, (guard.ORCHESTRATOR_GUIDELINES,))
++        self.assertEqual(changed, (guard.TASK_GUIDELINES,))
+ 
+     def test_incident_mutations_reject_whitespace_only_ledger_consumption(self) -> None:
+         task_path = self.candidate / guard.TASK_GUIDELINES
+         task_path.write_text(
+-            TASK_GUIDANCE.replace("Start from the assigned", "Start  from the assigned"),
++            TASK_GUIDANCE.replace("# Test and task guidelines", "# Test  and task guidelines"),
+             encoding="utf-8",
+         )
+         with self.assertRaisesRegex(guard.GuardError, "whitespace-only"):
+@@ -171,9 +168,9 @@
+                 self.baseline, self.candidate, broader_mutation=False
+             )
+ 
+-        orchestrator_path = self.candidate / guard.ORCHESTRATOR_GUIDELINES
++        orchestrator_path = self.candidate / guard.TASK_GUIDELINES
+         orchestrator_path.write_text(
+-            ORCHESTRATOR_GUIDANCE.replace("Read the compact", "Read  the compact"),
++            TASK_GUIDANCE.replace("# Test and task guidelines", "# Test  and task guidelines"),
+             encoding="utf-8",
+         )
+         with self.assertRaisesRegex(guard.GuardError, "whitespace-only"):
+@@ -188,7 +185,7 @@
+             )
+ 
+         self.mutate_task()
+-        self.mutate_orchestrator()
++        self.mutate_task()
+         changed = guard.validate_guideline_mutation(
+             self.baseline,
+             self.candidate,
+@@ -360,13 +357,13 @@
+     def test_guidelines_cli_derives_integrity_scope(self) -> None:
+         state = self.incident_state()
+         self.mutate_task()
+-        self.mutate_orchestrator()
++        self.mutate_task()
+ 
+         result, output = self.run_guidelines_cli(
+             state, "breach", "integrity_breach"
+         )
+         self.assertEqual(result, 0, output)
+-        self.assertIn(guard.ORCHESTRATOR_GUIDELINES, output)
++        self.assertIn(guard.TASK_GUIDELINES, output)
+ 
+     def test_guidelines_cli_rejects_missing_or_mismatched_incident(self) -> None:
+         state = self.incident_state()
+@@ -1411,7 +1408,7 @@
+         with patch.object(
+             deadline.secrets, "randbelow", side_effect=[0, lane_index]
+         ), deadline.DeadlineHarness(state) as harness:
+-            for number in range(1, 21):
++            for number in range(1, deadline.RANDOM_INTERVAL_MIN + 1):
+                 task = f"terminal-{number}"
+                 harness.start_task("project", task, f"R-{number:03d}", 10, now=0)
+                 harness.complete_task("project", task, "green", now=1)
+@@ -1455,15 +1452,15 @@
+ 
+         self.setUp_candidate_again()
+         state, cycle = self.random_review_state(1)
+-        self.mutate_orchestrator()
++        self.mutate_task()
+         result, output = self.run_random_review_cli(state, cycle)
+         self.assertEqual(result, 0, output)
+-        self.assertIn(guard.ORCHESTRATOR_GUIDELINES, output)
++        self.assertIn(guard.TASK_GUIDELINES, output)
+ 
+     def test_random_trajectory_can_change_both_guidelines_and_refine_dfs(self) -> None:
+         state, cycle = self.random_review_state(0)
+         self.mutate_task()
+-        self.mutate_orchestrator()
++        self.mutate_task()
+         (self.candidate / guard.DFS_FILE).write_text(self.expansion_dfs(), encoding="utf-8")
+         result, output = self.run_random_review_cli(state, cycle)
+         self.assertEqual(result, 0, output)
+@@ -1479,7 +1476,7 @@
+                 self.assertIn("guarded no-op", output)
+ 
+     def setUp_candidate_again(self) -> None:
+-        self.write_guidelines(self.candidate, TASK_GUIDANCE, ORCHESTRATOR_GUIDANCE)
++        self.write_guidelines(self.candidate, TASK_GUIDANCE)
+         (self.candidate / guard.DFS_FILE).write_text(
+             self.expansion_dfs(new_claim=""), encoding="utf-8"
+         )
+@@ -1495,7 +1492,7 @@
+         state, cycle = self.random_review_state(0)
+         path = self.candidate / guard.TASK_GUIDELINES
+         path.write_text(
+-            TASK_GUIDANCE.replace("Start from the assigned", "Start  from the assigned"),
++            TASK_GUIDANCE.replace("# Test and task guidelines", "# Test  and task guidelines"),
+             encoding="utf-8",
+         )
+         result, output = self.run_random_review_cli(state, cycle)
+@@ -1503,7 +1500,7 @@
+         self.assertIn("whitespace-only", output)
+ 
+     def test_random_dfs_review_accepts_safe_expansion_or_exact_guarded_noop(self) -> None:
+-        state, cycle = self.random_review_state(2)
++        state, cycle = self.random_review_state(1)
+         (self.candidate / guard.DFS_FILE).write_text(
+             self.expansion_dfs(), encoding="utf-8"
+         )
+@@ -1512,13 +1509,13 @@
+         self.assertIn("changed DFS.md", output)
+ 
+         self.setUp_candidate_again()
+-        state, cycle = self.random_review_state(2)
++        state, cycle = self.random_review_state(1)
+         result, output = self.run_random_review_cli(state, cycle)
+         self.assertEqual(result, 0, output)
+         self.assertIn("guarded no-op", output)
+ 
+     def test_random_review_repairs_missing_status_delimiter_without_new_work(self) -> None:
+-        state, cycle = self.random_review_state(2)
++        state, cycle = self.random_review_state(1)
+         original = (self.baseline / guard.DFS_FILE).read_text(encoding="utf-8")
+         original += (
+             "\n<!-- DE67:DFS-SLICE:BEGIN id=R-099-S001 claim=R-099 -->\n"
+@@ -1538,7 +1535,7 @@
+             self.assertEqual(result, 1, output)
+ 
+     def test_random_dfs_review_preserves_frozen_contract(self) -> None:
+-        state, cycle = self.random_review_state(2)
++        state, cycle = self.random_review_state(1)
+         candidate = self.expansion_dfs().replace(
+             "The existing behavior remains the contract.",
+             "The behavior is now broader.",
+@@ -1632,8 +1629,8 @@
+         )
+         original = guideline.read_text(encoding="utf-8")
+         mutations = (
+-            ("rename", "## Own the assigned outcome", "## Own useful outcomes"),
+-            ("delete", "## Own the assigned outcome\n", ""),
++            ("rename", "## Own the outcome", "## Own useful outcomes"),
++            ("delete", "## Own the outcome\n", ""),
+         )
+         for name, old, new in mutations:
+             with self.subTest(name=name):
+@@ -1651,9 +1648,9 @@
+ 
+     def test_universal_method_candidate_may_challenge_the_hard_kernel(self) -> None:
+         baseline, candidate = self.method_candidate_roots()
+-        kernel = candidate / "references" / "kernel.md"
++        kernel = candidate / "scripts" / "deadline_harness.py"
+         kernel.write_text(
+-            kernel.read_text(encoding="utf-8") + "\n<!-- universal candidate -->\n",
++            kernel.read_text(encoding="utf-8") + "\n# universal candidate\n",
+             encoding="utf-8",
+         )
+ 
+@@ -1661,10 +1658,10 @@
+             baseline, candidate, universal=True
+         )
+ 
+-        self.assertEqual(changed, ("references/kernel.md",))
++        self.assertEqual(changed, ("scripts/deadline_harness.py",))
+ 
+     def universal_review_state(
+-        self, lane_index: int = 2, *, capability_effort: str = "ultra"
++        self, lane_index: int = 1, *, capability_effort: str = "ultra"
+     ) -> tuple[Path, int]:
+         (self.root / "workspace.json").write_text(
+             json.dumps(
+@@ -1682,7 +1679,7 @@
+         )
+         state = self.root / f"universal-{lane_index}-{capability_effort}.sqlite"
+         with patch.object(
+-            deadline.secrets, "randbelow", side_effect=[10, lane_index]
++            deadline.secrets, "randbelow", side_effect=[deadline.UNIVERSAL_RANDOM_INTERVAL - deadline.RANDOM_INTERVAL_MIN, lane_index]
+         ), deadline.DeadlineHarness(state) as harness:
+             for number in range(1, 31):
+                 task = f"terminal-{number}"
+@@ -1740,9 +1737,9 @@
+ 
+     def test_universal_review_cli_requires_exact_k30_dfs_signature(self) -> None:
+         baseline, candidate = self.method_candidate_roots()
+-        kernel = candidate / "references" / "kernel.md"
++        kernel = candidate / "scripts" / "deadline_harness.py"
+         kernel.write_text(
+-            kernel.read_text(encoding="utf-8") + "\n<!-- isolated redesign -->\n",
++            kernel.read_text(encoding="utf-8") + "\n# isolated redesign\n",
+             encoding="utf-8",
+         )
+ 
+@@ -1754,7 +1751,7 @@
+         self.assertIn("universal review cycle", output)
+         self.assertRegex(output, r"receipt [0-9a-f]{64}")
+ 
+-        state, cycle = self.universal_review_state(lane_index=1)
++        state, cycle = self.universal_review_state(lane_index=0)
+         result, output = self.run_universal_review_cli(
+             state, cycle, baseline, candidate
+         )
+@@ -1771,9 +1768,9 @@
+ 
+     def test_universal_receipt_is_atomic_immutable_and_required_for_resolution(self) -> None:
+         baseline, candidate = self.method_candidate_roots()
+-        kernel = candidate / "references" / "kernel.md"
++        kernel = candidate / "scripts" / "deadline_harness.py"
+         kernel.write_text(
+-            kernel.read_text(encoding="utf-8") + "\n<!-- receipt candidate -->\n",
++            kernel.read_text(encoding="utf-8") + "\n# receipt candidate\n",
+             encoding="utf-8",
+         )
+         state, cycle = self.universal_review_state()
+@@ -1810,7 +1807,7 @@
+             )
+             self.assertEqual(
+                 json.loads(receipt["changed_paths"]),
+-                ["references/kernel.md"],
++                ["scripts/deadline_harness.py"],
+             )
+             self.assertEqual(len(receipt["candidate_digest"]), 64)
+             with self.assertRaisesRegex(sqlite3.IntegrityError, "append-only"):
+@@ -1875,9 +1872,9 @@
+ 
+     def test_universal_review_uses_frozen_due_time_capability_snapshot(self) -> None:
+         baseline, candidate = self.method_candidate_roots()
+-        kernel = candidate / "references" / "kernel.md"
++        kernel = candidate / "scripts" / "deadline_harness.py"
+         kernel.write_text(
+-            kernel.read_text(encoding="utf-8") + "\n<!-- frozen snapshot -->\n",
++            kernel.read_text(encoding="utf-8") + "\n# frozen snapshot\n",
+             encoding="utf-8",
+         )
+         state, cycle = self.universal_review_state()
+@@ -1942,13 +1939,9 @@
+         with self.assertRaisesRegex(guard.GuardError, "accepted claim R-000"):
+             guard.validate_universal_dfs_mutation(before, candidate)
+ 
+-    def test_runtime_guidance_keeps_mutation_local_and_nonblocking(self) -> None:
+-        self.assertIn("workspace-local files", ORCHESTRATOR_GUIDANCE)
+-        self.assertIn("no change required", ORCHESTRATOR_GUIDANCE)
+-        self.assertIn("may freeze ordinary delivery indefinitely", ORCHESTRATOR_GUIDANCE)
+ 
+     def test_ordinary_task_results_keep_the_same_coordinator(self) -> None:
+-        combined = SKILL_TEXT + "\n" + KERNEL_TEXT + "\n" + ORCHESTRATOR_GUIDANCE
++        combined = SKILL_TEXT + "\n" + TASK_GUIDANCE
+         normalized = " ".join(combined.split())
+         self.assertNotIn("dispatch wave complete", combined)
+         self.assertNotIn("One coordinator owns one dispatch wave", combined)
+@@ -1956,34 +1949,16 @@
+             "stay with the same coordinator",
+             normalized,
+         )
+-        self.assertIn("Mutation completion is the only planned fresh-coordinator boundary", combined)
++        self.assertIn("Mutation completion is the only planned fresh-coordinator boundary", normalized)
+ 
+     def test_worker_lifecycle_is_not_a_task_requirement(self) -> None:
+-        combined = SKILL_TEXT + "\n" + KERNEL_TEXT + "\n" + TASK_GUIDANCE
++        combined = SKILL_TEXT + "\n" + TASK_GUIDANCE
+         self.assertNotIn("Every task uses a fresh", combined)
+         self.assertNotIn("one fresh worker thread", combined)
+         self.assertNotIn("terminal task retires", combined)
+         self.assertNotIn("worker retirement", combined)
+ 
+-    def test_each_spawned_worker_owns_one_random_mutation_window(self) -> None:
+-        normalized = " ".join(ORCHESTRATOR_GUIDANCE.split())
+-        self.assertIn("Before spawning a worker, start one unique deadline-harness task", normalized)
+-        self.assertIn("spawned only to verify its model or suitability still owns a window", normalized)
+-        self.assertIn("terminalize that task as abandoned", normalized)
+-        self.assertIn("record exactly one completion, finding, or abandonment", normalized)
+-        self.assertIn("A coordinator start, exit, or restart does not itself create", normalized)
+-
+-    def test_worker_model_guidance_isolates_new_workers_and_reserves_sol(self) -> None:
+-        self.assertIn("Sol is not an ordinary worker", TASK_GUIDANCE)
+-        self.assertIn("Luna for clear execution", ORCHESTRATOR_GUIDANCE)
+-        self.assertIn("Terra for debugging/discovery", ORCHESTRATOR_GUIDANCE)
+-        self.assertIn("lowest sufficient", ORCHESTRATOR_GUIDANCE)
+-        self.assertIn("complexity/research", ORCHESTRATOR_GUIDANCE)
+-        self.assertIn("`gpt-6-astra` reviewer at medium", ORCHESTRATOR_GUIDANCE)
+-        self.assertIn('`fork_turns="none"`', ORCHESTRATOR_GUIDANCE)
+-        self.assertIn("explicitly selects Luna or Terra", ORCHESTRATOR_GUIDANCE)
+-        self.assertIn("new worker never", ORCHESTRATOR_GUIDANCE)
+-        self.assertIn("receives the coordinator or predecessor transcript", ORCHESTRATOR_GUIDANCE)
++
+ 
+ 
+ if __name__ == "__main__":
+--- before/tests/test_phase3_scenarios.py
++++ installed/tests/test_phase3_scenarios.py
+@@ -206,11 +206,11 @@
+             self.assertIn("open_gap", facts)
+             self.assertEqual(routed.action, "dispatch_closure_worker")
+ 
+-    def test_worker_twenty_three_runs_stored_mutation_once_then_restarts(self) -> None:
++    def test_stored_mutation_boundary_runs_once_then_restarts(self) -> None:
+         with patch(
+             "deadline_harness.secrets.randbelow", side_effect=[3, 1, 7, 0]
+         ), DeadlineHarness(self.state) as harness:
+-            for number in range(1, 24):
++            for number in range(1, 14):
+                 task_id = f"window-{number:02d}"
+                 harness.start_task(
+                     "project", task_id, f"R-{number:03d}", 100, now=0
+@@ -221,10 +221,10 @@
+ 
+             mutation = terminal["random_mutation"]
+             self.assertTrue(mutation["due"])
+-            self.assertEqual(mutation["completed_terminal_windows"], 23)
+-            self.assertEqual(mutation["interval_windows"], 23)
++            self.assertEqual(mutation["completed_terminal_windows"], 13)
++            self.assertEqual(mutation["interval_windows"], 13)
+             self.assertEqual(
+-                mutation["selected_lane"], "orchestrator-guidelines.md"
++                mutation["selected_lane"], "DFS.md"
+             )
+             facts, routed = self.decision(2)
+             self.assertIn("random_mutation_due", facts)
+--- before/tests/test_policy_compare.py
++++ installed/tests/test_policy_compare.py
+@@ -12,8 +12,6 @@
+ SCRIPT = ROOT / "scripts" / "policy_compare.py"
+ POLICY = ROOT / "assets" / "environment" / "phase3-policy.d67"
+ CONTRACTS = ROOT / "assets" / "environment" / "phase3-contracts.json"
+-BASELINE_REF = "backup/pre-lab-lab-20260822"
+-HAS_REPOSITORY_HISTORY = (ROOT.parent / ".git").exists()
+ SPEC = importlib.util.spec_from_file_location("de67_policy_compare", SCRIPT)
+ assert SPEC is not None and SPEC.loader is not None
+ compare_module = importlib.util.module_from_spec(SPEC)
+@@ -28,11 +26,11 @@
+         names = [case["name"] for case in value["decision_cases"] + value["trace_cases"]]
+         self.assertEqual(len(names), len(set(names)))
+ 
+-    @unittest.skipUnless(HAS_REPOSITORY_HISTORY, "comparison needs de67 Git history")
+     def test_main_and_lab_comparison_has_only_declared_strengthenings(self) -> None:
+-        report = compare_module.compare(POLICY, CONTRACTS, BASELINE_REF)
++        report = compare_module.compare(POLICY, CONTRACTS)
+         self.assertTrue(report["passed"])
+-        self.assertLess(report["ratio"], 1)
++        self.assertNotIn("baseline_policy_bytes", report)
++        self.assertGreater(report["compiled_policy_bytes"], 0)
+         divergences = {
+             case["name"] for case in report["trace_cases"]
+             if case["main"] != case["lab"]
+@@ -44,11 +42,10 @@
+             "proof-owner-replacement-leaves-stale-projection",
+         })
+ 
+-    @unittest.skipUnless(HAS_REPOSITORY_HISTORY, "comparison needs de67 Git history")
+     def test_comparison_cli_is_reproducible(self) -> None:
+         command = [
+             sys.executable, str(SCRIPT), "--policy", str(POLICY),
+-            "--contracts", str(CONTRACTS), "--baseline-ref", BASELINE_REF,
++            "--contracts", str(CONTRACTS),
+         ]
+         first = subprocess.run(command, text=True, capture_output=True)
+         second = subprocess.run(command, text=True, capture_output=True)
+@@ -56,10 +53,10 @@
+         self.assertEqual(first.stdout, second.stdout)
+         self.assertTrue(json.loads(first.stdout)["passed"])
+ 
+-    def test_missing_baseline_fails_closed(self) -> None:
++    def test_missing_policy_fails_closed(self) -> None:
+         result = subprocess.run(
+-            [sys.executable, str(SCRIPT), "--policy", str(POLICY),
+-             "--contracts", str(CONTRACTS), "--baseline-ref", "missing-ref"],
++            [sys.executable, str(SCRIPT), "--policy", str(ROOT / "missing-policy.d67"),
++             "--contracts", str(CONTRACTS)],
+             text=True, capture_output=True,
+         )
+         self.assertEqual(result.returncode, 2)
+--- before/tests/test_policy_kernel.py
++++ installed/tests/test_policy_kernel.py
+@@ -187,13 +187,6 @@
+         with self.assertRaisesRegex(kernel.PolicyError, "required obligations"):
+             kernel.guard_policy_candidate(policy, kernel.load_contracts(CONTRACTS))
+ 
+-    def test_compiled_policy_is_smaller_than_runtime_markdown(self) -> None:
+-        compiled = kernel.compile_policy(source_policy())
+-        prose = sum(
+-            (ROOT / "assets" / "environment" / name).stat().st_size
+-            for name in ("orchestrator-guidelines.md", "test-and-task-guidelines.md")
+-        )
+-        self.assertLess(len(compiled), prose)
+ 
+     def test_truncated_corrupt_and_identity_mismatched_bytecode_fail_closed(self) -> None:
+         compiled = kernel.compile_policy(source_policy())
