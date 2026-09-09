@@ -1,0 +1,9 @@
+{
+  "gate": "5a3101b86a3b",
+  "run_id": "mutation-c7dd15d8571f460696f593daab9cbfdc",
+  "supervisor_pid": 95294,
+  "head": "ab8f4d618b1ad54192ba01800f29ddd1221cde05",
+  "tree": "337cd3b814d3d9b76817504c37544244f4996e48",
+  "live_worker_claims": 0,
+  "observed_runtime": "Only reviewer runner 7516 owned by current supervisor 95294; older unfinished journal rows are historical, not process proof."
+}

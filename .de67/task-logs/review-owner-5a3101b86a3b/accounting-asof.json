@@ -1,0 +1,58 @@
+{
+  "root_thread_id": "01a08109-6d0f-7391-8d01-0209be85fbeb",
+  "root_turn_id": "01a08621-fbc8-79c1-b568-ac82434c74c9",
+  "asof": "2026-09-09T12:36:13.300Z",
+  "calls": 81,
+  "usage": {
+    "input_tokens": 7693935,
+    "cached_input_tokens": 7423744,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 28259,
+    "reasoning_output_tokens": 6107,
+    "total_tokens": 7722194
+  },
+  "threads": {
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "calls": 36,
+      "input_tokens": 4624418,
+      "cached_input_tokens": 4548608,
+      "output_tokens": 14199,
+      "reasoning_output_tokens": 2729,
+      "total_tokens": 4638617
+    },
+    "01a08622-7a1d-7ca3-9920-2d597a00a6fa": {
+      "calls": 18,
+      "input_tokens": 1142786,
+      "cached_input_tokens": 1057280,
+      "output_tokens": 6515,
+      "reasoning_output_tokens": 1612,
+      "total_tokens": 1149301
+    },
+    "01a08623-ff4c-75b2-866c-0a65a8e40990": {
+      "calls": 27,
+      "input_tokens": 1926731,
+      "cached_input_tokens": 1817856,
+      "output_tokens": 7545,
+      "reasoning_output_tokens": 1766,
+      "total_tokens": 1934276
+    }
+  },
+  "sources": [
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/09/rollout-2026-09-09T14-26-41-01a08622-7a1d-7ca3-9920-2d597a00a6fa.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/09/rollout-2026-09-09T14-28-21-01a08623-ff4c-75b2-866c-0a65a8e40990.jsonl"
+  ],
+  "included_turns": [
+    "01a08621-fbc8-79c1-b568-ac82434c74c9",
+    "01a08622-7a96-7020-8a75-7cbc70d18813",
+    "01a08623-ffc1-70d3-9dab-8a99bc4b16bf",
+    "01a08627-6e9b-7702-a12f-6a3db3367021",
+    "01a08629-f34c-71c2-a2c6-83bbf83d72d5"
+  ],
+  "deduplication": "Counted token_usage_record usage by unique response_id; no duplicate response IDs observed (81 records, 81 unique response IDs). Excluded cumulative thread counters and records whose root_turn_id did not equal the requested review root.",
+  "gaps": [
+    "Token accounting is limited to persisted token_usage_record entries available at the as-of timestamp; later closeout records are excluded.",
+    "A separate Luna thread with a different root_turn_id was excluded because it did not carry the requested review root identity."
+  ],
+  "boundary": "Full-tree as-of measurement for the exact review root, including the root thread, both Luna helper threads carrying that root identity, and their retries/followups. No savings claim."
+}

@@ -1,0 +1,30 @@
+[
+  {
+    "line": 724,
+    "id": "msg_02ad8eba73e82e67016aa1447fd95887d28bf83d00fc432279",
+    "text": "The returned run disproves only this fire-persistence strategy; it does not close the assigned discovery outcome. The valid native setup, save/reload identity, and cleanup remain useful. I\u2019m keeping task 064 live and sending the same worker after the first meaningful difference: why the player-created brazier/fire vanished across reload, then repair the repository-owned route and resume observation if possible.",
+    "exit_code": null,
+    "result": null
+  },
+  {
+    "line": 816,
+    "id": "msg_02ad8eba73e82e67016aa147ef69e487d297b38ebb6072b28f",
+    "text": "The recovery successfully fixes the false persistence diagnosis and proves the native smoke/light writers fired, but it still does not meet the assignment\u2019s valid-range premise: the staffed observer was out of range. I\u2019m preserving this as a negative control and continuing the same task with a changed camp/source geometry that is demonstrably in range before ignition.",
+    "exit_code": null,
+    "result": null
+  },
+  {
+    "line": 876,
+    "id": "exec-447fc6c7-fa70-4c41-baa9-7cf745d67414",
+    "text": null,
+    "exit_code": 2,
+    "result": "{\"error\": \"Checkpoint worker does not own this attempt\"}\n"
+  },
+  {
+    "line": 892,
+    "id": "exec-5b2f7d89-7efe-4df9-8bda-14b8bb02e538",
+    "text": null,
+    "exit_code": 0,
+    "result": "{\"kind\": \"recovered-fire-out-of-range-control\", \"sequence\": 3, \"state\": \"checkpointed\", \"task_id\": \"R-029-roof-fire-discovery-064\", \"worker_id\": \"01a085e4-b0cb-73d1-9c10-af0d611fa208\"}\n"
+  }
+]

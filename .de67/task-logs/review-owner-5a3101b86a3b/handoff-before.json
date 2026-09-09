@@ -1,0 +1,10 @@
+{
+  "gate_after_consumption": null,
+  "restart_before": {
+    "required": false,
+    "generation": 46,
+    "expected_run_id": "restart-46-762f082db4224f1e9a2a3104b602ede2",
+    "run_id": "restart-46-762f082db4224f1e9a2a3104b602ede2",
+    "reason": "Owner review 161163dafc03 resolved; evidence .de67/task-logs/review-owner-161163dafc03.md. R-031 gap revision 4 is an explicit owner wait consuming completed task -005 without changing its receipt or A/B boundary. Continue independently actionable claims. Missing or changed review-history gate metadata now selects fresh context with current instructions; lifecycle and external supervisor ownership remain unchanged."
+  }
+}

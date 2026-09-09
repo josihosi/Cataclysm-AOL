@@ -1,0 +1,15 @@
+{
+  "argv": [
+    "/opt/homebrew/opt/python@3.14/bin/python3.14",
+    "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/policy_kernel.py",
+    "guard",
+    "--candidate",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/phase3-policy.candidate.json",
+    "--contracts",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/phase3-contracts.json",
+    "--output",
+    "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/phase3-policy.candidate.d67"
+  ],
+  "exit_code": 0,
+  "bytecode_matches_active": true
+}

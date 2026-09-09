@@ -1,0 +1,43 @@
+{
+  "random_review": {
+    "rejected": "DFS expansion cannot delete or rewrite any baseline line",
+    "scope": "legacy append-only DFS validator; owner explicitly authorizes the canonical FS refinement and tooling specification"
+  },
+  "method_candidate": [
+    "scripts/coordinator_supervisor.py"
+  ],
+  "owner_queue_consumption": 2,
+  "specification": {
+    "canonical": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/state/review-owner-5a3101b86a3b/candidate/FS.md",
+    "sha256": "53451b3d17816c8eee536bb51a46087995389855df0445671ea870f41e9f25c0"
+  },
+  "owner_scoped_fs_delta": {
+    "changed": [
+      "R-029-S001"
+    ],
+    "added": [
+      "R-MAINT-CHECKPOINT-CONTEXT-S001"
+    ],
+    "preserved_existing_slices": 31,
+    "legacy_status_blocks_added": false
+  },
+  "rendered_context": {
+    "contains_all_three_changed_contracts": true,
+    "second_transport": false,
+    "automatic_review_requirement": false
+  },
+  "context_sizes": {
+    "worker_handoff_contract": {
+      "before_chars": 1858,
+      "after_chars": 1921
+    },
+    "worker_result_ingress_contract": {
+      "before_chars": 3946,
+      "after_chars": 4394
+    },
+    "live_coordination_contract": {
+      "before_chars": 1789,
+      "after_chars": 1792
+    }
+  }
+}

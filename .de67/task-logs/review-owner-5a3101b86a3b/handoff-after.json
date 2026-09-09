@@ -1,0 +1,12 @@
+{
+  "owner_gate": "5a3101b86a3b",
+  "gate_remaining": false,
+  "restart": {
+    "required": true,
+    "generation": 47,
+    "expected_run_id": null,
+    "run_id": null,
+    "reason": "Owner gate 5a3101b86a3b resolved: both entries consumed. FS now specifies night departure and continued raid/attack through dawn, R029-F005 records the observed failure with corrected caller attribution, and Sol owns R-029-night-departure-repair-001. Consolidated coordinator experiment/review context is installed; optional checkpoint argv tooling is commissioned as R-MAINT-CHECKPOINT-CONTEXT-001. Evidence .de67/task-logs/review-owner-5a3101b86a3b/report.md. Preserve independent assignments, accepted proof, and owner conversation. External supervisor alone owns this successor."
+  },
+  "successor_launched_by_reviewer": false
+}

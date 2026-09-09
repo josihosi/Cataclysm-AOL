@@ -544,10 +544,31 @@ exact duplicate as `already_applied` and rejects changed identity/revision. Term
 applied once after return; exact duplicate receipt is read-only and mismatched replay is stale.
 These boundaries forbid double dispatch, duplicate payment or outcome application on reload.
 
-`advance_live_bandit_hostile_approaches` gates only `rallying -> approaching` by night for a raid.
+Owner refinement, gate `5a3101b86a3b` (2026-09-09): an otherwise ready cannibal raid leaves
+after sundown, using the existing game-night predicate `is_night(calendar::turn)` rather than
+a fixed clock hour or a promised travel duration. Night is an initial-departure condition only.
+Once departed, it continues toward the target and attacks on arrival even after sunrise. Dawn
+must not reset its phase, return it to rallying, clear its committed route, or make it wait for
+another night. This commitment survives save/load and exact-world process replacement; unrelated
+valid loss/return conditions retain their meaning.
+
+The existing production route is `src/do_turn.cpp :: advance_live_bandit_hostile_approaches`,
+called by `overmap_npc_move`. It already contains a night-gated `rallying -> approaching` call,
+following abstract-owner, cursor, member, route and rally-position checks. The phase validator in
+`src/bandit_live_world.cpp` also permits `waiting_night -> approaching`, but the live loop currently
+selects only rallying/approaching operations. Required implementation must make the eligible
+night departure and later approach/contact reachable through the existing authoritative route,
+including any reachable waiting-night state, without introducing a second distance dispatcher.
+The observed operation that stayed rallying overnight does not prove which prerequisite failed;
+reconcile the complete caller chain and exact recorded state before selecting the repair.
+
 Once departed, the persisted operation and physical route remain authoritative through dawn;
-contact has no second night gate. Abstract/local handoffs must retain site, generation, operation,
+contact has no second night gate. Abstract/local handoffs retain site, generation, operation,
 member IDs and route progress. Generic travel may not advance a concurrently locally owned actor.
+Verification distinguishes pre-departure daylight holding, eligible night departure, and a route
+that crosses dawn and still reaches attack, including reload continuity. Setup and a phase write
+alone do not establish physical movement or attack. Independent activation/arbitration and
+sound-drive owner choices are unchanged by this refinement.
 
 `live_bandit_handle_hostile_shakedown_contact` and `choose_local_gate_posture` distinguish normal
 shakedown from favorable rolling-travel attack. The forced native payment UI remains.
@@ -1084,3 +1105,26 @@ Refine coordinator and worker context to support useful decisions and effective 
 Josef's conversation in the mutator's context, including during reviews.
 
 <!-- DE67:DFS-SLICE:END id=R-MAINT-REVIEW-CONTEXT-S001 claim=R-MAINT-REVIEW-CONTEXT -->
+
+
+## Optional checkpoint command context
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-CHECKPOINT-CONTEXT-S001 claim=R-MAINT-CHECKPOINT-CONTEXT -->
+
+`work_context.py::context_view()` should make the supported checkpoint command discoverable for
+one explicitly queried live task. From the same authoritative task/worker snapshot used for its
+current bindings, expose an optional `deadline_harness.py checkpoint-worker` argument-array template
+with the state, lineage, task and actual current worker filled in. Leave the descriptive kind and
+evidence for the coordinator to supply. This is an available command, never a required next action
+or a grant of authority. An unknown, terminal or unclaimed task must not acquire an invented worker
+binding. Retrieval performs no checkpoint or delivery-state transition.
+
+Execution retains the existing task/worker ownership check, so a template retrieved before ownership
+changes is rejected when stale. Integrate the concise handle into the existing context response;
+no duplicate prompt syntax, new receipt, universal command framework or checkpoint requirement.
+Verify exact emitted bindings, absence of a live-worker template when inapplicable, no retrieval
+mutation of authoritative state, and stale-template rejection. The owner proposal's rejected and
+corrected task-064 commands provide the before-change counterexample; later natural use establishes
+whether corrective exchanges decrease, not a synthetic gameplay replay.
+
+<!-- DE67:DFS-SLICE:END id=R-MAINT-CHECKPOINT-CONTEXT-S001 claim=R-MAINT-CHECKPOINT-CONTEXT -->

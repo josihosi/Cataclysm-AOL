@@ -1,0 +1,45 @@
+{
+  "gate": "5a3101b86a3b",
+  "status": "installed",
+  "files": [
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/FS.md",
+      "before_sha256": "c6bfec15ab1c0292d432a22c9377f7d629ca98b691020378de975606ff490604",
+      "after_sha256": "53451b3d17816c8eee536bb51a46087995389855df0445671ea870f41e9f25c0",
+      "bytes": 88933
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/DFS.md",
+      "before_sha256": "743b387c96a2d15d0d61cb3c314b31482996988942ba6fb6359d0870eb0b5d6c",
+      "after_sha256": "b70fc912f6ed72d0e10fbb4ab68ad513be7c597cea506ca81c73eb8f86055af5",
+      "bytes": 112
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/work-ledger.md",
+      "before_sha256": "9f85b1f86b2ef4a11783eb451697b5813b7a7f18485aedce380e28cc84a22fc8",
+      "after_sha256": "0cde79c81d9a43968563a1b852cdd0dd2afcc0fe0e3cc62f25cdc28e30dbf072",
+      "bytes": 132168
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/debug-findings.md",
+      "before_sha256": "22ad399f51723674c861db4ed8c3a66d044fa5c1adf506ec00033dca1b247e43",
+      "after_sha256": "bb7323cefe82fc2b0a728edf06d13518f60e9328818960d56ff076e00ef2e589",
+      "bytes": 5886
+    },
+    {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.de67/mutation-suggestions.md",
+      "before_sha256": "ab71bc5ee40da494ac48b5cb1d4d9998dc9ba2b36cf7da20a9664671fdc45482",
+      "after_sha256": "186e56fe091b3c657bddd0c2ea7e208d84a196b5d11dac6069b9b561b616f218",
+      "bytes": 1428
+    },
+    {
+      "path": "/Users/josefhorvath/.codex/skills/de67/de-67-3/scripts/coordinator_supervisor.py",
+      "before_sha256": "8e76f2b1f9d7586cd41dc5f2cc6e0986d70eaefc3422b5dee81397200ff7bc5b",
+      "after_sha256": "0d731d7e6a578448eafddf5a9e6c66aecff9d76d7a60f380d2dbdcd1520ac948",
+      "bytes": 93208
+    }
+  ],
+  "live_worker_claims": 0,
+  "current_owner_active_coordinators": 0,
+  "acceptance_or_clock_mutations": false
+}

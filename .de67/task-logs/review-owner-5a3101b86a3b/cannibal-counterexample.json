@@ -1,0 +1,22 @@
+{
+  "receipt": "d3ab40640c44ea98b8a59ee68f2944ed422178d4b16d8aa43f4aa466846ad89a",
+  "source_commit": "f9e636102c4e624b2eee1b212fe4a73036ec73a7",
+  "production_caller_present_at_receipt_source": [
+    {
+      "line": 1502,
+      "context": "    }\n    return changed;\n}\n\nbool advance_live_bandit_hostile_approaches()\n{"
+    },
+    {
+      "line": 1603,
+      "context": "            }\n            changed |= bandit_live_world::transition_hostile_operation_phase( site, *cursor,\n                       bandit_live_world::hostile_operation_phase::rallying,\n                       bandit_live_world::hostile_operation_phase::approaching, current_minutes,\n                       \"hostile operation openly approached persisted target\" ) ==\n                       bandit_live_world::hostile_operation_transition_result::applied;"
+    },
+    {
+      "line": 11343,
+      "context": "                                   << \" recorded=\" << recorded.sites_recorded\n                                   << \" facts=\" << recorded.facts_recorded << '\\n';\n    }\n    advance_live_bandit_hostile_rallies();\n    advance_live_bandit_hostile_approaches();\n    advance_live_bandit_hostile_returns();"
+    }
+  ],
+  "packet": ".de67/state/worker-dispatch/task_522d3032392d6e696768742d70657273697374656e63652d6665656c2d303633-ed208fe1b3ec58fbe14302a68480a5c3bcc6dac9df1be373076ab2a78ffdb5a5.md",
+  "packet_sha256": "ed208fe1b3ec58fbe14302a68480a5c3bcc6dac9df1be373076ab2a78ffdb5a5",
+  "symbol_in_packet": false,
+  "evidence_ceiling": "The missing-caller explanation is contradicted; observed overnight rallying is preserved. Caller eligibility failure remains unresolved, not assigned to a guessed prerequisite."
+}

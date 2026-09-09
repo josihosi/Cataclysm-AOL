@@ -6,6 +6,8 @@ active intake; original observations and dispositions remain in
 
 ## Owner-promoted repairs
 
+- R029-F005 — The tested cannibal raid remained rallying across night and dawn. Owner gate `5a3101b86a3b` promotes the FS outcome: a ready raid leaves after sundown and continues to attack even if arrival is after sunrise, without restarting a night-wait loop, including reload continuity. Receipt `d3ab40640c44ea98b8a59ee68f2944ed422178d4b16d8aa43f4aa466846ad89a` binds runs `0948ae0ca63145a7b25a27e356d6efe3` and `5a7b6d1625274640a7c35010df82d917`, camp `overmap_special:cannibal_camp@140,51,0`, members 4 and 5, and observed 23:00–06:00/replacement continuity. The worker's missing-production-caller explanation is incomplete: `src/do_turn.cpp::advance_live_bandit_hostile_approaches` contains the night-gated call and `overmap_npc_move` invokes it. The exact failed prerequisite remains to be established; do not add a duplicate dispatcher. The ledger commissions diagnosis, repair and source-bound proof. No successful approach/attack or gameplay fix is credited yet; both game PIDs are absent, but replacement cleanup has no native-exit credit. Separate activation/arbitration and sound-drive decisions remain unchanged.
+
 R033-F002 is repaired and leaves active bug intake. The original observation and promotion remain in `.de67/state/review-owner-d1cfc813605b/baseline/debug-findings.md`. Receipt `df8d84806a3395b87181cf465a8bf57e955dbca534786b1ae86690e5b9a11494` proves the bounded comparison repair, focused boundary tests, native unchanged-source deduplication and a same-key refresh without duplication. Unsupported-memory aging and broader R-033 boundary behavior remain open on the work ledger.
 
 ## Targeted investigations

@@ -1,0 +1,14 @@
+[
+  {
+    "task": "R-029-night-departure-repair-001",
+    "scope": "task-specific ledger assignment",
+    "selected_fs_chars": 6616,
+    "assignment_chars": 1282
+  },
+  {
+    "task": "R-MAINT-CHECKPOINT-CONTEXT-001",
+    "scope": "task-specific ledger assignment",
+    "selected_fs_chars": 1322,
+    "assignment_chars": 902
+  }
+]
