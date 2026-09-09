@@ -1595,8 +1595,47 @@ def _current_valid_bootstrap_manifest(snapshot: RegistryQueryCandidateSnapshot) 
 def _select_registry_bootstrap_candidate(
     connection: sqlite3.Connection,
     request: RegistryQueryRequest,
+    *,
+    scenario_id: Optional[str] = None,
 ) -> Optional[RegistryQueryCandidateSnapshot]:
     """Select normal authority first, then one current manifest quarantined only by stale evidence."""
+    if scenario_id:
+        candidates = build_registry_query_candidate_snapshot(connection)
+        selected = next((candidate for candidate in candidates if candidate.scenario_id == scenario_id), None)
+        # A prior failed first-run bootstrap can quarantine the exact manifest
+        # solely because its old route evidence is stale.  Preserve exact
+        # scenario pinning while permitting that same stale-only retry path;
+        # no contradicted or otherwise ineligible manifest is admitted.
+        if selected is None:
+            stale_candidates = build_registry_query_candidate_snapshot(
+                connection, include_lifecycle_states=("quarantined",)
+            )
+            selected = next((candidate for candidate in stale_candidates if candidate.scenario_id == scenario_id), None)
+            if selected is not None and not _current_stale_bootstrap_candidate(selected):
+                selected = None
+        if selected is None or (
+                not selected.token_eligible and not _current_stale_bootstrap_candidate(selected)
+        ) or not _current_valid_bootstrap_manifest(selected):
+            return None
+        named_facts = selected.facts
+        if _current_stale_bootstrap_candidate(selected):
+            named_facts = {
+                key: {
+                    **dict(fact),
+                    "evidence_state": "declared" if fact.get("evidence_state") in {"stale", "contradicted"}
+                    else fact.get("evidence_state"),
+                    "proof_depth": None if fact.get("evidence_state") in {"stale", "contradicted"}
+                    else fact.get("proof_depth"),
+                }
+                for key, fact in selected.facts.items()
+            }
+        named_evaluation = evaluate_registry_query(
+            request,
+            ({"scenario_id": selected.scenario_id, "facts": named_facts},),
+        )
+        if selected.scenario_id not in named_evaluation.ranked_scenario_ids:
+            return None
+        return selected
     ordinary = evaluate_registry_query_from_store(connection, request)
     selected_id = ordinary.evaluation.ranked_scenario_ids[0] if ordinary.evaluation.ranked_scenario_ids else None
     selected = next((candidate for candidate in ordinary.candidates if candidate.scenario_id == selected_id), None)
@@ -2754,6 +2793,7 @@ def execute_registry_query(
         "authority_kind": authority_kind,
         "query_id": query_id,
         "query_sha256": query_sha256,
+        "scenario_id": selected.scenario_id,
         "manifest_id": manifest["manifest_id"],
         "manifest_revision": manifest["revision"],
         "manifest_sha256": manifest["sha256"],
@@ -3153,12 +3193,13 @@ def issue_registry_bootstrap_token(
     request: RegistryQueryRequest,
     *,
     runtime_binding: Mapping[str, Any],
+    scenario_id: Optional[str] = None,
 ) -> RegistryBootstrapToken:
     """Mint a distinct authority for one first compatible evidence run only."""
     runtime = _bootstrap_runtime_binding(runtime_binding)
     request_json = _query_request_json(request)
     query_sha256 = hashlib.sha256(request_json.encode("utf-8")).hexdigest()
-    selected = _select_registry_bootstrap_candidate(connection, request)
+    selected = _select_registry_bootstrap_candidate(connection, request, scenario_id=scenario_id)
     if selected is None:
         return RegistryBootstrapToken("", False, "query_has_no_active_compatible_manifest")
     if _current_verified_route(selected) is not None:
@@ -3300,7 +3341,9 @@ def reload_bootstrap_token_for_launch(
             return reject("manifest_source_unreadable", error=str(exc))
         if observed_sha256 != expected_sha256:
             return reject("manifest_source_changed")
-        selected = _select_registry_bootstrap_candidate(connection, request)
+        selected = _select_registry_bootstrap_candidate(
+            connection, request, scenario_id=str(receipt.get("scenario_id", expected_manifest_id))
+        )
         if selected is None or selected.scenario_id != expected_manifest_id:
             return reject("query_authority_changed")
         if _current_verified_route(selected) is not None:

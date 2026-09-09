@@ -1,0 +1,5 @@
+{
+  "action": "game.player_fire_setup",
+  "observation_id": "dc2cd3f4051dacb141b15c5323782d9532fe014d839dd8196040cc6d7fde466f:frame:20",
+  "player_fire_setup": {"intent": "deploy_and_ignite_brazier"}
+}

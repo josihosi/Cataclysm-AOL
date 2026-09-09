@@ -2569,6 +2569,22 @@ class StartupScreenGateTest(unittest.TestCase):
 
 
 class ScreenCheckpointVerdictTest(unittest.TestCase):
+    def test_bound_native_semantic_checkpoint_does_not_require_image_capture(self) -> None:
+        verdict, issues = screen_checkpoint_verdict(
+            screen_summary={
+                "capture_success": False,
+                "capture_status": "not_requested_native_semantic",
+                "native_semantic_checkpoint": {
+                    "status": "required_state_present",
+                    "run_id": "run-1",
+                },
+            },
+            expected_visible_fact="native world screen is loaded",
+        )
+
+        self.assertEqual(verdict, "green_step_native_semantic_checkpoint")
+        self.assertEqual(issues, [])
+
     def test_named_screenshot_without_state_guard_is_not_green(self) -> None:
         verdict, issues = screen_checkpoint_verdict(
             screen_summary={"peekaboo_success": True},

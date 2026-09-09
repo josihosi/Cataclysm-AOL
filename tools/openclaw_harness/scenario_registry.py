@@ -360,6 +360,7 @@ def _validate_checkpoint_chain_fields(manifest: Mapping[str, Any], *, path: Path
             "r018.raw_wait_acceptance_mcw", "r019.keep_watch_acceptance_mcw",
             "r019.primitive_safe_popup_comparison_mcw",
             "r026.living_npc_package_v001_mcw",
+            "cannibal.night_raid_natural_transition_validation_mcw",
             "cannibal.r029_natural_route_roof_mcw",
             "bandit.r029_natural_sound_route_mcw",
             "r031.ambient_neutral_npc_authority_v002_mcw",
@@ -448,6 +449,7 @@ def _validate_versioned_fields(manifest: Mapping[str, Any], *, path: Path) -> No
             "r018.raw_wait_acceptance_mcw", "r019.keep_watch_acceptance_mcw",
             "r019.primitive_safe_popup_comparison_mcw",
             "r026.living_npc_package_v001_mcw",
+            "cannibal.night_raid_natural_transition_validation_mcw",
             "r031.ambient_neutral_npc_authority_v002_mcw",
         },
     )

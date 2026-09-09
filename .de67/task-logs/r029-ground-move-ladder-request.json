@@ -1,0 +1,11 @@
+{
+  "action": "game.act",
+  "action_id": "game.guarded_move_relative",
+  "observation_id": "5da88d20761572e17d7a6439df12debf4ce7a72d8558ccd06d2d7bb7a064bb87:frame:49",
+  "move_relative": {
+    "enabled": true,
+    "offset_ms": [-11,-7],
+    "danger_handling": "handle_classified_non_dangerous",
+    "bound": {"basis":"path_progress","source":"native roof path to visible ladder","unit":"steps","maximum":18,"progress_required":true}
+  }
+}

@@ -24,6 +24,7 @@ from startup_harness import (  # noqa: E402
     scenario_contract_dict,
     scenario_manifest_binding,
 )
+import scenario_registry_store as registry_store  # noqa: E402
 
 
 class ScenarioRegistryIntegrationTest(unittest.TestCase):
@@ -31,6 +32,50 @@ class ScenarioRegistryIntegrationTest(unittest.TestCase):
         path = root / f"{name}.json"
         path.write_text(json.dumps(payload, indent=2) + "\n", encoding="utf-8")
         return path
+
+    def test_exact_bootstrap_selector_named_success_and_no_rerank(self) -> None:
+        request = registry_store.parse_registry_query_request({"requirements": [], "preferences": []})
+        selected = registry_store.RegistryQueryCandidateSnapshot(
+            "named", {}, "active", True,
+            {"manifest": {"present": True, "validation": {"status": "valid", "review_required": False}}},
+        )
+        decoy = registry_store.RegistryQueryCandidateSnapshot("decoy", {}, "active", True, selected.explanation)
+        with mock.patch.object(registry_store, "build_registry_query_candidate_snapshot", return_value=(decoy, selected)), \
+                mock.patch.object(registry_store, "evaluate_registry_query", side_effect=lambda req, xs: registry_store.RegistryQueryEvaluation((), ("named",))):
+            self.assertIs(registry_store._select_registry_bootstrap_candidate(mock.sentinel.db, request, scenario_id="named"), selected)
+
+    def test_exact_bootstrap_selector_named_typed_mismatch_rejects_without_fallback(self) -> None:
+        request = registry_store.parse_registry_query_request({"requirements": [{"key": "capabilities.x", "op": "eq", "value": "wanted"}], "preferences": []})
+        selected = registry_store.RegistryQueryCandidateSnapshot(
+            "named", {"capabilities.x": {"value": "other", "evidence_state": "declared"}}, "active", True,
+            {"manifest": {"present": True, "validation": {"status": "valid", "review_required": False}}},
+        )
+        with mock.patch.object(registry_store, "build_registry_query_candidate_snapshot", return_value=(selected,)), \
+                mock.patch.object(registry_store, "evaluate_registry_query", side_effect=lambda req, xs: registry_store.RegistryQueryEvaluation((), ())):
+            self.assertIsNone(registry_store._select_registry_bootstrap_candidate(mock.sentinel.db, request, scenario_id="named"))
+
+    def test_exact_bootstrap_selector_rejects_ineligible_and_invalid_named_rows(self) -> None:
+        request = registry_store.parse_registry_query_request({"requirements": [], "preferences": []})
+        for lifecycle, eligible, validation in (("active", False, "valid"), ("active", True, "invalid"), ("quarantined", True, "valid")):
+            candidate = registry_store.RegistryQueryCandidateSnapshot(
+                "named", {}, lifecycle, eligible,
+                {"manifest": {"present": True, "validation": {"status": validation, "review_required": False}}, "lifecycle": {"reason": "quarantine_history"}},
+            )
+            active_rows = (candidate,) if lifecycle == "active" else ()
+            with mock.patch.object(registry_store, "build_registry_query_candidate_snapshot", side_effect=[active_rows, (candidate,)]), \
+                    mock.patch.object(registry_store, "_current_stale_bootstrap_candidate", return_value=False):
+                self.assertIsNone(registry_store._select_registry_bootstrap_candidate(mock.sentinel.db, request, scenario_id="named"))
+
+    def test_exact_bootstrap_selector_allows_only_stale_quarantined_retry(self) -> None:
+        request = registry_store.parse_registry_query_request({"requirements": [], "preferences": []})
+        candidate = registry_store.RegistryQueryCandidateSnapshot(
+            "named", {}, "quarantined", False,
+            {"manifest": {"present": True, "validation": {"status": "valid", "review_required": False}}, "lifecycle": {"reason": "route_stale"}, "route_evidence": ({"evidence_state": "stale"},)},
+        )
+        with mock.patch.object(registry_store, "build_registry_query_candidate_snapshot", side_effect=[(), (candidate,)]), \
+                mock.patch.object(registry_store, "_current_stale_bootstrap_candidate", return_value=True), \
+                mock.patch.object(registry_store, "evaluate_registry_query", return_value=registry_store.RegistryQueryEvaluation((), ("named",))):
+            self.assertIs(registry_store._select_registry_bootstrap_candidate(mock.sentinel.db, request, scenario_id="named"), candidate)
 
     def test_legacy_load_and_list_preserve_flat_fields_with_review_binding(self) -> None:
         legacy = {

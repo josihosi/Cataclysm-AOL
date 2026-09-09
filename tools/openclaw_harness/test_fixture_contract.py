@@ -76,6 +76,7 @@ from startup_harness import (  # noqa: E402
     is_hostile_auto_move_cancel_modal,
     native_travel_stable_hud_markers,
     peekaboo_focus_pid,
+    startup_proof_classification,
     is_retained_hostile_auto_move_cancelled_hud_message,
     classify_wait_step_ledger,
     committed_revision_matches,
@@ -3779,6 +3780,49 @@ class MapEditorItemPlacementContractTest(unittest.TestCase):
 
 
 class ScenarioStartupProfileContractTest(unittest.TestCase):
+    def test_pid_focus_recovers_through_unique_pid_bound_window_id(self) -> None:
+        failed = SimpleNamespace(returncode=1, stdout="", stderr="window not indexed")
+        recovered = SimpleNamespace(returncode=0, stdout="focused", stderr="")
+        with (
+            mock.patch(
+                "startup_harness.peekaboo_command",
+                side_effect=lambda args, channel: ["peekaboo", *args],
+            ),
+            mock.patch("startup_harness.subprocess.run", side_effect=[failed, recovered]),
+            mock.patch(
+                "startup_harness.list_windows_for_pid",
+                return_value=[{
+                    "window_id": 73, "title": "Cataclysm: Dark Days Ahead - test",
+                    "isOnScreen": True, "isMinimized": False,
+                }],
+            ),
+        ):
+            result = peekaboo_focus_pid(42)
+
+        self.assertTrue(result["ok"])
+        self.assertEqual(result["window_id"], 73)
+        self.assertEqual(result["fallback"], "pid_bound_window_id")
+        self.assertEqual(result["pid_focus"]["returncode"], 1)
+
+    def test_pid_inventory_authorizes_input_without_claiming_foreground_focus(self) -> None:
+        result = startup_proof_classification(
+            ok=True,
+            screen_summary={
+                "peekaboo_success": True,
+                "startup_screen_probe": {"gameplay_hud_present": True},
+                "version_matches_runtime_paths": True,
+            },
+            focus_result={
+                "ok": True,
+                "fallback": "pid_bound_window_inventory",
+                "focus_verification": "unavailable",
+            },
+        )
+
+        self.assertFalse(result["focus_proven"])
+        self.assertTrue(result["input_owner_proven"])
+        self.assertTrue(result["startup_clean_for_feature_steps"])
+
     def test_pid_focus_failure_never_activates_a_same_named_foreign_game(self) -> None:
         failed = SimpleNamespace(returncode=1, stdout="", stderr="window not found")
         with (

@@ -1,0 +1,31 @@
+{
+  "name": "cannibal_night_raid_operation_bootstrap_v0_2026-09-09",
+  "source_fixture": "cannibal_live_world_night_local_contact_pack_v0_2026-04-28",
+  "source_profile": "live-debug",
+  "description": "Zero-credit cannibal night-raid operation bootstrap. Terrain, signal ancestry, dispatch, and contact remain unproved; only the declared production-owned operation state is prepared for independent night/dawn/persistence validation.",
+  "save_transforms": [
+    {
+      "kind": "bandit_scheduler_response_candidate",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:cannibal_camp@140,51,0",
+      "member_ids": [4, 5],
+      "generation": 2,
+      "current_minutes": 8580,
+      "target_id": "r029-fixture-player-opportunity",
+      "target_omt": [140, 41, 0],
+      "branch": "cannibal_night_raid",
+      "report_policy": "cannibal_night_raid",
+      "preserve_member_records": true
+    },
+    {
+      "kind": "bandit_hostile_operation_bootstrap",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "site_id": "overmap_special:cannibal_camp@140,51,0",
+      "member_ids": [4, 5],
+      "generation": 2,
+      "current_minutes": 8580,
+      "target_id": "r029-fixture-player-opportunity",
+      "target_omt": [140, 41, 0]
+    }
+  ]
+}

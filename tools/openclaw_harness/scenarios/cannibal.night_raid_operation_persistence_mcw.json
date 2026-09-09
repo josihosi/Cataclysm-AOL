@@ -1,0 +1,198 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.night_raid_operation_persistence_mcw",
+  "description": "Zero-credit prerequisite contract for independently validating a production-owned cannibal raid from rallying through night, dawn, and save/reload persistence. The fixture supplies only exact persisted state; no signal ancestry, dispatch, contact, or feel credit is granted.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "cannibal_night_raid_operation_bootstrap_v0_2026-09-09",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "adaptive_semantic_autodrive": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["bandit_live_world", "hostile_operation", "operation_kind=raid", "phase=rallying"],
+  "capabilities": {
+    "player.hud": ["Move:", "Wield:"],
+    "capabilities.cannibal_raid.bootstrap": "zero_credit_raid_rallying_outbound_exact_identity_route",
+    "capabilities.persistence": "full_save_exit_relaunch_same_world"
+  },
+  "proof_route": {
+    "precondition": ["audit_zero_credit_cannibal_raid_owner"],
+    "production_behavior": ["post_load_cannibal_raid_bootstrap_settle"],
+    "terminal_persistence": ["audit_cannibal_raid_bootstrap_night_time"],
+    "artifact_verdict": ["audit_zero_credit_cannibal_raid_owner"],
+    "disallowed_shortcuts": ["post_load_cannibal_raid_bootstrap_settle"]
+  },
+  "steps": [
+    {
+      "kind": "wait",
+      "label": "post_load_cannibal_raid_bootstrap_settle",
+      "seconds": 2.0,
+      "capture_after": true,
+      "expected_visible_fact": "native world screen is loaded before any gameplay transition"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_cannibal_raid_bootstrap_night_time",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_time_of_day_seconds": 82800,
+      "required_time_tolerance_seconds": 90,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_cannibal_raid_bootstrap_time",
+      "abort_reason": "bootstrap is not at the declared pre-night 23:00 control boundary"
+    },
+    {
+      "kind": "audit_saved_bandit_live_world_state",
+      "label": "audit_zero_credit_cannibal_raid_owner",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "required_profile": "cannibal_camp",
+      "required_site_id_contains": "overmap_special:cannibal_camp@140,51,0",
+      "required_active_group_id_exact": "",
+      "required_active_hostile_operation_kind": "raid",
+      "required_active_hostile_operation_phase": "rallying",
+      "required_active_hostile_reservation_job_type": "raid",
+      "normalized_active_hostile_reservation_target_id_exact": "r029-fixture-player-opportunity",
+      "required_active_hostile_reservation_simulation_owner": "abstract",
+      "required_active_hostile_reservation_min_member_ids": 2,
+      "required_report_decision_identity_match": true,
+      "required_report_hostile_operation_claim_match": true,
+      "required_active_members_found": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_untrusted_cannibal_raid_bootstrap",
+      "abort_reason": "saved state did not prove the sole raid owner, rallying phase, outbound reservation, exact report identity, route, or concrete members",
+      "expected_immediate_state": "fixture-only audit proves raid/rallying/outbound owner state and records gameplay_credit=false; no native transition is credited"
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "record_pre_night_turn_baseline",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "record_baseline": true,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_cannibal_raid_pre_night_baseline",
+      "abort_reason": "the declared 23:00 pre-night turn baseline could not be read"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "cross_night_transition",
+      "minimum_elapsed_minutes": 360,
+      "observation_timeout_seconds": 420.0,
+      "observation_interval_seconds": 1.0,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.6h"],
+      "adaptive_interrupt_actions": ["activity.ignore"],
+      "expected_visible_fact": "ordinary native waiting advances the bound world from 23:00 through the night transition toward dawn"
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "continue_through_dawn",
+      "minimum_elapsed_minutes": 60,
+      "observation_timeout_seconds": 180.0,
+      "observation_interval_seconds": 1.0,
+      "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1h"],
+      "adaptive_interrupt_actions": ["activity.ignore"],
+      "expected_visible_fact": "ordinary native waiting continues the same operation into the dawn boundary"
+    },
+    {
+      "kind": "semantic_terminal_action_chain",
+      "label": "save_and_exit_original_cannibal_process",
+      "objective": "Use the currently advertised native save-and-quit owner, then the resulting main-menu quit owner, to serialize the post-dawn operation state and end the original process.",
+      "observation_timeout_seconds": 30.0,
+      "observation_interval_seconds": 0.1,
+      "required_action_chain": ["world.save_quit", "prompt.yes", "main_menu.quit", "prompt.yes"]
+    },
+    {
+      "kind": "audit_saved_game_turn",
+      "label": "audit_dawn_turn_after_native_save",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "baseline_label": "record_pre_night_turn_baseline",
+      "required_min_delta_turns": 25200,
+      "required_time_of_day_seconds": 21600,
+      "required_time_tolerance_seconds": 90,
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_cannibal_raid_dawn_not_serialized",
+      "abort_reason": "native save did not serialize the post-wait dawn turn"
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "save_and_exit_original_cannibal_process",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "post_dawn_reload_hud",
+        "seconds": 2.0,
+        "capture_after": true,
+        "expected_visible_fact": "the same saved McWilliams world reloads into the native gameplay owner after process replacement",
+        "abort_verdict": "blocked_cannibal_raid_reload_missing",
+        "abort_reason": "the saved post-dawn cannibal operation did not reload into the same world"
+      },
+      {
+        "kind": "audit_saved_game_turn",
+        "label": "audit_reloaded_dawn_turn",
+        "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+        "required_time_of_day_seconds": 21600,
+        "required_time_tolerance_seconds": 90,
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_cannibal_raid_reloaded_turn_changed",
+        "abort_reason": "the reloaded save did not preserve the native dawn turn"
+      },
+      {
+        "kind": "audit_saved_bandit_live_world_state",
+        "label": "audit_reloaded_cannibal_raid_identity",
+        "required_profile": "cannibal_camp",
+        "required_site_id_contains": "overmap_special:cannibal_camp@140,51,0",
+        "required_active_hostile_operation_kind": "raid",
+        "required_active_hostile_reservation_job_type": "raid",
+        "required_active_hostile_reservation_target_id_exact": "r029-fixture-player-opportunity",
+        "required_active_hostile_reservation_simulation_owner": "abstract",
+        "required_active_hostile_reservation_min_member_ids": 2,
+        "required_report_decision_identity_match": true,
+        "required_report_hostile_operation_claim_match": true,
+        "required_active_members_found": true,
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_cannibal_raid_identity_not_persisted",
+        "abort_reason": "the reloaded world did not preserve the exact raid/site/reservation/member/report identity"
+      },
+      {
+        "kind": "adaptive_semantic_window",
+        "label": "observe_post_reload_ordinary_movement",
+        "minimum_elapsed_minutes": 1,
+        "observation_timeout_seconds": 90.0,
+        "observation_interval_seconds": 1.0,
+        "required_action_chain": ["world.wait", "wait.duration_menu", "wait.1m"],
+        "adaptive_interrupt_actions": ["activity.ignore"],
+        "expected_visible_fact": "the reloaded world accepts an ordinary native movement opportunity without duplicate operation ownership"
+      }
+    ]
+  },
+  "runtime_contract": {
+    "permitted_input": ["advance_turns", "press:q", "press:S"],
+    "forbidden_input": ["debug:inject_operation", "raw-save-rewrite", "fixture-save-transform", "ocr-credit"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "terminal_transport": "pty",
+    "helpers": ["CursesTerminalTransport"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "cannibal_night_raid_operation_bootstrap_v0_2026-09-09",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "cannibal_night_raid_operation_bootstrap_v0_2026-09-09",
+      "helper": "CursesTerminalTransport",
+      "input": ["advance_turns", "press:q", "press:S"],
+      "peekaboo": false,
+      "ocr": false,
+      "cleanup": true
+    },
+    "cleanup": true,
+    "grants_gameplay_proof": false
+  },
+  "evidence_contract": {
+    "claim": "one current-source save proves only the declared zero-credit cannibal raid bootstrap; native night/dawn transitions and persistence remain independently observable",
+    "failure_rule": "missing exact owner, identity, route, member, time, save/reload, or native transition evidence leaves the affected claim unproved"
+  }
+}

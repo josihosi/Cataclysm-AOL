@@ -1,0 +1,622 @@
+diff --git a/de-67-3/scripts/codex_app_server_runner.py b/de-67-3/scripts/codex_app_server_runner.py
+index 445f53f..d117a6c 100644
+--- a/de-67-3/scripts/codex_app_server_runner.py
++++ b/de-67-3/scripts/codex_app_server_runner.py
+@@ -112,32 +112,6 @@ def socket_path(run_directory: Path, environment: dict[str, str]) -> Path:
+     return root / (tag + ".sock")
+ 
+ 
+-def review_context(environment: dict[str, str]) -> dict[str, Any]:
+-    """Select reusable history; the current invocation supplies review authority.
+-
+-    Missing or unusable cache metadata means a fresh context, never a guessed gate
+-    or a resume of the owner conversation. Lineage/run still bind lifecycle evidence.
+-    """
+-    lineage = environment.get("DE67_LINEAGE", "").strip()
+-    run_id = environment.get("DE67_COORDINATOR_RUN_ID", "").strip()
+-    if not lineage or not run_id:
+-        raise RpcError("Persistent mutation review requires lineage and run bindings")
+-    try:
+-        gate = json.loads(environment.get("DE67_MUTATION_GATE_JSON", "null"))
+-    except (ValueError, TypeError):
+-        gate = None
+-    valid = (isinstance(gate, dict) and isinstance(gate.get("kind"), str)
+-             and bool(gate["kind"].strip()) and isinstance(gate.get("identity"), str)
+-             and bool(gate["identity"].strip()))
+-    if not valid:
+-        return {"gate": None, "lineage": lineage, "context_id": None, "run_id": run_id,
+-                "context_recovery": "fresh review: gate metadata unavailable; no prior context resumed"}
+-    selection = {"gate": {"kind": gate["kind"], "identity": gate["identity"]}, "lineage": lineage}
+-    context_id = hashlib.sha256(json.dumps(selection, sort_keys=True,
+-                                            separators=(",", ":")).encode()).hexdigest()
+-    return {**selection, "context_id": context_id, "run_id": run_id}
+-
+-
+ def process_snapshot() -> dict[int, tuple[int, str, str]]:
+     result = subprocess.run(["ps", "-axo", "pid=,ppid=,lstart=,stat=,command="],
+                             check=True, capture_output=True, text=True)
+@@ -217,8 +191,6 @@ def run(codex: str, workspace: Path, prompt: str) -> int:
+     server: subprocess.Popen[Any] | None = None
+     rpc: Rpc | None = None
+     session = None
+-    session_kind = None
+-    selected_review = None
+     thread_id = None
+     resume = ""
+     completed = False
+@@ -239,15 +211,7 @@ def run(codex: str, workspace: Path, prompt: str) -> int:
+             from mutator_session import MutatorSession
+             session = MutatorSession(workspace)
+             session.acquire(lambda: stopping or os.getppid() != parent_pid)
+-            session_kind = "owner" if initial else "review"
+-            selected_review = None if initial else review_context(os.environ)
+-            # The exclusive session lock owns the launch. A changed or missing
+-            # history key selects fresh context with this invocation's prompt.
+-            resume = (session.owner_thread_id() if session_kind == "owner" else
+-                      session.review_thread_id(selected_review) if session_kind == "review" else "") or ""
+-            if session_kind == "review":
+-                emit({"type": "review.context_selected", "mode": "resume" if resume else "fresh",
+-                      "review": selected_review})
++            resume = session.thread_id() or ""
+         if not session:
+             resume = os.environ.get("DE67_COORDINATOR_RESUME_SESSION", "").strip()
+         with (run_directory / "app-server.log").open("a", encoding="utf-8") as log:
+@@ -275,10 +239,8 @@ def run(codex: str, workspace: Path, prompt: str) -> int:
+                 params.update(threadId=resume, excludeTurns=True)
+             thread = rpc.call("thread/resume" if resume else "thread/start", params)["thread"]
+             thread_id = thread["id"]
+-            if session_kind == "owner":
+-                session.record_owner(thread_id, state="starting", runner_pid=os.getpid())
+-            elif session_kind == "review":
+-                session.record_review(thread_id, selected_review, state="starting", runner_pid=os.getpid())
++            if session:
++                session.record(thread_id, state="starting", runner_pid=os.getpid())
+             emit({"type": "thread.started", "thread_id": thread_id})
+             turn_params = {"threadId": thread_id, "effort": effort,
+                            "input": [{"type": "text", "text": prompt}]}
+@@ -291,19 +253,12 @@ def run(codex: str, workspace: Path, prompt: str) -> int:
+             binding = {"workspace": str(workspace), "role": role,
+                        "run_id": os.environ.get("DE67_COORDINATOR_RUN_ID"),
+                        "runner_pid": os.getpid(), "server_pid": server.pid, "socket": str(socket),
+-                       "thread_id": thread_id, "turn_id": turn_id, "state": "active",
+-                       "session_kind": session_kind or "transient",
+-                       "selection": "resume" if resume else "start"}
+-            if selected_review:
+-                binding["review"] = selected_review
++                       "thread_id": thread_id, "turn_id": turn_id, "state": "active"}
+             atomic_json(address, binding)
+             if initial:
+                 atomic_json(Path(initial["receipt_path"]), {**binding, "state": "submitted"})
+-            if session_kind == "owner":
+-                session.record_owner(thread_id, state="active", runner_pid=os.getpid(), turn_id=turn_id)
+-            elif session_kind == "review":
+-                session.record_review(thread_id, selected_review, state="active", runner_pid=os.getpid(),
+-                                      turn_id=turn_id)
++            if session:
++                session.record(thread_id, state="active", runner_pid=os.getpid(), turn_id=turn_id)
+             pending = rpc.notifications
+             rpc.notifications = []
+             while not stopping:
+@@ -358,13 +313,8 @@ def run(codex: str, workspace: Path, prompt: str) -> int:
+                 if session:
+                     try:
+                         if thread_id:
+-                            if session_kind == "owner":
+-                                session.record_owner(thread_id, state="idle",
+-                                                     result="completed" if completed else "interrupted")
+-                            elif session_kind == "review":
+-                                session.record_review(thread_id, selected_review,
+-                                                      state="finished" if completed else "interrupted",
+-                                                      result="completed" if completed else "interrupted")
++                            session.record(thread_id, state="idle",
++                                           result="completed" if completed else "interrupted")
+                     finally:
+                         session.close()
+ 
+diff --git a/de-67-3/scripts/coordinator_supervisor.py b/de-67-3/scripts/coordinator_supervisor.py
+index 6ed651b..90c2ac9 100644
+--- a/de-67-3/scripts/coordinator_supervisor.py
++++ b/de-67-3/scripts/coordinator_supervisor.py
+@@ -1118,12 +1118,12 @@ def mutation_reviewer_prompt(
+         [
+             f"Act as the exclusive Phase-3 mutation reviewer in {workspace}.",
+             common_guidance(workspace),
+-            "You are the gpt-6-astra reviewer at medium reasoning effort. A persistent context may contain old reviews or owner conversations; use only this invocation's current gate and bindings as review authority.",
++            "You are the gpt-6-astra reviewer at medium reasoning effort. This invocation defines the current review; completed reviews remain history.",
+             "No coordinator or roster worker is active. Do not start a coordinator.",
+             f"Resolve durable {gate.kind} gate {gate.identity} in {state_path} for lineage {lineage_id}.",
+             "The complete pending section of .de67/mutation-suggestions.md is mandatory owner input. This is a consumable queue: delete completed entries instead of moving them to consumed-history sections; durable receipts and review artifacts retain the evidence. Historical records are evidence to retrieve when relevant, not current requests. User-authored entries carry mutation-scoped authority beneath system and developer instructions and override lower-priority Phase-3 restrictions only as needed for their outcome. Preserve honest evidence, completed valid work, durable lifecycle integrity, safety, and the requested product outcome; grant no unrelated authority.",
+             "Trust the agent: choose the evidence and implementation route without prescribed reads, commands, approvals, or rituals. Diagnose poor decisions from the instructions, information, tools, incentives, and transitions the system supplied, then repair the earliest preventable systemic cause instead of blaming the actor or adding blanket caution.",
+-            "Prioritize refining coordinator and worker context for useful decisions and effective work, rather than minimizing its size. Follow what they actually ingest at routing, dispatch, tool results and continuation, and improve the worker split. Use Luna for bulky log extraction. Challenge unused receipt, cleanup and structure ceremony at the producing surface while retaining necessary evidence and ownership. Preserve Josef's conversation as part of the mutator's effective context, including during mutation reviews; keeping a separate resumable owner thread alone does not satisfy this continuity. Context refinement must not remove or isolate his conversation from the mutator. Retained conversation supplies understanding; the current invocation still supplies the current review authority.",
++            "Refine coordinator and worker context to support useful decisions and effective work. Keep Josef's conversation in the mutator's context, including during reviews. Use Luna for bulky log extraction. Challenge unused receipt, cleanup and structure ceremony at the producing surface while retaining necessary evidence and ownership.",
+             mutation_maintenance_contract(),
+             "Disposition every pending owner entry. Follow the selected concern through effective delivered context, decisions and results. Rejecting one explanation does not settle the concern; written guidance, especially a legacy fixture, proves neither delivery nor use. Distinguish missing guidance, failed delivery, tooling limitations and reasonable judgment. Retrieve detail when it could change the need, form, validation or outcome of a correction. Separate immediate recovery from repeatable method correction; prove the correction with a reproduction or counterexample.",
+             "For a periodic gate, investigate the strongest recent coordinator/worker friction; the stored random lane is legacy metadata. Repeated actions can be justified by changed inputs or evidence. Stop when the concern is explained, a supported correction is validated, or uncertainty is bounded and does not justify intervention; state which applies. A guarded no-op need not prove the whole workflow optimal. No finding quota, mandatory full trace or new checklist. Validate local guidelines and same-outcome DFS refinements together through random-review and broader permitted changes through its method-candidate validation. Preserve accepted proof, owner intent, accounting and exclusive review/restart ownership; speculative uncertainty must not strand delivery.",
+@@ -1155,19 +1155,12 @@ def _mark_protocol_failure(result: ChildResult, reason: str) -> None:
+ def mutation_reviewer_environment(
+     gate: MutationGate, extra_env: Mapping[str, str] | None = None,
+ ) -> dict[str, str]:
+-    """Produce machine bindings alongside the current reviewer prompt."""
++    """Produce reviewer launch settings alongside the current prompt."""
+     reviewer_env = dict(extra_env or {})
+     reviewer_env.update(
+         {
+             "DE67_COORDINATOR_MODEL": "gpt-6-astra",
+             "DE67_COORDINATOR_REASONING_EFFORT": "medium",
+-            # The App Server must select a review context from a machine-readable
+-            # gate identity; prompt text alone is not safe continuation metadata.
+-            "DE67_MUTATION_GATE_JSON": json.dumps(
+-                {"kind": gate.kind, "identity": gate.identity,
+-                 "selected_lane": gate.selected_lane},
+-                ensure_ascii=False, sort_keys=True,
+-            ),
+         }
+     )
+     return reviewer_env
+diff --git a/de-67-3/scripts/mutator_session.py b/de-67-3/scripts/mutator_session.py
+index 7ee23c5..a99d641 100644
+--- a/de-67-3/scripts/mutator_session.py
++++ b/de-67-3/scripts/mutator_session.py
+@@ -1,9 +1,8 @@
+-"""One exclusive Astra owner conversation plus an isolated review context per workspace."""
++"""One resumable Astra context per workspace, shared by chat and mutation review."""
+ 
+ from __future__ import annotations
+ 
+ import json
+-import hashlib
+ import time
+ from pathlib import Path
+ from typing import Any, Callable
+@@ -31,82 +30,19 @@ class MutatorSession:
+         self.close()
+         raise RuntimeError("Mutator session launch stopped while another invocation owned it")
+ 
+-    def _read(self) -> dict[str, Any]:
++    def thread_id(self) -> str | None:
+         if not self.path.exists():
+-            return {}
++            return None
+         value = json.loads(self.path.read_text(encoding="utf-8"))
+         if value.get("workspace") != str(self.workspace) or value.get("model") != "gpt-6-astra":
+             raise ValueError("Persistent mutator context belongs to another workspace or model")
+-        return value
+-
+-    def owner_thread_id(self) -> str | None:
+-        """Return only the durable owner conversation.
+-
+-        Older installations stored this at the document root.  Treat that record as
+-        the owner conversation during migration: retaining a possibly over-broad
+-        history is safer than silently replacing Josef's resumable thread.
+-        """
+-        value = self._read()
+-        owner = value.get("owner") if isinstance(value.get("owner"), dict) else value
+-        thread_id = owner.get("thread_id")
+-        return thread_id if isinstance(thread_id, str) and thread_id else None
+-
+-    def review_thread_id(self, review: dict[str, Any]) -> str | None:
+-        """Resume only the exact unfinished review context, never the owner chat."""
+-        value = self._read()
+-        saved = value.get("review")
+-        if not isinstance(saved, dict):
+-            return None
+-        # The lock provides exclusivity; a cache miss is not a competing owner.
+-        # Never guess a missing key or resume unrelated review/owner history.
+-        if not review.get("context_id") or any(
+-            saved.get(key) != review.get(key) for key in ("lineage", "context_id")
+-        ):
+-            return None
+-        if saved.get("state") not in {"starting", "active", "interrupted"}:
+-            return None
+-        thread_id = saved.get("thread_id")
+-        return thread_id if isinstance(thread_id, str) and thread_id else None
+-
+-    # Compatibility for callers from the single-context transport.
+-    def thread_id(self) -> str | None:
+-        return self.owner_thread_id()
+-
+-    def _record(self, value: dict[str, Any]) -> None:
+-        write_json(self.path, value)
+-
+-    def record_owner(self, thread_id: str, **status: Any) -> None:
+-        value = self._read()
+-        review = value.get("review")
+-        owner = {"thread_id": thread_id, **status}
+-        result = {"workspace": str(self.workspace), "model": "gpt-6-astra",
+-                  # Keep the root identity for the dashboard and legacy readers.
+-                  "thread_id": thread_id, "updated_at": time.time(), **status, "owner": owner}
+-        if isinstance(review, dict):
+-            result["review"] = review
+-        self._record(result)
++        # Preserve the owner thread when reading state written by the split-context version.
++        owner = value.get("owner")
++        return owner.get("thread_id") if isinstance(owner, dict) else value.get("thread_id")
+ 
+-    def record_review(self, thread_id: str, review: dict[str, Any], **status: Any) -> None:
+-        value = self._read()
+-        saved = value.get("review")
+-        if (isinstance(saved, dict) and saved.get("state") in {"starting", "active", "interrupted"}
+-                and (saved.get("thread_id") != thread_id or saved.get("context_id") != review.get("context_id"))):
+-            # Retain the displaced recovery handle without making it current authority.
+-            digest = hashlib.sha256(json.dumps(saved, sort_keys=True).encode()).hexdigest()
+-            write_json(self.path.parent / "mutator-review-contexts" / f"{digest}.json", saved)
+-        result = {"workspace": str(self.workspace), "model": "gpt-6-astra",
+-                  "updated_at": time.time(), "review": {**review, "thread_id": thread_id,
+-                                                            "updated_at": time.time(), **status}}
+-        owner = value.get("owner") if isinstance(value.get("owner"), dict) else None
+-        if owner is not None:
+-            result.update(thread_id=owner.get("thread_id"), **{k: v for k, v in owner.items()
+-                                                                  if k != "thread_id"})
+-            result["owner"] = owner
+-        elif value.get("thread_id"):
+-            # Preserve a legacy conversation if a review starts before it is migrated.
+-            result.update(thread_id=value["thread_id"], state=value.get("state"),
+-                          result=value.get("result"))
+-        self._record(result)
++    def record(self, thread_id: str, **status: Any) -> None:
++        write_json(self.path, {"workspace": str(self.workspace), "model": "gpt-6-astra",
++                              "thread_id": thread_id, "updated_at": time.time(), **status})
+ 
+     def close(self) -> None:
+         if self.lock is not None:
+@@ -125,12 +61,10 @@ def owner_prompt(workspace: Path, scripts: Path, python: str) -> str:
+         "Respect any owner stop; resume work only when authorized. Use current installed DE67 "
+         "guidance and the actual workspace state for mutation validation and restart ownership. "
+         "Do not create a second coordinator or a competing mutation reviewer. "
+-        "Refine coordinator and worker context for useful decisions and effective work, rather than "
+-        "minimizing its size. Preserve Josef's conversation as part of the mutator's effective context, "
+-        "including during supervisor-invoked reviews; a separate resumable owner thread alone does "
+-        "not satisfy this continuity. Context refinement must not remove or isolate his conversation "
+-        "from the mutator. Retained conversation supplies understanding; only the current supervisor "
+-        "review invocation grants that review's authority and bindings.\n"
++        "Refine coordinator and worker context to support useful decisions and effective work. "
++        "Keep Josef's conversation in the mutator's context, including during reviews. "
++        "The same context is also used for supervisor-invoked exclusive reviews; only a current "
++        "supervisor review invocation grants that review's gate and bindings.\n"
+         "For messages to Sol, use this argument array with --message TEXT (or message on stdin):\n"
+         + json.dumps([python, str(scripts / "agent_mailbox.py"), "--workspace", str(workspace),
+                       "--to", "coordinator", "--from", "mutator"]) + "\n"
+diff --git a/de-67-3/tests/test_codex_app_server_runner.py b/de-67-3/tests/test_codex_app_server_runner.py
+index 7f3e1e8..f510e63 100644
+--- a/de-67-3/tests/test_codex_app_server_runner.py
++++ b/de-67-3/tests/test_codex_app_server_runner.py
+@@ -130,9 +130,8 @@ class AppServerTransportTests(unittest.TestCase):
+                        DE67_COORDINATOR_RESUME_SESSION='', DE67_LINEAGE='lineage',
+                        DE67_MUTATION_GATE_JSON=json.dumps({'kind': 'random', 'identity': 'cycle 1',
+                                                            'selected_lane': 'lane'}))
+-            # A completed gate starts fresh on the next invocation; it must not
+-            # turn the owner conversation into review history.
+-            for expected in ('thread/start', 'thread/start'):
++            # Owner messages and successive reviews retain one conversation.
++            for expected in ('thread/start', 'thread/resume'):
+                 calls.clear()
+                 with patch.dict(os.environ, env, clear=True), patch.object(transport.sys, 'platform', 'darwin'), \
+                      patch.object(transport.signal, 'signal'), patch.object(transport.subprocess, 'Popen', Server), \
+@@ -143,8 +142,8 @@ class AppServerTransportTests(unittest.TestCase):
+                 self.assertEqual(launch[0], expected)
+                 self.assertTrue(launch[1]['config']['features.context_management.experimental_mode'])
+                 persisted = json.loads((workspace / '.de67/state/mutator-session.json').read_text())
+-                self.assertEqual(persisted['review']['thread_id'], 'fresh')
+-                self.assertEqual(persisted['review']['state'], 'finished')
++                self.assertEqual(persisted['thread_id'], 'fresh')
++                self.assertEqual(persisted['state'], 'idle')
+ 
+             # The persistent mutator must not turn coordinator resets into resumes.
+             env.update(DE67_PROCESS_ROLE='coordinator', DE67_COORDINATOR_MODEL='gpt-5.6-sol')
+@@ -158,7 +157,7 @@ class AppServerTransportTests(unittest.TestCase):
+             self.assertTrue(servers[-1].stopped)
+             self.assertFalse(list((workspace / 'codex/state/de67-input').glob('*.sock')))
+ 
+-    def test_persistent_mutator_selects_owner_or_exact_unfinished_review(self):
++    def test_reviews_and_owner_input_resume_original_owner_without_gate_metadata(self):
+         with tempfile.TemporaryDirectory() as directory:
+             workspace = Path(directory)
+             run_dir = workspace / 'run'
+@@ -188,47 +187,32 @@ class AppServerTransportTests(unittest.TestCase):
+                         return {'turn': {'id': 'turn'}}
+                 def close(self): pass
+ 
+-            gate = {'kind': 'incident-review', 'identity': 'R-1', 'selected_lane': None}
+             env = {'DE67_RUNNER_ACTIVE_DIR': str(run_dir), 'CODEX_HOME': str(workspace / 'codex'),
+                    'DE67_PROCESS_ROLE': 'mutation-reviewer', 'DE67_COORDINATOR_RUN_ID': 'retry-run',
+                    'DE67_COORDINATOR_MODEL': 'gpt-6-astra', 'DE67_COORDINATOR_REASONING_EFFORT': 'medium',
+-                   'DE67_LINEAGE': 'lineage', 'DE67_MUTATION_GATE_JSON': json.dumps(gate)}
+-            review = transport.review_context(env)
++                   'DE67_LINEAGE': 'lineage'}
+             session = mutator_session.MutatorSession(workspace)
+-            session.record_owner('owner-thread', state='idle')
+-            session.record_review('review-thread', review, state='interrupted', turn_id='old-turn')
+-            with patch.dict(os.environ, env, clear=True), patch.object(transport.sys, 'platform', 'darwin'), \
+-                 patch.object(transport.signal, 'signal'), patch.object(transport.subprocess, 'Popen', Server), \
+-                 patch.object(transport, 'Rpc', Client), redirect_stdout(io.StringIO()):
+-                self.assertEqual(transport.run('codex', workspace, 'exact review'), 0)
+-            launch = next((method, params) for method, params in calls if method.startswith('thread/'))
+-            self.assertEqual((launch[0], launch[1]['threadId']), ('thread/resume', 'review-thread'))
+-            saved = json.loads((workspace / '.de67/state/mutator-session.json').read_text())
+-            self.assertEqual(saved['owner']['thread_id'], 'owner-thread')
+-            self.assertEqual(saved['review']['state'], 'finished')
+-
+-            # A changed queue or missing optional history metadata must reach one
+-            # fresh thread with current instructions; old recovery and owner remain.
+-            for gate_value in (json.dumps({**gate, 'identity': 'changed'}), None, '{broken'):
++            # Migration must retain the owner, never select the separate review thread.
++            transport.atomic_json(session.path, {'workspace': str(workspace.resolve()), 'model': 'gpt-6-astra',
++                'thread_id': 'owner-thread', 'owner': {'thread_id': 'owner-thread'},
++                'review': {'thread_id': 'obsolete-review', 'state': 'interrupted', 'gate': {'identity': 'old'}}})
++            for gate_value in (None, '{broken', '{"kind":"random","identity":"different"}'):
+                 calls.clear()
+-                session.record_review('review-thread', review, state='interrupted', turn_id='old-turn')
+-                changed_env = dict(env)
+-                if gate_value is None:
+-                    changed_env.pop('DE67_MUTATION_GATE_JSON')
+-                else:
+-                    changed_env['DE67_MUTATION_GATE_JSON'] = gate_value
+-                with patch.dict(os.environ, changed_env, clear=True), patch.object(transport.sys, 'platform', 'darwin'), \
++                review_env = dict(env)
++                if gate_value is not None:
++                    review_env['DE67_MUTATION_GATE_JSON'] = gate_value
++                with patch.dict(os.environ, review_env, clear=True), patch.object(transport.sys, 'platform', 'darwin'), \
+                      patch.object(transport.signal, 'signal'), patch.object(transport.subprocess, 'Popen', Server), \
+                      patch.object(transport, 'Rpc', Client), redirect_stdout(io.StringIO()):
+-                    self.assertEqual(transport.run('codex', workspace, 'Current authoritative review prompt'), 0)
++                    self.assertEqual(transport.run('codex', workspace, 'Current review instructions'), 0)
+                 launches = [(method, params) for method, params in calls if method.startswith('thread/')]
+-                self.assertEqual([method for method, _ in launches], ['thread/start'])
++                self.assertEqual(len(launches), 1)
++                self.assertEqual((launches[0][0], launches[0][1]['threadId']), ('thread/resume', 'owner-thread'))
+                 turn = next(params for method, params in calls if method == 'turn/start')
+-                self.assertEqual(turn['input'], [{'type': 'text', 'text': 'Current authoritative review prompt'}])
+-                saved = json.loads((workspace / '.de67/state/mutator-session.json').read_text())
+-                self.assertEqual(saved['owner']['thread_id'], 'owner-thread')
+-                archives = [json.loads(path.read_text()) for path in (workspace / '.de67/state/mutator-review-contexts').glob('*.json')]
+-                self.assertTrue(any(item['thread_id'] == 'review-thread' and item['turn_id'] == 'old-turn' for item in archives))
++                self.assertEqual(turn['input'], [{'type': 'text', 'text': 'Current review instructions'}])
++                saved = json.loads(session.path.read_text())
++                self.assertEqual(saved['thread_id'], 'owner-thread')
++                self.assertEqual(saved['result'], 'completed')
+ 
+             calls.clear()
+             owner_input = workspace / 'owner-input.json'
+@@ -248,26 +232,12 @@ class AppServerTransportTests(unittest.TestCase):
+             self.assertIn({'type': 'text', 'text': 'User Message: retain me'}, turn['input'])
+             self.assertEqual(json.loads(receipt.read_text())['state'], 'submitted')
+ 
+-    def test_missing_or_invalid_gate_is_a_cache_miss_not_an_authority_replacement(self):
+-        env = {'DE67_LINEAGE': 'lineage', 'DE67_COORDINATOR_RUN_ID': 'run-b'}
+-        for value in (None, '', '{broken', '{}', '[]', '{"kind":"random","identity":""}'):
+-            with self.subTest(value=value):
+-                candidate = dict(env)
+-                if value is not None:
+-                    candidate['DE67_MUTATION_GATE_JSON'] = value
+-                context = transport.review_context(candidate)
+-                self.assertIsNone(context['gate'])
+-                self.assertIsNone(context['context_id'])
+-                self.assertEqual(context['run_id'], 'run-b')
+-        with self.assertRaisesRegex(transport.RpcError, 'lineage and run'):
+-            transport.review_context({})
+-
+     def test_lock_prevents_a_second_mutation_owner(self):
+         with tempfile.TemporaryDirectory() as directory:
+             workspace = Path(directory)
+             owner = mutator_session.MutatorSession(workspace)
+             owner.acquire(lambda: False)
+-            owner.record_owner('owner-thread', state='active', turn_id='owner-turn')
++            owner.record('owner-thread', state='active', turn_id='owner-turn')
+             contender = mutator_session.MutatorSession(workspace)
+             attempts = 0
+             def stopped():
+@@ -278,13 +248,13 @@ class AppServerTransportTests(unittest.TestCase):
+                 with self.assertRaisesRegex(RuntimeError, 'another invocation owned it'):
+                     contender.acquire(stopped)
+                 saved = json.loads((workspace / '.de67/state/mutator-session.json').read_text())
+-                self.assertEqual(saved['owner']['thread_id'], 'owner-thread')
+-                self.assertEqual(saved['owner']['turn_id'], 'owner-turn')
++                self.assertEqual(saved['thread_id'], 'owner-thread')
++                self.assertEqual(saved['turn_id'], 'owner-turn')
+             finally:
+                 contender.close()
+                 owner.close()
+ 
+-    def test_review_startup_failure_keeps_owner_and_marks_only_review_interrupted(self):
++    def test_review_startup_failure_keeps_shared_conversation_recoverable(self):
+         with tempfile.TemporaryDirectory() as directory:
+             workspace = Path(directory)
+             run_dir = workspace / 'run'
+@@ -295,7 +265,7 @@ class AppServerTransportTests(unittest.TestCase):
+                    'DE67_COORDINATOR_MODEL': 'gpt-6-astra', 'DE67_COORDINATOR_REASONING_EFFORT': 'medium',
+                    'DE67_LINEAGE': 'lineage', 'DE67_MUTATION_GATE_JSON': json.dumps(
+                        {'kind': 'random', 'identity': 'failure', 'selected_lane': None})}
+-            mutator_session.MutatorSession(workspace).record_owner('owner-thread', state='idle')
++            mutator_session.MutatorSession(workspace).record('owner-thread', state='idle')
+ 
+             class Server:
+                 pid = 777
+@@ -309,7 +279,7 @@ class AppServerTransportTests(unittest.TestCase):
+                 def __init__(self, socket): self.notifications = []
+                 def send(self, message): pass
+                 def call(self, method, params):
+-                    if method == 'thread/start': return {'thread': {'id': 'failed-review'}}
++                    if method == 'thread/resume': return {'thread': {'id': params['threadId']}}
+                     if method == 'turn/start': raise transport.RpcError('turn start rejected', -32600)
+                 def close(self): pass
+ 
+@@ -319,9 +289,8 @@ class AppServerTransportTests(unittest.TestCase):
+                 with self.assertRaisesRegex(transport.RpcError, 'turn start rejected'):
+                     transport.run('codex', workspace, 'review prompt')
+             saved = json.loads((workspace / '.de67/state/mutator-session.json').read_text())
+-            self.assertEqual(saved['owner']['thread_id'], 'owner-thread')
+-            self.assertEqual(saved['review']['thread_id'], 'failed-review')
+-            self.assertEqual(saved['review']['state'], 'interrupted')
++            self.assertEqual(saved['thread_id'], 'owner-thread')
++            self.assertEqual(saved['result'], 'interrupted')
+             self.assertFalse((workspace / '.de67/state/mutator-input.json').exists())
+ 
+     def test_native_command_still_drives_the_existing_handoff_guard(self):
+diff --git a/de-67-3/tests/test_coordinator_supervisor.py b/de-67-3/tests/test_coordinator_supervisor.py
+index 950ba91..0a28246 100644
+--- a/de-67-3/tests/test_coordinator_supervisor.py
++++ b/de-67-3/tests/test_coordinator_supervisor.py
+@@ -552,15 +552,14 @@ def restart_required(restart: dict[str, object]) -> bool:
+ class ReviewerLaunchPromotionTests(unittest.TestCase):
+     def test_retained_supervisor_uses_promoted_machine_bindings(self):
+         import coordinator_supervisor as supervisor
+-        from codex_app_server_runner import review_context
+         gate = MutationGate("random", "cycle 13", "DFS.md")
+         with tempfile.TemporaryDirectory() as directory:
+             root = Path(directory)
+             promoted = root / "coordinator_supervisor.py"
+             source = Path(supervisor.__file__).read_text()
+             promoted.write_text(source.replace(
+-                '"DE67_MUTATION_GATE_JSON": json.dumps(',
+-                '"PROMOTED_BINDING": "revision-2", "DE67_MUTATION_GATE_JSON": json.dumps('
++                '"DE67_COORDINATOR_MODEL": "gpt-6-astra",',
++                '"PROMOTED_BINDING": "revision-2", "DE67_COORDINATOR_MODEL": "gpt-6-astra",'
+             ))
+             with patch.object(supervisor, "__file__", str(promoted)), \
+                  patch.object(supervisor, "mutation_reviewer_environment", side_effect=AssertionError("stale producer used")), \
+@@ -573,11 +572,7 @@ class ReviewerLaunchPromotionTests(unittest.TestCase):
+             self.assertEqual(values["DE67_COORDINATOR_MODEL"], "gpt-6-astra")
+             self.assertEqual(child.call_args.kwargs["role"], "mutation-reviewer")
+             self.assertEqual(child.call_count, 1)
+-            values.update(DE67_LINEAGE="lineage", DE67_COORDINATOR_RUN_ID="review")
+-            self.assertEqual(review_context(values)["gate"]["identity"], "cycle 13")
+-            self.assertIsNone(review_context({**values, "DE67_MUTATION_GATE_JSON": "{}"})["context_id"])
+-            del values["DE67_MUTATION_GATE_JSON"]
+-            self.assertIsNone(review_context(values)["context_id"])
++
+ 
+ 
+ class CoordinatorSupervisorTests(unittest.TestCase):
+diff --git a/integrations/direct_input/README.md b/integrations/direct_input/README.md
+index 0d496cd..c292006 100644
+--- a/integrations/direct_input/README.md
++++ b/integrations/direct_input/README.md
+@@ -5,11 +5,10 @@ This optional relay sends Discord messages into DE67's existing native agent con
+ - Plain messages go to the active mutation reviewer.
+ - A leading `coordinator:` routes that message to the active coordinator.
+ - Input starts with `User Message:`. No importance keyword is needed.
+-- With `persistent_mutator` enabled, the first plain owner message starts Astra's
+-  durable owner-conversation thread. A supervisor review receives a separate,
+-  gate-bound working thread; only its exact unfinished gate may resume it. Owner
+-  messages received during a review remain pending for the owner conversation. One
+-  process lock still prevents concurrent mutator invocations.
++- With `persistent_mutator` enabled, owner messages and supervisor reviews use the
++  same durable Astra conversation. Reviews resume its history with their current
++  invocation instructions. Owner messages can reach Astra during an active review.
++  One process lock prevents concurrent mutator invocations.
+ - Coordinator messages wait for the next normal DE67 launch when Sol is inactive.
+ - Intentional DE67 resets remain fresh launches. Only the supervisor's explicit
+   `DE67_COORDINATOR_RESUME_SESSION` requests a continuation.
+diff --git a/integrations/direct_input/de67_agent_relay.py b/integrations/direct_input/de67_agent_relay.py
+index 5a24cf1..4e9d2e6 100644
+--- a/integrations/direct_input/de67_agent_relay.py
++++ b/integrations/direct_input/de67_agent_relay.py
+@@ -259,11 +259,6 @@ class Relay:
+             if (binding.get("role") != role or binding.get("workspace") != str(self.workspace)
+                     or binding.get("state") != "active"):
+                 return None
+-            # A review has its own working context.  Owner messages must wait for
+-            # the durable owner conversation instead of being steered into a gate.
+-            # Missing metadata is a pre-S001 binding and remains owner-compatible.
+-            if role == "mutator" and binding.get("session_kind") not in {None, "owner"}:
+-                return None
+             os.kill(binding["server_pid"], 0)
+             os.kill(binding["runner_pid"], 0)
+             if not Path(binding["socket"]).exists():
+@@ -292,20 +287,6 @@ class Relay:
+         self.connections[role] = (binding, rpc)
+         return binding, rpc
+ 
+-    def mutator_review_active(self) -> bool:
+-        """Whether an authenticated live mutator binding is a gate review."""
+-        path = self.workspace / ".de67" / "state" / "mutator-input.json"
+-        try:
+-            binding = json.loads(path.read_text(encoding="utf-8"))
+-            if (binding.get("workspace") != str(self.workspace) or binding.get("role") != "mutator"
+-                    or binding.get("state") != "active" or binding.get("session_kind") != "review"):
+-                return False
+-            os.kill(binding["server_pid"], 0)
+-            os.kill(binding["runner_pid"], 0)
+-            return Path(binding["socket"]).exists()
+-        except (OSError, ValueError, KeyError):
+-            return False
+-
+     def submit(self, job: dict[str, Any], binding: dict[str, Any], rpc: Rpc) -> None:
+         inputs = self.input_for(job)
+         job.update(status="submitting", thread_id=binding["thread_id"], turn_id=binding["turn_id"],
+@@ -472,13 +453,6 @@ class Relay:
+                     for job in relevant:
+                         if job["status"] == "pending":
+                             if role == "mutator":
+-                                if self.mutator_review_active():
+-                                    if not job.get("review_wait_notified"):
+-                                        self.send("Saved for Josef's owner conversation after the active review.",
+-                                                  job["id"], job["id"] + ":review-wait")
+-                                        job["review_wait_notified"] = True
+-                                        self.save(job)
+-                                    continue
+                                 try:
+                                     if self.start_mutator(job):
+                                         continue
+diff --git a/integrations/direct_input/test_de67_agent_relay.py b/integrations/direct_input/test_de67_agent_relay.py
+index c89c5c0..72c5062 100644
+--- a/integrations/direct_input/test_de67_agent_relay.py
++++ b/integrations/direct_input/test_de67_agent_relay.py
+@@ -172,38 +172,30 @@ class RelayTests(unittest.TestCase):
+         self.assertEqual(len([m for m, _ in rpc.calls if m == "turn/steer"]), 1)
+         self.assertEqual(self.relay.jobs["1"]["status"], "replied")
+ 
+-    def test_owner_input_waits_for_owner_context_while_review_is_active(self):
++    def test_owner_input_reaches_the_shared_conversation_during_review(self):
+         self.relay.workspace.mkdir(parents=True)
+         socket = self.root / 'review.sock'
+         socket.touch()
+-        atomic_json(self.relay.workspace / '.de67/state/mutator-input.json', {
+-            'workspace': str(self.relay.workspace), 'role': 'mutator', 'state': 'active',
+-            'session_kind': 'review', 'runner_pid': 100, 'server_pid': 101,
+-            'socket': str(socket), 'thread_id': 'gate-review', 'turn_id': 'review-turn', 'run_id': 'review-run',
+-        })
+-        self.relay.accept(self.message(1, 'do not steer this into review'))
+-        with patch('de67_agent_relay.os.kill') as alive:
+-            self.relay.start_mutator = lambda job: self.fail('must not launch a second mutator')
++        binding = self.binding('mutator', 'owner-thread')
++        binding.update(workspace=str(self.relay.workspace), role='mutator', state='active',
++                       session_kind='review', runner_pid=100, server_pid=101, socket=str(socket))
++        atomic_json(self.relay.workspace / '.de67/state/mutator-input.json', binding)
++        class ConnectedRpc(FakeRpc):
++            def send(self, message): pass
++            def call(client, method, params):
++                if method == 'thread/read':
++                    return {'thread': {'cwd': str(self.relay.workspace), 'status': {'type': 'active'}}}
++                return super().call(method, params)
++        rpc = ConnectedRpc()
++        self.relay.accept(self.message(1, 'current owner correction'))
++        with patch('de67_agent_relay.os.kill'), patch('de67_agent_relay.Rpc', return_value=rpc):
++            self.relay.start_mutator = lambda job: self.fail('must use the active shared conversation')
+             self.relay.reconcile()
+-        self.assertEqual(self.relay.jobs['1']['status'], 'pending')
+-        self.assertEqual(alive.call_count, 2)
+-        self.assertTrue(any("owner conversation after the active review" in text for text, *_ in self.sent))
+-
+-    def test_delayed_owner_input_is_submitted_once_the_owner_context_returns(self):
+-        self.relay.accept(self.message(1, 'wait for owner thread'))
+-        self.relay.connect = lambda role: None
+-        self.relay.mutator_review_active = lambda: True
+-        self.relay.start_mutator = lambda job: self.fail('active review must not create another owner')
+-        self.relay.reconcile()
+-        self.assertEqual(self.relay.jobs['1']['status'], 'pending')
+-        rpc = FakeRpc()
+-        self.relay.mutator_review_active = lambda: False
+-        self.relay.connect = lambda role: (self.binding(role, 'owner-thread'), rpc)
+-        self.relay.reconcile()
+-        steers = [(method, params) for method, params in rpc.calls if method == 'turn/steer']
++        steers = [params for method, params in rpc.calls if method == 'turn/steer']
+         self.assertEqual(len(steers), 1)
+-        self.assertEqual(steers[0][1]['threadId'], 'owner-thread')
+-        self.assertEqual(steers[0][1]['clientUserMessageId'], 'discord:1')
++        self.assertEqual(steers[0]['threadId'], 'owner-thread')
++        self.assertEqual(steers[0]['clientUserMessageId'], 'discord:1')
++        self.assertEqual(self.relay.jobs['1']['status'], 'submitted')
+ 
+     def test_uncertain_delivery_is_recovered_from_history_without_resending(self):
+         self.relay.accept(self.message(1, "hello"))

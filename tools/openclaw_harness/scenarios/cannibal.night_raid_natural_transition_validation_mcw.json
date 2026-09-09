@@ -1,0 +1,63 @@
+{
+  "manifest_version": 1,
+  "name": "cannibal.night_raid_natural_transition_validation_mcw",
+  "description": "Proof-enabled continuation of the zero-credit cannibal raid bootstrap. Setup audits remain zero-credit; native waits through the source-defined daylight gate, save/reload, and post-reload ordinary wait are gameplay evidence.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "cannibal_night_raid_operation_bootstrap_v0_2026-09-09",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "adaptive_semantic_autodrive": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["bandit_live_world", "hostile_operation", "operation_kind=raid"],
+  "capabilities": {
+    "player.hud": ["Move:", "Wield:"],
+    "capabilities.cannibal_raid.natural_transition": "native_daylight_gate_approach_and_save_reload",
+    "capabilities.persistence": "full_save_exit_relaunch_same_world"
+  },
+  "proof_route": {
+    "precondition": ["audit_zero_credit_bootstrap_owner"],
+    "production_behavior": ["cross_source_daylight_gate"],
+    "terminal_persistence": ["audit_reloaded_approaching_raid"],
+    "artifact_verdict": ["audit_reloaded_approaching_raid"],
+    "disallowed_shortcuts": ["audit_zero_credit_bootstrap_owner"]
+  },
+  "steps": [
+    {"kind":"wait","label":"proof_startup_settle","seconds":2.0,"capture_after":true,"expected_visible_fact":"native world owner is loaded"},
+    {"kind":"audit_saved_game_turn","label":"audit_bootstrap_2300","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","required_time_of_day_seconds":82800,"required_time_tolerance_seconds":90,"abort_on_metadata_failure":true,"abort_verdict":"blocked_natural_transition_bootstrap_time","abort_reason":"proof run did not start at the declared 23:00 boundary"},
+    {"kind":"audit_saved_bandit_live_world_state","label":"audit_zero_credit_bootstrap_owner","required_profile":"cannibal_camp","required_site_id_contains":"overmap_special:cannibal_camp@140,51,0","required_active_group_id_exact":"","required_active_hostile_operation_kind":"raid","required_active_hostile_operation_phase":"rallying","required_active_hostile_reservation_job_type":"raid","normalized_active_hostile_reservation_target_id_exact":"r029-fixture-player-opportunity","required_active_hostile_reservation_simulation_owner":"abstract","required_active_hostile_reservation_min_member_ids":2,"required_report_decision_identity_match":true,"required_report_hostile_operation_claim_match":true,"required_active_members_found":true,"abort_on_metadata_failure":true,"abort_verdict":"blocked_natural_transition_bootstrap_owner","abort_reason":"zero-credit bootstrap owner was not present"},
+    {"kind":"audit_saved_game_turn","label":"record_proof_turn_baseline","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","record_baseline":true,"abort_on_metadata_failure":true},
+    {"kind":"adaptive_semantic_window","label":"cross_night_to_pre_dawn","minimum_elapsed_minutes":360,"observation_timeout_seconds":420.0,"observation_interval_seconds":1.0,"required_action_chain":["world.wait","wait.duration_menu","wait.6h"],"adaptive_interrupt_actions":["activity.ignore"],"expected_visible_fact":"native six-hour wait crosses the night interval"},
+    {"kind":"adaptive_semantic_window","label":"reach_0600","minimum_elapsed_minutes":60,"observation_timeout_seconds":180.0,"observation_interval_seconds":1.0,"required_action_chain":["world.wait","wait.duration_menu","wait.1h"],"adaptive_interrupt_actions":["activity.ignore"],"expected_visible_fact":"native one-hour wait reaches the pre-daylight 06:00 boundary"},
+    {"kind":"adaptive_semantic_window","label":"cross_source_daylight_gate","minimum_elapsed_minutes":60,"observation_timeout_seconds":180.0,"observation_interval_seconds":1.0,"required_action_chain":["world.wait","wait.duration_menu","wait.1h"],"adaptive_interrupt_actions":["activity.ignore"],"expected_visible_fact":"native one-hour wait crosses the source-defined daylight gate and lets the raid leave rallying"},
+    {"kind":"semantic_terminal_action_chain","label":"save_and_exit_natural_transition","objective":"Use the advertised native save-and-quit and main-menu quit owners after the daylight transition.","observation_timeout_seconds":30.0,"observation_interval_seconds":0.1,"required_action_chain":["world.save_quit","prompt.yes","main_menu.quit","prompt.yes"]},
+    {"kind":"audit_saved_game_turn","label":"audit_saved_daylight_turn","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","baseline_label":"record_proof_turn_baseline","required_min_delta_turns":28800,"required_time_of_day_seconds":25200,"required_time_tolerance_seconds":90,"abort_on_metadata_failure":true,"abort_verdict":"blocked_natural_transition_daylight_not_saved","abort_reason":"native save did not serialize the daylight-gate turn"}
+  ],
+  "runtime_contract": {
+    "permitted_input":["advance_turns","press:S","press:q"],
+    "forbidden_input":["debug:inject_operation","raw-save-rewrite","fixture-save-transform","ocr-credit"],
+    "setup_only_debug":false,
+    "disposable_copy":true,
+    "terminal_transport":"pty",
+    "helpers":["CursesTerminalTransport"],
+    "permissions":[],
+    "platform":["macos"],
+    "profile":"dev-harness",
+    "fixture":"cannibal_night_raid_operation_bootstrap_v0_2026-09-09",
+    "requirements":{"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"dev-harness","fixture":"cannibal_night_raid_operation_bootstrap_v0_2026-09-09","helper":"CursesTerminalTransport","peekaboo":false,"ocr":false,"input":["adaptive semantic waits","native save/reload"],"cleanup":true},
+    "cleanup":true,
+    "grants_gameplay_proof":true
+  },
+  "post_relaunch": {
+    "terminal_save_step_label":"save_and_exit_natural_transition",
+    "terminal_exit_timeout_seconds":30.0,
+    "steps":[
+      {"kind":"wait","label":"post_transition_reload_hud","seconds":2.0,"capture_after":true,"expected_visible_fact":"same saved world reloads into the native gameplay owner","abort_verdict":"blocked_natural_transition_reload","abort_reason":"daylight transition save did not reload"},
+      {"kind":"audit_saved_game_turn","label":"audit_reloaded_daylight_turn","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","required_time_of_day_seconds":25200,"required_time_tolerance_seconds":90,"abort_on_metadata_failure":true,"abort_verdict":"blocked_natural_transition_turn_not_persisted","abort_reason":"reloaded turn did not retain daylight boundary"},
+      {"kind":"audit_saved_bandit_live_world_state","label":"audit_reloaded_approaching_raid","required_profile":"cannibal_camp","required_site_id_contains":"overmap_special:cannibal_camp@140,51,0","required_active_hostile_operation_kind":"raid","required_active_hostile_operation_phase":"approaching","required_active_hostile_reservation_job_type":"raid","normalized_active_hostile_reservation_target_id_exact":"r029-fixture-player-opportunity","required_active_hostile_reservation_simulation_owner":"abstract","required_active_hostile_reservation_min_member_ids":2,"required_report_decision_identity_match":true,"required_report_hostile_operation_claim_match":true,"required_active_members_found":true,"abort_on_metadata_failure":true,"abort_verdict":"blocked_natural_transition_approaching_not_persisted","abort_reason":"reloaded raid did not retain approaching phase and exact owner identity"},
+      {"kind":"adaptive_semantic_window","label":"observe_post_reload_ordinary_turn","minimum_elapsed_minutes":1,"observation_timeout_seconds":90.0,"observation_interval_seconds":1.0,"required_action_chain":["world.wait","wait.duration_menu","wait.1m"],"adaptive_interrupt_actions":["activity.ignore"],"expected_visible_fact":"reloaded native world accepts one ordinary turn after the daylight transition"}
+    ]
+  }
+}

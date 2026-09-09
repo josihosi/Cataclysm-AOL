@@ -1250,6 +1250,7 @@ def build_parser() -> argparse.ArgumentParser:
     bootstrap_source = bootstrap.add_mutually_exclusive_group(required=True)
     bootstrap_source.add_argument("--query-file", help="typed bootstrap query JSON file")
     bootstrap_source.add_argument("--query-json", help="typed bootstrap query JSON object")
+    bootstrap.add_argument("--scenario-id", help="select one exact active scenario record")
     revalidate_bootstrap = commands.add_parser(
         "registry-revalidate-bootstrap",
         help="append one current-facts release for a valid stale bootstrap manifest",
@@ -2236,6 +2237,7 @@ def main(argv: Sequence[str] | None = None) -> int:
                     connection,
                     parse_registry_query_request(_load_query_request(args)),
                     runtime_binding=runtime_binding,
+                    scenario_id=str(args.scenario_id or "").strip() or None,
                 ))
             elif args.command == "registry-repair-bootstrap":
                 readiness = _current_source_executable_readiness()

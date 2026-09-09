@@ -1,0 +1,11 @@
+{
+  "action": "game.wait",
+  "observation_id": "04fe815685d18cf25ae943ed6adf95ddd2768f8c4d395662874a66f5b4c0981c:frame:48",
+  "wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 5,
+    "danger_handling": "handle_classified_non_dangerous",
+    "recipe": ["world.pause"],
+    "bound": {"basis": "scheduler_boundary", "source": "first staffed observer cadence after native fire setup", "unit": "game_minutes", "maximum": 5, "progress_required": true}
+  }
+}

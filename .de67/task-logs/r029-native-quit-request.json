@@ -1,0 +1,4 @@
+{
+  "action": "run.quit",
+  "stop_reason": "callback observed intensity but failed valid LOS/range predicate; preserve full trace and no gameplay replay"
+}
