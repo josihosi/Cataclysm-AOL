@@ -1,0 +1,11 @@
+{
+  "run_id": "mutation-35ae924662c6421f86037adca27d2269",
+  "gate": "deadline-mutation R-026",
+  "new_owner_authorization": false,
+  "pending_entry": "unchanged coding/testing briefing refinement",
+  "live_worker_claims": 0,
+  "protected_sources": "unchanged from tested baseline",
+  "current_incident_generation": 4,
+  "duplicate_legacy_generation": 1,
+  "disposition": "Existing protected-code approval request remains pending; reuse prepared patch and evidence. No repeat investigation, code promotion, queue consumption or restart request."
+}
