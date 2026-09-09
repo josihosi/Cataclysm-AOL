@@ -1,0 +1,46 @@
+{
+  "manifest_version": 2,
+  "name": "cannibal.r029_close_route_mcw",
+  "description": "R-029 close source/camp pairing for native brazier-fire signal observation. Fixture supplies only roof, tools, and a close cannibal footprint; all signal, lead, memory, scout, report, and ownership transitions must be production-created.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r029_fire_signal_roof_cannibal_close_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"],
+  "capabilities": {
+    "capabilities.r029.cannibal_natural_route": "physical_fire_staffed_observer_lead_memory_downstream",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r029.source_binding": "r029_fire_signal_roof_cannibal_close_v1:dev-harness"
+  },
+  "runtime_contract": {
+    "permitted_input": ["ordinary-player-ui:deploy-brazier", "ordinary-player-ui:ignite-with-charged-lighter", "cockpit:game.act", "cockpit:game.keep_watch", "cockpit:game.raw_wait", "cockpit:game.wait", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_signal", "debug:inject_target_knowledge", "debug:inject_dispatch", "debug:inject_local_contact", "fixture-fire-as-proof", "direct-state-mutation"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "r029_fire_signal_roof_cannibal_close_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r029_fire_signal_roof_cannibal_close_v1", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["ordinary fire setup and worker-owned live cockpit"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r029_fire_signal_roof_cannibal_close_v1/manifest.json", "native_source": "src/do_turn.cpp", "native_executable": "cataclysm-tiles"},
+  "proof_gates": [{"id": "r029_cannibal_close_bound", "label": "R-029 close cannibal route reaches one source-bound live session", "boundary_step": "operate_r029_cannibal_close_route", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r029_cannibal_close_bound"], "terminal": ["r029_cannibal_close_bound"], "capability_gates": {"capabilities.r029.cannibal_natural_route": {"terminal": ["r029_cannibal_close_bound"]}}},
+  "steps": [
+    {"kind": "wait", "label": "load_r029_close_roof", "seconds": 2.0, "capture_after": true},
+    {"kind": "audit_saved_player_items", "label": "audit_r029_close_fire_tools", "required_items": ["brazier", "lighter"], "abort_on_metadata_failure": true},
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_r029_close_roof_surface", "offsets": [[0, 0, 0], [1, -1, 0], [1, 0, 0], [1, 1, 0]], "required_terrain": ["t_tile_flat_roof"], "required_items": ["log"], "abort_on_metadata_failure": true},
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_r029_close_no_fixture_fire", "offsets": [[1, -1, 0], [1, 0, 0], [1, 1, 0]], "forbidden_fields": ["fd_fire", "fd_smoke"], "abort_on_metadata_failure": true},
+    {"kind": "native_semantic_bootstrap", "label": "bind_r029_close_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "operate_r029_cannibal_close_route", "cleanup_on_finish": true, "objective": "Create the brazier fire through ordinary player UI, then preserve the first staffed observer signal read, normalized lead, camp memory, and first downstream ownership transition using only native actions and bounded waits.", "proof_targets": ["physical f_brazier and fd_fire", "staffed observer signal read", "normalized camp lead and memory", "first downstream scout/report/ownership transition", "source, executable, actor, receipt, and cleanup binding"], "authority": ["ordinary player UI through Peekaboo", "advertised native actions and worker-chosen waits", "run.witness", "run.finish"], "invariants": ["fixture installation is zero-credit", "signal, lead, memory, scout, report, and ownership must be production-created", "do not reuse consumed authority", "preserve the first divergence"], "live_operations": ["game.act", "game.keep_watch", "game.raw_wait", "game.wait"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+  ]
+}

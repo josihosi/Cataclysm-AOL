@@ -339,6 +339,77 @@ class AdaptiveSemanticWindowFinalizationTest(unittest.TestCase):
 
         self.assertEqual(adaptive_semantic_materiality_waivers(report), [])
 
+    def test_explicit_terminal_death_postcondition_is_bound_to_the_native_end_screen(self) -> None:
+        report = self.report(interruption_proved=True)
+        report["semantic_session"]["allow_terminal_postcondition"] = True
+        report["next_semantic_frame"] = {
+            "event": "surface_descriptor", "kind": "terminal",
+            "payload": {
+                "terminal_phase": "end_screen", "actual_death": "true",
+                "avatar_dead": "true",
+            },
+        }
+
+        status = adaptive_semantic_receipt_chain_status(report)
+
+        self.assertTrue(status["proved"])
+        self.assertEqual(status["postcondition"], "native_terminal_death")
+
+    def test_terminal_opt_in_rejects_any_non_death_terminal(self) -> None:
+        report = self.report(interruption_proved=True)
+        report["semantic_session"]["allow_terminal_postcondition"] = True
+        report["next_semantic_frame"] = {
+            "event": "surface_descriptor", "kind": "terminal",
+            "payload": {
+                "terminal_phase": "end_screen", "actual_death": "false",
+                "avatar_dead": "true",
+            },
+        }
+
+        status = adaptive_semantic_receipt_chain_status(report)
+
+        self.assertFalse(status["proved"])
+        self.assertEqual(status["reason"], "fresh_world_postcondition_missing")
+
+    def test_required_native_night_predicate_requires_a_boolean_surface_observation(self) -> None:
+        report = self.report(interruption_proved=True)
+        report["semantic_session"]["required_is_night"] = False
+        report["next_semantic_frame"] = {
+            "event": "surface_descriptor", "kind": "world", "is_night": False,
+        }
+
+        status = adaptive_semantic_receipt_chain_status(report)
+
+        self.assertTrue(status["proved"])
+        self.assertIs(status["native_is_night"], False)
+        report["next_semantic_frame"]["is_night"] = "false"
+        self.assertEqual(
+            adaptive_semantic_receipt_chain_status(report)["reason"],
+            "native_is_night_postcondition_missing",
+        )
+
+    def test_required_native_live_operation_is_bound_to_the_post_dawn_contact_frame(self) -> None:
+        report = self.report(interruption_proved=True)
+        report["semantic_session"]["required_is_night"] = False
+        report["semantic_session"]["required_live_hostile_operation"] = {
+            "operation_kind": "raid", "phase": "committed_contact", "owner": "local",
+            "target_id": "r029-fixture-player-opportunity",
+        }
+        report["next_semantic_frame"] = {
+            "event": "surface_descriptor", "kind": "world", "is_night": False,
+            "live_hostile_operation": {
+                "operation_kind": "raid", "phase": "committed_contact", "owner": "local",
+                "target_id": "r029-fixture-player-opportunity",
+            },
+        }
+
+        self.assertTrue(adaptive_semantic_receipt_chain_status(report)["proved"])
+        report["next_semantic_frame"]["live_hostile_operation"]["owner"] = "abstract"
+        self.assertEqual(
+            adaptive_semantic_receipt_chain_status(report)["reason"],
+            "native_live_hostile_operation_postcondition_missing",
+        )
+
     def test_observed_optional_interruption_is_not_recorded_as_absent(self) -> None:
         report = self.report(interruption_proved=True)
         report["semantic_session"]["required_interrupt_action_chain"] = []

@@ -10,7 +10,7 @@
       "site_id": "overmap_special:cannibal_camp@140,51,0",
       "member_ids": [4, 5],
       "generation": 2,
-      "current_minutes": 8580,
+      "current_minutes": 8839,
       "target_id": "r029-fixture-player-opportunity",
       "target_omt": [140, 41, 0],
       "branch": "cannibal_night_raid",
@@ -23,9 +23,20 @@
       "site_id": "overmap_special:cannibal_camp@140,51,0",
       "member_ids": [4, 5],
       "generation": 2,
-      "current_minutes": 8580,
+      "current_minutes": 8839,
       "target_id": "r029-fixture-player-opportunity",
-      "target_omt": [140, 41, 0]
+      "target_omt": [140, 41, 0],
+      "rally_omt": [140, 83, 0],
+      "member_rally_positions_ms": {
+        "4": [3368, 1992, 0],
+        "5": [3370, 1992, 0]
+      }
+    },
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5282399,
+      "shift_queued_eocs": false
     }
   ]
 }

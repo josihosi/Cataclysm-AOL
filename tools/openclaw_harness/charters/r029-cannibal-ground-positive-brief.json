@@ -1,0 +1,12 @@
+{
+  "outcome": "R-029 positive same-elevation control: native ground fire reaches an assigned staffed cannibal observer and records the physical signal callback without fixture-authored downstream state.",
+  "scenario": "cannibal.r029_ground_positive_route_mcw",
+  "query": {
+    "requirements": [
+      {"key":"capabilities.r029.cannibal_ground_positive","minimum_evidence":"declared","op":"eq","value":"physical_fire_staffed_observer_lead_memory_downstream"}
+    ],
+    "preferences": [
+      {"key":"runtime.entry_mode","minimum_evidence":"declared","op":"eq","value":"cockpit_live_session"}
+    ]
+  }
+}

@@ -1065,6 +1065,14 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertEqual(validated["token_id"], token_id)
             self.assertEqual(validated["red_verification_id"], expected_red)
 
+            with mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}):
+                wrong_scenario = startup_harness.validate_registry_launch_receipt_before_launch(
+                    json.dumps(receipt), Path(binding["runtime"]["executable_path"]),
+                    expected_scenario="unrelated.r008_route",
+                )
+            self.assertEqual(wrong_scenario["status"], "rejected")
+            self.assertEqual(wrong_scenario["reason"], "receipt_scenario_changed")
+
             changed_receipt = dict(receipt)
             changed_receipt["red_verification_id"] = "0" * 64
             with mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}):

@@ -1179,6 +1179,34 @@ int live_bandit_current_minutes()
     return to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
 }
 
+// Long activities can advance the calendar past one or more five-minute overmap
+// callbacks.  A raid which was already gathered must not miss its one night-only
+// departure opportunity merely because the next authoritative callback lands after
+// dawn.  This intentionally uses the ordinary solar predicate at the cursor
+// boundary and the next dusk; it does not give the raid a fixed departure hour.
+bool live_bandit_departure_interval_contains_night(
+    const bandit_live_world::simulation_advance_cursor &cursor, const int current_minutes )
+{
+    if( current_minutes <= cursor.last_advanced_minutes ) {
+        return false;
+    }
+
+    const time_point last_advanced_turn = calendar::start_of_cataclysm +
+                                           cursor.last_advanced_minutes * 1_minutes;
+    if( is_night( last_advanced_turn ) || is_night( calendar::turn ) ) {
+        return true;
+    }
+
+    // At least one complete day necessarily contains a night.  This also keeps a
+    // stale but otherwise valid operation from scanning an unbounded interval.
+    if( current_minutes - cursor.last_advanced_minutes >= to_minutes<int>( 1_days ) ) {
+        return true;
+    }
+
+    const time_point next_night = night_time( last_advanced_turn );
+    return next_night > last_advanced_turn && next_night <= calendar::turn;
+}
+
 bool live_bandit_member_routing_home( const npc &member_npc, const bandit_live_world::site_record &site )
 {
     return member_npc.is_travelling() && member_npc.has_omt_destination() &&
@@ -1509,6 +1537,7 @@ bool advance_live_bandit_hostile_approaches()
         bandit_live_world::active_outing_state &reservation = operation.reservation;
         if( site.retired_empty_site || !operation.is_active() ||
             ( operation.phase != bandit_live_world::hostile_operation_phase::rallying &&
+              operation.phase != bandit_live_world::hostile_operation_phase::waiting_night &&
               operation.phase != bandit_live_world::hostile_operation_phase::approaching ) ||
             reservation.owner != bandit_live_world::simulation_owner::abstract ||
             reservation.member_ids.empty() || reservation.shared_route.empty() ||
@@ -1579,7 +1608,8 @@ bool advance_live_bandit_hostile_approaches()
             continue;
         }
 
-        if( operation.phase == bandit_live_world::hostile_operation_phase::rallying ) {
+        if( operation.phase == bandit_live_world::hostile_operation_phase::rallying ||
+            operation.phase == bandit_live_world::hostile_operation_phase::waiting_night ) {
             if( std::any_of( reservation.member_ids.begin(), reservation.member_ids.end(),
             [&operation]( const character_id member_id ) {
                 npc *member_npc = g->find_npc( member_id );
@@ -1587,8 +1617,9 @@ bool advance_live_bandit_hostile_approaches()
             } ) ) {
                 continue;
             }
-            if( operation.operation_kind == bandit_live_world::hostile_operation_kind::raid &&
-                !is_night( calendar::turn ) ) {
+            if( ( operation.operation_kind == bandit_live_world::hostile_operation_kind::raid ||
+                  operation.phase == bandit_live_world::hostile_operation_phase::waiting_night ) &&
+                !live_bandit_departure_interval_contains_night( *cursor, current_minutes ) ) {
                 continue;
             }
             for( hostile_approach_travel_order &order : travel_orders ) {
@@ -1598,7 +1629,7 @@ bool advance_live_bandit_hostile_approaches()
                 changed = true;
             }
             changed |= bandit_live_world::transition_hostile_operation_phase( site, *cursor,
-                       bandit_live_world::hostile_operation_phase::rallying,
+                       operation.phase,
                        bandit_live_world::hostile_operation_phase::approaching, current_minutes,
                        "hostile operation openly approached persisted target" ) ==
                        bandit_live_world::hostile_operation_transition_result::applied;
@@ -2532,7 +2563,15 @@ bool materialize_committed_cannibal_raid( bandit_live_world::site_record &site )
     for( std::size_t index = 0; index < party.size(); ++index ) {
         party[index]->setpos( here, placements[index] );
     }
-    return true;
+    // setpos updates the persistent NPC position but does not itself put an
+    // unloaded overmap NPC into the local creature tracker.  A committed raid
+    // has local ownership, so reload the placements before its normal attack
+    // driver runs; otherwise a raid that reached contact after dawn is present
+    // only as an inactive overmap record.
+    g->load_npcs();
+    return std::all_of( party.begin(), party.end(), []( const npc * member_npc ) {
+        return member_npc->is_active();
+    } );
 }
 
 bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &site )

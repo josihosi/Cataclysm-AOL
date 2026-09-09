@@ -1,0 +1,18 @@
+{
+  "name": "r029_fire_signal_ground_cannibal_positive_v1",
+  "source_fixture": "r008_fire_signal_common_v1",
+  "source_profile": "live-debug",
+  "description": "R-029 positive same-elevation control: native brazier fire on solid ground in adjacent OMT to an assigned binocular observer; no signal or ecology state is authored.",
+  "save_transforms": [
+    {"kind":"player_mutations","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","mutations":["DEBUG_LS","DEBUG_NOTEMP","DEBUG_STAMINA","DEBUG_CARDIO","DEBUG_CLAIRVOYANCE","DEBUG_NIGHTVISION"]},
+    {"kind":"remove_overmap_special_placement","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","special_id":"bandit_camp","anchor_omt":[140,51,0]},
+    {"kind":"seed_overmap_special_near_player","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","special_id":"cannibal_camp","source_special_id":"bandit_camp","site_index":1,"offset_omt":[0,-1,0]},
+    {"kind":"overmap_npcs_near_player","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","offsets_ms":[[0,-24,0]],"source_npc_id":4,"clone_follower_template":false,"npc_faction":"hells_raiders","npc_mission":7,"chat_topic":"TALK_STRANGER_NEUTRAL","name_prefix":"R029 ground signal observer"},
+    {"kind":"basecamp_assigned_npc_items","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","npc_id":18,"offset_ms":[0,-24,0],"assigned_camp_omt":[140,40,0],"ensure_follower":false,"items":[{"typeid":"binoculars","count":1,"slot":"inventory"}]},
+    {"kind":"bandit_registered_staffed_observer_bootstrap","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","footing":"same_level_clear_los_z0_v1","site_kind":"cannibal_camp"},
+    {"kind":"player_items","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","storage":"live_accessible_worn_pocket","items":[{"typeid":"lighter","count":1,"contents":{"contents":[{"pocket_type":1,"contents":[{"typeid":"butane","charges":100,"bday":0,"last_temp_check":0,"template_traits":[]}],"_sealed":false,"no_rigid":[]}],"additional_pockets":[]}}]},
+    {"kind":"player_items","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","storage":"live_accessible_wielded","replace_existing_weapon":true,"items":[{"typeid":"brazier","count":1}]},
+    {"kind":"map_terrain_near_player","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","terrain":[{"id":"t_dirt","offset_ms":[-1,0,0]}]},
+    {"kind":"map_items_near_player","player_save":"#Wm9yYWlkYSBWaWNr.sav.zzip","items":[{"typeid":"log","count":20,"offset_ms":[-1,0,0]}]}
+  ]
+}

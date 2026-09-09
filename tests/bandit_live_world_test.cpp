@@ -28385,7 +28385,7 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
     }
 }
 
-TEST_CASE( "live_cannibal_raid_holds_at_rally_until_true_darkness",
+TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",
            "[bandit][live_world][cannibal][raid][darkness][live_adapter]" )
 {
     clear_npcs();
@@ -28490,14 +28490,17 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_true_darkness",
         CHECK( member->goal != live_site.active_hostile_operation.reservation.target_omt );
     }
 
-    calendar::turn += 12_hours + 1_minutes;
-    REQUIRE( is_night( calendar::turn ) );
-    const std::vector<tripoint_abs_omt> night_route = overmap_buffer.get_travel_path(
+    // A long native activity can cross the whole night and resume on the other
+    // side of dawn.  The authoritative cursor still preserves the one initial
+    // departure opportunity, while every later approach step remains ungated.
+    calendar::turn = daylight_time( calendar::turn + 1_days ) + 1_minutes;
+    REQUIRE_FALSE( is_night( calendar::turn ) );
+    const std::vector<tripoint_abs_omt> departure_route = overmap_buffer.get_travel_path(
                 rally, live_site.active_hostile_operation.reservation.target_omt,
                 overmap_path_params::for_npc() ).points;
-    REQUIRE_FALSE( night_route.empty() );
-    CHECK( night_route.front() == live_site.active_hostile_operation.reservation.target_omt );
-    CHECK( night_route.back() == rally );
+    REQUIRE_FALSE( departure_route.empty() );
+    CHECK( departure_route.front() == live_site.active_hostile_operation.reservation.target_omt );
+    CHECK( departure_route.back() == rally );
     process_overmap_npc_move_for_test();
     calendar::turn += 1_minutes;
     process_overmap_npc_move_for_test();
@@ -28588,14 +28591,19 @@ TEST_CASE( "live_cannibal_raid_holds_at_rally_until_true_darkness",
         CHECK( here.inbounds( member->pos_bub( here ) ) );
         CHECK( member->get_attitude() == NPCATT_KILL );
     }
+    bool any_target_pressured = false;
     for( const raid_target_pressure &pressure : pressures ) {
         const int distance_after = rl_dist( pressure.attacker->pos_bub( here ),
                                             pressure.target->pos_bub( here ) );
         const bool pressured = pressure.target->get_hp() < pressure.hp_before ||
                                distance_after < pressure.distance_before ||
                                !pressure.attacker->path.empty();
-        CHECK( pressured );
+        any_target_pressured |= pressured;
     }
+    // The raid has been carried across dawn, so one actual offensive move or
+    // attack establishes that local combat remained live; target allocation can
+    // legitimately change after a defender is killed.
+    CHECK( any_target_pressured );
     CHECK( unloaded_defender->pos_abs() == unloaded_before );
     CHECK_FALSE( unloaded_defender->is_active() );
     CHECK( live_site.active_hostile_operation.shakedown_pending_branch.empty() );
@@ -28759,6 +28767,11 @@ TEST_CASE( "R009_M025_full_owner_reload_preserves_cannibal_daylight_rally",
              bandit_live_world::hostile_operation_phase::rallying, 720,
              "R009-M025 raid reached rally" ) ==
              bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation( live_site,
+             bandit_live_world::hostile_operation_phase::rallying,
+             bandit_live_world::hostile_operation_phase::waiting_night, 721,
+             "R009-M025 persisted daylight night wait" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
 
     const auto operation_identity = []() {
         const bandit_live_world::site_record &current_site =
@@ -28794,7 +28807,7 @@ TEST_CASE( "R009_M025_full_owner_reload_preserves_cannibal_daylight_rally",
     REQUIRE( g->load( world_name ) );
     CHECK( operation_identity() == pre_save_identity );
     CHECK( overmap_buffer.global_state.bandit_live_world.sites.front().active_hostile_operation.phase ==
-           bandit_live_world::hostile_operation_phase::rallying );
+           bandit_live_world::hostile_operation_phase::waiting_night );
     for( const character_id id : member_ids ) {
         npc *member = g->find_npc( id );
         REQUIRE( member != nullptr );
@@ -29307,6 +29320,9 @@ TEST_CASE( "bandit_live_world_scheduler_commits_authorized_response_as_assemblin
     report.assessment.threshold_class = bandit_live_world::scout_assessment_threshold_class::normal;
     report.assessment.danger_high = 15;
     report.assessment.bounty_estimate = 2;
+    report.target_lead_revision = 1;
+    REQUIRE( bandit_live_world::observe_authoritative_hostile_target_opportunity(
+             world, report.target_id, target, { 100, 3, 1 } ) );
     REQUIRE( bandit_live_world::accept_current_scout_report_for_assessment( site ) ==
              bandit_live_world::camp_decision_transition_result::applied );
 

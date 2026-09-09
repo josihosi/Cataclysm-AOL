@@ -1,0 +1,27 @@
+{
+  "manifest_version": 2,
+  "name": "cannibal.r029_ground_positive_route_mcw",
+  "description": "R-029 positive same-elevation source/camp geometry for native staffed fire observation.",
+  "profile": "dev-harness",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r029_fire_signal_ground_cannibal_positive_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "required_stabilizer_traits": ["DEBUG_LS","DEBUG_NOTEMP","DEBUG_STAMINA","DEBUG_CARDIO","DEBUG_CLAIRVOYANCE","DEBUG_NIGHTVISION"],
+  "capabilities": {"capabilities.r029.cannibal_ground_positive": "physical_fire_staffed_observer_lead_memory_downstream", "runtime.entry_mode": "cockpit_live_session"},
+  "runtime_contract": {"permitted_input": ["ordinary-player-ui:ignite-with-charged-lighter","cockpit:game.act","cockpit:game.wait","cockpit:run.quit"],"forbidden_input": ["debug:inject_signal","debug:inject_target_knowledge","direct-state-mutation"],"setup_only_debug": true,"disposable_copy": true,"helpers": ["Peekaboo"],"permissions": ["accessibility","screen-recording"],"platform": ["macos"],"profile": "dev-harness","config_profile": "dev-harness","fixture": "r029_fire_signal_ground_cannibal_positive_v1","requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"dev-harness","fixture":"r029_fire_signal_ground_cannibal_positive_v1","helper":"Peekaboo","peekaboo":true,"ocr":true,"input":["ordinary fire setup and worker-owned live cockpit"],"cleanup":true},"grants_gameplay_proof": false},
+  "source_binding": {"fixture_manifest":"tools/openclaw_harness/fixtures/saves/live-debug/r029_fire_signal_ground_cannibal_positive_v1/manifest.json","native_source":"src/do_turn.cpp","native_executable":"cataclysm-tiles"},
+  "proof_gates": [{"id":"r029_ground_positive_bound","label":"ground positive route bound","boundary_step":"operate_r029_ground_positive_route","predecessors":[],"expectations":[{"kind":"saved_artifact","predicate":{"artifact_kind":"worker_controlled_live_cockpit_session","gameplay_credit":true}}],"checkpoint_safe_ui":{"screen_text_contains":["Move:","Wield:"]}}],
+  "proof_route": {"gates":["r029_ground_positive_bound"],"terminal":["r029_ground_positive_bound"],"capability_gates":{"capabilities.r029.cannibal_ground_positive":{"terminal":["r029_ground_positive_bound"]}}},
+  "steps": [
+    {"kind":"wait","label":"load_r029_ground_positive","seconds":2.0,"capture_after":true},
+    {"kind":"audit_saved_player_items","label":"audit_ground_fire_tools","required_items":["brazier","lighter"],"abort_on_metadata_failure":true},
+    {"kind":"native_semantic_bootstrap","label":"bind_ground_world","native_semantic_checkpoint":{"required_actions":["world.wait"],"required_state":"world","require_initial_hud_world_ready_frame":true}},
+    {"kind":"cockpit_live_session","label":"operate_r029_ground_positive_route","cleanup_on_finish":true,"objective":"Create native ground fire, observe staffed physical callback and downstream state.","proof_targets":["physical fire","staffed observer read","normalized lead and memory","first ownership transition"],"authority":["ordinary player UI through Peekaboo","advertised native actions","run.quit"],"invariants":["fixture installation is zero-credit","signal and downstream transitions must be production-created"],"live_operations":["game.act","game.wait"],"transition_timeout_seconds":10.0,"observe_interval_seconds":0.1}
+  ]
+}

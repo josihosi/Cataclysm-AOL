@@ -1,0 +1,99 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-night-departure-repair-001",
+  "claim_id": "R-029",
+  "worker_id": "01a08635-2810-76a2-a179-038e561520d8",
+  "disposition": "completed",
+  "verdict": "night_departure_through_dawn_contact_repaired_and_proved",
+  "outcome": "A ready cannibal raid now leaves through the existing authoritative route when its simulation interval crosses night, remains committed through save and exact-world reload, continues approaching after dawn, and reaches local hostile contact after dawn.",
+  "summary": "The repair extends only src/do_turn.cpp::advance_live_bandit_hostile_approaches. It admits persisted waiting_night as a predeparture phase, recognizes an authoritative cursor interval that crossed night without hard-coding an hour, preserves the one-time night departure gate, and leaves the approaching path ungated. Native run 20260909_173916_9ddd828cecf6468293f3fba8a61eef73 records the exact raid approaching under abstract ownership at minute 9025 with is_night=false, then the same raid in committed_contact under local ownership at minute 9085 with both members in local_contact. The run is source-bound, feature_proof is true, and all 17 evidence rows are green. OCR and rendered presentation supplied no proof.",
+  "material_changes": [
+    "Extended the existing authoritative hostile-approach loop to handle a night crossed by the simulation cursor interval and a persisted waiting_night predeparture phase.",
+    "Kept post-departure approaching and contact free of a second night gate.",
+    "Reloaded committed cannibal local placements at materialization so post-dawn contact can become active and attack.",
+    "Corrected the native scenario, fixture metadata, semantic bootstrap handling, and strict post-dawn contact requirement.",
+    "Added focused C++ and harness tests for daylight hold, both night departure routes, persistence, dawn continuation, strict contact identity, and zero-credit bootstrap classification."
+  ],
+  "tests": [
+    "Adaptive semantic window suite passed 32 tests.",
+    "Proof-classification suite passed 152 tests.",
+    "Broad [bandit][live_world][hostile_operation] C++ suite passed 1551 assertions across 11 cases.",
+    "git diff --check passed.",
+    "Native report verdict is artifacts_matched with feature_proof true and 17 of 17 green ledger rows."
+  ],
+  "live_actions": [
+    "Used scenario-owned native wait, pause, quicksave, save-and-quit, exact-world relaunch, adaptive waiting, and contact observation.",
+    "Final game PID 60366 was quit through the exact owned route and verified absent."
+  ],
+  "evidence_ceiling": [
+    "Native semantic descriptors and saved-state audits prove the exact raid identity, phase, ownership, members, game time, is_night=false dawn state, exact-world reload, and later local committed contact.",
+    "The native route proves hostile contact after dawn but does not claim player survival or a balanced encounter; the terminal attack outcome is bounded gameplay-feel evidence.",
+    "Fixture preparation and bootstrap descriptors received zero gameplay credit.",
+    "OCR, screenshots, terminal bytes, rendered text, accepted input, and launch status received no gameplay credit.",
+    "The final source-bound binary predates only scenario and test changes; no C++ product source changed after its build."
+  ],
+  "bindings": {
+    "camp_id": "overmap_special:cannibal_camp@140,51,0",
+    "contact_game_minutes": "9085",
+    "dawn_game_minutes": "9025",
+    "final_game_pid": "60366",
+    "member_ids": "4,5",
+    "native_run_directory": "20260909_173916_9ddd828cecf6468293f3fba8a61eef73",
+    "runtime_executable_sha256": "2e440f697a0c6a7d5af719671e7ee365eee92c7ed2b0318120222dc2abe32097",
+    "runtime_source_sha256": "306724d7963257d5eaadb7eac10b2f2b0a65c8c1cf1807d05d42fb38be74ff30",
+    "scenario_id": "cannibal.night_raid_natural_transition_validation_mcw",
+    "source_head_at_ingress": "8837ef5ac9a8abc1a0f99dd6384d31c2a9334604",
+    "target_id": "r029-fixture-player-opportunity",
+    "world": "McWilliams"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260909_173916_9ddd828cecf6468293f3fba8a61eef73/probe.report.json",
+      "sha256": "f4ae58fad3c9f1704966e5d5319541ca532b97eb461820635f0e29c495496b1d",
+      "role": "strict source-bound post-dawn native proof"
+    },
+    {
+      "path": "build_logs/r029-adaptive-semantic-window-contact.log",
+      "sha256": "eb654b39af3b55e4ef2a917f7986929b52af400572c10d5d036ebb446515a639",
+      "role": "adaptive semantic contact tests"
+    },
+    {
+      "path": "build_logs/r029-proof-classification-unit-contact.log",
+      "sha256": "8780838f9b558d960b06f91ddc2a748fda932115a848b161feb98d16761ef698",
+      "role": "proof classification tests"
+    },
+    {
+      "path": "build_logs/r029-bandit-live-world-hostile-operation-final.log",
+      "sha256": "95ab59f51e3b768f77d08985d7b60fa07e5b4ba1a3fd6d7cca52d6f2aa56a7df",
+      "role": "broad hostile-operation C++ test suite"
+    }
+  ],
+  "first_divergence": {
+    "class": "resolved-night-departure-cadence-and-persisted-phase-gap",
+    "summary": "The prior rallying result came from a skipped night opportunity across an authoritative cursor interval, while waiting_night was also excluded from the live approach selector. Both predeparture routes are now handled by the existing caller."
+  },
+  "accepted_no_replay": [
+    "Preserve receipt d3ab40640c44ea98b8a59ee68f2944ed422178d4b16d8aa43f4aa466846ad89a only as the original rallying failure observation, not as proof of a missing caller.",
+    "Preserve the strict native dawn/contact report and passing suites without replay merely to restate this completed repair.",
+    "Do not use this result to settle independent activation/arbitration, sound-drive, roof-fire discovery, or other R-029 sibling outcomes."
+  ],
+  "active_work": [],
+  "first_open_boundary": "No boundary remains for this assigned repair. R-029 stays open only for separately assigned sibling outcomes and claim-level reconciliation.",
+  "narrow_queries": [
+    "R-029-night-departure-repair-001",
+    "20260909_173916_9ddd828cecf6468293f3fba8a61eef73",
+    "game_minutes 9025 is_night false approaching abstract",
+    "game_minutes 9085 committed_contact local",
+    "member_ids 4 5 local_contact"
+  ],
+  "entrypoints": [
+    "src/do_turn.cpp::advance_live_bandit_hostile_approaches",
+    "src/do_turn.cpp::materialize_live_bandit_structural_handoffs",
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/scenarios/cannibal.night_raid_natural_transition_validation_mcw.json",
+    "tests/bandit_live_world_test.cpp"
+  ],
+  "context_metrics": {}
+}

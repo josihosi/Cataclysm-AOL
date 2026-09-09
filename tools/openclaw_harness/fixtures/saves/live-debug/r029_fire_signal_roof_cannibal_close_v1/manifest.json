@@ -1,0 +1,53 @@
+{
+  "name": "r029_fire_signal_roof_cannibal_close_v1",
+  "source_fixture": "r008_fire_signal_roof_bandit_v1",
+  "source_profile": "live-debug",
+  "description": "R-029 close cannibal signal footing. Uses the known-valid one-OMT source/camp placement from the R-029 sound route while supplying no signal, lead, roster, report, or operation state.",
+  "save_transforms": [
+    {
+      "kind": "player_mutations",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "mutations": ["DEBUG_LS", "DEBUG_NOTEMP", "DEBUG_STAMINA", "DEBUG_CARDIO", "DEBUG_CLAIRVOYANCE", "DEBUG_NIGHTVISION"]
+    },
+    {
+      "kind": "seed_overmap_special_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "cannibal_camp",
+      "source_special_id": "bandit_camp",
+      "site_index": 1,
+      "offset_omt": [0, -1, -1]
+    },
+    {
+      "kind": "remove_overmap_special_placement",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "special_id": "bandit_camp",
+      "anchor_omt": [140, 51, 0]
+    },
+    {
+      "kind": "overmap_npcs_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "offsets_ms": [[0, -24, -1]],
+      "source_npc_id": 4,
+      "clone_follower_template": false,
+      "npc_faction": "hells_raiders",
+      "npc_mission": 7,
+      "chat_topic": "TALK_STRANGER_NEUTRAL",
+      "name_prefix": "R029 cannibal signal observer"
+    },
+    {
+      "kind": "basecamp_assigned_npc_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_id": 18,
+      "offset_ms": [0, -24, -1],
+      "assigned_camp_omt": [140, 40, 0],
+      "ensure_follower": false,
+      "items": [{"typeid": "binoculars", "count": 1, "slot": "inventory"}]
+    },
+    {
+      "kind": "bandit_registered_staffed_observer_bootstrap",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "footing": "roof_v1",
+      "site_kind": "cannibal_camp"
+    }
+  ]
+}

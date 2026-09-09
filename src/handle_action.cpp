@@ -430,6 +430,7 @@ static void openclaw_harness_semantic_surface_descriptor(
     std::ostringstream event;
     event << "{\"event\":\"surface_descriptor\",\"schema_version\":"
           << descriptor.schema_version << openclaw_harness_semantic_event_clock()
+          << ",\"is_night\":" << ( is_night( calendar::turn ) ? "true" : "false" )
           << ",\"run_id\":" << openclaw_harness_quote_action_value( descriptor.run_id )
           << ",\"surface_id\":" << openclaw_harness_quote_action_value( descriptor.surface_id )
           << ",\"frame_id\":" << openclaw_harness_quote_action_value( descriptor.frame_id )

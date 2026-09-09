@@ -2756,6 +2756,58 @@ class CockpitLocalProofLedgerTest(unittest.TestCase):
     def test_exact_bound_worker_cockpit_step_is_local_proof(self) -> None:
         self.assertEqual(self.ledger(self.report())["verdict"], "green_step_cockpit_local_proof")
 
+    def test_bootstrap_descriptor_is_green_only_as_a_bound_zero_credit_setup(self) -> None:
+        bootstrap = self.report()
+        bootstrap["cockpit_live_session"] = {
+            "descriptor": {
+                "schema": "caol-cockpit-live-session-v1",
+                "entry_mode": "cockpit_live_session",
+                "bootstrap_only": True,
+                "run_id": "semantic-run",
+                "binding_id": "native-binding",
+                "bridge_binding_id": "",
+                "gameplay_credit": False,
+            },
+        }
+        bootstrap["metadata"] = {
+            "artifact_kind": "native_cockpit_session_descriptor",
+            "artifact_path": "bootstrap.cockpit_live_session.json",
+            "descriptor_ref": "bootstrap.cockpit_live_session.json",
+            "run_id": "semantic-run",
+            "binding_id": "native-binding",
+            "bridge_binding_id": "",
+            "entry_mode": "cockpit_live_session",
+            "gameplay_credit": False,
+        }
+        self.assertEqual(self.ledger(bootstrap)["verdict"], "green_step_cockpit_bootstrap_descriptor")
+
+        bootstrap["cockpit_live_session"]["descriptor"]["gameplay_credit"] = True
+        self.assertIn("bootstrap_descriptor_claims_gameplay_credit", self.ledger(bootstrap)["issues"])
+
+        bootstrap = self.report()
+        bootstrap["cockpit_live_session"] = {
+            "descriptor": {
+                "schema": "caol-cockpit-live-session-v1",
+                "entry_mode": "cockpit_live_session",
+                "bootstrap_only": True,
+                "run_id": "semantic-run",
+                "binding_id": "native-binding",
+                "bridge_binding_id": "",
+                "gameplay_credit": False,
+            },
+        }
+        bootstrap["metadata"] = {
+            "artifact_kind": "native_cockpit_session_descriptor",
+            "artifact_path": "bootstrap.cockpit_live_session.json",
+            "descriptor_ref": "bootstrap.cockpit_live_session.json",
+            "run_id": "semantic-run",
+            "binding_id": "other-binding",
+            "bridge_binding_id": "",
+            "entry_mode": "cockpit_live_session",
+            "gameplay_credit": False,
+        }
+        self.assertIn("bootstrap_descriptor_artifact_unbound", self.ledger(bootstrap)["issues"])
+
     def test_missing_stale_mismatched_and_valid_target_receipts(self) -> None:
         missing = self.report()
         del missing["cockpit_live_session"]["final"]["target_receipt"]

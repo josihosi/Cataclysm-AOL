@@ -2061,6 +2061,8 @@ def load_runtime_binding(run_dir: Path) -> Optional[Dict[str, Any]]:
 def validate_registry_launch_receipt_before_launch(
     raw_receipt: Any,
     executable: Path,
+    *,
+    expected_scenario: str = "",
 ) -> Dict[str, Any]:
     """Recheck one selected registry receipt immediately before process launch."""
     if raw_receipt in (None, ""):
@@ -2146,6 +2148,16 @@ def validate_registry_launch_receipt_before_launch(
                     "token_id": token_id,
                 }
 
+            expected_scenario_name = str(expected_scenario or "").strip()
+            if expected_scenario_name and str(selection.scenario or "").strip() != expected_scenario_name:
+                return {
+                    "status": "rejected",
+                    "reason": "receipt_scenario_changed",
+                    "token_id": token_id,
+                    "expected_scenario": expected_scenario_name,
+                    "selected_scenario": str(selection.scenario or "").strip(),
+                }
+
             def reject_repair(reason: str, **details: Any) -> Dict[str, Any]:
                 record_repair_token_rejection(
                     connection,
@@ -2218,6 +2230,14 @@ def validate_registry_launch_receipt_before_launch(
                 details=details,
             )
             return {"status": "rejected", "reason": reason, "token_id": token_id}
+
+        expected_scenario_name = str(expected_scenario or "").strip()
+        if expected_scenario_name and str(selection.scenario or "").strip() != expected_scenario_name:
+            return reject(
+                "receipt_scenario_changed",
+                expected_scenario=expected_scenario_name,
+                selected_scenario=str(selection.scenario or "").strip(),
+            )
 
         if selection.source_path != str(Path(source_path).resolve()):
             return reject(
@@ -17328,7 +17348,11 @@ def startup_screen_probe_classification(
         # OCR can retain only the activity/status column at this scale; the
         # paired visible need-state line is still a concrete gameplay HUD.
         body_marker_types.append("hud_activity_need_state_fallback")
-    if not body_marker_types:
+    # A native gameplay HUD trace is authoritative for the rendered Move/Wield
+    # surface.  OCR may retain a body label while dropping the status column;
+    # allow that trace to supply the missing status evidence without treating
+    # OCR alone as gameplay proof.
+    if not body_marker_types or not status_marker_types:
         rendered_hud = False
         expected_run_id = str(gameplay_hud_run_id).strip()
         for match in GAMEPLAY_HUD_TRACE_PATTERN.finditer(debug_delta_text):
@@ -19112,6 +19136,16 @@ def adaptive_semantic_receipt_chain_status(report: Mapping[str, Any]) -> Dict[st
     ] if isinstance(recovery_contract, Mapping) else []
     if not run_id or not session_id or not required_actions:
         return {"proved": False, "reason": "semantic_receipt_identity_or_requirements_missing"}
+    allow_terminal_postcondition = session.get("allow_terminal_postcondition", False)
+    if not isinstance(allow_terminal_postcondition, bool):
+        return {"proved": False, "reason": "semantic_terminal_postcondition_opt_in_malformed"}
+    required_is_night = session.get("required_is_night")
+    if required_is_night is not None and not isinstance(required_is_night, bool):
+        return {"proved": False, "reason": "semantic_required_is_night_malformed"}
+    required_live_operation = session.get("required_live_hostile_operation")
+    if required_live_operation is not None and (
+            not isinstance(required_live_operation, Mapping) or not required_live_operation):
+        return {"proved": False, "reason": "semantic_required_live_hostile_operation_malformed"}
     if not isinstance(receipts, list):
         return {"proved": False, "reason": "semantic_receipts_missing"}
     accepted_actions: Set[str] = set()
@@ -19182,12 +19216,39 @@ def adaptive_semantic_receipt_chain_status(report: Mapping[str, Any]) -> Dict[st
                           "Wait duration" in current.get("breadcrumbs", []))) or \
                     action not in semantic_frame_action_ids(current):
                 return {"proved": False, "reason": "native_recovery_receipt_unbound"}
-    if not isinstance(next_frame, Mapping) or \
-            str(next_frame.get("state", next_frame.get("kind", ""))) != "world":
+    fresh_world = isinstance(next_frame, Mapping) and \
+        str(next_frame.get("state", next_frame.get("kind", ""))) == "world"
+    terminal_payload = next_frame.get("payload") if isinstance(next_frame, Mapping) else None
+    native_terminal_death = (
+        allow_terminal_postcondition and isinstance(next_frame, Mapping) and
+        next_frame.get("event") == "surface_descriptor" and
+        next_frame.get("kind") == "terminal" and isinstance(terminal_payload, Mapping) and
+        terminal_payload.get("terminal_phase") == "end_screen" and
+        terminal_payload.get("actual_death") in {True, "true"} and
+        terminal_payload.get("avatar_dead") in {True, "true"}
+    )
+    if not fresh_world and not native_terminal_death:
         return {"proved": False, "reason": "fresh_world_postcondition_missing"}
+    if required_is_night is not None:
+        if not isinstance(next_frame, Mapping) or \
+                next_frame.get("event") != "surface_descriptor" or \
+                type(next_frame.get("is_night")) is not bool or \
+                next_frame.get("is_night") is not required_is_night:
+            return {"proved": False, "reason": "native_is_night_postcondition_missing"}
+    if required_live_operation is not None:
+        observed_live_operation = next_frame.get("live_hostile_operation") \
+            if isinstance(next_frame, Mapping) else None
+        if not isinstance(observed_live_operation, Mapping) or any(
+                observed_live_operation.get(key) != value
+                for key, value in required_live_operation.items()):
+            return {"proved": False, "reason": "native_live_hostile_operation_postcondition_missing"}
     return {
         "proved": True,
         "reason": "accepted_receipt_chain",
+        **({"postcondition": "native_terminal_death"} if native_terminal_death else {}),
+        **({"native_is_night": required_is_night} if required_is_night is not None else {}),
+        **({"native_live_hostile_operation": dict(required_live_operation)}
+           if required_live_operation is not None else {}),
         **({"recovery_modal_identity": recovery_modal_identity} if recovery_modal_identity else {}),
     }
 
@@ -19672,6 +19733,42 @@ def cockpit_live_session_step_verdict(
     if str(descriptor.get("relative_movement_operation", "")).strip() in {
             "raw_move_relative", "guarded_move_relative"}:
         return r023_relative_movement_step_verdict(descriptor, final, metadata if isinstance(metadata, Mapping) else {})
+    # A bootstrap-only cockpit row publishes the durable adoption envelope; it
+    # deliberately does not serve a live transaction.  Its green result is
+    # therefore limited to proving that zero-credit setup boundary, not a
+    # gameplay claim.  The following semantic steps must still prove the
+    # native action chain.  In particular, do not ask this descriptor for the
+    # terminal cockpit final that bootstrap_only intentionally omits.
+    if descriptor.get("bootstrap_only") is True:
+        bootstrap_failures: List[str] = []
+        if descriptor.get("schema") != "caol-cockpit-live-session-v1" or \
+                descriptor.get("entry_mode") != "cockpit_live_session":
+            bootstrap_failures.append("missing_or_invalid_cockpit_descriptor")
+        if not descriptor_run_id or not descriptor_binding_id:
+            bootstrap_failures.append("missing_cockpit_run_or_binding")
+        if descriptor.get("gameplay_credit") is not False:
+            bootstrap_failures.append("bootstrap_descriptor_claims_gameplay_credit")
+        if final:
+            bootstrap_failures.append("bootstrap_descriptor_has_unexpected_live_final")
+        if not isinstance(watermark, Mapping) or \
+                str(watermark.get("run_id", "")).strip() != descriptor_run_id or \
+                str(watermark.get("step_label", "")).strip() != label or \
+                watermark.get("step_index") != index:
+            bootstrap_failures.append("cockpit_local_boundary_not_same_run")
+        expected_bridge_binding = str(descriptor.get("bridge_binding_id", ""))
+        if not isinstance(metadata, Mapping) or \
+                metadata.get("artifact_kind") != "native_cockpit_session_descriptor" or \
+                str(metadata.get("artifact_path", "")).strip() == "" or \
+                str(metadata.get("descriptor_ref", "")).strip() == "" or \
+                str(metadata.get("run_id", "")).strip() != descriptor_run_id or \
+                str(metadata.get("binding_id", "")).strip() != descriptor_binding_id or \
+                str(metadata.get("bridge_binding_id", "")) != expected_bridge_binding or \
+                metadata.get("entry_mode") != descriptor.get("entry_mode") or \
+                metadata.get("gameplay_credit") is not False:
+            bootstrap_failures.append("bootstrap_descriptor_artifact_unbound")
+        if bootstrap_failures:
+            return "yellow_step_cockpit_bootstrap_descriptor_unbound", bootstrap_failures
+        return "green_step_cockpit_bootstrap_descriptor", []
     failures: List[str] = []
     if descriptor.get( "schema" ) != "caol-cockpit-live-session-v1" or \
             descriptor.get( "entry_mode" ) != "cockpit_live_session":
@@ -22661,7 +22758,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             continue
 
         if kind == "bandit_hostile_operation_bootstrap":
-            unexpected_keys = sorted(set(raw) - {"kind", "player_save", "site_id", "target_id", "target_omt", "member_ids", "generation", "current_minutes"})
+            unexpected_keys = sorted(set(raw) - {"kind", "player_save", "site_id", "target_id", "target_omt", "member_ids", "generation", "current_minutes", "rally_omt", "member_rally_positions_ms"})
             if unexpected_keys:
                 raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap has unexpected keys {unexpected_keys} in {manifest_path}")
             site_id = str(raw.get("site_id", "")).strip()
@@ -22682,7 +22779,52 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap integer fields are malformed in {manifest_path}")
             if generation < 2 or current_minutes < 0:
                 raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap generation/time is invalid in {manifest_path}")
-            transforms.append({"kind": kind, "player_save": player_save, "site_id": site_id, "target_id": target_id, "target_omt": target_omt, "member_ids": sorted(raw_member_ids), "generation": generation, "current_minutes": current_minutes})
+            raw_rally_omt = raw.get("rally_omt", [target_omt[0], target_omt[1] + 3, target_omt[2]])
+            if not isinstance(raw_rally_omt, list) or len(raw_rally_omt) != 3 or \
+                    any(isinstance(value, bool) or not isinstance(value, int) for value in raw_rally_omt):
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap rally_omt must be an integer triple in {manifest_path}")
+            rally_omt = list(raw_rally_omt)
+            if rally_omt == target_omt:
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap rally_omt must differ from target_omt in {manifest_path}")
+            member_ids = sorted(raw_member_ids)
+            raw_positions = raw.get("member_rally_positions_ms", {})
+            if not isinstance(raw_positions, dict):
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap member_rally_positions_ms must be an object in {manifest_path}")
+            try:
+                member_rally_positions_ms = {
+                    int(member_id): [int(value) for value in position]
+                    for member_id, position in raw_positions.items()
+                }
+            except (TypeError, ValueError):
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap rally positions must be integer triples in {manifest_path}")
+            if (set(member_rally_positions_ms) != set(member_ids) or
+                    any(len(position) != 3 for position in member_rally_positions_ms.values()) or
+                    len({tuple(position) for position in member_rally_positions_ms.values()}) != len(member_ids)):
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap rally positions must name each member once at distinct coordinates in {manifest_path}")
+            transforms.append({"kind": kind, "player_save": player_save, "site_id": site_id, "target_id": target_id, "target_omt": target_omt, "member_ids": member_ids, "generation": generation, "current_minutes": current_minutes, "rally_omt": rally_omt, "member_rally_positions_ms": member_rally_positions_ms})
+            continue
+
+        if kind == "remove_overmap_special_placement":
+            special_id = str(raw.get("special_id", "")).strip()
+            raw_anchor = raw.get("anchor_omt", [])
+            if not special_id or not isinstance(raw_anchor, list) or len(raw_anchor) != 3:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] remove_overmap_special_placement "
+                    f"needs special_id and anchor_omt=[x,y,z] in {manifest_path}"
+                )
+            try:
+                anchor_omt = [int(value) for value in raw_anchor]
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] remove_overmap_special_placement "
+                    f"anchor_omt must be integer triple in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "special_id": special_id,
+                "anchor_omt": anchor_omt,
+            })
             continue
 
         if not player_save:
@@ -23871,13 +24013,20 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                     f"Fixture save_transforms[{index}] bandit_registered_staffed_observer_bootstrap "
                     f"has unsupported footing {footing!r} in {manifest_path}"
                 )
-            unexpected_keys = sorted(set(raw) - {"kind", "player_save", "footing"})
+            site_kind = str(raw.get("site_kind", "bandit_camp") or "bandit_camp").strip()
+            if site_kind not in {"bandit_camp", "cannibal_camp"}:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] bandit_registered_staffed_observer_bootstrap "
+                    f"has unsupported site_kind {site_kind!r} in {manifest_path}"
+                )
+            unexpected_keys = sorted(set(raw) - {"kind", "player_save", "footing", "site_kind"})
             if unexpected_keys:
                 raise SystemExit(
                     f"Fixture save_transforms[{index}] bandit_registered_staffed_observer_bootstrap "
                     f"has unexpected keys {unexpected_keys} in {manifest_path}"
                 )
-            transforms.append({"kind": kind, "player_save": player_save, "footing": footing})
+            transforms.append({"kind": kind, "player_save": player_save, "footing": footing,
+                               "site_kind": site_kind})
             continue
 
         raise SystemExit(
@@ -25072,6 +25221,96 @@ def upsert_special_placement(
         "origin": [placement_origin[0], placement_origin[1], placement_origin[2]],
         "points": placement_points_json,
     })
+
+
+def apply_remove_overmap_special_placement_transform(
+    world_dir: Path, transform: Dict[str, Any],
+) -> Dict[str, Any]:
+    """Remove one inherited special placement while preserving its terrain.
+
+    This is a zero-credit fixture cleanup: it prevents an unrelated inherited
+    hostile site from being lazily registered as a second staffed observer.
+    The target site itself is still created by the ordinary special bootstrap.
+    """
+    special_id = str(transform.get("special_id", "")).strip()
+    raw_anchor = transform.get("anchor_omt", [])
+    if not special_id or not isinstance(raw_anchor, list) or len(raw_anchor) != 3:
+        raise SystemExit(
+            "Fixture remove_overmap_special_placement needs special_id and anchor_omt=[x,y,z]"
+        )
+    try:
+        anchor = (int(raw_anchor[0]), int(raw_anchor[1]), int(raw_anchor[2]))
+    except (TypeError, ValueError):
+        raise SystemExit(
+            "Fixture remove_overmap_special_placement anchor_omt must be integers"
+        )
+    overmap_x, overmap_y, local_anchor = overmap_file_coords_from_abs_omt(anchor)
+    target_path = world_dir / "overmaps" / f"o.{overmap_x}.{overmap_y}.zzip"
+    if not target_path.exists():
+        raise SystemExit(f"Target overmap file not found for special removal: {target_path}")
+    plain_path, version_line, payload = extract_overmap_payload(target_path)
+    keep_plain = not bool(payload.get("_created_plain", False))
+    removed = 0
+    try:
+        placements = payload.get("overmap_special_placements")
+        if not isinstance(placements, list):
+            raise SystemExit("Overmap payload missing overmap_special_placements array")
+        for entry in placements:
+            if not isinstance(entry, dict) or str(entry.get("special", "")) != special_id:
+                continue
+            grouped = entry.get("placements")
+            if not isinstance(grouped, list):
+                continue
+            before = len(grouped)
+            grouped[:] = [
+                item for item in grouped
+                if not (
+                    isinstance(item, dict)
+                    and tuple(item.get("origin", [])) == local_anchor
+                )
+            ]
+            removed += before - len(grouped)
+        if removed:
+            write_overmap_payload(plain_path, version_line, payload)
+    finally:
+        cleanup_extracted_overmap(plain_path, keep=keep_plain)
+    if removed != 1:
+        raise SystemExit(
+            f"Fixture special removal expected one {special_id} placement at {anchor}, got {removed}"
+        )
+    site_id = f"overmap_special:{special_id}@{anchor[0]},{anchor[1]},{anchor[2]}"
+    dimension_path = world_dir / "dimension_data.gsav"
+    if not dimension_path.exists():
+        raise SystemExit(f"Dimension data missing for stale site removal: {dimension_path}")
+    dimension_version, separator, dimension_text = dimension_path.read_text(encoding="utf-8").partition("\n")
+    if not separator:
+        raise SystemExit("Dimension data missing version header newline")
+    dimension_payload = json.loads(dimension_text)
+    live_world = dimension_payload.get("overmapbuffer", {}).get("bandit_live_world", {})
+    sites = live_world.get("sites") if isinstance(live_world, dict) else None
+    if not isinstance(sites, list):
+        raise SystemExit("Dimension data missing bandit_live_world sites array")
+    stale_before = len(sites)
+    sites[:] = [
+        site for site in sites
+        if not (isinstance(site, dict) and str(site.get("site_id", "")) == site_id)
+    ]
+    stale_removed = stale_before - len(sites)
+    dimension_path.write_text(
+        dimension_version + "\n" + json.dumps(dimension_payload, ensure_ascii=False, separators=(",", ":")),
+        encoding="utf-8",
+    )
+    return {
+        "kind": "remove_overmap_special_placement",
+        "world": world_dir.name,
+        "special_id": special_id,
+        "anchor_omt": list(anchor),
+        "overmap_file": target_path.name,
+        "removed_count": removed,
+        "site_id": site_id,
+        "stale_site_removed_count": stale_removed,
+        "gameplay_credit": False,
+    }
 
 
 
@@ -28672,7 +28911,15 @@ def apply_bandit_registered_staffed_observer_bootstrap_transform(
     expected_player = expected_player_by_footing.get(footing)
     if expected_player is None:
         raise SystemExit(f"R-033 registered observer bootstrap has unsupported footing {footing!r}")
-    expected_site_id = "overmap_special:bandit_camp@140,40,0"
+    # The transform name is retained for compatibility with the audited R-033
+    # bandit fixtures, but the durable observer footing is also used by the
+    # cannibal close-route fixture.  Keep the native bandit_live_world store;
+    # select the actual hostile special/site kind from the manifest so the
+    # observer is paired with the source under test rather than an inherited
+    # bandit site.
+    site_kind = str(transform.get("site_kind", "bandit_camp") or "bandit_camp")
+    site_anchor = [140, 40, 0]
+    expected_site_id = f"overmap_special:{site_kind}@{site_anchor[0]},{site_anchor[1]},{site_anchor[2]}"
     expected_member_id = 18
     _player_omt, player_location = load_player_abs_omt(world_dir, selected_save)
     if player_location != expected_player:
@@ -28743,14 +28990,14 @@ def apply_bandit_registered_staffed_observer_bootstrap_transform(
     }
     site = {
         "schema_version": 12, "site_id": expected_site_id, "source_kind": "overmap_special",
-        "site_kind": "bandit_camp", "hostile_profile": "camp_style", "source_id": "bandit_camp",
-        "anchor": [140, 40, 0], "living_total": 6, "supply_units": 42,
+        "site_kind": site_kind, "hostile_profile": "camp_style", "source_id": site_kind,
+        "anchor": site_anchor, "living_total": 6, "supply_units": 42,
         "supply_last_update_minutes": -1, "supply_accounted_living_total": 6,
         "supply_member_minute_remainder": 0, "routine_activated_minutes": -1,
         "last_routine_resolved_minutes": -1, "next_routine_dispatch_eligible_minutes": -1,
         "routine_no_candidate_streak": 0,
         "footprint": [[140, 40, 0], [141, 40, 0], [141, 41, 0], [140, 40, 1], [141, 40, 1], [141, 41, 1]],
-        "members": [{"npc_id": expected_member_id, "npc_template_id": "bandit",
+        "members": [{"npc_id": expected_member_id, "npc_template_id": site_kind.removesuffix("_camp"),
                      "home_spawn_tile": [3372, 979, 0], "state": "at_home",
                      "wounded_or_unready": False, "last_writeback_summary": ""}],
         "spawn_tiles": [{"tile": [3372, 979, 0], "assigned_living_total": 1}],
@@ -29000,9 +29247,19 @@ def apply_bandit_hostile_operation_bootstrap_transform(world_dir: Path, transfor
     if report.get("target_id") != target_id or report.get("target_omt") != target_omt:
         raise SystemExit("Hostile-operation bootstrap report target mismatch")
     activity_id = f"{site_id}#hostile:{generation}"
-    route = [list(site.get("anchor", [])), [target_omt[0], target_omt[1] + 3, target_omt[2]], target_omt]
+    rally_omt = [int(value) for value in transform.get(
+        "rally_omt", [target_omt[0], target_omt[1] + 3, target_omt[2]]
+    )]
+    route = [list(site.get("anchor", [])), rally_omt, target_omt]
     if len(route[0]) != 3 or route[0] == route[1] or route[1] == route[2]:
         raise SystemExit("Hostile-operation bootstrap route is not canonical")
+    rally_positions = {int(member_id): [int(value) for value in position]
+                       for member_id, position in transform.get("member_rally_positions_ms", {}).items()}
+    if (set(rally_positions) != set(member_ids) or
+            any(len(position) != 3 for position in rally_positions.values()) or
+            any([position[0] // 24, position[1] // 24, position[2]] != route[1]
+                for position in rally_positions.values())):
+        raise SystemExit("Hostile-operation bootstrap requires each concrete member at its exact rally OMT")
     reservation = {
         "schema_version": 5, "kind": "hostile_operation", "activity_id": activity_id,
         "camp_id": site_id, "generation": generation, "member_ids": member_ids,
@@ -29039,9 +29296,41 @@ def apply_bandit_hostile_operation_bootstrap_transform(world_dir: Path, transfor
                 "consumed_generation": generation,
             })
     dimension_path.write_text(version_line + "\n" + json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    found_positions: Dict[int, List[int]] = {}
+    touched_overmaps: List[str] = []
+    for overmap_path in sorted((world_dir / "overmaps").glob("o.*.*.zzip")):
+        plain_path: Optional[Path] = None
+        try:
+            plain_path, overmap_version, overmap_payload = extract_overmap_payload(overmap_path)
+            npcs = overmap_payload.get("npcs", [])
+            if not isinstance(npcs, list):
+                continue
+            changed = False
+            for npc_payload in npcs:
+                if not isinstance(npc_payload, dict):
+                    continue
+                try:
+                    npc_id = int(npc_payload.get("id"))
+                except (TypeError, ValueError):
+                    continue
+                if npc_id not in rally_positions:
+                    continue
+                npc_payload["location"] = rally_positions[npc_id]
+                found_positions[npc_id] = list(rally_positions[npc_id])
+                changed = True
+            if changed:
+                write_overmap_payload(plain_path, overmap_version, overmap_payload)
+                touched_overmaps.append(str(overmap_path.relative_to(world_dir)))
+                plain_path = None
+        finally:
+            if plain_path is not None and plain_path.exists():
+                cleanup_extracted_overmap(plain_path, keep=False)
+    if set(found_positions) != set(member_ids):
+        raise SystemExit("Hostile-operation bootstrap could not find every concrete rally member")
     return {"kind": "bandit_hostile_operation_bootstrap", "world": world_dir.name, "site_id": site_id,
             "operation_kind": "raid", "phase": "rallying", "activity_id": activity_id, "generation": generation,
-            "member_ids": member_ids, "gameplay_credit": False}
+            "member_ids": member_ids, "member_rally_positions_ms": found_positions,
+            "touched_overmaps": touched_overmaps, "gameplay_credit": False}
 
 
 def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
@@ -29098,6 +29387,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "seed_overmap_special_near_player":
             reports.append(apply_seed_overmap_special_near_player_transform(world_dir, transform))
+            continue
+        if kind == "remove_overmap_special_placement":
+            reports.append(apply_remove_overmap_special_placement_transform(world_dir, transform))
             continue
         if kind == "map_fields_near_player":
             reports.append(apply_map_fields_near_player_transform(world_dir, transform))
@@ -29613,7 +29905,7 @@ def run_probe_post_relaunch(
         result["status"] = "startup_missing_pid"
     elif relaunch_pid == initial_pid:
         result["status"] = "same_pid_relaunch_rejected"
-    elif not replacement_generation:
+    elif artifact_run_dir is not None and not replacement_generation:
         result["status"] = "replacement_identity_unavailable"
     else:
         startup_classification = start_result.get("proof_classification", {})
@@ -30369,7 +30661,7 @@ def execute_probe_steps(
                 "bridge_binding_id": os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID", ""),
                 "step_label": label,
                 "step_index": index,
-                "gameplay_credit": grants_gameplay_proof,
+                "gameplay_credit": False if step.get( "bootstrap_only" ) is True else grants_gameplay_proof,
                 "objective": str( step.get( "objective", "" ) ).strip(),
                 "proof_targets": list( step.get( "proof_targets", [] ) ),
                 "authority": list( step.get( "authority", [] ) ),
@@ -31453,6 +31745,22 @@ def execute_probe_steps(
                         not recovery_contract["modal_owner"] or \
                         not recovery_contract["actions"]:
                     raise SystemExit(f"Scenario step '{label}' recovery_contract is incomplete")
+            allow_terminal_postcondition = step.get("allow_terminal_postcondition", False)
+            if not isinstance(allow_terminal_postcondition, bool):
+                raise SystemExit(
+                    f"Scenario step '{label}' allow_terminal_postcondition must be boolean"
+                )
+            required_is_night = step.get("required_is_night")
+            if required_is_night is not None and not isinstance(required_is_night, bool):
+                raise SystemExit(
+                    f"Scenario step '{label}' required_is_night must be boolean when declared"
+                )
+            required_live_operation = step.get("required_live_hostile_operation")
+            if required_live_operation is not None and (
+                    not isinstance(required_live_operation, Mapping) or not required_live_operation):
+                raise SystemExit(
+                    f"Scenario step '{label}' required_live_hostile_operation must be a non-empty object"
+                )
             if minimum_elapsed_minutes <= 0 or observation_timeout_seconds <= 0 or \
                     observation_interval_seconds <= 0 or not required_action_chain:
                 raise SystemExit(
@@ -31490,6 +31798,11 @@ def execute_probe_steps(
                 "required_action_chain": required_action_chain,
                 "adaptive_interrupt_actions": adaptive_interrupt_actions,
                 "required_interrupt_action_chain": required_interrupt_action_chain,
+                "allow_terminal_postcondition": allow_terminal_postcondition,
+                **({"required_is_night": required_is_night}
+                   if required_is_night is not None else {}),
+                **({"required_live_hostile_operation": dict(required_live_operation)}
+                   if required_live_operation is not None else {}),
                 **({"adaptive_semantic_ui_recovery": semantic_ui_recovery}
                    if semantic_ui_recovery is not None else {}),
                 **({"recovery_contract": recovery_contract} if recovery_contract is not None else {}),
@@ -31725,8 +32038,18 @@ def execute_probe_steps(
                         )
                     except ValueError:
                         next_frame = None
-                    if next_frame is not None and \
-                            str(next_frame.get("state", next_frame.get("kind", ""))) == "world":
+                    terminal_payload = next_frame.get("payload") if isinstance(next_frame, Mapping) else None
+                    terminal_death = (
+                        allow_terminal_postcondition and isinstance(next_frame, Mapping) and
+                        next_frame.get("event") == "surface_descriptor" and
+                        next_frame.get("kind") == "terminal" and isinstance(terminal_payload, Mapping) and
+                        terminal_payload.get("terminal_phase") == "end_screen" and
+                        terminal_payload.get("actual_death") in {True, "true"} and
+                        terminal_payload.get("avatar_dead") in {True, "true"}
+                    )
+                    if next_frame is not None and (
+                            str(next_frame.get("state", next_frame.get("kind", ""))) == "world" or
+                            terminal_death):
                         break
                 time.sleep(observation_interval_seconds)
             receipts_path = run_dir / "semantic.steps.jsonl"
@@ -35708,6 +36031,7 @@ def run_startup(args: argparse.Namespace) -> int:
     registry_launch_validation = validate_registry_launch_receipt_before_launch(
         getattr(args, "registry_launch_receipt", ""),
         Path(plan.executable),
+        expected_scenario=str(getattr(args, "scenario_identity", "") or "").strip(),
     )
     if registry_launch_validation.get("status") == "rejected":
         write_json(run_dir / "registry.launch.validation.json", registry_launch_validation)

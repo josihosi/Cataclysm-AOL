@@ -1,0 +1,99 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-029-roof-fire-discovery-065",
+  "claim_id": "R-029",
+  "worker_id": "01a086da-829d-72e2-9be8-b22a5b966e10",
+  "lineage_id": "semantic-surface-cockpit",
+  "disposition": "completed",
+  "verdict": "adjacent_omt_smoke_observation_and_lead_proved",
+  "outcome": "A fresh native ground fire one OMT from an eligible staffed cannibal camp produced an authoritative smoke read with true line of sight, created the normalized abstract smoke lead in camp memory, and left the ordinary drive idle at the first downstream result.",
+  "summary": "The worker repaired continuation scenario drift, cannibal-site fixture binding, observer assignment and optics, and the OCR-dependent startup obstruction before recovering the native route. In run 9b93afd3c55ba3efc408c2acbfd3652e35404f72c06bb69504a0588f0c67502d, observer 18 at camp overmap_special:cannibal_camp@140,40,0 read live smoke from 140,41,0 at minute 8225. The production record reports eligible=true, line_of_sight=true, elevation delta 0, clear weather, actual range 1 under cap 12, and outcome created. Camp memory increased from two to three leads with the exact smoke_signal lead. The first downstream result remained drive idle; no scout or hostile operation transition is claimed. The sealed native witness verdict is proved. The packaged probe report remains yellow at its OCR and step-local presentation ceiling and is used only for process/source context and cleanup. PID 71206 is absent.",
+  "first_divergence": {
+    "class": "downstream-cadence-not-dispatched",
+    "summary": "After the physical lead was created, the next cadence wait stalled at minute 8227 and was cooperatively cancelled. Drive remained idle and no structural outing ownership transition was observed."
+  },
+  "first_open_boundary": "The physical fire observation and camp-memory result are complete. A later ordinary structural ownership transition remains separate and may depend on the already-open drive eligibility policy; it is not proved here.",
+  "bindings": {
+    "source_head_at_ingress": "8837ef5ac9a8abc1a0f99dd6384d31c2a9334604",
+    "runtime_source_sha256": "7ac9ffcf8e70022a7211d30bb4bd188f76704c09193d82b38105908a72d85bb3",
+    "runtime_executable_sha256": "89a724fd5999ae27fa82116e324af5164ca12ad143e0cd962f32471875e9a95a",
+    "scenario_id": "cannibal.r029_ground_positive_route_mcw",
+    "run_id": "9b93afd3c55ba3efc408c2acbfd3652e35404f72c06bb69504a0588f0c67502d",
+    "binding_id": "80728b44158a6dd890caa80d26d27c0a6da9e6dee77106e26a2276b049a64ff6",
+    "world": "McWilliams",
+    "camp_id": "overmap_special:cannibal_camp@140,40,0",
+    "observer_id": "18",
+    "source_omt": "140,41,0",
+    "callback_game_minutes": "8225",
+    "game_pid": "71206",
+    "game_birth": "posix-lstart:Wed Sep 9 18:57:39 2026"
+  },
+  "entrypoints": [
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/scenario_registry_cli_test.py",
+    "tools/openclaw_harness/scenarios/cannibal.r029_ground_positive_route_mcw",
+    "tools/openclaw_harness fixture transforms for cannibal staffed observers"
+  ],
+  "material_changes": [
+    "Made continuation launch receipts fail closed when their selected scenario differs from the requested scenario.",
+    "Added cannibal site_kind support for staffed-observer registration while preserving bandit defaults.",
+    "Removed the stale inherited bandit site from the positive fixture before seeding the cannibal camp.",
+    "Bound observer 18 to the cannibal camp and supplied binocular optics through declared zero-credit fixture setup.",
+    "Added the ground-positive scenario and matching coordinator/witness charters plus focused regression tests.",
+    "Replaced the unusable OCR startup dependency with native semantic/readiness handling for this route."
+  ],
+  "tests": [
+    "Focused registry continuation tests passed, including scenario drift rejection.",
+    "The R-029 natural route recipe suite passed 6 tests.",
+    "Python compilation checks passed.",
+    "The source-bound Tiles build completed successfully.",
+    "git diff --check passed.",
+    "The native witness journal sealed with verdict proved."
+  ],
+  "live_actions": [
+    "Created the brazier fire through the native lighter action and advanced the real five-minute production callback.",
+    "Cooperatively cancelled the stalled downstream wait without crediting it as a dispatched action.",
+    "Finished and sealed the witness journal, then closed the bridge and verified PID 71206 absent."
+  ],
+  "artifacts": [
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-d74e8caee31347e59128fd7129193c2d/responses/play-f8782c42729148d99ee9c90471e5a9cc.json",
+      "role": "native positive smoke observation, lead and camp-memory response",
+      "sha256": "89c458800fbcfa09880296d7a48830a3702b4b1954806022b5cb1a5a262b4bd8"
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-d74e8caee31347e59128fd7129193c2d/responses/play-9f2c3117bd0c4987a27570ac7c7fa3a2.json",
+      "role": "sealed witness finish and cleanup response",
+      "sha256": "b7ee2e17e7c93ee40c184854e50676d14b24ad95a2a4ce29c21b60e399c47175"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260909_185738_77799c1cf4084dcdb0d374a26c10d2af/probe.report.json",
+      "role": "source/process context and explicit packaged-report evidence ceiling",
+      "sha256": "433b7c2374bea3763597e98996a9c64ca3848d4860e9ca666e34abc304bea0e5"
+    }
+  ],
+  "evidence_ceiling": [
+    "Native production-channel records and semantic observation prove the exact observer, camp, smoke source, game minute, range, line of sight, elevation, weather, normalized lead and camp-memory growth.",
+    "The result proves one adjacent-OMT smoke observation and abstract lead creation, not a light observation, scout dispatch, investigation, report, authorization, hostile operation, contact or subjective response feel.",
+    "Drive idle is the first observed downstream result. The cancelled stalled cadence supplies no ownership-transition proof.",
+    "Fixture transforms, observer assignment and binoculars are zero-credit preparation.",
+    "The packaged probe report is yellow because of OCR and step-local presentation checks; it does not establish the positive gameplay result. The separately sealed native witness does.",
+    "OCR, screenshots, terminal bytes, rendered text, accepted input and launch status received no gameplay credit.",
+    "PID 71206 exited, but native-exit credit is withheld because cleanup completed through the retained witness/bridge route rather than a proved in-game native terminal chain."
+  ],
+  "accepted_no_replay": [
+    "Preserve the ten-OMT out-of-range and elevated blocked-line-of-sight runs as negative controls without replay.",
+    "Preserve this adjacent-OMT positive smoke observation and exact normalized lead without replay merely to restate the result.",
+    "Do not use this receipt to settle the owner-gated drive eligibility, activation/arbitration, or sound policy outcomes."
+  ],
+  "active_work": [],
+  "journal_entries": [],
+  "narrow_queries": [
+    "9b93afd3c55ba3efc408c2acbfd3652e35404f72c06bb69504a0588f0c67502d",
+    "live_smoke@140,41,0",
+    "observer 18 camp 140,40,0 callback 8225",
+    "lead:smoke_signal:camp-smoke@(140,41,0)",
+    "PID 71206"
+  ],
+  "context_metrics": {}
+}

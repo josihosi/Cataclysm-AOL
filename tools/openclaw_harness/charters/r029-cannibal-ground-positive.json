@@ -1,0 +1,9 @@
+{
+  "claim": "R-029 positive same-elevation control: native ground fire reaches an assigned staffed cannibal observer and records the physical signal callback without fixture-authored downstream state.",
+  "material_proof": "A current source- and executable-bound run must create the ground brazier fire through ordinary player UI, then observe the staffed physical callback and any downstream lead or memory transition.",
+  "current_uncertainty": "The prior roof route was blocked by vertical line of sight; this fixture is the same-elevation control.",
+  "material_contradiction": ["stale inherited site", "fixture-created signal or downstream state", "missing native fire receipt", "missing staffed callback", "binding drift"],
+  "forbidden_shortcuts": ["fixture fire as proof", "direct signal or lead fabrication", "consumed token reuse", "crediting startup or setup as natural behavior"],
+  "honest_stop_conditions": ["first distinct causal divergence", "binding drift"],
+  "requested_evidence_ceiling": "focused"
+}
