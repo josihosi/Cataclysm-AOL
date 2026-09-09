@@ -1,0 +1,13 @@
+{
+  "action": "game.guarded_move_relative",
+  "guarded_move_relative": {
+    "enabled": true,
+    "offset_ms": [0, -2],
+    "bound": {
+      "basis": "path_progress",
+      "source": "exact two-tile north retreat after the player-created roof fire",
+      "unit": "steps",
+      "maximum": 2
+    }
+  }
+}

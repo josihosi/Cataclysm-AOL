@@ -1,0 +1,16 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The bound run established native player fire setup, an exact two-step guarded north retreat, and a native save-and-quit/process-exit boundary; post-relaunch ecology remains unresolved in this segment.",
+  "causal_account": "The physical fire was created through the ordinary inventory activation route and the guarded movement receipt reached the declared target. Native save-and-quit and confirmed process exit were observed. No ecology transition is credited before the declared relaunch.",
+  "citations": [
+    {"citation_id": "J0001", "meaning": "Source, executable, scenario, run, and binding identity."},
+    {"citation_id": "J0040", "meaning": "Exact guarded north retreat from [3372,996,1] to [3372,994,1] with target reached and saved state."},
+    {"citation_id": "J0041", "meaning": "Terminal world observation after retreat with source-firewood zone at relative [1,2]."},
+    {"citation_id": "J0042", "meaning": "Native save-and-quit action was accepted."},
+    {"citation_id": "J0050", "meaning": "Original game process exited with code 0."}
+  ],
+  "recommended_disposition": "continue",
+  "contradictions": [],
+  "remaining_unknowns": ["Persisted fire audit and natural cannibal signal/scout/report/response lifecycle after relaunch."],
+  "evidence_ceiling": "focused"
+}
