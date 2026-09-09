@@ -60,6 +60,34 @@ class BuildSourceBoundMacOSTest(unittest.TestCase):
             for phase in receipt["logs"].values():
                 self.assertTrue(Path(phase["full_log"]).exists())
 
+    def test_receipt_archive_name_is_identity_bound(self) -> None:
+        executable = Path("/tmp/cataclysm-tiles")
+        first = builder.startup_harness.product_build_receipt_archive_path(
+            executable, "a" * 64, "b" * 64, "e" * 64
+        )
+        second = builder.startup_harness.product_build_receipt_archive_path(
+            executable, "c" * 64, "d" * 64, "f" * 64
+        )
+        self.assertNotEqual(first, second)
+        self.assertIn("a" * 64 + "-" + "b" * 64 + "-" + "e" * 64, first.name)
+        self.assertIn("c" * 64 + "-" + "d" * 64 + "-" + "f" * 64, second.name)
+
+    def test_lookup_selects_exact_identity_over_newer_unrelated_archive(self) -> None:
+        import startup_harness as harness
+        with tempfile.TemporaryDirectory() as raw:
+            root = Path(raw)
+            executable = root / "cataclysm-tiles"
+            with patch.object(harness, "repo_root", return_value=root):
+                old_path = harness.product_build_receipt_archive_path(executable, "a" * 64, "b" * 64, "1" * 64)
+                new_path = harness.product_build_receipt_archive_path(executable, "c" * 64, "d" * 64, "2" * 64)
+                old_path.parent.mkdir(parents=True)
+                common = {"schema": harness.PRODUCT_BUILD_RECEIPT_SCHEMA, "executable_path": str(executable.resolve())}
+                old_path.write_text(json.dumps({**common, "executable_sha256": "a" * 64, "product_source_sha256": "b" * 64}), encoding="utf-8")
+                new_path.write_text(json.dumps({**common, "executable_sha256": "c" * 64, "product_source_sha256": "d" * 64}), encoding="utf-8")
+                found, error = harness._current_product_build_receipt(executable, expected_executable_sha256="a" * 64, expected_product_source_sha256="b" * 64)
+                self.assertFalse(error)
+                self.assertEqual(found["executable_sha256"], "a" * 64)
+
 
 if __name__ == "__main__":
     unittest.main()

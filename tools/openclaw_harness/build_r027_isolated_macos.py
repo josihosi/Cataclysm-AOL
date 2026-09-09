@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import hashlib
 import json
+import hashlib
 import os
 import shutil
 import subprocess
@@ -90,11 +91,19 @@ def main() -> int:
         "built_at": datetime.now(timezone.utc).isoformat(),
         "command": COMMAND,
     }
-    product_receipt_path = startup_harness.product_build_receipt_path(TARGET)
-    product_receipt_path.parent.mkdir(parents=True, exist_ok=True)
-    product_receipt_path.write_text(
-        json.dumps(product_receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8"
+    serialized = json.dumps(product_receipt, indent=2, sort_keys=True) + "\n"
+    receipt_identity = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+    product_receipt_path = startup_harness.product_build_receipt_archive_path(
+        TARGET, digest, product_source["sha256"], receipt_identity
     )
+    product_receipt_path.parent.mkdir(parents=True, exist_ok=True)
+    try:
+        with product_receipt_path.open("x", encoding="utf-8") as stream:
+            stream.write(serialized)
+    except FileExistsError:
+        if product_receipt_path.read_text(encoding="utf-8") != serialized:
+            print(f"immutable product receipt collision: {product_receipt_path}", file=sys.stderr)
+            return 1
     print(json.dumps({"ok": True, "executable": str(TARGET), "sha256": digest,
                       "receipt": str(RECEIPT)}, sort_keys=True))
     return 0

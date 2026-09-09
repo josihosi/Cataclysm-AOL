@@ -1,0 +1,66 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-031-source-binding-provenance-repair-004",
+  "claim_id": "R-031",
+  "disposition": "completed",
+  "verdict": "repair_verified",
+  "outcome": "Repaired repository-owned product build provenance so receipts are immutable content-addressed archives keyed by executable and product-source identity; historical camp-craft bytes remain irrecoverable and were not reconstructed.",
+  "summary": "Build receipt writers now use exclusive creation at an identity-bound archive path, while startup lookup discovers only immutable archive members and ignores the mutable legacy path. The existing camp-craft artifact remains untouched at its observed mismatching hash.",
+  "material_changes": [
+    "Added product_build_receipt_archive_path and archive-only current receipt lookup in tools/openclaw_harness/startup_harness.py.",
+    "Updated source-bound and isolated R-027 build writers to exclusive-create immutable archives and reject identity collisions.",
+    "Added identity-bound archive naming regression."
+  ],
+  "tests": [
+    "python3 -m unittest build_source_bound_macos_test (tools/openclaw_harness): 4 tests OK.",
+    "python3 -m py_compile startup_harness.py build_source_bound_macos.py build_r027_isolated_macos.py: passed.",
+    "Controlled temporary receipt: archive lookup PASS; malformed legacy-path receipt ignored."
+  ],
+  "live_actions": [
+    "No game, bridge, or runner was started by this task; unrelated worker-owned processes observed in a read-only ps sweep were not touched."
+  ],
+  "evidence_ceiling": [
+    "This repair proves archival behavior and lookup isolation only; it does not restore the historical ff285f... bytes or promote camp-craft provenance.",
+    "No gameplay replay or OCR evidence was used."
+  ],
+  "bindings": {
+    "receipt_audit": "88d6fb0253829abf454983985a62d0cf2b799433e8d320e3f009d05ebbe3781f",
+    "camp_craft_run_id": "55098ec37b3868099fa04fdb5626a57a3f043ac3d30b791a44af2c811d53c33b",
+    "camp_craft_binding_id": "fb035a4e82a0d7800562b54174046d4d5cdbd875b6c2fdb25a09047af7e0b29b",
+    "historical_expected_sha256": "ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50",
+    "observed_legacy_sha256": "785edad70809f8dfbe5c5b67fb491f68b96d370872764b33ff32a41f781fd72b",
+    "remaining_owner_boundary": "Do not replay settled R-031 routes or fabricate historical bytes; owner direction is required for any fresh source-bound evidence."
+  },
+  "artifacts": [
+    {"path": "tools/openclaw_harness/startup_harness.py", "sha256": "5afe3abc85b620235e7a12df8451c19e8157ba19db9e8b06f1635b18cce22477", "role": "immutable archive path and exact lookup"},
+    {"path": "tools/openclaw_harness/build_source_bound_macos.py", "sha256": "3917841661749b4877f7e97be2484df6536e99f330318d0d825cc534c0aec3da", "role": "source-bound archive writer"},
+    {"path": "tools/openclaw_harness/build_r027_isolated_macos.py", "sha256": "347679ec1f1c196642dfa0dde228249e38d4664b78c10bfe5eee9847bcfbb44b", "role": "isolated archive writer"},
+    {"path": "tools/openclaw_harness/build_source_bound_macos_test.py", "sha256": "1d24fa385780ab0e4829b1209993c57536741348d65765cfe91a52a8883eae9e", "role": "focused regression"}
+  ],
+  "first_divergence": null,
+  "first_open_boundary": "Historical ff285f... source-binding bytes remain unavailable; current repair prevents future overwrite and requires a real rebuild for a new immutable archive.",
+  "narrow_queries": [
+    "Verify future real product builds emit a new immutable archive without mutating the preserved legacy artifact.",
+    "Owner direction is required before any fresh source-bound camp-craft evidence is commissioned."
+  ],
+  "accepted_no_replay": [
+    "Do not replay accepted R-031 ambient, camp-craft, free-text-follow, or competing-owner routes."
+  ],
+  "active_work": [],
+  "journal_entries": [
+    {
+      "id": "J-PROVENANCE-001",
+      "sequence": "1",
+      "event_type": "archive_regression",
+      "evidence_class": "focused repository test",
+      "summary": "Exact identity lookup selected the matching older archive over a newer unrelated archive; malformed legacy path was ignored."
+    }
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/build_source_bound_macos.py",
+    "tools/openclaw_harness/build_r027_isolated_macos.py"
+  ],
+  "context_metrics": {"gameplay_replay_count": 0, "ocr_credit": 0}
+}

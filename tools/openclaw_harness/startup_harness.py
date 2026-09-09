@@ -1782,7 +1782,12 @@ def product_source_binding() -> Dict[str, Any]:
 
 
 def product_build_receipt_path(executable: Path) -> Path:
-    """Return the local, disposable receipt for an explicitly built binary."""
+    """Return the legacy path used to derive the immutable receipt namespace.
+
+    The path is retained for callers that display a receipt location, but new
+    receipts are written to :func:`product_build_receipt_archive_path`.  The
+    old path was mutable and therefore cannot serve as provenance itself.
+    """
     executable_path = Path(executable).resolve()
     # The basename alone is not an executable identity: isolated curses builds
     # commonly all produce ``cataclysm``.  Keep established named products
@@ -1793,18 +1798,52 @@ def product_build_receipt_path(executable: Path) -> Path:
            )
 
 
-def _current_product_build_receipt(executable: Path) -> Tuple[Dict[str, Any], str]:
+def product_build_receipt_archive_path(
+    executable: Path, executable_sha256: str, product_source_sha256: str,
+    archive_identity: str = "",
+) -> Path:
+    """Return a content-addressed, immutable build-receipt path.
+
+    The executable/source digests identify the tested product.  The optional
+    archive identity (normally the serialized receipt digest) distinguishes
+    repeated builds that carry different log/build metadata.
+    """
+    legacy = product_build_receipt_path(executable)
+    executable_sha256 = str(executable_sha256).strip().lower()
+    product_source_sha256 = str(product_source_sha256).strip().lower()
+    archive_identity = str(archive_identity).strip().lower()
+    if not executable_sha256 or not product_source_sha256:
+        raise ValueError("immutable receipt requires executable and source digests")
+    suffix = f"-{archive_identity}" if archive_identity else ""
+    return legacy.with_name(
+        f"{legacy.stem}-{executable_sha256}-{product_source_sha256}{suffix}.json"
+    )
+
+
+def _current_product_build_receipt(
+    executable: Path, *, expected_executable_sha256: str = "",
+    expected_product_source_sha256: str = "",
+) -> Tuple[Dict[str, Any], str]:
     """Load and validate the build receipt without granting it any inference."""
-    receipt_path = product_build_receipt_path(executable)
-    try:
-        payload = json.loads(receipt_path.read_text(encoding="utf-8"))
-    except OSError as exc:
-        return {}, f"product build receipt is unavailable: {exc}"
-    except json.JSONDecodeError as exc:
-        return {}, f"product build receipt is malformed: {exc}"
-    if not isinstance(payload, dict) or payload.get("schema") != PRODUCT_BUILD_RECEIPT_SCHEMA:
-        return {}, "product build receipt has an unsupported schema"
-    return payload, ""
+    legacy = product_build_receipt_path(executable)
+    candidates = sorted(legacy.parent.glob(f"{legacy.stem}-*.json"), key=lambda p: p.stat().st_mtime, reverse=True)
+    if not candidates:
+        return {}, f"product build receipt is unavailable: {legacy}"
+    for receipt_path in candidates:
+        try:
+            payload = json.loads(receipt_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            continue
+        if not isinstance(payload, dict) or payload.get("schema") != PRODUCT_BUILD_RECEIPT_SCHEMA:
+            continue
+        if expected_executable_sha256 and payload.get("executable_sha256") != expected_executable_sha256:
+            continue
+        if expected_product_source_sha256 and payload.get("product_source_sha256") != expected_product_source_sha256:
+            continue
+        if payload.get("executable_path") != str(Path(executable).resolve()):
+            continue
+        return payload, ""
+    return {}, "product build receipt is malformed or has an unsupported schema"
 
 
 def executable_source_readiness(
@@ -1861,9 +1900,13 @@ def executable_source_readiness(
         captured_head and not comparison_error and
         not committed_changes and not worktree_changes
     )
-    receipt, receipt_error = _current_product_build_receipt(executable_path)
     product_binding = product_source_binding()
     executable_sha256, executable_error = sha256_file(executable_path)
+    receipt, receipt_error = _current_product_build_receipt(
+        executable_path,
+        expected_executable_sha256=executable_sha256,
+        expected_product_source_sha256=str(product_binding.get("sha256", "")),
+    )
     receipt_ready = bool(
         captured_head and not comparison_error and not committed_changes and worktree_changes and
         not receipt_error and product_binding.get("ok") and not executable_error and

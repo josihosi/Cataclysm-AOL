@@ -5,6 +5,7 @@ from __future__ import annotations
 
 import json
 import argparse
+import hashlib
 import subprocess
 import sys
 from datetime import datetime, timezone
@@ -119,9 +120,21 @@ def main() -> int:
         "logs": {"version": version_run, "build": build_run},
         "log_dir": str(log_dir),
     }
-    receipt_path = startup_harness.product_build_receipt_path(executable)
+    serialized = json.dumps(receipt, indent=2, sort_keys=True) + "\n"
+    receipt_identity = hashlib.sha256(serialized.encode("utf-8")).hexdigest()
+    receipt_path = startup_harness.product_build_receipt_archive_path(
+        executable, executable_sha256, source["sha256"], receipt_identity
+    )
     receipt_path.parent.mkdir(parents=True, exist_ok=True)
-    receipt_path.write_text(json.dumps(receipt, indent=2, sort_keys=True) + "\n", encoding="utf-8")
+    # Content-addressed paths are immutable.  A repeated build of the same
+    # bytes is a no-op; a different build receives a distinct archive member.
+    try:
+        with receipt_path.open("x", encoding="utf-8") as stream:
+            stream.write(serialized)
+    except FileExistsError:
+        existing = receipt_path.read_text(encoding="utf-8")
+        if existing != serialized:
+            raise RuntimeError(f"immutable product receipt collision: {receipt_path}")
     print(json.dumps({"ok": True, "receipt_path": str(receipt_path), "receipt": receipt}, sort_keys=True))
     return 0
 
