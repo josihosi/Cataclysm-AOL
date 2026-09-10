@@ -231,7 +231,7 @@ The canonical source is the Mac workspace `/Volumes/CodexBulk/Schanigarten/works
 
 The qualified harness is described by the repository skill `.agents/skills/caol-harness/SKILL.md` and `tools/openclaw_harness/QUALIFICATION.md`; these are current implementation/use documentation, not a replacement product ledger. The latest tested implementation checkpoint is 54d6c00dfefafc3443f80097f5a3bf1664192348, followed by qualification documentation at 1bfcf283417d63ae407bc66fc9950a90a68dd5b5. Recheck current identity. The harness lifecycle keeps games running after failures; only explicit player quit/finish/cleanup ends a trial. Do not introduce automatic time/RSS kill limits.
 
-### Pending owner corrections — review f918d28be953
+### Applied corrections and retained evidence — review f918d28be953
 
 Owner70c4632e512e promotes R032-F001 Patrol release and R029-F003 same-minute Pay, including
 player-or-follower first contact, negotiation before attack and safe paid retreat. It commissions
@@ -245,9 +245,8 @@ same-minute Pay repair is now implemented and proved at its stated mixed native 
 ceilings by worker receipt `ab383ab50726156a5948882c5c74fefc0853945cd7c06f7cc44a963c380a34ee`.
 Both workers acknowledged and applied the OCR, no-replay, and runtime cleanup corrections. The
 R029-F004 activation fault and targeted repair plan are proved by worker receipt
-`58e6879974cd7923a97f81904ed6fd4b6e24838434efb940e3a508e8d737667f`. Gameplay
-implementation remains pending Josef's choice between clearing inherited strategic travel on local
-admission and excluding exact locally committed hostile IDs from generic routing. The R-031
+`58e6879974cd7923a97f81904ed6fd4b6e24838434efb940e3a508e8d737667f`. The later owner decision below promotes gameplay implementation, retaining strategic orders with
+exact locally committed hostile IDs excluded from generic travel until authoritative handoff. The R-031
 camp-craft correction is implemented and freshly proved by worker receipt
 `34681646df11e45a133cb3eee507287f23719021b376dec2f2142bc6aee3189e`. It preserves valid
 resident handling, prevents an unassigned follower from promising the job, and produced three
@@ -257,7 +256,7 @@ processes exited.
 
 Same-OMT camp smoke is an accepted scope limitation; other smoke, local perception and unperformed
 tests remain required. Sound detection stands, but recent-check cooldown precedes drive347.
-Sound gameplay changes remain unpromoted; the authorized eligibility investigation continues.
+The later owner decision below promotes the sound timestamp/cooldown correction; detection proof remains valid.
 The assigned R-031 worker may spawn only required bandage ingredients after checking current roles,
 recipe, resource ownership/location and binding. Setup and an NPC promise earn no craft-result credit.
 Preserve independent R-034 persistence evidence.
@@ -274,11 +273,35 @@ repair, native unchanged-source deduplication, same-key refresh and exact cleanu
 and ignition attempts remain preserved as zero-credit diagnostics. Broader R-033 aging and boundary
 tests remained pending at that receipt. The follow-on aging worker also applied the OCR, no-replay
 and runtime-cleanup corrections. Receipt `e2d5b9076ff5a7b409fee16c1ac81daa9dee6446fb0e3b379301a704ce15ad83`
-proves the six-hour stale transition and exact cleanup. Later pruning and broader boundary tests remain.
+proves the six-hour stale transition and exact cleanup. Subsequent R-033 closure receipts settle
+the required boundary scope; later pruning remains outside that accepted result.
 
 The next coordinator delivers still-relevant corrections to the responsible worker and retains this
 handoff until applied evidence or an explicit remaining limitation is returned. Full original owner
 wording remains in the review's `baseline/mutation-suggestions.md`, as evidence rather than a queue.
+
+### Current owner decisions — review 2a5bac92b69c
+
+Josef authorizes implementation of attacker activation and requests the concrete engineering approach
+in the FS with a red lamp, then Sol delivery. Choose canonical NPC loading plus exact active/tracker
+postconditions, and retain strategic orders while excluding exact locally owned committed-hostile IDs
+from generic travel. The R-029-S002 contract preserves normal parley, rolling ambush and paid return.
+
+Josef authorizes the sound arithmetic/semantics repair and delegates realistic behavior design.
+R-029-S003 keeps a fresh sound as uncertain information and starts the physical-investigation
+cooldown on an actual check, preserving ordinary risk/readiness and routing rather than forcing scouting.
+
+Josef delegates camp-craft evidence disposition as low importance. Accept the established gameplay
+result with its explicit unavailable historical source-binding-file limitation; do not fabricate
+bytes or replay solely for provenance. This releases the decision wait, not unrelated missing proof.
+
+Josef expands testing to all currently supported NPC LLM commands, including look around, attack and
+melee, through a real local LLM and native consequence. R-037-S001 is red command-coverage work;
+prior representative follow/dialogue and E2B/E4B integration receipts do not prove the complete
+catalog. The recovered model investigation has no matched E2B/E4B quality ranking. Josef chooses E4B as the primary
+local playtest model. Failed NPC-LLM tests go on the bug list and receive a same-case retry through
+a cheap OpenAI API model with existing credentials; keep local and API verdicts separate. These
+API calls are authorized, and credential values must not enter prompts, reports or logs.
 
 <!-- DE67:OWNER-CONTRACT:END -->
 

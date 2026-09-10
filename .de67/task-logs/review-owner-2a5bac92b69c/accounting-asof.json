@@ -1,0 +1,49 @@
+{
+  "cutoff": {
+    "root_turn_id": "01a08a3d-fa64-7d60-aefc-e63df3b99835",
+    "mutation_run": "mutation-6a9719b5fa0d4ab8b3e531cb403710ec",
+    "source_root_session": "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "obtained_at": "2026-09-10T07:54:01.858Z",
+    "method": "token_usage_record entries filtered to exact root_turn_id; response_id deduplicated globally; usage fields summed; no later records chased"
+  },
+  "threads": [
+    {
+      "label": "root",
+      "thread_id": "01a08109-6d0f-7391-8d01-0209be85fbeb",
+      "session": "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+      "dedup_response_records": 56,
+      "input_tokens": 11661918,
+      "cached_input_tokens": 11492608,
+      "output_tokens": 30825,
+      "total_tokens": 11692743
+    },
+    {
+      "label": "npc_command_scope",
+      "thread_id": "01a08a3e-92b1-7d21-8e27-e041d0338a8a",
+      "session": "/Users/josefhorvath/.codex/sessions/2026/09/10/rollout-2026-09-10T09-35-51-01a08a3e-92b1-7d21-8e27-e041d0338a8a.jsonl",
+      "dedup_response_records": 30,
+      "input_tokens": 2723885,
+      "cached_input_tokens": 2571008,
+      "output_tokens": 10241,
+      "total_tokens": 2734126
+    },
+    {
+      "label": "activation_sound_design",
+      "thread_id": "01a08a3e-c7e8-7003-9e9c-5eb89ba3995a",
+      "session": "/Users/josefhorvath/.codex/sessions/2026/09/10/rollout-2026-09-10T09-36-05-01a08a3e-c7e8-7003-9e9c-5eb89ba3995a.jsonl",
+      "dedup_response_records": 16,
+      "input_tokens": 957853,
+      "cached_input_tokens": 884736,
+      "output_tokens": 5064,
+      "total_tokens": 962917
+    }
+  ],
+  "sum": {
+    "input_tokens": 15343656,
+    "cached_input_tokens": 14948352,
+    "output_tokens": 46130,
+    "total_tokens": 15389786,
+    "dedup_response_records": 102
+  },
+  "coverage_gaps": []
+}

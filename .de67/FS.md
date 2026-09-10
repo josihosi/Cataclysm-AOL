@@ -6,6 +6,10 @@ Source baseline: `Cataclysm-AOL-hostile-ecology-dev | dev | 1bfcf283417d63ae407b
 
 ## Document authority
 
+Owner refinement 2026-09-10: activation, sound and expanded E4B command testing are authorized
+against inspected `dev` source at `1bc4925cf2da52883f4230254876b696996e4ad0`; red sections below are required work,
+not implementation or gameplay acceptance. Earlier source-bound receipts retain their original identity.
+
 One canonical `FS.md` describes code behavior: data, functions, ownership, interactions and errors. `DFS.md` is its hash-bound compatibility pointer; `DE67:DFS-SLICE` remains the stable selector syntax. `work-ledger.md` owns assignments and delivery state, projected from durable acceptance. Historical proof remains at its existing artifact, receipt or Git identity.
 
 This is the mechanistic product contract derived from the owner-authorized WEC and current source.
@@ -498,6 +502,9 @@ and launch prerequisites, supported observation/action routes, preparation limit
 verdicts and evidence handles. It must preserve earlier scenarios and reports instead of replacing
 them. Current qualification documentation is implementation/use evidence, not a second product ledger.
 
+The final package evidence map also binds the newly authorized R-029 activation/sound results and
+the R-037 local-LLM command coverage report, preserving each result's independent scope and limits.
+
 <!-- DE67:DFS-SLICE:END id=R-026-S001 claim=R-026 -->
 
 <!-- DE67:DFS-SLICE:BEGIN id=R-027-S001 claim=R-027 -->
@@ -573,8 +580,7 @@ contact has no second night gate. Abstract/local handoffs retain site, generatio
 member IDs and route progress. Generic travel may not advance a concurrently locally owned actor.
 Verification distinguishes pre-departure daylight holding, eligible night departure, and a route
 that crosses dawn and still reaches attack, including reload continuity. Setup and a phase write
-alone do not establish physical movement or attack. Independent activation/arbitration and
-sound-drive owner choices are unchanged by this refinement.
+alone do not establish physical movement or attack. The separately promoted activation and sound repairs are specified in R-029-S002/S003.
 
 `live_bandit_handle_hostile_shakedown_contact` and `choose_local_gate_posture` distinguish normal
 shakedown from favorable rolling-travel attack. The forced native payment UI remains.
@@ -596,6 +602,80 @@ trade, later ordinary turns, travel ownership changes and save/reload. One membe
 or resuming aggression after accepted payment contradicts that branch even if dialogue also succeeds.
 
 <!-- DE67:DFS-SLICE:END id=R-029-S001 claim=R-029 -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-029-S002 claim=R-029 -->
+#### 🔴 Authorized repair: active hostile contact and single movement ownership
+
+R029-F004 is promoted to implementation and fresh native verification. In
+`src/do_turn.cpp::materialize_committed_bandit_shakedown`, preserve the exact active hostile
+reservation, operation/member IDs and shared NPC objects. Validate the complete party and empty
+in-bounds placements before moving inactive members; place the party, then call canonical
+`game::load_npcs()` once. Its tracker insertion and `on_load` handling remain authoritative;
+manual tracker insertion, cloning NPCs or broad `reload_npcs()` are not the activation route.
+Require every intended living member to be the same object, active, in the reality bubble and
+present exactly once in the creature tracker before local parley, attack or stalking can proceed.
+An already valid active party is idempotent: no re-placement or attitude reset. A missing member,
+blocked placement or partial/rejected admission remains an explicit recoverable failure with no
+local-interaction success credit; an inactive overmap record returned by `find_npc` is insufficient.
+Use the same active-member predicate at downstream local-contact and sight-avoid gates.
+
+Chosen movement arbitration: retain inherited strategic orders, but exclude exact IDs belonging
+to an active `committed_contact` hostile reservation with `simulation_owner::local` from generic
+`overmap_npc_move` travel. Derive the exclusion from current operation/owner identity, alongside
+the existing abstract-approach exclusion; do not globally stop NPC AI or clear unrelated missions.
+The exclusion ends on authoritative return/terminal handoff, so paid return and surviving members'
+return routes continue normally. Keep the existing local stalking/hold-off motor and the rolling
+ambush exception to normal first-contact negotiation. Normal parley and successful Pay must retain
+their established protection against premature or renewed player-directed attacks.
+
+Verification binds exact party pointers/IDs, active tracker membership and single movement owner,
+including stale inherited travelling orders and repeated admission ticks. Fresh native routes
+must establish a normal refusal and player-initiated attack against a real active target, an
+attributable melee/ranged combat consequence where applicable, casualty/aftermath and surviving
+return state, plus affected save/reload continuity. Include failed admission and unrelated-NPC
+controls. The accepted rolling gate/control/reload and paid-return receipts remain valid at their
+original ceilings; rerun only affected integration boundaries. Setup, an attack posture, target
+selection, input acceptance and rendered text do not prove actual combat or aftermath.
+<!-- DE67:DFS-SLICE:END id=R-029-S002 claim=R-029 -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-029-S003 claim=R-029 -->
+#### 🔴 Authorized repair: fresh sound information versus physical investigation
+
+R029-F002 now has a promoted semantic correction. A distant bang is fresh, uncertain information;
+a site actually investigated is temporarily known. Keep the existing three-hour sound horizon
+and six-hour physical-check cooldown. Correct their event semantics instead of making a detected
+sound automatically compel a sortie or raising drive to bypass missing candidates.
+
+In `record_staffed_camp_signal_observations`, a newly sensed sound lead uses the sound's emitted
+minute for `first_seen_minutes`/`last_seen_minutes` and leaves `last_checked_minutes` and
+`last_scouted_minutes` absent. When refreshing the same lead, preserve any existing physical-check
+and scouting timestamps: distant information must neither reset, extend nor erase those clocks.
+Apply that preservation before both unchanged-payload comparison and upsert, since upsert replaces
+the lead. Re-reading the same event does not renew its lifetime or create revision churn; a genuinely
+new sound can refresh the observation time. Preserve other signal channels' existing behavior.
+Actual physical investigation/arrival or structural checks retain their existing timestamp writers.
+
+Sound strength is positive only before emitted minute + 180, and unsupported evidence ages at that
+boundary. A true check at T suppresses repeat investigation before T + 360, then permits ordinary
+eligibility again. The normal five-minute cadence, readiness, pair, risk, route and mission-slot
+requirements continue to decide whether an eligible lead is acted on. A favorable ready-camp
+case must show that the corrected sound can reach candidate evaluation and the existing scouting
+route before expiry; unfavorable cases may correctly decline with an attributable reason.
+
+Existing saves may contain detection-written `last_checked_minutes` that cannot be distinguished
+safely from an earlier real check after later observations. Preserve ambiguous historical stamps
+until their finite cooldown expires; do not erase potentially real investigation evidence based
+only on the last outcome label. New detections must not perpetuate that legacy delay. No new save
+field or invented timer is required for this repair.
+
+Verify event age 179/180, check age 359/360, repeated identical reads, a genuinely new sound,
+refresh after a real investigation, and save/reload of new and legacy-stamped leads. Bind a fresh
+source-bound sound -> memory -> eligible candidate -> ordinary scout/investigation consequence
+under valid conditions, with an expired/cooldown control and realistic uncertainty in the result.
+Report the first later rejecting gate if another premise blocks the route; detection, a score or
+an injected lead alone does not prove investigation. Preserve accepted detection and signal controls.
+<!-- DE67:DFS-SLICE:END id=R-029-S003 claim=R-029 -->
+
 
 ### 14. Lossless CAOL evidence transport
 
@@ -638,6 +718,16 @@ movement; one once-per-turn action must not compete with another owner moving th
 Save/load preserves NPC rules, mission and assignment, not the in-flight queue or transient target.
 Do not invent durable LLM-memory semantics. An observed contradiction in intended follow/camp behavior
 is distinct from a correctly nonpersistent queue.
+
+
+The owner accepts the established camp-craft gameplay result with the explicit historical
+source-binding-file limitation described by receipt
+`33656681a25465607762bc4efcf348ecd0dea6ff183a2a85888b673604254944`.
+The missing `ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50`
+bytes remain unavailable; the retained legacy file has a different hash. Future immutable receipt
+archival is repaired. Acceptance must state that limit and must not fabricate provenance or replay
+camp crafting solely to recover it. This exception does not waive new command-level local-LLM
+proof required separately by R-037.
 
 <!-- DE67:DFS-SLICE:END id=R-031-S001 claim=R-031 -->
 
@@ -1134,3 +1224,76 @@ corrected task-064 commands provide the before-change counterexample; later natu
 whether corrective exchanges decrease, not a synthetic gameplay replay.
 
 <!-- DE67:DFS-SLICE:END id=R-MAINT-CHECKPOINT-CONTEXT-S001 claim=R-MAINT-CHECKPOINT-CONTEXT -->
+
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-037-S001 claim=R-037 -->
+### 🔴 R-037 — Complete supported NPC command coverage through the local LLM
+
+Establish a source-bound coverage manifest for every supported primary intent and secondary action
+in `src/llm_intent.cpp::allowed_actions` / `parse_csv_payload`, the prompt templates, and their
+actual `npcmove.cpp` consumers. The current primary catalog is `wait_here`, `hold_position`,
+`follow_close`, `follow_far`, `equip_gun`, `equip_melee`, `equip_bow`, `panic_on`, `panic_off`,
+`look_around`, `look_inventory`, `idle`, `attack=<target>`, and `move=<dx>,<dy>` with wait/hold
+arrival behavior. The inventory-selection route additionally supports wear, wield, activate and
+drop. Reconcile any source changes or discrepancies before testing; do not silently omit a command
+because a UI menu or the queued-action enum lacks it. Ambient speech and camp-request routes retain
+their separate existing receipts and are not substitutes for this command catalog.
+
+Use E4B through the actual local Ollama/model runner as the primary playtest model, recording
+exact model/quantization identity, prompt and
+configuration, request/recipient IDs, returned text, parse result, applying native turn and concrete
+consequence. Use controlled, appropriate scenarios and natural direct requests; do not inject or
+replace model output, force a parser result or promise deterministic model behavior. Distinguish an
+LLM choosing the wrong action from parser rejection, dispatch deferral and native execution failure.
+Existing direct-state/unit tests and successful generated replies are useful controls, not end-to-end
+command proof. On a failed NPC-LLM playtest, record the observed failure in the bug list with its
+exact actor, request, model, intended/observed behavior, source/run and first known divergence;
+then retry the same bug case through the existing OpenAI API route using `gpt-4.1-mini`, the existing runner's low-cost non-reasoning default. Preserve equivalent native premises and the prompt's semantic
+content, recording any necessary provider-format differences. Both primary and secondary requests
+must use the selected provider for that comparison. Fix a broken test setup enough to reach the
+intended route before claiming a model comparison; if the API route or credentials are unavailable,
+retain the precise setup blocker and original failure without claiming the retry ran.
+
+Configure the existing API backend/provider/model fields rather than changing the response contract:
+`LLM_INTENT_BACKEND=api`, provider `openai`, and `LLM_INTENT_API_MODEL=gpt-4.1-mini`.
+First verify the selected API Python imports `any_llm`, the child receives a configured credential
+without printing it, and a bounded runner request returns the expected response shape. This is
+transport setup only; the failed case still requires its native retry. Use the existing secret
+lookup through the configured environment-variable name or secure store; do not unload the owner's
+Ollama server as an API cleanup side effect.
+
+Use the owner's existing API-key configuration or standard runtime secret environment; keep secret
+values out of prompts, terminal output, checked-in files and evidence logs. The owner authorizes
+these low-cost failure-comparison calls. Record actual API model/configuration, usage and resulting
+native consequence. An API success narrows the investigation but does not erase the E4B failure or
+count as a local-model pass; failure on both routes may indicate an integration/game issue and must
+retain its causal uncertainty. API control and local verdicts remain independently visible.
+
+The coverage manifest must provide a verdict and exact evidence handle for each command and each
+material execution branch: both follow distances; wait versus hold and release/arrival; gun, melee
+and bow equipment with appropriate inventory; panic on/off across turns; look-around selection
+through actual ground/item pickup; inventory wear/wield/activate/drop; dynamic movement through
+path progress and wait/hold arrival; and an attack against the named target through native melee
+and ranged engagement/consequence. `idle` means no injected intent and continued ordinary AI,
+not an invented action. Include valid and missing/stale target or item cases where they change
+behavior, plus relevant ally eligibility, danger, mission/Patrol and other movement-owner controls.
+Melee equipment selection alone does not prove a melee attack. Record damage or another attributable
+native combat outcome, rather than inferring a hit from posture or a model promise.
+
+Reuse valid current-source proof only for the precise command, model route and conditions it
+establishes. Group compatible cases in isolated native scenarios without imposing a worker count,
+fixed retry budget or one scenario per command. Repair repository-owned observation/fixture routes
+when needed; preserve all failed outputs and source-bound contradictions. Any newly discovered
+unpromoted gameplay behavior defect remains an explicit finding with its causal path. Do not remove
+commands, narrow intended behavior or relabel failures to obtain a green coverage report. Preserve
+process ownership and exact cleanup, and keep fixture preparation/OCR/rendered text at zero proof
+credit. Stateful consequences use the existing persistence contract; transient LLM queues are not
+made durable by this testing requirement.
+
+Earlier E2B/E4B qualification proves local runner operation at its stated ceilings, not a quality
+ranking or full command coverage. `tools/openclaw_harness/QUALIFICATION.md` and the September 5–6
+E2B nonthinking/E4B runner artifacts retain that distinction. No matched comparative verdict is
+currently established; the expanded command report must not imply model superiority from different
+scenarios or cold-versus-warm timings. Record useful behavioral quality, grounding and latency
+observations with their actual sample limits.
+<!-- DE67:DFS-SLICE:END id=R-037-S001 claim=R-037 -->

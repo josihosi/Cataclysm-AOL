@@ -1,0 +1,23 @@
+{
+  "restart_request": {
+    "created": true,
+    "coordinator_restart": {
+      "generation": 51,
+      "pending": true,
+      "requested_at": 1789027470.144615,
+      "reason": "Owner review2a5bac92b69c complete: concrete red activation/sound and E4B full-command FS work published; failed E4B cases get bug intake and authorized gpt-4.1-mini API comparison. Provenance choice accepted; all three owner waits released to executable routes. Preserve accepted proof. See .de67/task-logs/review-owner-2a5bac92b69c/report.md and current WEC/ledger. Supervisor exit-check source correction is installed/tested; running parent predates it, no forced external restart performed.",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  },
+  "gate": null,
+  "restart_state": {
+    "required": true,
+    "generation": 51,
+    "expected_run_id": null,
+    "run_id": null,
+    "reason": "Owner review2a5bac92b69c complete: concrete red activation/sound and E4B full-command FS work published; failed E4B cases get bug intake and authorized gpt-4.1-mini API comparison. Provenance choice accepted; all three owner waits released to executable routes. Preserve accepted proof. See .de67/task-logs/review-owner-2a5bac92b69c/report.md and current WEC/ledger. Supervisor exit-check source correction is installed/tested; running parent predates it, no forced external restart performed."
+  }
+}
