@@ -1,0 +1,24 @@
+{
+  "created": true,
+  "coordinator_restart": {
+    "generation": 53,
+    "pending": true,
+    "requested_at": 1789073696.1881,
+    "reason": "Owner-suggestion 78ca85fb1789 resolved: accepted claims no longer shadow open work; .de67/task-logs/review-owner-78ca85fb1789/report.md; deferred external-supervisor adoption check retained.",
+    "claimed_at": null,
+    "expected_run_id": null,
+    "acknowledged_at": null,
+    "run_id": null
+  },
+  "preserved_tables": {
+    "tasks": 376,
+    "claim_clocks": 34,
+    "claim_deadline_generations": 87,
+    "claim_acceptances": 28,
+    "worker_claims": 335,
+    "worker_checkpoints": 1327,
+    "closure_gaps": 96
+  },
+  "method_digest": "dd806e69181e1296c99b1ffaf17438986f643f350469feb14235d3700749975e",
+  "remaining_deferred_entries": 1
+}
