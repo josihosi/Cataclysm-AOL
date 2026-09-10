@@ -1,0 +1,51 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-037-local-llm-command-coverage-002",
+  "worker_request_id": "98decea47c124dbabae7c6a7d348cf02",
+  "disposition": "terminal",
+  "verdict": "not_qualified_for_full_source_bound_command_coverage",
+  "outcome": "The continuation repaired the safe fixture's pickup-rule premise and then proved three current-source E4B rows: Katharina selected and picked up two unowned bandages, moved two tiles west before wait_here established GUARD_ALLY, and separately moved two tiles east before hold_position established GUARD_ALLY. A further isolated inventory run retained the offered t-shirt and lighter across each exact E4B request and bounded native application window, but observed neither a wear nor an activation consequence; both remain inconclusive rather than passing. An isolated task-owned Python 3.14 runner successfully installed any-llm-sdk[openai] and reached secure macOS Keychain provisioning, which reported OPENAI_API_KEY unavailable without exposing a credential. Full 20-row coverage remains unqualified.",
+  "continuation_source_binding": {
+    "captured_head": "e34cd91b85",
+    "product_source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+    "executable": "cataclysm-tiles",
+    "executable_sha256": "3bc999ab4ab1da83b342311dfe924382ba05ccec3a9da64270a5a630326ce7bd",
+    "receipt": ".userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1-3bc999ab4ab1da83b342311dfe924382ba05ccec3a9da64270a5a630326ce7bd-4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e-a8e55c8ea68fa53846cfd3d005cb31fac046106e8ca042823ab89f9f7750f338.json"
+  },
+  "changed_routes": [
+    "basecamp_assigned_npc_items now admits only boolean rules.allow_pick_up and persists the saved rule without an override",
+    "r037_npc_llm_command_sandbox_v001 declares rules.allow_pick_up=true",
+    "r037.npc_llm_command_api_control_v001_mcw and its charter provide the child-only OpenAI gpt-4.1-mini control route",
+    "scenario registry permits the equivalent native-evidence proof route for that API scenario"
+  ],
+  "evidence": {
+    "manifest": ".de67/task-logs/r037-source-bound-coverage-manifest-001.json",
+    "focused_e4b_journals": ["bdf33db9104ca0b2069da68dd17341646cc877b762dce4a83854a051517e21dc", "ea5586f2d94f8876a7d724e7b4bee5ace63ab58463272f3e995a3c89a4690907", "5e6006af86f7d0ab1e66fba8635e2ca4db0cb38fab97d9a692f3f2cad8b1880e"],
+    "focused_witnesses": [".de67/task-logs/r037-local-llm-command-coverage-002-safe-witness.json", ".de67/task-logs/r037-local-llm-command-coverage-005-move-hold-witness.json", ".de67/task-logs/r037-local-llm-command-coverage-006-inventory-first-divergence-witness.json"],
+    "api_attempt": "API bridge 25418 and child 25419 reached secure macOS Keychain provisioning after the task-owned runner became ready; OPENAI_API_KEY was unavailable and both exited before a descriptor",
+    "cleanup": "Earlier E4B and API processes exited; final move-hold E4B child 28147 and inventory E4B child 28648 were each terminated through run.finish and verified exited, while terminalization accepted bridge cleanup and OS process queries returned bridges 28106 and 28606 absent"
+  },
+  "validation": {
+    "passed": [
+      "git diff --check",
+      "python3 -m py_compile tools/openclaw_harness/startup_harness.py tools/openclaw_harness/scenario_registry.py",
+      "PYTHONPATH=tools/openclaw_harness python3 tools/openclaw_harness/scenario_registry_cli_test.py: 42 tests passed",
+      "jq validation passed for every added or changed JSON artifact"
+    ],
+    "full_fixture_contract": {
+      "command": "PYTHONPATH=tools/openclaw_harness python3 -m unittest tools/openclaw_harness/test_fixture_contract.py",
+      "result": "272 tests run; 21 failures and 8 errors in existing broader fixture/harness expectations (the same failure/error count as before the two focused contract tests were added)",
+      "prior_run_log": "build_logs/r037-local-llm-command-coverage-002-fixture-contract-tests.log"
+    },
+    "build": {
+      "result": "source-bound macOS tiles build succeeded",
+      "build_log": "build_logs/source_bound_macos/20260910T210044.026177Z/build.full.log",
+      "version_log": "build_logs/source_bound_macos/20260910T210044.026177Z/version.full.log"
+    }
+  },
+  "blockers": [
+    "The owned/zone-forbidden pickup negative control remains unobserved, as do the remaining independently classified matrix rows; inventory wear and activation now have retained inconclusive E4B outcomes rather than a claimed consequence.",
+    "The secure macOS Keychain provisioner reported OPENAI_API_KEY missing. No credential was accessed, copied, reused, or recorded, so no API comparison gameplay could begin.",
+    "Pre-existing wider fixture-contract failures prevent treating that suite as a clean regression pass."
+  ]
+}

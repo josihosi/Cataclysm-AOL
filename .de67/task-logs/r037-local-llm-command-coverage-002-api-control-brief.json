@@ -1,0 +1,12 @@
+{
+  "outcome": "For an independently retained R-037 local-E4B failure, test the identical semantic request through the actual OpenAI gpt-4.1-mini child-only API route and retain any native consequence separately.",
+  "scenario_id": "r037.npc_llm_command_api_control_v001_mcw",
+  "charter_id": "b66641d5fe5ee1b2a9486c5552055b635dd41f4a3aeced1c7aa7395c369f2fe3",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r037.command_coverage", "op": "eq", "value": "api_same_case_control", "minimum_evidence": "declared"},
+      {"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}
+    ],
+    "preferences": []
+  }
+}

@@ -1,0 +1,18 @@
+{
+  "verdict": "proved",
+  "smallest_supported_claim": "In this current-source E4B run, Katharina's explicit two-tiles-east request emitted move=2,0 hold_position, reached the requested destination, and then held position there under GUARD_ALLY.",
+  "causal_account": "The journal binds the source, executable, actor, accepted speech submission, the native turns that advanced the response, and the final read-only NPC order inspection. The final inspection has a destination guard post and no remaining move target, distinguishing completed arrival from a queued command.",
+  "citations": [
+    {"citation_id": "J0001", "meaning": "Binds the claim to this source, executable, run, and cockpit session.", "checks": {}},
+    {"citation_id": "J0012", "meaning": "Accepted submission of the exact move-and-hold request.", "checks": {}},
+    {"citation_id": "J0020", "meaning": "Retains the one-minute native advancement, E4B response, and observable two-tile arrival.", "checks": {}},
+    {"citation_id": "J0028", "meaning": "Retains the post-arrival native NPC inspection with GUARD_ALLY, destination guard post, and null move target.", "checks": {}}
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "The inventory candidates visible at run start changed during ordinary processing before inventory commands were tested; this requires a separate first-divergence diagnosis.",
+    "Other matrix rows remain independent."
+  ],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "focused"
+}

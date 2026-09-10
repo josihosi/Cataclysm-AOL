@@ -1,0 +1,27 @@
+{
+  "name": "r037_npc_llm_command_stale_target_v001",
+  "source_fixture": "r037_npc_llm_command_combat_v001",
+  "source_profile": "live-debug",
+  "description": "Disposable R-037 stale-target control. It replaces the ordinary combat fixture target with one fragile, visible zombie dog that begins friendly, preventing ambient NPC combat before the requested exact-target branch. The target is only scenario-authored footing: after an actual E4B exact-target attack it may die through native combat, after which ordinary turns can exercise the source target-loss grace path without injecting an outcome.",
+  "save_transforms": [
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "require_free_target": true,
+      "monsters": [
+        {
+          "fixture_actor_id": "r037-fragile-zombie-dog",
+          "typeid": "mon_zombie_dog",
+          "offset_ms": [7, 0, 0],
+          "hp": 1,
+          "friendly": 1,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100,
+          "aggro_character": true
+        }
+      ]
+    }
+  ]
+}

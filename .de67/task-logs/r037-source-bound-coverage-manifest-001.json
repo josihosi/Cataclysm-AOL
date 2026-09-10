@@ -22,6 +22,16 @@
       "src/npcmove.cpp:3238-3258"
     ]
   },
+  "continuation_source_binding": {
+    "captured_head": "e34cd91b85",
+    "product_source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+    "executable": "cataclysm-tiles",
+    "executable_sha256": "3bc999ab4ab1da83b342311dfe924382ba05ccec3a9da64270a5a630326ce7bd",
+    "build_binding_status": "ready: dirty-product build receipt; continuation E4B and API attempts",
+    "receipt": ".userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1-3bc999ab4ab1da83b342311dfe924382ba05ccec3a9da64270a5a630326ce7bd-4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e-a8e55c8ea68fa53846cfd3d005cb31fac046106e8ca042823ab89f9f7750f338.json",
+    "build_log": "build_logs/source_bound_macos/20260910T210044.026177Z/build.full.log",
+    "version_log": "build_logs/source_bound_macos/20260910T210044.026177Z/version.full.log"
+  },
   "required_local_model": {
     "backend": "ollama",
     "model": "hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest",
@@ -194,12 +204,25 @@
       "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302",
       "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d",
       "47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1",
-      "61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"
+      "61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae",
+      "d5047fab5e1c7c721ee8fbd4ed1f05305564541072b0daad4d78f3790a9ea378",
+      "bdf33db9104ca0b2069da68dd17341646cc877b762dce4a83854a051517e21dc",
+      "ea5586f2d94f8876a7d724e7b4bee5ace63ab58463272f3e995a3c89a4690907",
+      "5e6006af86f7d0ab1e66fba8635e2ca4db0cb38fab97d9a692f3f2cad8b1880e",
+      "9aef38a193c4ac57492dc8024d55fe7c2d163bc8d0fef58a76fc04be725c063c",
+      "9fb113c51ea54b630838053e7a187a8d834e3b1b1cfd623f348657ea3474c453",
+      "775ceb7a27b394ce5e76682bdc8b682dbdfd627557428f15e2101e6e771b8a48",
+      "91bc02353fda467a8dcaa69483a2a5ddda557e07959401c2dc7445bf8fb4e852"
     ],
     "terminal_receipt": {
       "path": ".de67/task-logs/r037-local-llm-command-coverage-001-worker-receipt-v4-terminal.json",
       "sha256": "43e79741b99617834d440694963df57d29d724ad413e8919607b16048fdef664",
       "disposition": "not_qualified_for_full_source_bound_command_coverage"
+    },
+    "continuation_receipt": {
+      "path": ".de67/task-logs/r037-local-llm-command-coverage-009-worker-receipt.json",
+      "sha256": "4552908e9a1e82a35eaf348b52b6768c1e35976c6cc84d02b745137762075127",
+      "disposition": "independent_repairs_and_current_source_observations_complete_but_full_coverage_unqualified"
     }
   },
   "case_verdicts": [
@@ -211,18 +234,25 @@
     {"id":"equip_melee","verdict":"native_applied","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
     {"id":"equip_bow","verdict":"native_applied_partial_controls","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
     {"id":"panic_on","verdict":"local_success_then_separate_wrong-action_divergence; full-duration consequence_unobserved","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
-    {"id":"panic_off","verdict":"failed_wrong_local_action","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
-    {"id":"look_around_pickup","verdict":"e4b_look_around_emitted; exact_transfer_and_owned-control_unobserved","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
-    {"id":"look_inventory_wear","verdict":"failed_no_exact_secondary_consequence","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
-    {"id":"look_inventory_wield","verdict":"failed_wrong_primary_path","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
-    {"id":"look_inventory_activate","verdict":"failed_no_activation_secondary","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
-    {"id":"look_inventory_drop","verdict":"failed_no_drop_secondary","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
-    {"id":"idle","verdict":"failed_wait_here_plus_idle_not_pure_idle","evidence":"61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
-    {"id":"move_wait_arrival","verdict":"e4b_move=2,0_wait_here_emitted; exact_arrival_control_unobserved","evidence":"61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
-    {"id":"move_hold_arrival","verdict":"e4b_move=-2,0_hold_position_emitted; exact_arrival_control_unobserved","evidence":"61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
+    {"id":"panic_off","verdict":"failed_wrong_local_action","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302","api_comparison":"not_run: isolated API runner became ready but secure macOS Keychain provisioning reports OPENAI_API_KEY missing"},
+    {"id":"look_around_pickup","verdict":"proved_e4b_item_selection_and_native_pickup_of_two_unowned_bandages; owned_or_zone_forbidden_negative_control_unobserved","evidence":"bdf33db9104ca0b2069da68dd17341646cc877b762dce4a83854a051517e21dc"},
+    {"id":"look_inventory_wear","verdict":"inconclusive: current E4B run accepted the t-shirt request and completed a one-minute application window, but native before/after inspection retained the offered t-shirt in a carried container rather than establishing a new worn-slot consequence","evidence":"5e6006af86f7d0ab1e66fba8635e2ca4db0cb38fab97d9a692f3f2cad8b1880e","api_comparison":"not_run: isolated API runner became ready but secure macOS Keychain provisioning reports OPENAI_API_KEY missing"},
+    {"id":"look_inventory_wield","verdict":"failed_wrong_secondary_action: fresh exact request returned look_inventory|equip_gun, not wield; no parser/dispatch/native failure inferred","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;839e38af068ff3e105d014535f08ceeae095cd34a8f257a3097040976e7725f1","api_comparison":"not_run: isolated API runner became ready but secure macOS Keychain provisioning reports OPENAI_API_KEY missing"},
+    {"id":"look_inventory_activate","verdict":"inconclusive: current E4B run accepted the lighter request and completed a separate one-minute application window, but the following native inspection retained the lighter with no source-attributable activation consequence","evidence":"5e6006af86f7d0ab1e66fba8635e2ca4db0cb38fab97d9a692f3f2cad8b1880e","api_comparison":"not_run: isolated API runner became ready but secure macOS Keychain provisioning reports OPENAI_API_KEY missing"},
+    {"id":"look_inventory_drop","verdict":"failed_no_drop_secondary","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae","api_comparison":"not_run: isolated API runner became ready but secure macOS Keychain provisioning reports OPENAI_API_KEY missing"},
+    {"id":"idle","verdict":"failed_not_pure_idle: fresh exact request returned wait_here|idle; native wait_here then ordinary AI changed the wielded item, so there is no pure-idle/ordinary-AI observation","evidence":"61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae;839e38af068ff3e105d014535f08ceeae095cd34a8f257a3097040976e7725f1","api_comparison":"not_run: isolated API runner became ready but secure macOS Keychain provisioning reports OPENAI_API_KEY missing"},
+    {"id":"move_wait_arrival","verdict":"proved_e4b_move_two_tiles_west_then_wait_here_applied_only_after_native_arrival","evidence":"bdf33db9104ca0b2069da68dd17341646cc877b762dce4a83854a051517e21dc"},
+    {"id":"move_hold_arrival","verdict":"proved_e4b_move_two_tiles_east_then_hold_position_applied_only_after_native_arrival","evidence":"ea5586f2d94f8876a7d724e7b4bee5ace63ab58463272f3e995a3c89a4690907"},
     {"id":"attack_exact_target_melee","verdict":"proved_exact_target_native_damage","evidence":"47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1"},
-    {"id":"attack_exact_target_ranged","verdict":"target_resolved_and_gun_wielded_no_shot_before_combat_contention","evidence":"47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
-    {"id":"attack_missing_or_stale_target","verdict":"blocked_no_safe_native_target-disappearance route; direct mutation is charter-forbidden","evidence":"47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1"}
+    {"id":"attack_exact_target_ranged","verdict":"proved_current_visible_zombie_dog_resolved_then_native_six-shooter_ammunition_decreased_six_to_four","evidence":"9fb113c51ea54b630838053e7a187a8d834e3b1b1cfd623f348657ea3474c453"},
+    {"id":"attack_missing_or_stale_target","verdict":"natural_visibility_transition_observed_after_native_movement_but_no_source-defined_target-missing_or_expired_disposition; dedicated fragile-target control was inconclusive because the initial native World frame had no target before E4B input, including after a nonambient-target fixture revision","evidence":"9fb113c51ea54b630838053e7a187a8d834e3b1b1cfd623f348657ea3474c453;91bc02353fda467a8dcaa69483a2a5ddda557e07959401c2dc7445bf8fb4e852;3e1aa77a9d7105e8770f2ac4525c03d2d9186204e5f0feba7d553651f89ab16c"}
+  ],
+  "remaining_independent_row_classification": [
+    {"id":"look_inventory_drop","classification":"wrong_local_action already observed; source supports an explicit drop branch, but no E4B drop selection was emitted, so no native drop pass/failure is attributed."},
+    {"id":"panic_off","classification":"wrong-local-action observation plus missing pre-existing-panic premise; source has a 30-turn calm branch but its turn effect remains unobserved."},
+    {"id":"attack_exact_target_ranged","classification":"resolved as a current-source E4B native pass: the exact visible zombie dog was resolved and the equipped six-shooter magazine fell from six to four rounds."},
+    {"id":"look_around_pickup_negative","classification":"the dedicated NO_NPC_PICKUP fixture staged exactly one foreign-owned bandage and local E4B selected it, but a one-minute native window retained no attributable item action-status receipt; selection is not promoted to a source skip/block or transfer verdict."},
+    {"id":"attack_missing_or_stale_target","classification":"a natural native-movement visibility transition now exists, but no same-run source-defined attack.target_missing or expiry disposition was observed. The dedicated fragile-target fixture had no monster in its initial native World frame, and a friendly-target revision reproduced that absence, so the authorized exact-target attack/removal/grace route never began; direct target removal remains charter-forbidden."}
   ],
   "new_route_support": {
     "charter": "tools/openclaw_harness/charters/r037-npc-llm-command-coverage-v001.json",
@@ -230,20 +260,24 @@
     "combat_fixture": "tools/openclaw_harness/fixtures/saves/live-debug/r037_npc_llm_command_combat_v001/manifest.json",
     "safe_scenario": "tools/openclaw_harness/scenarios/r037.npc_llm_command_coverage_v001_mcw.json",
     "combat_scenario": "tools/openclaw_harness/scenarios/r037.npc_llm_command_combat_v001_mcw.json",
-    "validation": "Both version-2 declarations validate under scenario_registry.validate_manifest and project as two active candidates in isolated registry query artifact 5bbadc956de73a8f747f61cfd2b7826237c17f55a80d6d67a0d6f86856b4497d."
+    "api_safe_control_scenario": "tools/openclaw_harness/scenarios/r037.npc_llm_command_api_control_v001_mcw.json",
+    "api_safe_control_charter": "tools/openclaw_harness/charters/r037-npc-llm-api-safe-controls-v001.json",
+    "validation": "The original two version-2 declarations validated and projected as two active candidates in isolated registry query artifact 5bbadc956de73a8f747f61cfd2b7826237c17f55a80d6d67a0d6f86856b4497d. The continuation API declaration validates through scenario_registry_cli_test.py (42 tests)."
   },
   "api_failure_control": {
-    "status": "unavailable_due_to_unsanitized_credential_provisioning",
+    "status": "unavailable_due_to_missing_secure_keychain_credential",
     "required_configuration": {
       "LLM_INTENT_BACKEND": "api",
       "LLM_INTENT_API_PROVIDER": "openai",
       "LLM_INTENT_API_MODEL": "gpt-4.1-mini"
     },
     "required_same_case_evidence": ["E4B failure bug intake", "same semantic premise and recipient", "API provider/model and request/response shape", "API native consequence", "separate verdicts"],
-    "credential_rule": "No readiness/import probe was attempted, and no credential was accessed, copied, reused or recorded."
+    "attempt_status": "After the older disposable profile was repaired and an isolated task-owned Python 3.14 runner installed any-llm-sdk[openai], a selected API launch reached the child-only secure macOS Keychain provisioner. It stopped before a descriptor because OPENAI_API_KEY was missing.",
+    "credential_rule": "No credential was accessed, copied, reused or recorded. The provisioner reported only availability status and the missing credential name."
   },
   "lifecycle": {
-    "task_owned_runs": ["3806b3818c0ac2684344411c513fe2c613fcf951908e608c7620ca2f99d97188", "8537bd49f31ecfcd05d4da60134c8ae3fc0ed85218be5d0beffd8dfb928cd834", "57b7e785e50eb8771a806c1fedf141d61162ab18c2cc18d600c3eae41e98be59", "a113314bc55dfaea28b8df14f746b526b293e36575ce270b4267f9f5b6e3753d"],
-    "status": "all task-owned runtimes were explicitly terminated and their exact PIDs verified exited"
+    "task_owned_runs": ["3806b3818c0ac2684344411c513fe2c613fcf951908e608c7620ca2f99d97188", "8537bd49f31ecfcd05d4da60134c8ae3fc0ed85218be5d0beffd8dfb928cd834", "57b7e785e50eb8771a806c1fedf141d61162ab18c2cc18d600c3eae41e98be59", "a113314bc55dfaea28b8df14f746b526b293e36575ce270b4267f9f5b6e3753d", "d371354dad5d36995a748e1fbe5f2a0da0db4d9b3b70daf4699549818fd2317a"],
+    "continuation_owned_attempts": ["API bridge 23144: process exited before descriptor", "API bridge 23237: process exited before descriptor", "API bridge 25243: process exited before descriptor", "API bridge 25418 and child 25419: missing OPENAI_API_KEY reported before descriptor and both exited", "safe E4B child 23426 and bridge 23385: exited", "safe E4B child 25576: run.finish SIGTERM cleanup recorded exited; bridge 25535: terminalization cleanup accepted and OS process query returned absent", "safe E4B child 28648: run.finish SIGTERM cleanup recorded exited; bridge 28606: terminalization cleanup accepted and OS process query returned absent", "repaired safe E4B game 33170: run.finish SIGTERM cleanup recorded exited; bridge 33126 and controller 33127 absent by OS query", "combat E4B game 34207: run.finish SIGTERM cleanup recorded exited; bridge 34159 and controller 34160 absent by OS query", "forbidden-pickup E4B game 36781: run.finish SIGTERM cleanup recorded exited; bridge 36739 and controller 36740 absent by OS query", "stale-target E4B game 38556: run.finish SIGTERM cleanup recorded exited; bridge 38505 and controller 38506 absent by OS query", "revised stale-target E4B game 39433: run.finish SIGTERM cleanup recorded exited; bridge 39382 and controller 39384 absent by OS query"],
+    "status": "all task-owned runtimes and continuation attempts were explicitly terminated or naturally exited with their recorded process identities verified"
   }
 }

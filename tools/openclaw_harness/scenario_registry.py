@@ -367,6 +367,9 @@ def _validate_checkpoint_chain_fields(manifest: Mapping[str, Any], *, path: Path
             "r031.ambient_neutral_npc_authority_v002_mcw",
             "r037.npc_llm_command_coverage_v001_mcw",
             "r037.npc_llm_command_combat_v001_mcw",
+            "r037.npc_llm_command_api_control_v001_mcw",
+            "r037.npc_llm_command_forbidden_pickup_v001_mcw",
+            "r037.npc_llm_command_stale_target_v001_mcw",
         },
     )
     if manifest["run_class"] not in {"combat", "non_combat"}:
@@ -456,6 +459,9 @@ def _validate_versioned_fields(manifest: Mapping[str, Any], *, path: Path) -> No
             "r031.ambient_neutral_npc_authority_v002_mcw",
             "r037.npc_llm_command_coverage_v001_mcw",
             "r037.npc_llm_command_combat_v001_mcw",
+            "r037.npc_llm_command_api_control_v001_mcw",
+            "r037.npc_llm_command_forbidden_pickup_v001_mcw",
+            "r037.npc_llm_command_stale_target_v001_mcw",
         },
     )
     _validate_proof_route(manifest["proof_route"], manifest, path=path)

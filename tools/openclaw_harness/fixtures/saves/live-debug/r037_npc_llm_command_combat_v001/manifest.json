@@ -5,6 +5,13 @@
   "description": "Disposable R-037 combat variation. It inherits the setup-only companion equipment footing and stages one visible named hostile target at controlled distance. Target staging is zero-credit; only an E4B response tied to the current target handle and subsequent native combat evidence can establish attack coverage.",
   "save_transforms": [
     {
+      "kind": "npc_llm_panic_state",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_id": 2,
+      "active": false,
+      "duration_turns": 0
+    },
+    {
       "kind": "active_monsters_near_player",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "clear_existing": true,
@@ -14,7 +21,7 @@
           "fixture_actor_id": "r037-zombie-dog",
           "typeid": "mon_zombie_dog",
           "offset_ms": [7, 0, 0],
-          "hp": 80,
+          "hp": 20,
           "friendly": 0,
           "faction": "zombie",
           "anger": 100,

@@ -1,0 +1,45 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "In this current-source E4B run, Katharina had the offered carried t-shirt and lighter, and each natural request reached a bounded native application window, but neither produced a source-attributable wear or lighter-activation consequence.",
+  "causal_account": "The run binds the E4B source/executable and recipient, records the accepted natural speech requests, and advances each queue through its own native one-minute window. The first wear response did request inventory handling but its recorded result left the offered t-shirt in a carried container rather than a worn slot. The later lighter request likewise reached a separate bounded application window and the following native inspection retained the lighter with no activation effect. This is evidence of missing secondary consequences, not proof of a parser or native-action defect.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds this result to the E4B scenario, exact source and executable, run, and cockpit session.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0003",
+      "meaning": "Initial native NPC inspection establishes the candidate inventory before ordinary-turn changes.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0019",
+      "meaning": "Records acceptance of the exact t-shirt wear speech submission.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0032",
+      "meaning": "Records the bounded five-action, one-model-round-trip wear application window.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0041",
+      "meaning": "Records acceptance of the separate lighter activation speech submission.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0163",
+      "meaning": "Records the post-activation-window native NPC inspection used to check the retained inventory and absence of a claimed activation effect.",
+      "checks": {}
+    }
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "The exact secondary inventory-model text is retained in the journal, but no source-attributable wear or activation event was observed.",
+    "Wield and drop remain independent matrix cases; this run does not claim them.",
+    "A same-case API comparison remains unavailable because the secure Keychain provisioner reports OPENAI_API_KEY missing."
+  ],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "focused"
+}

@@ -1,0 +1,14 @@
+{
+  "action": "game.move_relative",
+  "move_relative": {
+    "enabled": true,
+    "offset_ms": [-8, 0],
+    "danger_handling": "ignore_danger_and_interruptions",
+    "bound": {
+      "basis": "path_progress",
+      "source": "Eight westward native map-square steps separate the observing avatar from the dog currently at east offset five, providing a bounded opportunity for a real visibility transition; the preceding guarded attempt identified a classified hostile-contact interruption and released without progress.",
+      "unit": "steps",
+      "maximum": 8
+    }
+  }
+}

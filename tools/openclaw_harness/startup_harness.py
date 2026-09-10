@@ -2514,6 +2514,18 @@ def apply_option_overrides_to_file(path: Path, overrides: Dict[str, str]) -> Dic
             entry["value"] = normalized[name]
             applied[name] = normalized[name]
     missing = sorted(set(normalized) - set(applied))
+    # Old disposable profile snapshots predate this hidden option.  Seed only
+    # the known current-source default so an API scenario can apply its
+    # declared provider to a fresh copy; unknown option names stay rejected.
+    if missing == ["LLM_INTENT_API_PROVIDER"]:
+        data.append({
+            "info": "API provider used by the any-llm runner.",
+            "default": "Default: openai",
+            "name": "LLM_INTENT_API_PROVIDER",
+            "value": normalized["LLM_INTENT_API_PROVIDER"],
+        })
+        applied["LLM_INTENT_API_PROVIDER"] = normalized["LLM_INTENT_API_PROVIDER"]
+        missing = []
     if missing:
         raise ValueError(f"Profile option(s) not found in {path}: {', '.join(missing)}")
     path.write_text(json.dumps(data, indent=2, ensure_ascii=False) + "\n", encoding="utf-8")
@@ -23549,7 +23561,25 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                         )
                     item["contents"] = contents
                 items.append(item)
-            transforms.append({
+            rules_raw = raw.get("rules", {})
+            if not isinstance(rules_raw, dict):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] basecamp_assigned_npc_items rules must be an object in {manifest_path}"
+                )
+            unsupported_rules = sorted(set(rules_raw) - {"allow_pick_up"})
+            if unsupported_rules:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] basecamp_assigned_npc_items does not support rules: "
+                    + ", ".join(unsupported_rules)
+                )
+            rules: Dict[str, bool] = {}
+            for rule_name, enabled in rules_raw.items():
+                if not isinstance(enabled, bool):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] basecamp_assigned_npc_items rules.{rule_name} must be boolean in {manifest_path}"
+                    )
+                rules[rule_name] = enabled
+            transform = {
                 "kind": kind,
                 "player_save": player_save,
                 "npc_id": npc_id,
@@ -23557,6 +23587,41 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "assigned_camp_omt": assigned_camp_omt,
                 "items": items,
                 "ensure_follower": bool(raw.get("ensure_follower", True)),
+            }
+            # Preserve normalized shape for older fixtures that do not use a
+            # rule override; only the explicit new contract carries rules.
+            if "rules" in raw:
+                transform["rules"] = rules
+            transforms.append(transform)
+            continue
+
+        if kind == "npc_llm_panic_state":
+            try:
+                npc_id = int(raw.get("npc_id", 0) or 0)
+                duration_turns = int(raw.get("duration_turns", 0) or 0)
+            except (TypeError, ValueError):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] npc_llm_panic_state needs integer npc_id/duration_turns in {manifest_path}"
+                )
+            active = raw.get("active")
+            if npc_id <= 0 or not isinstance(active, bool):
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] npc_llm_panic_state needs positive npc_id and boolean active in {manifest_path}"
+                )
+            if active and duration_turns <= 0:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] npc_llm_panic_state active state needs positive duration_turns in {manifest_path}"
+                )
+            if not active and duration_turns != 0:
+                raise SystemExit(
+                    f"Fixture save_transforms[{index}] npc_llm_panic_state inactive state must use duration_turns=0 in {manifest_path}"
+                )
+            transforms.append({
+                "kind": kind,
+                "player_save": player_save,
+                "npc_id": npc_id,
+                "active": active,
+                "duration_turns": duration_turns,
             })
             continue
 
@@ -24049,7 +24114,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "supported kinds: player_mutations, player_remove_addiction, clear_avatar_auto_move, clear_avatar_activity, player_items, player_worn_items, player_condition, player_location_offset_ms, player_basecamp_at_omt, player_near_overmap_special, "
             "overmap_terrain_id_at_abs_omt, player_view_seen_omt, seed_overmap_special_near_player, map_fields_near_player, map_terrain_near_player, map_furniture_near_player, "
             "map_items_near_player, source_firewood_zone_near_player, remove_overmap_npcs, "
-            "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_npc_patrol_priority, basecamp_assigned_npc_items, "
+            "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_npc_patrol_priority, basecamp_assigned_npc_items, npc_llm_panic_state, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_camp_supply, bandit_clear_site_evidence, "
                 "bandit_clone_site, bandit_site_roster_shape, bandit_registered_staffed_observer_bootstrap, bandit_projection_leases, bandit_structural_homeward_reentry, bandit_post_handoff_abstract_bootstrap, bandit_scheduler_response_candidate, bandit_hostile_operation_bootstrap"
@@ -26836,6 +26901,9 @@ def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict
     requested_npc_id = int(transform.get("npc_id", 0) or 0)
     assigned_camp_omt = transform.get("assigned_camp_omt")
     ensure_follower = bool(transform.get("ensure_follower", True))
+    requested_rules = transform.get("rules", {})
+    if not isinstance(requested_rules, dict):
+        raise SystemExit("Basecamp assigned NPC transform rules must be an object")
 
     selected_npc: Optional[Dict[str, Any]] = None
     selected_id = requested_npc_id
@@ -26884,6 +26952,16 @@ def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict
         if ensure_follower:
             selected_npc["my_fac"] = "your_followers"
             selected_npc["attitude"] = 3
+        if requested_rules:
+            saved_rules = selected_npc.setdefault("rules", {})
+            if not isinstance(saved_rules, dict):
+                raise SystemExit(f"NPC {selected_id} rules is not an object in {target_overmap_path}")
+            for rule_name, enabled in requested_rules.items():
+                if rule_name != "allow_pick_up" or not isinstance(enabled, bool):
+                    raise SystemExit(f"Unsupported basecamp NPC rule request: {rule_name}")
+                saved_rules[f"rule_{rule_name}"] = enabled
+                saved_rules[f"override_{rule_name}"] = False
+                saved_rules[f"override_enable_{rule_name}"] = False
         inv = selected_npc.setdefault("inv", [])
         if not isinstance(inv, list):
             raise SystemExit(f"NPC {selected_id} inventory is not a list in {target_overmap_path}")
@@ -26943,10 +27021,87 @@ def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict
         "location_ms": target_location,
         "offset_ms": offset,
         "assigned_camp_omt": assigned_camp_omt,
+        "rules": requested_rules,
         "added_items": added_items,
         "ensured_follower": ensured_follower,
         "overmap": str(target_overmap_path.relative_to(world_dir)),
     }
+
+def apply_npc_llm_panic_state_transform(world_dir: Path, transform: Dict[str, Any]) -> Dict[str, Any]:
+    """Stage only the pre-request fear footing used by the panic-off control.
+
+    It edits neither an LLM action nor its completion.  The active case adds
+    the production ``npc_run_away`` effect; the inactive case clears the two
+    inherited flee effects so a sibling combat control has independent footing.
+    """
+    npc_id = int(transform["npc_id"])
+    active = bool(transform["active"])
+    duration_turns = int(transform["duration_turns"])
+    selected_npc: Optional[Dict[str, Any]] = None
+    target_overmap_path: Optional[Path] = None
+    plain_path: Optional[Path] = None
+    version_line = ""
+    payload: Dict[str, Any] = {}
+
+    for overmap_path in sorted((world_dir / "overmaps").glob("o.*.zzip")):
+        candidate_plain: Optional[Path] = None
+        try:
+            candidate_plain, candidate_version, candidate_payload = extract_overmap_payload(overmap_path)
+            for npc_obj in candidate_payload.get("npcs", []):
+                if isinstance(npc_obj, dict) and int(npc_obj.get("id", 0) or 0) == npc_id:
+                    selected_npc = npc_obj
+                    target_overmap_path = overmap_path
+                    plain_path = candidate_plain
+                    version_line = candidate_version
+                    payload = candidate_payload
+                    break
+            if selected_npc is not None:
+                break
+        finally:
+            if selected_npc is None and candidate_plain is not None and candidate_plain.exists():
+                cleanup_extracted_overmap(candidate_plain, keep=False)
+
+    if selected_npc is None or target_overmap_path is None or plain_path is None:
+        raise SystemExit(f"NPC LLM panic-state transform could not find npc_id={npc_id} in {world_dir / 'overmaps'}")
+
+    try:
+        effects = selected_npc.setdefault("effects", {})
+        if not isinstance(effects, dict):
+            raise SystemExit(f"NPC {npc_id} effects is not an object in {target_overmap_path}")
+        # The base fixture predates this control and contains npc_flee_player.
+        # The product panic_off branch does not clear it, so removing it makes
+        # the staged state and the later native consequence unambiguous.
+        effects.pop("npc_flee_player", None)
+        effects.pop("npc_run_away", None)
+        if active:
+            effects["npc_run_away"] = {
+                "bp_null": {
+                    "eff_type": "npc_run_away",
+                    "duration": duration_turns,
+                    "bp": "bp_null",
+                    "permanent": False,
+                    "intensity": 1,
+                    "start_turn": 0,
+                    "source": {"character_id": None, "faction_id": None},
+                }
+            }
+        write_overmap_payload(plain_path, version_line, payload)
+    finally:
+        if plain_path is not None and plain_path.exists():
+            cleanup_extracted_overmap(plain_path, keep=False)
+
+    return {
+        "kind": "npc_llm_panic_state",
+        "world": world_dir.name,
+        "npc_id": npc_id,
+        "npc_name": selected_npc.get("name"),
+        "active": active,
+        "duration_turns": duration_turns,
+        "effects": sorted(str(key) for key in selected_npc.get("effects", {})),
+        "overmap": str(target_overmap_path.relative_to(world_dir)),
+        "setup_only": True,
+    }
+
 
 def native_close_hostile_qualification(
     world_dir: Path, *, player_save: str, target_offset: Sequence[int], target_was_free: bool,
@@ -29492,6 +29647,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "basecamp_assigned_npc_items":
             reports.append(apply_basecamp_assigned_npc_items_transform(world_dir, transform))
+            continue
+        if kind == "npc_llm_panic_state":
+            reports.append(apply_npc_llm_panic_state_transform(world_dir, transform))
             continue
         if kind == "active_monsters_near_player":
             reports.append(apply_active_monsters_near_player_transform(world_dir, transform))

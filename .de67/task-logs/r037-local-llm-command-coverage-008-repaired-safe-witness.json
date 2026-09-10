@@ -1,0 +1,87 @@
+{
+  "schema": "caol-playtest-witness-bundle-v1",
+  "claims": [
+    {
+      "claim_id": "safe-positive-bandage-pickup",
+      "statement": {
+      "verdict": "proved",
+      "smallest_supported_claim": "Katharina completed the positive bandage pickup in the repaired safe fixture.",
+      "causal_account": "The bound native session records the natural request, its E4B look_around response, native pickup execution, the native pickup message, and the post-action inventory inspection.",
+      "citations": [
+        {
+          "citation_id": "J0001",
+          "meaning": "Binds this conclusion to the current source/executable, scenario, run, and binding."
+        },
+        {
+          "citation_id": "J0003",
+          "meaning": "Native inspection identifies Katharina and records that allow_pick_up is enabled."
+        },
+        {
+          "citation_id": "J0033",
+          "meaning": "Records accepted submission of the natural request to look around and pick up nearby bandages."
+        },
+        {
+          "citation_id": "J0040",
+          "meaning": "World observation records E4B look_around|follow_close and the native LLM pickup precheck, execution, completed message, and Katharina picking up a bandage."
+        },
+        {
+          "citation_id": "J0044",
+          "meaning": "Post-action native NPC inspection includes bandage item 3300 in Katharina's inventory."
+        }
+      ],
+      "contradictions": [],
+      "remaining_unknowns": [
+        "This positive pickup does not test the foreign-ownership or NO_NPC_PICKUP negative controls."
+      ],
+      "recommended_disposition": "continue",
+      "evidence_ceiling": "focused"
+      }
+    },
+    {
+      "claim_id": "safe-panic-off",
+      "statement": {
+      "verdict": "contradicted",
+      "smallest_supported_claim": "Neither natural panic-off request produced panic_off; both E4B responses selected follow_close|idle.",
+      "causal_account": "The bound native session records both accepted natural speech submissions and the following World observations, which surface E4B's follow_close|idle selection. Thus the first divergence is model output, before a requested panic_off can be natively applied.",
+      "citations": [
+        {
+          "citation_id": "J0001",
+          "meaning": "Binds the outcome to the current source/executable and E4B run."
+        },
+        {
+          "citation_id": "J0013",
+          "meaning": "Records accepted submission of the first natural request to calm down and stop running away."
+        },
+        {
+          "citation_id": "J0027",
+          "meaning": "World observation following the first request surfaces E4B follow_close|idle."
+        },
+        {
+          "citation_id": "J0023",
+          "meaning": "Records accepted submission of the explicit panic-off request."
+        },
+        {
+          "citation_id": "J0036",
+          "meaning": "World observation surfaces the explicit request and E4B follow_close|idle response."
+        }
+      ],
+      "contradictions": [
+        {
+          "citation_id": "J0027",
+          "meaning": "The first response selects follow_close|idle, not panic_off."
+        },
+        {
+          "citation_id": "J0036",
+          "meaning": "The explicit panic-off response selects follow_close|idle, not panic_off."
+        }
+      ],
+      "remaining_unknowns": [
+        "Because E4B selected a different command, this run does not establish a native panic_off consequence."
+      ],
+      "recommended_disposition": "continue",
+      "evidence_ceiling": "focused"
+      }
+    }
+  ],
+  "findings": []
+}

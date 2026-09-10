@@ -1,0 +1,111 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-026-closure-r029-component-composition-001",
+  "claim_id": "R-026",
+  "worker_id": "01a0883d-d6f9-72c2-a528-4ed188afb46a",
+  "disposition": "completed",
+  "verdict": "r029_component_composed",
+  "outcome": "Updated tools/openclaw_harness/R026_PACKAGE_GUIDE.md and preserved the explicit R-031 missing-historical-bytes limitation and downstream R-037 whole-package blocker.",
+  "summary": "The current R-026 package guide binds the durably accepted R-029 activation, branch/control, persistence, Pay, night, and sound-information results at their independent ceilings without replay or claim broadening.",
+  "material_changes": [
+    "Replaced stale R-031 full-provenance-pending wording with accepted-at-explicit-missing-source-binding-bytes-ceiling wording.",
+    "Bound R-029 activation, branch/control, persistence, Pay, night and sound-information receipts, source/runtime identities, cleanup and downstream evidence limits.",
+    "Named R026-r031-owner-dependent-provenance revision 3 as the immediate remaining R-026 composition boundary and R-037 as the downstream whole-package blocker."
+  ],
+  "tests": [
+    "git diff --check passed.",
+    "Targeted receipt-string, stale-wording, artifact-path and status validation passed.",
+    "Verified the R-029 worker receipt artifact and activation/reload witness paths exist."
+  ],
+  "live_actions": [],
+  "evidence_ceiling": [
+    "R-029 activation/aftermath: canonical active ownership, native Fight, casualty, survivor return, save/reload and cleanup at the activation audit ceiling.",
+    "R-029 branch/control: rolling attack versus normal parley and exact-operation persistence at their separate ceilings.",
+    "R-029 sound: emitted-time memory, deduplication, expiry/physical-check controls, retained-target selection and first generation-1 outbound structural outing at minute 8291; no later scout, report, authorization, rally, arrival or hostile contact is claimed.",
+    "No OCR, screenshots, terminal/rendered text, setup, fixture state or process absence was promoted beyond its stated role."
+  ],
+  "bindings": {
+    "no_runtime_launched": "true",
+    "package_guide_path": "tools/openclaw_harness/R026_PACKAGE_GUIDE.md",
+    "package_guide_sha256": "900d0d1991591f79a976b89f4f5c0871376cc9053c4af2c3b9e104f8081b5109",
+    "r026_focused_receipt": "7075048efc3baa0bec27c4a79cfdc46140fed55fa2618868e9c5e30b070b9ce3",
+    "r026_prior_package_guide_receipt": "1e671c99644daa9bac850da379ed73dd3a7630123e40400613df42fdf4fb583e",
+    "r029_acceptance_task": "R-029-closure-sound-information-semantics-008",
+    "r029_activation_receipts": "d7d55782706720d8c98bcb92c32a3c5fb400946acc3240de4272908e06111a08;dd6683cec9819497b6970907f7291f307716ac0230a34a9775dd0a5b9230af00;632168355fe0566c76f079b179a4130f99a0ef1838ea7ed4713640ef956e9c98",
+    "r029_branch_control_persistence_receipts": "1be44f0b860d4e6b59a5fbc7e55fe052867295cbac428d0875b07e929013815c;bd8510b80e2039fdb8914efee986b17a587093a5ee05374c103f693d0005af4f;e49d5efd7b0e386a31bc6e63569b2769e4ef117d90bde5c8005a6c823b4dde23",
+    "r029_night_receipt": "0892479ce584418db6ef41fc3ef4d594d82b16ca97d6dac9fb423f2c3687185f",
+    "r029_pay_receipt": "ab383ab50726156a5948882c5c74fefc0853945cd7c06f7cc44a963c380a34ee",
+    "r029_sound_binding": "cafba9fa21ec3808351e3ac897ab61c329b983230527a9c683739c6c685132b8",
+    "r029_sound_executable_sha256": "c416df32eab33d507b4d15b269212ecd49372f01a808a371392ddbbf734ee600",
+    "r029_sound_receipts": "64bc0ae133e0921129cefb1732f960889ed90db8c4d230052c0b5239ab054870;7cccd502298ef40b11887b2f9bc5fab070c39540ba98bd4108f4f05dd3968d51;9a647676c4e9266845a792783e36bdf77f338eb0fe0f3e87a155ab95373e9853;c8d0ede5a40e26132e072df71bc783d3c6017f04a0bf08f01b81003ad996c7db",
+    "r029_sound_run": "f0d0bad39f408e98352dd63855ce4f77108014ad4f4ddf4ddca20b8f6cfa3d5b",
+    "r029_sound_runtime_source_sha256": "02796effa3347ebbb5bd0552c4bb2b8bde940ebc556d0f7805797b6ec5ee86b9"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": "1",
+      "event_type": "package_map_update",
+      "evidence_class": "documentation_binding",
+      "summary": "R-029 accepted activation, branch/control, persistence, Pay, night and sound receipts were bound into the R-026 guide.",
+      "artifact_ref": "tools/openclaw_harness/R026_PACKAGE_GUIDE.md"
+    },
+    {
+      "id": "J0002",
+      "sequence": "2",
+      "event_type": "validation",
+      "evidence_class": "read_only_integrity_check",
+      "summary": "Guide hash, receipt identities, stale wording, artifact paths and git diff check were validated without runtime activity.",
+      "artifact_ref": "tools/openclaw_harness/R026_PACKAGE_GUIDE.md"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/R026_PACKAGE_GUIDE.md",
+      "sha256": "900d0d1991591f79a976b89f4f5c0871376cc9053c4af2c3b9e104f8081b5109",
+      "role": "updated reproducible R-026 package evidence map"
+    },
+    {
+      "path": ".de67/state/r029-sound-information-semantics-008-worker-receipt.json",
+      "sha256": "71a7447411db720516d97ceaffb6b2065980f1319c3648ba2389b1f73a7e8706",
+      "role": "accepted R-029 sound-information closure receipt"
+    },
+    {
+      "path": "build_logs/r029-local-activation-repair-067-rm51-continuation-repair-stage1-witness.json",
+      "sha256": "0f98798f4d8eb522c45c7c574ffc896dd6b988e0873bf9abd898de674656c207",
+      "role": "accepted R-029 activation/Fight/casualty/survivor/save witness"
+    },
+    {
+      "path": "build_logs/r029-local-activation-repair-067-reload-recovery-witness.json",
+      "sha256": "f2d24eb625c2d48d7dba6db474b56fee2ce06f8bcbce363a543d7b4e1310879f",
+      "role": "accepted R-029 fresh no-fixture reload witness"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "No gameplay replay, build, source mutation, harness mutation or runtime launch occurred.",
+    "Previously accepted R-026, R-029 and sibling component evidence was composed from ledger/SQLite and retained receipts only.",
+    "R-031 provenance was not reopened or closed beyond its accepted explicit missing-bytes ceiling.",
+    "R-037 was not used as evidence for R-029 or this composition gap."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Immediate R-026 boundary: R026-r031-owner-dependent-provenance revision 3, finite composition of accepted R-031 behavior/continuity with its explicit missing historical source-binding-bytes ceiling. Downstream whole-package blocker: independent R-037 command-coverage result; it is not evidence for this gap.",
+  "narrow_queries": [
+    "Inspect .de67/work-ledger.md R-026 lines 242-276 and accepted R-029 lines 276-309.",
+    "Inspect .de67/state/r029-sound-information-semantics-008-worker-receipt.json for exact sound run, binding, source, executable, journal and cleanup.",
+    "Verify package-guide hash and cited R-029 activation/reload artifact paths before coordinator recording."
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/R026_PACKAGE_GUIDE.md",
+    ".de67/work-ledger.md",
+    ".de67/state/r029-sound-information-semantics-008-worker-receipt.json",
+    "build_logs/r029-local-activation-repair-067-rm51-continuation-repair-stage1-witness.json",
+    "build_logs/r029-local-activation-repair-067-reload-recovery-witness.json"
+  ],
+  "context_metrics": {
+    "owned_processes_remaining": 0,
+    "package_guide_sha256": "900d0d1991591f79a976b89f4f5c0871376cc9053c4af2c3b9e104f8081b5109",
+    "r029_receipt_groups_bound": 6
+  }
+}

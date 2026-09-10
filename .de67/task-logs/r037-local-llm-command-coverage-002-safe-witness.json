@@ -1,0 +1,21 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "In the current-source E4B run, Katharina's explicit unowned-bandages request led to native pickup of two bandages, and the separate exact two-tile-west move request reached its destination before wait_here established GUARD_ALLY at that destination. These two rows are proven; the full twenty-row matrix remains incomplete.",
+  "causal_account": "The sealed run binds the source, executable, recipient, accepted prompt submissions, resulting native turns, messages, and read-only NPC inspection. The pickup messages and recipient inventory establish the concrete transfer; the later native order inspection establishes the completed destination and applied guard order rather than merely a queued move.",
+  "citations": [
+    {"citation_id": "J0001", "meaning": "Binds this limited conclusion to the source-matched executable and run.", "checks": {}},
+    {"citation_id": "J0012", "meaning": "Accepted submission of the explicit unowned-bandages request.", "checks": {}},
+    {"citation_id": "J0020", "meaning": "Retains the subsequent native turns and pickup messages for Katharina.", "checks": {}},
+    {"citation_id": "J0027", "meaning": "Retains native inspection of Katharina after the pickup, including the bandages in her carried items.", "checks": {}},
+    {"citation_id": "J0038", "meaning": "Accepted submission of the separate exact two-tile-west move-and-wait request.", "checks": {}},
+    {"citation_id": "J0163", "meaning": "Retains native inspection after arrival, including absolute position, null move target, GUARD_ALLY mission, and the destination guard post.", "checks": {}}
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "The owned/zone-forbidden pickup negative control remains unobserved.",
+    "The rest of the command matrix remains separately classified rather than implied by these two successes.",
+    "The API comparison could not begin because secure macOS Keychain provisioning reported OPENAI_API_KEY unavailable after the isolated runner became ready."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

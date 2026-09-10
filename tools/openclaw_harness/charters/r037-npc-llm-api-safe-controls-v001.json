@@ -1,0 +1,24 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "For an independently retained R-037 local-E4B failure, test the identical semantic request through the actual OpenAI gpt-4.1-mini child-only API route and retain any native consequence separately.",
+  "material_proof": "For each safe-fixture local failure, retain the same identified NPC, both primary and secondary semantic requests, provider/model readiness without a credential value, API prompt/reply, parse/dispatch record, applying native turn, and any concrete state or inventory consequence. API evidence remains a same-case comparison only.",
+  "current_uncertainty": "The API route can differ from E4B in response choice, parser result, or native consequence. A reply or transport success alone does not establish a command consequence, and an API result cannot repair an E4B verdict.",
+  "material_contradiction": [
+    "a credential value appears in a prompt, command, output, scenario, or log",
+    "an API reply is treated as proof of the local-E4B result",
+    "the recipient or semantic premise differs from its retained E4B failure",
+    "a reply, accepted request, or fixture setup is treated as a native consequence",
+    "a primary or secondary request is omitted without an observed boundary"
+  ],
+  "forbidden_shortcuts": [
+    "direct credential access, copy, reuse, or recording",
+    "synthetic response or direct NPC, item, or save mutation",
+    "physical input, OCR, or rendered text as gameplay proof"
+  ],
+  "honest_stop_conditions": [
+    "finish after each safe same-case primary and secondary request is classified from retained native evidence",
+    "finish inconclusive at a safe credential-provisioning, parser, dispatch, or native-observation boundary",
+    "finish contradicted if identity, source binding, credential safety, or cleanup fails"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

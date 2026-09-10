@@ -1,0 +1,70 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-037-local-llm-command-coverage-002",
+  "worker_request_id": "98decea47c124dbabae7c6a7d348cf02",
+  "disposition": "terminal",
+  "verdict": "independent_repairs_and_current_source_observations_complete_but_full_coverage_unqualified",
+  "outcome": "Repository-owned fixture and observation support now supplies the intended premises without postcondition mutation: explicit pickup permission, a source-defined NO_NPC_PICKUP zone, an equipped loaded six-shooter, pre-existing panic, and a natural visibility transition. Current-source local E4B observations prove positive unowned-bandage pickup and exact-target ranged combat (the same six-shooter fell from six to four rounds after the named zombie-dog request). They also preserve two first-divergence model outputs: both panic-off requests selected follow_close|idle, and exact inventory-wield selected look_inventory|equip_gun. The visibility transition did not produce a source-defined target-missing or expiry disposition. The mandatory API comparison remains unavailable because the child-only secure Keychain provisioner reported OPENAI_API_KEY missing; no credential was exposed or accessed.",
+  "source_binding": {
+    "captured_head": "e34cd91b85",
+    "product_source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+    "runtime_source_sha256": "256f59be995f385de4ac7bb743a1bca66c07ed15cfa6bcfcaad95bbd091a37fa",
+    "executable": "cataclysm-tiles",
+    "executable_sha256": "3bc999ab4ab1da83b342311dfe924382ba05ccec3a9da64270a5a630326ce7bd",
+    "build_receipt": ".userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1-3bc999ab4ab1da83b342311dfe924382ba05ccec3a9da64270a5a630326ce7bd-4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e-a8e55c8ea68fa53846cfd3d005cb31fac046106e8ca042823ab89f9f7750f338.json",
+    "coverage_manifest": ".de67/task-logs/r037-source-bound-coverage-manifest-001.json"
+  },
+  "implementation": [
+    "startup_harness accepts and persists only an explicit boolean rules.allow_pick_up on basecamp-assigned NPC setup, avoiding an untracked override",
+    "the safe fixture declares rules.allow_pick_up=true and a source_firewood_zone_near_player NO_NPC_PICKUP control",
+    "the combat fixture clears the setup-only panic state so loaded ranged attack behavior has a usable turn opportunity",
+    "the API child-only scenario and charter isolate the gpt-4.1-mini comparison route",
+    "scenario registry permits equivalent native-evidence proof routes for the R-037 API control declaration"
+  ],
+  "evidence": {
+    "safe_repaired_run": {
+      "run_id": "2be83f11885127aeb62f3ff38a1718eaaf63e677845415080a70dd2a509758a1",
+      "binding_id": "5a2aaebf290062db1bb06c7429e53d7d675601a560f52f9e9ad195688a332b71",
+      "journal_sha256": "9aef38a193c4ac57492dc8024d55fe7c2d163bc8d0fef58a76fc04be725c063c",
+      "witness": ".de67/task-logs/r037-local-llm-command-coverage-008-repaired-safe-witness.json",
+      "final_report": ".userdata/harness-npc-llm-coverage/harness_runs/20260911_002119_dc20373e704f4fb58fe5177b8d961e27/operate_r037_safe_commands.cockpit.live.final.json"
+    },
+    "combat_run": {
+      "run_id": "99b74efb3177ef8dc3779e57eb1af1417100dd52b1c82a9f34a475bb595a1911",
+      "binding_id": "f9b3a2a4e986ba8e73d8fd62f3d01281b1e8afc7f1d983ec18e8dd6b32e9eb69",
+      "journal_sha256": "9fb113c51ea54b630838053e7a187a8d834e3b1b1cfd623f348657ea3474c453",
+      "witness": ".de67/task-logs/r037-local-llm-command-combat-003-witness.json",
+      "final_report": ".userdata/harness-npc-llm-coverage-combat/harness_runs/20260911_002917_e87050161087429aa44bd54720580f20/operate_r037_exact_target_combat.cockpit.live.final.json"
+    },
+    "unchanged_negative_boundaries": [
+      "foreign-owner and NO_NPC_PICKUP controls are staged but no E4B selection exercised either negative path",
+      "natural target visibility changed, but no native attack.target_missing or expiry result occurred",
+      "panic-off and inventory-wield first diverged at E4B output, before a requested native action could be attributed"
+    ]
+  },
+  "api_control": {
+    "status": "not_run_missing_secure_keychain_credential",
+    "provider": "openai",
+    "model": "gpt-4.1-mini",
+    "boundary": "The isolated task-owned runner reached the child-only Keychain provisioner, which reported OPENAI_API_KEY missing before it emitted a descriptor. No credential was accessed, copied, reused, or recorded."
+  },
+  "lifecycle": {
+    "safe": "game 33170 terminated through run.finish and was observed exited; bridge 33126 and controller 33127 were absent",
+    "combat": "game 34207 terminated through run.finish and was observed exited; bridge 34159 and controller 34160 were absent"
+  },
+  "validation": {
+    "passed": [
+      "git diff --check",
+      "ScenarioFixtureContractTest.test_r037_safe_fixture_normalizes_explicit_pickup_rule",
+      "ScenarioFixtureContractTest.test_r037_combat_fixture_clears_panic_for_ranged_control",
+      "python3 tools/openclaw_harness/scenario_registry_cli_test.py: 42 tests passed",
+      "jq validation of the manifest, witnesses, and this receipt"
+    ],
+    "known_broader_suite_state": "python3 tools/openclaw_harness/test_fixture_contract.py ran 273 tests and reported 21 failures plus 8 errors in existing wider fixture/harness expectations. The focused R-037 checks pass; this receipt does not represent that broader suite as clean."
+  },
+  "remaining_blockers": [
+    "full source-bound 20-row coverage is not qualified; several independent command rows remain model divergences or missing native consequences",
+    "the required same-case OpenAI controls need safe owner-provided OPENAI_API_KEY provisioning",
+    "stale-target acceptance needs a natural scenario route that yields the source-defined target-missing or expiry disposition"
+  ]
+}

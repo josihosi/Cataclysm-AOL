@@ -5103,6 +5103,22 @@ class ProfileOptionOverrideContractTest(unittest.TestCase):
             self.assertEqual(updated[0], {"name": "TILES", "value": "UltimateCataclysm", "info": "tileset"})
             self.assertEqual(updated[1], {"name": "SOUND_ENABLED", "value": "true"})
 
+    def test_seeds_only_current_api_provider_for_older_disposable_profiles(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            options_path = Path(temp_dir) / "options.json"
+            options_path.write_text(json.dumps([
+                {"name": "LLM_INTENT_BACKEND", "value": "api"},
+            ]), encoding="utf-8")
+
+            result = apply_option_overrides_to_file(
+                options_path, {"LLM_INTENT_API_PROVIDER": "openai"}
+            )
+            updated = json.loads(options_path.read_text(encoding="utf-8"))
+
+            self.assertEqual(result["applied"], {"LLM_INTENT_API_PROVIDER": "openai"})
+            self.assertEqual(updated[-1]["name"], "LLM_INTENT_API_PROVIDER")
+            self.assertEqual(updated[-1]["value"], "openai")
+
 
 class PlayerMutationsTransformContractTest(unittest.TestCase):
     @staticmethod
@@ -6611,6 +6627,99 @@ def player_save_error(path: Path) -> str:
 
 
 class ScenarioFixtureContractTest(unittest.TestCase):
+    def test_r037_safe_fixture_normalizes_explicit_pickup_rule(self) -> None:
+        resolved = resolve_fixture_payload(
+            "r037_npc_llm_command_sandbox_v001", "live-debug"
+        )
+        npc_transform = next(
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "basecamp_assigned_npc_items"
+        )
+
+        self.assertEqual(npc_transform["npc_id"], 2)
+        self.assertEqual(npc_transform["rules"], {"allow_pick_up": True})
+        panic_transform = next(
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "npc_llm_panic_state"
+        )
+        self.assertEqual(
+            panic_transform,
+            {
+                "kind": "npc_llm_panic_state",
+                "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+                "npc_id": 2,
+                "active": True,
+                "duration_turns": 10000,
+            },
+        )
+        pickup_zone = next(
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "source_firewood_zone_near_player"
+            and transform["zone_type"] == "NO_NPC_PICKUP"
+        )
+        self.assertEqual(pickup_zone["start_offset_ms"], [2, 0, 0])
+        self.assertEqual(pickup_zone["end_offset_ms"], [2, 0, 0])
+
+    def test_r037_combat_fixture_clears_panic_for_ranged_control(self) -> None:
+        resolved = resolve_fixture_payload(
+            "r037_npc_llm_command_combat_v001", "live-debug"
+        )
+        panic_states = [
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "npc_llm_panic_state"
+        ]
+        self.assertEqual([state["active"] for state in panic_states], [True, False])
+        monster_transform = next(
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "active_monsters_near_player"
+            and transform["monsters"]
+        )
+        self.assertEqual(monster_transform["monsters"][0]["hp"], 20)
+
+    def test_r037_forbidden_pickup_fixture_isolates_one_zoned_foreign_item(self) -> None:
+        resolved = resolve_fixture_payload(
+            "r037_npc_llm_command_forbidden_pickup_v001", "live-debug"
+        )
+        pickup_items = [
+            item
+            for transform in resolved["save_transforms"]
+            if transform["kind"] == "map_items_near_player"
+            for item in transform["items"]
+        ]
+        self.assertEqual(pickup_items, [{
+            "typeid": "bandages", "offset_ms": [2, 0, 0], "count": 1,
+            "owner": "hells_raiders",
+        }])
+        zones = [
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "source_firewood_zone_near_player"
+        ]
+        self.assertEqual(len(zones), 1)
+        self.assertEqual(zones[0]["zone_type"], "NO_NPC_PICKUP")
+        self.assertEqual(zones[0]["start_offset_ms"], [2, 0, 0])
+        self.assertEqual(zones[0]["end_offset_ms"], [2, 0, 0])
+
+    def test_r037_stale_target_fixture_has_one_nonambient_fragile_native_target(self) -> None:
+        resolved = resolve_fixture_payload(
+            "r037_npc_llm_command_stale_target_v001", "live-debug"
+        )
+        monster_transforms = [
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "active_monsters_near_player" and transform["monsters"]
+        ]
+        self.assertEqual(len(monster_transforms), 2)
+        self.assertEqual(len(monster_transforms[-1]["monsters"]), 1)
+        target = monster_transforms[-1]["monsters"][0]
+        self.assertEqual(target["fixture_actor_id"], "r037-fragile-zombie-dog")
+        self.assertEqual(target["typeid"], "mon_zombie_dog")
+        self.assertEqual(target["offset_ms"], [7, 0, 0])
+        self.assertEqual(target["hp"], 1)
+        self.assertEqual(target["friendly"], 1)
+        self.assertEqual(target["faction"], "zombie")
+        self.assertEqual(target["anger"], 100)
+        self.assertEqual(target["morale"], 100)
+        self.assertTrue(target["aggro_character"])
+
     def test_hostile_operation_bootstrap_clears_inherited_member_routes(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             world_dir = Path(temp_dir) / "world"

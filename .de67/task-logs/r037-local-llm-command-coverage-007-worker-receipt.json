@@ -1,0 +1,39 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-037-local-llm-command-coverage-007",
+  "worker_request_id": "b499d5a7c72c4df69168f08dd0c1a654",
+  "disposition": "terminal",
+  "verdict": "independent_rows_honestly_classified_not_full_coverage",
+  "outcome": "A fresh current-source E4B safe run classified two remaining independent rows at their first divergence: the pure-idle request returned wait_here|idle, and the exact inventory-wield request returned look_inventory|equip_gun. Neither is promoted to a native success or a parser/dispatch failure. The remaining requested rows were reconciled against their retained native evidence and current source/fixture premises: drop is a wrong local action, panic_off lacks both a correct local response and a pre-existing-panic opportunity, ranged lacks a shot/ammunition/damage consequence, foreign-owner pickup is unobserved while NO_NPC_PICKUP has no fixture zone, and stale target lacks a natural disappearance transition.",
+  "source_binding": {
+    "product_source_sha256": "4f6921e9f99e0808045514bd570a40ed220ccde9a9d423e1609bde291d6a053e",
+    "executable_sha256": "3bc999ab4ab1da83b342311dfe924382ba05ccec3a9da64270a5a630326ce7bd",
+    "run_id": "eeeca6333e968dfa241e8577fdf0cf7aafd5e9f1f0174ba1a397cf2539a6a1f5",
+    "binding_id": "fd2f6e3e1497c8e93b3f79cfc789d6cffba3dfc42d5b121650dbdb55738b6b9b"
+  },
+  "evidence": {
+    "journal_sha256": "839e38af068ff3e105d014535f08ceeae095cd34a8f257a3097040976e7725f1",
+    "witness": ".de67/task-logs/r037-local-llm-command-coverage-007-independent-wrong-action-witness.json",
+    "terminal_report": ".userdata/harness-npc-llm-coverage/harness_runs/20260911_000450_c50860fddbc845ce9c406848178a9170/probe.report.json",
+    "classification_manifest": ".de67/task-logs/r037-source-bound-coverage-manifest-001.json"
+  },
+  "lifecycle": {
+    "game_pid": 31288,
+    "bridge_pid": 31246,
+    "result": "run.finish SIGTERM cleanup reported game exited; bridge terminalization cleanup accepted; post-finish OS query found game, bridge, and child controller absent"
+  },
+  "validation": {
+    "passed": [
+      "git diff --check",
+      "jq empty for each R-037-007 JSON artifact and the amended source-bound manifest",
+      "PYTHONPATH=tools/openclaw_harness python3 tools/openclaw_harness/scenario_registry_cli_test.py: 42 tests passed",
+      "ScenarioFixtureContractTest.test_r037_safe_fixture_normalizes_explicit_pickup_rule: passed",
+      "python3 -m py_compile tools/openclaw_harness/scenario_registry.py tools/openclaw_harness/startup_harness.py"
+    ],
+    "known_unrelated_suite_state": "The complete ScenarioFixtureContractTest class still has its previously broad unrelated failures/errors; the exact R-037 fixture-rule check passes."
+  },
+  "blockers": [
+    "OPENAI_API_KEY remains unavailable from the secure Keychain provisioner; no credential was accessed, copied, reused, or logged.",
+    "Full source-bound command coverage remains unqualified; these are classifications, not repaired or newly passed rows."
+  ]
+}

@@ -1,0 +1,49 @@
+{
+  "verdict": "contradicted",
+  "smallest_supported_claim": "In this current-source E4B run, neither the pure-idle request nor the explicit inventory-wield request produced its requested primary/secondary command: the first response was wait_here|idle and the second was look_inventory|equip_gun.",
+  "causal_account": "The bound native session records Katharina as the actual allied hearer, the accepted natural speech submissions, and separate World pauses which surface the E4B responses. The idle premise did not yield pure idle, because wait_here accompanied it. The inventory-wield premise did not yield wield, because the model selected equip_gun instead. These are model-output divergences; no parser, dispatch, or native-action failure is claimed.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "Binds the result to the current source/executable, run, and cockpit session.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0008",
+      "meaning": "Records accepted submission of the natural pure-idle request to Katharina.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0010",
+      "meaning": "Records the applying native pause and its surfaced E4B wait_here|idle response.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0022",
+      "meaning": "Records accepted submission of the natural inventory-wield request to Katharina.",
+      "checks": {}
+    },
+    {
+      "citation_id": "J0024",
+      "meaning": "Records the applying native pause and its surfaced E4B look_inventory|equip_gun response.",
+      "checks": {}
+    }
+  ],
+  "contradictions": [
+    {
+      "citation_id": "J0010",
+      "meaning": "The purported pure-idle case contains wait_here, so it is not a pure-idle result."
+    },
+    {
+      "citation_id": "J0024",
+      "meaning": "The purported wield case contains equip_gun rather than the required wield secondary action."
+    }
+  ],
+  "remaining_unknowns": [
+    "This run does not establish an inventory-wield native consequence because the model selected a different action.",
+    "The same-case API control remains unavailable because the secure Keychain provisioner reports OPENAI_API_KEY missing.",
+    "Ranged, panic-off, negative pickup, and stale-target rows remain independent."
+  ],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "focused"
+}

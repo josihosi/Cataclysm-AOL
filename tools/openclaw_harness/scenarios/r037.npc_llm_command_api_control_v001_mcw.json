@@ -1,7 +1,7 @@
 {
   "manifest_version": 2,
-  "name": "r037.npc_llm_command_coverage_v001_mcw",
-  "description": "R-037 source-bound safe command-coverage route. The fixture provides a known allied recipient, controlled equipment and pickup ownership variants, but each local-model command still requires its own actual E4B response, native application and consequence.",
+  "name": "r037.npc_llm_command_api_control_v001_mcw",
+  "description": "R-037 same-case API control route. It uses the same disposable safe fixture and native semantic session as the local E4B route, but requests only OpenAI gpt-4.1-mini through the harness child-only secure credential provisioner. API results remain independent from E4B verdicts.",
   "profile": "harness-npc-llm-coverage",
   "config_profile": "dev-harness",
   "world": "McWilliams",
@@ -15,7 +15,7 @@
   "capabilities": {
     "runtime.entry_mode": "cockpit_live_session",
     "capabilities.playtest.factory": "npc-llm",
-    "capabilities.r037.command_coverage": "e4b_safe_commands_inventory_pickup"
+    "capabilities.r037.command_coverage": "api_same_case_control"
   },
   "runtime_contract": {
     "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
@@ -49,17 +49,17 @@
   "steps": [
     {
       "kind": "native_semantic_bootstrap",
-      "label": "bind_r037_safe_world",
+      "label": "bind_r037_api_control_world",
       "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": false}
     },
     {
       "kind": "cockpit_live_session",
-      "label": "operate_r037_safe_commands",
+      "label": "operate_r037_api_same_case_controls",
       "cleanup_on_finish": true,
-      "objective": "Use natural direct requests to the inspected allied recipient through local E4B. First calm the explicitly pre-existing run-away state, then independently observe follow/wait/hold, movement arrival, equipment, panic, safe pickup and inventory outcomes while retaining each request/response/consumer consequence.",
-      "proof_targets": ["E4B model and request identity", "pre-existing panic footing and native panic-off consequence", "actor/item/foreign-ownership/NO_NPC_PICKUP controls", "actual parse and native consequence", "case-scoped failure/API comparison records", "exact cleanup"],
+      "objective": "For each independently retained failed E4B semantic premise, obtain a gpt-4.1-mini reply and an attributable native consequence through the same recipient and fixture controls. Do not use API output to replace the E4B verdict.",
+      "proof_targets": ["API provider/model readiness without secret disclosure", "same recipient and semantic premise", "actual API response, parse and native consequence", "separate local/API verdicts", "exact cleanup"],
       "authority": ["currently advertised native semantic actions", "game.act", "game.wait", "game.move_relative", "run.witness", "run.finish"],
-      "invariants": ["fixture setup earns zero command credit", "do not inject a response or directly mutate state", "do not credit a command without an applying native turn and consequence", "keep every local/API verdict independent"],
+      "invariants": ["credential values never enter prompts, command arguments, output, saved scenario data or worker logs", "fixture setup earns zero command credit", "API success does not change an E4B failure", "no direct response or state mutation"],
       "live_operations": ["game.act", "game.wait", "game.move_relative"],
       "transition_timeout_seconds": 20.0,
       "observe_interval_seconds": 0.1
@@ -67,22 +67,23 @@
   ],
   "proof_gates": [
     {
-      "id": "r037_safe_session",
-      "label": "Bound R-037 safe E4B session",
-      "boundary_step": "operate_r037_safe_commands",
+      "id": "r037_api_control_session",
+      "label": "Bound R-037 API control session",
+      "boundary_step": "operate_r037_api_same_case_controls",
       "predecessors": [],
       "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}],
       "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}
     }
   ],
-  "proof_route": {"gates": ["r037_safe_session"], "terminal": ["r037_safe_session"]},
+  "proof_route": {"gates": ["r037_api_control_session"], "terminal": ["r037_api_control_session"]},
   "semantic_only_startup": true,
   "profile_option_overrides": {
     "LLM_INTENT_ENABLE": "true",
-    "LLM_INTENT_BACKEND": "ollama",
-    "LLM_INTENT_OLLAMA_URL": "http://127.0.0.1:11434",
-    "LLM_INTENT_OLLAMA_MODEL": "hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest",
-    "LLM_INTENT_PYTHON": "/opt/homebrew/bin/python3",
+    "LLM_INTENT_BACKEND": "api",
+    "LLM_INTENT_API_PROVIDER": "openai",
+    "LLM_INTENT_API_MODEL": "gpt-4.1-mini",
+    "LLM_INTENT_API_KEY_ENV": "OPENAI_API_KEY",
+    "LLM_INTENT_PYTHON": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/openclaw_harness/task_envs/r037-api-control-002-py314/bin/python",
     "LLM_INTENT_RANDOM_CALL": "0",
     "DEBUG_LLM_INTENT": "true",
     "DEBUG_LLM_INTENT_UI": "true",

@@ -1,0 +1,35 @@
+{
+  "schema": "r037.exact-pid-cleanup-verification.v1",
+  "task_id": "R-037-local-llm-command-coverage-002",
+  "worker_id": "01a08ce7-2f93-7263-9c96-547779b446bd",
+  "worker_request_id": "f664f6fa3d7f478da645ff370ed1b285",
+  "verified_at_utc": "2026-09-10T23:09:09Z",
+  "method": "Exact OS process query for each recorded game, bridge, and controller PID; no process row was returned.",
+  "runs": [
+    {
+      "run_id": "909779c95ad19bca401286e872db7eab36abf0b09b6e398332b437f185947239",
+      "game_pid": 36781,
+      "bridge_pid": 36739,
+      "controller_pid": 36740,
+      "all_absent": true,
+      "native_exit_credit": false
+    },
+    {
+      "run_id": "bab0c540730c716c92c4959a4091a7b785834dc9e0cba1e39662be504569f742",
+      "game_pid": 38556,
+      "bridge_pid": 38505,
+      "controller_pid": 38506,
+      "all_absent": true,
+      "native_exit_credit": false
+    },
+    {
+      "run_id": "c2c04bed5f6ccd748ca94ab17551d2a49b5cc6fafa4f24a56fffb769d3149f8c",
+      "game_pid": 39433,
+      "bridge_pid": 39382,
+      "controller_pid": 39384,
+      "all_absent": true,
+      "native_exit_credit": false
+    }
+  ],
+  "all_recorded_pids_absent": [36739, 36740, 36781, 38505, 38506, 38556, 39382, 39384, 39433]
+}

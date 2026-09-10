@@ -1,0 +1,70 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-037-local-llm-command-coverage-002",
+  "claim_id": "R-037",
+  "worker_id": "01a08ce7-2f93-7263-9c96-547779b446bd",
+  "worker_request_id": "f664f6fa3d7f478da645ff370ed1b285",
+  "disposition": "completed",
+  "verdict": "three_focused_native_controls_inconclusive_at_their_first_missing_consequence",
+  "outcome": "The current task's three dedicated native controls are settled without replay. Forbidden pickup reached native prompt submission, E4B selection of the sole forbidden bandage, and a bounded native minute, but no run-bound pickup-block or transfer receipt. The initial and nonambient-revision stale-target controls each stopped before E4B input because their first native World observation lacked the fragile target. All nine recorded game, bridge, and controller PIDs are absent; every final artifact records native_exit_credit=false.",
+  "summary": "This corrected receipt binds forbidden-pickup run 909779c95ad19bca401286e872db7eab36abf0b09b6e398332b437f185947239 and stale-target runs bab0c540730c716c92c4959a4091a7b785834dc9e0cba1e39662be504569f742 and c2c04bed5f6ccd748ca94ab17551d2a49b5cc6fafa4f24a56fffb769d3149f8c to R-037-local-llm-command-coverage-002 and worker 01a08ce7-2f93-7263-9c96-547779b446bd. Each has a focused evidence ceiling and a sealed final artifact. The controlled pickup consequence and the stale-target grace/disposition remain unproved.",
+  "material_changes": [
+    "Corrected task and worker identity from the unrelated -001 receipt identity to the current -002 durable worker binding.",
+    "Added the settled forbidden-pickup request, response, journal, witness, final artifact, and exact cleanup verification.",
+    "Preserved both stale-target entries and their native_exit_credit=false boundary."
+  ],
+  "tests": [
+    "Exact OS process query returned no row for game/bridge/controller PIDs 36781/36739/36740, 38556/38505/38506, and 39433/39382/39384.",
+    "JSON parse and worker_receipt.py prepare validation are required before handoff."
+  ],
+  "live_actions": [
+    "No gameplay, fixture mutation, or route replay was performed while correcting this receipt.",
+    "Only retained artifacts and exact current process identities were inspected."
+  ],
+  "evidence_ceiling": [
+    "Focused evidence only: no native save/quit credit, because all three final artifacts record harness SIGTERM cleanup and native_exit_credit=false.",
+    "Forbidden pickup proves native prompt submission, E4B selection, and bounded opportunity; it does not prove a forbidden-pickup consequence.",
+    "Both stale-target runs prove the first-frame target absence; neither proves exact targeting, removal, grace turns, or a stale/missing-target disposition."
+  ],
+  "bindings": {
+    "current_worker_request_id": "f664f6fa3d7f478da645ff370ed1b285",
+    "forbidden_pickup_binding_id": "ba7e495a045d477109aaa6452a410b0763ec69934faaa2b182c16e816a3a07c9",
+    "forbidden_pickup_run_id": "909779c95ad19bca401286e872db7eab36abf0b09b6e398332b437f185947239",
+    "initial_stale_target_binding_id": "248d4f850429e5e13a5a78a03bf744766352ce0008f4d504b67696c7a2480989",
+    "initial_stale_target_run_id": "bab0c540730c716c92c4959a4091a7b785834dc9e0cba1e39662be504569f742",
+    "revised_stale_target_binding_id": "18b78ed4502e8f2a56f25496d2bc51144ffe270a470c73677acbab72167a6740",
+    "revised_stale_target_run_id": "c2c04bed5f6ccd748ca94ab17551d2a49b5cc6fafa4f24a56fffb769d3149f8c"
+  },
+  "journal_entries": [
+    {"id": "forbidden-J0008", "sequence": 8, "event_type": "native_prompt_submission", "evidence_class": "native", "action_id": "prompt.submit", "artifact_ref": "build_logs/r037-two-native-controls-20260911/forbidden-pickup-journal.json", "summary": "The forbidden-pickup request was submitted through the native prompt owner and its native receipt was accepted."},
+    {"id": "forbidden-J0147", "sequence": 147, "event_type": "bounded_native_wait", "evidence_class": "native", "artifact_ref": "build_logs/r037-two-native-controls-20260911/forbidden-pickup-journal.json", "summary": "Fifty-nine accepted native pause actions reached the one-minute target after the E4B-selected bandage."},
+    {"id": "forbidden-J0149", "sequence": 149, "event_type": "terminal_missing_consequence", "evidence_class": "native", "artifact_ref": "build_logs/r037-two-native-controls-20260911/forbidden-pickup-journal.json", "summary": "The sealed terminal boundary retained no run-bound item-action receipt establishing pickup, block, or transfer."},
+    {"id": "stale-initial-J0002", "sequence": 2, "event_type": "first_native_world_observation", "evidence_class": "native", "artifact_ref": "build_logs/r037-two-native-controls-20260911/stale-target-journal.json", "summary": "Before E4B input, the initial stale-target World observation showed Robbie Knox and no monster."},
+    {"id": "stale-revised-J0002", "sequence": 2, "event_type": "first_native_world_observation", "evidence_class": "native", "artifact_ref": ".userdata/harness-npc-llm-coverage-combat/harness_runs/20260911_005943_657956f72530446482c2bcead3936a69/operate_r037_stale_target.cockpit.live.final.json", "summary": "After the nonambient fixture revision, the first native World observation still had no visible fragile target before E4B input."},
+    {"id": "cleanup-exact-pids", "sequence": "post-terminal", "event_type": "os_process_absence", "evidence_class": "os", "artifact_ref": ".de67/task-logs/r037-two-native-controls-004-exact-pid-cleanup-verification.json", "summary": "All exact recorded game, bridge, and controller PIDs for the three settled runs were absent by OS query."}
+  ],
+  "artifacts": [
+    {"path": ".de67/task-logs/r037-two-native-controls-003-forbidden-pickup-request.json", "sha256": "a54eadf5588a9677739a9f4e8986e81e30656f0970de49a69284ea98e17352a9", "role": "forbidden-pickup native prompt request"},
+    {"path": ".userdata/openclaw_harness/bridge-sessions/selected-4a73c41b95e6423daaf4eafb8a0466f9/responses/play-67d8621b91f94cf88022aeb087fa95f2.json", "sha256": "d70b600238407c49a7417793e0eb28a13fe854174d4d27062983241a752a61c0", "role": "forbidden-pickup bound E4B response"},
+    {"path": "build_logs/r037-two-native-controls-20260911/forbidden-pickup-journal.json", "sha256": "d5a81cbb0c17615e02a49f96a65c2638e8b0c48cc23a4cb421e77095dd6bab7a", "role": "forbidden-pickup focused evidence journal"},
+    {"path": "build_logs/r037-two-native-controls-20260911/forbidden-pickup-witness.json", "sha256": "d495feec57d42afda0b20a593988833162938d9b5488af0e8de486842781337b", "role": "forbidden-pickup bounded witness"},
+    {"path": ".userdata/harness-npc-llm-coverage/harness_runs/20260911_004650_da31d81a3ed04c3c8c96bc33b76363f0/operate_r037_forbidden_pickup.cockpit.live.final.json", "sha256": "36e251b24257c452d12fbb021e7013c0cb35733a04887861b502992edbf2909d", "role": "forbidden-pickup sealed final artifact"},
+    {"path": "build_logs/r037-two-native-controls-20260911/stale-target-journal.json", "sha256": "b5397cc3deef55f50caa026a6c2f5430d9c9ea56a1360019d8b32de7cf28da9f", "role": "initial stale-target focused evidence journal"},
+    {"path": "build_logs/r037-two-native-controls-20260911/stale-target-witness.json", "sha256": "048a1593f2d4a9d8c4e1cf71bd72896332dacb371f29bb58dd01bca6d750df45", "role": "initial stale-target witness"},
+    {"path": ".userdata/harness-npc-llm-coverage-combat/harness_runs/20260911_005534_16b847b5fa1849f1b7eb541b6a6f6b9d/operate_r037_stale_target.cockpit.live.final.json", "sha256": "6a3b045bf37ac7cda3f2bc81b1159ba600fb1ad530dd2ac37b395afbc4058c4c", "role": "initial stale-target sealed final artifact"},
+    {"path": "build_logs/r037-two-native-controls-20260911/stale-target-revision-witness.json", "sha256": "1207d803dab6fe98a442bf17de8efa93fe93c7158fbe649fdb3293e0756f12ab", "role": "nonambient stale-target revision witness"},
+    {"path": ".userdata/harness-npc-llm-coverage-combat/harness_runs/20260911_005943_657956f72530446482c2bcead3936a69/operate_r037_stale_target.cockpit.live.final.json", "sha256": "5fd3791ceb4f5ae06d18e4d8234b2805f1ae5848340b9b5c8e8965edb26bf097", "role": "nonambient stale-target sealed final artifact"},
+    {"path": ".de67/task-logs/r037-two-native-controls-004-exact-pid-cleanup-verification.json", "sha256": "022c4763f5abee8dd8e59f449c29a4bd37eae7f95cc7ffaa502c6b63d01771c9", "role": "exact game bridge controller cleanup verification"}
+  ],
+  "first_divergence": {"class": "missing_attributable_native_consequence", "summary": "Forbidden pickup lacks a run-bound action-status receipt after selection and bounded waiting; stale target lacks the fixture actor in its first native World observation before E4B input."},
+  "accepted_no_replay": [
+    "Preserve all three sealed control routes and their cleanup evidence.",
+    "Do not replay forbidden pickup or either stale-target route; any future work begins at the distinct fixture materialization or first-frame-observation boundary."
+  ],
+  "active_work": [],
+  "first_open_boundary": "",
+  "narrow_queries": ["forbidden-pickup J0149 action-status receipt", "stale-target fixture materialization before first native World frame", "active_monsters_near_player setup-to-observation correlation"],
+  "entrypoints": ["tools/openclaw_harness/scenarios/r037.npc_llm_command_forbidden_pickup_v001_mcw.json", "tools/openclaw_harness/scenarios/r037.npc_llm_command_stale_target_v001_mcw.json", ".de67/task-logs/r037-source-bound-coverage-manifest-001.json"],
+  "context_metrics": {"settled_runs": 3, "verified_absent_pids": 9}
+}

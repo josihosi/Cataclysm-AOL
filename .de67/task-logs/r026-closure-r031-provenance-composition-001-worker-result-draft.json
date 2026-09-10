@@ -1,0 +1,81 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-026-closure-r031-provenance-composition-001",
+  "worker_id": "01a08849-b875-7e60-8860-724c9e627ad3",
+  "disposition": "completed",
+  "claim_id": "R-026",
+  "closure_gap_id": "R026-r031-owner-dependent-provenance",
+  "closure_gap_revision": 3,
+  "verdict": "r031_provenance_composed_at_owner_accepted_bounded_ceiling",
+  "summary": "The current R-026 package map and ledger now compose accepted R-031 living behavior, ambient/camp-craft and continuity evidence. Josef's delegated low-importance decision is recorded: accept established camp-craft gameplay while retaining the unavailable historical source-binding-file bytes as an explicit ceiling.",
+  "evidence_ceiling": [
+    "R-031 receipts remain at their independent behavioral ceilings: living behavior/relationships, one ambient recipient and reply, eligible resident routing with three bandages, and continuity across the tested reload boundary.",
+    "Historical expected source-binding SHA ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50 was not recovered; the preserved legacy artifact is SHA 785edad70809f8dfbe5c5b67fb491f68b96d370872764b33ff32a41f781fd72. This is accepted limitation, not recovered provenance.",
+    "OCR, rendered text, terminal bytes, fixture/debug setup and accepted input receive no gameplay credit. No replay, fabrication, build, behavior change or R-037 evidence was used.",
+    "The focused R-026 run's blocked_terminal_save_quit_receipt_missing remains local to that run; R-034 persistence remains independently bound."
+  ],
+  "bindings": {
+    "package_guide_sha256": "c2aea2f97e42a5a466e8821783bf28532656fe2da3ea703232855c9493deed26",
+    "ledger_sha256": "013f16fcc8fae78bcfb5dd4d88ca2ca63707f16d313c5d67bc52190d1cb3b42b",
+    "r031_acceptance_receipt": "e263e29eb238704de3345c8babad9ff9a6b821166bfe3144c9c0f30bc83f9305",
+    "r031_provenance_disposition_receipt": "33656681a25465607762bc4efcf348ecd0dea6ff183a2a85888b673604254944",
+    "r031_future_overwrite_receipt": "c40bac408aa579d701ea7097a549a0d763b405aec51f70e87467de93a61af331",
+    "r031_continuity_receipt": "809b8cb208f6049b14532df881d0bc7b38819fe5d5d8d27bd3376624b901c332",
+    "r031_ambient_receipt": "3cdc4dcba99f742d7b2f5f57f2135cd5bfb5b13a033f7eae68013484ef94b3e0",
+    "r031_camp_craft_receipt": "34681646df11e45a133cb3eee507287f23719021b376dec2f2142bc6aee3189e",
+    "historical_expected_sha256": "ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50",
+    "observed_legacy_sha256": "785edad70809f8dfbe5c5b67fb491f68b96d370872764b33ff32a41f781fd72"
+  },
+  "artifacts": [
+    {
+      "path": "tools/openclaw_harness/R026_PACKAGE_GUIDE.md",
+      "sha256": "c2aea2f97e42a5a466e8821783bf28532656fe2da3ea703232855c9493deed26",
+      "role": "Updated R-026 package evidence map with accepted R-031 provenance ceiling and R-037 downstream boundary."
+    },
+    {
+      "path": ".de67/work-ledger.md",
+      "sha256": "013f16fcc8fae78bcfb5dd4d88ca2ca63707f16d313c5d67bc52190d1cb3b42b",
+      "role": "Updated R-026/R-031 ledger projection recording finite composition closure."
+    },
+    {
+      "path": ".de67/state/r031-closure-provenance-acceptance-006-worker-receipt.json",
+      "sha256": "39c2c5b72237d7df1d943f0b2ee46b6b7d87a75aec305ffc6e0ae432ac0291b0",
+      "role": "Prior task-scoped owner-acceptance receipt; exact disposition binding is also retrieved from SQLite receipt 33656681..."
+    }
+  ],
+  "journal_entries": [],
+  "tests": [
+    "Exact work_context receipt retrieval verified R-031 acceptance and all six named supporting receipt identities.",
+    "Updated package guide and ledger hashes recomputed after the narrow composition edits.",
+    "git diff --check passed."
+  ],
+  "live_actions": [],
+  "material_changes": [
+    "Updated only tools/openclaw_harness/R026_PACKAGE_GUIDE.md and .de67/work-ledger.md for this finite composition.",
+    "No product or harness behavior changed."
+  ],
+  "accepted_no_replay": [
+    "Do not replay camp crafting solely for provenance.",
+    "Do not fabricate or imply recovery of the unavailable historical source-binding bytes.",
+    "Do not use R-037 as evidence for this R-031 composition gap or accept whole R-026."
+  ],
+  "outcome": "Close R026-r031-owner-dependent-provenance revision 3 by composing owner-accepted R-031 evidence into the current R-026 package map.",
+  "first_divergence": null,
+  "first_open_boundary": "R-037 command coverage remains the independent downstream blocker to whole-package R-026 acceptance; the R-031 provenance decision wait is closed while the missing historical bytes remain an explicit ceiling.",
+  "entrypoints": [
+    "tools/openclaw_harness/R026_PACKAGE_GUIDE.md",
+    ".de67/work-ledger.md",
+    ".de67/state/r031-closure-provenance-acceptance-006-worker-receipt.json"
+  ],
+  "narrow_queries": [
+    "work_context.py --receipt 33656681a25465607762bc4efcf348ecd0dea6ff183a2a85888b673604254944 --full",
+    "work_context.py --receipt e263e29eb238704de3345c8babad9ff9a6b821166bfe3144c9c0f30bc83f9305 --full"
+  ],
+  "active_work": [
+    "R-037 command coverage remains separate downstream work."
+  ],
+  "runtime": {
+    "owned_runtime_launched": false,
+    "owned_runtime_cleanup": "not_applicable; no game, bridge, runner or helper was launched by this worker"
+  }
+}

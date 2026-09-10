@@ -1,0 +1,102 @@
+{
+  "schema": "caol-playtest-witness-bundle-v1",
+  "claims": [
+    {
+      "claim_id": "exact-target-ranged-ammunition",
+      "statement": {
+        "verdict": "proved",
+        "smallest_supported_claim": "Katharina's local E4B response resolved the currently visible zombie dog and produced a native ranged consequence: her loaded six-shooter ammunition decreased from six to four rounds.",
+        "causal_account": "The bound run first identifies the armed ally and the visible fixture dog. It records the accepted natural speech request, E4B's equip_gun|attack=c response, native target resolution and attack execution, and the later native inspection of the same six-shooter magazine with four remaining rounds.",
+        "citations": [
+          {
+            "citation_id": "J0001",
+            "meaning": "Binds the conclusion to the current source/executable, combat scenario, run, and cockpit binding."
+          },
+          {
+            "citation_id": "J0003",
+            "meaning": "Native inspection identifies Katharina, her wielded six-shooter, and its initially loaded six .38 Special rounds."
+          },
+          {
+            "citation_id": "J0007",
+            "meaning": "World observation identifies the current hostile zombie dog and Katharina before the request."
+          },
+          {
+            "citation_id": "J0014",
+            "meaning": "Records accepted submission of the natural request to use the six-shooter against the zombie dog."
+          },
+          {
+            "citation_id": "J0019",
+            "meaning": "World observation surfaces E4B equip_gun|attack=c, native target resolution to the zombie dog, attack execution/completion, and two bang messages."
+          },
+          {
+            "citation_id": "J0022",
+            "meaning": "Post-action native NPC inspection records the same six-shooter magazine with four .38 Special rounds remaining."
+          }
+        ],
+        "contradictions": [],
+        "remaining_unknowns": [
+          "The cited result proves ammunition expenditure and target resolution, not a specific dog damage amount."
+        ],
+        "recommended_disposition": "continue",
+        "evidence_ceiling": "focused"
+      }
+    },
+    {
+      "claim_id": "natural-target-visibility-transition",
+      "statement": {
+        "verdict": "proved",
+        "smallest_supported_claim": "After the exact-target case, an eight-step native westward movement created a real observation change in which the previously visible zombie dog was absent from the visible-entities list; no direct target mutation was used.",
+        "causal_account": "The dog is visible before the movement. The collected native movement chain reaches the declared westward destination after eight real map-square steps, and its terminal World observation contains only the two NPCs rather than the dog. The terminal reason separately records no debug intervention and no target-missing conclusion.",
+        "citations": [
+          {
+            "citation_id": "J0007",
+            "meaning": "Before movement, the World observation includes the staged zombie dog with its exact identity and position."
+          },
+          {
+            "citation_id": "J0031",
+            "meaning": "Records the first accepted native westward movement action of the bounded movement chain."
+          },
+          {
+            "citation_id": "J0051",
+            "meaning": "Terminal movement observation records the avatar at the westward destination and visible entities containing Katharina and Robbie but no zombie dog."
+          }
+        ],
+        "contradictions": [],
+        "remaining_unknowns": [
+          "This transition alone does not prove that the dog died, left the reality bubble, or was otherwise removed from the broader world."
+        ],
+        "recommended_disposition": "continue",
+        "evidence_ceiling": "focused"
+      }
+    },
+    {
+      "claim_id": "stale-target-native-disposition",
+      "statement": {
+        "verdict": "inconclusive",
+        "smallest_supported_claim": "The run observed a natural target-visibility transition after the exact-target sequence, but did not observe an explicit native target-missing or expired disposition.",
+        "causal_account": "The target's absence follows bounded native movement, but the next native turn supplied no target-missing outcome. The journal terminal records this limit explicitly; it does not promote absence from the local visible list into a stale-target result.",
+        "citations": [
+          {
+            "citation_id": "J0051",
+            "meaning": "Records the natural movement result and target's absence from the terminal visible-entities observation."
+          },
+          {
+            "citation_id": "J0055",
+            "meaning": "Records the subsequent accepted native pause after the visibility transition."
+          },
+          {
+            "citation_id": "J0057",
+            "meaning": "Terminal journal reason explicitly limits the result to a visibility transition and states that no target-missing disposition was observed."
+          }
+        ],
+        "contradictions": [],
+        "remaining_unknowns": [
+          "A separate same-run or future scenario observation would be needed to establish source-defined attack.target_missing or expiry behavior."
+        ],
+        "recommended_disposition": "continue",
+        "evidence_ceiling": "focused"
+      }
+    }
+  ],
+  "findings": []
+}

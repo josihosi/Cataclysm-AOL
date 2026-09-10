@@ -1,0 +1,108 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-037-local-llm-command-coverage-002",
+  "claim_id": "R-037",
+  "worker_id": "01a08ce7-2f93-7263-9c96-547779b446bd",
+  "worker_request_id": "6e959072c53843de83e6d9433d0d8d0a",
+  "disposition": "finding",
+  "finding_kind": "blocker",
+  "verdict": "terminal_blocker_safe_api_provisioning_and_authorized_native_route_required",
+  "outcome": "The current task is terminally blocked, not completed: the mandatory same-case OpenAI gpt-4.1-mini controls cannot start because the isolated child-only secure Keychain provisioner reports OPENAI_API_KEY missing before a descriptor exists, without exposing or accessing a credential. The final forbidden-pickup and two stale-target controls are sealed focused evidence with their first missing native links preserved; no independent route remains authorized under this assignment. All owned game, bridge, and controller PIDs are absent and each final artifact retains native_exit_credit=false.",
+  "summary": "This finding relates the prior R-037 continuation receipt 009 to the final three-control receipt 004. It preserves the safe credential boundary, the forbidden-pickup missing action-status consequence, and both stale-target first-frame absences. Further qualification needs either a safely owner-provided API credential and separately authorized fixture/materialization/native-consequence work, or a Phase-2 outcome revision. No replay or mutation was performed.",
+  "material_changes": [
+    "Created a separate terminal blocker finding; it does not relabel the supporting focused evidence as completed feature proof.",
+    "Retained the 009 continuation relationship, final three-control evidence, and exact cleanup ceiling."
+  ],
+  "tests": [
+    "The supporting three-control receipt was normalized by worker_receipt.py against the current durable task/worker binding.",
+    "Exact OS process query recorded all nine owned game, bridge, and controller PIDs absent.",
+    "This finding is to be normalized by worker_receipt.py against the same durable task/worker binding."
+  ],
+  "live_actions": [
+    "No gameplay replay, fixture change, product change, credential inspection, or external API attempt occurred.",
+    "The finding only consolidates sealed evidence and the current authorized-work boundary."
+  ],
+  "evidence_ceiling": [
+    "The API control boundary establishes safe provisioning unavailability, not an API model result.",
+    "The three final controls are focused and inconclusive at their first missing native consequence; they do not establish the requested forbidden-pickup or stale-target dispositions.",
+    "All cleanup is verified process absence after harness SIGTERM cleanup; native_exit_credit remains false for every final control."
+  ],
+  "bindings": {
+    "current_worker_request_id": "6e959072c53843de83e6d9433d0d8d0a",
+    "continuation_receipt_009_sha256": "4552908e9a1e82a35eaf348b52b6768c1e35976c6cc84d02b745137762075127",
+    "three_control_receipt_004_id": "76eeddd1c28af37f29e3a1d78932ab6f1785a5f6ac660399f1ef385230bab25d",
+    "three_control_receipt_004_sha256": "87b76120de229d256aab56c3bfcd30bf95a9c5cc53cc419aa7ae8ef5e695807c",
+    "forbidden_pickup_run_id": "909779c95ad19bca401286e872db7eab36abf0b09b6e398332b437f185947239",
+    "initial_stale_target_run_id": "bab0c540730c716c92c4959a4091a7b785834dc9e0cba1e39662be504569f742",
+    "revised_stale_target_run_id": "c2c04bed5f6ccd748ca94ab17551d2a49b5cc6fafa4f24a56fffb769d3149f8c"
+  },
+  "journal_entries": [
+    {
+      "id": "continuation-009-api-boundary",
+      "sequence": "continuation",
+      "event_type": "safe_api_provisioning_boundary",
+      "evidence_class": "runtime",
+      "artifact_ref": ".de67/task-logs/r037-local-llm-command-coverage-009-worker-receipt.json",
+      "summary": "The isolated child-only Keychain provisioner reported OPENAI_API_KEY missing before descriptor emission; no credential was accessed, copied, reused, or recorded."
+    },
+    {
+      "id": "forbidden-J0149",
+      "sequence": 149,
+      "event_type": "terminal_missing_consequence",
+      "evidence_class": "native",
+      "artifact_ref": ".de67/task-logs/r037-two-native-controls-004-consolidated-receipt.json",
+      "summary": "After native prompt submission, E4B selection, and a bounded native minute, no run-bound item-action receipt proves the forbidden-pickup consequence."
+    },
+    {
+      "id": "stale-initial-J0002",
+      "sequence": 2,
+      "event_type": "first_native_world_observation",
+      "evidence_class": "native",
+      "artifact_ref": ".de67/task-logs/r037-two-native-controls-004-consolidated-receipt.json",
+      "summary": "The initial stale-target run had no fixture monster in its first native World observation before E4B input."
+    },
+    {
+      "id": "stale-revised-J0002",
+      "sequence": 2,
+      "event_type": "first_native_world_observation",
+      "evidence_class": "native",
+      "artifact_ref": ".de67/task-logs/r037-two-native-controls-004-consolidated-receipt.json",
+      "summary": "The nonambient fixture revision repeated the first-frame absence, so it did not authorize an ungrounded attack request."
+    },
+    {
+      "id": "cleanup-exact-pids",
+      "sequence": "post-terminal",
+      "event_type": "os_process_absence",
+      "evidence_class": "os",
+      "artifact_ref": ".de67/task-logs/r037-two-native-controls-004-exact-pid-cleanup-verification.json",
+      "summary": "PIDs 36781/36739/36740, 38556/38505/38506, and 39433/39382/39384 were all absent; each corresponding final artifact has native_exit_credit=false."
+    }
+  ],
+  "artifacts": [
+    {"path": ".de67/task-logs/r037-local-llm-command-coverage-009-worker-receipt.json", "sha256": "4552908e9a1e82a35eaf348b52b6768c1e35976c6cc84d02b745137762075127", "role": "continuation receipt establishing the safe API provisioning boundary"},
+    {"path": ".de67/task-logs/r037-two-native-controls-004-consolidated-receipt.json", "sha256": "87b76120de229d256aab56c3bfcd30bf95a9c5cc53cc419aa7ae8ef5e695807c", "role": "validated final three-control evidence receipt"},
+    {"path": ".de67/task-logs/r037-two-native-controls-004-exact-pid-cleanup-verification.json", "sha256": "022c4763f5abee8dd8e59f449c29a4bd37eae7f95cc7ffaa502c6b63d01771c9", "role": "all final game bridge controller cleanup limits"}
+  ],
+  "first_divergence": {
+    "class": "authorized_route_exhausted",
+    "summary": "Safe API provisioning stops before an API descriptor, while the remaining final native controls stop at missing run-bound consequences; no further independent route is authorized by this assignment."
+  },
+  "accepted_no_replay": [
+    "Do not replay the API attempt, forbidden-pickup control, or either stale-target control from this task.",
+    "Preserve the sealed three-control evidence and exact cleanup verification as the terminal boundary."
+  ],
+  "active_work": [],
+  "first_open_boundary": "A safe owner-provided OPENAI_API_KEY path plus separately authorized fixture/materialization/native-consequence work is required to continue; alternatively, a Phase-2 outcome revision can change the contract. Neither route is authorized by the current assignment.",
+  "narrow_queries": [
+    "safe owner-provided API credential provisioning contract",
+    "separately authorized stale-target fixture materialization and first-frame observation repair",
+    "separately authorized forbidden-pickup run-bound action-status observation repair"
+  ],
+  "entrypoints": [
+    ".de67/task-logs/r037-local-llm-command-coverage-009-worker-receipt.json",
+    ".de67/task-logs/r037-two-native-controls-004-consolidated-receipt.json",
+    ".de67/task-logs/r037-two-native-controls-004-exact-pid-cleanup-verification.json"
+  ],
+  "context_metrics": {"terminal_control_runs": 3, "verified_absent_pids": 9, "new_gameplay_actions": 0}
+}
