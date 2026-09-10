@@ -13,6 +13,8 @@ Use `rg --files` with a filename clue to locate unknown source, or `rg -n -F` fo
 Read the enclosing function or section after locating it. Search generated output separately from
 source and select the relevant run/session/artifact first. When output is truncated, narrow the
 query or extract the required fields rather than increasing the dump.
+Combine `rg` queries over the same targeted files, and retain and poll returned session IDs until
+the searches finish or stop them before launching replacements.
 
 ## Structured evidence and handoff
 
