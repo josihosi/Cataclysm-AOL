@@ -501,15 +501,18 @@ class CockpitRunChannel:
     def _stop(self, reason: str, detail: Mapping[str, Any]) -> Dict[str, Any]:
         if self._final_report is not None:
             return self._final_report
-        # A declared saved-world continuation is meaningful only after the
-        # native save-and-quit owner has actually been used.  Surface that
-        # run-owned fact for the bridge rather than making every finish a
-        # speculative reentry attempt.
-        declared_reentry_ready = any(
+        # A declared saved-world continuation needs both the native save
+        # receipt and an actual exit of the bound native process.  Returning
+        # to the main menu is not process replacement: advertising reentry
+        # there made the bridge attempt to replace a still-running game.
+        saved_world = any(
             entry.get("kind") == "action" and entry.get("action_id") == "world.save_quit"
             for entry in self._transcript
             if isinstance(entry, Mapping)
         )
+        process = self._read_process_state() if self._read_process_state is not None else {}
+        declared_reentry_ready = saved_world and isinstance(process, Mapping) and \
+            process.get("alive") is False
         report: Dict[str, Any] = {
             "schema": "caol-cockpit-live-final-v1",
             "run_id": self._run_id,

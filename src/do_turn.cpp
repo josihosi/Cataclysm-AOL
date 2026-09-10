@@ -2577,6 +2577,58 @@ bool materialize_committed_cannibal_raid( bandit_live_world::site_record &site )
     } );
 }
 
+bool active_local_contact_member( const bandit_live_world::site_record &site,
+                                  const character_id member_id,
+                                  const shared_ptr_fast<npc> &member_npc )
+{
+    const bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    if( member_npc == nullptr || site.retired_empty_site || outing == nullptr ||
+        outing->owner != bandit_live_world::simulation_owner::local ||
+        std::find( outing->member_ids.begin(), outing->member_ids.end(), member_id ) ==
+        outing->member_ids.end() ) {
+        return false;
+    }
+    const bandit_live_world::member_record *member = site.find_member( member_id );
+    if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ||
+        member_npc->is_dead() || overmap_buffer.find_npc( member_id ) != member_npc ) {
+        return false;
+    }
+
+    map &here = get_map();
+    if( !member_npc->is_active() || !here.inbounds( member_npc->pos_bub( here ) ) ) {
+        return false;
+    }
+    // all_npcs is the active tracker view.  Count the exact object rather than
+    // accepting an ID lookup, which can resolve an inactive overmap record.
+    int tracker_entries = 0;
+    for( npc &active_npc : g->all_npcs() ) {
+        if( &active_npc == member_npc.get() ) {
+            ++tracker_entries;
+        }
+    }
+    return tracker_entries == 1;
+}
+
+bool active_committed_bandit_shakedown_member( const bandit_live_world::site_record &site,
+        const character_id member_id, const shared_ptr_fast<npc> &member_npc )
+{
+    const bandit_live_world::active_outing_state *outing = site.active_external_outing();
+    return outing == &site.active_hostile_operation.reservation &&
+           site.active_hostile_operation.is_active() &&
+           site.active_hostile_operation.operation_kind ==
+           bandit_live_world::hostile_operation_kind::shakedown &&
+           site.active_hostile_operation.phase ==
+           bandit_live_world::hostile_operation_phase::committed_contact &&
+           active_local_contact_member( site, member_id, member_npc );
+}
+
+bool active_committed_bandit_shakedown_member( const bandit_live_world::site_record &site,
+        const character_id member_id )
+{
+    return active_committed_bandit_shakedown_member( site, member_id,
+            overmap_buffer.find_npc( member_id ) );
+}
+
 bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &site )
 {
     bandit_live_world::active_outing_state *outing = site.active_external_outing();
@@ -2615,6 +2667,14 @@ bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &sit
 
     map &here = get_map();
     const tripoint_bub_ms avatar_pos = get_avatar().pos_bub( here );
+    // Admission owns a *loaded* local scene.  A test or map transition can
+    // temporarily leave the avatar coordinate rebased against a different
+    // bubble; placing persistent NPCs into that map would strand them at an
+    // unrelated absolute location.  Leave the committed reservation intact
+    // until the player and the loaded map agree.
+    if( here.get_abs( avatar_pos ) != get_avatar().pos_abs() ) {
+        return reject( "avatar_not_in_loaded_map", "avatar_map_coordinates_mismatch" );
+    }
     std::vector<shared_ptr_fast<npc>> party;
     party.reserve( outing->member_ids.size() );
     for( std::size_t member_index = 0; member_index < outing->member_ids.size(); ++member_index ) {
@@ -2633,10 +2693,24 @@ bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &sit
         if( member_npc->is_dead() ) {
             return reject( "member_dead", "member_index=" + std::to_string( member_index ) );
         }
-        if( member_npc->is_active() ) {
-            return reject( "member_already_active", "member_index=" + std::to_string( member_index ) );
-        }
         party.push_back( member_npc );
+    }
+
+    const bool any_active = std::any_of( party.begin(), party.end(), []( const shared_ptr_fast<npc> & member ) {
+        return member->is_active();
+    } );
+    if( any_active ) {
+        const bool complete_admission = std::all_of( outing->member_ids.begin(), outing->member_ids.end(),
+        [&site]( const character_id member_id ) {
+            return active_committed_bandit_shakedown_member( site, member_id );
+        } );
+        if( complete_admission ) {
+            // An already admitted party retains its local posture and receives
+            // neither a second placement nor an attitude reset.
+            return true;
+        }
+        return reject( "partial_or_invalid_existing_admission",
+                       "party_size=" + std::to_string( party.size() ) );
     }
 
     std::vector<tripoint_bub_ms> placements;
@@ -2657,10 +2731,48 @@ bool materialize_committed_bandit_shakedown( bandit_live_world::site_record &sit
     }
 
     for( std::size_t index = 0; index < party.size(); ++index ) {
-        party[index]->set_attitude( NPCATT_NULL );
         party[index]->setpos( here, placements[index] );
     }
+    // setpos only relocates the persistent NPC.  The canonical loader owns
+    // tracker insertion and on_load; invoke it once after the whole party has
+    // passed placement validation so one member cannot affect another's slot.
+    // on_load may restore a template's faction-derived hostile attitude, so
+    // establish the pre-dialogue neutral posture only after that canonical
+    // lifecycle hook has completed.
+    g->load_npcs();
+    for( const shared_ptr_fast<npc> &member_npc : party ) {
+        member_npc->set_attitude( NPCATT_NULL );
+    }
+    const bool complete_admission = std::all_of( outing->member_ids.begin(), outing->member_ids.end(),
+    [&site]( const character_id member_id ) {
+        return active_committed_bandit_shakedown_member( site, member_id );
+    } );
+    if( !complete_admission ) {
+        return reject( "canonical_admission_incomplete",
+                       "party_size=" + std::to_string( party.size() ) );
+    }
     return true;
+}
+
+bool materialize_live_bandit_committed_shakedown_contacts()
+{
+    bool changed = false;
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    for( bandit_live_world::site_record &site : state.sites ) {
+        bandit_live_world::active_outing_state *outing = site.active_external_outing();
+        if( site.retired_empty_site || outing == nullptr ||
+            outing != &site.active_hostile_operation.reservation ||
+            !site.active_hostile_operation.is_active() ||
+            site.active_hostile_operation.operation_kind !=
+            bandit_live_world::hostile_operation_kind::shakedown ||
+            site.active_hostile_operation.phase !=
+            bandit_live_world::hostile_operation_phase::committed_contact ||
+            outing->owner != bandit_live_world::simulation_owner::local ) {
+            continue;
+        }
+        changed |= materialize_committed_bandit_shakedown( site );
+    }
+    return changed;
 }
 
 bool live_bandit_reconcile_hostile_shakedown_combat( bandit_live_world::site_record &site )
@@ -2686,8 +2798,13 @@ bool live_bandit_reconcile_hostile_shakedown_combat( bandit_live_world::site_rec
         if( reservation.member_is_resolved( member_id ) ) {
             continue;
         }
-        npc *member_npc = g->find_npc( member_id );
-        if( member_npc != nullptr && member_npc->is_dead() ) {
+        const shared_ptr_fast<npc> member_npc = overmap_buffer.find_npc( member_id );
+        // A combat death is normally removed from both native NPC indexes by
+        // cleanup_dead before the minute-bound aftermath pass gets to inspect
+        // it.  At this exact local, player-selected Fight boundary a missing
+        // unresolved member is therefore the native death observation; normal
+        // outbound/missing-member handling remains outside this branch.
+        if( member_npc == nullptr || member_npc->is_dead() ) {
             dead_member_ids.push_back( member_id );
         }
     }
@@ -2863,11 +2980,23 @@ bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_recor
         return false;
     }
 
+    // Once a parley has been released into combat, its already-admitted
+    // members must be reconciled before admission validation.  A casualty is
+    // expected in this state and must not turn a recoverable aftermath into a
+    // placement failure.
+    if( !site.last_shakedown_outcome.empty() ) {
+        return live_bandit_reconcile_hostile_shakedown_combat( site );
+    }
+    if( !materialize_committed_bandit_shakedown( site ) ) {
+        return false;
+    }
+
     if( site.last_shakedown_outcome.empty() ) {
         const bool player_attack_escalated = std::any_of(
-                outing->member_ids.begin(), outing->member_ids.end(), []( const character_id member_id ) {
-            const npc *member_npc = g->find_npc( member_id );
-            return member_npc != nullptr && member_npc->get_attitude() == NPCATT_KILL;
+                outing->member_ids.begin(), outing->member_ids.end(), [&site]( const character_id member_id ) {
+            const shared_ptr_fast<npc> member_npc = overmap_buffer.find_npc( member_id );
+            return active_committed_bandit_shakedown_member( site, member_id, member_npc ) &&
+                   member_npc->get_attitude() == NPCATT_KILL;
         } );
         if( player_attack_escalated ) {
             const std::optional<bandit_live_world::simulation_advance_cursor> cursor =
@@ -2882,17 +3011,13 @@ bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_recor
     if( outing == nullptr || outing != &site.active_hostile_operation.reservation ) {
         return false;
     }
-    materialize_committed_bandit_shakedown( site );
     if( live_bandit_reconcile_hostile_shakedown_combat( site ) ) {
         return true;
     }
 
     const bool has_loaded_local_contact = std::any_of(
             outing->member_ids.begin(), outing->member_ids.end(), [&site]( const character_id member_id ) {
-        const bandit_live_world::member_record *member = site.find_member( member_id );
-        npc *member_npc = g->find_npc( member_id );
-        return member != nullptr && member->state == bandit_live_world::member_state::local_contact &&
-               member_npc != nullptr && !member_npc->is_dead();
+        return active_committed_bandit_shakedown_member( site, member_id );
     } );
     if( !has_loaded_local_contact ) {
         return false;
@@ -2910,7 +3035,8 @@ bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_recor
             if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ) {
                 continue;
             }
-            if( npc *member_npc = g->find_npc( member_id ) ) {
+            const shared_ptr_fast<npc> member_npc = overmap_buffer.find_npc( member_id );
+            if( active_committed_bandit_shakedown_member( site, member_id, member_npc ) ) {
                 changed |= live_bandit_try_fight_advance( *member_npc, site, gate_input,
                            gate_decision );
             }
@@ -2967,8 +3093,8 @@ bool note_live_bandit_local_turn_sight_avoid()
             if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ) {
                 continue;
             }
-            npc *member_npc = g->find_npc( member_id );
-            if( member_npc != nullptr && !member_npc->is_dead() ) {
+            if( active_local_contact_member( site, member_id,
+                                             overmap_buffer.find_npc( member_id ) ) ) {
                 has_loaded_local_contact_member = true;
                 break;
             }
@@ -2992,7 +3118,8 @@ bool note_live_bandit_local_turn_sight_avoid()
                 if( member == nullptr || member->state != bandit_live_world::member_state::local_contact ) {
                     continue;
                 }
-                if( npc *member_npc = g->find_npc( member_id ) ) {
+                const shared_ptr_fast<npc> member_npc = overmap_buffer.find_npc( member_id );
+                if( active_local_contact_member( site, member_id, member_npc ) ) {
                     changed |= live_bandit_try_fight_advance( *member_npc, site, gate_input,
                                gate_decision );
                 }
@@ -11386,6 +11513,11 @@ void overmap_npc_move()
     }
     advance_live_bandit_hostile_rallies();
     advance_live_bandit_hostile_approaches();
+    // The approach owner can commit contact in this overmap pass, after the
+    // normal aftermath pass above has already inspected it.  Admit the exact
+    // local party now, but leave parley/combat progression to its regular
+    // aftermath owner on a later player turn.
+    materialize_live_bandit_committed_shakedown_contacts();
     advance_live_bandit_hostile_returns();
     materialize_live_bandit_structural_handoffs();
     // A retained non-canonical resume is a single two-member admission boundary while that
@@ -11430,6 +11562,7 @@ void overmap_npc_move()
     }
     const auto dispatch_done = std::chrono::steady_clock::now();
     std::set<character_id> hostile_approach_member_ids;
+    std::set<character_id> committed_local_hostile_member_ids;
     for( const bandit_live_world::site_record &site : bandit_state.sites ) {
         const bandit_live_world::hostile_operation_state &operation =
             site.active_hostile_operation;
@@ -11439,6 +11572,17 @@ void overmap_npc_move()
             reservation.owner == bandit_live_world::simulation_owner::abstract ) {
             hostile_approach_member_ids.insert( reservation.member_ids.begin(),
                                                 reservation.member_ids.end() );
+        }
+        // Tactical committed contact owns these exact reservation members.  Do
+        // not erase an inherited strategic order: the authoritative return or
+        // terminal handoff will consume it.  This only prevents the generic
+        // travel motor from advancing it while local admission/stalking/combat
+        // owns the actor.
+        if( !site.retired_empty_site && operation.is_active() &&
+            operation.phase == bandit_live_world::hostile_operation_phase::committed_contact &&
+            reservation.owner == bandit_live_world::simulation_owner::local ) {
+            committed_local_hostile_member_ids.insert( reservation.member_ids.begin(),
+                                                        reservation.member_ids.end() );
         }
     }
     const std::set<character_id> local_pair_homeward_member_ids =
@@ -11599,6 +11743,9 @@ void overmap_npc_move()
             continue;
         }
         if( hostile_approach_member_ids.count( npc_to_add->getID() ) > 0 ) {
+            continue;
+        }
+        if( committed_local_hostile_member_ids.count( npc_to_add->getID() ) > 0 ) {
             continue;
         }
         const auto assembly_order = local_pair_assembly_orders.find( npc_to_add->getID() );
@@ -12212,6 +12359,11 @@ void process_overmap_npc_move_for_test()
     overmap_npc_move();
 }
 
+bool materialize_committed_bandit_shakedown_for_test( bandit_live_world::site_record &site )
+{
+    return materialize_committed_bandit_shakedown( site );
+}
+
 bool complete_live_bandit_homeward_boundary_for_test()
 {
     bandit_live_world::world_state &state =
@@ -12551,7 +12703,11 @@ bool game::do_turn()
     // process monster and npc turn
     monmove();
     note_live_bandit_local_turn_sight_avoid();
-    if( calendar::once_every( time_between_npc_OM_moves ) ) {
+    // A player-created gunshot/alarm/explosion can happen after the regular
+    // overmap cadence in this turn.  Run the same authoritative live-world
+    // adapter immediately while its bounded sound receipt is still pending;
+    // the normal cadence remains the owner for ordinary maintenance.
+    if( calendar::once_every( time_between_npc_OM_moves ) || sounds::has_significant_sounds() ) {
         overmap_npc_move();
     }
     m.furniture_terrain_emit_fields();

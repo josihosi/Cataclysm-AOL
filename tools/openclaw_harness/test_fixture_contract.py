@@ -5529,6 +5529,28 @@ class BanditCloneSiteTransformContractTest(unittest.TestCase):
 
 
 class BanditSchedulerResponseCandidateTransformContractTest(unittest.TestCase):
+    def test_candidate_normalization_preserves_the_canonical_lead_identity(self) -> None:
+        normalized = normalize_fixture_save_transforms(
+            [{
+                "kind": "bandit_scheduler_response_candidate",
+                "site_id": "camp",
+                "target_id": "player@146,51,0",
+                "target_omt": [146, 51, 0],
+                "target_lead_id": "r029-fixture-player-opportunity",
+                "member_ids": [4, 5],
+                "generation": 2,
+                "current_minutes": 8280,
+            }],
+            manifest_path=Path("fixture") / "manifest.json",
+        )
+
+        self.assertEqual(normalized[0]["target_lead_id"], "r029-fixture-player-opportunity")
+        with self.assertRaisesRegex(SystemExit, "target_lead_id is unsupported"):
+            normalize_fixture_save_transforms(
+                [{**normalized[0], "target_lead_id": "other-lead"}],
+                manifest_path=Path("fixture") / "manifest.json",
+            )
+
     def test_candidate_reopens_the_current_scheduler_hour_without_authoring_an_operation(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             world_dir = Path(temp_dir)

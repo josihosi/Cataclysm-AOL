@@ -1,0 +1,27 @@
+{
+  "outcome": "R-029: independently exercise the source-bound committed-contact refusal/Fight branch through attributable combat aftermath, surviving return, and save/process-reload continuity.",
+  "scenario": "tmp.bandit_committed_fight_aftermath_persistence_probe_2026-09-10",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.shakedown.fight_selection",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "visible"
+      },
+      {
+        "key": "capabilities.shakedown.terminal",
+        "minimum_evidence": "declared",
+        "op": "contains",
+        "value": "survivor_return"
+      },
+      {
+        "key": "capabilities.persistence",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "full_save_exit_relaunch_same_world"
+      }
+    ],
+    "preferences": []
+  }
+}

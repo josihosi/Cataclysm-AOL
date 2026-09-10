@@ -1,0 +1,133 @@
+{
+  "manifest_version": 2,
+  "name": "tmp.bandit_committed_fight_aftermath_persistence_probe_2026-09-10",
+  "description": "Disposable, source-bound R-029 probe. The installed save supplies only a scheduler-owned committed-contact candidate and ordinary zero-credit defensive equipment; native waits, player-selected Fight, live combat, casualty/return and save/process-reload observations must remain attributable to this run.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "bandit_r029_committed_shakedown_rm51_fixture_v1",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "config_profile": "dev-harness",
+  "run_class": "combat",
+  "observer_character": false,
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "capabilities": {
+    "capabilities.shakedown.fight_selection": "visible",
+    "capabilities.shakedown.terminal": ["responder_casualty", "survivor_return"],
+    "capabilities.persistence": "full_save_exit_relaunch_same_world",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r029.source_binding": "bandit_r029_committed_shakedown_rm51_fixture_v1:current-dev-source"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.observe", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_local_contact", "debug:inject_dispatch", "debug:inject_operation", "debug:inject_actor", "debug:inject_combat_outcome", "raw-save-rewrite-after-install", "fixture-state-as-proof", "ocr-credit"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "bandit_r029_committed_shakedown_rm51_fixture_v1",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_r029_committed_shakedown_rm51_fixture_v1",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "ocr": false,
+      "input": ["worker-owned live cockpit", "advertised native actions", "native save/reload"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/bandit_r029_committed_shakedown_rm51_fixture_v1/manifest.json",
+    "native_source": "src/do_turn.cpp",
+    "native_executable": "cataclysm-tiles"
+  },
+  "proof_gates": [
+    {
+      "id": "r029_committed_fight_bound",
+      "label": "R-029 committed-contact Fight receives a current source-bound live owner",
+      "boundary_step": "operate_committed_fight_aftermath",
+      "predecessors": [],
+      "expectations": [
+        {"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}
+      ],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    },
+    {
+      "id": "r029_committed_fight_persistence_bound",
+      "label": "R-029 committed-contact aftermath remains inspectable after native save and process replacement",
+      "boundary_step": "observe_reloaded_committed_aftermath",
+      "predecessors": ["r029_committed_fight_bound"],
+      "expectations": [
+        {"kind": "saved_artifact", "predicate": {"same_run": true, "artifact_hash_present": true, "continuity_fields": ["operation_id", "member_ids", "phase", "terminal_outcome"]}}
+      ],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    }
+  ],
+  "proof_route": {
+    "gates": ["r029_committed_fight_bound", "r029_committed_fight_persistence_bound"],
+    "terminal": ["r029_committed_fight_persistence_bound"],
+    "capability_gates": {
+      "capabilities.shakedown.fight_selection": {"interaction": ["r029_committed_fight_bound"]},
+      "capabilities.shakedown.terminal": {"persistence": ["r029_committed_fight_persistence_bound"]},
+      "capabilities.persistence": {"persistence": ["r029_committed_fight_persistence_bound"]},
+      "runtime.entry_mode": {"startup": ["r029_committed_fight_bound"]}
+    }
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_committed_fight_native_world",
+      "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_committed_fight_aftermath",
+      "objective": "Starting only from the zero-credit report/lead candidate and ordinary fixture-supplied defensive equipment, use advertised native waits to let the scheduler establish local committed contact. Choose only the currently advertised Fight action; preserve exact operation/member identities, canonical active-NPC admission, player attack/combat-forward consequence, casualty or terminal aftermath, surviving member return, and native save-and-quit/process-replacement receipts. At the persistence boundary, use the advertised main-menu Quit and confirmation after saving, then observe the exited owned process before finishing so the declared reload is not speculative. Do not infer proof from fixture state, rendered text, OCR, or transport acceptance.",
+      "proof_targets": ["exact operation and member identity", "player-selected Fight", "canonical active tracker admission", "attributable player attack/combat consequence", "casualty/terminal aftermath", "surviving return", "native save, process exit, and replacement", "cleanup identities"],
+      "authority": ["advertised native actions", "worker-chosen ordinary native waits", "native save-and-quit and main-menu Quit", "run.witness", "run.finish"],
+      "invariants": ["fixture installation is setup only", "no direct operation/contact/actor/combat mutation", "no OCR or rendered text as proof", "preserve stale inherited travel order evidence", "continue independent observations after one terminal member outcome"],
+      "live_operations": ["game.act", "game.wait", "game.raw_wait", "game.observe", "run.witness", "run.finish"],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "operate_committed_fight_aftermath",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "native_semantic_bootstrap",
+        "label": "observe_reloaded_committed_aftermath",
+        "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "inspect_reloaded_committed_aftermath",
+        "cleanup_on_finish": true,
+        "stop_after_live_session": true,
+        "objective": "From the declared fresh-process saved world only, inspect the committed-contact aftermath and finish after recording the reloaded native state. Do not recreate contact, combat, casualty, return, or persistence outcomes.",
+        "proof_targets": ["fresh bound native world", "saved aftermath state", "process-replacement identity", "cleanup identities"],
+        "authority": ["advertised native actions", "game.observe", "run.witness", "run.finish"],
+        "invariants": ["the native save/reload is the sole persistence acknowledgement", "no direct operation/contact/actor/combat mutation", "no OCR or rendered text as proof", "no replay of the finished combat route"],
+        "live_operations": ["game.observe", "run.witness", "run.finish"],
+        "transition_timeout_seconds": 30.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
+  "evidence_contract": {
+    "claim": "one current-source R-029 run reaches player-selected refusal/Fight from a zero-credit committed-contact candidate, observes active canonical member ownership and an attributable combat aftermath with survivor return, then retains the exact relevant state through native save, process exit and reload",
+    "fixture_binding": "bandit_r029_committed_shakedown_rm51_fixture_v1 supplies only a zero-credit report/lead/opportunity candidate and ordinary defensive equipment; it does not supply Fight, active member admission, player attack, combat outcome, casualty, return or persistence evidence",
+    "failure_rule": "missing exact operation/member identity, selected Fight, canonical active ownership, attributable combat consequence, terminal aftermath, survivor return, native save/process replacement, or reloaded state leaves that independent claim unproved"
+  }
+}

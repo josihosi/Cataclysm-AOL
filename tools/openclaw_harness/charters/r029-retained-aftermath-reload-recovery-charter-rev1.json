@@ -1,0 +1,28 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-029 reload recovery: inspect the already-native-saved committed-contact aftermath in one fresh no-fixture process and verify owned cleanup.",
+  "material_proof": "This run starts only the retained McWilliams dev-harness save with no fixture or profile installation. It must identify a fresh owned process and a fresh native World observation of the retained saved state, then record cleanup. It supplies persistence support only; earlier source-bound Fight, casualty, survivor-return, and save receipts remain accepted history and are not replayed.",
+  "current_uncertainty": "Whether the specific saved native aftermath retained by the failed declared-reentry lifecycle can be observed in a fresh current-source process without fixture/profile replacement and cleaned up safely.",
+  "material_contradiction": [
+    "fixture or profile installation before startup",
+    "missing current source or executable binding",
+    "missing fresh owned process or native World observation",
+    "any recreated contact, Fight, combat, casualty, return, or save outcome",
+    "cleanup identity drift"
+  ],
+  "already_accepted_evidence": [
+    "The committed-contact Fight selection, player-attributable combat, Elias Grey casualty, Colton Paredes survivor return, and native save-to-main-menu were accepted in the preceding source-bound segment and are not replayed here."
+  ],
+  "forbidden_shortcuts": [
+    "fixture or profile snapshot installation",
+    "debug or direct operation/contact/actor/combat mutation",
+    "raw save rewrite",
+    "crediting OCR, rendered text, terminal bytes, or transport as proof",
+    "replaying accepted Fight/casualty/return/save actions"
+  ],
+  "honest_stop_conditions": [
+    "The fresh no-fixture native reload and cleanup are observed, or the retained save can no longer be started without replacing it.",
+    "Record the first divergence and preserve the prior accepted evidence rather than recreating it."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

@@ -183,6 +183,7 @@ class LiveSessionTest(unittest.TestCase):
         binding: list[str] | None = None, missing_receipt: bool = False,
         r019_timed_entry: dict[str, object] | None = None,
         diagnostic_terminal: dict[str, object] | None = None,
+        process_state: dict[str, object] | None = None,
     ) -> tuple[cockpit.CockpitService, list[dict[str, object]]]:
         index = [0]
         finals: list[dict[str, object]] = []
@@ -225,6 +226,7 @@ class LiveSessionTest(unittest.TestCase):
             },
             binding_id="binding-a",
             read_binding_id=lambda: current_binding[0],
+            read_process_state=(lambda: dict(process_state)) if process_state is not None else None,
             finalize_session=lambda report: finals.append(dict(report)) or {
                 "cleanup": {"status": "terminated"},
                 "final_report_ref": "cockpit.live.final.json",
@@ -236,6 +238,26 @@ class LiveSessionTest(unittest.TestCase):
         service = cockpit.CockpitService(run_channel=channel)
         service._test_frame_index = index
         return service, finals
+
+    def test_declared_reentry_needs_native_save_and_exited_process(self) -> None:
+        """A saved but still-open main menu must not make the bridge reenter."""
+        for alive, expected in ((True, False), (False, True)):
+            with self.subTest(alive=alive):
+                process_state = {"alive": True, "pid": 42}
+                service, finals = self.service(
+                    [frame(1, 100)], process_state=process_state,
+                )
+                observed = service.call({"action": "game.observe"})["result"]
+                service.run_channel._transcript.append({
+                    "kind": "action", "action_id": "world.save_quit",
+                })
+                process_state["alive"] = alive
+                finished = service.call({
+                    "action": "run.finish", "observation_id": observed["observation_id"],
+                    "stop_reason": "native save boundary", "unused_authority": "released",
+                })
+                self.assertTrue(finished["ok"])
+                self.assertEqual(finals[0]["declared_reentry_ready"], expected)
 
     def test_progressing_observation_stays_live_and_worker_explicitly_finishes(self) -> None:
         service, finals = self.service([frame(1, 100), frame(2, 101), frame(3, 102, entity_dx=3)])

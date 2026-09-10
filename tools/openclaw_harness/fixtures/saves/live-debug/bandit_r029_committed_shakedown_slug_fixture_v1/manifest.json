@@ -1,0 +1,52 @@
+{
+  "profile": "live-debug",
+  "world": "McWilliams",
+  "description": "Disposable zero-credit committed-shakedown setup for the R-029 Fight/aftermath probe.  It supplies the same lead candidate as its source fixture plus an ordinary loaded defensive shotgun with hunting slugs and spare slugs; neither setup equipment nor any installed state is gameplay proof.",
+  "source_fixture": "bandit_r029_committed_shakedown_fixture_v1",
+  "source_profile": "live-debug",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [
+        {
+          "typeid": "mossberg_500",
+          "count": 1,
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 1,
+                "contents": [
+                  {
+                    "typeid": "shot_slug",
+                    "charges": 6,
+                    "bday": 0,
+                    "last_temp_check": 0,
+                    "template_traits": []
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        }
+      ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        {
+          "typeid": "shot_slug",
+          "count": 1,
+          "charges": 48
+        }
+      ]
+    }
+  ]
+}

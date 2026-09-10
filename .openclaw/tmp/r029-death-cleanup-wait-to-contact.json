@@ -1,0 +1,16 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 100,
+    "danger_handling": "handle_classified_non_dangerous",
+    "recipe": ["world.pause"],
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "The source-bound committed-contact fixture starts at minute 8280 and its declared candidate is reached by the previously measured 100-minute ordinary scheduler interval.",
+      "unit": "game_minutes",
+      "maximum": 100,
+      "progress_required": true
+    }
+  }
+}

@@ -13063,6 +13063,12 @@ bool structural_lead_recently_checked( const camp_map_lead &lead, const int now_
 
 } // namespace
 
+bool structural_lead_check_cooldown_active_for_test( const camp_map_lead &lead,
+        const int now_minutes )
+{
+    return structural_lead_recently_checked( lead, now_minutes );
+}
+
 std::optional<int> release_matching_external_reservation( site_record &site,
         const std::string &expected_activity_id, const int expected_generation,
         const std::string &summary )
@@ -15475,7 +15481,11 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
             learned.source_summary = read.summary;
             learned.first_seen_minutes = sound ? read.emitted_minutes : now_minutes;
             learned.last_seen_minutes = learned.first_seen_minutes;
-            learned.last_checked_minutes = now_minutes;
+            // Staffed observation records information, not an investigation.  Keep
+            // both clocks empty for every new signal lead; the ordinary scout owns
+            // the first physical check.  Existing clocks remain authoritative below
+            // when a lead is refreshed, including the sound-semantics preservation.
+            learned.last_checked_minutes = -1;
             learned.confidence = std::clamp( ( read.confidence + 24 ) / 25, 1, 4 );
             learned.generated_by_this_camp_routine = true;
             learned.last_outcome = "camp_observer_" + sense;
@@ -15493,9 +15503,22 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                 // fresh value unbounded makes an otherwise identical long read look
                 // like a payload change on every staffed cadence.
                 bound_camp_map_lead_strings( comparison );
-                comparison.first_seen_minutes = existing->first_seen_minutes;
-                comparison.last_seen_minutes = existing->last_seen_minutes;
-                comparison.last_checked_minutes = existing->last_checked_minutes;
+                if( sound ) {
+                    // The emitted minute is part of a sound event's durable
+                    // identity: an identical reread is deduplicated, while a
+                    // genuinely new sound refreshes last_seen.  The original
+                    // first observation remains the lead's first_seen value.
+                    comparison.first_seen_minutes = existing->first_seen_minutes;
+                    comparison.last_checked_minutes = existing->last_checked_minutes;
+                    comparison.last_scouted_minutes = existing->last_scouted_minutes;
+                    learned.last_checked_minutes = existing->last_checked_minutes;
+                    learned.last_scouted_minutes = existing->last_scouted_minutes;
+                    learned.first_seen_minutes = existing->first_seen_minutes;
+                } else {
+                    comparison.first_seen_minutes = existing->first_seen_minutes;
+                    comparison.last_seen_minutes = existing->last_seen_minutes;
+                    comparison.last_checked_minutes = existing->last_checked_minutes;
+                }
                 if( camp_map_lead_payload_matches( *existing, comparison ) ) {
                     result.unchanged_reads++;
                     if( bandit_live_world_probe::transition_events_enabled() ) {

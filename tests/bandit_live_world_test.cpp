@@ -15373,6 +15373,10 @@ TEST_CASE( "staffed idle camp remembers a bounded structural signal without an o
     REQUIRE( lead != nullptr );
     CHECK( lead->origin == bandit_live_world::camp_lead_origin::signal );
     CHECK( lead->last_seen_minutes == 220 );
+    // Staffed signal memory must reach the ordinary candidate planner.  Merely
+    // sensing smoke is not the scout's physical investigation.
+    CHECK( lead->last_checked_minutes == -1 );
+    CHECK_FALSE( bandit_live_world::structural_lead_check_cooldown_active_for_test( *lead, 220 ) );
     const std::string stable_lead = serialize_camp_map_lead( *lead );
 
     const bandit_live_world::camp_signal_observation_result repeated =
@@ -15397,6 +15401,130 @@ TEST_CASE( "staffed idle camp remembers a bounded structural signal without an o
     CHECK( lead->omt == source );
     CHECK( lead->status == bandit_live_world::camp_lead_status::stale );
     CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+}
+
+TEST_CASE( "staffed signal lead is dispatched and returned through the same scout identity",
+           "[bandit][live_world][camp_signal][candidate][scout][report][travel][save]" )
+{
+    bandit_live_world::world_state world = make_structural_signal_test_world( false, 16141 );
+    bandit_live_world::site_record &site = world.sites.front();
+    site.active_outing.clear();
+    for( bandit_live_world::member_record &member : site.members ) {
+        member.state = bandit_live_world::member_state::at_home;
+        member.wounded_or_unready = false;
+    }
+    REQUIRE( site.roster().valid );
+
+    const tripoint_abs_omt source( site.anchor.x() + 3, site.anchor.y(), site.anchor.z() );
+    const auto staffed = bandit_live_world::record_staffed_camp_signal_observations(
+                              world, 220,
+    [source]( const bandit_live_world::site_record &,
+              const bandit_live_world::camp_signal_observer_request & ) {
+        return std::vector<bandit_live_world::structural_signal_read> {
+            make_structural_signal_read(
+                bandit_live_world::sortie_observation_sense::smoke,
+                source, 5, 75, 2 )
+        };
+    } );
+    REQUIRE( staffed.leads_created == 1 );
+
+    bandit_live_world::camp_map_lead *signal_lead = nullptr;
+    for( bandit_live_world::camp_map_lead &lead : site.intelligence_map.leads ) {
+        if( lead.omt == source && lead.kind == bandit_live_world::camp_lead_kind::smoke_signal ) {
+            signal_lead = &lead;
+            break;
+        }
+    }
+    REQUIRE( signal_lead != nullptr );
+    const std::string lead_id = signal_lead->lead_id;
+    const int lead_revision = signal_lead->revision;
+    CHECK( signal_lead->origin == bandit_live_world::camp_lead_origin::signal );
+    CHECK( signal_lead->last_checked_minutes == -1 );
+    CHECK_FALSE( bandit_live_world::structural_lead_check_cooldown_active_for_test(
+                     *signal_lead, 220 ) );
+
+    const std::vector<bandit_live_world::structural_outing_plan> candidates =
+        bandit_live_world::plan_structural_bounty_outing_candidates( site, 221, true );
+    const auto candidate = std::find_if( candidates.begin(), candidates.end(),
+    [&lead_id]( const bandit_live_world::structural_outing_plan &plan ) {
+        return plan.lead_id == lead_id;
+    } );
+    REQUIRE( candidate != candidates.end() );
+    CHECK( candidate->target_omt == source );
+    CHECK( candidate->lead_revision == lead_revision );
+    CHECK( candidate->job == bandit_dry_run::job_template::scout );
+    REQUIRE( bandit_live_world::apply_structural_bounty_outing_plan(
+                 site, *candidate, 221 ) );
+    CHECK( site.active_outing.target_id == lead_id );
+    CHECK( site.active_outing.target_lead_id == lead_id );
+    CHECK( site.active_outing.target_omt == source );
+    CHECK( site.active_outing.target_lead_revision == lead_revision );
+    CHECK( site.active_outing.phase == bandit_live_world::scout_phase::outbound );
+
+    const auto quiet = []( const bandit_live_world::site_record &,
+                           const bandit_live_world::camp_map_lead & ) {
+        return bandit_live_world::structural_threat_read{ 0, true,
+                                                           "same signal route is quiet" };
+    };
+    const auto physical_signal = [source]( const bandit_live_world::site_record &,
+            const bandit_live_world::active_outing_state &,
+            const bandit_live_world::structural_threat_observer_request &request ) {
+        CHECK( std::find( request.visible_forward_omts.begin(),
+                          request.visible_forward_omts.end(), source ) !=
+               request.visible_forward_omts.end() );
+        return std::vector<bandit_live_world::structural_signal_read> {
+            make_structural_signal_read(
+                bandit_live_world::sortie_observation_sense::smoke,
+                source, 5, 75, 2 )
+        };
+    };
+
+    const int stalking_minutes = candidate->expected_stalking_minutes;
+    const int arrival_minutes = candidate->expected_arrival_minutes;
+    const int return_minutes = candidate->expected_return_minutes;
+    REQUIRE( stalking_minutes < arrival_minutes );
+    REQUIRE( arrival_minutes < return_minutes );
+    const bandit_live_world::structural_outing_result stalked =
+        bandit_live_world::advance_structural_bounty_outings(
+            world, stalking_minutes, quiet, {}, physical_signal );
+    CHECK( stalked.stalking_checks_processed == 1 );
+    CHECK( site.active_outing.target_lead_id == lead_id );
+    CHECK( site.active_outing.target_lead_revision == lead_revision );
+    CHECK( site.active_outing.phase == bandit_live_world::scout_phase::observing );
+    CHECK( site.active_outing.observations.size() == 1 );
+    CHECK( site.active_outing.observations.front().source_omt == source );
+
+    const bandit_live_world::structural_outing_result arrived =
+        bandit_live_world::advance_structural_bounty_outings(
+            world, arrival_minutes, quiet, {}, physical_signal );
+    CHECK( arrived.arrivals_processed == 1 );
+    CHECK( site.active_outing.target_lead_id == lead_id );
+    CHECK( site.active_outing.phase == bandit_live_world::scout_phase::returning_home );
+    CHECK( site.active_outing.waypoint_index ==
+           static_cast<int>( site.active_outing.shared_route.size() ) - 2 );
+
+    const int generation = site.active_outing.generation;
+    const bandit_live_world::structural_outing_result returned =
+        bandit_live_world::advance_structural_bounty_outings( world, return_minutes, quiet );
+    CHECK( returned.members_returned == 2 );
+    CHECK( site.active_outing.kind == bandit_live_world::outing_kind::none );
+    REQUIRE( site.current_scout_report.is_present() );
+    CHECK( site.current_scout_report.source_activity_id == site.site_id + "#structural" );
+    CHECK( site.current_scout_report.source_generation == generation );
+    CHECK( site.current_scout_report.target_lead_id == lead_id );
+    CHECK( site.current_scout_report.target_lead_revision >= lead_revision );
+    CHECK( site.current_scout_report.target_omt == source );
+    CHECK_FALSE( site.current_scout_report.provisional );
+
+    const bandit_live_world::camp_map_lead *returned_lead =
+        site.intelligence_map.find_lead( lead_id );
+    REQUIRE( returned_lead != nullptr );
+    CHECK( returned_lead->origin == bandit_live_world::camp_lead_origin::returned_report );
+    CHECK( returned_lead->kind == bandit_live_world::camp_lead_kind::smoke_signal );
+    CHECK( returned_lead->omt == source );
+    CHECK( returned_lead->revision >= lead_revision );
+    CHECK( returned_lead->last_scouted_minutes == arrival_minutes );
+    CHECK( returned_lead->last_checked_minutes == arrival_minutes );
 }
 
 TEST_CASE( "staffed camp signal dedup compares bounded durable summaries",
@@ -15468,6 +15596,104 @@ TEST_CASE( "staffed camp signal dedup compares bounded durable summaries",
     REQUIRE( lead != nullptr );
     CHECK( lead->revision == initial_revision + 1 );
     CHECK( lead->source_summary.size() == 256 );
+}
+
+TEST_CASE( "staffed camp sound memory uses emitted time and preserves investigation clocks",
+           "[bandit][live_world][camp_signal][sound][semantics][save]" )
+{
+    bandit_live_world::world_state world = make_structural_signal_test_world( false, 16135 );
+    bandit_live_world::site_record &site = world.sites.front();
+    site.active_outing.clear();
+    for( bandit_live_world::member_record &member : site.members ) {
+        member.state = bandit_live_world::member_state::at_home;
+        member.wounded_or_unready = false;
+    }
+    REQUIRE( site.roster().valid );
+    const tripoint_abs_omt source( site.anchor.x() + 3, site.anchor.y(), site.anchor.z() );
+    int emitted_minutes = 100;
+    const auto observe = [&emitted_minutes, source]( const bandit_live_world::site_record &,
+    const bandit_live_world::camp_signal_observer_request & ) {
+        return std::vector<bandit_live_world::structural_signal_read> {
+            make_structural_sound_read( bandit_live_world::structural_sound_kind::gunfire,
+                                        source, emitted_minutes )
+        };
+    };
+
+    const auto first = bandit_live_world::record_staffed_camp_signal_observations(
+                           world, 279, observe );
+    REQUIRE( first.leads_created == 1 );
+    bandit_live_world::camp_map_lead *lead = nullptr;
+    for( bandit_live_world::camp_map_lead &candidate : site.intelligence_map.leads ) {
+        if( candidate.omt == source && candidate.kind == bandit_live_world::camp_lead_kind::sound_signal ) {
+            lead = &candidate;
+            break;
+        }
+    }
+    REQUIRE( lead != nullptr );
+    const std::string lead_id = lead->lead_id;
+    CHECK( lead->first_seen_minutes == 100 );
+    CHECK( lead->last_seen_minutes == 100 );
+    CHECK( lead->last_checked_minutes == -1 );
+    CHECK( lead->last_scouted_minutes == -1 );
+    const int first_revision = lead->revision;
+
+    const auto identical = bandit_live_world::record_staffed_camp_signal_observations(
+                               world, 280, observe );
+    CHECK( identical.unchanged_reads == 1 );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->revision == first_revision );
+    CHECK( lead->last_seen_minutes == 100 );
+    emitted_minutes = 100;
+    const auto expired = bandit_live_world::record_staffed_camp_signal_observations(
+                             world, 281, observe );
+    CHECK( expired.unchanged_reads == 0 );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->last_seen_minutes == 100 );
+
+    // A genuinely new emitted event refreshes observation time without creating a
+    // physical-check or scout timestamp.
+    emitted_minutes = 200;
+    const auto refreshed = bandit_live_world::record_staffed_camp_signal_observations(
+                               world, 300, observe );
+    CHECK( refreshed.leads_refreshed == 1 );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->last_seen_minutes == 200 );
+    CHECK( lead->last_checked_minutes == -1 );
+    CHECK( lead->last_scouted_minutes == -1 );
+
+    // A legacy/physical clock remains authoritative across a later sound refresh.
+    lead->last_checked_minutes = 400;
+    lead->last_scouted_minutes = 410;
+    CHECK( bandit_live_world::structural_lead_check_cooldown_active_for_test( *lead, 759 ) );
+    CHECK_FALSE( bandit_live_world::structural_lead_check_cooldown_active_for_test( *lead, 760 ) );
+    emitted_minutes = 300;
+    const auto physical_refresh = bandit_live_world::record_staffed_camp_signal_observations(
+                                      world, 301, observe );
+    CHECK( physical_refresh.leads_refreshed == 1 );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->last_seen_minutes == 300 );
+    CHECK( lead->last_checked_minutes == 400 );
+    CHECK( lead->last_scouted_minutes == 410 );
+
+    const auto legacy_identical = bandit_live_world::record_staffed_camp_signal_observations(
+                                      world, 302, observe );
+    CHECK( legacy_identical.unchanged_reads == 1 );
+    lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->last_checked_minutes == 400 );
+    CHECK( lead->last_scouted_minutes == 410 );
+
+    const bandit_live_world::world_state reloaded = round_trip_world( world );
+    const bandit_live_world::camp_map_lead *reloaded_lead =
+        reloaded.sites.front().intelligence_map.find_lead( lead_id );
+    REQUIRE( reloaded_lead != nullptr );
+    CHECK( reloaded_lead->last_seen_minutes == 300 );
+    CHECK( reloaded_lead->last_checked_minutes == 400 );
+    CHECK( reloaded_lead->last_scouted_minutes == 410 );
 }
 
 TEST_CASE( "staffed camp signal reads emit actor-bound live transition receipts",
@@ -16614,8 +16840,10 @@ TEST_CASE( "hostile_camp_significant_sound_queue_is_semantic_bounded_and_drained
     sounds::sound( source, 23, sounds::sound_t::combat, "quiet suppressed shot", false,
                    "", "default", sounds::significant_sound_t::gunfire );
     sounds::sound( source, 80, sounds::sound_t::movement, "ordinary untagged noise" );
+    CHECK_FALSE( sounds::has_significant_sounds() );
     sounds::sound( source, 40, sounds::sound_t::combat, "gunfire", false,
                    "", "default", sounds::significant_sound_t::gunfire );
+    CHECK( sounds::has_significant_sounds() );
     sounds::sound( source, 55, sounds::sound_t::combat, "louder same-bucket gunfire", false,
                    "", "default", sounds::significant_sound_t::gunfire );
     sounds::sound( source, 45, sounds::sound_t::alarm, "security alarm", false,
@@ -16635,6 +16863,7 @@ TEST_CASE( "hostile_camp_significant_sound_queue_is_semantic_bounded_and_drained
     CHECK( std::get<2>( drained[1] ) == sounds::significant_sound_t::alarm );
     CHECK( std::get<1>( drained[2] ) == 60 );
     CHECK( std::get<2>( drained[2] ) == sounds::significant_sound_t::explosion );
+    CHECK_FALSE( sounds::has_significant_sounds() );
     for( const auto &event : drained ) {
         CHECK( std::get<0>( event ) == std::get<0>( drained.front() ) );
         CHECK( std::get<3>( event ) == 300 );
@@ -16649,7 +16878,9 @@ TEST_CASE( "hostile_camp_significant_sound_queue_is_semantic_bounded_and_drained
 
     sounds::sound( source, 50, sounds::sound_t::alarm, "queued before reset", false,
                    "environment", "alarm", sounds::significant_sound_t::alarm );
+    CHECK( sounds::has_significant_sounds() );
     sounds::reset_sounds();
+    CHECK_FALSE( sounds::has_significant_sounds() );
     sounds::consume_significant_sounds( [&replay_count]( const tripoint_abs_omt &, int,
     sounds::significant_sound_t, int ) {
         replay_count++;
@@ -28203,6 +28434,7 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
         CHECK_FALSE( bandit_live_world::is_active_shakedown_parley_member(
                          overmap_buffer.global_state.bandit_live_world,
                          expected_selection.reserve_member_ids.front() ) );
+
         const std::string before_contact_replay = serialize_record( live_site );
         process_overmap_npc_move_for_test();
         CHECK( serialize_record( live_site ) == before_contact_replay );
@@ -28333,7 +28565,15 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
             REQUIRE( member != nullptr );
             member->spawn_at_omt( live_site.active_hostile_operation.reservation.target_omt );
         }
-
+        // Exercise contact through the same canonical local admission used by
+        // production.  The strategic phase fixture intentionally creates its
+        // members off-map, so supply an empty loaded tile before the local
+        // aftermath owner admits them.
+        wipe_map_terrain();
+        clear_creatures();
+        get_map().invalidate_map_cache( get_avatar().pos_bub( get_map() ).z() );
+        get_map().build_map_cache( get_avatar().pos_bub( get_map() ).z(), true );
+        REQUIRE( materialize_committed_bandit_shakedown_for_test( live_site ) );
         const std::string fight_operation_id =
             live_site.active_hostile_operation.reservation.activity_id;
         const std::string fight_report_key =
@@ -28356,6 +28596,13 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
 
         victim->die( &get_map(), nullptr );
         REQUIRE( victim->is_dead() );
+        // The live game removes a dead NPC from both the active tracker and
+        // persistent overmap storage before the next aftermath cadence.
+        // Preserve that production lifecycle here rather than leaving a dead
+        // pointer available for the reconciliation read.
+        g->cleanup_dead();
+        CHECK( g->find_npc( expected_selection.member_ids.front() ) == nullptr );
+        CHECK( overmap_buffer.find_npc( expected_selection.member_ids.front() ) == nullptr );
         calendar::turn += 1_minutes;
         note_live_bandit_aftermath_for_test();
         REQUIRE( live_site.active_hostile_operation.is_active() );
@@ -28393,6 +28640,153 @@ TEST_CASE( "live_bandit_response_materialization_claims_only_missing_source_memb
         CHECK( live_site.last_shakedown_outcome == "fight_unresolved" );
         CHECK( live_site.shakedown_bandit_losses == 1 );
     }
+}
+
+TEST_CASE( "committed shakedown admission uses canonical active NPC ownership",
+           "[bandit][live_world][shakedown][admission][ownership]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_map();
+    clear_vehicles();
+    const time_point saved_turn = calendar::turn;
+    bandit_live_world::world_state saved_world = overmap_buffer.global_state.bandit_live_world;
+    std::vector<character_id> generated_npc_ids;
+    on_out_of_scope cleanup( [&generated_npc_ids, saved_turn,
+                              saved_world = std::move( saved_world )]() mutable {
+        for( const character_id id : generated_npc_ids ) {
+            g->remove_npc( id );
+            overmap_buffer.remove_npc( id );
+        }
+        overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+        calendar::turn = saved_turn;
+        clear_creatures();
+    } );
+
+    bandit_live_world::world_state world;
+    for( int index = 0; index < 6; ++index ) {
+        add_bandit_camp_member( world, index, 29900 );
+    }
+    bandit_live_world::site_record &site = world.sites.front();
+    const tripoint_abs_omt target = site.anchor + point( -4, 0 );
+    const tripoint_abs_omt rally = site.anchor + point( -2, 0 );
+    prepare_hostile_follow_on( site, 1, 1, "admission-target", target, 100 );
+    const bandit_live_world::hostile_operation_plan plan =
+        bandit_live_world::plan_hostile_operation(
+            site, bandit_live_world::hostile_operation_kind::shakedown,
+            { site.anchor, rally, target }, rally, 101 );
+    REQUIRE( plan.valid );
+    REQUIRE( bandit_live_world::apply_hostile_operation_plan( site, plan ) );
+    REQUIRE( transition_test_hostile_operation(
+                 site, bandit_live_world::hostile_operation_phase::assembling,
+                 bandit_live_world::hostile_operation_phase::outbound, 102,
+                 "test admission departure" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation(
+                 site, bandit_live_world::hostile_operation_phase::outbound,
+                 bandit_live_world::hostile_operation_phase::rallying, 103,
+                 "test admission rally" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation(
+                 site, bandit_live_world::hostile_operation_phase::rallying,
+                 bandit_live_world::hostile_operation_phase::approaching, 104,
+                 "test admission approach" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+    REQUIRE( transition_test_hostile_operation(
+                 site, bandit_live_world::hostile_operation_phase::approaching,
+                 bandit_live_world::hostile_operation_phase::committed_contact, 105,
+                 "test admission contact" ) ==
+             bandit_live_world::hostile_operation_transition_result::applied );
+
+    const std::vector<character_id> party = site.active_hostile_operation.reservation.member_ids;
+    REQUIRE_FALSE( party.empty() );
+    for( const character_id id : party ) {
+        const bandit_live_world::member_record *record = site.find_member( id );
+        REQUIRE( record != nullptr );
+        shared_ptr_fast<npc> member = make_shared_fast<npc>();
+        member->normalize();
+        member->load_npc_template( npc_template_test_talker );
+        member->setID( id, true );
+        member->spawn_at_precise( record->home_spawn_tile );
+        overmap_buffer.insert_npc( member );
+        generated_npc_ids.push_back( id );
+        CHECK_FALSE( member->is_active() );
+    }
+    overmap_buffer.global_state.bandit_live_world = std::move( world );
+    bandit_live_world::site_record &live_site =
+        overmap_buffer.global_state.bandit_live_world.sites.front();
+
+    wipe_map_terrain();
+    clear_creatures();
+    get_map().invalidate_map_cache( get_avatar().pos_bub( get_map() ).z() );
+    get_map().build_map_cache( get_avatar().pos_bub( get_map() ).z(), true );
+    REQUIRE( materialize_committed_bandit_shakedown_for_test( live_site ) );
+
+    std::map<character_id, tripoint_abs_ms> admitted_positions;
+    for( const character_id id : party ) {
+        const shared_ptr_fast<npc> persistent = overmap_buffer.find_npc( id );
+        REQUIRE( persistent != nullptr );
+        CHECK( g->find_npc( id ) == persistent.get() );
+        CHECK( persistent->is_active() );
+        CHECK( persistent->get_attitude() == NPCATT_NULL );
+        CHECK( get_map().inbounds( persistent->pos_bub( get_map() ) ) );
+        int tracker_entries = 0;
+        for( npc &active_npc : g->all_npcs() ) {
+            tracker_entries += &active_npc == persistent.get() ? 1 : 0;
+        }
+        CHECK( tracker_entries == 1 );
+        admitted_positions.emplace( id, persistent->pos_abs() );
+        persistent->goal = live_site.anchor;
+        persistent->omt_path = { live_site.anchor };
+        persistent->set_mission( NPC_MISSION_TRAVELLING );
+    }
+    REQUIRE( materialize_committed_bandit_shakedown_for_test( live_site ) );
+    process_overmap_npc_move_for_test();
+    for( const character_id id : party ) {
+        npc *member = g->find_npc( id );
+        REQUIRE( member != nullptr );
+        CHECK( member->pos_abs() == admitted_positions.at( id ) );
+        CHECK( member->goal == live_site.anchor );
+        CHECK( member->is_travelling() );
+    }
+
+    calendar::turn = calendar::start_of_cataclysm + 106_minutes;
+    npc *victim = g->find_npc( party.front() );
+    REQUIRE( victim != nullptr );
+    victim->set_fac( faction_id::NULL_ID() );
+    victim->set_attitude( NPCATT_NULL );
+    REQUIRE_FALSE( victim->is_enemy() );
+    victim->on_attacked( get_avatar() );
+    REQUIRE( victim->hit_by_player );
+    REQUIRE( victim->get_attitude() == NPCATT_KILL );
+    note_live_bandit_aftermath_for_test();
+    CHECK( live_site.last_shakedown_outcome == "fight_unresolved" );
+    victim->die( &get_map(), nullptr );
+    REQUIRE( victim->is_dead() );
+    // Production clean-up runs before the following minute's aftermath pass.
+    // The reconciliation must recognize the missing member at this exact
+    // committed Fight boundary, rather than relying on a dead object lingering
+    // in either native NPC index.
+    g->cleanup_dead();
+    CHECK( g->find_npc( party.front() ) == nullptr );
+    CHECK( overmap_buffer.find_npc( party.front() ) == nullptr );
+    generated_npc_ids.erase( std::remove( generated_npc_ids.begin(), generated_npc_ids.end(),
+                                          party.front() ), generated_npc_ids.end() );
+    calendar::turn += 1_minutes;
+    note_live_bandit_aftermath_for_test();
+    REQUIRE( live_site.active_hostile_operation.reservation.member_is_resolved( party.front() ) );
+    for( const character_id id : party ) {
+        if( id == party.front() ) {
+            continue;
+        }
+        npc *survivor = g->find_npc( id );
+        REQUIRE( survivor != nullptr );
+        survivor->spawn_at_omt( target );
+    }
+    calendar::turn += 1_minutes;
+    note_live_bandit_aftermath_for_test();
+    CHECK( live_site.active_hostile_operation.phase ==
+           bandit_live_world::hostile_operation_phase::returning_home );
 }
 
 TEST_CASE( "live_cannibal_raid_holds_at_rally_until_night_departure",

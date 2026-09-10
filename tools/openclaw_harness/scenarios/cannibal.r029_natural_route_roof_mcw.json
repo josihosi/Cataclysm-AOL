@@ -2,8 +2,8 @@
   "manifest_version": 2,
   "name": "cannibal.r029_natural_route_roof_mcw",
   "description": "Current-source R-029 cannibal natural-route witness. The disposable fixture supplies only the roof and a non-colliding in-range cannibal-camp footprint; the player must create the physical fire and retreat through native product actions before any signal, scout, report, rally, response, or contact observation receives credit.",
-  "profile": "dev-harness",
-  "config_profile": "dev-harness",
+  "profile": "r029-natural-route-repair-001",
+  "config_profile": "r029-natural-route-repair-001",
   "world": "McWilliams",
   "fixture": "r029_fire_signal_roof_cannibal_in_range_v2",
   "fixture_profile": "live-debug",
@@ -15,7 +15,7 @@
   "capabilities": {
     "capabilities.r029.cannibal_natural_route": "physical_fire_staffed_observer_scout_report_rally_response",
     "runtime.entry_mode": "cockpit_live_session",
-    "runtime.r029.source_binding": "r029_fire_signal_roof_cannibal_in_range_v2:dev-harness"
+    "runtime.r029.source_binding": "r029_fire_signal_roof_cannibal_in_range_v2:r029-natural-route-repair-001"
   },
   "runtime_contract": {
     "permitted_input": ["ordinary-player-ui:deploy-brazier", "ordinary-player-ui:ignite-with-charged-lighter", "cockpit:game.guarded_move_relative", "cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.keep_watch", "cockpit:run.continue", "cockpit:run.witness", "cockpit:run.finish"],
@@ -25,8 +25,8 @@
     "helpers": ["Peekaboo"],
     "permissions": ["accessibility", "screen-recording"],
     "platform": ["macos"],
-    "profile": "dev-harness",
-    "config_profile": "dev-harness",
+    "profile": "r029-natural-route-repair-001",
+    "config_profile": "r029-natural-route-repair-001",
     "fixture": "r029_fire_signal_roof_cannibal_in_range_v2",
     "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r029_fire_signal_roof_cannibal_in_range_v2", "helper": "Peekaboo", "peekaboo": true, "ocr": true, "input": ["ordinary fire setup and worker-owned live cockpit"], "cleanup": true},
     "grants_gameplay_proof": true

@@ -1,0 +1,80 @@
+{
+  "profile": "live-debug",
+  "world": "McWilliams",
+  "description": "Disposable zero-credit committed-shakedown setup for the R-029 Fight/aftermath probe.  It supplies the source fixture's lead candidate plus an ordinary loaded caseless assault rifle, spare ordinary ammunition, and fitted conventional protective clothing; none of that setup is gameplay proof.",
+  "source_fixture": "bandit_r029_committed_shakedown_fixture_v1",
+  "source_profile": "live-debug",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [
+        {
+          "typeid": "rm51_assault_rifle",
+          "count": 1,
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 2,
+                "contents": [
+                  {
+                    "typeid": "8x40_50_mag",
+                    "bday": 0,
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 1,
+                          "contents": [
+                            {
+                              "typeid": "8mm_jhp",
+                              "charges": 50,
+                              "bday": 0,
+                              "last_temp_check": 0,
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        }
+      ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        {
+          "typeid": "8mm_jhp",
+          "count": 1,
+          "charges": 100
+        },
+        {
+          "typeid": "8x40_50_mag",
+          "count": 2
+        }
+      ]
+    },
+    {
+      "kind": "player_worn_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": ["survivor_suit", "helmet_riot"],
+      "fitted": true
+    }
+  ]
+}

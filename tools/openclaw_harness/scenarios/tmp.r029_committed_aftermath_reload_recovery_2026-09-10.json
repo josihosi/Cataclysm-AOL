@@ -1,0 +1,89 @@
+{
+  "manifest_version": 2,
+  "name": "tmp.r029_committed_aftermath_reload_recovery_2026-09-10",
+  "description": "One-shot, no-fixture recovery of the already-native-saved R-029 committed-contact aftermath. It starts the retained McWilliams dev-harness save without profile or fixture installation, records only a fresh bound native process/world observation, then performs owned cleanup.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "run_class": "combat",
+  "observer_character": false,
+  "semantic_only_startup": true,
+  "capabilities": {
+    "capabilities.persistence": "full_save_exit_relaunch_same_world",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r029.source_binding": "retained-native-save:current-dev-source"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.observe", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["fixture-install", "profile-snapshot-install", "debug:inject_local_contact", "debug:inject_dispatch", "debug:inject_operation", "debug:inject_actor", "debug:inject_combat_outcome", "raw-save-rewrite", "ocr-credit"],
+    "setup_only_debug": true,
+    "disposable_copy": false,
+    "helpers": ["native-semantic-broker"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "ocr": false,
+      "input": ["worker-owned live cockpit", "no-fixture startup", "native observation"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "native_source": "src/do_turn.cpp",
+    "native_executable": "cataclysm-tiles"
+  },
+  "proof_gates": [
+    {
+      "id": "r029_retained_aftermath_reloaded",
+      "label": "R-029 saved aftermath is observed from a fresh no-fixture process",
+      "boundary_step": "inspect_retained_committed_aftermath",
+      "predecessors": [],
+      "expectations": [
+        {"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}
+      ],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    }
+  ],
+  "proof_route": {
+    "gates": ["r029_retained_aftermath_reloaded"],
+    "terminal": ["r029_retained_aftermath_reloaded"],
+    "capability_gates": {
+      "capabilities.persistence": {"persistence": ["r029_retained_aftermath_reloaded"]},
+      "runtime.entry_mode": {"startup": ["r029_retained_aftermath_reloaded"]}
+    }
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_retained_saved_world",
+      "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "inspect_retained_committed_aftermath",
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "objective": "Start only the retained native save from the immediately preceding R-029 segment, without fixture or profile installation. Record the current source/executable binding, fresh process identity, and native saved-world aftermath state. Do not recreate contact, Fight, combat, casualty, return, or saving.",
+      "proof_targets": ["fresh owned native process", "fresh native world owner", "retained saved aftermath state", "cleanup identities"],
+      "authority": ["game.observe", "run.witness", "run.finish"],
+      "invariants": ["no fixture or profile installation", "no direct operation/contact/actor/combat mutation", "no OCR or rendered text as proof", "no replay of accepted Fight/casualty/return/save evidence"],
+      "live_operations": ["game.observe", "run.witness", "run.finish"],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "evidence_contract": {
+    "claim": "A source-bound native process newly loads the already-saved R-029 committed-contact aftermath without reinstalling a fixture or profile; this run supplies only reload and cleanup support for the prior accepted native action evidence.",
+    "failure_rule": "A fixture/profile install, missing fresh native process/world owner, or missing cleanup identity leaves reload support unproved and never reopens accepted Fight/casualty/return/save claims."
+  }
+}

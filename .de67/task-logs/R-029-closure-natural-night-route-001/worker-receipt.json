@@ -1,0 +1,57 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-029-closure-natural-night-route-001",
+  "claim_id": "R-029",
+  "worker_id": "01a08b59-9bbe-7001-9a9d-0f5024091610",
+  "lineage_id": "semantic-surface-cockpit",
+  "disposition": "checkpoint",
+  "summary": "Accepted evidence proves the physical smoke signal and camp-memory boundary, and independently proves a cannibal raid departing through night, crossing dawn, surviving exact-world reload, and reaching local contact. It does not bind the required shared physical-signal -> eligible-candidate -> ordinary scout/investigation -> returned report -> travel/response chain: the smoke receipt stops at drive idle, and the sound receipt is rejected by recent-check cooldown before candidate admission.",
+  "outcome": "R-029 natural signal and night evidence are separable. Natural smoke observation and normalized camp memory are proved at their native ceiling; scout/report/travel remains open. Cannibal night commitment through dawn and post-reload contact is proved independently at its native ceiling.",
+  "verdict": "natural_signal_memory_proved_scout_report_travel_open_night_commitment_proved",
+  "first_divergence": {
+    "class": "natural-signal-downstream-drive-and-cooldown-boundary",
+    "summary": "For the accepted smoke route, the first downstream observation after lead creation was drive idle and no structural outing ownership transition. For the retained sound route, recent-check cooldown rejects the lead while it remains strong and before candidate, policy, pair, route, or dispatch gates can be observed. Neither receipt reaches ordinary scouting, a returned report, or travel/response."
+  },
+  "first_open_boundary": "A fresh source-bound receipt must still bind the same physical signal and camp-memory lead to eligible candidate admission, ordinary scout/investigation, returned report, and downstream travel/response. The sound-policy decision and later drive/policy/route gates remain unresolved.",
+  "material_changes": [],
+  "journal_entries": [
+    {"id":"smoke-signal-memory","sequence":"1","event_type":"native_signal_and_memory","evidence_class":"native-semantic","summary":"Observer 18 at cannibal camp 140,40,0 read live smoke from 140,41,0 at minute 8225 with valid line of sight, range, elevation and weather; the normalized smoke lead was created and camp memory increased.","artifact_ref":".de67/task-logs/R-029-roof-fire-discovery-065-receipt.json"},
+    {"id":"smoke-downstream-stop","sequence":"2","event_type":"candidate-dispatch-boundary","evidence_class":"native-semantic","summary":"The smoke receipt’s first downstream result was drive idle; no structural scout ownership transition, investigation, report, travel or response was credited.","artifact_ref":".de67/task-logs/R-029-roof-fire-discovery-065-receipt.json"},
+    {"id":"sound-cooldown-stop","sequence":"3","event_type":"natural_sound_gate","evidence_class":"source-and-receipt-bound","summary":"Lead camp-gunfire@(140,41,0) was rejected at the six-hour recent-check gate: last_seen 8220, last_checked 8225, attempt 8280, expiry 8400 and cooldown end 8585; later candidate and route gates were not observed.","artifact_ref":".de67/task-logs/R-029-sound-eligibility-002-receipt.json"},
+    {"id":"night-dawn-reload-contact","sequence":"4","event_type":"night_departure_persistence_contact","evidence_class":"native-semantic","summary":"Raid members 4 and 5 reached approaching under abstract ownership at minute 9025 with dawn state, remained committed across exact-world reload, and reached committed_contact under local ownership at minute 9085.","artifact_ref":".de67/task-logs/R-029-night-departure-repair-001-receipt.json"}
+  ],
+  "checks": [
+    "Read the R-029 FS slice and accepted smoke, sound-eligibility and night-departure receipts.",
+    "Verified current SHA-256 values for all cited receipt artifacts.",
+    "Compared each receipt’s native bindings and evidence ceiling; did not aggregate unrelated runs into one route.",
+    "Confirmed smoke stops at drive idle, sound stops at recent-check cooldown, and night independently reaches post-dawn contact after reload.",
+    "No gameplay replay, live-runtime operation, source mutation, fixture installation, OCR inference or rendered-text proof was used."
+  ],
+  "live_actions": [],
+  "artifacts": [
+    {"path":".de67/FS.md","role":"R-029 product and evidence-boundary slice","sha256":"4694843f7a9164dc470d0795e30ecdb16d1b6cf1665f62323da50c0829f415d9"},
+    {"path":".de67/task-logs/R-029-roof-fire-discovery-065-receipt.json","role":"accepted native smoke observation and camp-memory receipt; downstream boundary","sha256":"f45562f756ea3d5d04828df861809e40d3384188468d04eee40c04422ab43b60"},
+    {"path":".de67/task-logs/R-029-sound-eligibility-002-receipt.json","role":"accepted sound lead timing and first rejecting cooldown gate","sha256":"2987043619ba705111c4673a2618365aa62152504b0e5176628c02318e1a829c"},
+    {"path":".de67/task-logs/R-029-night-departure-repair-001-receipt.json","role":"accepted independent night departure, dawn crossing, reload persistence and contact receipt","sha256":"33df358972431f051b1d021bfffef61f8060982230c2620fdf568bf4d7a8b67d"}
+  ],
+  "bindings": {
+    "smoke_run_id":"9b93afd3c55ba3efc408c2acbfd3652e35404f72c06bb69504a0588f0c67502d","smoke_observer_id":"18","smoke_camp_id":"overmap_special:cannibal_camp@140,40,0","smoke_source_omt":"140,41,0","smoke_game_minute":"8225","sound_lead_identity":"camp-gunfire@(140,41,0)","sound_last_seen_minutes":"8220","sound_last_checked_minutes":"8225","sound_attempt_minutes":"8280","sound_signal_expiry_minutes":"8400","sound_cooldown_end_minutes":"8585","night_run_directory":"20260909_173916_9ddd828cecf6468293f3fba8a61eef73","night_member_ids":"4,5","night_dawn_game_minutes":"9025","night_contact_game_minutes":"9085","night_camp_id":"overmap_special:cannibal_camp@140,51,0","world":"McWilliams","route_binding":"separate native receipts; no shared signal-to-travel ancestry established"
+  },
+  "evidence_ceiling": [
+    "Smoke observation and normalized camp-memory creation are proved for one exact observer, camp, source, minute and physical-read context.",
+    "The smoke receipt does not prove candidate admission, scout assignment, investigation, returned report, travel, response or subjective feel.",
+    "Sound timing and recent-check rejection are proved; later candidate, policy, pair, route and dispatch behavior remain unknown.",
+    "Night departure through dawn, exact-world reload persistence and later local contact are proved for exact raid members; player survival or encounter balance is not claimed.",
+    "OCR, screenshots, terminal bytes, rendered text, accepted input, setup, fixture preparation and launch status receive no gameplay credit."
+  ],
+  "accepted_no_replay": [
+    "Preserve accepted smoke-memory, sound-gating and night-departure receipts at their independent ceilings.",
+    "Do not combine smoke, sound and night receipts into a single continuous route.",
+    "Do not treat drive idle, a score, a lead write, a cooldown calculation or a night contact receipt as proof of the missing shared scout/report/travel chain.",
+    "No live runtime or userdir was operated for this audit."
+  ],
+  "active_work": ["Shared physical signal -> eligible candidate -> ordinary scout/investigation -> returned report -> travel/response remains open.","Sound-policy choice and subsequent candidate/drive gates remain unresolved."],
+  "entrypoints": ["src/do_turn.cpp::overmap_npc_move","src/bandit_live_world.cpp::record_staffed_camp_signal_observations","src/bandit_live_world.cpp::advance_structural_bounty_maintenance","src/do_turn.cpp::advance_live_bandit_hostile_approaches"],
+  "narrow_queries": ["smoke: observer 18, camp 140,40,0, source 140,41,0, minute 8225, outcome created, downstream drive idle","sound: camp-gunfire@(140,41,0), last_seen 8220, last_checked 8225, attempt 8280, expiry 8400, cooldown end 8585","night: members 4,5, approaching abstract at 9025, committed_contact local at 9085 after exact-world reload","shared ancestry: no accepted receipt contains signal, candidate, scout/report and travel identities in order"],
+  "context_metrics": {"source_mutations":"0","gameplay_replays":"0","live_runtime_actions":"0","native_receipts_added":"0","accepted_receipts_audited":"3","shared_route_fully_established":"false","night_commitment_independently_established":"true"}
+}

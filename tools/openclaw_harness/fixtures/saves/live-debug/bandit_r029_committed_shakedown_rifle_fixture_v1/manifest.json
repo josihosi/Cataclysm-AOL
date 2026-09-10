@@ -1,0 +1,74 @@
+{
+  "profile": "live-debug",
+  "world": "McWilliams",
+  "description": "Disposable zero-credit committed-shakedown setup for the R-029 Fight/aftermath probe.  It supplies the same lead candidate as its source fixture plus an ordinary loaded .50-caliber rifle and spare standard ball ammunition; neither setup equipment nor any installed state is gameplay proof.",
+  "source_fixture": "bandit_r029_committed_shakedown_fixture_v1",
+  "source_profile": "live-debug",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [
+        {
+          "typeid": "m107a1",
+          "count": 1,
+          "contents": {
+            "contents": [
+              {
+                "pocket_type": 2,
+                "contents": [
+                  {
+                    "typeid": "m107a1mag",
+                    "bday": 0,
+                    "last_temp_check": 0,
+                    "template_traits": [],
+                    "contents": {
+                      "contents": [
+                        {
+                          "pocket_type": 1,
+                          "contents": [
+                            {
+                              "typeid": "50bmg",
+                              "charges": 10,
+                              "bday": 0,
+                              "last_temp_check": 0,
+                              "template_traits": []
+                            }
+                          ],
+                          "_sealed": false,
+                          "no_rigid": []
+                        }
+                      ],
+                      "additional_pockets": []
+                    }
+                  }
+                ],
+                "_sealed": false,
+                "no_rigid": []
+              }
+            ],
+            "additional_pockets": []
+          }
+        }
+      ]
+    },
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_worn_pocket",
+      "items": [
+        {
+          "typeid": "50bmg",
+          "count": 1,
+          "charges": 20
+        },
+        {
+          "typeid": "m107a1mag",
+          "count": 2
+        }
+      ]
+    }
+  ]
+}

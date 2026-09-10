@@ -944,6 +944,77 @@ static std::string openclaw_harness_structural_outing_owner_snapshot()
     return result.str();
 }
 
+// The structural-outing cursor intentionally excludes hostile reservations.
+// Keep this separate read-only projection so a contact playtest can distinguish
+// a declared committed operation from canonical local creature admission.
+static std::string openclaw_harness_hostile_contact_member_snapshot()
+{
+    const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    std::ostringstream result;
+    result << "{\"schema\":\"caol-hostile-contact-member-ownership-v1\"";
+    const bandit_live_world::site_record *selected = nullptr;
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        if( site.active_hostile_operation.is_active() &&
+            site.active_hostile_operation.phase ==
+            bandit_live_world::hostile_operation_phase::committed_contact ) {
+            selected = &site;
+            break;
+        }
+    }
+    if( selected == nullptr ) {
+        result << ",\"present\":false";
+        result << ",\"provenance\":\"diagnostic_read_only_committed_hostile_member_ownership\"}";
+        return result.str();
+    }
+
+    const bandit_live_world::hostile_operation_state &operation =
+        selected->active_hostile_operation;
+    const bandit_live_world::active_outing_state &reservation = operation.reservation;
+    map &here = get_map();
+    result << ",\"present\":true,\"site_id\":"
+           << openclaw_harness_quote_action_value( selected->site_id )
+           << ",\"activity_id\":"
+           << openclaw_harness_quote_action_value( reservation.activity_id )
+           << ",\"generation\":" << reservation.generation
+           << ",\"member_count\":" << reservation.member_ids.size()
+           << ",\"members\":[";
+    for( size_t index = 0; index < reservation.member_ids.size(); ++index ) {
+        if( index > 0 ) {
+            result << ',';
+        }
+        const character_id member_id = reservation.member_ids[index];
+        const bandit_live_world::member_record *member = selected->find_member( member_id );
+        const shared_ptr_fast<npc> persistent_member = overmap_buffer.find_npc( member_id );
+        const bool active = persistent_member && persistent_member->is_active();
+        int tracker_entries = 0;
+        if( persistent_member && g != nullptr ) {
+            for( npc &tracked : g->all_npcs() ) {
+                if( &tracked == persistent_member.get() ) {
+                    ++tracker_entries;
+                }
+            }
+        }
+        result << "{\"id\":" << member_id.get_value()
+               << ",\"record_local_contact\":"
+               << ( member != nullptr && member->state ==
+                    bandit_live_world::member_state::local_contact ? "true" : "false" )
+               << ",\"persistent_object_present\":" << ( persistent_member ? "true" : "false" )
+               << ",\"active\":" << ( active ? "true" : "false" )
+               << ",\"tracker_entries\":" << tracker_entries;
+        if( persistent_member ) {
+            const tripoint_abs_omt member_omt = persistent_member->pos_abs_omt();
+            result << ",\"absolute_omt\":[" << member_omt.x() << ',' << member_omt.y() << ','
+                   << member_omt.z() << ']';
+            result << ",\"in_reality_bubble\":"
+                   << ( active && here.inbounds( persistent_member->pos_bub( here ) ) ? "true" : "false" );
+        }
+        result << '}';
+    }
+    result << "]"
+           << ",\"provenance\":\"diagnostic_read_only_committed_hostile_member_ownership\"}";
+    return result.str();
+}
+
 // Read-only authoritative camp-memory projection for semantic playtests.  This
 // deliberately exposes the durable lead fields rather than deriving a verdict
 // from elapsed time in the cockpit.  Empty/missing maps remain explicit.
@@ -1306,6 +1377,7 @@ static std::map<std::string, std::string> openclaw_harness_world_payload()
         { "overmap", overmap.str() },
         { "current_site_camp", openclaw_harness_current_site_camp( player ) },
         { "structural_outing_owner", openclaw_harness_structural_outing_owner_snapshot() },
+        { "hostile_contact_members", openclaw_harness_hostile_contact_member_snapshot() },
         { "staffed_camp_signal_leads", openclaw_harness_staffed_camp_signal_leads_snapshot() },
         { "current_site_camp_storage", openclaw_harness_current_site_camp_storage( player ) },
         { "visible_entities", openclaw_harness_visible_entities( player ) },

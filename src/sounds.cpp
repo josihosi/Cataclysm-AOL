@@ -892,6 +892,11 @@ void sounds::consume_significant_sounds( const std::function<void( const tripoin
     recent_significant_sounds.clear();
 }
 
+bool sounds::has_significant_sounds()
+{
+    return !recent_significant_sounds.empty();
+}
+
 void sounds::reset_markers()
 {
     sound_markers.clear();

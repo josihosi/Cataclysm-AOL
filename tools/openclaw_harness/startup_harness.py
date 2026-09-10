@@ -22724,7 +22724,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             continue
 
         if kind == "bandit_scheduler_response_candidate":
-            unexpected_keys = sorted(set(raw) - {"kind", "player_save", "site_id", "target_id", "target_omt", "member_ids", "generation", "current_minutes", "branch", "report_policy", "preserve_member_records"})
+            unexpected_keys = sorted(set(raw) - {"kind", "player_save", "site_id", "target_id", "target_omt", "target_lead_id", "member_ids", "generation", "current_minutes", "branch", "report_policy", "preserve_member_records"})
             if unexpected_keys:
                 raise SystemExit(f"Fixture save_transforms[{index}] scheduler candidate has unexpected keys {unexpected_keys} in {manifest_path}")
             site_id = str(raw.get("site_id", "")).strip()
@@ -22754,7 +22754,10 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             preserve_member_records = raw.get("preserve_member_records", False)
             if report_policy not in {"bandit_shakedown", "cannibal_night_raid"} or not isinstance(preserve_member_records, bool):
                 raise SystemExit(f"Fixture save_transforms[{index}] has invalid report_policy/preserve_member_records in {manifest_path}")
-            transforms.append({"kind": kind, "site_id": site_id, "target_id": target_id, "target_omt": target_omt, "member_ids": member_ids, "generation": generation, "current_minutes": current_minutes, "branch": str(raw.get("branch", "reopened_demand") or "").strip(), "report_policy": report_policy, "preserve_member_records": preserve_member_records})
+            target_lead_id = str(raw.get("target_lead_id", "") or "").strip()
+            if target_lead_id and target_lead_id != "r029-fixture-player-opportunity":
+                raise SystemExit(f"Fixture save_transforms[{index}] scheduler candidate target_lead_id is unsupported in {manifest_path}")
+            transforms.append({"kind": kind, "site_id": site_id, "target_id": target_id, "target_omt": target_omt, "target_lead_id": target_lead_id, "member_ids": member_ids, "generation": generation, "current_minutes": current_minutes, "branch": str(raw.get("branch", "reopened_demand") or "").strip(), "report_policy": report_policy, "preserve_member_records": preserve_member_records})
             continue
 
         if kind == "bandit_hostile_operation_bootstrap":

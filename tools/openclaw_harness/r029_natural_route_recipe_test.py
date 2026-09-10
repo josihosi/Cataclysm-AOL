@@ -15,9 +15,23 @@ HARNESS = Path(__file__).resolve().parent
 sys.path.insert(0, str(HARNESS))
 
 import startup_harness  # noqa: E402
+import scenario_registry_cli  # noqa: E402
 
 
 class R029NaturalRouteRecipeTest(unittest.TestCase):
+    def test_committed_fight_persistence_route_declares_a_reentry_live_owner(self) -> None:
+        source = HARNESS / "scenarios" / "tmp.bandit_committed_fight_aftermath_persistence_probe_2026-09-10.json"
+        scenario = json.loads(source.read_text())
+        post_steps = scenario["post_relaunch"]["steps"]
+        self.assertEqual(post_steps[-1]["label"], "inspect_reloaded_committed_aftermath")
+        self.assertEqual(post_steps[-1]["kind"], "cockpit_live_session")
+        self.assertEqual(
+            scenario_registry_cli._declared_live_session_reentries(
+                type("Selection", (), {"source_path": str(source)})()
+            ),
+            1,
+        )
+
     def test_post_relaunch_fire_audit_tracks_the_guarded_north_retreat(self) -> None:
         scenario = json.loads((Path(__file__).resolve().parent / "scenarios" /
                                "cannibal.r029_natural_route_roof_mcw.json").read_text())

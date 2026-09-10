@@ -1757,6 +1757,7 @@ const camp_map_lead *find_camp_map_dispatch_lead_for_target( const site_record &
         const tripoint_abs_omt &target_omt,
         const std::string &target_id );
 void normalize_camp_intelligence( site_record &site );
+bool structural_lead_check_cooldown_active_for_test( const camp_map_lead &lead, int now_minutes );
 camp_intelligence_aging_result advance_camp_intelligence_aging( site_record &site,
         int now_minutes );
 camp_intelligence_aging_result advance_camp_intelligence_aging( world_state &state,

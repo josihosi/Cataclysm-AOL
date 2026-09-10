@@ -1,0 +1,16 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 5,
+    "danger_handling": "handle_classified_non_dangerous",
+    "recipe": ["world.pause"],
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "the survivor's native homeward order was set at the prior scheduler minute; five additional game minutes allow a bounded physical-return observation without extending beyond the operation's immediate aftermath",
+      "unit": "game_minutes",
+      "maximum": 5,
+      "progress_required": true
+    }
+  }
+}

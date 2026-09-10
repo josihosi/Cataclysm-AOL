@@ -1,0 +1,21 @@
+{
+  "outcome": "R-029 reload recovery: inspect the already-native-saved committed-contact aftermath in one fresh no-fixture process and verify owned cleanup.",
+  "scenario": "tmp.r029_committed_aftermath_reload_recovery_2026-09-10",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.persistence",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "full_save_exit_relaunch_same_world"
+      },
+      {
+        "key": "runtime.entry_mode",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "cockpit_live_session"
+      }
+    ],
+    "preferences": []
+  }
+}

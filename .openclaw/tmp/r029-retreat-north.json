@@ -1,0 +1,14 @@
+{
+  "action": "game.move_relative",
+  "move_relative": {
+    "enabled": true,
+    "offset_ms": [0, -8],
+    "danger_handling": "handle_classified_non_dangerous",
+    "bound": {
+      "basis": "path_progress",
+      "source": "eight clear northward map squares separate the avatar from the nearby zombie before the survivor-return observation window",
+      "unit": "steps",
+      "maximum": 8
+    }
+  }
+}

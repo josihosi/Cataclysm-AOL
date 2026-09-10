@@ -1,0 +1,21 @@
+{
+  "profile": "live-debug",
+  "world": "McWilliams",
+  "description": "Disposable zero-credit committed-shakedown setup for the R-029 Fight/aftermath probe.  It supplies the same lead candidate as its source fixture plus an ordinary wielded medium-steel mace; neither setup equipment nor any installed state is gameplay proof.",
+  "source_fixture": "bandit_r029_committed_shakedown_fixture_v1",
+  "source_profile": "live-debug",
+  "save_transforms": [
+    {
+      "kind": "player_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "storage": "live_accessible_wielded",
+      "replace_existing_weapon": true,
+      "items": [
+        {
+          "typeid": "mace",
+          "count": 1
+        }
+      ]
+    }
+  ]
+}

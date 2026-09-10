@@ -93,6 +93,8 @@ void reset_markers();
 /** Drain the bounded, OMT-coarsened gunfire/alarm/explosion queue. */
 void consume_significant_sounds( const std::function<void( const tripoint_abs_omt &, int,
                                  significant_sound_t, int )> &visitor );
+/** Return whether a bounded significant sound is waiting for the live-world adapter. */
+bool has_significant_sounds();
 
 // Methods for processing sound events, these
 // process_sounds() applies the sounds since the last turn to monster AI,
