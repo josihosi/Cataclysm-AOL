@@ -19,3 +19,5 @@ applicable policy's stored target, scope, authority, and evidence limits; a guar
 more than its inputs.
 
 ## Pending suggestions
+
+- Owner-authorized [trigger]: Set the random mutator cadence to 20–50 completed worker windows, superseding the temporary 10–20 range. Josef corrected the requested range to 20–50 on 2026-09-10. Apply and verify this through the normal mutation route, preserving prior completed history. No worker cap is requested.
