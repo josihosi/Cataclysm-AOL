@@ -1,0 +1,45 @@
+{
+  "schema": "de67.review-accounting-asof.v1",
+  "mutation_id": "mutation-398ca6673f8b4651ba9aeabe78a191a5",
+  "root_thread_id": "01a08109-6d0f-7391-8d01-0209be85fbeb",
+  "root_turn_id": "01a08a17-68d2-79d0-9210-8580fd5eb331",
+  "asof": "2026-09-10T06:57:43.434Z",
+  "calls": 33,
+  "usage": {
+    "input_tokens": 2757069,
+    "cached_input_tokens": 2667776,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 9471,
+    "reasoning_output_tokens": 1829,
+    "total_tokens": 2766540
+  },
+  "threads": {
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl": {
+      "calls": 21,
+      "input_tokens": 2109042,
+      "cached_input_tokens": 2082048,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 5460,
+      "reasoning_output_tokens": 1192,
+      "total_tokens": 2114502
+    },
+    "/Users/josefhorvath/.codex/sessions/2026/09/10/rollout-2026-09-10T08-53-26-01a08a17-bb7e-7320-b23d-b0f464b24cc3.jsonl": {
+      "calls": 12,
+      "input_tokens": 648027,
+      "cached_input_tokens": 585728,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 4011,
+      "reasoning_output_tokens": 637,
+      "total_tokens": 652038
+    }
+  },
+  "deduplication": "Exact root_turn_id across persistent root and sole helper; deduplicated by response_id.",
+  "sources": [
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/10/rollout-2026-09-10T08-53-26-01a08a17-bb7e-7320-b23d-b0f464b24cc3.jsonl"
+  ],
+  "gaps": [
+    "Later closeout and delayed telemetry excluded. Helper was stopped after obtaining bounded source and accounting evidence; final helper synthesis was not completed."
+  ],
+  "boundary": "Measured root/helper/retry records for this review only; no savings or billing claim."
+}

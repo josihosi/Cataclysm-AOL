@@ -1,0 +1,25 @@
+{
+  "gate": null,
+  "restart": {
+    "required": true,
+    "generation": 50,
+    "expected_run_id": null,
+    "run_id": null,
+    "reason": "Owner gate 5e457436075e resolved: random cadence is 20\u201350 completed worker windows, version3, no worker cap. Current cycle15 retains start349/count350 and now has interval20/due369; historical/due cycles and valid work preserved. Evidence .de67/task-logs/review-owner-5e457436075e/report.md. A later agent-supplied live-coordination proposal remains deferred and grants no authority or extra restart."
+  },
+  "macro": {
+    "claim_id": "R-029",
+    "component": "macro",
+    "coordinator_restart": {
+      "generation": 50,
+      "pending": true
+    },
+    "deadline_generation": 19,
+    "disposition": "applied",
+    "lineage_id": "semantic-surface-cockpit",
+    "receipt_id": "5a8c9a6d280d7b85d3a50b5c1c66de5422e0b1d76312db2e3b94efb466eeb213",
+    "recorded": true
+  },
+  "owner_entry": "consumed after completion",
+  "completed_task_unchanged": true
+}
