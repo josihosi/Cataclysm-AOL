@@ -1,0 +1,81 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-rolling-ambush-native-066",
+  "claim_id": "R-029",
+  "worker_id": "01a08872-7271-7c92-92f9-20c3303dd12e",
+  "disposition": "checkpoint",
+  "verdict": "normal_control_rally_boundary_direct_local_setup_open",
+  "outcome": "A fresh source-bound non-rolling control remained upstream of the local gate. It proves exact normal footing and the absence of a gate at that ceiling, but not normal parley; a direct zero-credit committed-local-contact setup remains available.",
+  "summary": "Run fe0c1f478fcb4b1caaa10ea68a66e6592c9169c6b305dcbab21265d46eab10be bound the intended site, operation, members, target, rally and non-rolling field footing. Through minute 8351 the operation remained rallying under abstract ownership, members 4 and 5 remained outbound at rally OMT [141,44,0], local_contact_minutes stayed unset, and no gate_decision record was emitted. This is a route/setup boundary rather than a normal-gate gameplay verdict. The conditional rolling reload was correctly not attempted. The accepted six-record rolling gate evidence remains unchanged. Exact game and bridge PIDs are absent after accepted terminalization.",
+  "material_changes": [
+    "Added a disposable normal-contact control fixture and scenario for a fresh non-rolling source-bound run."
+  ],
+  "tests": [
+    "Focused native local-gate test passed 60 assertions.",
+    "Focused semantic gate_decision parser test passed.",
+    "git diff --check passed."
+  ],
+  "live_actions": [
+    "Launched a fresh non-rolling field-footing control and advanced one bounded native cadence request.",
+    "Observed exact operation/member state through minute 8351 without a local-contact gate.",
+    "Quit through the harness route and verified game PID 75434 and bridge PID 75412 absent."
+  ],
+  "evidence_ceiling": [
+    "The run proves exact non-rolling control footing, operation/member identity, elapsed native cadence and absence of a gate while the operation remained rallying.",
+    "It does not prove normal local contact, parley posture, an open shakedown surface, rolling reload continuity, active combat, or a green packaged verdict.",
+    "The earlier six rolling gate_decision records remain accepted without replay."
+  ],
+  "bindings": {
+    "run_id": "fe0c1f478fcb4b1caaa10ea68a66e6592c9169c6b305dcbab21265d46eab10be",
+    "binding_id": "b546c456abe50533e354637e6e2a20c1f9ccc2aca5b1462b83e610cc70dd51fd",
+    "executable_identity": "d0cf51bfdf53744aa57e1bdac3f66f776a326cc5e8c76f545eaf6f5be42c7694",
+    "source_identity": "3359fc065537d115b32efb268bd37ce3b384948be7971e4e5db3aae1c5672a33",
+    "scenario_id": "tmp.bandit_normal_contact_gate_probe_2026-09-10",
+    "gate_decision_count": "0"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_042806_4b0503e1d56548bb9e51b49dad98d137/probe.report.json",
+      "sha256": "e3693eadb1b43cfd0033b1b53e24535258a23c05973d618d53362e3142255d1a",
+      "role": "normal-control run identity, focused ceiling and cleanup report"
+    },
+    {
+      "path": ".userdata/dev-harness/sessions/r029-normal-control-075/responses/play-879eebf9142d4fe884da3bba94f5b746.json",
+      "sha256": "940b801854ba224cdf5ad7b384727837d40b88d64fbf985ebaefe9ef5183793f",
+      "role": "final authoritative operation/member observation"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_035307_fd233d1e073d4ac383c350cad294f3a7/semantic.native.events.jsonl",
+      "sha256": "ad6799fa323bc2fc2c63dd179d669497abada71ead5f9fd10338e7e25e949008",
+      "role": "retained accepted rolling-gate comparison"
+    }
+  ],
+  "first_divergence": {
+    "class": "normal-control-never-left-rallying",
+    "summary": "The normal control did not enter committed local contact, so the shared gate surface was never evaluated."
+  },
+  "accepted_no_replay": [
+    "Preserve the six accepted rolling gate_decision records without replay.",
+    "Preserve this rallying control as a route/setup boundary, not a normal-gate verdict.",
+    "Do not change local-admission/arbitration or sound-cooldown semantics."
+  ],
+  "active_work": [
+    "Use a direct zero-credit committed-local-contact non-rolling fixture to exercise the same structured gate surface and prove or contradict normal parley ordering.",
+    "Only after a valid comparative gate succeeds, run the smallest honest rolling save/reload continuity check."
+  ],
+  "first_open_boundary": "The normal control must begin at or reach authoritative committed local contact in a non-rolling scene before its gate decision can be compared.",
+  "narrow_queries": [
+    "fe0c1f478fcb4b1caaa10ea68a66e6592c9169c6b305dcbab21265d46eab10be",
+    "operation_phase=rallying local_contact_minutes=-1 gate_decision_count=0",
+    "normal_shakedown_first_sight_requires_parley"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/fixtures/saves/live-debug/tmp_bandit_live_world_owned_site2_normal_probe_2026-09-10/manifest.json",
+    "tools/openclaw_harness/scenarios/tmp.bandit_normal_contact_gate_probe_2026-09-10.json",
+    "src/do_turn.cpp",
+    "src/bandit_live_world.cpp"
+  ],
+  "context_metrics": {}
+}

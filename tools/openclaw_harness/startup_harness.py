@@ -22758,7 +22758,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             continue
 
         if kind == "bandit_hostile_operation_bootstrap":
-            unexpected_keys = sorted(set(raw) - {"kind", "player_save", "site_id", "target_id", "target_omt", "member_ids", "generation", "current_minutes", "rally_omt", "member_rally_positions_ms"})
+            unexpected_keys = sorted(set(raw) - {"kind", "player_save", "site_id", "target_id", "target_omt", "member_ids", "generation", "current_minutes", "rally_omt", "member_rally_positions_ms", "phase", "simulation_owner", "handoff_epoch", "member_contact_positions_ms"})
             if unexpected_keys:
                 raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap has unexpected keys {unexpected_keys} in {manifest_path}")
             site_id = str(raw.get("site_id", "")).strip()
@@ -22787,21 +22787,33 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             if rally_omt == target_omt:
                 raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap rally_omt must differ from target_omt in {manifest_path}")
             member_ids = sorted(raw_member_ids)
-            raw_positions = raw.get("member_rally_positions_ms", {})
+            phase = str(raw.get("phase", "rallying") or "").strip()
+            if phase not in {"rallying", "committed_contact"}:
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap phase is unsupported in {manifest_path}")
+            direct_local_contact = phase == "committed_contact"
+            simulation_owner = str(raw.get("simulation_owner", "local" if direct_local_contact else "abstract") or "").strip()
+            if simulation_owner not in {"abstract", "local"} or (direct_local_contact and simulation_owner != "local") or (not direct_local_contact and simulation_owner != "abstract"):
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap owner is invalid for phase in {manifest_path}")
+            handoff_epoch = raw.get("handoff_epoch", 1 if direct_local_contact else 0)
+            if isinstance(handoff_epoch, bool) or not isinstance(handoff_epoch, int) or handoff_epoch < 0 or handoff_epoch % 2 != (1 if simulation_owner == "local" else 0):
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap handoff_epoch is invalid for owner in {manifest_path}")
+            position_key = "member_contact_positions_ms" if direct_local_contact else "member_rally_positions_ms"
+            raw_positions = raw.get(position_key, {})
             if not isinstance(raw_positions, dict):
-                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap member_rally_positions_ms must be an object in {manifest_path}")
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap {position_key} must be an object in {manifest_path}")
             try:
-                member_rally_positions_ms = {
+                member_positions_ms = {
                     int(member_id): [int(value) for value in position]
                     for member_id, position in raw_positions.items()
                 }
             except (TypeError, ValueError):
-                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap rally positions must be integer triples in {manifest_path}")
-            if (set(member_rally_positions_ms) != set(member_ids) or
-                    any(len(position) != 3 for position in member_rally_positions_ms.values()) or
-                    len({tuple(position) for position in member_rally_positions_ms.values()}) != len(member_ids)):
-                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap rally positions must name each member once at distinct coordinates in {manifest_path}")
-            transforms.append({"kind": kind, "player_save": player_save, "site_id": site_id, "target_id": target_id, "target_omt": target_omt, "member_ids": member_ids, "generation": generation, "current_minutes": current_minutes, "rally_omt": rally_omt, "member_rally_positions_ms": member_rally_positions_ms})
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap positions must be integer triples in {manifest_path}")
+            if (set(member_positions_ms) != set(member_ids) or
+                    any(len(position) != 3 for position in member_positions_ms.values()) or
+                    len({tuple(position) for position in member_positions_ms.values()}) != len(member_ids)):
+                raise SystemExit(f"Fixture save_transforms[{index}] hostile bootstrap positions must name each member once at distinct coordinates in {manifest_path}")
+            normalized = {"kind": kind, "player_save": player_save, "site_id": site_id, "target_id": target_id, "target_omt": target_omt, "member_ids": member_ids, "generation": generation, "current_minutes": current_minutes, "rally_omt": rally_omt, "phase": phase, "simulation_owner": simulation_owner, "handoff_epoch": handoff_epoch, position_key: member_positions_ms}
+            transforms.append(normalized)
             continue
 
         if kind == "remove_overmap_special_placement":
@@ -29213,8 +29225,14 @@ def apply_bandit_hostile_operation_bootstrap_transform(world_dir: Path, transfor
     sites = live_world.get("sites", []) if isinstance(live_world, dict) else []
     site_id = str(transform.get("site_id", ""))
     site = next((candidate for candidate in sites if isinstance(candidate, dict) and candidate.get("site_id") == site_id), None)
-    if site is None or site.get("site_kind") != "cannibal_camp":
-        raise SystemExit("Hostile-operation bootstrap is restricted to a declared cannibal camp")
+    if site is None or site.get("site_kind") not in {"bandit_camp", "cannibal_camp"}:
+        raise SystemExit("Hostile-operation bootstrap is restricted to a declared bandit or cannibal camp")
+    site_kind = str(site.get("site_kind"))
+    expected_report_policy = (
+        "cannibal_night_raid" if site_kind == "cannibal_camp" else "bandit_shakedown"
+    )
+    expected_operation_kind = "raid" if site_kind == "cannibal_camp" else "shakedown"
+    expected_job_type = "raid" if site_kind == "cannibal_camp" else "toll"
     if "active_outing" in site:
         raise SystemExit("Hostile-operation bootstrap refuses a dual active outing owner")
     member_ids = [int(value) for value in transform.get("member_ids", [])]
@@ -29242,51 +29260,75 @@ def apply_bandit_hostile_operation_bootstrap_transform(world_dir: Path, transfor
         raise SystemExit("Hostile-operation bootstrap target/generation is malformed")
     report = site.get("current_scout_report", {})
     decision = site.get("camp_decision", {})
-    if not isinstance(report, dict) or not isinstance(decision, dict) or report.get("action_policy") != "cannibal_night_raid":
-        raise SystemExit("Hostile-operation bootstrap requires a raid report candidate")
+    if not isinstance(report, dict) or not isinstance(decision, dict) or report.get("action_policy") != expected_report_policy:
+        raise SystemExit(f"Hostile-operation bootstrap requires a {expected_report_policy} report candidate")
     if report.get("target_id") != target_id or report.get("target_omt") != target_omt:
         raise SystemExit("Hostile-operation bootstrap report target mismatch")
     activity_id = f"{site_id}#hostile:{generation}"
+    operation_phase = str(transform.get("phase", "rallying"))
+    if operation_phase not in {"rallying", "committed_contact"}:
+        raise SystemExit("Hostile-operation bootstrap supports rallying or committed_contact only")
+    direct_local_contact = operation_phase == "committed_contact"
+    simulation_owner = str(transform.get("simulation_owner", "local" if direct_local_contact else "abstract"))
+    if simulation_owner not in {"abstract", "local"}:
+        raise SystemExit("Hostile-operation bootstrap simulation owner is malformed")
+    if direct_local_contact and simulation_owner != "local":
+        raise SystemExit("Committed-contact bootstrap requires local simulation ownership")
+    if not direct_local_contact and simulation_owner != "abstract":
+        raise SystemExit("Rallying bootstrap requires abstract simulation ownership")
+    handoff_epoch = int(transform.get("handoff_epoch", 1 if direct_local_contact else 0))
+    if handoff_epoch < 0 or handoff_epoch % 2 != (1 if simulation_owner == "local" else 0):
+        raise SystemExit("Hostile-operation bootstrap owner/epoch parity is malformed")
     rally_omt = [int(value) for value in transform.get(
         "rally_omt", [target_omt[0], target_omt[1] + 3, target_omt[2]]
     )]
     route = [list(site.get("anchor", [])), rally_omt, target_omt]
     if len(route[0]) != 3 or route[0] == route[1] or route[1] == route[2]:
         raise SystemExit("Hostile-operation bootstrap route is not canonical")
-    rally_positions = {int(member_id): [int(value) for value in position]
-                       for member_id, position in transform.get("member_rally_positions_ms", {}).items()}
-    if (set(rally_positions) != set(member_ids) or
-            any(len(position) != 3 for position in rally_positions.values()) or
-            any([position[0] // 24, position[1] // 24, position[2]] != route[1]
-                for position in rally_positions.values())):
-        raise SystemExit("Hostile-operation bootstrap requires each concrete member at its exact rally OMT")
+    position_key = "member_contact_positions_ms" if direct_local_contact else "member_rally_positions_ms"
+    member_positions = {int(member_id): [int(value) for value in position]
+                        for member_id, position in transform.get(position_key, {}).items()}
+    expected_member_omt = target_omt if direct_local_contact else route[1]
+    if (set(member_positions) != set(member_ids) or
+            any(len(position) != 3 for position in member_positions.values()) or
+            any([position[0] // 24, position[1] // 24, position[2]] != expected_member_omt
+                for position in member_positions.values())):
+        raise SystemExit(f"Hostile-operation bootstrap requires each concrete member at its exact {('contact' if direct_local_contact else 'rally')} OMT")
+    member_state = "local_contact" if direct_local_contact else "outbound"
+    reservation_phase = "observing" if direct_local_contact else "outbound"
+    local_contact_minutes = current_minutes if direct_local_contact else -1
     reservation = {
         "schema_version": 5, "kind": "hostile_operation", "activity_id": activity_id,
         "camp_id": site_id, "generation": generation, "member_ids": member_ids,
-        "leader_id": member_ids[0], "shared_route": route, "waypoint_index": 1,
-        "target_id": target_id, "target_omt": target_omt, "job_type": "raid",
+        "leader_id": member_ids[0], "shared_route": route,
+        "waypoint_index": 2 if direct_local_contact else 1,
+        "target_id": target_id, "target_omt": target_omt, "job_type": expected_job_type,
         "target_lead_id": report.get("target_lead_id", ""), "target_lead_revision": int(report.get("target_lead_revision", 0)),
-        "phase": "outbound", "observations": [], "cargo": {"supply_units": 0, "trade_value": 0},
+        "phase": reservation_phase, "observations": [], "cargo": {"supply_units": 0, "trade_value": 0},
         "casualty_ids": [], "resolved_member_ids": [], "started_minutes": current_minutes,
-        "local_contact_minutes": -1, "last_progress_minutes": current_minutes,
+        "local_contact_minutes": local_contact_minutes, "last_progress_minutes": current_minutes,
         "expected_return_minutes": -1, "missing_deadline_minutes": -1,
-        "simulation_owner": "abstract", "handoff_epoch": 0, "last_advanced_minutes": current_minutes,
+        "simulation_owner": simulation_owner, "handoff_epoch": handoff_epoch, "last_advanced_minutes": current_minutes,
         "return_application_key": f"{activity_id}:return:{generation}",
         "report_application_key": f"{activity_id}:report:{generation}",
         "cargo_application_key": f"{activity_id}:cargo:{generation}", "member_return_receipts": [],
     }
     for member_id in member_ids:
-        members[member_id]["state"] = "outbound"
+        members[member_id]["state"] = member_state
     site["members"] = list(members.values())
     site.pop("active_outing", None)
-    site["camp_decision"] = {**decision, "state": "preparing_follow_on", "report_policy": "cannibal_night_raid"}
+    site["camp_decision"] = {
+        **decision, "state": "preparing_follow_on", "report_policy": expected_report_policy
+    }
     site["active_hostile_operation"] = {
-        "schema_version": 1, "operation_kind": "raid", "phase": "rallying", "reservation": reservation,
+        "schema_version": 1, "operation_kind": expected_operation_kind, "phase": operation_phase, "reservation": reservation,
         "source_report_revision": int(report.get("revision", 0)), "source_report_generation": int(report.get("source_generation", 0)),
         "source_report_activity_id": report.get("source_activity_id", ""), "source_report_application_key": report.get("application_key", ""),
         "shakedown_pending_branch": "", "shakedown_pending_demanded_value": 0, "shakedown_pending_surrendered_value": 0,
         "shakedown_pending_reachable_value": 0, "shakedown_pending_basecamp_scene": False,
-        "has_rally": True, "rally_omt": route[1], "last_transition_reason": "fixture zero-credit raid bootstrap", "legacy_unpinned": False,
+        "has_rally": True, "rally_omt": route[1],
+        "last_transition_reason": "fixture zero-credit direct contact bootstrap" if direct_local_contact else "fixture zero-credit raid bootstrap",
+        "legacy_unpinned": False,
     }
     for opportunity in live_world.get("hostile_target_opportunities", []):
         if isinstance(opportunity, dict) and opportunity.get("target_id") == target_id and opportunity.get("target_omt") == target_omt:
@@ -29313,10 +29355,37 @@ def apply_bandit_hostile_operation_bootstrap_transform(world_dir: Path, transfor
                     npc_id = int(npc_payload.get("id"))
                 except (TypeError, ValueError):
                     continue
-                if npc_id not in rally_positions:
+                if npc_id not in member_positions:
                     continue
-                npc_payload["location"] = rally_positions[npc_id]
-                found_positions[npc_id] = list(rally_positions[npc_id])
+                npc_payload["location"] = member_positions[npc_id]
+                # The inherited save may retain a camp patrol/travel mission and
+                # goal from before this disposable operation was installed.  If
+                # those fields survive the move, native NPC processing can move a
+                # member away from the persisted rally before the hostile
+                # approach owner gets its first turn.  The hostile operation owns
+                # movement from this boundary; park the concrete records in a
+                # neutral camp-resident state until that owner assigns the target
+                # route.
+                npc_payload["mission"] = 11  # NPC_MISSION_CAMP_RESIDENT
+                npc_payload["previous_mission"] = 11
+                npc_payload["goalx"] = -2147483648
+                npc_payload["goaly"] = -2147483648
+                npc_payload["goalz"] = -2147483648
+                npc_payload["guard_pos"] = None
+                npc_payload["destination_point"] = None
+                npc_payload["omt_path"] = []
+                npc_payload["path"] = []
+                npc_payload["automoveroute"] = []
+                if direct_local_contact:
+                    npc_payload["bandit_live_world_projection_lease"] = {
+                        "site_id": site_id,
+                        "activity_id": activity_id,
+                        "owner": simulation_owner,
+                        "generation": generation,
+                        "handoff_epoch": handoff_epoch,
+                        "last_advanced_minutes": current_minutes,
+                    }
+                found_positions[npc_id] = list(member_positions[npc_id])
                 changed = True
             if changed:
                 write_overmap_payload(plain_path, overmap_version, overmap_payload)
@@ -29328,8 +29397,8 @@ def apply_bandit_hostile_operation_bootstrap_transform(world_dir: Path, transfor
     if set(found_positions) != set(member_ids):
         raise SystemExit("Hostile-operation bootstrap could not find every concrete rally member")
     return {"kind": "bandit_hostile_operation_bootstrap", "world": world_dir.name, "site_id": site_id,
-            "operation_kind": "raid", "phase": "rallying", "activity_id": activity_id, "generation": generation,
-            "member_ids": member_ids, "member_rally_positions_ms": found_positions,
+            "operation_kind": expected_operation_kind, "phase": operation_phase, "activity_id": activity_id, "generation": generation,
+            "member_ids": member_ids, position_key: found_positions,
             "touched_overmaps": touched_overmaps, "gameplay_credit": False}
 
 

@@ -1,0 +1,28 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-029: preserve the source-bound rolling operation across a native save, process exit, and reload.",
+  "material_proof": "A fresh source- and executable-bound run must observe the rolling operation and exact members, use the advertised native save-and-quit route, observe the original process exit, and then bind the same operation identities in a replacement native process without reinstalling the fixture.",
+  "material_contradiction": [
+    "The native save route does not write the current rolling operation.",
+    "The original bound process does not exit after the native quit confirmations.",
+    "The replacement process reloads a different world, operation, owner, target, or member set.",
+    "Fixture installation or a direct state mutation is used as continuation evidence."
+  ],
+  "already_accepted_evidence": [
+    "The six historical rolling gate records remain prior evidence and are not replayed or relabeled by this continuity probe.",
+    "Fixture setup, accepted input, terminal presentation, and rendered text earn no gameplay credit."
+  ],
+  "current_uncertainty": "Whether the current native save and process-replacement path preserves the exact rolling operation state exposed by the source-bound fixture.",
+  "forbidden_shortcuts": [
+    "Replaying consumed authority or relabeling a historical rolling report.",
+    "Reinstalling the fixture during the post-relaunch segment.",
+    "Direct operation, actor, owner, target, contact, or save mutation.",
+    "Using OCR or rendered text as proof."
+  ],
+  "honest_stop_conditions": [
+    "The exact operation and members are bound again after a verified native process replacement.",
+    "A named native save, quit, or reload divergence is observed and preserved.",
+    "A required current native owner or source-bound process replacement remains unavailable."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

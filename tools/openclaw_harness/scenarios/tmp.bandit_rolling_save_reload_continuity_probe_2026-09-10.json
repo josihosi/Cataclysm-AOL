@@ -1,0 +1,153 @@
+{
+  "manifest_version": 2,
+  "name": "tmp.bandit_rolling_save_reload_continuity_probe_2026-09-10",
+  "description": "Disposable continuity probe for the already captured R-029 rolling-travel footing. The native worker observes the source-bound operation, saves and quits through the ordinary native owners, then verifies the same operation and member identities after process replacement without reinstalling the fixture.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "config_profile": "dev-harness",
+  "run_class": "combat",
+  "observer_character": false,
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "capabilities": {
+    "capabilities.r029.rolling_save_reload_continuity": "same_source_bound_rolling_operation_across_native_save_process_replacement",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r029.source_binding": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22:live-debug"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.observe", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_local_contact", "debug:inject_dispatch", "debug:inject_operation", "debug:inject_actor", "raw-save-rewrite-after-install", "fixture-state-as-proof"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native-semantic-broker"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22",
+      "helper": "native-semantic-broker",
+      "peekaboo": false,
+      "ocr": false,
+      "input": ["worker-owned live cockpit", "native save/reload"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/tmp_bandit_live_world_owned_site2_road_probe_2026-04-22/manifest.json",
+    "native_source": "src/do_turn.cpp",
+    "native_executable": "cataclysm-tiles"
+  },
+  "proof_gates": [
+    {
+      "id": "r029_rolling_save_reload_continuity_bound",
+      "label": "R-029 rolling operation survives native save and process replacement",
+      "boundary_step": "audit_persisted_rolling_operation",
+      "predecessors": [],
+      "expectations": [
+        {
+          "kind": "saved_artifact",
+          "predicate": {
+            "same_run": true,
+            "artifact_hash_present": true,
+            "continuity_fields": ["site_id", "operation_id", "actor_ids", "simulation_owner"]
+          }
+        }
+      ],
+      "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}
+    }
+  ],
+  "proof_route": {
+    "gates": ["r029_rolling_save_reload_continuity_bound"],
+    "terminal": ["r029_rolling_save_reload_continuity_bound"]
+  },
+  "steps": [
+    {
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_rolling_continuity_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.wait"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_rolling_continuity_before_save",
+      "cleanup_on_finish": true,
+      "objective": "Observe the current source-bound rolling-travel operation and exact member identities, then use only the currently advertised native save-and-quit and main-menu quit actions before finishing so the saved-world process replacement can be checked.",
+      "proof_targets": ["rolling operation identity", "exact member identities", "native save-and-quit receipt", "native process exit", "cleanup identities"],
+      "authority": ["advertised native actions", "game.observe", "run.witness", "run.finish"],
+      "invariants": ["fixture installation is setup only", "no direct operation/contact/actor mutation", "no OCR or rendered text as proof", "save/reload is acknowledged only by a new native process"],
+      "live_operations": ["game.act", "game.observe", "run.witness", "run.finish"],
+      "transition_timeout_seconds": 30.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "operate_rolling_continuity_before_save",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "wait",
+        "label": "post_rolling_save_reload_hud",
+        "seconds": 2.0,
+        "capture_after": true,
+        "expected_visible_fact": "the same native saved rolling-travel world reloads to an ordinary gameplay HUD",
+        "abort_verdict": "blocked_rolling_save_reload_hud_missing",
+        "abort_reason": "the native rolling-travel save did not reload into ordinary gameplay"
+      },
+      {
+        "kind": "native_semantic_bootstrap",
+        "label": "bind_post_rolling_saved_world",
+        "native_semantic_checkpoint": {
+          "required_actions": ["world.wait"],
+          "required_state": "world",
+          "require_initial_hud_world_ready_frame": true
+        }
+      },
+      {
+        "kind": "audit_saved_bandit_live_world_state",
+        "label": "audit_persisted_rolling_operation",
+        "required_site_id_contains": "overmap_special:bandit_camp@140,51,0",
+        "required_active_hostile_operation_kind": "shakedown",
+        "required_active_hostile_operation_phase": "rallying",
+        "required_active_hostile_reservation_target_id_exact": "r029-fixture-player-opportunity",
+        "required_active_hostile_reservation_simulation_owner": "abstract",
+        "required_active_hostile_reservation_min_member_ids": 2,
+        "required_active_members_found": true,
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_rolling_operation_not_persisted",
+        "abort_reason": "the native rolling-travel save/reload did not preserve the exact operation, owner, target, and member identities"
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "observe_post_rolling_saved_world",
+        "cleanup_on_finish": true,
+        "stop_after_live_session": true,
+        "objective": "Observe the reloaded source-bound rolling-travel world and finish after preserving the post-relaunch native identity and operation state.",
+        "proof_targets": ["fresh-process reload HUD", "persisted rolling operation identity", "persisted member identities", "cleanup identities"],
+        "authority": ["advertised native actions", "game.observe", "run.witness", "run.finish"],
+        "invariants": ["fixture installation is not continuation evidence", "no direct operation/contact/actor mutation", "no OCR or rendered text as proof"],
+        "live_operations": ["game.observe", "run.witness", "run.finish"],
+        "transition_timeout_seconds": 10.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
+  "evidence_contract": {
+    "claim": "one source-bound rolling operation retains its exact owner, target, and members across native save, process exit, and reload",
+    "failure_rule": "missing native save receipt, exact process replacement, or persisted operation/member identity leaves continuity unproved"
+  }
+}

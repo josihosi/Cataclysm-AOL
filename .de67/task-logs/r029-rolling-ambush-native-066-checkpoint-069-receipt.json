@@ -1,0 +1,110 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-rolling-ambush-native-066",
+  "claim_id": "R-029",
+  "worker_id": "01a08872-7271-7c92-92f9-20c3303dd12e",
+  "disposition": "checkpoint",
+  "verdict": "upstream_transition_proved_local_contact_unreached",
+  "outcome": "The repository-owned fixture path now establishes an exact bandit shakedown operation and clears stale inherited NPC routes. A fresh source-bound native run proved the operation's rallying-to-approaching transition, but did not reach local contact, the rolling direct-combat branch, or the normal-contact control.",
+  "summary": "Run 39b115095f0d988a6ff18ee77aff22b623c10816d4630dcdc15568725e8b151c bound operation overmap_special:bandit_camp@140,51,0#hostile:2, members 4 and 5, rally [140,43,0], target [140,42,0], source 2c083ca4897bf1c9ca2dcf485946b2e514ba9e48529de00bf712e9bdf4b5f89c, executable 60658e3fe395a2121bf3dd4a95911ddcf640aa789084f53c973c96510ef82205, and bridge da12f1d319b5a74bb6d127b9b744b0c4d263bdb997124aaf524b5b1eefa94044. Native semantic evidence recorded rallying to approaching at minute 8340 with the same operation and members, then no local contact through minute 8341. The mechanically validated focused witness proves native identity, pavement footing, accepted production progression, walk mode, and the unresolved terminal boundary; the semantic trace supplies the operation transition at its own focused ceiling. The rolling attack and normal-contact control remain unproved. PID 50478 exited with code 0 and the owned bridge children are absent.",
+  "material_changes": [
+    "Extended the existing zero-credit hostile-operation bootstrap to declared bandit camps using bandit_shakedown, shakedown, and toll identities while preserving cannibal raid behavior.",
+    "Cleared inherited selected-member mission, goal, guard, destination, overmap path, local path, and automove route fields so the hostile operation owns movement from the fixture boundary.",
+    "Added a focused fixture-contract regression test for bandit operation identity and stale-route clearing."
+  ],
+  "tests": [
+    "ScenarioFixtureContractTest.test_hostile_operation_bootstrap_clears_inherited_member_routes passed.",
+    "Python compilation of startup_harness.py and test_fixture_contract.py passed.",
+    "Focused normal-contact control test bandit_live_world_chooses_reviewer_readable_local_approach_gate_posture passed.",
+    "git diff --check passed.",
+    "The focused native witness validated mechanically against five exact journal citations and was accepted by the live bridge."
+  ],
+  "live_actions": [
+    "Used the registry repair-bootstrap route required by the prior quarantined witness and launched a fresh disposable source-bound native session.",
+    "Advanced the exact operation through native production boundaries from minute 8339 to minute 8341.",
+    "Journaled and finished the charter-bound run through the bridge, then verified game exit code 0 and all named PIDs absent."
+  ],
+  "evidence_ceiling": [
+    "The repaired fixture and startup transform are zero-credit setup; they establish valid prerequisites but not gameplay success.",
+    "The semantic native trace establishes operation identity, members, route, rallying-to-approaching transition, and absence of local contact through the observed interval.",
+    "The mechanically validated journal witness establishes the exact source-bound run, pavement footing, accepted native progression, terminal walk mode, and its explicit inconclusive boundary.",
+    "The rolling direct-combat branch, absence of normal parley at rolling contact, save/reload persistence of that branch, and native normal-contact control remain unproved.",
+    "No local-admission, activation/arbitration, or sound-cooldown behavior was selected or changed."
+  ],
+  "bindings": {
+    "binding_id": "da12f1d319b5a74bb6d127b9b744b0c4d263bdb997124aaf524b5b1eefa94044",
+    "executable_identity": "60658e3fe395a2121bf3dd4a95911ddcf640aa789084f53c973c96510ef82205",
+    "game_minutes_end": "8341",
+    "game_minutes_start": "8339",
+    "game_pid": "50478",
+    "operation_id": "overmap_special:bandit_camp@140,51,0#hostile:2",
+    "operation_members": "4,5",
+    "registry_witness_id": "4ab62b91bb66e36f329206a0c65a7dcacd03fa9ee6c333c1eede379e051028c8",
+    "report_id": "aadc51f698b5a4872a1737d214891b033240e0c4049ead53ecba8080fed8d2ba",
+    "run_id": "39b115095f0d988a6ff18ee77aff22b623c10816d4630dcdc15568725e8b151c",
+    "scenario_id": "tmp.bandit_rolling_travel_attack_gate_probe_1860",
+    "source_identity": "2c083ca4897bf1c9ca2dcf485946b2e514ba9e48529de00bf712e9bdf4b5f89c",
+    "witness_journal_sha256": "a42637c9fcf9136992c61cba578ef7f457c37d2d78e154c44f3b88606bbc691f",
+    "witness_statement_sha256": "f24df1db3f186d648c581e360160e2461c968ee9ca28ac8ad66f3158e8abce92"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "build_logs/20260910-r029-session-069-witness.json",
+      "sha256": "1c707694e68e34ac8621ea04805043970ffa492ad5e086e3f094628c1672e12e",
+      "role": "mechanically validated focused native witness statement"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_025232_8676e02785884492be2b63e8ba1c30b5/probe.report.json",
+      "sha256": "aad371b8e97118ab2a75df52c6d1bee1438d0ec91faf8cb6a9ab2ab568273d18",
+      "role": "final source-bound run report and cleanup record"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_025232_8676e02785884492be2b63e8ba1c30b5/semantic.native.events.jsonl",
+      "sha256": "35615cff839e35d10a426466d9ed33cd623f71278ff9b6f0fd90ff3e744f1256",
+      "role": "native semantic operation identity and rallying-to-approaching transition trace"
+    },
+    {
+      "path": "build_logs/20260910-r029-fixture-contract-068.log",
+      "sha256": "a41e08b8782ccff561fc04da1c4aa92b79d00989913c15ae6639e0c2e9b7e03c",
+      "role": "focused fixture regression test result"
+    },
+    {
+      "path": "build_logs/20260910-r029-normal-contact-control-test.log",
+      "sha256": "15296b01ddee5d016b268ec3c2253a58462c0963542fb0e9f9d7db44f57e8e0f",
+      "role": "focused normal-contact gate source test result"
+    }
+  ],
+  "first_divergence": {
+    "class": "approaching-operation-does-not-reach-local-contact",
+    "summary": "The exact repaired operation transitions to approaching, but its members remain at rally and local_contact_minutes remains unset during the bounded native interval, so neither rolling gate nor control is reached."
+  },
+  "accepted_no_replay": [
+    "Preserve the accepted Pay, Fight, night, smoke, sound-detection, camp-service, and other closed R-029 evidence without replay.",
+    "Preserve the first empty-operation attempt as the diagnostic that motivated the fixture repair.",
+    "Preserve this run's operation identity and rallying-to-approaching transition without replay merely to restate them.",
+    "Do not select or implement the owner-gated local-admission route or sound-cooldown semantics."
+  ],
+  "active_work": [
+    "Locate the first failed production prerequisite between approaching at the exact rally state and native local contact, distinguishing a cadence/horizon issue, route-state mismatch, activation/admission dependency, or missing semantic observation.",
+    "If independent repository-owned harness or observation work can reach the existing gate without making the owner choice, recover the rolling branch and normal-contact control; otherwise bind the exact owner dependency and stop there."
+  ],
+  "first_open_boundary": "The exact approaching operation must reach an authoritative native local-contact state before the rolling direct-combat gate and normal-contact control can be compared.",
+  "narrow_queries": [
+    "39b115095f0d988a6ff18ee77aff22b623c10816d4630dcdc15568725e8b151c",
+    "overmap_special:bandit_camp@140,51,0#hostile:2",
+    "members 4,5 rally 140,43,0 target 140,42,0",
+    "rallying approaching local_contact_minutes=-1",
+    "4ab62b91bb66e36f329206a0c65a7dcacd03fa9ee6c333c1eede379e051028c8"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/test_fixture_contract.py",
+    "src/do_turn.cpp",
+    "src/bandit_live_world.cpp",
+    "tests/bandit_live_world_test.cpp",
+    "tools/openclaw_harness/scenarios/tmp.bandit_rolling_travel_attack_gate_probe_1860.json"
+  ],
+  "context_metrics": {}
+}

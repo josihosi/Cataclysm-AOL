@@ -19474,6 +19474,16 @@ TEST_CASE( "bandit_live_world_chooses_reviewer_readable_local_approach_gate_post
     CHECK( rolling_report.find( "posture=attack_now" ) != std::string::npos );
     CHECK( rolling_report.find( "rolling_travel=yes" ) != std::string::npos );
     CHECK( rolling_report.find( "combat_forward=yes" ) != std::string::npos );
+    const std::string rolling_event = bandit_live_world::render_local_gate_semantic_event(
+                                          site, rolling_input, decision, "run-gate-test", 8345, 500700 );
+    CHECK( rolling_event.find( "\"event\":\"gate_decision\"" ) != std::string::npos );
+    CHECK( rolling_event.find( "\"run_id\":\"run-gate-test\"" ) != std::string::npos );
+    CHECK( rolling_event.find( "\"rolling_travel_scene\":true" ) != std::string::npos );
+    CHECK( rolling_event.find( "\"player_contact\":false" ) != std::string::npos );
+    CHECK( rolling_event.find( "\"follower_sight\":false" ) != std::string::npos );
+    CHECK( rolling_event.find( "\"posture\":\"attack_now\"" ) != std::string::npos );
+    CHECK( rolling_event.find( "\"combat_forward\":true" ) != std::string::npos );
+    CHECK( rolling_event.find( "\"member_ids\":[901,902]" ) != std::string::npos );
 
     bandit_live_world::local_gate_input hopeless_input;
     hopeless_input.local_threat = 8;

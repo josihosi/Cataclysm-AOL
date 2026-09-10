@@ -1592,6 +1592,9 @@ struct local_gate_input {
     bool smoke_on_watcher_tile = false;
     bool smoke_between_watcher_and_camp = false;
     bool local_contact_established = false;
+    // Read-only provenance for the first-sight gate; these do not affect posture selection.
+    bool player_contact = false;
+    bool follower_sight = false;
 };
 
 struct local_gate_decision {
@@ -2324,6 +2327,15 @@ std::string to_string( hostile_operation_kind kind );
 std::string to_string( hostile_operation_phase phase );
 std::string render_local_gate_report( const site_record &site, const local_gate_input &input,
                                       const local_gate_decision &decision );
+
+// Read-only native semantic evidence for the local gate.  This is intentionally
+// separate from gameplay mutation so the harness can bind the decision to the
+// exact operation and actor identities that produced it.
+std::string render_local_gate_semantic_event( const site_record &site,
+        const local_gate_input &input, const local_gate_decision &decision,
+        const std::string &run_id, int game_minutes, int game_turn );
+void record_local_gate_semantic_event( const site_record &site,
+        const local_gate_input &input, const local_gate_decision &decision );
 std::string render_shakedown_surface_report( const site_record &site,
         const shakedown_surface &surface );
 } // namespace bandit_live_world

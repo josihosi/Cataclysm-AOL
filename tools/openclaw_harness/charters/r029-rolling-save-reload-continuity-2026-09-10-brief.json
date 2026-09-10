@@ -1,0 +1,15 @@
+{
+  "outcome": "R-029: preserve the source-bound rolling operation across a native save, process exit, and reload.",
+  "scenario": "tmp.bandit_rolling_save_reload_continuity_probe_2026-09-10",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r029.rolling_save_reload_continuity",
+        "op": "eq",
+        "value": "same_source_bound_rolling_operation_across_native_save_process_replacement",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

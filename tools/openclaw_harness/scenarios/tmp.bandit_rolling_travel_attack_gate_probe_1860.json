@@ -1,49 +1,64 @@
 {
+  "manifest_version": 2,
   "name": "tmp.bandit_rolling_travel_attack_gate_probe_1860",
   "description": "Disposable proof probe: claimed nearby-owned-site save with player on road travel footing, advance across the 30-minute dispatch cadence, capture the post-save world, and verify the local approach gate chooses attack_now / combat-forward pressure instead of a polite shakedown or Basecamp stand-off.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "fixture": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22",
   "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
   "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
   "profile_snapshot_profile": "live-debug",
+  "config_profile": "dev-harness",
+  "run_class": "combat",
+  "observer_character": false,
+  "semantic_only_startup": true,
+  "capabilities": {
+    "capabilities.r029.rolling_ambush_native": "favorable_rolling_travel_direct_ambush_with_normal_contact_control",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r029.source_binding": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22:live-debug"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_local_contact", "debug:inject_dispatch", "debug:inject_operation", "debug:inject_actor", "raw-save-rewrite-after-install", "fixture-state-as-proof"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22", "helper": "Peekaboo", "peekaboo": true, "input": ["worker-owned live cockpit"], "ocr": true, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/tmp_bandit_live_world_owned_site2_road_probe_2026-04-22/manifest.json", "native_source": "src/do_turn.cpp", "native_executable": "cataclysm-tiles"},
+  "proof_gates": [{"id": "r029_rolling_ambush_native_bound", "label": "R-029 rolling ambush reaches a current source-bound live session", "boundary_step": "operate_r029_rolling_ambush_native", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r029_rolling_ambush_native_bound"], "terminal": ["r029_rolling_ambush_native_bound"], "capability_gates": {"capabilities.r029.rolling_ambush_native": {"terminal": ["r029_rolling_ambush_native_bound"]}}},
   "replace_existing_worlds": true,
   "artifact_source": "debug.log",
   "capture_world_after": true,
   "steps": [
     {
-      "kind": "wait",
-      "label": "post_load_settle",
-      "seconds": 2.0,
-      "capture_after": true
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_r029_rolling_ambush_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.wait"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
     },
     {
-      "kind": "press",
-      "label": "disable_safe_mode",
-      "keys": ["!"],
-      "settle_seconds": 1.0,
-      "capture_after": true
-    },
-    {
-      "kind": "advance_turns",
-      "label": "advance_1860_turns",
-      "count": 1860,
-      "settle_seconds": 2.0,
-      "capture_after": true
-    },
-    {
-      "kind": "press",
-      "label": "open_save_quit_prompt",
-      "keys": ["S"],
-      "settle_seconds": 1.0,
-      "capture_after": true
-    },
-    {
-      "kind": "press",
-      "label": "confirm_save_quit",
-      "keys": ["Y"],
-      "settle_seconds": 4.0,
-      "capture_after": true
+      "kind": "cockpit_live_session",
+      "label": "operate_r029_rolling_ambush_native",
+      "objective": "Bind the fixture-installed road footing, active owned operation, exact member actors, operation phase and game-time cadence from native observations. Use ordinary native waits or movement to cross the dispatch/local-approach boundary. Compare the rolling-travel gate against a normal local-contact control where available; preserve any local-activation divergence without selecting a gameplay repair strategy.",
+      "proof_targets": ["rolling-travel scene footing", "active operation and exact member actor IDs", "rolling gate attack_now/combat-forward posture without shakedown", "normal local-contact parley ordering control", "save/reload and cleanup identities if exercised"],
+      "authority": ["advertised native actions", "worker-chosen native waits or movement", "run.witness", "run.finish"],
+      "invariants": ["fixture installation is setup only", "no direct operation/contact/actor mutation", "no OCR or rendered text as proof", "preserve first divergence and unaffected claims separately"],
+      "live_operations": ["game.act", "game.wait", "game.raw_wait", "run.witness", "run.finish"],
+      "transition_timeout_seconds": 10.0,
+      "observe_interval_seconds": 0.1
     }
-  ]
+  ],
+  "evidence_contract": {"claim": "one source-bound R-029 native rolling-travel ambush branch and its normal-contact control", "failure_rule": "missing active operation/member identity, rolling footing, gate posture, or cleanup leaves the affected branch unproved"}
 }

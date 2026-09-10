@@ -1,0 +1,98 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-rolling-ambush-native-066",
+  "claim_id": "R-029",
+  "worker_id": "01a08872-7271-7c92-92f9-20c3303dd12e",
+  "disposition": "completed",
+  "verdict": "rolling_ambush_branch_control_and_continuity_proved",
+  "outcome": "Fresh source-bound evidence distinguishes the favorable rolling-travel ambush from ordinary first-sight parley and proves the rolling operation survives native save/quit and process replacement with its exact member identities.",
+  "summary": "Rolling run 2e8b1e323b40d4ce07782a368778a88a416f949046f4422373f77e5de6fc5031 emitted six exact gate_decision records for operation overmap_special:bandit_camp@140,51,0#hostile:2 and members 4 and 5: rolling_travel_scene=true, local_contact_established=true, attack_now, combat_forward=true, shakedown surface closed. Matched direct-control run e657ff7e7d921e24e178c870b910c98efaa5cddd3292fdc26b6467539f58f9cc emitted the opposite valid branch for the same operation and members at committed local contact: rolling_travel_scene=false, player_contact=true, open_shakedown, combat_forward=false, shakedown surface open. Continuity run 06cb0ab7607fa0d5bc133fe7b25b249861ff11ccff1bf2794b241a6a3ff187e4 completed native save/quit, original-process exit and replacement-process audit; required_state_present had no missing fields and restored shakedown/rallying, target r029-fixture-player-opportunity, reservation generation 2 and members 4 and 5. All owned game generations and bridges are absent. Fixture setup and legacy packaged red/yellow gates receive no gameplay credit, and active creature-tracker combat remains outside this task behind the separately recorded owner choice.",
+  "material_changes": [
+    "Added read-only structured gate_decision instrumentation and parser/source tests.",
+    "Expanded repository-owned hostile-operation fixture support and parameterized disposable serialized phase/owner/contact/member/projection-lease state needed for a direct local-contact control.",
+    "Added disposable rolling, normal-control, committed-contact-control and save/reload continuity scenarios, fixtures and charters."
+  ],
+  "tests": [
+    "Source-bound Tiles build succeeded for the final support state.",
+    "Focused native local-gate test passed 60 assertions.",
+    "Focused semantic gate_decision parser test passed.",
+    "Focused hostile-operation fixture regression passed.",
+    "Committed-contact scenario dry-run and Python syntax validation passed.",
+    "Continuity report returned ok=true; post-reload audit returned required_state_present with no missing fields.",
+    "JSON validation and git diff --check passed."
+  ],
+  "live_actions": [
+    "Observed six source-bound rolling gate decisions without replay after acceptance.",
+    "Ran a fresh direct non-rolling committed-contact control and observed the same-run normal parley gate tuple without choosing Pay or Fight.",
+    "Ran a fresh rolling save/quit and declared registry-authorized replacement, then audited restored operation/member state.",
+    "Verified every recorded task-owned game and bridge PID absent after cleanup."
+  ],
+  "evidence_ceiling": [
+    "The structured native evidence proves branch selection and ordering at the gate: rolling travel attacks immediately and does not open normal shakedown; ordinary current first sight opens shakedown and does not forward combat.",
+    "The replacement audit proves persistence of the exact rolling operation identity and members, not a second post-reload combat gate replay.",
+    "The task does not prove active creature-tracker combat, casualty/aftermath, owner-gated local-admission strategy, sound policy, natural discovery, or subjective gameplay feel.",
+    "Legacy packaged reports remain red/yellow where their generic gameplay-credit artifact predicate did not bind; focused structured native evidence remains separately identity-bound."
+  ],
+  "bindings": {
+    "rolling_run_id": "2e8b1e323b40d4ce07782a368778a88a416f949046f4422373f77e5de6fc5031",
+    "rolling_executable_identity": "d0cf51bfdf53744aa57e1bdac3f66f776a326cc5e8c76f545eaf6f5be42c7694",
+    "control_run_id": "e657ff7e7d921e24e178c870b910c98efaa5cddd3292fdc26b6467539f58f9cc",
+    "control_executable_identity": "a58cb2e55127a759274e5abde85aa2144f749fe380a7dfc63efc49432b6d216f",
+    "continuity_run_id": "06cb0ab7607fa0d5bc133fe7b25b249861ff11ccff1bf2794b241a6a3ff187e4",
+    "continuity_binding_id": "28d9d04ac9cc54520cb40830e4c1d2ab1455979e26edaa3f708d58590f698e4f",
+    "source_identity": "88e8108e856ba7ee8f6d4ee4210fe4a0d2e72457a8634e8936da7a4ca17e7ed3",
+    "operation_id": "overmap_special:bandit_camp@140,51,0#hostile:2",
+    "member_ids": "[4,5]"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_035307_fd233d1e073d4ac383c350cad294f3a7/semantic.native.events.jsonl",
+      "sha256": "ad6799fa323bc2fc2c63dd179d669497abada71ead5f9fd10338e7e25e949008",
+      "role": "six accepted rolling attack-gate decisions"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_050008_057ff04435aa42af9bc0ff77f944e342/semantic.native.events.jsonl",
+      "sha256": "dc7fc291384b26129edcc921ab391d91d723d07c51403ce07aa3f12fc3f80ee2",
+      "role": "same-run non-rolling committed-contact parley gate control"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_051557_736225722e5241f28bfa49cdc5650b38/probe.report.json",
+      "sha256": "38c44a385a83c2cbd060cacd00397dc9d7892b4dee4cf365b292902bcb95124f",
+      "role": "rolling save/reload continuity report and cleanup"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_051557_736225722e5241f28bfa49cdc5650b38/audit_persisted_rolling_operation.metadata.json",
+      "sha256": "39be7f3a2949156b21f4efd09868e64eaa92cdcc7c8ae97027ccd3229bf662b1",
+      "role": "authoritative post-reload operation/member audit"
+    },
+    {
+      "path": ".userdata/r029-rolling-save-reload-continuity-witness-20260910.json",
+      "sha256": "62637d8ae47d8d06bbab2d3a2d352df609cf0d7102fc6187d9c4c3ac8dbd6ae5",
+      "role": "sealed process-replacement continuity witness"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not replay the accepted rolling or normal gate tuples merely to restate them.",
+    "Preserve the first rallying normal-control and first failed continuation as non-credit diagnostics.",
+    "Do not change local-admission/arbitration or sound-cooldown semantics."
+  ],
+  "active_work": [],
+  "first_open_boundary": "No boundary remains inside R-029-rolling-ambush-native-066; active combat and the two owner choices remain separate R-029 work.",
+  "narrow_queries": [
+    "rolling_travel_scene=true posture=attack_now combat_forward=true opens_shakedown_surface=false",
+    "rolling_travel_scene=false player_contact=true posture=open_shakedown combat_forward=false opens_shakedown_surface=true",
+    "required_state_present missing_required_fields=[] member_ids=[4,5]"
+  ],
+  "entrypoints": [
+    "src/do_turn.cpp",
+    "src/bandit_live_world.cpp",
+    "tools/openclaw_harness/startup_harness.py",
+    "tools/openclaw_harness/semantic_state.py",
+    "tools/openclaw_harness/scenarios/tmp.bandit_committed_contact_gate_probe_2026-09-10.json",
+    "tools/openclaw_harness/scenarios/tmp.bandit_rolling_save_reload_continuity_probe_2026-09-10.json"
+  ],
+  "context_metrics": {}
+}

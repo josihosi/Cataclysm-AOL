@@ -1,19 +1,15 @@
 {
-  "name": "tmp_bandit_live_world_owned_site2_road_probe_2026-04-22",
+  "name": "tmp_bandit_live_world_owned_site2_normal_probe_2026-09-10",
   "source_fixture": "bandit_phase4_quiet_current_schema_v0_2026-08-05",
   "source_profile": "live-debug",
-  "description": "Disposable probe footing: start from the claimed nearby-owned-site save, then move the player onto the adjacent road 9 OMT south of site2 so dispatch pathing is tested against a routable-looking player OMT instead of the faction-camp tile itself.",
+  "description": "Disposable zero-credit control footing: reuse the current schema bandit camp and operation setup, but place the player and exact hostile pair on a non-road field OMT so the native local gate must exercise ordinary first-sight parley.",
   "save_transforms": [
     {
       "kind": "player_near_overmap_special",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "special_id": "bandit_camp",
       "site_index": 2,
-      "offset_omt": [
-        0,
-        -9,
-        0
-      ]
+      "offset_omt": [1, -8, 0]
     },
     {
       "kind": "bandit_scheduler_response_candidate",
@@ -23,8 +19,8 @@
       "generation": 2,
       "current_minutes": 8047,
       "target_id": "r029-fixture-player-opportunity",
-      "target_omt": [140, 42, 0],
-      "branch": "rolling_ambush",
+      "target_omt": [141, 43, 0],
+      "branch": "normal_contact_control",
       "report_policy": "bandit_shakedown",
       "preserve_member_records": true
     },
@@ -36,11 +32,11 @@
       "generation": 2,
       "current_minutes": 8047,
       "target_id": "r029-fixture-player-opportunity",
-      "target_omt": [140, 42, 0],
-      "rally_omt": [140, 43, 0],
+      "target_omt": [141, 43, 0],
+      "rally_omt": [141, 44, 0],
       "member_rally_positions_ms": {
-        "4": [3368, 1032, 0],
-        "5": [3370, 1032, 0]
+        "4": [3384, 1056, 0],
+        "5": [3386, 1056, 0]
       }
     }
   ]

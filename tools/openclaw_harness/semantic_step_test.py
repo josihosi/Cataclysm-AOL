@@ -791,6 +791,27 @@ class SemanticStepChannelTest(unittest.TestCase):
             )
             self.assertEqual(read_semantic_step_trace(trace, root, self.run_id)[1], "contamination")
 
+    def test_native_trace_parser_accepts_gate_decision_observation(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            trace = root / "debug.log"
+            event = {
+                "event": "gate_decision",
+                "run_id": self.run_id,
+                "site_id": "bandit-camp",
+                "member_ids": [4, 5],
+                "input": {"rolling_travel_scene": True},
+                "decision": {"posture": "attack_now", "combat_forward": True},
+            }
+            trace.write_text(
+                "openclaw_harness_semantic_step: " + json.dumps(event) + "\n",
+                encoding="utf-8",
+            )
+            parsed, status = read_semantic_step_trace(trace, root, self.run_id)
+            self.assertEqual(status, "ok")
+            self.assertEqual(parsed[0]["event"], "gate_decision")
+            self.assertEqual(parsed[0]["member_ids"], [4, 5])
+
     def test_surface_descriptor_is_the_current_observation_and_binds_its_receipt(self) -> None:
         descriptor = {
             "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,

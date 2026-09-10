@@ -461,8 +461,11 @@ bandit_live_world::local_gate_input live_bandit_make_gate_input(
                 continue;
             }
             const tripoint_bub_ms member_pos = member_npc->pos_bub( here );
+            const bool player_sees_member = get_player_view().sees( here, member_pos );
             const bool follower_sees_member = live_bandit_seen_by_nearby_ally( here, u, member_pos );
-            input.current_exposure |= get_player_view().sees( here, member_pos ) ||
+            input.player_contact |= player_sees_member;
+            input.follower_sight |= follower_sees_member;
+            input.current_exposure |= player_sees_member ||
                                       follower_sees_member;
             follower_sight |= follower_sees_member;
             const bool smoke_on_member = live_bandit_tile_has_smoke( here, member_pos );
@@ -2899,6 +2902,7 @@ bool live_bandit_handle_hostile_shakedown_contact( bandit_live_world::site_recor
     gate_input.local_contact_established = true;
     const bandit_live_world::local_gate_decision gate_decision =
         bandit_live_world::choose_local_gate_posture( site, gate_input );
+    bandit_live_world::record_local_gate_semantic_event( site, gate_input, gate_decision );
     if( gate_decision.combat_forward ) {
         bool changed = false;
         for( const character_id member_id : outing->member_ids ) {
@@ -2978,6 +2982,7 @@ bool note_live_bandit_local_turn_sight_avoid()
         gate_input.local_contact_established = true;
         const bandit_live_world::local_gate_decision gate_decision =
             bandit_live_world::choose_local_gate_posture( site, gate_input );
+        bandit_live_world::record_local_gate_semantic_event( site, gate_input, gate_decision );
         DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_local_gate_report( site, gate_input,
                                    gate_decision )
                                    << "- live_existing_active_group=yes\n";
@@ -4555,6 +4560,7 @@ bool note_live_bandit_aftermath()
         } );
         const bandit_live_world::local_gate_decision gate_decision =
             bandit_live_world::choose_local_gate_posture( site, gate_input );
+        bandit_live_world::record_local_gate_semantic_event( site, gate_input, gate_decision );
         DebugLog( D_INFO, DC_ALL ) << bandit_live_world::render_local_gate_report( site, gate_input,
                                    gate_decision )
                                    << "- live_existing_active_group=yes\n";

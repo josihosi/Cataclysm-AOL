@@ -1,0 +1,46 @@
+{
+  "manifest_version": 2,
+  "name": "tmp.bandit_committed_contact_gate_probe_2026-09-10",
+  "description": "Disposable proof probe: capture the ordinary non-rolling shakedown gate from a fixture-installed committed local contact.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "tmp_bandit_live_world_owned_site2_committed_contact_probe_2026-09-10",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "config_profile": "dev-harness",
+  "run_class": "non_combat",
+  "observer_character": false,
+  "semantic_only_startup": true,
+  "capabilities": {
+    "capabilities.r029.committed_contact_gate_control": "non_rolling_committed_shakedown_parley_gate",
+    "runtime.entry_mode": "cockpit_live_session",
+    "runtime.r029.source_binding": "tmp_bandit_live_world_owned_site2_committed_contact_probe_2026-09-10:live-debug"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_local_contact", "debug:inject_dispatch", "debug:inject_operation", "debug:inject_actor", "raw-save-rewrite-after-install", "fixture-state-as-proof"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["Peekaboo"],
+    "permissions": ["accessibility", "screen-recording"],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "config_profile": "dev-harness",
+    "fixture": "tmp_bandit_live_world_owned_site2_committed_contact_probe_2026-09-10",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "tmp_bandit_live_world_owned_site2_committed_contact_probe_2026-09-10", "helper": "Peekaboo", "peekaboo": true, "input": ["worker-owned live cockpit"], "ocr": true, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/tmp_bandit_live_world_owned_site2_committed_contact_probe_2026-09-10/manifest.json", "native_source": "src/do_turn.cpp", "native_executable": "cataclysm-tiles"},
+  "proof_gates": [{"id": "r029_committed_contact_gate_control_bound", "label": "R-029 committed-contact control reaches a current source-bound live session", "boundary_step": "operate_r029_committed_contact_gate_control", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:", "Wield:"]}}],
+  "proof_route": {"gates": ["r029_committed_contact_gate_control_bound"], "terminal": ["r029_committed_contact_gate_control_bound"], "capability_gates": {"capabilities.r029.committed_contact_gate_control": {"terminal": ["r029_committed_contact_gate_control_bound"]}}},
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "capture_world_after": true,
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "bind_r029_committed_contact_gate_control_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": true}},
+    {"kind": "cockpit_live_session", "label": "operate_r029_committed_contact_gate_control", "objective": "Bind the non-road field scene, exact active shakedown operation, local owner, committed contact, member actors, and same-run ordinary parley gate. Require source-emitted gate_decision evidence with rolling_travel_scene=false, local_contact_established=true, player_contact/follower_sight facts, open_shakedown posture, opens_shakedown_surface=true, and combat_forward=false. Do not select a gameplay response.", "proof_targets": ["non-rolling field scene footing", "active shakedown operation and exact member actor IDs", "same-run local-contact parley gate and sight provenance", "cleanup identities"], "authority": ["advertised native actions", "worker-chosen native waits", "run.witness", "run.finish"], "invariants": ["fixture installation is setup only", "no direct operation/contact/actor mutation", "no OCR or rendered text as proof", "do not broaden into active-combat repair"], "live_operations": ["game.act", "game.wait", "game.raw_wait", "run.witness", "run.finish"], "transition_timeout_seconds": 10.0, "observe_interval_seconds": 0.1}
+  ],
+  "evidence_contract": {"claim": "one source-bound R-029 non-rolling committed shakedown parley gate with exact operation, member, target, and sight provenance", "failure_rule": "missing same-run active operation/member identity, non-rolling footing, sight facts, gate posture, shakedown surface, or cleanup leaves the control unproved"}
+}

@@ -1,0 +1,74 @@
+{
+  "task": "R-029-rolling-ambush-native-066",
+  "kind": "normal_non_rolling_control_result",
+  "scenario": "tmp.bandit_normal_contact_gate_probe_2026-09-10",
+  "fixture": "tmp_bandit_live_world_owned_site2_normal_probe_2026-09-10",
+  "run_id": "fe0c1f478fcb4b1caaa10ea68a66e6592c9169c6b305dcbab21265d46eab10be",
+  "binding_id": "b546c456abe50533e354637e6e2a20c1f9ccc2aca5b1462b83e610cc70dd51fd",
+  "executable_sha256": "d0cf51bfdf53744aa57e1bdac3f66f776a326cc5e8c76f545eaf6f5be42c7694",
+  "runtime_source_sha256": "3359fc065537d115b32efb268bd37ce3b384948be7971e4e5db3aae1c5672a33",
+  "fixture_manifest_sha256": "4aae8e1ac7774c644d1077df40eda489846b6f2024b7a875dd700dcd2a7b62e6",
+  "scenario_sha256": "ebd3b7763d0985948c97ecce7f75b3110f00f4bf63e5365b04db83f719cf9eed",
+  "run_dir": ".userdata/dev-harness/harness_runs/20260910_042806_4b0503e1d56548bb9e51b49dad98d137",
+  "report": {
+    "path": ".userdata/dev-harness/harness_runs/20260910_042806_4b0503e1d56548bb9e51b49dad98d137/probe.report.json",
+    "sha256": "e3693eadb1b43cfd0033b1b53e24535258a23c05973d618d53362e3142255d1a",
+    "verdict": "yellow_step_local_proof_incomplete",
+    "structured_gate_status": "red"
+  },
+  "native_observation": {
+    "path": ".userdata/dev-harness/sessions/r029-normal-control-075/responses/play-879eebf9142d4fe884da3bba94f5b746.json",
+    "sha256": "940b801854ba224cdf5ad7b384727837d40b88d64fbf985ebaefe9ef5183793f",
+    "game_minutes": 8351,
+    "avatar_omt": [141, 43, 0],
+    "site_id": "overmap_special:bandit_camp@140,51,0",
+    "operation_id": "overmap_special:bandit_camp@140,51,0#hostile:2",
+    "operation_phase": "rallying",
+    "operation_owner": "abstract",
+    "target_omt": [141, 43, 0],
+    "rally_omt": [141, 44, 0],
+    "member_ids": [4, 5],
+    "member_state": "outbound",
+    "member_omt": [141, 44, 0],
+    "projection_omt": [141, 44, 0],
+    "local_contact_minutes": -1,
+    "gate_decision_count": 0,
+    "accepted_world_pause_receipts": 667
+  },
+  "retained_rolling_evidence": {
+    "path": ".userdata/dev-harness/harness_runs/20260910_035307_fd233d1e073d4ac383c350cad294f3a7/semantic.native.events.jsonl",
+    "sha256": "ad6799fa323bc2fc2c63dd179d669497abada71ead5f9fd10338e7e25e949008",
+    "gate_lines": [931, 932, 933, 934, 935, 936],
+    "gate_count": 6,
+    "identity": {
+      "site_id": "overmap_special:bandit_camp@140,51,0",
+      "operation_id": "overmap_special:bandit_camp@140,51,0#hostile:2",
+      "member_ids": [4, 5],
+      "owner": "local",
+      "target_id": "r029-fixture-player-opportunity",
+      "rolling_travel_scene": true,
+      "local_contact_established": true,
+      "posture": "attack_now",
+      "combat_forward": true,
+      "opens_shakedown_surface": false
+    }
+  },
+  "conditional_reload": {
+    "exercised": false,
+    "reason": "normal comparative gate did not succeed; task contract condition was not met"
+  },
+  "cleanup": {
+    "game_pid": 75434,
+    "bridge_pid": 75412,
+    "terminalization": "accepted",
+    "game_alive_after_cleanup": false,
+    "bridge_alive_after_cleanup": false,
+    "native_exit_credit": false
+  },
+  "tests": [
+    "./cata_test 'bandit_live_world_chooses_reviewer_readable_local_approach_gate_posture' -> 60 assertions in 1 test case",
+    "python3 -m unittest -v tools.openclaw_harness.semantic_step_test.SemanticStepChannelTest.test_native_trace_parser_accepts_gate_decision_observation -> OK",
+    "git diff --check -> OK"
+  ],
+  "evidence_ceiling": "native source-bound control footing, exact operation/member identity, elapsed native cadence and absence of a normal gate; no normal parley, rolling reload continuity, active combat, or green packaged feature proof"
+}

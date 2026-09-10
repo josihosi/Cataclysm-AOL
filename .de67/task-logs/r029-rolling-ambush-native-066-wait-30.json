@@ -1,0 +1,16 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 30,
+    "danger_handling": "handle_classified_non_dangerous",
+    "recipe": ["world.pause"],
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "cross the thirty-minute live bandit dispatch cadence from observed minute 8047",
+      "unit": "game_minutes",
+      "maximum": 30,
+      "progress_required": true
+    }
+  }
+}

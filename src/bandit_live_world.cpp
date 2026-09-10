@@ -5,6 +5,8 @@
 #include <cctype>
 #include <cmath>
 #include <cstdlib>
+#include <cstring>
+#include <fstream>
 #include <limits>
 #include <optional>
 #include <set>
@@ -27,6 +29,43 @@ std::string current_harness_run_id()
     const char *value = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
     return value == nullptr || value[0] == '\0' ?
            "hells_raiders_live_owner_v0" : std::string( value );
+}
+
+std::string openclaw_harness_bound_semantic_run_id()
+{
+    const char *const active_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const char *const bound_run_id = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID" );
+    if( active_run_id == nullptr || bound_run_id == nullptr || active_run_id[0] == '\0' ||
+        bound_run_id[0] == '\0' || std::strcmp( active_run_id, bound_run_id ) != 0 ) {
+        return {};
+    }
+    return active_run_id;
+}
+
+std::string openclaw_harness_json_quote( const std::string &value )
+{
+    std::ostringstream out;
+    out << '"';
+    for( const unsigned char character : value ) {
+        switch( character ) {
+            case '"': out << "\\\""; break;
+            case '\\': out << "\\\\"; break;
+            case '\b': out << "\\b"; break;
+            case '\f': out << "\\f"; break;
+            case '\n': out << "\\n"; break;
+            case '\r': out << "\\r"; break;
+            case '\t': out << "\\t"; break;
+            default:
+                if( character < 0x20 ) {
+                    out << string_format( "\\u%04x", character );
+                } else {
+                    out << character;
+                }
+                break;
+        }
+    }
+    out << '"';
+    return out.str();
 }
 using bandit_live_world::anchor_source_kind;
 using bandit_live_world::camp_decision_state;
@@ -19012,6 +19051,8 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
         << " smoke_on_watcher=" << ( input.smoke_on_watcher_tile ? "yes" : "no" )
         << " smoke_sightline=" << ( input.smoke_between_watcher_and_camp ? "yes" : "no" )
         << " local_contact=" << ( input.local_contact_established ? "yes" : "no" )
+        << " player_contact=" << ( input.player_contact ? "yes" : "no" )
+        << " follower_sight=" << ( input.follower_sight ? "yes" : "no" )
         << " rolling_travel=" << ( input.rolling_travel_scene ? "yes" : "no" )
         << " shakedown_capable=" << ( decision.shakedown_capable ? "yes" : "no" )
         << " shakedown=" << ( decision.opens_shakedown_surface ? "yes" : "no" )
@@ -19021,6 +19062,98 @@ std::string render_local_gate_report( const site_record &site, const local_gate_
         out << "- " << note << '\n';
     }
     return out.str();
+}
+
+std::string render_local_gate_semantic_event( const site_record &site,
+        const local_gate_input &input, const local_gate_decision &decision,
+        const std::string &run_id, const int game_minutes, const int game_turn )
+{
+    const active_outing_state *outing = site.active_external_outing();
+    std::ostringstream out;
+    out << "{\"event\":\"gate_decision\",\"run_id\":"
+        << openclaw_harness_json_quote( run_id )
+        << ",\"game_minutes\":" << game_minutes
+        << ",\"game_turn\":" << game_turn
+        << ",\"site_id\":" << openclaw_harness_json_quote( site.site_id )
+        << ",\"operation_id\":";
+    if( outing != nullptr ) {
+        out << openclaw_harness_json_quote( outing->activity_id );
+    } else {
+        out << "null";
+    }
+    out << ",\"operation_kind\":";
+    if( site.active_hostile_operation.is_active() ) {
+        out << openclaw_harness_json_quote( to_string( site.active_hostile_operation.operation_kind ) );
+    } else {
+        out << "null";
+    }
+    out << ",\"operation_phase\":";
+    if( site.active_hostile_operation.is_active() ) {
+        out << openclaw_harness_json_quote( to_string( site.active_hostile_operation.phase ) );
+    } else {
+        out << "null";
+    }
+    out << ",\"owner\":";
+    if( outing != nullptr ) {
+        out << openclaw_harness_json_quote( to_string( outing->owner ) );
+    } else {
+        out << "null";
+    }
+    out << ",\"target_id\":";
+    if( outing != nullptr ) {
+        out << openclaw_harness_json_quote( outing->target_id );
+    } else {
+        out << "null";
+    }
+    out << ",\"member_ids\":[";
+    if( outing != nullptr ) {
+        for( std::size_t index = 0; index < outing->member_ids.size(); ++index ) {
+            if( index > 0 ) {
+                out << ',';
+            }
+            out << outing->member_ids[index].get_value();
+        }
+    }
+    out << "],\"input\":{\"rolling_travel_scene\":"
+        << ( input.rolling_travel_scene ? "true" : "false" )
+        << ",\"darkness_or_concealment\":" << ( input.darkness_or_concealment ? "true" : "false" )
+        << ",\"basecamp_or_camp_scene\":" << ( input.basecamp_or_camp_scene ? "true" : "false" )
+        << ",\"current_exposure\":" << ( input.current_exposure ? "true" : "false" )
+        << ",\"recent_exposure\":" << ( input.recent_exposure ? "true" : "false" )
+        << ",\"local_contact_established\":" << ( input.local_contact_established ? "true" : "false" )
+        << ",\"player_contact\":" << ( input.player_contact ? "true" : "false" )
+        << ",\"follower_sight\":" << ( input.follower_sight ? "true" : "false" )
+        << ",\"local_threat\":" << input.local_threat
+        << ",\"local_opportunity\":" << input.local_opportunity
+        << ",\"standoff_distance\":" << input.standoff_distance
+        << ",\"smoke_obscured_lead\":" << ( input.smoke_obscured_lead ? "true" : "false" )
+        << "},\"decision\":{\"valid\":" << ( decision.valid ? "true" : "false" )
+        << ",\"posture\":" << openclaw_harness_json_quote( to_string( decision.posture ) )
+        << ",\"dispatch_strength\":" << decision.dispatch_strength
+        << ",\"pressure_margin\":" << decision.pressure_margin
+        << ",\"shakedown_capable\":" << ( decision.shakedown_capable ? "true" : "false" )
+        << ",\"opens_shakedown_surface\":" << ( decision.opens_shakedown_surface ? "true" : "false" )
+        << ",\"combat_forward\":" << ( decision.combat_forward ? "true" : "false" )
+        << "}}";
+    return out.str();
+}
+
+void record_local_gate_semantic_event( const site_record &site,
+        const local_gate_input &input, const local_gate_decision &decision )
+{
+    const std::string run_id = openclaw_harness_bound_semantic_run_id();
+    const char *const path = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH" );
+    if( run_id.empty() || path == nullptr || path[0] == '\0' ) {
+        return;
+    }
+    std::ofstream stream( path, std::ios::app | std::ios::binary );
+    if( stream ) {
+        stream << "openclaw_harness_semantic_step: "
+               << render_local_gate_semantic_event( site, input, decision, run_id,
+                       to_minutes<int>( calendar::turn - calendar::start_of_cataclysm ),
+                       to_turns<int>( calendar::turn - calendar::turn_zero ) )
+               << '\n';
+    }
 }
 
 sight_avoid_decision choose_sight_avoid_reposition( const tripoint_abs_ms &current_tile,

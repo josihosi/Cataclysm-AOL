@@ -1,0 +1,96 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-rolling-ambush-native-066",
+  "claim_id": "R-029",
+  "worker_id": "01a08872-7271-7c92-92f9-20c3303dd12e",
+  "disposition": "checkpoint",
+  "verdict": "native_hostile_contact_proved_branch_discriminator_unexposed",
+  "outcome": "A corrected cadence-bound native continuation proved that the exact shakedown operation reaches local committed contact and both members become hostile attackers. The rolling-versus-normal branch discriminator and fresh normal-contact control remain unproved.",
+  "summary": "Run 28d7f998838825616f72b97e8448dff0a3683932390eb0d9e49658542f83961d corrected the earlier pre-cadence under-observation. At the real minute-8345 overmap NPC owner tick, operation overmap_special:bandit_camp@140,51,0#hostile:2 became committed_contact with local owner; members 4 and 5 both became local_contact at target [140,42,0]. Native inspections correlated Giuseppe Bachman and Vance Gunderson as present, uninjured, hostile, GUARD-mission actors ordered Attacking to kill. The current semantic surface did not expose the rolling_travel_scene input, local gate posture, combat_forward result, parley suppression, or a normal-contact control. The packaged report therefore remains yellow with feature_proof=false. PID 55447 and bridge PID 55411 are absent. No gameplay semantics changed.",
+  "material_changes": [
+    "No source changed in this continuation.",
+    "Corrected the prior run-070 causal wording: minute 8341 was before the next five-minute overmap NPC cadence, not a self-stall.",
+    "Recovered a cadence-complete native contact observation at minute 8345."
+  ],
+  "tests": [
+    "No automated source tests were run because this continuation made no source changes.",
+    "The charter-bound native witness was accepted by the harness at a focused inconclusive ceiling.",
+    "Cleanup verified game PID 55447 and bridge PID 55411 absent."
+  ],
+  "live_actions": [
+    "Launched the smallest fresh registry-authorized repair continuation from the established zero-credit fixture.",
+    "Advanced by ordinary native actions through the real minute-8345 overmap NPC cadence.",
+    "Inspected exact NPCs character:4 and character:5 through native semantic inspection.",
+    "Journaled, finished, collected, and cleaned the exact owned run."
+  ],
+  "evidence_ceiling": [
+    "Native semantic evidence proves exact operation/member identity, committed-contact phase, local owner, target OMT, and both members in local_contact at minute 8345.",
+    "Native actor inspection proves both correlated members present, uninjured, hostile, and ordered Attacking to kill under GUARD.",
+    "The current observation does not expose rolling_travel_scene, chosen local gate posture, combat_forward, parley suppression, or the normal-contact control.",
+    "The packaged report remains yellow and feature_proof=false; it is not promoted to full rolling-ambush proof.",
+    "Fixture preparation and launch remain zero-credit setup. No local-admission or sound semantics were chosen or changed."
+  ],
+  "bindings": {
+    "binding_id": "ab8b411b47e51284c7c6bf20219529f58b3b3f696acc90314a5fc52b67de7576",
+    "executable_identity": "60658e3fe395a2121bf3dd4a95911ddcf640aa789084f53c973c96510ef82205",
+    "game_minutes_contact": "8345",
+    "game_pid": "55447",
+    "operation_id": "overmap_special:bandit_camp@140,51,0#hostile:2",
+    "operation_members": "4,5",
+    "run_id": "28d7f998838825616f72b97e8448dff0a3683932390eb0d9e49658542f83961d",
+    "scenario_id": "tmp.bandit_rolling_travel_attack_gate_probe_1860",
+    "source_identity": "2c083ca4897bf1c9ca2dcf485946b2e514ba9e48529de00bf712e9bdf4b5f89c",
+    "witness_journal_sha256": "33da3ed69d0662b77b699d8ed08eeda6df1518f2f9d449b47c7afbc6c7692206"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".userdata/r029-rolling-continuation-071-witness.json",
+      "sha256": "e0b15ab0bdd8533cbd62ac95a3e9beb359030a2d1de11ef1dd1b5962670c8181",
+      "role": "focused native committed-contact and hostile-actor witness"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_032753_105f2fb1729f4519963e8a04838e2744/probe.report.json",
+      "sha256": "f4104f26a171bc12de915190c47eb383d4acce9e27b74a04fbf339e4a9dc3cdd",
+      "role": "final run report with explicit yellow ceiling and cleanup"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_032753_105f2fb1729f4519963e8a04838e2744/semantic.native.events.jsonl",
+      "sha256": "76c3c0f4624344db75188c12f18789feafc8da12232b0d3d9f93ade8298e7a8d",
+      "role": "native semantic cadence, operation owner, phase, member, and contact trace"
+    }
+  ],
+  "first_divergence": {
+    "class": "local-gate-branch-discriminator-not-observable",
+    "summary": "The run reaches hostile committed contact, but the current native semantic surface does not expose whether rolling_travel_scene selected attack_now/combat_forward instead of the ordinary shakedown/parley route."
+  },
+  "accepted_no_replay": [
+    "Preserve the fixture repair, exact operation identity, rallying-to-approaching transition, and minute-8345 committed contact without replay merely to restate them.",
+    "Treat run 070's minute-8341 state only as pre-cadence under-observation; do not cite it as a self-stall or product contradiction.",
+    "Preserve accepted Pay, Fight, night, smoke, sound-detection, camp-service, and other closed R-029 results without replay.",
+    "Do not select or implement local-admission/arbitration or sound-cooldown semantics."
+  ],
+  "active_work": [
+    "Expose the existing local gate input and decision through read-only native semantic instrumentation or an already-authoritative record: rolling_travel_scene, player/follower sight, local_contact_established, posture, combat_forward, and shakedown/parley surface state.",
+    "Recover a fresh normal non-rolling local-contact control proving parley ordering, then compare it with this rolling contact.",
+    "If the rolling branch is distinctly proved, exercise the smallest honest save/reload continuity check required by the assignment."
+  ],
+  "first_open_boundary": "Bind the native local gate input and output at committed contact so the hostile attack can be attributed specifically to rolling-travel attack_now/combat_forward rather than an ordinary shakedown or another hostile state.",
+  "narrow_queries": [
+    "28d7f998838825616f72b97e8448dff0a3683932390eb0d9e49658542f83961d",
+    "overmap_special:bandit_camp@140,51,0#hostile:2 committed_contact owner local",
+    "character:4 Giuseppe Bachman Attacking to kill GUARD",
+    "character:5 Vance Gunderson Attacking to kill GUARD",
+    "rolling_travel_scene attack_now combat_forward opens_shakedown_surface"
+  ],
+  "entrypoints": [
+    "src/do_turn.cpp",
+    "src/bandit_live_world.cpp",
+    "src/handle_action.cpp",
+    "tests/bandit_live_world_test.cpp",
+    "tools/openclaw_harness/scenarios/tmp.bandit_rolling_travel_attack_gate_probe_1860.json",
+    "tools/openclaw_harness/charters/r029-rolling-ambush-native-066.json"
+  ],
+  "context_metrics": {}
+}

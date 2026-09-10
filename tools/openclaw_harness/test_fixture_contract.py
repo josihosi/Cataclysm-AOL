@@ -56,6 +56,7 @@ from startup_harness import (  # noqa: E402
     apply_bandit_camp_map_lead_transform,
     apply_bandit_clear_site_evidence_transform,
     apply_bandit_clone_site_transform,
+    apply_bandit_hostile_operation_bootstrap_transform,
     apply_fixture_save_transforms,
     apply_game_turn_to_payload,
     apply_overmap_terrain_id_at_abs_omt_transform,
@@ -6588,6 +6589,98 @@ def player_save_error(path: Path) -> str:
 
 
 class ScenarioFixtureContractTest(unittest.TestCase):
+    def test_hostile_operation_bootstrap_clears_inherited_member_routes(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            world_dir = Path(temp_dir) / "world"
+            (world_dir / "overmaps").mkdir(parents=True)
+            dimension_path = world_dir / "dimension_data.gsav"
+            site_id = "overmap_special:bandit_camp@140,51,0"
+            target_omt = [140, 42, 0]
+            rally_omt = [140, 43, 0]
+            payload = {
+                "overmapbuffer": {
+                    "bandit_live_world": {
+                        "sites": [{
+                            "site_id": site_id,
+                            "site_kind": "bandit_camp",
+                            "anchor": [140, 51, 0],
+                            "members": [
+                                {"npc_id": 4, "state": "at_home", "home_spawn_tile": [1, 2, 0]},
+                                {"npc_id": 5, "state": "at_home", "home_spawn_tile": [3, 4, 0]},
+                            ],
+                            "spawn_tiles": [
+                                {"tile": [1, 2, 0], "assigned_living_total": 0},
+                                {"tile": [3, 4, 0], "assigned_living_total": 0},
+                            ],
+                            "current_scout_report": {
+                                "action_policy": "bandit_shakedown",
+                                "target_id": "r029-fixture-player-opportunity",
+                                "target_omt": target_omt,
+                                "target_lead_id": "lead-1",
+                                "target_lead_revision": 1,
+                                "revision": 1,
+                                "source_generation": 2,
+                                "source_report_activity_id": "scout-1",
+                                "application_key": "scout-1:report",
+                            },
+                            "camp_decision": {"state": "report_awaiting_assessment"},
+                        }],
+                        "hostile_target_opportunities": [{
+                            "target_id": "r029-fixture-player-opportunity",
+                            "target_omt": target_omt,
+                        }],
+                    }
+                }
+            }
+            dimension_path.write_text("version 1\n" + json.dumps(payload), encoding="utf-8")
+            overmap_path = world_dir / "overmaps" / "o.0.0.zzip"
+            overmap_path.write_bytes(b"fixture")
+            overmap_payload = {"npcs": [
+                {
+                    "id": 4, "location": [0, 0, 0], "mission": 7,
+                    "previous_mission": 7, "goalx": 140, "goaly": 41, "goalz": 0,
+                    "guard_pos": [10, 10, 0], "destination_point": [11, 11, 0],
+                    "omt_path": [[1, 1, 0]], "path": [[2, 2, 0]], "automoveroute": [[3, 3, 0]],
+                },
+                {
+                    "id": 5, "location": [0, 0, 0], "mission": 8,
+                    "previous_mission": 8, "goalx": 140, "goaly": 41, "goalz": 0,
+                    "guard_pos": [12, 12, 0], "destination_point": [13, 13, 0],
+                    "omt_path": [[4, 4, 0]], "path": [[5, 5, 0]], "automoveroute": [[6, 6, 0]],
+                },
+            ]}
+            transform = {
+                "site_id": site_id,
+                "member_ids": [4, 5],
+                "generation": 2,
+                "current_minutes": 8047,
+                "target_id": "r029-fixture-player-opportunity",
+                "target_omt": target_omt,
+                "rally_omt": rally_omt,
+                "member_rally_positions_ms": {"4": [3368, 1032, 0], "5": [3370, 1032, 0]},
+            }
+            written_payload: Dict[str, Any] = {}
+
+            def capture_write(_plain_path: Path, _version_line: str, value: Dict[str, Any]) -> None:
+                written_payload.update(json.loads(json.dumps(value)))
+
+            with mock.patch("startup_harness.extract_overmap_payload", return_value=(world_dir / "plain", "v1", overmap_payload)), \
+                    mock.patch("startup_harness.write_overmap_payload", side_effect=capture_write):
+                report = apply_bandit_hostile_operation_bootstrap_transform(world_dir, transform)
+
+            self.assertEqual(report["member_rally_positions_ms"], {4: [3368, 1032, 0], 5: [3370, 1032, 0]})
+            self.assertEqual(written_payload["npcs"][0]["location"], [3368, 1032, 0])
+            self.assertEqual(written_payload["npcs"][1]["location"], [3370, 1032, 0])
+            for npc in written_payload["npcs"]:
+                self.assertEqual(npc["mission"], 11)
+                self.assertEqual(npc["previous_mission"], 11)
+                self.assertEqual([npc["goalx"], npc["goaly"], npc["goalz"]], [-2147483648] * 3)
+                self.assertIsNone(npc["guard_pos"])
+                self.assertIsNone(npc["destination_point"])
+                self.assertEqual(npc["omt_path"], [])
+                self.assertEqual(npc["path"], [])
+                self.assertEqual(npc["automoveroute"], [])
+
     def test_r005_fixture_clears_stale_local_contact_before_scheduler(self) -> None:
         manifest_path = HARNESS_DIR / "fixtures" / "saves" / "live-debug" / \
             "bandit_r005_natural_hostile_ecology_v0" / "manifest.json"

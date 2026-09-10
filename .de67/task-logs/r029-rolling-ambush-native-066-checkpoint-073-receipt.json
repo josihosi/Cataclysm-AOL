@@ -1,0 +1,93 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-rolling-ambush-native-066",
+  "claim_id": "R-029",
+  "worker_id": "01a08872-7271-7c92-92f9-20c3303dd12e",
+  "disposition": "checkpoint",
+  "verdict": "rolling_attack_gate_proved_control_and_reload_open",
+  "outcome": "Read-only run-bound semantic instrumentation now proves the favorable rolling-travel gate selects immediate combat without opening the shakedown surface. A fresh normal-contact control and save/reload continuity remain open.",
+  "summary": "Fresh source-bound run 2e8b1e323b40d4ce07782a368778a88a416f949046f4422373f77e5de6fc5031 emitted six identity-bound gate_decision records. Every record binds the same active operation and members, rolling_travel_scene=true, posture=attack_now, combat_forward=true, and opens_shakedown_surface=false. The instrumentation is read-only and wired at all three authoritative local-gate call sites. A later thirty-minute native wait exceeded the bridge receipt boundary and receives no gameplay credit. The packaged report remains yellow/red because its legacy gameplay-credit artifact gate did not bind; the structured semantic trace is retained at its focused native ceiling. The game and bridge exited code 0 and both PIDs are absent. The normal non-rolling parley control and save/reload continuity were not run.",
+  "material_changes": [
+    "Added a structured run-bound gate_decision semantic event carrying operation, owner, target, member IDs, typed gate inputs, posture, combat_forward, and shakedown-surface fields.",
+    "Emitted that observational event at all three authoritative gate-decision call sites without changing decision logic.",
+    "Allowed gate_decision in the semantic trace reader and added focused parser coverage.",
+    "Added focused source test coverage for the structured gate decision record."
+  ],
+  "tests": [
+    "Source-bound Tiles build succeeded.",
+    "The focused native local-gate test passed 60 assertions.",
+    "The focused semantic gate_decision parser test passed.",
+    "A direct artifact audit passed all six rolling gate assertions.",
+    "git diff --check passed."
+  ],
+  "live_actions": [
+    "Launched one fresh registry-authorized source-bound rolling session.",
+    "Advanced through the known owner cadence and allowed native local turn processing to evaluate the gate.",
+    "Collected six structured gate_decision records from the exact run.",
+    "Quit and collected the owned session after a later wait timeout, then verified exact game and bridge PIDs absent."
+  ],
+  "evidence_ceiling": [
+    "The run-bound semantic records prove the existing favorable rolling-travel decision: attack_now, combat_forward true, shakedown surface closed.",
+    "Operation identity, member IDs, owner, target, and typed gate inputs are present in the same records.",
+    "The later thirty-minute wait has no native receipt and supplies no gameplay credit.",
+    "The legacy packaged report remains yellow/red because its generic gameplay-credit artifact gate did not bind; that does not erase the separately source-bound structured semantic result.",
+    "No fresh non-rolling parley control, branch persistence, active combat outcome, or save/reload continuity is proved here."
+  ],
+  "bindings": {
+    "executable_identity": "d0cf51bfdf53744aa57e1bdac3f66f776a326cc5e8c76f545eaf6f5be42c7694",
+    "binding_id": "8a6b57a14fb5981ac1975e30c4a00a13eff08801fa486e68bf6bcaf18578d6a7",
+    "source_identity": "ac54661cb63dc560a417aa634fffb0f07bde873b1745b32ea9054d5dac8bfd91",
+    "gate_decision_count": "6",
+    "run_id": "2e8b1e323b40d4ce07782a368778a88a416f949046f4422373f77e5de6fc5031",
+    "scenario_id": "tmp.bandit_rolling_travel_attack_gate_probe_1860"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_035307_fd233d1e073d4ac383c350cad294f3a7/semantic.native.events.jsonl",
+      "sha256": "ad6799fa323bc2fc2c63dd179d669497abada71ead5f9fd10338e7e25e949008",
+      "role": "source-bound structured rolling gate decision evidence"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_035307_fd233d1e073d4ac383c350cad294f3a7/probe.report.json",
+      "sha256": "397c5cce90c6a903bbd34bb665de243bfd88e8c00127d63ced9e6cb09289eaf6",
+      "role": "run identity, legacy packaged ceiling, timeout, and cleanup report"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_035307_fd233d1e073d4ac383c350cad294f3a7/operate_r029_rolling_ambush_native.cockpit.live.final.json",
+      "sha256": "a1a634964106f7a3cc0a36ae9b8a6ae124c60280ca5f7473a5f2cca51718fced",
+      "role": "final live-session closeout artifact"
+    }
+  ],
+  "first_divergence": {
+    "class": "normal-control-and-reload-not-exercised",
+    "summary": "The rolling gate is distinctly observed, but no fresh non-rolling local-contact control or branch persistence process replacement has yet been run."
+  },
+  "accepted_no_replay": [
+    "Preserve the six run-bound rolling gate decisions without replay merely to restate attack_now/combat_forward/shakedown-closed.",
+    "Preserve the corrected minute-8345 committed-contact evidence and fixture repair.",
+    "Do not credit or repeat the later timed-out thirty-minute wait.",
+    "Do not change local-admission/arbitration or sound-cooldown semantics."
+  ],
+  "active_work": [
+    "Run a fresh normal non-rolling local-contact control through the same structured gate surface and prove first-sight parley/open-shakedown ordering rather than attack_now.",
+    "After the branch comparison is complete, perform the smallest honest save/reload continuity check for the rolling branch."
+  ],
+  "first_open_boundary": "The same structured semantic gate surface must record a fresh non-rolling local-contact control before the rolling exception is independently comparative.",
+  "narrow_queries": [
+    "2e8b1e323b40d4ce07782a368778a88a416f949046f4422373f77e5de6fc5031",
+    "event=gate_decision rolling_travel_scene=true posture=attack_now",
+    "combat_forward=true opens_shakedown_surface=false",
+    "normal_shakedown_first_sight_requires_parley"
+  ],
+  "entrypoints": [
+    "src/bandit_live_world.cpp",
+    "src/bandit_live_world.h",
+    "src/do_turn.cpp",
+    "tests/bandit_live_world_test.cpp",
+    "tools/openclaw_harness/semantic_state.py",
+    "tools/openclaw_harness/semantic_step_test.py"
+  ],
+  "context_metrics": {}
+}

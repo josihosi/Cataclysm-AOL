@@ -1,0 +1,82 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-rolling-ambush-native-066",
+  "claim_id": "R-029",
+  "worker_id": "01a08872-7271-7c92-92f9-20c3303dd12e",
+  "disposition": "checkpoint",
+  "verdict": "inconclusive_upstream_operation_absent",
+  "outcome": "The first source-bound native attempt advanced thirty game minutes and cleaned up, but it exposed no active rolling-travel operation, member identity, contact, or attack-gate branch. The assigned rolling-ambush proof remains active.",
+  "summary": "Run 09b95e17de7bca5ba177831e213fd52fb4ae0f5f33e67be9391ed20ef539948d advanced from minute 8047 to 8077 in scenario tmp.bandit_rolling_travel_attack_gate_probe_1860. Initial native observation placed Zoraida Vick at [3372,1020,0] on pavement with no visible entities. Terminal observation remained in walk mode, the registered bandit camp had no leads, and structural_outing_owner was absent. This does not prove or contradict the rolling branch; it disproves this attempt's assumption that the fixture had established the required upstream operation. PID 21264 exited with code 0. The exact bridge binding is dcb17463b2e33de3edca6eb5c50b61f1620e1a739989fa62a61dcb0e49f0ce25; the packaged report's top-level binding_id is the executable digest and is not relied on as the bridge binding.",
+  "material_changes": [
+    "Added a task-specific rolling-travel native scenario, witness charter, coordinator charter, and bounded thirty-minute wait input.",
+    "No production source behavior was changed in this attempt."
+  ],
+  "tests": [
+    "No source build or automated tests were run; the packaged probe report records tests.status as not_run.",
+    "The native process cleanup observation reports PID 21264 absent with exit code 0."
+  ],
+  "live_actions": [
+    "Launched the source-bound native scenario and observed its initial world state.",
+    "Advanced native game time from minute 8047 to minute 8077 through 1768 recorded actions.",
+    "Terminalized the scenario and verified the owned game process absent."
+  ],
+  "evidence_ceiling": [
+    "The attempt proves only identity-continuous native passage of thirty game minutes, the observed empty upstream state, and process cleanup.",
+    "World mode walk does not prove a non-rolling branch because no upstream operation, member, contact, or gate existed.",
+    "Fixture preparation, launch, accepted input, OCR, terminal bytes, and rendered text receive no gameplay credit.",
+    "The packaged probe report is red and explicitly records feature_proof=false and gameplay_credit=false; it supplies process/source context only.",
+    "The reported mutable cockpit evidence database hash is not accepted because the named file is no longer present at the reported path and its earlier observed digest changed during collection."
+  ],
+  "bindings": {
+    "binding_id": "dcb17463b2e33de3edca6eb5c50b61f1620e1a739989fa62a61dcb0e49f0ce25",
+    "executable_identity": "60658e3fe395a2121bf3dd4a95911ddcf640aa789084f53c973c96510ef82205",
+    "game_minutes_end": "8077",
+    "game_minutes_start": "8047",
+    "game_pid": "21264",
+    "run_id": "09b95e17de7bca5ba177831e213fd52fb4ae0f5f33e67be9391ed20ef539948d",
+    "scenario_id": "tmp.bandit_rolling_travel_attack_gate_probe_1860",
+    "source_identity": "aeb8bbdb195a8cd10f3e9a36845464e02a9da4a012a457b44f3937bd2120e2cb"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "build_logs/20260910-r029-rolling-ambush-native-066-inconclusive-witness.json",
+      "sha256": "96fd9d014256eeb982fbc1ea0bed55dc46b7d884dae0c4e6364c8c3da6db2749",
+      "role": "focused native inconclusive witness with exact identity and observation citations"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_012359_ed6669e866404dd9a276d908005e6e64/probe.report.json",
+      "sha256": "fdb4533758e99201a7afc636e1c540bdc5dd4226f36a5a607fca2b094989cd6f",
+      "role": "packaged process and source context with explicit red evidence ceiling"
+    }
+  ],
+  "first_divergence": {
+    "class": "upstream-operation-not-established",
+    "summary": "The fixture exposed no active structural outing owner or rolling-travel operation/member pair, so the requested rolling-versus-normal gate comparison was never reached."
+  },
+  "accepted_no_replay": [
+    "Preserve the accepted Pay, Fight, night, smoke, sound-detection, camp-service, and other previously closed R-029 results without replay.",
+    "Preserve this run as the negative fixture audit; do not repeat an unchanged thirty-minute wait against the same empty upstream state.",
+    "Do not implement or choose the owner-gated local-admission routing strategy or sound-cooldown semantics."
+  ],
+  "active_work": [
+    "Establish and audit an actual upstream rolling-travel operation with exact member identities as zero-credit setup, then run the native rolling-ambush branch and normal-contact control.",
+    "Repair or replace the repository-owned fixture, scenario, observation, or instrumentation if the current fixture cannot expose that prerequisite honestly."
+  ],
+  "first_open_boundary": "An exact active rolling-travel operation/member pair must exist and be observed before any native contact or attack-gate result can receive credit.",
+  "narrow_queries": [
+    "09b95e17de7bca5ba177831e213fd52fb4ae0f5f33e67be9391ed20ef539948d",
+    "dcb17463b2e33de3edca6eb5c50b61f1620e1a739989fa62a61dcb0e49f0ce25",
+    "structural_outing_owner present=false",
+    "overmap_special:bandit_camp@140,51,0",
+    "r029_rolling_native_no_operation_after_30m"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/scenarios/tmp.bandit_rolling_travel_attack_gate_probe_1860.json",
+    "tools/openclaw_harness/charters/r029-rolling-ambush-native-066.json",
+    "tools/openclaw_harness/charters/r029-rolling-ambush-native-066-brief.json",
+    ".de67/task-logs/r029-rolling-ambush-native-066-wait-30.json"
+  ],
+  "context_metrics": {}
+}

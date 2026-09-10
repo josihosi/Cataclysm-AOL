@@ -1,0 +1,15 @@
+{
+  "outcome": "R-029: freshly prove the favorable rolling-travel bandit ambush as a native branch distinct from ordinary local first-contact parley.",
+  "scenario": "tmp.bandit_rolling_travel_attack_gate_probe_1860",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r029.rolling_ambush_native",
+        "op": "eq",
+        "value": "favorable_rolling_travel_direct_ambush_with_normal_contact_control",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": []
+  }
+}

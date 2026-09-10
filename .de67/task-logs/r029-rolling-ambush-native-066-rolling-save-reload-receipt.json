@@ -1,0 +1,84 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-rolling-ambush-native-066",
+  "claim_id": "R-029",
+  "worker_id": "01a08872-7271-7c92-92f9-20c3303dd12e",
+  "disposition": "checkpoint",
+  "verdict": "rolling_save_reload_continuity_proved",
+  "outcome": "A fresh source-bound rolling world accepted native save-and-quit, the original bound process exited, and the declared continuation launched a distinct native process that restored the rolling operation and exact saved member identities.",
+  "summary": "Run 06cb0ab7607fa0d5bc133fe7b25b249861ff11ccff1bf2794b241a6a3ff187e4 bound source 88e8108e856ba7ee8f6d4ee4210fe4a0d2e72457a8634e8936da7a4ca17e7ed3 and executable a58cb2e55127a759274e5abde85aa2144f749fe380a7dfc63efc49432b6d216f. Native save/quit exited the original PID 89128; reentry launched replacement generation PID 89315 and the authoritative post-reload audit reported required_state_present with no missing fields. The restored operation is shakedown/rallying under abstract ownership, target r029-fixture-player-opportunity, reservation activity overmap_special:bandit_camp@140,51,0#hostile:2 generation 2, members [4,5], and both saved members were found. Final bridge cleanup and the extra recorded task-owned PID 89306 cleanup both succeeded.",
+  "material_changes": [
+    "Added a disposable save/reload continuity probe scenario and charter/brief.",
+    "Added the sealed continuity witness artifact."
+  ],
+  "tests": [
+    "Continuity run report ok=true and post-reload audit assertions passed.",
+    "Focused Python syntax compilation passed for startup_harness.py, cockpit_file_bridge.py, and play_cli.py.",
+    "JSON validation and git diff --check passed."
+  ],
+  "live_actions": [
+    "Observed the native World owner and used the advertised world.save_quit route with native confirmation prompts.",
+    "Verified original process exit, collected declared reentry, observed the replacement World owner, journaled the post-reload state, and finished the run.",
+    "Verified PIDs 89096, 89128, 89306, 89315, and 89275 are absent after task-owned cleanup."
+  ],
+  "evidence_ceiling": [
+    "Native save/quit and process replacement continuity is proved for the exact source-bound rolling operation state audited by this probe.",
+    "This checkpoint does not replay or relabel the six historical rolling gate records and does not claim normal-contact parley, combat aftermath, natural discovery, or a universal gameplay-feel result.",
+    "Fixture preparation, launch, accepted input, OCR, terminal bytes, and rendered text received no gameplay credit."
+  ],
+  "bindings": {
+    "run_id": "06cb0ab7607fa0d5bc133fe7b25b249861ff11ccff1bf2794b241a6a3ff187e4",
+    "binding_id": "28d9d04ac9cc54520cb40830e4c1d2ab1455979e26edaa3f708d58590f698e4f",
+    "executable_identity": "a58cb2e55127a759274e5abde85aa2144f749fe380a7dfc63efc49432b6d216f",
+    "source_identity": "88e8108e856ba7ee8f6d4ee4210fe4a0d2e72457a8634e8936da7a4ca17e7ed3",
+    "scenario_id": "tmp.bandit_rolling_save_reload_continuity_probe_2026-09-10",
+    "replacement_generation": 1,
+    "operation_id": "overmap_special:bandit_camp@140,51,0#hostile:2",
+    "member_ids": [4, 5],
+    "target_id": "r029-fixture-player-opportunity"
+  },
+  "artifacts": [
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_051557_736225722e5241f28bfa49cdc5650b38/probe.report.json",
+      "sha256": "38c44a385a83c2cbd060cacd00397dc9d7892b4dee4cf365b292902bcb95124f",
+      "role": "continuity probe report and terminalization"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_051557_736225722e5241f28bfa49cdc5650b38/audit_persisted_rolling_operation.metadata.json",
+      "role": "authoritative post-reload operation/member audit"
+    },
+    {
+      "path": ".userdata/r029-rolling-save-reload-continuity-witness-20260910.json",
+      "role": "sealed cockpit witness"
+    },
+    {
+      "path": ".userdata/r029-rolling-save-reload-initial-witness-20260910-rerun.json",
+      "role": "initial native save/quit and original-process-exit segment"
+    }
+  ],
+  "first_divergence": {
+    "class": "none_on_successful_rerun",
+    "summary": "The first fresh continuation attempt failed closed before post-relaunch credit because the restored state was rallying/abstract; the corrected rerun matched the saved state and completed the declared audit."
+  },
+  "accepted_no_replay": [
+    "Preserve the six historical rolling gate records without replay.",
+    "Preserve the first failed continuation attempt as non-credit diagnostic evidence.",
+    "Do not change local-admission/arbitration or sound-cooldown semantics."
+  ],
+  "active_work": [
+    "Normal-contact control, active combat aftermath, natural signal response, and owner-gated behavior choices remain separate R-029 boundaries."
+  ],
+  "first_open_boundary": "The remaining R-029 rolling branch work is the separately scoped natural/normal/combat behavior beyond this save/reload continuity result.",
+  "narrow_queries": [
+    "06cb0ab7607fa0d5bc133fe7b25b249861ff11ccff1bf2794b241a6a3ff187e4",
+    "audit status=required_state_present missing_required_fields=[] operation_kind=shakedown phase=rallying member_ids=[4,5]",
+    "report_sha256=38c44a385a83c2cbd060cacd00397dc9d7892b4dee4cf365b292902bcb95124f"
+  ],
+  "entrypoints": [
+    "tools/openclaw_harness/scenarios/tmp.bandit_rolling_save_reload_continuity_probe_2026-09-10.json",
+    "tools/openclaw_harness/charters/r029-rolling-save-reload-continuity-2026-09-10.json",
+    "tools/openclaw_harness/startup_harness.py"
+  ],
+  "context_metrics": {}
+}

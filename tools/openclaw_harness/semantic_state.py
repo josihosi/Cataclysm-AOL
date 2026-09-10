@@ -94,7 +94,8 @@ def read_semantic_step_trace(
             return [], "contamination"
         event = str(value.get("event", ""))
         frame_id = str(value.get("frame_id", "")).strip()
-        if event not in {"frame", "receipt", "surface_descriptor", "surface_receipt", "travel"}:
+        if event not in {"frame", "receipt", "surface_descriptor", "surface_receipt", "travel",
+                         "gate_decision"}:
             return [], "malformed_semantic_step"
         normalized = dict(value)
         normalized["_event_offset"] = start_offset + byte_cursor + len(
@@ -170,7 +171,7 @@ def read_semantic_step_trace(
                     ("outcome" in normalized and not isinstance(normalized.get("outcome"), str)) or \
                     normalized.get("requested_run_id") != normalized.get("run_id"):
                 return [], "malformed_semantic_surface_receipt"
-        else:
+        elif event == "travel":
             destination = normalized.get("destination")
             if str(normalized.get("travel_id", "")).strip() == "" or \
                     str(normalized.get("receipt_id", "")).strip() == "" or \
@@ -188,6 +189,12 @@ def read_semantic_step_trace(
                         isinstance(value, bool) or not isinstance(value, int)
                         for value in avatar_omt):
                     return [], "malformed_semantic_travel"
+        elif event == "gate_decision":
+            if not isinstance(normalized.get("site_id"), str) or not normalized["site_id"] or \
+                    not isinstance(normalized.get("member_ids"), list) or \
+                    not isinstance(normalized.get("input"), Mapping) or \
+                    not isinstance(normalized.get("decision"), Mapping):
+                return [], "malformed_semantic_gate_decision"
         if event_filter is not None and event not in event_filter:
             byte_cursor += len(raw_line.encode("utf-8"))
             continue
