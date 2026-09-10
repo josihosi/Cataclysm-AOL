@@ -1,0 +1,16 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This source-bound generation established the native player-created brazier fire, the exact one-step guarded north retreat, and the native save/quit plus clean original-process exit. The natural signal-response chain remains unproved until the saved-world continuation is observed.",
+  "causal_account": "J0021 records the native fire action; J0039 records the north displacement; J0042 and J0048 record native save/quit and main-menu quit. The process-exit entry records PID 44062 exited with code 0. These are setup and lifecycle prerequisites, not ecology proof.",
+  "citations": [
+    {"citation_id":"J0021","meaning":"Native lighter/fire action was accepted in the bound run.","checks":{"native_receipt.accepted":true,"native_receipt.action_id":"world.fire"}},
+    {"citation_id":"J0039","meaning":"Native north movement receipt was accepted.","checks":{"native_receipt.accepted":true,"native_receipt.action_id":"world.move.north"}},
+    {"citation_id":"J0042","meaning":"Native Save and Quit action was accepted.","checks":{"native_receipt.accepted":true,"native_receipt.action_id":"world.save_quit"}},
+    {"citation_id":"J0048","meaning":"Native main-menu quit action was accepted.","checks":{"native_receipt.accepted":true,"native_receipt.action_id":"main_menu.quit"}},
+    {"citation_id":"J0055","meaning":"Original process exited cleanly; no ecology result is inferred.","checks":{"cleanup.status":"deferred_to_scenario_terminalization"}}
+  ],
+  "contradictions": ["The continuation surface has not yet been observed; no natural signal, scout, report, rally, response or contact is claimed."],
+  "remaining_unknowns": ["Persisted brazier fire and first staffed-observer cadence after process replacement."],
+  "evidence_ceiling": "focused",
+  "recommended_disposition": "continue"
+}

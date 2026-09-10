@@ -1,0 +1,36 @@
+{
+  "worker": "fc1b46645fb744ae9db4daf29b38c8a4",
+  "task": "R-029-closure-natural-night-route-002",
+  "status": "inconclusive_blocked_at_persistence_gate",
+  "summary": "The declared reentry was repaired past the missing-descriptor failure and reached the exact saved player location, but the native save did not preserve the player-created brazier/fire checkpoint. No natural ecology claim is promoted.",
+  "repository_change": {
+    "path": "tools/openclaw_harness/scenarios/cannibal.r029_natural_route_roof_mcw.json",
+    "change": "Post-relaunch persistence audit offset corrected from [1,3,0] to [1,1,0].",
+    "git_diff_check": "clean"
+  },
+  "evidence": {
+    "run_id": "cd957a410325adc7034ce6d31980833cbdd3f11e27fc908675d6631ff99c1518",
+    "binding_id": "4e85869eb4d19816344dd478ddcd2d316d2f68688fc3b122acf5a0ce2ced27d5",
+    "probe_report": ".userdata/r029-natural-route-repair-001/harness_runs/20260910_180657_b176954ae8a94c788748ebd6a15d9197/probe.report.json",
+    "persistence_audit": ".userdata/r029-natural-route-repair-001/harness_runs/20260910_180657_b176954ae8a94c788748ebd6a15d9197/audit_persisted_r029_player_fire.metadata.json",
+    "audit_status": "required_state_missing",
+    "observed": {
+      "player_location_ms": [3372, 996, 1],
+      "offset_ms": [1, 1, 0],
+      "terrain": "t_tile_flat_roof",
+      "items": ["log"],
+      "furniture": [],
+      "fields": []
+    },
+    "missing_required": ["f_brazier", "fd_fire"]
+  },
+  "cleanup": {
+    "owned_game_pid": 60627,
+    "owned_game_exit": "verified_absent_after_native_peekaboo_quit",
+    "owned_bridge_and_child": "verified_absent",
+    "cleanup_artifact": ".userdata/openclaw_harness/bridge-sessions/selected-r029-continuation-001/cockpit.bridge.safe_to_cleanup.json",
+    "protected_untouched": [48394, 51203, 51204, 51251]
+  },
+  "prior_proof_boundary": ".de67/task-logs/R-029-closure-natural-night-route-002-witness-retry2.json",
+  "disposition": "Do not claim the natural signal/observer/cannibal route. A future attempt requires a repository-level persistence fix or a new accepted setup contract; do not fixture-install state after the native save boundary."
+}

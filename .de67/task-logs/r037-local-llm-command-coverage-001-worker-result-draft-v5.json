@@ -1,0 +1,88 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "disposition": "finding",
+  "finding_kind": "blocker",
+  "verdict": "not_qualified_for_full_source_bound_command_coverage",
+  "outcome": "Classify all 20 required R-037 command cases against the actual local E4B/native route without overstating partial successes, unavailable controls, or unsafe API provisioning.",
+  "summary": "The source-bound 20-case manifest is complete as a classification artifact, but R-037 is not qualified: several local E4B requests chose the wrong action or lacked the required native consequence/control, a safe stale-target transition was unavailable in the charter, and mandatory same-case gpt-4.1-mini comparisons could not be provisioned without accessing an unsanitized credential exposed by an unrelated process.",
+  "material_changes": [
+    "Added a source-bound 20-case R-037 coverage manifest with a verdict and evidence handle for every catalog row.",
+    "Added dedicated safe and combat R-037 charters, fixtures, and scenario declarations for the native E4B route.",
+    "Recorded exact local-model divergences and preserved the API comparison boundary without accessing, copying, reusing, or recording a credential."
+  ],
+  "tests": [
+    "The manifest and terminal evidence artifact parse as valid JSON.",
+    "The manifest contains exactly 20 classified coverage rows corresponding to the frozen R-037 catalog.",
+    "Four task-owned native runs have journal identities and explicit verified-exit cleanup records."
+  ],
+  "live_actions": [
+    "Safe initial run 3806b3818c0ac2684344411c513fe2c613fcf951908e608c7620ca2f99d97188 used E4B and ended with owned PID 15460 verified exited.",
+    "Safe continuation run 8537bd49f31ecfcd05d4da60134c8ae3fc0ed85218be5d0beffd8dfb928cd834 used E4B and ended with owned PID 16919 verified exited.",
+    "Combat run 57b7e785e50eb8771a806c1fedf141d61162ab18c2cc18d600c3eae41e98be59 used E4B and ended with owned PID 17782 verified exited.",
+    "Safe remaining run a113314bc55dfaea28b8df14f746b526b293e36575ce270b4267f9f5b6e3753d used E4B and ended with owned PID 18424 verified exited."
+  ],
+  "evidence_ceiling": [
+    "Exact-target melee is proved through E4B attack=b, native resolution to the named fixture zombie dog, and attributable NPC damage in journal 47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1.",
+    "Follow, wait, hold, equipment, and panic routes have partial native application evidence only at the per-row ceilings recorded in the manifest; missing state transitions and controls are not inferred.",
+    "Panic-off, inventory-secondary, idle, and ranged-attack cases retain observed wrong-action or missing-consequence failures; the stale-target safeguard remains unclassified because no charter-permitted disappearance route was available.",
+    "Required gpt-4.1-mini same-case comparisons were not attempted because safe child credential provisioning was unavailable; no comparison success or provider result is claimed.",
+    "Fixture preparation, JSON validity, rendered text, transport, and model replies without a native consequence receive no gameplay-proof credit."
+  ],
+  "bindings": {
+    "coverage_manifest_sha256": "299ab8391c3a47ce160794eda6096715b167d340d54c6fe688370ea928f7e771",
+    "executable_sha256": "c416df32eab33d507b4d15b269212ecd49372f01a808a371392ddbbf734ee600",
+    "model": "hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest",
+    "product_source_sha256": "974461bc85b00a0fd37bce315444abc4395c547e69fb91b783edcf814b167fea",
+    "safe_initial_journal_sha256": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302",
+    "safe_continuation_journal_sha256": "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d",
+    "combat_journal_sha256": "47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1",
+    "safe_remaining_journal_sha256": "61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"
+  },
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r037-source-bound-coverage-manifest-001.json",
+      "sha256": "299ab8391c3a47ce160794eda6096715b167d340d54c6fe688370ea928f7e771",
+      "role": "Source-bound 20-case coverage manifest with per-case verdicts and exact evidence handles."
+    },
+    {
+      "path": ".de67/task-logs/r037-local-llm-command-coverage-001-worker-receipt-v4-terminal.json",
+      "sha256": "43e79741b99617834d440694963df57d29d724ad413e8919607b16048fdef664",
+      "role": "Detailed worker terminal evidence including all case dispositions and owned-runtime cleanup."
+    },
+    {
+      "path": "tools/openclaw_harness/charters/r037-npc-llm-command-coverage-v001.json",
+      "sha256": "ea5e397a97957adcb8da4bf05c5c819e9826dbdfa3ad6d2cdc7e47c8e2ce65c4",
+      "role": "R-037 native test charter."
+    },
+    {
+      "path": "tools/openclaw_harness/scenarios/r037.npc_llm_command_coverage_v001_mcw.json",
+      "sha256": "91dc868bfe1c5a6848c2a3a9e1bceb32b6a5ed4319524c8949271790f86f0ab4",
+      "role": "Safe command-coverage scenario declaration."
+    },
+    {
+      "path": "tools/openclaw_harness/scenarios/r037.npc_llm_command_combat_v001_mcw.json",
+      "sha256": "a6eacca06962e5c835aab153a8b948f025b789607a4f8a579048165df3cb6271",
+      "role": "Combat command-coverage scenario declaration."
+    }
+  ],
+  "first_divergence": {
+    "class": "local_model_wrong_action_and_missing_native_consequence",
+    "summary": "The first retained contract failure is the calm-down request returning follow_close|idle instead of panic_off; subsequent inventory, idle, ranged, arrival/control, and stale-target gaps are classified separately in the manifest."
+  },
+  "accepted_no_replay": [
+    "Reuse the proved exact-target melee damage and other per-row native successes only at their recorded ceilings.",
+    "Do not relabel wrong local actions, missing native consequences, or unavailable material controls as command passes.",
+    "Do not access an unsanitized credential or inspect/terminate unrelated processes to manufacture the required API comparisons."
+  ],
+  "active_work": [],
+  "first_open_boundary": "R-037 cannot be accepted unless a future authorized route supplies safe API credential provisioning and the missing native premises/controls, or the owner changes the frozen outcome in Phase 2.",
+  "narrow_queries": [
+    "work_context.py --task R-037-local-llm-command-coverage-001 --full",
+    "jq .coverage_results .de67/task-logs/r037-source-bound-coverage-manifest-001.json"
+  ],
+  "entrypoints": [
+    ".de67/task-logs/r037-source-bound-coverage-manifest-001.json",
+    ".de67/task-logs/r037-local-llm-command-coverage-001-worker-receipt-v4-terminal.json"
+  ]
+}

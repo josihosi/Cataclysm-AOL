@@ -1,0 +1,100 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-closure-sound-information-semantics-006",
+  "claim_id": "R-029",
+  "worker_id": "01a08c4e-5f0b-79d0-b7ec-3a7b4ceb4638",
+  "disposition": "completed",
+  "verdict": "drive_gate_repaired; routed_candidate_reached_then_rejected_for_no_bounded_safe_watch_geography",
+  "outcome": "The smallest production scheduling repair was implemented and source-bound native evidence reached the intended retained sound lead past the low-drive gate. The fresh continuation reloaded the exact lead at staffed bandit camp overmap_special:bandit_camp@140,40,0 with NPC 18 eligible at home, advanced by ordinary native waits from minute 8225 to 8305, and reached routed evaluation. The native route analyzer rejected the lead because no bounded safe watch geography existed, so no scout, report, authorization, rally, or operation descendant was applied.",
+  "summary": "The production drive threshold no longer blocks a fresh structural sound signal when the selected cheap plan is an urgent returned structural signal; ordinary, force-due, risk, and non-signal routes retain their existing gates. A separate clock repair prevents observer-only legacy sound timestamps from being treated as physical checks, while real scout checks remain cooldown-eligible. Focused regression coverage passed. The native run proves scheduler reachability past drive=500 semantics and captures the first downstream route rejection, but not a successful scout/report path.",
+  "material_changes": [
+    "Urgent returned structural signal plans may pass the drive<500 gate only when the selected plan has positive structural signal strength; normal candidates and unrelated force/risk paths retain the threshold.",
+    "Observer-only legacy sound/light/smoke outcomes with no physical scout timestamp no longer activate the physical-check cooldown; an actual scout with last_scouted_minutes remains cooldown-eligible.",
+    "Added focused low-drive urgent sound-route and observer-only-versus-physical cooldown regression assertions."
+  ],
+  "tests": [
+    "make -j2 tests completed compilation/link verification for the updated production and test objects; the repository's existing full-link fmt::v12::detail::write_loc failure in string_formatter_test.o remains unrelated.",
+    "Focused custom bandit test binary: urgent low-drive sound route and staffed-signal transition filters passed 2 cases; the pre-existing staffed-signal lead case still reports 4 unrelated assertions.",
+    "git diff --check passed.",
+    "Source-bound macOS Tiles build completed with exit status 0 at build_logs/source_bound_macos/20260910T183442.955021Z."
+  ],
+  "live_actions": [
+    "Fresh source- and executable-bound native continuation: World observation at minute 8225, advertised world.wait -> menu.choose -> wait.1h, and terminal World observation at minute 8305.",
+    "No firearm replay, debug intervention, direct state mutation, OCR, screenshot, or terminal text was used as gameplay proof.",
+    "Sealed journal and witness were submitted; scenario terminalization completed and exact owned game/bridge cleanup finished."
+  ],
+  "evidence_ceiling": [
+    "Fresh reload identity, exact sound-lead ancestry, eligible at-home observer, ordinary accepted wait, scheduler reachability past the repaired drive gate, and exact route rejection are supported.",
+    "No positive scout, returned report, authorization, rally, hostile operation, or contact transition is claimed.",
+    "Fixture/reload footing, accepted input, terminal presentation, and cleanup receive no gameplay credit."
+  ],
+  "bindings": {
+    "scenario_id": "bandit.r029_sound_lead_continuation_058_mcw",
+    "source_identity": "926c62bdebcd601f629602220b0c2fd94fc26f9dab2a3045dcc1d252d10e982b",
+    "product_source_sha256": "690f83904461c44f8f6400b1d00fdab1e3129eb8495f4e26a639cda6cd22ca54",
+    "executable_sha256": "9873ff958c6eaa3dfb76c9a1e7ea3dbca1a79c50c5e00016a5e7c20f0043194b",
+    "run_id": "3e262ffe0121b4758e4d679c86fb09f40e0ba31d331532dcf5582b319688b699",
+    "binding_id": "8795d8d77da29d5ffa6d7644833b0de143a0231e4e41ad43fc04c5a54229e8c2",
+    "camp_id": "overmap_special:bandit_camp@140,40,0",
+    "observer_id": "18",
+    "lead_id": "overmap_special:bandit_camp@140,40,0#lead:sound_signal:camp-gunfire@(140,41,0)@140,41,0",
+    "source_key": "camp-signal:camp-gunfire@(140,41,0)",
+    "query_artifact_sha256": "e5eeb3436cf536fcc1bb047fc33968e6c00beb33cd42055ec6ced7d8de28e9cd",
+    "build_receipt": ".userdata/openclaw_harness/source_bindings/cataclysm-tiles-9c12cd9305daf8f1-9873ff958c6eaa3dfb76c9a1e7ea3dbca1a79c50c5e00016a5e7c20f0043194b-690f83904461c44f8f6400b1d00fdab1e3129eb8495f4e26a639cda6cd22ca54-16f20a8a1d8f2c964b88a1ebe825914845f15475f8937819b2a072ef42effbe8.json",
+    "transition_log": ".userdata/dev-harness/harness_runs/20260910_203747_a39081c671cb44edbada15f4feb2ca7c/transition.events.jsonl",
+    "transition_log_sha256": "0db041cc67b6fe5ee3e89195d1bf2d5d247e68993d7b2e3edc63ad5d8c86e0cf",
+    "debug_log": ".userdata/dev-harness/config/debug.log",
+    "journal_archive": ".userdata/openclaw_harness/bridge-sessions/selected-18610929f8524ed1bbf92c66ec35eafe/cockpit-evidence.sqlite",
+    "journal_sha256": "f6783577ac05c3687ee994a3249b527ebb5df95f4e5d43fed0e172cbf89d410e",
+    "witness": ".userdata/r029-bandit-sound-lead-continuation-s007-witness-20260910.json",
+    "witness_sha256": "32988a7b4598d00add78736c3a240d496a4ee891e418d15a73b066bad08bda0c",
+    "final_report": ".userdata/dev-harness/harness_runs/20260910_203747_a39081c671cb44edbada15f4feb2ca7c/probe.report.json",
+    "final_report_sha256": "3082918948a69696fc739c7268bf073a4de1e8e577e3c21ad1747a342d97e276",
+    "cleanup": "game PID 86674 and bridge PID 86647 exited; protected owner PID 48394 remained untouched"
+  },
+  "journal_entries": [
+    {"id":"J0001","sequence":1,"event_type":"identity","evidence_class":"native-semantic","summary":"Exact source, executable, scenario, run, and cockpit binding identity."},
+    {"id":"J0002","sequence":2,"event_type":"reload_exact_lead","evidence_class":"native-semantic","summary":"Fresh World observation verifies the retained sound lead and excludes preloaded outing/contact/debug state."},
+    {"id":"J2411","sequence":2411,"event_type":"world_wait","evidence_class":"native-action","summary":"Accepted native world.wait precursor."},
+    {"id":"J2413","sequence":2413,"event_type":"menu_choose","evidence_class":"native-action","summary":"Accepted advertised wait-mode selection."},
+    {"id":"J2415","sequence":2415,"event_type":"ordinary_wait","evidence_class":"native-action","action_id":"wait.1h","summary":"Accepted native one-hour wait crossing the scheduler boundary."},
+    {"id":"J2414","sequence":2414,"event_type":"final_observation","evidence_class":"native-semantic","summary":"Terminal World observation at minute 8305 retains the exact lead with no downstream actor ownership."},
+    {"id":"J2416","sequence":2416,"event_type":"terminal_witness","evidence_class":"native-semantic","summary":"Witness records the exact route rejection and releases unused authority."}
+  ],
+  "artifacts": [
+    {"path":"build_logs/source_bound_macos/20260910T183442.955021Z/build.full.log","sha256":"e653cd7cab2297836a41b543fd06e5395744995bf8f6aad31b8ab38704605ad6","role":"source-bound macOS Tiles build log"},
+    {"path":".userdata/dev-harness/harness_runs/20260910_203747_a39081c671cb44edbada15f4feb2ca7c/transition.events.jsonl","sha256":"0db041cc67b6fe5ee3e89195d1bf2d5d247e68993d7b2e3edc63ad5d8c86e0cf","role":"run-bound transition evidence"},
+    {"path":".userdata/dev-harness/harness_runs/20260910_203747_a39081c671cb44edbada15f4feb2ca7c/probe.report.json","sha256":"3082918948a69696fc739c7268bf073a4de1e8e577e3c21ad1747a342d97e276","role":"scenario terminalization and cleanup report"},
+    {"path":".userdata/openclaw_harness/bridge-sessions/selected-18610929f8524ed1bbf92c66ec35eafe/cockpit-evidence.sqlite","sha256":"a9d87ebc5f3a18e130f09c5b8dfb4b3f509383dde17eeda39bc5231ddc9195c6","role":"sealed immutable evidence journal archive"},
+    {"path":".userdata/r029-bandit-sound-lead-continuation-s007-witness-20260910.json","sha256":"32988a7b4598d00add78736c3a240d496a4ee891e418d15a73b066bad08bda0c","role":"mechanically valid focused witness"}
+  ],
+  "first_divergence": {
+    "class": "routed_candidate_rejected_no_bounded_safe_watch_geography",
+    "summary": "At the first target-camp routed evaluation, the retained sound lead was not drive-blocked: the scheduler reached structural_route_analyzer, which rejected the candidate because no bounded safe watch geography was available. The lead therefore had no ordinary scout descendant under this valid run."
+  },
+  "accepted_no_replay": [
+    "Preserve prior significant-sound, staffed callback, lead-memory, aging, branch, night, Pay, Fight-footing and activation results at their original ceilings.",
+    "Do not replay the firearm stimulus or direct-mutate sound, lead, camp, NPC, outing, report, reservation, operation or member state.",
+    "Do not credit the canceled slow macro; the decisive wait used the fresh observed native owner and advertised wait recipe."
+  ],
+  "active_work": [],
+  "first_open_boundary": "A positive downstream scout/report proof requires a fresh eligible sound lead and a valid target geometry that provides bounded safe watch geography; this run establishes the repaired drive gate and the next exact route blocker, not that positive consequence.",
+  "narrow_queries": [
+    "Correlate debug.log lines 17933-17937 with J0002, J2414 and the transition log before deciding whether to provide a valid watch footprint.",
+    "If continued, preserve the same sound-lead ancestry and stop at the first attributable scout/report transition or the next exact production rejection."
+  ],
+  "entrypoints": [
+    "src/bandit_live_world.cpp::structural_lead_recently_checked",
+    "src/bandit_live_world.cpp::advance_structural_bounty_maintenance",
+    "tests/bandit_live_world_test.cpp::hostile_camp_urgent_sound_signal_bypasses_drive_gate_only_for_signal_route",
+    "tools/openclaw_harness/play_cli.py::journal/finish"
+  ],
+  "context_metrics": {
+    "game_minutes_start": 8225,
+    "game_minutes_end": 8305,
+    "downstream_positive_transitions": 0,
+    "route_rejection": "no_bounded_safe_watch_geography",
+    "journal_entries": 2416
+  }
+}

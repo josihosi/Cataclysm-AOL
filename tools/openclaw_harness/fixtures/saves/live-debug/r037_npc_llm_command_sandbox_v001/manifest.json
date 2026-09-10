@@ -1,0 +1,40 @@
+{
+  "name": "r037_npc_llm_command_sandbox_v001",
+  "source_fixture": "harness_basecamp_no_giuseppe_2026-09-05",
+  "source_profile": "live-debug",
+  "description": "Disposable R-037 setup-only footing. It keeps the qualified living camp and places the known companion actor 2 near the player with an auditable inventory spanning wearable, melee, firearm/ammo, bow/ammo, activation and drop candidates. It also stages one unowned pickup candidate and one foreign-owned pickup control. The fixture supplies no LLM response, selected command, movement, attack, pickup, inventory outcome or gameplay credit.",
+  "save_transforms": [
+    {
+      "kind": "basecamp_assigned_npc_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_id": 2,
+      "offset_ms": [4, 0, 0],
+      "assigned_camp_omt": [140, 41, 0],
+      "ensure_follower": true,
+      "items": [
+        { "typeid": "model_10_revolver", "count": 1, "slot": "weapon", "contents": { "contents": [ { "pocket_type": 1, "contents": [ { "typeid": "38_special", "charges": 6, "bday": 0, "last_temp_check": 0, "template_traits": [] } ], "_sealed": false, "no_rigid": [] } ], "additional_pockets": [] } },
+        { "typeid": "38_special", "count": 1, "charges": 12 },
+        { "typeid": "machete", "count": 1 },
+        { "typeid": "shortbow", "count": 1 },
+        { "typeid": "arrow_wood", "count": 1, "charges": 20 },
+        { "typeid": "tshirt", "count": 1 },
+        { "typeid": "lighter", "count": 1, "contents": { "contents": [ { "pocket_type": 1, "contents": [ { "typeid": "butane", "charges": 100, "bday": 0, "last_temp_check": 0, "template_traits": [] } ], "_sealed": false, "no_rigid": [] } ], "additional_pockets": [] } },
+        { "typeid": "rock", "count": 1 }
+      ]
+    },
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [
+        { "typeid": "bandages", "count": 1, "offset_ms": [2, 1, 0] },
+        { "typeid": "bandages", "count": 1, "owner": "hells_raiders", "offset_ms": [2, -1, 0] }
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": []
+    }
+  ]
+}

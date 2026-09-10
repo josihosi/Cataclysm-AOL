@@ -1,0 +1,1 @@
+{"binding_id": "e15cb9ade78c30711de366acf67e7560e675a9698b4ca33a509ff2ac6ddb99b1", "request": {"action": "game.act", "action_id": "prompt.submit", "observation_id": "8537bd49f31ecfcd05d4da60134c8ae3fc0ed85218be5d0beffd8dfb928cd834:frame:23", "parameters": {"text": "Katharina, move two steps east and wait there."}}, "request_id": "play-f90d3a0e765b4929b29b08ba3b078afa"}

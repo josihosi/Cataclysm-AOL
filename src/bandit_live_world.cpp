@@ -7269,7 +7269,9 @@ camp_intelligence_aging_result advance_camp_intelligence_aging( site_record &sit
         }
         lead.status = camp_lead_status::stale;
         lead.confidence = 0;
-        lead.last_outcome = "structural signal evidence expired without new support";
+        lead.last_outcome = lead.origin == camp_lead_origin::returned_report ?
+                            "returned signal evidence expired without new support" :
+                            "structural signal evidence expired without new support";
         result.leads_aged++;
     }
 
@@ -13057,6 +13059,21 @@ int structural_candidate_score( const site_record &site, const camp_map_lead &le
 bool structural_lead_recently_checked( const camp_map_lead &lead, const int now_minutes )
 {
     constexpr int recent_structural_check_cooldown_minutes = 6 * 60;
+    // Some continuation saves predate the separate observer/scout clocks and carry the
+    // staffed observer minute in last_checked_minutes.  Observer memory is evidence for a
+    // physical investigation, not that investigation itself; only a signal lead with no
+    // scout clock and its observer outcome may use the legacy value without suppressing a
+    // still-fresh urgent signal.  A returned scout always records last_scouted_minutes and
+    // therefore remains subject to the cooldown.
+    const bool legacy_staffed_observer_clock =
+        lead.origin == camp_lead_origin::signal && lead.last_scouted_minutes < 0 &&
+        lead.last_outcome == std::string( "camp_observer_" ) +
+        ( lead.kind == camp_lead_kind::sound_signal ? "sound" :
+          lead.kind == camp_lead_kind::smoke_signal ? "smoke" :
+          lead.kind == camp_lead_kind::light_signal ? "light" : "" );
+    if( legacy_staffed_observer_clock ) {
+        return false;
+    }
     return lead.last_checked_minutes >= 0 && now_minutes >= 0 &&
            now_minutes - lead.last_checked_minutes < recent_structural_check_cooldown_minutes;
 }
@@ -14781,8 +14798,10 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site, c
         if( candidate.valid && !apply_structural_route_read( site, now_minutes, read, candidate ) ) {
             candidate.valid = false;
         }
+        const bool retained_target = returned_structural_signal_lead( *lead ) &&
+                                      structural_signal_strength( *lead, now_minutes ) > 0;
         if( !candidate.valid ||
-            !hostile_camp_routine_score_eligible( candidate.final_score, false ) ) {
+            !hostile_camp_routine_score_eligible( candidate.final_score, retained_target ) ) {
             continue;
         }
         if( !best.valid || candidate.final_score > best.final_score ||
@@ -14801,6 +14820,9 @@ structural_outing_plan plan_structural_bounty_outing( const site_record &site, c
 bool apply_structural_bounty_outing_plan( site_record &site, const structural_outing_plan &plan,
         const int now_minutes )
 {
+    camp_map_lead *lead = site.intelligence_map.find_lead( plan.lead_id );
+    const bool retained_target = lead != nullptr && returned_structural_signal_lead( *lead ) &&
+                                 structural_signal_strength( *lead, now_minutes ) > 0;
     const bool frontier_plan = plan.frontier_sector >= 0;
     const watch_selection_result watch_selection = plan.watch_geography_supplied ?
             select_watch_ring_candidate( plan.target_footprint, plan.watch_candidates ) :
@@ -14821,7 +14843,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
     if( now_minutes < 0 || !plan.valid || !plan.route_solved ||
         plan.full_route_cost < 0 || plan.full_route_cost > max_structural_route_cost_omt ||
         !route_risk_is_valid ||
-        !hostile_camp_routine_score_eligible( plan.final_score, false ) ||
+        !hostile_camp_routine_score_eligible( plan.final_score, retained_target ) ||
         hostile_camp_routine_risk_blocked( plan.static_risk ) ||
         plan.site_id != site.site_id ||
         site.routine_activated_minutes > now_minutes ||
@@ -14850,7 +14872,6 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
                                         bandit_dry_run::job_template::scout ) ) {
         return false;
     }
-    camp_map_lead *lead = site.intelligence_map.find_lead( plan.lead_id );
     if( frontier_plan ) {
         structural_outing_plan expected = plan_frontier_outing_impl( site, now_minutes, true );
         const structural_route_read persisted_route{ true, plan.full_route_cost,
@@ -16965,6 +16986,12 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
             }
             return cheap_plan_precedes( lhs, rhs, site );
         } );
+        const bool urgent_signal_candidate = urgent_signal && !cheap_plans.empty() &&
+        [&site, now_minutes]( const structural_outing_plan & plan ) {
+            const camp_map_lead *lead = site.intelligence_map.find_lead( plan.lead_id );
+            return lead != nullptr && returned_structural_signal_lead( *lead ) &&
+                   structural_signal_strength( *lead, now_minutes ) > 0;
+        }( cheap_plans.front() );
         const int best_cheap_score = std::max_element(
                                          cheap_plans.begin(), cheap_plans.end(),
         []( const structural_outing_plan & lhs, const structural_outing_plan & rhs ) {
@@ -16973,7 +17000,7 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
         routine_dispatch_evaluation evaluation = evaluate_hostile_camp_routine_dispatch(
                     site, now_minutes, best_cheap_score );
         evaluation.force_due = evaluation.force_due || frontier_due;
-        if( !evaluation.force_due && evaluation.drive < 500 ) {
+        if( !evaluation.force_due && !urgent_signal_candidate && evaluation.drive < 500 ) {
             scheduler_exit_diagnostic( &site, "drive_below_threshold",
                                        "drive=" + std::to_string( evaluation.drive ) +
                                        ",threshold=500" );
@@ -17068,16 +17095,20 @@ structural_bounty_maintenance_result advance_structural_bounty_maintenance( worl
                     routed.valid = false;
                 }
             }
+            const camp_map_lead *routed_lead = site.intelligence_map.find_lead( routed.lead_id );
+            const bool retained_target = candidate.urgent_signal && routed_lead != nullptr &&
+                                         returned_structural_signal_lead( *routed_lead ) &&
+                                         structural_signal_strength( *routed_lead, now_minutes ) > 0;
             if( !routed.valid || hostile_camp_routine_risk_blocked( routed.static_risk ) ||
-                !hostile_camp_routine_score_eligible( routed.final_score, false ) ) {
+                !hostile_camp_routine_score_eligible( routed.final_score, retained_target ) ) {
                 scheduler_exit_diagnostic( &site, "full_route_candidate_ineligible",
                                            "lead=" + cheap.lead_id + ",valid=" +
                                            ( routed.valid ? "yes" : "no" ) + ",risk=" +
                                            std::to_string( routed.static_risk ) + ",score=" +
-                                           std::to_string( routed.final_score ) );
+                                           std::to_string( routed.final_score ) + ",retained=" +
+                                           ( retained_target ? "yes" : "no" ) );
                 continue;
             }
-            const camp_map_lead *routed_lead = site.intelligence_map.find_lead( routed.lead_id );
             if( candidate.urgent_signal && routed_lead != nullptr &&
                 returned_structural_signal_lead( *routed_lead ) ) {
                 best_routed = std::move( routed );

@@ -1,0 +1,13 @@
+{
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The source-bound retry-2 run reached the declared setup and lifecycle boundary under the repaired current binding, but the sealed focused journal did not retain the later setup observations needed to promote a fire or guarded-retreat gameplay claim here.",
+  "causal_account": "The sealed journal establishes the exact source, executable, run and binding identity plus the native initial world and inventory route. Later live responses separately recorded the native lighter activation, brazier fd_fire, one-step guarded north retreat, native save/quit, native menu quit and clean process exit; those later response artifacts are preserved, but are outside the five-entry sealed journal selected for this witness. No ecology transition is claimed.",
+  "citations": [
+    {"citation_id":"J0001","meaning":"Source-bound run identity for retry 2.","checks":{"scenario_id":"cannibal.r029_natural_route_roof_mcw","executable_identity":"d30b6d4528a6cad2b61e4ef71aaf779ac68590aa6866a1d7c7fe94288f3345c3","run_id":"48194c2a01fc38426f236562c1d114509f122cc37646f5c75711d45a97c865db","binding_id":"78266a59db7bb62688897d21c23491bc6c484ce4f96223898f994a5cf4050671"}},
+    {"citation_id":"J0002","meaning":"Initial native world observation before setup actions.","checks":{"value.game_minutes":8219,"value.surface.kind":"world","value.surface.facts.last_debug_intervention":"none_this_run"}}
+  ],
+  "contradictions": ["The sealed focused journal contains no later fire, guarded-retreat, continuation, signal, report, rally, response or contact entry."],
+  "remaining_unknowns": ["Persisted brazier fire and first staffed-observer cadence after process replacement.","Natural signal-response route and any later cannibal contact."],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "focused"
+}

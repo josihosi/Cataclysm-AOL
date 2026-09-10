@@ -1,0 +1,97 @@
+{
+  "build_action": "repair_closest_scenario",
+  "candidate_manifest": {
+    "fixture": "r037_npc_llm_command_combat_v001",
+    "fixture_profile": "live-debug",
+    "profile": "harness-npc-llm-coverage-combat",
+    "world": "McWilliams"
+  },
+  "closest_candidate": {
+    "lifecycle_state": "active",
+    "manifest": {
+      "executable": true,
+      "known_footing": {
+        "fixture": "r037_npc_llm_command_combat_v001",
+        "fixture_profile": "live-debug",
+        "profile": "harness-npc-llm-coverage-combat",
+        "world": "McWilliams"
+      },
+      "manifest_id": "1bfbbd0f6d55e802cb758ed3542dd92389bb6ca01bd1c6d4fec890992bcb72e2",
+      "name": "r037.npc_llm_command_combat_v001_mcw",
+      "present": true,
+      "review_required": false,
+      "review_status": "not_required",
+      "revision": 1,
+      "sha256": "a6eacca06962e5c835aab153a8b948f025b789607a4f8a579048165df3cb6271",
+      "source_binding_validation": null,
+      "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/scenarios/r037.npc_llm_command_combat_v001_mcw.json",
+      "validation": {
+        "manifest_version": 2,
+        "review_required": false,
+        "status": "valid"
+      }
+    },
+    "missing_requirements": [],
+    "satisfied_requirements": [
+      {
+        "evidence_state": "declared",
+        "expected": "present",
+        "key": "capabilities.r037.command_coverage",
+        "observed": "e4b_exact_target_melee_ranged",
+        "reason": "matched"
+      }
+    ],
+    "scenario_id": "1bfbbd0f6d55e802cb758ed3542dd92389bb6ca01bd1c6d4fec890992bcb72e2"
+  },
+  "executable": false,
+  "missing_requirements": [],
+  "query": {
+    "preferences": [],
+    "requirements": [
+      {
+        "key": "capabilities.r037.command_coverage",
+        "minimum_evidence": "declared",
+        "op": "present"
+      }
+    ]
+  },
+  "review_status": "pending",
+  "satisfied_requirements": [
+    {
+      "evidence_state": "declared",
+      "expected": "present",
+      "key": "capabilities.r037.command_coverage",
+      "observed": "e4b_exact_target_melee_ranged",
+      "reason": "matched"
+    }
+  ],
+  "unmet_capabilities": [
+    {
+      "manifest": {
+        "executable": true,
+        "known_footing": {
+          "fixture": "r037_npc_llm_command_combat_v001",
+          "fixture_profile": "live-debug",
+          "profile": "harness-npc-llm-coverage-combat",
+          "world": "McWilliams"
+        },
+        "manifest_id": "1bfbbd0f6d55e802cb758ed3542dd92389bb6ca01bd1c6d4fec890992bcb72e2",
+        "name": "r037.npc_llm_command_combat_v001_mcw",
+        "present": true,
+        "review_required": false,
+        "review_status": "not_required",
+        "revision": 1,
+        "sha256": "a6eacca06962e5c835aab153a8b948f025b789607a4f8a579048165df3cb6271",
+        "source_binding_validation": null,
+        "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/tools/openclaw_harness/scenarios/r037.npc_llm_command_combat_v001_mcw.json",
+        "validation": {
+          "manifest_version": 2,
+          "review_required": false,
+          "status": "valid"
+        }
+      },
+      "scenario_id": "1bfbbd0f6d55e802cb758ed3542dd92389bb6ca01bd1c6d4fec890992bcb72e2",
+      "unmet": []
+    }
+  ]
+}

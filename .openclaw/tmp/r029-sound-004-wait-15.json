@@ -1,0 +1,16 @@
+{
+  "action": "game.wait",
+  "wait": {
+    "enabled": true,
+    "target_delta_game_minutes": 15,
+    "danger_handling": "handle_classified_non_dangerous",
+    "recipe": ["world.pause"],
+    "bound": {
+      "basis": "scheduler_boundary",
+      "source": "advance from the native starting observation at minute 8219 through one registration and structural-maintenance cadence",
+      "unit": "game_minutes",
+      "maximum": 15,
+      "progress_required": true
+    }
+  }
+}

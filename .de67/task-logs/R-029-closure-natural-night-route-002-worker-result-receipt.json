@@ -1,0 +1,190 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-closure-natural-night-route-002",
+  "claim_id": "R-029",
+  "worker_id": "01a08b59-9bbe-7001-9a9d-0f5024091610",
+  "request_id": "e88b2ce8a5764bc6ab9f400e1b6d39f5",
+  "disposition": "completed",
+  "summary": "Finite no-replay binding audit complete. Accepted physical signal/camp-memory, source-level same-lead scout/report/travel flow, and independent night departure/dawn/contact/persistence/cleanup evidence are bound to their exact identities and ceilings. The later missing-fire experiment is retained as diagnostic-only and does not invalidate any accepted receipt.",
+  "outcome": "The native smoke receipt binds observer 18, cannibal camp overmap_special:cannibal_camp@140,40,0, physical source OMT 140,41,0, minute 8225, run, source and executable. The companion source-level receipt binds the intended same-lead signal -> candidate -> target_lead_id -> scout report -> travel identity flow, but explicitly provides no native operation/member/run proof. The independent native night receipt binds operation overmap_special:cannibal_camp@140,51,0#hostile:2, members 4 and 5, dawn minute 9025, post-dawn contact minute 9085, source/executable, exact-world replacement and cleanup. These components must not be merged into one continuous native route.",
+  "verdict": "accepted_components_bound_no_replay_shared_native_signal_to_travel_unproved",
+  "first_divergence": {
+    "class": "evidence-ceiling-boundary-not-receipt-contradiction",
+    "summary": "The native smoke receipt stops after lead creation with drive idle; the accepted source-level route receipt proves mechanism and identity flow only; no accepted native receipt binds that physical lead through candidate admission, physical scout, returned report and travel. This is an evidence ceiling, not a contradiction in the independently accepted night route.",
+    "diagnostic_only": {
+      "artifact": ".userdata/r029-natural-route-repair-001/harness_runs/20260910_180657_b176954ae8a94c788748ebd6a15d9197/probe.report.json",
+      "sha256": "56278d31893cf3367fd26b0e2664f02e419ce1158650ec1837f1ced55f0dae53",
+      "run_id": "cd957a410325adc7034ce6d31980833cbdd3f11e27fc908675d6631ff99c1518",
+      "binding": "d30b6d4528a6cad2b61e4ef71aaf779ac68590aa6866a1d7c7fe94288f3345c3",
+      "result": "required_state_missing",
+      "observed": "At player [3372,996,1] offset [1,1,0], t_tile_flat_roof and log were present; f_brazier and fd_fire were absent.",
+      "credit": "zero; preserved without replay and does not invalidate accepted independent receipts"
+    }
+  },
+  "first_open_boundary": "No work remains inside this finite binding audit. The native shared physical-signal -> candidate -> scout/report -> travel proof remains unestablished at the accepted evidence ceiling and is outside this completed no-replay audit.",
+  "material_changes": [],
+  "journal_entries": [
+    {
+      "id": "accepted-physical-signal-camp-memory",
+      "sequence": 1,
+      "event_type": "native_signal_and_memory",
+      "evidence_class": "native-semantic",
+      "summary": "Observer 18 at camp overmap_special:cannibal_camp@140,40,0 read live smoke from 140,41,0 at minute 8225 with true line of sight, equal elevation, clear weather and range 1 under cap 12; normalized smoke lead was created and camp memory increased.",
+      "receipt_id": "bd79c72395d2eeb925ce1bcf5afcd0ffd18ad24926fbadab390d1f4e8c88979c",
+      "artifact_ref": ".de67/task-logs/R-029-roof-fire-discovery-065-receipt.json"
+    },
+    {
+      "id": "accepted-source-route-identity-flow",
+      "sequence": 2,
+      "event_type": "source_level_signal_route",
+      "evidence_class": "source-and-focused-test",
+      "summary": "Current source-level coverage preserves one signal lead through candidate admission, target_lead_id dispatch, physical observation, return, scout report and returned-lead identity; native end-to-end proof is explicitly absent.",
+      "receipt_id": "8ec5a664aee5071681f6acffa945391e1725d1ff50d2906cbfe4d6914844152d",
+      "artifact_ref": ".de67/state/worker-library/results/85ffaf4af46d4617abcd99d3a5196ef3/80ecc18fd8fc58fe72747690921497ecd29fd58f19e0d37fb2889d02ba58ca3c.md"
+    },
+    {
+      "id": "accepted-night-dawn-contact-persistence",
+      "sequence": 3,
+      "event_type": "night_departure_dawn_contact_reload",
+      "evidence_class": "native-semantic",
+      "summary": "Raid operation overmap_special:cannibal_camp@140,51,0#hostile:2 with members 4 and 5 remained committed through dawn after exact-world reload and reached committed_contact under local ownership at minute 9085.",
+      "receipt_id": "0892479ce584418db6ef41fc3ef4d594d82b16ca97d6dac9fb423f2c3687185f",
+      "artifact_ref": ".de67/task-logs/R-029-night-departure-repair-001-receipt.json"
+    }
+  ],
+  "checks": [
+    "Read .de67/FS.md and the compact accepted R-029 receipts before artifact drilldown.",
+    "Verified current SHA-256 values for the accepted smoke, source-route, night receipt, and preserved diagnostic report.",
+    "Correlated the native smoke observer/camp/source/run identity and the native night operation/member/run/source/executable/contact/persistence/cleanup identities.",
+    "Confirmed the source-level scout/report/travel receipt states its native-proof ceiling and does not supply operation or member identities.",
+    "Inspected current source entrypoints only as needed; current dirty source changes are not retroactively applied to historical runtime bindings.",
+    "Performed no gameplay, runtime launch, reentry, GUI input, source mutation, fixture installation, replay, OCR inference or rendered-text inference."
+  ],
+  "tests": [
+    "No tests or runtime commands were launched; this was a read-only evidence-binding audit.",
+    "Existing accepted focused-test statements were retained at their original receipt ceilings and not rerun."
+  ],
+  "live_actions": [],
+  "artifacts": [
+    {
+      "path": ".de67/FS.md",
+      "sha256": "4694843f7a9164dc470d0795e30ecdb16d1b6cf1665f62323da50c0829f415d9",
+      "role": "current functional contract and evidence-boundary authority"
+    },
+    {
+      "path": ".de67/task-logs/R-029-roof-fire-discovery-065-receipt.json",
+      "sha256": "f45562f756ea3d5d04828df861809e40d3384188468d04eee40c04422ab43b60",
+      "role": "accepted native physical smoke and camp-memory receipt"
+    },
+    {
+      "path": ".de67/state/worker-library/results/85ffaf4af46d4617abcd99d3a5196ef3/80ecc18fd8fc58fe72747690921497ecd29fd58f19e0d37fb2889d02ba58ca3c.md",
+      "sha256": "34c75e20f0b4d4fb3f250730c98b52e7e3753416809bcecd306410fcdf1e7fd7",
+      "role": "accepted source-level same-lead scout/report/travel identity flow and native-proof ceiling"
+    },
+    {
+      "path": ".de67/task-logs/R-029-night-departure-repair-001-receipt.json",
+      "sha256": "33df358972431f051b1d021bfffef61f8060982230c2620fdf568bf4d7a8b67d",
+      "role": "accepted native night departure, dawn crossing, contact, persistence and cleanup receipt"
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260909_173916_9ddd828cecf6468293f3fba8a61eef73/probe.report.json",
+      "sha256": "f4ae58fad3c9f1704966e5d5319541ca532b97eb461820635f0e29c495496b1d",
+      "role": "night source-bound native report and exact operation/member lifecycle evidence"
+    },
+    {
+      "path": ".userdata/r029-natural-route-repair-001/harness_runs/20260910_180657_b176954ae8a94c788748ebd6a15d9197/probe.report.json",
+      "sha256": "56278d31893cf3367fd26b0e2664f02e419ce1158650ec1837f1ced55f0dae53",
+      "role": "preserved missing-fire diagnostic only; zero gameplay credit"
+    },
+    {
+      "path": ".userdata/r029-natural-route-repair-001/harness_runs/20260910_180657_b176954ae8a94c788748ebd6a15d9197/audit_persisted_r029_player_fire.metadata.json",
+      "sha256": "32862bdb9f4afba512d4fb2b7dff294d7934c6808ddb7572644f1b76a9cccb24",
+      "role": "preserved missing-fire persistence diagnostic metadata"
+    }
+  ],
+  "bindings": {
+    "lineage": "semantic-surface-cockpit",
+    "claim": "R-029",
+    "physical_signal_receipt_id": "bd79c72395d2eeb925ce1bcf5afcd0ffd18ad24926fbadab390d1f4e8c88979c",
+    "physical_signal_run_id": "9b93afd3c55ba3efc408c2acbfd3652e35404f72c06bb69504a0588f0c67502d",
+    "physical_signal_binding_id": "80728b44158a6dd890caa80d26d27c0a6da9e6dee77106e26a2276b049a64ff6",
+    "physical_signal_scenario_id": "cannibal.r029_ground_positive_route_mcw",
+    "physical_signal_source_head_at_ingress": "8837ef5ac9a8abc1a0f99dd6384d31c2a9334604",
+    "physical_signal_runtime_source_sha256": "7ac9ffcf8e70022a7211d30bb4bd188f76704c09193d82b38105908a72d85bb3",
+    "physical_signal_runtime_executable_sha256": "89a724fd5999ae27fa82116e324af5164ca12ad143e0cd962f32471875e9a95a",
+    "physical_signal_camp_id": "overmap_special:cannibal_camp@140,40,0",
+    "physical_signal_observer_id": "18",
+    "physical_signal_source_omt": "140,41,0",
+    "physical_signal_game_minutes": "8225",
+    "physical_signal_operation_id": "not-established",
+    "physical_signal_member_ids": "not-established",
+    "physical_signal_ceiling": "native observation, normalized smoke lead and camp-memory growth; drive remained idle; no scout/report/travel/operation/contact",
+    "source_route_receipt_id": "8ec5a664aee5071681f6acffa945391e1725d1ff50d2906cbfe4d6914844152d",
+    "source_route_continuation_receipt": "039c940418312a43d1c50d18119b588967a93cfd33d9361618b03ba8c382c222",
+    "source_route_artifact_sha256": "bbb3172e7158794af419652402a22cc2892c5ff3912591baf71bb9b95596d99f",
+    "source_route_entrypoints": "record_staffed_camp_signal_observations;plan_structural_bounty_outing_impl;advance_structural_bounty_maintenance",
+    "source_route_lead_identity": "signal lead -> target_lead_id -> returned report",
+    "source_route_operation_id": "not-established",
+    "source_route_member_ids": "not-established",
+    "source_route_run_id": "not-established",
+    "source_route_ceiling": "source-level mechanism and focused tests only; native signal-to-scout/report/travel proof absent",
+    "night_route_receipt_id": "0892479ce584418db6ef41fc3ef4d594d82b16ca97d6dac9fb423f2c3687185f",
+    "night_route_run_directory": "20260909_173916_9ddd828cecf6468293f3fba8a61eef73",
+    "night_route_native_run_id": "01f4fad3eb1549edb1044d310b196413",
+    "night_route_scenario_id": "cannibal.night_raid_natural_transition_validation_mcw",
+    "night_route_source_head_at_ingress": "8837ef5ac9a8abc1a0f99dd6384d31c2a9334604",
+    "night_route_runtime_source_sha256": "306724d7963257d5eaadb7eac10b2f2b0a65c8c1cf1807d05d42fb38be74ff30",
+    "night_route_runtime_executable_sha256": "2e440f697a0c6a7d5af719671e7ee365eee92c7ed2b0318120222dc2abe32097",
+    "night_route_operation_id": "overmap_special:cannibal_camp@140,51,0#hostile:2",
+    "night_route_operation_kind": "raid",
+    "night_route_member_ids": "4,5",
+    "night_route_dawn_game_minutes": "9025",
+    "night_route_contact_game_minutes": "9085",
+    "night_route_cleanup_game_pid": "60366",
+    "night_route_cleanup_ceiling": "exact-world reload and process cleanup are proved; player survival and balanced encounter quality are not claimed",
+    "current_source_audit_status": "inspected_without_rebinding",
+    "current_source_audit_entrypoints": "src/bandit_live_world.cpp::record_staffed_camp_signal_observations;src/bandit_live_world.cpp::plan_structural_bounty_outing_impl;src/bandit_live_world.cpp::advance_structural_bounty_maintenance;src/do_turn.cpp::advance_live_bandit_hostile_approaches",
+    "current_dirty_change": "src/bandit_live_world.cpp changes returned-report expiry wording only; it does not retroactively alter historical runtime bindings",
+    "historical_identity_rule": "historical receipts retain their source/executable identities and are not relabeled as current-source runs"
+  },
+  "evidence_ceiling": [
+    "Physical smoke and camp-memory creation are native and exact for observer 18, camp 140,40,0, source 140,41,0 and minute 8225; no operation or members are established by that receipt.",
+    "The same-lead scout/report/travel path is source-level and focused-test-supported, with no native run, operation or member identity; it cannot be promoted to native gameplay proof.",
+    "The night receipt independently proves the exact raid operation, members 4 and 5, night departure, dawn crossing, exact-world reload persistence, post-dawn local contact, and cleanup.",
+    "The components are independent and must not be concatenated into a single native signal-to-contact ancestry.",
+    "Fixture setup, source placement, accepted input, startup, OCR, screenshots, rendered text, terminal bytes, and the missing-fire diagnostic receive no gameplay credit."
+  ],
+  "accepted_no_replay": [
+    "Do not relaunch, reenter, operate or wait in any runtime for this audit.",
+    "Preserve the accepted physical signal/camp-memory receipt without replay.",
+    "Preserve the accepted source-level same-lead route flow at its static/test ceiling without calling it native proof.",
+    "Preserve the accepted night departure/dawn/contact/persistence/cleanup receipt without replay.",
+    "Preserve the latest missing-fire experiment as a non-credit diagnostic; do not use it to invalidate accepted independent receipts.",
+    "Do not merge separate source, run, operation or member identities across receipts."
+  ],
+  "active_work": [],
+  "entrypoints": [
+    "src/bandit_live_world.cpp::record_staffed_camp_signal_observations",
+    "src/bandit_live_world.cpp::plan_structural_bounty_outing_impl",
+    "src/bandit_live_world.cpp::advance_structural_bounty_maintenance",
+    "src/do_turn.cpp::advance_live_bandit_hostile_approaches"
+  ],
+  "narrow_queries": [
+    "smoke run 9b93afd3c55ba3efc408c2acbfd3652e35404f72c06bb69504a0588f0c67502d: observer 18, camp 140,40,0, source 140,41,0, minute 8225",
+    "source route: signal lead -> target_lead_id -> scout report -> travel, static/test ceiling only",
+    "night run 20260909_173916_9ddd828cecf6468293f3fba8a61eef73: operation #hostile:2, members 4,5, dawn 9025, contact 9085",
+    "diagnostic run cd957a410325adc7034ce6d31980833cbdd3f11e27fc908675d6631ff99c1518: required_state_missing, no credit"
+  ],
+  "context_metrics": {
+    "accepted_receipts_bound": "3",
+    "diagnostic_receipts_preserved": "1",
+    "native_runtimes_launched": "0",
+    "native_actions": "0",
+    "gameplay_replays": "0",
+    "source_mutations": "0",
+    "shared_native_signal_to_travel_proved": "false",
+    "night_departure_contact_persistence_cleanup_independently_bound": "true",
+    "remaining_work_inside_finite_audit": "0"
+  }
+}

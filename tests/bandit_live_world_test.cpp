@@ -15443,8 +15443,11 @@ TEST_CASE( "staffed signal lead is dispatched and returned through the same scou
     CHECK_FALSE( bandit_live_world::structural_lead_check_cooldown_active_for_test(
                      *signal_lead, 220 ) );
 
-    const std::vector<bandit_live_world::structural_outing_plan> candidates =
-        bandit_live_world::plan_structural_bounty_outing_candidates( site, 221, true );
+    // The public candidate-list API is intentionally a cheap, route-pending view;
+    // use the full planner before exercising native application and travel.
+    const std::vector<bandit_live_world::structural_outing_plan> candidates = {
+        bandit_live_world::plan_structural_bounty_outing( site, *signal_lead, 221 )
+    };
     const auto candidate = std::find_if( candidates.begin(), candidates.end(),
     [&lead_id]( const bandit_live_world::structural_outing_plan &plan ) {
         return plan.lead_id == lead_id;
@@ -15664,8 +15667,14 @@ TEST_CASE( "staffed camp sound memory uses emitted time and preserves investigat
     CHECK( lead->last_checked_minutes == -1 );
     CHECK( lead->last_scouted_minutes == -1 );
 
-    // A legacy/physical clock remains authoritative across a later sound refresh.
+    // A legacy observer clock is not a physical check, even when an old continuation save
+    // populated last_checked_minutes before the separate scout clock existed.
     lead->last_checked_minutes = 400;
+    lead->last_outcome = "camp_observer_sound";
+    CHECK_FALSE( bandit_live_world::structural_lead_check_cooldown_active_for_test( *lead, 401 ) );
+
+    // A legacy/physical clock remains authoritative across a later sound refresh once the
+    // scout clock proves that an actual investigation occurred.
     lead->last_scouted_minutes = 410;
     CHECK( bandit_live_world::structural_lead_check_cooldown_active_for_test( *lead, 759 ) );
     CHECK_FALSE( bandit_live_world::structural_lead_check_cooldown_active_for_test( *lead, 760 ) );
@@ -30823,6 +30832,111 @@ TEST_CASE( "hostile_camp_routed_dispatch_drive_and_force_due_do_not_create_false
     } );
     CHECK( blocked.dispatches_applied == 0 );
     CHECK( risk_route_calls == 0 );
+}
+
+TEST_CASE( "hostile_camp_urgent_sound_signal_uses_retained_score_floor",
+           "[bandit][live_world][scheduler][structural_bounty][routed_dispatch][sound_signal]" )
+{
+    const auto terrain_lookup = []( const tripoint_abs_omt & ) -> std::optional<std::string> {
+        return std::nullopt;
+    };
+    const auto threat_lookup = []( const bandit_live_world::site_record &,
+                                   const bandit_live_world::camp_map_lead & ) {
+        return bandit_live_world::structural_threat_read{};
+    };
+
+    bandit_live_world::world_state world;
+    add_scheduler_test_site( world, 0, false, 524500 );
+    bandit_live_world::site_record &site = world.sites.front();
+    site.routine_activated_minutes = 0;
+    site.supply_units = 21;
+    site.supply_last_update_minutes = 0;
+    site.intelligence_map.frontier_last_resolved_minutes.assign( 8, -1 );
+
+    bandit_live_world::camp_map_lead signal;
+    signal.lead_id = site.site_id + "#sound-signal";
+    signal.kind = bandit_live_world::camp_lead_kind::sound_signal;
+    signal.origin = bandit_live_world::camp_lead_origin::signal;
+    signal.status = bandit_live_world::camp_lead_status::suspected;
+    signal.target_id = "camp-gunfire";
+    signal.omt = tripoint_abs_omt( 2, 0, 0 );
+    signal.source_key = "camp-signal:camp-gunfire";
+    signal.source_summary = "fresh returned sound signal";
+    signal.first_seen_minutes = 0;
+    signal.last_seen_minutes = 0;
+    signal.confidence = 2;
+    signal.generated_by_this_camp_routine = true;
+    REQUIRE( bandit_live_world::upsert_camp_map_lead( site, signal ) );
+
+    int route_calls = 0;
+    const bandit_live_world::structural_bounty_maintenance_result result =
+        bandit_live_world::advance_structural_bounty_maintenance(
+            world, 60, 0, 1, terrain_lookup, threat_lookup,
+    [&route_calls]( const bandit_live_world::site_record &,
+                    const bandit_live_world::structural_outing_plan &plan ) {
+        route_calls++;
+        CHECK( plan.lead_id == "scheduler-site-0#sound-signal" );
+        return bandit_live_world::structural_route_read{ true, 14, 300,
+                "bounded sound-signal investigation route" };
+    } );
+
+    CHECK( bandit_live_world::hostile_camp_dispatch_drive( 0, 1000, 500, 0 ) == 350 );
+    CHECK_FALSE( bandit_live_world::hostile_camp_routine_score_eligible( 214, false ) );
+    CHECK( bandit_live_world::hostile_camp_routine_score_eligible( 214, true ) );
+    CHECK( route_calls == 1 );
+    CHECK( result.dispatches_planned == 1 );
+    CHECK( result.dispatches_applied == 1 );
+    REQUIRE( site.active_outing.is_active() );
+    CHECK( site.active_outing.target_id == signal.lead_id );
+}
+
+TEST_CASE( "hostile_camp_generic_route_keeps_acquire_score_floor",
+           "[bandit][live_world][scheduler][structural_bounty][routed_dispatch]" )
+{
+    const auto terrain_lookup = []( const tripoint_abs_omt & ) -> std::optional<std::string> {
+        return std::nullopt;
+    };
+    const auto threat_lookup = []( const bandit_live_world::site_record &,
+                                   const bandit_live_world::camp_map_lead & ) {
+        return bandit_live_world::structural_threat_read{};
+    };
+
+    bandit_live_world::world_state world;
+    add_scheduler_test_site( world, 0, false, 524600 );
+    bandit_live_world::site_record &site = world.sites.front();
+    site.routine_activated_minutes = 0;
+    site.supply_units = 0;
+    site.supply_last_update_minutes = 0;
+    site.intelligence_map.frontier_last_resolved_minutes.clear();
+
+    constexpr int now_minutes = 18 * 60;
+    bandit_live_world::camp_map_lead lead;
+    lead.lead_id = site.site_id + "#generic-ground";
+    lead.kind = bandit_live_world::camp_lead_kind::terrain_opportunity;
+    lead.origin = bandit_live_world::camp_lead_origin::structural_routine;
+    lead.status = bandit_live_world::camp_lead_status::suspected;
+    lead.target_id = "unknown";
+    lead.omt = tripoint_abs_omt( 2, 0, 0 );
+    lead.source_key = "terrain_opportunity:terrain_fit:unknown";
+    lead.last_checked_minutes = now_minutes - 6 * 60;
+    lead.last_scouted_minutes = now_minutes - 6 * 60;
+    REQUIRE( bandit_live_world::upsert_camp_map_lead( site, lead ) );
+
+    int route_calls = 0;
+    const bandit_live_world::structural_bounty_maintenance_result result =
+        bandit_live_world::advance_structural_bounty_maintenance(
+            world, now_minutes, 0, 1, terrain_lookup, threat_lookup,
+    [&route_calls]( const bandit_live_world::site_record &,
+                    const bandit_live_world::structural_outing_plan & ) {
+        route_calls++;
+        return bandit_live_world::structural_route_read{ true, 14, 300,
+                "bounded generic route" };
+    } );
+
+    CHECK( route_calls == 1 );
+    CHECK( result.dispatches_planned == 0 );
+    CHECK( result.dispatches_applied == 0 );
+    CHECK_FALSE( site.active_outing.is_active() );
 }
 
 TEST_CASE( "authoritative_player_opportunity_is_not_starved_by_route_candidate_cap",

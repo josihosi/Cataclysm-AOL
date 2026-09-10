@@ -2,11 +2,32 @@
   "name": "r029_sound_lead_continuation_058",
   "source_fixture": "r029_sound_lead_bootstrap_058",
   "source_profile": "dev-harness",
-  "description": "Zero-credit continuation bootstrap for R-029. The captured no-shot world preserves product-materialized site overmap_special:bandit_camp@140,40,0 and its at-home NPC 18. The sole transform reproduces the exact durable camp-signal lead proved in receipt 74f2dcf128e1c77024c68f251c7fbbe60798e8158cfb5b1ba94e10f26435540d; it creates no report, outing, hostile operation, reservation, or member state.",
+  "description": "Zero-credit continuation bootstrap for R-029. The captured no-shot world preserves product-materialized site overmap_special:bandit_camp@140,40,0 and its at-home NPC 18. Setup changes one bounded observer-ring OMT, (140,44,0), from open field to forest while preserving the sound target and its two intervening fields; the transform is only safe-watch footing and creates no sound, lead, report, outing, hostile operation, reservation, contact, or target knowledge. The continuation transform reproduces the exact durable camp-signal lead proved in receipt 74f2dcf128e1c77024c68f251c7fbbe60798e8158cfb5b1ba94e10f26435540d.",
   "source_receipt": "74f2dcf128e1c77024c68f251c7fbbe60798e8158cfb5b1ba94e10f26435540d",
   "bootstrap_run": "46a5dc403b76d82073d43e0da7c89b69dd7659bb470be1a11a0cc1139250d925",
   "gameplay_credit": false,
+  "source_bound_geography": {
+    "world": "McWilliams",
+    "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+    "site_id": "overmap_special:bandit_camp@140,40,0",
+    "lead_id": "overmap_special:bandit_camp@140,40,0#lead:sound_signal:camp-gunfire@(140,41,0)@140,41,0",
+    "target_omt": [140, 41, 0],
+    "candidate_omt": [140, 44, 0],
+    "candidate_terrain_id": "forest",
+    "intervening_omts": [[140, 43, 0], [140, 42, 0]],
+    "intervening_terrain_ids": ["field", "field"],
+    "route": "candidate-to-retained-sound-signal",
+    "setup_only": true,
+    "gameplay_credit": false,
+    "reason": "The prior source-bound run reached the repaired drive gate but had no concealed bounded observer candidate; this transform changes only the candidate OMT terrain."
+  },
   "save_transforms": [
+    {
+      "kind": "overmap_terrain_id_at_abs_omt",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "abs_omt": [140, 44, 0],
+      "terrain_id": "forest"
+    },
     {
       "kind": "bandit_camp_map_lead",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",

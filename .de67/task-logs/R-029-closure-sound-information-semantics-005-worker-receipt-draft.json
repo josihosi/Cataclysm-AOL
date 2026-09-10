@@ -1,0 +1,88 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-closure-sound-information-semantics-005",
+  "claim_id": "R-029",
+  "worker_id": "01a08c4e-5f0b-79d0-b7ec-3a7b4ceb4638",
+  "disposition": "completed",
+  "verdict": "fresh_reload_exact_lead_verified; structural_boundary_reached_without_downstream_ancestry_or_exact_planner_rejection",
+  "outcome": "The fresh source- and executable-bound continuation reloaded the exact retained sound lead at bandit camp overmap_special:bandit_camp@140,40,0, verified NPC 18 at home and eligible, and used only accepted native waits through the minute-8280 structural cadence boundary. The lead remained present after the boundary; no candidate, scout, report, authorization, rally, or operation descendant was evidenced, and the sealed focused journal did not expose an exact scheduler rejection reason.",
+  "summary": "Native evidence is complete at the focused ceiling for this continuation. Exact source, executable, scenario, run, binding, camp, observer, lead, source key, emitted/last-seen time, and no-preloaded downstream ownership are retained in the sealed journal. The run crossed 8280 by an ordinary wait; the run-bound transition log records minute-8280 staffed-camp no_signal_source/no_new_lead and boundary terrain sampling, but not an exact structural planner reason. This is inconclusive for downstream consequence and does not establish a positive transition.",
+  "material_changes": [],
+  "tests": [
+    "Native source-bound continuation: fresh World observation, accepted ordinary wait.5m cadence through minute 8280, and final native World observation at minute 8285.",
+    "Sealed focused evidence journal: journal_sha256 9d6ddc75629d4f65ba48668db869778427caff86753599be4f0094dc43058975; witness validation mechanically_valid.",
+    "Run-bound transition log: minute-8280 target-camp callback for NPC 18 was no_signal_source/no_new_lead with unchanged retained lead; no candidate/scout/report/authorization/rally/operation transition was present."
+  ],
+  "live_actions": [
+    "Fresh relinked native World observation and exact retained-lead verification.",
+    "Native world.wait -> menu.choose -> wait.5m cycles through minute 8280, then one additional ordinary wait.5m to execute the callback at the boundary.",
+    "run.witness, run.finish, cooperative scenario terminalization, and exact owned-runtime cleanup."
+  ],
+  "evidence_ceiling": [
+    "Focused native continuation proof: exact retained lead, eligible at-home observer, boundary crossing, and post-boundary lead persistence.",
+    "No downstream candidate/scout/report/authorization/rally/operation success; no exact planner rejection reason available in the sealed journal.",
+    "Fixture/reload footing, accepted input, terminal text, screenshots, and process cleanup receive no gameplay credit."
+  ],
+  "bindings": {
+    "scenario_id": "bandit.r029_sound_lead_continuation_058_mcw",
+    "source_identity": "aea1077432ec235687569e734ed5c8c2ebbdd9f5d156676726da2e7faf4cc788",
+    "executable_identity": "2d0a53822ddecf6857a3cd4fa48d991042daab264bdce3bf336f6216ad6f2aa8",
+    "run_id": "7859cfa25d02176516824ae82276c804f60bd7c1789edc33eb3a93808687a8a6",
+    "binding_id": "b5d2e731f413b2725e3ffbd9f88a4cc597a3fa821fbae8d561c9743093e00b2d",
+    "camp_id": "overmap_special:bandit_camp@140,40,0",
+    "observer_id": "18",
+    "observer_home": "(3372,979,0)",
+    "lead_id": "overmap_special:bandit_camp@140,40,0#lead:sound_signal:camp-gunfire@(140,41,0)@140,41,0",
+    "source_key": "camp-signal:camp-gunfire@(140,41,0)",
+    "transition_log_sha256": "15e987470aab0b4bc0f5f1d13627c5b2d0ed532beefac73eb4bd6894f495659e",
+    "journal_evidence_sha256": "80f76bf81b35bc8feb7b9a884bdfbafc8c66467bf394529733d75c93bb4655a1",
+    "witness_sha256": "fefab8c8f833c25c3f33e4c97ffa5de4a8f69b31abb1e8753c87ddb1a6d26160",
+    "final_report_sha256": "506797d651cdf3e652ba0d4bec7307a58c6f99d40cdfc117aa4a2cad0777172a",
+    "cleanup": "game 80447, child 80422, bridge 80417 exited; protected PID 48394 remained untouched"
+  },
+  "journal_entries": [
+    {"id":"J0001","sequence":1,"event_type":"identity","evidence_class":"native-semantic","summary":"Exact source, executable, scenario, run, and binding identity."},
+    {"id":"J0002","sequence":2,"event_type":"reload_exact_lead","evidence_class":"native-semantic","summary":"Fresh World observation verifies the exact retained sound lead and excludes preloaded outing/contact/debug state."},
+    {"id":"J0039","sequence":39,"event_type":"boundary_observation","evidence_class":"native-semantic","summary":"Minute-8280 World observation retains the exact sound lead with no outing/contact owner."},
+    {"id":"J0045","sequence":45,"event_type":"ordinary_wait","evidence_class":"native-action","action_id":"wait.5m","summary":"Accepted native wait crossing the 8280 boundary."},
+    {"id":"J0044","sequence":44,"event_type":"post_boundary_observation","evidence_class":"native-semantic","summary":"Post-boundary World observation at minute 8285 retains the exact sound lead with no downstream actor ownership."},
+    {"id":"J0046","sequence":46,"event_type":"terminal_witness","evidence_class":"native-semantic","summary":"Witness records the focused inconclusive stop and releases unused authority."}
+  ],
+  "artifacts": [
+    {"path":".userdata/r029-bandit-sound-lead-continuation-s005-witness-20260910.json","sha256":"fefab8c8f833c25c3f33e4c97ffa5de4a8f69b31abb1e8753c87ddb1a6d26160","role":"Mechanically valid focused playtest witness with journal citations."},
+    {"path":".userdata/dev-harness/harness_runs/20260910_200023_788c2d33dd7b491dab9750ca248bc0db/transition.events.jsonl","sha256":"15e987470aab0b4bc0f5f1d13627c5b2d0ed532beefac73eb4bd6894f495659e","role":"Run-bound staffed-camp callbacks and boundary transition records."},
+    {"path":".userdata/dev-harness/harness_runs/20260910_200023_788c2d33dd7b491dab9750ca248bc0db/probe.report.json","sha256":"506797d651cdf3e652ba0d4bec7307a58c6f99d40cdfc117aa4a2cad0777172a","role":"Scenario terminalization report and retained cleanup evidence."},
+    {"path":".userdata/openclaw_harness/bridge-sessions/selected-r029-s005-20260910/cockpit-evidence.sqlite","role":"Sealed immutable evidence journal archive; journal hash recorded above."},
+    {"path":".userdata/openclaw_harness/bridge-sessions/selected-r029-s005-20260910/status.json","role":"Scenario cleanup status and terminalization identity."}
+  ],
+  "first_divergence": {
+    "class": "structural_boundary_without_exact_planner_rejection_or_downstream_ancestry",
+    "summary": "At the minute-8280 structural cadence, the retained sound lead persisted and the run-bound staffed-camp read was no_signal_source/no_new_lead; no exact scheduler rejection reason or positive descendant was captured under the focused journal ceiling."
+  },
+  "accepted_no_replay": [
+    "Do not replay the firearm stimulus or direct-mutate sound, lead, camp, NPC, outing, report, reservation, or operation state.",
+    "Do not credit fixture preparation, reload footing, terminal text, screenshots, or cleanup as downstream gameplay proof.",
+    "Preserve the exact native run and transition evidence at its focused ceiling."
+  ],
+  "active_work": [],
+  "first_open_boundary": "A new positive native consequence run would require an exact scheduler-rejection capture or an identified eligible recipient and sufficiently fresh stimulus under verified geometry; this completed run does not establish that downstream route.",
+  "narrow_queries": [
+    "Coordinator should correlate the run-bound minute-8280 transition records with J0002/J0039/J0044 before deciding whether to commission a new positive stimulus experiment.",
+    "If continued, preserve exact camp, observer, source, run, binding, and executable identity and stop at the first downstream transition or exact planner rejection."
+  ],
+  "entrypoints": [
+    "src/bandit_live_world.cpp::record_staffed_camp_signal_observations",
+    "src/bandit_live_world.cpp::advance_structural_bounty_maintenance",
+    "src/do_turn.cpp::maintain_live_bandit_structural_bounty",
+    "tools/openclaw_harness/play_cli.py::journal/finish"
+  ],
+  "context_metrics": {
+    "downstream_positive_transitions": 0,
+    "game_minutes_start": "8225",
+    "game_minutes_boundary": "8280",
+    "game_minutes_end": "8285",
+    "journal_entries": 46,
+    "target_callbacks_at_boundary": 2
+  }
+}

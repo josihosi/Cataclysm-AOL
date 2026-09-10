@@ -1,0 +1,87 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-037-local-llm-command-coverage-001",
+  "worker_request_id": "846635b136e643da956c626f130a8e81",
+  "disposition": "checkpoint",
+  "verdict": "focused_native_e4b_coverage_partial_with_recorded_local_divergences",
+  "source_binding": {
+    "product_source_sha256": "974461bc85b00a0fd37bce315444abc4395c547e69fb91b783edcf814b167fea",
+    "executable_sha256": "c416df32eab33d507b4d15b269212ecd49372f01a808a371392ddbbf734ee600",
+    "model": "hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest"
+  },
+  "runs": [
+    {
+      "kind": "safe_initial",
+      "run_id": "3806b3818c0ac2684344411c513fe2c613fcf951908e608c7620ca2f99d97188",
+      "journal_sha256": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302",
+      "cleanup": "owned PID 15460 verified terminated"
+    },
+    {
+      "kind": "safe_continuation",
+      "run_id": "8537bd49f31ecfcd05d4da60134c8ae3fc0ed85218be5d0beffd8dfb928cd834",
+      "journal_sha256": "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d",
+      "cleanup": "owned PID 16919 verified terminated"
+    },
+    {
+      "kind": "combat",
+      "run_id": "57b7e785e50eb8771a806c1fedf141d61162ab18c2cc18d600c3eae41e98be59",
+      "journal_sha256": "47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1",
+      "cleanup": "owned PID 17782 verified terminated"
+    }
+  ],
+  "actual_local_e4b_native_results": [
+    "follow_close: emitted and applied; Katharina remained a native Following NPC",
+    "wait_here: emitted and applied through a native World turn",
+    "hold_position: emitted and applied through a native World turn",
+    "follow_far: emitted and applied through a native World turn",
+    "equip_gun: emitted and later native observation showed Katharina wielding the six-shooter",
+    "equip_melee: emitted and applied through native World turns",
+    "equip_bow: emitted and applied through native World turns",
+    "panic_on: emitted and applied through a native World turn",
+    "exact-target melee: E4B returned attack=b, native target resolution named the fixture zombie dog, and Katharina hit it for observable damage"
+  ],
+  "individual_divergences": [
+    {
+      "case": "panic_off",
+      "local_result": "calm-down request returned follow_close|idle rather than panic_off",
+      "comparison_status": "unavailable_due_to_unsanitized_credential_provisioning"
+    },
+    {
+      "case": "look_inventory_wear",
+      "local_result": "returned look_inventory|equip_melee; no exact worn-item consequence retained",
+      "comparison_status": "unavailable_due_to_unsanitized_credential_provisioning"
+    },
+    {
+      "case": "look_inventory_wield",
+      "local_result": "returned equip_melee rather than an observed inventory secondary selection",
+      "comparison_status": "unavailable_due_to_unsanitized_credential_provisioning"
+    },
+    {
+      "case": "look_inventory_activate",
+      "local_result": "returned wait_here|equip_melee rather than activation",
+      "comparison_status": "unavailable_due_to_unsanitized_credential_provisioning"
+    },
+    {
+      "case": "look_inventory_drop",
+      "local_result": "returned wait_here|equip_melee rather than dropping the rock",
+      "comparison_status": "unavailable_due_to_unsanitized_credential_provisioning"
+    },
+    {
+      "case": "attack_exact_target_ranged",
+      "local_result": "returned equip_gun|attack=c; target resolved and revolver was wielded, but no shot or ammunition consequence occurred before combat contention",
+      "comparison_status": "unavailable_due_to_unsanitized_credential_provisioning"
+    }
+  ],
+  "unresolved_or_uncredited": [
+    "look_around pickup returned move/hold/look_around but exact bandage transfer was not observed",
+    "movement-to-hold returned move=2,0 hold_position and subsequent NPC movement, but the full arrival/hold control was not established",
+    "idle, attack-missing-or-stale-target, full panic duration, and exact secondary inventory controls remain unclassified"
+  ],
+  "api_boundary": {
+    "status": "unavailable_due_to_unsanitized_credential_provisioning",
+    "attempted": false,
+    "credential_accessed": false,
+    "credential_value_recorded": false
+  },
+  "scope_safety": "Only the three task-owned runtimes above were operated and terminated; no shared registry mutation or unrelated process inspection/termination occurred."
+}

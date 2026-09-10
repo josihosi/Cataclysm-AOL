@@ -1,0 +1,12 @@
+{
+  "action": "run.continue",
+  "observation_id": "c477c41cfba58bfafaf5fa2d378c727683ba11eb1ad9949f70590d8498dd6bc1:frame:22",
+  "expected_signal": "game_minutes",
+  "bound": {
+    "basis": "scheduler_boundary",
+    "source": "persisted checkpoint minute 8221; first staffed observer opportunity at minute 8230",
+    "unit": "game_minutes",
+    "maximum": 9,
+    "progress_required": true
+  }
+}

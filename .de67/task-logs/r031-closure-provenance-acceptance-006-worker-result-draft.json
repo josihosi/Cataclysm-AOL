@@ -1,0 +1,67 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-031-closure-provenance-acceptance-006",
+  "worker_id": "01a08849-b875-7e60-8860-724c9e627ad3",
+  "disposition": "completed",
+  "claim_id": "R-031",
+  "closure_gap_id": "R031-package-evidence-integrity",
+  "closure_gap_revision": 5,
+  "verdict": "owner_accepted_bounded_camp_craft_provenance_limitation",
+  "summary": "Josef delegated the provenance disposition and authorized acceptance of the established native camp-craft gameplay with its explicit unavailable historical source-binding-file limitation. The historical bytes were not fabricated or replayed.",
+  "evidence_ceiling": [
+    "Receipt 33656681a25465607762bc4efcf348ecd0dea6ff183a2a85888b673604254944 remains bounded: expected historical source-binding SHA ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50 is unavailable; preserved legacy artifact hashes 785edad70809f8dfbe5c5b67fb491f68b96d370872764b33ff32a41f781fd72.",
+    "Accepted camp-craft receipt 34681646df11e45a133cb3eee507287f23719021b376dec2f2142bc6aee3189e proves native eligible-resident routing and three bandages at its stated ceiling; continuity and other R-031 gameplay remain at their independent ceilings.",
+    "OCR, rendered text, terminal bytes, and presentation receive no gameplay or provenance credit.",
+    "No gameplay replay, fresh source-bound build, evidence mutation, or fabricated historical bytes was performed."
+  ],
+  "bindings": {
+    "disposition_receipt": "33656681a25465607762bc4efcf348ecd0dea6ff183a2a85888b673604254944",
+    "provenance_repair_receipt": "c40bac408aa579d701ea7097a549a0d763b405aec51f70e87467de93a61af331",
+    "receipt_audit": "88d6fb0253829abf454983985a62d0cf2b799433e8d320e3f009d05ebbe3781f",
+    "camp_craft_run_id": "55098ec37b3868099fa04fdb5626a57a3f043ac3d30b791a44af2c811d53c33b",
+    "camp_craft_binding_id": "fb035a4e82a0d7800562b54174046d4d5cdbd875b6c2fdb25a09047af7e0b29b",
+    "historical_expected_sha256": "ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50",
+    "observed_legacy_sha256": "785edad70809f8dfbe5c5b67fb491f68b96d370872764b33ff32a41f781fd72"
+  },
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r031-source-binding-provenance-repair-004/worker-receipt.json",
+      "sha256": "a3d52da99670eafe895bc53a0808a30c1ede887f0a6aac6f0cb1377827296558",
+      "role": "Verified immutable archive repair receipt."
+    },
+    {
+      "path": ".de67/task-logs/r031-closure-package-evidence-integrity-001/package-integrity-audit.json",
+      "sha256": "9293065873000f1e889d9d24334d90467675f3bee86e0a8f70cd5cb2a6e92e05",
+      "role": "Verified package hash audit identifying the unavailable historical bytes."
+    }
+  ],
+  "journal_entries": [],
+  "tests": [
+    "Exact work_context receipt retrieval returned receipt_count=1 for 33656681a25465607762bc4efcf348ecd0dea6ff183a2a85888b673604254944.",
+    "Artifact presence and recorded SHA-256 values verified.",
+    "git diff --check passed."
+  ],
+  "live_actions": [],
+  "material_changes": [
+    "Recorded owner-accepted disposition only; no repository source or gameplay evidence was changed."
+  ],
+  "accepted_no_replay": [
+    "Accept established camp-craft gameplay with the explicit missing historical source-binding-file limitation.",
+    "Do not fabricate ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50 bytes or replay gameplay solely for provenance."
+  ],
+  "outcome": "Finish finite R-031 package-evidence-integrity closure by recording Josef's delegated acceptance of the bounded camp-craft provenance limitation.",
+  "first_divergence": null,
+  "first_open_boundary": "The historical source-binding bytes remain unavailable as an explicit accepted ceiling; no R-031 provenance decision wait remains.",
+  "entrypoints": [
+    ".de67/task-logs/r031-source-binding-provenance-repair-004/worker-receipt.json",
+    ".de67/task-logs/r031-closure-package-evidence-integrity-001/package-integrity-audit.json"
+  ],
+  "narrow_queries": [
+    "work_context.py --receipt 33656681a25465607762bc4efcf348ecd0dea6ff183a2a85888b673604254944 --full"
+  ],
+  "active_work": [],
+  "runtime": {
+    "owned_runtime_launched": false,
+    "owned_runtime_cleanup": "not_applicable; no game, bridge, runner, or helper was launched by this worker"
+  }
+}

@@ -1,0 +1,249 @@
+{
+  "schema": "r037-source-bound-coverage-manifest-v1",
+  "task": "R-037-local-llm-command-coverage-001",
+  "generated_at": "2026-09-10",
+  "source_binding": {
+    "git_head": "db2aa378d900301161f02b520c7ace0f87b92d4d",
+    "product_source_sha256": "974461bc85b00a0fd37bce315444abc4395c547e69fb91b783edcf814b167fea",
+    "executable": "cataclysm-tiles",
+    "executable_sha256": "c416df32eab33d507b4d15b269212ecd49372f01a808a371392ddbbf734ee600",
+    "build_binding_status": "ready: receipt_bound_dirty_product_build",
+    "catalog_sources": [
+      "src/llm_intent.cpp:824-898",
+      "src/llm_intent.cpp:925-1011",
+      "src/llm_intent.cpp:1566-1729",
+      "src/llm_intent.cpp:3553-3713",
+      "src/llm_intent.cpp:3806-3975",
+      "src/npcmove.cpp:1816-1906",
+      "src/npcmove.cpp:1908-2113",
+      "src/npcmove.cpp:2115-2219",
+      "src/npcmove.cpp:2270-2420",
+      "src/npcmove.cpp:5330-5617",
+      "src/npcmove.cpp:3238-3258"
+    ]
+  },
+  "required_local_model": {
+    "backend": "ollama",
+    "model": "hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest",
+    "evidence_per_case": [
+      "actual recipient identity and ally eligibility",
+      "exact request id, prompt/configuration and returned E4B text",
+      "parse/dispatch record",
+      "accepted native turn(s) and concrete source-attributable consequence",
+      "current source/executable binding, run/frame identities and cleanup"
+    ],
+    "not_proof": [
+      "parser or direct-state unit tests",
+      "synthetic/manual model response injection",
+      "earlier E2B or E4B integration receipts outside their exact command and premise",
+      "OCR, rendered text, fixture/debug setup or input transport"
+    ]
+  },
+  "coverage": [
+    {
+      "id": "wait_here",
+      "primary_token": "wait_here",
+      "source_consumer": "npc::execute_llm_intent_action (npcmove.cpp:1818-1825)",
+      "required_native_verdicts": ["E4B applies guard/wait", "distinct from hold_position", "release by a succeeding order"],
+      "material_controls": ["player ally", "mission/Patrol or other ownership", "danger deferral"]
+    },
+    {
+      "id": "hold_position",
+      "primary_token": "hold_position",
+      "source_consumer": "npc::execute_llm_intent_action (npcmove.cpp:1827-1834)",
+      "required_native_verdicts": ["E4B sets hold_position_active and guard", "release by a succeeding order", "arrival state after move"],
+      "material_controls": ["player ally", "mission/Patrol or other ownership", "danger deferral"]
+    },
+    {
+      "id": "follow_close",
+      "primary_token": "follow_close",
+      "source_consumer": "npc::execute_llm_intent_action (npcmove.cpp:1836-1845)",
+      "required_native_verdicts": ["sets close rule/override", "guard stops", "ordinary follow movement at close radius"],
+      "material_controls": ["player ally", "danger", "mission/Patrol and guard ownership"]
+    },
+    {
+      "id": "follow_far",
+      "primary_token": "follow_far",
+      "source_consumer": "npc::execute_llm_intent_action (npcmove.cpp:1847-1856)",
+      "required_native_verdicts": ["clears close rule/sets far override", "guard stops", "ordinary follow movement at far radius"],
+      "material_controls": ["player ally", "danger", "mission/Patrol and guard ownership"]
+    },
+    {
+      "id": "equip_gun",
+      "primary_token": "equip_gun",
+      "source_consumer": "npc::execute_llm_intent_action (npcmove.cpp:1858-1868)",
+      "required_native_verdicts": ["gun rules applied", "appropriate carried gun selected/wielded", "ranged attack consequence in a separate exact-target case"],
+      "material_controls": ["eligible carried gun/ammo", "ally", "danger"]
+    },
+    {
+      "id": "equip_melee",
+      "primary_token": "equip_melee",
+      "source_consumer": "npc::execute_llm_intent_action (npcmove.cpp:1870-1881)",
+      "required_native_verdicts": ["gun rule cleared", "appropriate melee weapon wielded or gun unwielded", "melee damage in a separate exact-target case"],
+      "material_controls": ["eligible carried melee weapon", "ally", "danger"]
+    },
+    {
+      "id": "equip_bow",
+      "primary_token": "equip_bow",
+      "source_consumer": "npc::execute_llm_intent_action (npcmove.cpp:1883-1897)",
+      "required_native_verdicts": ["gun and silent rules applied", "silent ranged candidate selected/wielded", "ranged engagement consequence"],
+      "material_controls": ["eligible bow/silent gun and ammunition", "ally", "danger"]
+    },
+    {
+      "id": "panic_on",
+      "primary_token": "panic_on",
+      "source_consumer": "npc::execute_llm_intent_action plus per-turn move update (npcmove.cpp:1899-1912, 2280-2305)",
+      "required_native_verdicts": ["20 forced-panic turns and run-away effect", "ordinary turn shows fleeing consequence"],
+      "material_controls": ["ally", "movement opportunity", "other movement owner"]
+    },
+    {
+      "id": "panic_off",
+      "primary_token": "panic_off",
+      "source_consumer": "npc::execute_llm_intent_action plus per-turn move update (npcmove.cpp:1914-1922, 2290-2305)",
+      "required_native_verdicts": ["run-away effect removed", "30-turn calm reduction is observable across turns"],
+      "material_controls": ["ally", "pre-existing panic", "movement opportunity"]
+    },
+    {
+      "id": "look_around_pickup",
+      "primary_token": "look_around",
+      "secondary_request": "item selection request (llm_intent.cpp:3553-3643)",
+      "source_consumer": "npc::apply_llm_intent_item_targets and npc pickup (npcmove.cpp:2115-2219, 5330-5617)",
+      "required_native_verdicts": ["E4B selects an offered item", "the exact ground item is picked up", "missing or unsafe/owned/zone-forbidden item yields source-defined block, not a false success"],
+      "material_controls": ["player ally", "item visibility/range/path", "item ownership", "NO_NPC_PICKUP zone", "capacity", "hostile/danger/panic"]
+    },
+    {
+      "id": "look_inventory_wear",
+      "primary_token": "look_inventory",
+      "secondary_action": "wear",
+      "source_consumer": "apply_look_inventory_actions (llm_intent.cpp:1566-1729)",
+      "required_native_verdicts": ["E4B selects offered wearable", "native worn location or status changes", "missing/cannot-wear case is explicit"],
+      "material_controls": ["item belongs to recipient inventory", "wear eligibility"]
+    },
+    {
+      "id": "look_inventory_wield",
+      "primary_token": "look_inventory",
+      "secondary_action": "wield",
+      "source_consumer": "apply_look_inventory_actions (llm_intent.cpp:1676-1693)",
+      "required_native_verdicts": ["E4B selects offered item", "native wielded item changes", "missing/cannot-wield case is explicit"],
+      "material_controls": ["item belongs to recipient inventory", "wield eligibility"]
+    },
+    {
+      "id": "look_inventory_activate",
+      "primary_token": "look_inventory",
+      "secondary_action": "act",
+      "source_consumer": "apply_look_inventory_actions (llm_intent.cpp:1695-1708)",
+      "required_native_verdicts": ["E4B selects offered activatable item", "native activation consequence beyond attempted status", "missing item is explicit"],
+      "material_controls": ["item belongs to recipient inventory", "item activation preconditions and consumption"]
+    },
+    {
+      "id": "look_inventory_drop",
+      "primary_token": "look_inventory",
+      "secondary_action": "drop",
+      "source_consumer": "apply_look_inventory_actions (llm_intent.cpp:1710-1728)",
+      "required_native_verdicts": ["E4B selects offered item", "item leaves inventory and exists at recipient tile", "missing item is explicit"],
+      "material_controls": ["item belongs to recipient inventory", "charge count"]
+    },
+    {
+      "id": "idle",
+      "primary_token": "idle",
+      "source_consumer": "intent_action_from_token returns none (llm_intent.cpp:895-898)",
+      "required_native_verdicts": ["E4B returns idle", "no LLM action is queued/injected", "ordinary NPC AI continues"],
+      "material_controls": ["same recipient and turn opportunity"]
+    },
+    {
+      "id": "move_wait_arrival",
+      "primary_token": "move=<dx>,<dy> wait_here",
+      "source_consumer": "parse_move_field / response dispatch (llm_intent.cpp:925-1011, 3913-3975); npc_goto_to_this_pos arrival (npcmove.cpp:3238-3258)",
+      "required_native_verdicts": ["E4B supplies in-bounds relative target", "native path progresses to snapshot-relative destination", "wait_here applies only at arrival"],
+      "material_controls": ["snapshot origin", "in-bounds target", "path/movement opportunity", "ally and danger"]
+    },
+    {
+      "id": "move_hold_arrival",
+      "primary_token": "move=<dx>,<dy> hold_position",
+      "source_consumer": "parse_move_field / response dispatch (llm_intent.cpp:925-1011, 3913-3975); npc_goto_to_this_pos arrival (npcmove.cpp:3238-3258)",
+      "required_native_verdicts": ["E4B supplies in-bounds relative target", "native path progresses to snapshot-relative destination", "hold_position applies only at arrival"],
+      "material_controls": ["snapshot origin", "in-bounds target", "path/movement opportunity", "ally and danger"]
+    },
+    {
+      "id": "attack_exact_target_melee",
+      "primary_token": "attack=<target>",
+      "source_consumer": "target resolution and forced attack (npcmove.cpp:1908-2113, 2270-2420, 2825-2895)",
+      "required_native_verdicts": ["E4B returns the exact current target handle", "target resolves to that creature", "native melee engagement yields damage or another attributable combat result"],
+      "material_controls": ["ally", "current visible legend/name target", "target remains present", "panic/morale", "melee weapon/range"]
+    },
+    {
+      "id": "attack_exact_target_ranged",
+      "primary_token": "attack=<target>",
+      "source_consumer": "target resolution and forced attack (npcmove.cpp:1908-2113, 2270-2420, 2825-2895)",
+      "required_native_verdicts": ["E4B returns the exact current target handle", "target resolves to that creature", "native ranged engagement yields damage, shot/ammo change, or another attributable combat result"],
+      "material_controls": ["ally", "current visible legend/name target", "target remains present", "panic/morale", "gun/bow ammo and confident range"]
+    },
+    {
+      "id": "attack_missing_or_stale_target",
+      "primary_token": "attack=<target>",
+      "source_consumer": "target resolution/reacquire safeguards (npcmove.cpp:1960-2113, 2323-2365)",
+      "required_native_verdicts": ["E4B returns stale/missing target under a changed case", "native status records target-missing/expired rather than attacking a substitute"],
+      "material_controls": ["exact request/legend association", "target disappearance or visibility change"]
+    }
+  ],
+  "current_evidence": {
+    "coverage_verdict": "terminal_focused_disposition_with_partial_and_failed_rows",
+    "no_quality_ranking": true,
+    "local_model": "hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest",
+    "journals": [
+      "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302",
+      "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d",
+      "47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1",
+      "61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"
+    ],
+    "terminal_receipt": {
+      "path": ".de67/task-logs/r037-local-llm-command-coverage-001-worker-receipt-v4-terminal.json",
+      "sha256": "43e79741b99617834d440694963df57d29d724ad413e8919607b16048fdef664",
+      "disposition": "not_qualified_for_full_source_bound_command_coverage"
+    }
+  },
+  "case_verdicts": [
+    {"id":"wait_here","verdict":"native_applied_partial_controls","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id":"hold_position","verdict":"native_applied_partial_controls","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id":"follow_close","verdict":"native_applied","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id":"follow_far","verdict":"native_applied_partial_controls","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id":"equip_gun","verdict":"native_wield_observed","evidence":"47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1"},
+    {"id":"equip_melee","verdict":"native_applied","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id":"equip_bow","verdict":"native_applied_partial_controls","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id":"panic_on","verdict":"local_success_then_separate_wrong-action_divergence; full-duration consequence_unobserved","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
+    {"id":"panic_off","verdict":"failed_wrong_local_action","evidence":"a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id":"look_around_pickup","verdict":"e4b_look_around_emitted; exact_transfer_and_owned-control_unobserved","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
+    {"id":"look_inventory_wear","verdict":"failed_no_exact_secondary_consequence","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id":"look_inventory_wield","verdict":"failed_wrong_primary_path","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id":"look_inventory_activate","verdict":"failed_no_activation_secondary","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id":"look_inventory_drop","verdict":"failed_no_drop_secondary","evidence":"4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id":"idle","verdict":"failed_wait_here_plus_idle_not_pure_idle","evidence":"61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id":"move_wait_arrival","verdict":"e4b_move=2,0_wait_here_emitted; exact_arrival_control_unobserved","evidence":"61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
+    {"id":"move_hold_arrival","verdict":"e4b_move=-2,0_hold_position_emitted; exact_arrival_control_unobserved","evidence":"61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
+    {"id":"attack_exact_target_melee","verdict":"proved_exact_target_native_damage","evidence":"47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1"},
+    {"id":"attack_exact_target_ranged","verdict":"target_resolved_and_gun_wielded_no_shot_before_combat_contention","evidence":"47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1","api_comparison":"unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id":"attack_missing_or_stale_target","verdict":"blocked_no_safe_native_target-disappearance route; direct mutation is charter-forbidden","evidence":"47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1"}
+  ],
+  "new_route_support": {
+    "charter": "tools/openclaw_harness/charters/r037-npc-llm-command-coverage-v001.json",
+    "safe_fixture": "tools/openclaw_harness/fixtures/saves/live-debug/r037_npc_llm_command_sandbox_v001/manifest.json",
+    "combat_fixture": "tools/openclaw_harness/fixtures/saves/live-debug/r037_npc_llm_command_combat_v001/manifest.json",
+    "safe_scenario": "tools/openclaw_harness/scenarios/r037.npc_llm_command_coverage_v001_mcw.json",
+    "combat_scenario": "tools/openclaw_harness/scenarios/r037.npc_llm_command_combat_v001_mcw.json",
+    "validation": "Both version-2 declarations validate under scenario_registry.validate_manifest and project as two active candidates in isolated registry query artifact 5bbadc956de73a8f747f61cfd2b7826237c17f55a80d6d67a0d6f86856b4497d."
+  },
+  "api_failure_control": {
+    "status": "unavailable_due_to_unsanitized_credential_provisioning",
+    "required_configuration": {
+      "LLM_INTENT_BACKEND": "api",
+      "LLM_INTENT_API_PROVIDER": "openai",
+      "LLM_INTENT_API_MODEL": "gpt-4.1-mini"
+    },
+    "required_same_case_evidence": ["E4B failure bug intake", "same semantic premise and recipient", "API provider/model and request/response shape", "API native consequence", "separate verdicts"],
+    "credential_rule": "No readiness/import probe was attempted, and no credential was accessed, copied, reused or recorded."
+  },
+  "lifecycle": {
+    "task_owned_runs": ["3806b3818c0ac2684344411c513fe2c613fcf951908e608c7620ca2f99d97188", "8537bd49f31ecfcd05d4da60134c8ae3fc0ed85218be5d0beffd8dfb928cd834", "57b7e785e50eb8771a806c1fedf141d61162ab18c2cc18d600c3eae41e98be59", "a113314bc55dfaea28b8df14f746b526b293e36575ce270b4267f9f5b6e3753d"],
+    "status": "all task-owned runtimes were explicitly terminated and their exact PIDs verified exited"
+  }
+}

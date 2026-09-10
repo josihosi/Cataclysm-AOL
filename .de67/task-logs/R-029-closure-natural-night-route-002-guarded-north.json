@@ -1,0 +1,15 @@
+{
+  "action": "game.guarded_move_relative",
+  "guarded_move_relative": {
+    "enabled": true,
+    "offset_ms": [0, -1],
+    "danger_handling": "handle_classified_non_dangerous",
+    "bound": {
+      "basis": "path_progress",
+      "source": "one native north retreat step from the player-created brazier",
+      "unit": "steps",
+      "maximum": 1,
+      "progress_required": true
+    }
+  }
+}

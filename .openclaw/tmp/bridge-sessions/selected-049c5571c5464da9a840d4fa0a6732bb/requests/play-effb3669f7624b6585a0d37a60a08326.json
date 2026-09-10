@@ -1,0 +1,1 @@
+{"binding_id": "e4c2cfebf41c0efbc6c8b9ca5a66165969f1a54c8176cdf055178e079eca2a7d", "request": {"action": "run.quit", "stop_reason": "R-037 safe run sealed at the first local E4B failure requiring an API comparison that cannot be securely provisioned; no unsupported claim is being finalized."}, "request_id": "play-effb3669f7624b6585a0d37a60a08326"}

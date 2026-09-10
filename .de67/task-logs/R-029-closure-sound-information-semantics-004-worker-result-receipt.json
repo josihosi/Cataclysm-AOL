@@ -1,0 +1,153 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-closure-sound-information-semantics-004",
+  "claim_id": "R-029",
+  "worker_id": "01a08c4e-5f0b-79d0-b7ec-3a7b4ceb4638",
+  "disposition": "completed",
+  "verdict": "fresh_reload_exact_lead_verified; ordinary_cadence_rejected_at_no_signal_source_before_downstream_descendant",
+  "outcome": "The fresh continuation independently verified the retained sound lead after relink, then used only accepted native waits to cross the five-minute and thirty-minute cadence boundaries. The target camp's eligible at-home NPC 18 callback ran at each observed boundary but returned no_signal_source/no_new_lead, left the exact lead unchanged, and kept the drive idle; no downstream candidate, scout, report, authorization, rally, or operation transition was reached.",
+  "summary": "Native evidence is complete at the focused ceiling. Exact source, executable, scenario, run, binding, camp, lead, source key, emitted/last-seen time, and NPC 18 home/eligibility identities are retained in the sealed journal. The run advanced from game minute 8225 to 8260 through wait.5m and wait.30m, with an additional world.pause for the final observation. Run-bound transition evidence records the first attributable production rejection and exact unchanged lead counts. The result is inconclusive for a positive downstream consequence, not evidence that a downstream transition occurred.",
+  "material_changes": [],
+  "tests": [
+    "Native source-bound continuation: accepted wait.5m and wait.30m; final World owner at minutes 8225, 8230, and 8260.",
+    "Sealed focused evidence journal: 23 entries; witness validation mechanically_valid.",
+    "Run-bound transition log: NPC 18 target-camp callbacks at 8225, 8230, 8235, 8240, 8245, 8250, 8255, and 8260 all no_signal_source/no_new_lead with lead_count 1->1 and idle drive."
+  ],
+  "live_actions": [
+    "Fresh relinked native World observation and exact retained-lead verification.",
+    "Native world.wait -> menu.choose -> wait.5m and wait.30m, followed by world.pause for a final stable observation.",
+    "run.finish witness submission and scenario terminalization."
+  ],
+  "evidence_ceiling": [
+    "Focused native continuation proof: exact retained lead and eligible at-home observer verified after relink; no downstream candidate/scout/report/authorization/rally/operation success.",
+    "The first exact production rejection is attributable to the run-bound callbacks and is not promoted into a whole-feature gameplay finding.",
+    "Fixture/reload footing, accepted input, terminal text, screenshots, and process cleanup receive no gameplay credit."
+  ],
+  "bindings": {
+    "binding_id": "5c35764f81d84b1ebf16274f4bdbfd90ba4e19a965a3d919f2d6b3c3c532eff0",
+    "camp_id": "overmap_special:bandit_camp@140,40,0",
+    "cleanup": "game 78870, child 78843, bridge 78842 exited; earlier owned attempt game 78455, child 78400, bridge 78399 exited; protected PID 48394 untouched",
+    "executable_identity": "2d0a53822ddecf6857a3cd4fa48d991042daab264bdce3bf336f6216ad6f2aa8",
+    "journal_evidence_sha256": "bd1db4d105fff2d4c2929463dc64d1ad7239b42e88a3e00b5f6ca0eea769aae3",
+    "lead_id": "overmap_special:bandit_camp@140,40,0#lead:sound_signal:camp-gunfire@(140,41,0)@140,41,0",
+    "observer_home": "(3372,979,0)",
+    "observer_id": "18",
+    "run_id": "1c15facd6c9e51f5c92f2a14a7db9c079978e22cf428ca4fbb3f540c2b911e00",
+    "scenario_id": "bandit.r029_sound_lead_continuation_058_mcw",
+    "source_identity": "aea1077432ec235687569e734ed5c8c2ebbdd9f5d156676726da2e7faf4cc788",
+    "source_key": "camp-signal:camp-gunfire@(140,41,0)",
+    "transition_log_sha256": "016929b6ef8c61830e83c740db10114b9d8f6f56fd1a2941eec0e3f8badcaaeb"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": "1",
+      "event_type": "identity",
+      "evidence_class": "native-semantic",
+      "summary": "Exact source, executable, scenario, run, and binding identity.",
+      "artifact_ref": ".userdata/openclaw_harness/bridge-sessions/selected-59ec6c8fe2f44c21b004e1ee534f22eb/cockpit-evidence.sqlite"
+    },
+    {
+      "id": "J0002",
+      "sequence": "2",
+      "event_type": "reload_exact_lead",
+      "evidence_class": "native-semantic",
+      "summary": "Fresh World observation verifies the exact retained sound lead and excludes preloaded outing/contact/debug state.",
+      "artifact_ref": ".userdata/openclaw_harness/bridge-sessions/selected-59ec6c8fe2f44c21b004e1ee534f22eb/cockpit-evidence.sqlite"
+    },
+    {
+      "id": "J0010",
+      "sequence": "10",
+      "event_type": "ordinary_wait",
+      "evidence_class": "native-action",
+      "summary": "Accepted native five-minute wait.",
+      "action_id": "wait.5m",
+      "artifact_ref": ".userdata/openclaw_harness/bridge-sessions/selected-59ec6c8fe2f44c21b004e1ee534f22eb/cockpit-evidence.sqlite"
+    },
+    {
+      "id": "J0018",
+      "sequence": "18",
+      "event_type": "ordinary_wait",
+      "evidence_class": "native-action",
+      "summary": "Accepted native thirty-minute wait.",
+      "action_id": "wait.30m",
+      "artifact_ref": ".userdata/openclaw_harness/bridge-sessions/selected-59ec6c8fe2f44c21b004e1ee534f22eb/cockpit-evidence.sqlite"
+    },
+    {
+      "id": "J0020",
+      "sequence": "20",
+      "event_type": "final_observation",
+      "evidence_class": "native-semantic",
+      "summary": "Final World observation at minute 8260 retains the exact lead with no outing/contact owner.",
+      "artifact_ref": ".userdata/openclaw_harness/bridge-sessions/selected-59ec6c8fe2f44c21b004e1ee534f22eb/cockpit-evidence.sqlite"
+    },
+    {
+      "id": "J0023",
+      "sequence": "23",
+      "event_type": "terminal_witness",
+      "evidence_class": "native-semantic",
+      "summary": "Witness records the honest stop at the first causal production rejection and deferred cleanup to run.finish.",
+      "artifact_ref": ".userdata/openclaw_harness/bridge-sessions/selected-59ec6c8fe2f44c21b004e1ee534f22eb/cockpit-evidence.sqlite"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".userdata/r029-bandit-sound-lead-continuation-witness-20260910.json",
+      "sha256": "83677ffd95b21a78c5b30d97e6f1b920de572126224dd642f453ed7e50d02d48",
+      "role": "Mechanically valid focused playtest witness with journal citations."
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_194442_3a3325a5af644c288a6e7a27783e937c/transition.events.jsonl",
+      "sha256": "016929b6ef8c61830e83c740db10114b9d8f6f56fd1a2941eec0e3f8badcaaeb",
+      "role": "Run-bound staffed-camp signal callbacks and first production rejection."
+    },
+    {
+      "path": ".userdata/dev-harness/harness_runs/20260910_194442_3a3325a5af644c288a6e7a27783e937c/probe.report.json",
+      "sha256": "c9c84005697891d7acd4a76ba7a4f09596b0f00438d4e2adfeedf88b36a618be",
+      "role": "Scenario terminalization report and retained run evidence reference."
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-59ec6c8fe2f44c21b004e1ee534f22eb/cockpit-evidence.sqlite",
+      "sha256": "d9a837fd05fcafb85c0ae9f53fa00d90418daa0e946e0c5375f7c96df186afad",
+      "role": "Sealed immutable evidence journal archive."
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-59ec6c8fe2f44c21b004e1ee534f22eb/status.json",
+      "sha256": "896b63629cb07e687c47714add935d6e7d86f50d32b9b610f76333bbf45b4c46",
+      "role": "Scenario cleanup status and terminalization identity."
+    },
+    {
+      "path": ".userdata/openclaw_harness/bridge-sessions/selected-59ec6c8fe2f44c21b004e1ee534f22eb/game-process-exit.json",
+      "sha256": "283d041119b27b568cc5caacdd289bc9cd823eb471bbe14c301cd6fad875357f",
+      "role": "Owned game PID exit receipt."
+    }
+  ],
+  "first_divergence": {
+    "class": "production_signal_rejection_no_signal_source",
+    "summary": "After exact lead reload and accepted ordinary waits, the eligible target-camp callback for NPC 18 repeatedly had no usable source, produced no_new_lead with unchanged lead_count 1->1, and left the drive idle; no positive downstream descendant was reached."
+  },
+  "accepted_no_replay": [
+    "Do not replay the firearm stimulus or direct-mutate sound, lead, camp, NPC, outing, report, reservation, or operation state.",
+    "Do not credit fixture preparation, reload footing, terminal text, screenshots, or cleanup as downstream gameplay proof.",
+    "Preserve the exact native run and transition evidence at its focused ceiling."
+  ],
+  "active_work": [],
+  "first_open_boundary": "A new positive native consequence run would require an identified eligible recipient and a sufficiently fresh stimulus under verified geometry; this completed run does not establish that downstream route.",
+  "narrow_queries": [
+    "Coordinator should correlate the run-bound transition log with the retained J0002/J0020 lead identity when deciding whether to commission a new positive stimulus experiment.",
+    "If continued, preserve exact camp, observer, source, run, binding, and executable identity and stop at the first downstream transition or exact rejection."
+  ],
+  "entrypoints": [
+    "src/bandit_live_world.cpp::record_staffed_camp_signal_observations",
+    "src/do_turn.cpp::live_bandit_staffed_camp_signal_reads",
+    "tools/openclaw_harness/play_cli.py::journal/finish"
+  ],
+  "context_metrics": {
+    "downstream_positive_transitions": 0,
+    "game_minutes_end": "8260",
+    "game_minutes_start": "8225",
+    "journal_entries": 23,
+    "target_callbacks": 8
+  }
+}

@@ -1,0 +1,61 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-029-closure-sound-information-semantics-003",
+  "claim_id": "R-029",
+  "worker_id": "01a08c42-8444-7992-8a95-4d0d55d855a9",
+  "disposition": "completed",
+  "verdict": "sound_semantics_and_boundary_tests_pass; native_downstream_consequence_remains_open",
+  "outcome": "Current source preserves emitted-time sound memory, identical-read deduplication, genuinely new sound refresh, physical/scout clock preservation, save/reload round-trip, exact three-hour sound aging and six-hour non-sound aging. The source-level sound-to-candidate-to-ordinary-scout route is valid, but the newly added route test had incorrectly passed the cheap route-pending candidate-list result to native application; it now uses the full planner before application.",
+  "summary": "Three fresh linked test invocations passed: sound memory 45 assertions, intelligence aging 136 assertions, and production sound recorder/hourly retention 329 assertions across two cases. The corrected downstream route test compiles cleanly, but no fresh relinked binary execution of that corrected case was obtained; the prior binary demonstrated the test-premise divergence at apply (cheap route-pending plan), not a gameplay rejection. No native runtime or bindings were operated.",
+  "material_changes": [
+    "Corrected tests/bandit_live_world_test.cpp to use plan_structural_bounty_outing(full route) before apply.",
+    "Retained existing source semantics change in src/bandit_live_world.cpp that distinguishes returned-report aging outcome text."
+  ],
+  "tests": [
+    "./tests/cata_test sound-memory: 45 assertions passed",
+    "./tests/cata_test aging-boundaries: 136 assertions passed",
+    "./tests/cata_test production-sound-semantics: 329 assertions passed",
+    "clang++ -std=c++17 syntax compile of corrected test source passed"
+  ],
+  "live_actions": [],
+  "evidence_ceiling": [
+    "No fresh native production run, candidate dispatch, ordinary scout, investigation, report, travel or gameplay consequence was proved in this task.",
+    "Prior native detection/cadence receipt remains accepted only at its historical ceiling."
+  ],
+  "bindings": {},
+  "journal_entries": [],
+  "artifacts": [
+    {
+      "path": "build_logs/r029-closure-sound-information-semantics-003/sound-memory.log",
+      "sha256": "0b2cab12c0d6e843a44b3d13469c30650cd7610a6fc3a967893db372efce38ff",
+      "role": "fresh linked sound timestamp/refresh/save-reload test"
+    },
+    {
+      "path": "build_logs/r029-closure-sound-information-semantics-003/aging-boundaries.log",
+      "sha256": "a28bc80c3590094fab7a541b7d40c4e3fbb31406d852c08bd000927d022eff42",
+      "role": "fresh linked 179/180-equivalent and 359/360-equivalent aging boundary test"
+    },
+    {
+      "path": "build_logs/r029-closure-sound-information-semantics-003/production-sound-semantics.log",
+      "sha256": "3e8baacd3c3ace78e204b9c71fefcd4eb86ed7c431633c6325a26e8afa55510a",
+      "role": "fresh linked production sound recorder and hourly retention tests"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not replay accepted native activation/Fight/save/reload evidence.",
+    "Do not claim OCR, terminal text, fixtures or stale linked binaries as gameplay proof."
+  ],
+  "active_work": [],
+  "first_open_boundary": "Fresh relinked execution of the corrected sound-lead candidate-to-ordinary-scout test, followed by native investigation consequence; requires a correctly configured full build/relink and owned runtime.",
+  "narrow_queries": [
+    "Run the corrected staffed signal candidate test in the repository-configured linked binary.",
+    "Query native transition receipts for sound lead, candidate, ordinary scout and investigation ancestry."
+  ],
+  "entrypoints": [
+    "src/bandit_live_world.cpp",
+    "tests/bandit_live_world_test.cpp"
+  ],
+  "context_metrics": {}
+}

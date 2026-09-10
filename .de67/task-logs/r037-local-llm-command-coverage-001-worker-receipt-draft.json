@@ -1,0 +1,118 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "disposition": "checkpoint",
+  "verdict": "source_catalog_complete_native_coverage_unstarted",
+  "outcome": "The exact current source command surface is reconciled into a 20-case R-037 matrix, with dedicated safe and combat E4B scenario/fixture support now validated and isolated-registry projected. No local-model command has been claimed: the shared registry has not yet been refreshed and the dev-harness runtime remains actively owned by other work.",
+  "summary": "The matrix makes every primary and secondary command, the two movement-arrival states, exact target attack branches and material safety/ownership controls explicit. The new fixtures establish setup-only opportunity; the charter/scenarios require E4B request, native consequence and exact cleanup. It preserves prior E4B integration as integration-only evidence. No task-owned game, broker or runner was started, and no credential value, OCR, synthetic reply, parser-only test or API success was used as native-command evidence.",
+  "material_changes": [
+    "Added .de67/task-logs/r037-source-bound-coverage-manifest-001.json, a source-bound 20-case coverage matrix with exact consumers, required consequences and controls.",
+    "Added setup-only safe and combat fixtures, an E4B command-coverage charter, two source-bound scenario declarations, and their gameplay-proof validation allow-list entries in scenario_registry.py.",
+    "Reported the missing selectable R-037 route, active-runtime ownership and repaired route support to the coordinator through the durable mailbox."
+  ],
+  "tests": [
+    "Validated r037-source-bound-coverage-manifest-001.json with python3 -m json.tool.",
+    "Cross-checked the matrix against src/llm_intent.cpp::allowed_actions, its primary/secondary response dispatch, and npcmove.cpp consumers.",
+    "Registry query artifact 076e0a82566e199480c2cbc1c24462bded53c6f94e7367f4faca7f341e363687 returned zero selectable npc-llm candidates; registry-status for harness.npc_llm_freeplay_mcw returned entry_count 0.",
+    "Both R-037 fixtures resolve through startup_harness.resolve_fixture_payload without installing a save or launching a game.",
+    "Both R-037 scenarios pass scenario_registry.validate_manifest; py_compile passes for scenario_registry.py; an isolated registry rebuild/query projects the safe and combat declarations as active candidates (artifact 5bbadc956de73a8f747f61cfd2b7826237c17f55a80d6d67a0d6f86856b4497d)."
+  ],
+  "live_actions": [
+    "No task-owned game, bridge, runner, API call or helper process was launched.",
+    "Existing dev-harness games/bridge were observed as other-worker-owned and left untouched."
+  ],
+  "evidence_ceiling": [
+    "Static source binding, fixture/scenario validation and isolated registry projection only; no E4B request/response, parse, native application or lifecycle proof exists yet.",
+    "QUALIFICATION.md E4B companion replies retain only their stated integration ceiling and are not reused as command proof.",
+    "OCR, rendered text, fixture setup and accepted transport have zero credit."
+  ],
+  "bindings": {
+    "git_head": "db2aa378d900301161f02b520c7ace0f87b92d4d",
+    "product_source_sha256": "974461bc85b00a0fd37bce315444abc4395c547e69fb91b783edcf814b167fea",
+    "executable_sha256": "c416df32eab33d507b4d15b269212ecd49372f01a808a371392ddbbf734ee600",
+    "primary_model_required": "hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest",
+    "required_api_control": "openai/gpt-4.1-mini after each E4B failure"
+  },
+  "journal_entries": [
+    {
+      "id": "J0001",
+      "sequence": "1",
+      "event_type": "source_catalog",
+      "evidence_class": "static",
+      "artifact_ref": ".de67/task-logs/r037-source-bound-coverage-manifest-001.json",
+      "summary": "Reconciled allowed actions, special primary forms, secondary requests and native consumers into the complete matrix."
+    },
+    {
+      "id": "J0002",
+      "sequence": "2",
+      "event_type": "route_gap",
+      "evidence_class": "harness",
+      "artifact_ref": ".de67/task-logs/r037-source-bound-coverage-manifest-001.json",
+      "summary": "The initial E2B/zero-credit route was repaired as source files and validated in an isolated registry; the shared registry/runtime boundary still prevents a native E4B attempt."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r037-source-bound-coverage-manifest-001.json",
+      "role": "current-source R-037 coverage matrix and route-gap evidence"
+    },
+    {
+      "path": "tools/openclaw_harness/fixtures/saves/live-debug/r037_npc_llm_command_sandbox_v001/manifest.json",
+      "role": "setup-only safe command, inventory and pickup footing"
+    },
+    {
+      "path": "tools/openclaw_harness/fixtures/saves/live-debug/r037_npc_llm_command_combat_v001/manifest.json",
+      "role": "setup-only exact-target combat footing"
+    },
+    {
+      "path": "tools/openclaw_harness/charters/r037-npc-llm-command-coverage-v001.json",
+      "role": "E4B native-evidence and failed-case API comparison contract"
+    },
+    {
+      "path": "tools/openclaw_harness/scenarios/r037.npc_llm_command_coverage_v001_mcw.json",
+      "role": "source-bound safe E4B command scenario"
+    },
+    {
+      "path": "tools/openclaw_harness/scenarios/r037.npc_llm_command_combat_v001_mcw.json",
+      "role": "source-bound combat E4B command scenario"
+    },
+    {
+      "path": "tools/openclaw_harness/scenario_registry.py",
+      "role": "scenario validation allow-list updated for the two R-037 gameplay-proof routes"
+    }
+  ],
+  "first_divergence": {
+    "class": "harness_route_missing",
+    "summary": "The existing freeplay declaration names E2B and grants_gameplay_proof=false. Dedicated E4B support now validates and projects only in an isolated registry; the shared registry has not been refreshed and a clean runtime is unavailable."
+  },
+  "accepted_no_replay": [
+    "Did not relabel or replay the qualification's E4B integration examples as complete command coverage.",
+    "Did not operate another worker's active dev-harness session.",
+    "No API comparison was claimed because no E4B failure case has been run."
+  ],
+  "active_work": [
+    "Refresh the shared registry under its mutable-state owner so the two validated R-037 scenarios become selectable.",
+    "Acquire a clean exclusive runtime; then launch the safe and combat scenarios with the dedicated E4B profile.",
+    "Run each matrix case through actual E4B; retain failure intake and exact same-case OpenAI gpt-4.1-mini controls."
+  ],
+  "first_open_boundary": "A coordinator-owned shared-registry refresh and a clean exclusive dev-harness runtime are required before the validated R-037 E4B scenarios can produce native command evidence.",
+  "narrow_queries": [
+    "shared registry rebuild/projection status for the two new R-037 scenarios",
+    "native fixture audit for Katharina character:2 inventory, nearby ground items and stable named target",
+    "E4B profile option binding and API secure-provision readiness"
+  ],
+  "entrypoints": [
+    "src/llm_intent.cpp",
+    "src/npcmove.cpp",
+    "tools/openclaw_harness/scenario_registry.py",
+    "tools/openclaw_harness/scenarios/harness.npc_llm_freeplay_mcw.json",
+    "tools/openclaw_harness/scenarios/r037.npc_llm_command_coverage_v001_mcw.json",
+    "tools/openclaw_harness/scenarios/r037.npc_llm_command_combat_v001_mcw.json"
+  ],
+  "context_metrics": {
+    "coverage_cases": 20,
+    "validated_r037_scenarios": 2,
+    "resolved_r037_fixtures": 2,
+    "task_owned_runs": 0,
+    "e4b_native_cases": 0
+  }
+}

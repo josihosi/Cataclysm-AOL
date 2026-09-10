@@ -1,0 +1,33 @@
+{
+  "schema": "caol-cockpit-scenario-terminalization-v1",
+  "binding_id": "85ad0884001919a56632bb87f31b57d92778d45485ede572a143e7f3ecd10497",
+  "state": "safe_to_cleanup",
+  "report_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/harness-npc-llm-coverage/harness_runs/20260910_223226_b4511ca426c44cc89430a7eb6a3f77b3/probe.report.json",
+  "report_sha256": "41b86ca847167c24d4de5b9eba91fd5912eb91a06073912772d3fafd01d5f82b",
+  "cleanup": {
+    "status": "already_exited",
+    "pid": 18424,
+    "process_generation": {
+      "pid": 18424,
+      "source": "process.json",
+      "expected": {
+        "schema": "caol-owned-process-generation-v1",
+        "pid": 18424,
+        "alive": true,
+        "birth_identity": "posix-lstart:Thu Sep 10 22:32:26 2026",
+        "command": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/cataclysm-tiles --userdir .userdata/harness-npc-llm-coverage/ --world McWilliams",
+        "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/cataclysm-tiles"
+      },
+      "observed": {
+        "schema": "caol-owned-process-generation-v1",
+        "pid": 18424,
+        "alive": false,
+        "birth_identity": "",
+        "command": "",
+        "executable_path": ""
+      },
+      "status": "exited"
+    },
+    "native_exit_credit": false
+  }
+}

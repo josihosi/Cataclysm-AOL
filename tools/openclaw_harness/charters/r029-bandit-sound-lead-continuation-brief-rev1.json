@@ -1,0 +1,15 @@
+{
+  "outcome": "One current source- and executable-bound R-029 continuation independently verifies the exact previously proved sound lead after reload, then uses only ordinary elapsed-time controls to bind the first attributable candidate, ordinary scout, returned report, authorization, rally, or operation transition that production cadence reaches.",
+  "scenario": "bandit.r029_sound_lead_continuation_058_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r029.bandit_sound_lead_continuation",
+        "minimum_evidence": "declared",
+        "op": "eq",
+        "value": "reload_exact_signal_lead_then_ordinary_scout_report_rally"
+      }
+    ],
+    "preferences": []
+  }
+}

@@ -1,0 +1,1 @@
+{"binding_id": "e15cb9ade78c30711de366acf67e7560e675a9698b4ca33a509ff2ac6ddb99b1", "request": {"action": "game.act", "action_id": "prompt.submit", "observation_id": "8537bd49f31ecfcd05d4da60134c8ae3fc0ed85218be5d0beffd8dfb928cd834:frame:19", "parameters": {"text": "Katharina, pick up the bandages on the ground nearby."}}, "request_id": "play-f49c9d44bb9e435985ba0b53b993162f"}

@@ -1,0 +1,25 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Through the actual local E4B Ollama route, a specifically identified allied NPC can parse and apply each supported R-037 command only when an attributable native consequence and its material controls are retained.",
+  "material_proof": "For each matrix case retain the source/executable binding, E4B model/configuration, actor and request identifiers, prompt/response, parse/dispatch record, applying native turn and concrete consequence. Keep movement arrival, item ownership/safety, inventory state, target identity and combat damage/ammunition independent. Fixture setup supplies only opportunity. A failure records the same-case OpenAI gpt-4.1-mini comparison after secure readiness verification.",
+  "material_contradiction": [
+    "a generated or manually injected response is credited as E4B output",
+    "the claimed recipient, item or combat target lacks exact same-run identity",
+    "an accepted request or posture is treated as a native consequence",
+    "a different model/provider's success erases the E4B result",
+    "OCR, rendered text, fixture setup or API transport is used as gameplay proof"
+  ],
+  "current_uncertainty": "E4B can choose an inappropriate command or fail formatting even under controlled natural requests. Each returned command and each material control has its own verdict; no sample establishes a model-quality ranking.",
+  "forbidden_shortcuts": [
+    "synthetic responses, parser-only proof, direct NPC/item/save mutation or physical input",
+    "claiming success from a fixture item, selector UI or queued enum alone",
+    "using an API result as local-E4B proof",
+    "printing or recording credential values"
+  ],
+  "honest_stop_conditions": [
+    "separate a provider/model failure, parser rejection, dispatch deferral and native failure at its first evidenced divergence",
+    "preserve a failed local case and complete the authorized same-case API control where credentials are available",
+    "seal a claim-scoped bundle only after all observable matrix cases and cleanup are honestly classified"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

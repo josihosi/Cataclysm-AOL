@@ -362,8 +362,11 @@ def _validate_checkpoint_chain_fields(manifest: Mapping[str, Any], *, path: Path
             "r026.living_npc_package_v001_mcw",
             "cannibal.night_raid_natural_transition_validation_mcw",
             "cannibal.r029_natural_route_roof_mcw",
+            "cannibal.r029_ground_positive_route_mcw",
             "bandit.r029_natural_sound_route_mcw",
             "r031.ambient_neutral_npc_authority_v002_mcw",
+            "r037.npc_llm_command_coverage_v001_mcw",
+            "r037.npc_llm_command_combat_v001_mcw",
         },
     )
     if manifest["run_class"] not in {"combat", "non_combat"}:
@@ -451,6 +454,8 @@ def _validate_versioned_fields(manifest: Mapping[str, Any], *, path: Path) -> No
             "r026.living_npc_package_v001_mcw",
             "cannibal.night_raid_natural_transition_validation_mcw",
             "r031.ambient_neutral_npc_authority_v002_mcw",
+            "r037.npc_llm_command_coverage_v001_mcw",
+            "r037.npc_llm_command_combat_v001_mcw",
         },
     )
     _validate_proof_route(manifest["proof_route"], manifest, path=path)

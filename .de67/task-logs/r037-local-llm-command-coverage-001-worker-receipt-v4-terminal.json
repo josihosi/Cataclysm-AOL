@@ -1,0 +1,68 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "task_id": "R-037-local-llm-command-coverage-001",
+  "worker_request_id": "c66cf5f684354a2ab2016a5bcf77a802",
+  "disposition": "terminal",
+  "verdict": "not_qualified_for_full_source_bound_command_coverage",
+  "outcome": "The required local E4B model produced and natively applied several command replies, including one exact-target melee damage result.  The complete 20-case source-bound contract is not met: multiple required material controls or consequences are unobserved, several local replies took the wrong action, the safe stale-target premise has no charter-permitted native route, and the mandatory same-case API comparison for failures is unavailable without unsafe credential provisioning.",
+  "source_binding": {
+    "git_head": "db2aa378d900301161f02b520c7ace0f87b92d4d",
+    "product_source_sha256": "974461bc85b00a0fd37bce315444abc4395c547e69fb91b783edcf814b167fea",
+    "executable": "cataclysm-tiles",
+    "executable_sha256": "c416df32eab33d507b4d15b269212ecd49372f01a808a371392ddbbf734ee600",
+    "model": "hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest",
+    "coverage_manifest": ".de67/task-logs/r037-source-bound-coverage-manifest-001.json"
+  },
+  "evidence_journals": [
+    "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302",
+    "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d",
+    "47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1",
+    "61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"
+  ],
+  "task_owned_runs": [
+    {"kind": "safe_initial", "run_id": "3806b3818c0ac2684344411c513fe2c613fcf951908e608c7620ca2f99d97188", "journal_sha256": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302", "cleanup": "PID 15460 verified exited"},
+    {"kind": "safe_continuation", "run_id": "8537bd49f31ecfcd05d4da60134c8ae3fc0ed85218be5d0beffd8dfb928cd834", "journal_sha256": "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d", "cleanup": "PID 16919 verified exited"},
+    {"kind": "combat", "run_id": "57b7e785e50eb8771a806c1fedf141d61162ab18c2cc18d600c3eae41e98be59", "journal_sha256": "47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1", "cleanup": "PID 17782 verified exited"},
+    {"kind": "safe_remaining", "run_id": "a113314bc55dfaea28b8df14f746b526b293e36575ce270b4267f9f5b6e3753d", "journal_sha256": "61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae", "cleanup": "PID 18424 verified exited"}
+  ],
+  "case_dispositions": [
+    {"id": "wait_here", "verdict": "native_applied_partial_controls", "evidence": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id": "hold_position", "verdict": "native_applied_partial_controls", "evidence": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id": "follow_close", "verdict": "native_applied", "evidence": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id": "follow_far", "verdict": "native_applied_partial_controls", "evidence": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id": "equip_gun", "verdict": "native_wield_observed", "evidence": "47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1"},
+    {"id": "equip_melee", "verdict": "native_applied", "evidence": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id": "equip_bow", "verdict": "native_applied_partial_controls", "evidence": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302"},
+    {"id": "panic_on", "verdict": "local_success_then_separate_wrong_action_divergence_full_duration_unobserved", "evidence": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
+    {"id": "panic_off", "verdict": "failed_wrong_local_action", "evidence": "a375c6ee00d88cd3d06ae7950e0379fd0e68f26b6dbc9b5f6912fcf70d577302", "api_comparison": "unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id": "look_around_pickup", "verdict": "e4b_look_around_emitted_exact_transfer_and_owned_control_unobserved", "evidence": "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
+    {"id": "look_inventory_wear", "verdict": "failed_no_exact_secondary_consequence", "evidence": "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae", "api_comparison": "unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id": "look_inventory_wield", "verdict": "failed_wrong_primary_path", "evidence": "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d", "api_comparison": "unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id": "look_inventory_activate", "verdict": "failed_no_activation_secondary", "evidence": "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae", "api_comparison": "unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id": "look_inventory_drop", "verdict": "failed_no_drop_secondary", "evidence": "4aeb27a07ba3e6e061eaa83f7453e954d6c984b4731bbffacdcb014db962028d;61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae", "api_comparison": "unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id": "idle", "verdict": "failed_wait_here_plus_idle_not_pure_idle", "evidence": "61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae", "api_comparison": "unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id": "move_wait_arrival", "verdict": "e4b_move_wait_emitted_exact_arrival_control_unobserved", "evidence": "61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
+    {"id": "move_hold_arrival", "verdict": "e4b_move_hold_emitted_exact_arrival_control_unobserved", "evidence": "61782e763be28711602d710316161d5613c917d8f4fc470a50bbbb4dc00470ae"},
+    {"id": "attack_exact_target_melee", "verdict": "proved_exact_target_native_damage", "evidence": "47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1"},
+    {"id": "attack_exact_target_ranged", "verdict": "target_resolved_and_gun_wielded_no_shot_before_combat_contention", "evidence": "47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1", "api_comparison": "unavailable_due_to_unsanitized_credential_provisioning"},
+    {"id": "attack_missing_or_stale_target", "verdict": "blocked_no_safe_native_target_disappearance_route_direct_mutation_charter_forbidden", "evidence": "47764f6826e33fd2542e6adac1567b96e994143937aa839bd87d5033a8db67a1"}
+  ],
+  "material_findings": [
+    "The required E4B response equip_melee|attack=b resolved the named fixture zombie dog and produced native melee damage.",
+    "The local model also produced native application evidence for follow, wait, hold, equipment and panic paths, but that evidence does not establish every required state transition or control.",
+    "Wrong local actions or missing required consequences occurred in panic_off, inventory-secondary, idle and ranged-attack cases."
+  ],
+  "blockers": [
+    "The safe fixture has no charter-permitted way to make the selected target disappear between request and native resolution; direct state mutation is prohibited, so stale/missing-target behavior is unclassified.",
+    "Each local failure requires a same-semantic-premise OpenAI gpt-4.1-mini control. Secure child provisioning is not available without accessing an unsanitized exposed credential, which this work did not do."
+  ],
+  "api_boundary": {
+    "status": "unavailable_due_to_unsanitized_credential_provisioning",
+    "attempted": false,
+    "credential_accessed": false,
+    "credential_copied": false,
+    "credential_reused": false,
+    "credential_recorded": false
+  },
+  "lifecycle_and_scope": "All four task-owned runtimes were explicitly terminated and their recorded PIDs were verified exited. No shared-registry mutation, unrelated process inspection/termination, synthetic response injection, or credential readiness probe occurred."
+}
