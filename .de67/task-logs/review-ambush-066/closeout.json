@@ -1,0 +1,31 @@
+{
+  "status": "macro closeout blocked by protected migration defect; tested repair not installed",
+  "micro_recorded": true,
+  "macro_recorded": false,
+  "constructor_error": "FOREIGN KEY constraint failed at deadline_harness.py:910",
+  "guard_rejection": "Normal method mutation cannot change the hard clock/guard surface: scripts/deadline_harness.py",
+  "restart": {
+    "lineage_id": "semantic-surface-cockpit",
+    "generation": 50,
+    "requested_at": 1789021362.486767,
+    "reason": "Owner gate 5e457436075e resolved: random cadence is 20\u201350 completed worker windows, version3, no worker cap. Current cycle15 retains start349/count350 and now has interval20/due369; historical/due cycles and valid work preserved. Evidence .de67/task-logs/review-owner-5e457436075e/report.md. A later agent-supplied live-coordination proposal remains deferred and grants no authority or extra restart.",
+    "claimed_at": null,
+    "expected_run_id": null,
+    "acknowledged_at": null,
+    "run_id": null
+  },
+  "incident": {
+    "source_task_id": "R-029-rolling-ambush-native-066",
+    "generation": 19,
+    "reviewed_at": 1789022132.000044,
+    "restart_generation": null
+  },
+  "components": [
+    {
+      "generation": 19,
+      "component": "micro",
+      "receipt_id": null
+    }
+  ],
+  "foreign_key_check": []
+}

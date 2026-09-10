@@ -1,0 +1,48 @@
+{
+  "schema": "de67.review-accounting-asof.v1",
+  "mutation_id": "mutation-205025177eb14136b62fd3bf958ad61b",
+  "root_thread_id": "01a08109-6d0f-7391-8d01-0209be85fbeb",
+  "root_turn_id": "01a089fd-4b3d-7a70-acd7-72524f09c497",
+  "asof": "2026-09-10T06:34:47.819Z",
+  "calls": 58,
+  "usage": {
+    "input_tokens": 6928727,
+    "cached_input_tokens": 6748544,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 21439,
+    "reasoning_output_tokens": 6513,
+    "total_tokens": 6950166
+  },
+  "threads": {
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "calls": 27,
+      "input_tokens": 4530591,
+      "cached_input_tokens": 4472960,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 11320,
+      "reasoning_output_tokens": 3356,
+      "total_tokens": 4541911,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl"
+    },
+    "01a089fe-64f9-7ff2-adda-efa1c3c3162f": {
+      "calls": 31,
+      "input_tokens": 2398136,
+      "cached_input_tokens": 2275584,
+      "cache_write_input_tokens": 0,
+      "output_tokens": 10119,
+      "reasoning_output_tokens": 3157,
+      "total_tokens": 2408255,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/10/rollout-2026-09-10T08-25-45-01a089fe-64f9-7ff2-adda-efa1c3c3162f.jsonl"
+    }
+  },
+  "deduplication": "Counted token_usage_record usage for the exact root_turn_id across the root coordinator session and this review thread; response_id was the uniqueness key and all 58 response IDs were unique. Root-thread records outside this root turn, cumulative history, turn_token_usage, and thread_token_usage rollups were excluded.",
+  "sources": [
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/10/rollout-2026-09-10T08-25-45-01a089fe-64f9-7ff2-adda-efa1c3c3162f.jsonl"
+  ],
+  "gaps": [
+    "Bounded to token_usage_record entries persisted through the as-of cutoff; later records are excluded.",
+    "No billing, quota, savings, or model attribution is inferred from telemetry."
+  ],
+  "boundary": "Full bounded accounting for the exact mutation review root turn and its observed root plus child record set, including this thread's responses and retries, with no unrelated cumulative-history rollups."
+}
