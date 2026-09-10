@@ -25,14 +25,20 @@ This refreeze replaces its stale code map and separates fresh proof obligations 
 
 ### Coordinator review cadence maintenance
 
-- DE67-MAINT-CADENCE — Temporarily schedule periodic evidence-led workflow review after an
-  inclusive 10–20 completed worker attempts. Preserve the current cycle's already-counted progress,
-  count each terminal attempt once, persist the schedule across coordinator restart, and leave active
-  workers and product-claim acceptance unchanged. The next review chooses a useful improvement from
-  current evidence; legacy random-lane metadata does not prescribe the inquiry.
-- Proof: focused boundary and counting tests pass, the current lineage cycle retains elapsed progress
-  while adopting the shorter interval, and a fresh status/restart observation reports the effective
-  interval and next due count without interrupting workers.
+- DE67-MAINT-CADENCE — Schedule periodic evidence-led workflow review after an inclusive
+  20–50 completed worker windows under the existing once-per-terminal-attempt counting semantics.
+  This owner refinement (`5e457436075e`, 2026-09-10) supersedes the temporary 10–20 range and
+  introduces no worker cap. New cycles persist cadence version 3 and draw uniformly across both
+  inclusive bounds. The next review chooses a useful improvement from current evidence; legacy
+  random-lane metadata does not prescribe the inquiry.
+- Preserve completed task history and the cumulative count. An old not-yet-due cycle keeps its
+  cumulative start and clamps its saved interval into 20–50 once, without a new random draw.
+  Already-due cycles (including an elapsed boundary without its due marker) and resolved cycles
+  remain unchanged. Reopening preserves the resulting schedule. Storage continues to accept old
+  interval/version values so migration does not rewrite historical proof or cancel a due review.
+- Verify inclusive draw bounds, once-per-terminal-attempt counting, pending-cycle progress,
+  due/resolved history, foreign-key integrity, and persistence across a fresh reopen. Leave active
+  workers, product acceptance and the existing rare-review capability rules unchanged.
 
 <!-- DE67:DFS-SLICE:END id=DE67-MAINT-CADENCE-S001 claim=DE67-MAINT-CADENCE -->
 

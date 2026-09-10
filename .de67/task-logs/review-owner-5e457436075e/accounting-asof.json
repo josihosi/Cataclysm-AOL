@@ -1,0 +1,51 @@
+{
+  "schema": "de67.review-accounting-asof.v1",
+  "root_thread_id": "01a08109-6d0f-7391-8d01-0209be85fbeb",
+  "root_turn_id": "01a089eb-8cb9-7833-80d8-8e5397bcd4c7",
+  "asof": "2026-09-10T06:22:25.757Z",
+  "calls": 57,
+  "usage": {
+    "input_tokens": 12546373,
+    "cached_input_tokens": 11979904,
+    "cache_write_input_tokens": 0,
+    "output_tokens": 32997,
+    "reasoning_output_tokens": 13535,
+    "total_tokens": 12579370
+  },
+  "threads": {
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "calls": 29,
+      "input_tokens": 10394116,
+      "cached_input_tokens": 9951104,
+      "output_tokens": 21725,
+      "reasoning_output_tokens": 9798,
+      "total_tokens": 10415841,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl"
+    },
+    "01a089ec-9599-7331-bb20-87e0d7c45209": {
+      "calls": 28,
+      "input_tokens": 2152257,
+      "cached_input_tokens": 2028800,
+      "output_tokens": 11272,
+      "reasoning_output_tokens": 3737,
+      "total_tokens": 2163529,
+      "source": "/Users/josefhorvath/.codex/sessions/2026/09/10/rollout-2026-09-10T08-06-18-01a089ec-9599-7331-bb20-87e0d7c45209.jsonl"
+    }
+  },
+  "turns": {
+    "01a089eb-8cb9-7833-80d8-8e5397bcd4c7": 29,
+    "01a089ec-95fd-74c0-9042-a82a5ec106d1": 9,
+    "01a089f3-0c6b-7551-ad83-1148cae1bc16": 4,
+    "01a089f8-d199-7772-ac0a-df1d9a8885d1": 15
+  },
+  "deduplication": "Counted persisted token_usage_record usage by unique response_id across the exact root turn and all observed helper/follow-up turns; 57 records were found and response IDs were unique. Cumulative history, turn_token_usage, and thread_token_usage rollups were excluded.",
+  "sources": [
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/10/rollout-2026-09-10T08-06-18-01a089ec-9599-7331-bb20-87e0d7c45209.jsonl"
+  ],
+  "gaps": [
+    "Bounded to token_usage_record entries persisted by the as-of cutoff; later records are excluded.",
+    "No billing, quota, savings, or model attribution is inferred from telemetry."
+  ],
+  "boundary": "Full bounded accounting for the exact root turn and its observed helper/follow-up record set, including retries, with no cumulative-history rollups."
+}

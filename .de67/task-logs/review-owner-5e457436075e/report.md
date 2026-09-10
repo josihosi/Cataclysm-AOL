@@ -1,0 +1,25 @@
+# Owner cadence review 5e457436075e — 2026-09-10
+
+Current reviewer `mutation-fec0459802db48e6964ad9aaeb60a047`, supervisor 5373, lineage `semantic-surface-cockpit`. The sole pending owner entry specifies 20–50, explicitly superseding temporary 10–20 and requesting no worker cap. Zero roster-worker claims and zero active coordinators in this supervisor epoch were verified before promotion. The completed entry was consumed without a history section.
+
+Installed `RANDOM_INTERVAL_MIN=20`, `RANDOM_INTERVAL_MAX=50`, and cadence version 3. New draws use 31 equally possible offsets, including both endpoints. Existing terminal-attempt counting is unchanged. No worker/task cap, gameplay change, or claim-acceptance change was introduced.
+
+The existing interval storage continues accepting 10–50 so old history remains valid; the cadence-version constraint now accepts versions 1, 2 and 3. Schema migration preserves each row's actual version rather than replacing it with 1. Pending old cycles keep their own cumulative start, and their saved interval is clamped into 20–50 once without redrawing. Already-due cycles, including elapsed boundaries whose marker has not yet been written, are not postponed or cleared. Resolved cycles remain byte-for-byte equal in the row comparison. Cadence migration runs after legacy terminal history has been projected, so it can correctly recognize an already-elapsed boundary.
+
+Live verified result: cycle 15 moved from interval 11/version 2/due count 360 to interval 20/version 3/due count 369. Its start remains 349, completed count remains 350, and one window has elapsed; 19 remain. Reopening the copied live database did not redraw or change the schedule. Live migration produced the same result and passed SQLite integrity/foreign-key checks. Tasks, incidents, normal method receipts and claim acceptances were compared unchanged; all prior resolved cycles were retained.
+
+The FS's existing DE67-MAINT-CADENCE-S001 slice and compatibility hash now state the new behavior. The ledger replaces obsolete temporary-range execution instructions with the current result and preserves the earlier receipt as history. No other FS slice was changed. The state-aware ledger guard passes.
+
+Luna checked the migration hazards and focused test requirements: the old temporary migration cleared due_task_id, so simply reusing it for an increased range could cancel an actionable review. The replacement preserves both explicit due markers and already-passed boundaries. The schema remains broad enough for old rows. No instruction-based worker mistake is asserted; this is an explicit owner configuration change with necessary persistence handling.
+
+Validation: 4 new cadence tests, 93 deadline-harness tests, 67 mutation-guard tests, 74 supervisor tests, and 5 Phase-3 scenario tests pass (243 total). The old shortening-only test was replaced by expansion, due-history and persistence checks; existing deterministic fixture offsets and expected boundaries were updated for 20–50. A first resolved-row fixture omitted its existing ordinary resolution field, which triggered unrelated legacy backfill; the corrected complete fixture and retained failed log make that distinction explicit. All complete test logs and runner results are retained under `.de67/state/review-owner-5e457436075e/`.
+
+The broader method candidate changes only the cadence harness and its tests. Structural comparison confirms no unrelated task/clock/receipt function changes. The supplied policy guard argument array ran without a shell and produced bytecode identical to the active policy. The combined local FS guard rejects rewritten baseline lines under its legacy append-only rule; that rejection is retained, not called a pass. Josef explicitly authorized superseding the temporary cadence, so the narrow existing-slice replacement is validated under that owner authority. No guard code was modified.
+
+Stop condition: the owner-requested cadence, migration and persistence are implemented and verified. The external supervisor alone owns the successor launch; this review does not start a coordinator. The final restart result is retained alongside this report.
+
+A later interagent proposal about decision-focused live coordination was retained as a non-forcing reviewer proposal, explicitly not owner authorization. Its supplied counts are unverified. It does not expand this cadence change or request another restart.
+
+The existing restart API was called once: generation 50 is pending (created=True). Remaining gate: MutationGate(kind='incident-review', identity='R-029-rolling-ambush-native-066', selected_lane=None). The reviewer launched no coordinator.
+
+Accounting as of 2026-09-10T06:22:25.757Z: 12,579,370 tokens across 57 unique root/helper response records, including followups and retries. Input 12,546,373 (11,979,904 cached), output 32,997; reasoning is a subset of output. Later closeout/delayed records are excluded. No token or runtime savings claim is made. Source handles and per-thread details are in accounting-asof.json.

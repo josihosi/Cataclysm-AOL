@@ -1,0 +1,456 @@
+--- before/scripts/deadline_harness.py
++++ installed/scripts/deadline_harness.py
+@@ -33,9 +33,9 @@
+ )
+ 
+ 
+-RANDOM_INTERVAL_MIN = 10
+-RANDOM_INTERVAL_MAX = 20
+-TEMPORARY_CADENCE_VERSION = 2
++RANDOM_INTERVAL_MIN = 20
++RANDOM_INTERVAL_MAX = 50
++CADENCE_VERSION = 3
+ UNIVERSAL_RANDOM_INTERVAL = 30
+ RANDOM_MUTATION_LANES = (
+     "test-and-task-guidelines.md",
+@@ -340,8 +340,8 @@
+                 interval_windows INTEGER NOT NULL CHECK (
+                     interval_windows BETWEEN 10 AND 50
+                 ),
+-                cadence_version INTEGER NOT NULL DEFAULT 2 CHECK (
+-                    cadence_version IN (1, 2)
++                cadence_version INTEGER NOT NULL DEFAULT 3 CHECK (
++                    cadence_version IN (1, 2, 3)
+                 ),
+                 due_after_terminal_windows INTEGER NOT NULL CHECK (
+                     due_after_terminal_windows >= interval_windows
+@@ -1011,7 +1011,6 @@
+                 "ADD COLUMN cadence_version INTEGER NOT NULL DEFAULT 1"
+             )
+         self._migrate_random_interval_constraint()
+-        self._migrate_temporary_cadence()
+         receipt_columns = {
+             row["name"]
+             for row in self.connection.execute(
+@@ -1191,6 +1190,7 @@
+         )
+         self._migrate_task_terminal_kind_triggers()
+         self._migrate_v2_closure_gaps()
++        self._migrate_random_cadence()
+         revision_columns = {
+             row[1] for row in self.connection.execute("PRAGMA table_info(closure_gap_revisions)")
+         }
+@@ -1240,7 +1240,8 @@
+             "SELECT sql FROM sqlite_master WHERE type = 'table' AND name = 'random_mutation_cycles'"
+         ).fetchone()
+         schema = str(row["sql"] if row is not None else "").lower()
+-        if "interval_windows between 10 and 30" not in " ".join(schema.split()):
++        if ("interval_windows between 10 and 50" in " ".join(schema.split())
++                and re.search(r"cadence_version\s+in\s*\(\s*1\s*,\s*2\s*,\s*3\s*\)", schema)):
+             return
+         self.connection.commit()
+         self.connection.execute("PRAGMA foreign_keys = OFF")
+@@ -1255,7 +1256,7 @@
+                         interval_windows BETWEEN 10 AND 50
+                     ),
+                     cadence_version INTEGER NOT NULL DEFAULT 1 CHECK (
+-                        cadence_version IN (1, 2)
++                        cadence_version IN (1, 2, 3)
+                     ),
+                     due_after_terminal_windows INTEGER NOT NULL CHECK (
+                         due_after_terminal_windows >= interval_windows
+@@ -1298,7 +1299,7 @@
+             )
+             self.connection.execute(
+                 f"INSERT INTO random_mutation_cycles_wider ({columns}) "
+-                f"SELECT lineage_id, cycle_number, interval_windows, 1, "
++                f"SELECT lineage_id, cycle_number, interval_windows, cadence_version, "
+                 f"due_after_terminal_windows, selected_lane, due_task_id, "
+                 f"resolution_evidence, ordinary_resolution_evidence, universal_required, "
+                 f"universal_resolution_evidence, universal_receipt_id, "
+@@ -1320,42 +1321,28 @@
+         if violations:
+             raise DeadlineError("Random cadence migration broke persisted foreign keys")
+ 
+-    def _migrate_temporary_cadence(self) -> None:
+-        """Shorten unresolved reviews without replaying counted task attempts.
+-
+-        Resolved cycles remain historical evidence, including the old 30/DFS
+-        universal-review records. An unresolved cycle keeps its original
+-        cumulative start and deterministically adopts the new upper boundary,
+-        so an already-passed shortened boundary becomes due immediately.
+-        """
+-
+-        self.connection.execute(
+-            """
+-            UPDATE random_mutation_cycles AS current
+-            SET interval_windows = ?,
+-                due_after_terminal_windows = COALESCE(
+-                    (
+-                        SELECT MAX(previous.due_after_terminal_windows)
+-                        FROM random_mutation_cycles AS previous
+-                        WHERE previous.lineage_id = current.lineage_id
+-                          AND previous.cycle_number < current.cycle_number
+-                    ),
+-                    0
+-                ) + ?,
+-                due_task_id = NULL,
+-                universal_required = 0,
+-                cadence_version = ?
+-            WHERE resolution_evidence IS NULL
+-              AND cadence_version < ?
+-              AND universal_capability_status IS NULL
+-            """,
+-            (
+-                RANDOM_INTERVAL_MAX,
+-                RANDOM_INTERVAL_MAX,
+-                TEMPORARY_CADENCE_VERSION,
+-                TEMPORARY_CADENCE_VERSION,
+-            ),
+-        )
++    def _migrate_random_cadence(self) -> None:
++        """Adopt current bounds without resetting progress or postponing due reviews."""
++        rows = self.connection.execute(
++            "SELECT * FROM random_mutation_cycles "
++            "WHERE resolution_evidence IS NULL AND cadence_version < ?",
++            (CADENCE_VERSION,),
++        ).fetchall()
++        for row in rows:
++            if (row["due_task_id"] is not None or
++                    self._terminal_window_count(row["lineage_id"]) >=
++                    row["due_after_terminal_windows"]):
++                continue
++            interval = min(RANDOM_INTERVAL_MAX,
++                           max(RANDOM_INTERVAL_MIN, row["interval_windows"]))
++            cycle_start = row["due_after_terminal_windows"] - row["interval_windows"]
++            self.connection.execute(
++                "UPDATE random_mutation_cycles SET interval_windows = ?, "
++                "due_after_terminal_windows = ?, cadence_version = ? "
++                "WHERE lineage_id = ? AND cycle_number = ?",
++                (interval, cycle_start + interval, CADENCE_VERSION,
++                 row["lineage_id"], row["cycle_number"]),
++            )
+ 
+     def _migrate_v1_state(self) -> None:
+         """Project v1 task clocks into v2 claim state without rewriting v1 rows."""
+@@ -3099,7 +3086,7 @@
+                 lineage_id,
+                 number,
+                 interval,
+-                TEMPORARY_CADENCE_VERSION,
++                CADENCE_VERSION,
+                 cycle_start + interval,
+                 lane,
+                 0,
+--- before/tests/test_deadline_harness.py
++++ installed/tests/test_deadline_harness.py
+@@ -1656,9 +1656,9 @@
+             harness.start_task("project", task, f"R-{number:03d}", 10, now=0)
+             harness.complete_task("project", task, "green", now=1)
+ 
+-    def test_random_interval_includes_ten_and_twenty_boundaries(self) -> None:
++    def test_random_interval_includes_twenty_and_fifty_boundaries(self) -> None:
+         self.harness.close()
+-        for offset, boundary in ((0, 10), (10, 20)):
++        for offset, boundary in ((0, 20), (30, 50)):
+             with self.subTest(boundary=boundary):
+                 state = Path(self.temporary.name) / f"boundary-{boundary}.sqlite"
+                 with patch(
+@@ -1684,7 +1684,7 @@
+ 
+     def test_random_schedule_persists_across_restart_without_redraw(self) -> None:
+         with patch(
+-            "deadline_harness.secrets.randbelow", side_effect=[4, 1]
++            "deadline_harness.secrets.randbelow", side_effect=[0, 1]
+         ) as draw:
+             self.complete_windows(self.harness, 8)
+             self.assertEqual(draw.call_count, 2)
+@@ -1694,60 +1694,14 @@
+             side_effect=AssertionError("persisted schedule must not redraw"),
+         ):
+             self.harness = DeadlineHarness(self.state_path)
+-            self.complete_windows(self.harness, 6, first=9)
++            self.complete_windows(self.harness, 12, first=9)
+             schedule = self.harness.list_tasks(now=2)["random_mutation"]
+ 
+-        self.assertEqual(schedule["interval_windows"], 14)
++        self.assertEqual(schedule["interval_windows"], 20)
+         self.assertEqual(schedule["selected_lane"], "DFS.md")
+-        self.assertEqual(schedule["completed_terminal_windows"], 14)
++        self.assertEqual(schedule["completed_terminal_windows"], 20)
+         self.assertTrue(schedule["due"])
+ 
+-    def test_pending_cycle_migrates_to_shortened_boundary_without_reset(self) -> None:
+-        with patch(
+-            "deadline_harness.secrets.randbelow", side_effect=[10, 0, 10, 1]
+-        ):
+-            self.complete_windows(self.harness, 20)
+-            first = self.harness.resolve_random_mutation(
+-                "project", 1, "first review resolved", now=1
+-            )
+-            generation = first["coordinator_restart"]["generation"]
+-            self.harness.claim_coordinator_restart("project", generation, "resume")
+-            self.harness.acknowledge_coordinator_restart("project", generation, "resume")
+-            self.complete_windows(self.harness, 12, first=21)
+-
+-        self.harness.connection.execute(
+-            """
+-            UPDATE random_mutation_cycles
+-            SET interval_windows = 36,
+-                due_after_terminal_windows = 56,
+-                cadence_version = 1
+-            WHERE lineage_id = 'project' AND cycle_number = 2
+-            """
+-        )
+-        self.harness.connection.commit()
+-        self.harness.close()
+-
+-        with patch(
+-            "deadline_harness.secrets.randbelow",
+-            side_effect=AssertionError("migration must not redraw a pending cycle"),
+-        ):
+-            self.harness = DeadlineHarness(self.state_path)
+-            migrated = self.harness.list_tasks(now=2)["random_mutation"]
+-
+-        self.assertEqual(migrated["cycle_number"], 2)
+-        self.assertEqual(migrated["interval_windows"], 20)
+-        self.assertEqual(migrated["due_after_terminal_windows"], 40)
+-        self.assertEqual(migrated["completed_terminal_windows"], 32)
+-        self.assertFalse(migrated["due"])
+-        self.assertEqual(
+-            self.harness.connection.execute(
+-                """
+-                SELECT cadence_version FROM random_mutation_cycles
+-                WHERE lineage_id = 'project' AND cycle_number = 2
+-                """
+-            ).fetchone()["cadence_version"],
+-            2,
+-        )
+ 
+     def test_random_lane_draw_is_persisted_and_not_cli_controlled(self) -> None:
+         self.harness.close()
+@@ -1771,12 +1725,12 @@
+                     )
+                     self.assertEqual(
+                         started["random_mutation"]["due_after_terminal_windows"],
+-                        10,
++                        20,
+                     )
+         self.harness = DeadlineHarness(self.state_path)
+ 
+     def test_each_terminal_route_counts_once_and_late_followups_do_not(self) -> None:
+-        with patch("deadline_harness.secrets.randbelow", side_effect=[10, 0]):
++        with patch("deadline_harness.secrets.randbelow", side_effect=[0, 0]):
+             self.complete_windows(self.harness, 10)
+             self.complete_windows(self.harness, 6, first=11)
+ 
+@@ -1812,7 +1766,7 @@
+         )
+ 
+     def test_due_review_blocks_new_dispatch_until_exactly_once_resolution(self) -> None:
+-        with patch("deadline_harness.secrets.randbelow", side_effect=[10, 1]):
++        with patch("deadline_harness.secrets.randbelow", side_effect=[0, 1]):
+             self.complete_windows(self.harness, 20)
+         schedule = self.harness.list_tasks(now=2)["random_mutation"]
+         self.assertTrue(schedule["due"])
+@@ -1821,7 +1775,7 @@
+         with self.assertRaisesRegex(DeadlineError, "resolve it before dispatching"):
+             self.harness.start_task("project", "blocked", "R-011", 10, now=2)
+ 
+-        with patch("deadline_harness.secrets.randbelow", side_effect=[10, 1]) as draw:
++        with patch("deadline_harness.secrets.randbelow", side_effect=[0, 1]) as draw:
+             first = self.harness.resolve_random_mutation(
+                 "project",
+                 schedule["cycle_number"],
+@@ -1861,7 +1815,7 @@
+         self.assertTrue(started["created"])
+ 
+     def test_documented_random_resolution_cli_flags_execute(self) -> None:
+-        with patch("deadline_harness.secrets.randbelow", side_effect=[10, 1]):
++        with patch("deadline_harness.secrets.randbelow", side_effect=[0, 1]):
+             self.complete_windows(self.harness, 20)
+         cycle = self.harness.list_tasks(now=2)["random_mutation"]["cycle_number"]
+         output = io.StringIO()
+@@ -2060,7 +2014,7 @@
+     def test_legacy_terminal_history_seeds_the_first_random_cycle(self) -> None:
+         self.harness.close()
+         legacy = Path(self.temporary.name) / "legacy-history.sqlite"
+-        with patch("deadline_harness.secrets.randbelow", side_effect=[10, 0]), DeadlineHarness(
++        with patch("deadline_harness.secrets.randbelow", side_effect=[0, 0]), DeadlineHarness(
+             legacy
+         ) as harness:
+             for number in range(1, 12):
+@@ -2107,7 +2061,7 @@
+             )
+         self.strip_random_cadence(legacy)
+ 
+-        with patch("deadline_harness.secrets.randbelow", side_effect=[10, 1]), DeadlineHarness(
++        with patch("deadline_harness.secrets.randbelow", side_effect=[0, 1]), DeadlineHarness(
+             legacy
+         ) as migrated:
+             schedule = migrated.list_tasks(now=2)["random_mutation"]
+@@ -2137,7 +2091,7 @@
+             self.assertEqual(
+                 result["random_mutation"]["completed_terminal_windows"], 1
+             )
+-            self.assertEqual(result["random_mutation"]["due_after_terminal_windows"], 10)
++            self.assertEqual(result["random_mutation"]["due_after_terminal_windows"], 20)
+         self.harness = DeadlineHarness(self.state_path)
+ 
+     def test_claim_clock_survives_attempts_closure_and_reopen(self) -> None:
+@@ -2942,15 +2896,15 @@
+             second = self.harness.list_tasks(now=21)["random_mutation"]
+ 
+         self.assertEqual(first["completed_terminal_windows"], 22)
+-        self.assertEqual(first["due_after_terminal_windows"], 10)
+-        self.assertEqual(
+-            resolved["random_mutation"]["due_after_terminal_windows"], 20
+-        )
+-        self.assertTrue(resolved["random_mutation"]["due"])
++        self.assertEqual(first["due_after_terminal_windows"], 20)
++        self.assertEqual(
++            resolved["random_mutation"]["due_after_terminal_windows"], 40
++        )
++        self.assertFalse(resolved["random_mutation"]["due"])
+         self.assertEqual(second["completed_terminal_windows"], 40)
+-        self.assertEqual(second["due_after_terminal_windows"], 20)
++        self.assertEqual(second["due_after_terminal_windows"], 40)
+         self.assertTrue(second["due"])
+-        self.assertEqual(second["due_task_id"], "window-20")
++        self.assertEqual(second["due_task_id"], "window-40")
+ 
+     def test_status_repairs_missed_random_due_marker_while_worker_is_live(self) -> None:
+         with patch("deadline_harness.secrets.randbelow", side_effect=[0, 0]):
+@@ -2984,13 +2938,13 @@
+             "window-21",
+             [task["task_id"] for task in view["tasks"] if task["state"] == "running"],
+         )
+-        self.assertEqual(view["random_mutation"]["due_task_id"], "window-10")
+-        self.assertEqual(cycle["due_task_id"], "window-10")
++        self.assertEqual(view["random_mutation"]["due_task_id"], "window-20")
++        self.assertEqual(cycle["due_task_id"], "window-20")
+ 
+     def test_interval_thirty_dfs_requires_ordinary_and_universal_before_restart(self) -> None:
+         self.write_sol_ultra_capability()
+         with patch(
+-            "deadline_harness.secrets.randbelow", side_effect=[20, 1, 0, 0]
++            "deadline_harness.secrets.randbelow", side_effect=[10, 1, 0, 0]
+         ), patch("deadline_harness.time.time", return_value=12345):
+             for number in range(1, 31):
+                 self.harness.start_task(
+@@ -3048,7 +3002,7 @@
+ 
+     def test_rare_trigger_without_due_time_capability_is_visible_and_nonblocking(self) -> None:
+         with patch(
+-            "deadline_harness.secrets.randbelow", side_effect=[20, 1, 0, 0]
++            "deadline_harness.secrets.randbelow", side_effect=[10, 1, 0, 0]
+         ), patch("deadline_harness.time.time", return_value=23456):
+             for number in range(1, 31):
+                 self.harness.start_task(
+@@ -3091,7 +3045,7 @@
+ 
+     def test_legacy_ordinary_only_rare_cycle_cannot_become_zero_action_due_gate(self) -> None:
+         with patch(
+-            "deadline_harness.secrets.randbelow", side_effect=[20, 1, 0, 0]
++            "deadline_harness.secrets.randbelow", side_effect=[10, 1, 0, 0]
+         ):
+             for number in range(1, 31):
+                 self.harness.start_task(
+--- before/tests/test_phase3_scenarios.py
++++ installed/tests/test_phase3_scenarios.py
+@@ -210,7 +210,7 @@
+         with patch(
+             "deadline_harness.secrets.randbelow", side_effect=[3, 1, 7, 0]
+         ), DeadlineHarness(self.state) as harness:
+-            for number in range(1, 14):
++            for number in range(1, 24):
+                 task_id = f"window-{number:02d}"
+                 harness.start_task(
+                     "project", task_id, f"R-{number:03d}", 100, now=0
+@@ -221,8 +221,8 @@
+ 
+             mutation = terminal["random_mutation"]
+             self.assertTrue(mutation["due"])
+-            self.assertEqual(mutation["completed_terminal_windows"], 13)
+-            self.assertEqual(mutation["interval_windows"], 13)
++            self.assertEqual(mutation["completed_terminal_windows"], 23)
++            self.assertEqual(mutation["interval_windows"], 23)
+             self.assertEqual(
+                 mutation["selected_lane"], "DFS.md"
+             )
+--- before/tests/test_random_cadence.py
++++ installed/tests/test_random_cadence.py
+@@ -0,0 +1,73 @@
++from pathlib import Path
++import json
++import sqlite3
++import sys
++import tempfile
++import unittest
++from unittest.mock import patch
++
++sys.path.insert(0, str(Path(__file__).resolve().parents[1] / 'scripts'))
++from deadline_harness import DeadlineHarness, RANDOM_INTERVAL_MIN, RANDOM_INTERVAL_MAX, CADENCE_VERSION
++
++class RandomCadenceTests(unittest.TestCase):
++    def complete(self, h, count):
++        for n in range(count):
++            h.start_task('fixture', f't-{n}', f'R-{n}', 100, now=0)
++            h.complete_task('fixture', f't-{n}', 'fixture completion', now=1)
++
++    def test_inclusive_draws(self):
++        self.assertEqual((RANDOM_INTERVAL_MIN, RANDOM_INTERVAL_MAX, CADENCE_VERSION), (20, 50, 3))
++        for offset, expected in [(0, 20), (30, 50)]:
++            with patch('deadline_harness.secrets.randbelow', side_effect=[offset, 0]) as draw:
++                self.assertEqual(DeadlineHarness._draw_random_cycle()[0], expected)
++                self.assertEqual(draw.call_args_list[0].args, (31,))
++
++    def test_v2_pending_cycle_keeps_progress_and_is_not_redrawn(self):
++        with tempfile.TemporaryDirectory() as d:
++            p=Path(d)/'state.sqlite3'
++            with patch('deadline_harness.secrets.randbelow', side_effect=[0, 0]), DeadlineHarness(p) as h:
++                self.complete(h, 5)
++                h.connection.execute("UPDATE random_mutation_cycles SET interval_windows=11,due_after_terminal_windows=11,cadence_version=2")
++                h.connection.commit()
++                before=[tuple(r) for r in h.connection.execute('SELECT * FROM tasks ORDER BY task_id')]
++            # Exercise the actual old version constraint, not only an old row in a new schema.
++            with sqlite3.connect(p) as c:
++                sql=c.execute("SELECT sql FROM sqlite_master WHERE name='random_mutation_cycles'").fetchone()[0]
++                sql=sql.replace('CREATE TABLE random_mutation_cycles', 'CREATE TABLE old_shape')
++                sql=sql.replace('cadence_version IN (1, 2, 3)', 'cadence_version IN (1, 2)').replace('DEFAULT 3', 'DEFAULT 2')
++                c.execute('PRAGMA foreign_keys=OFF');c.execute(sql)
++                c.execute('INSERT INTO old_shape SELECT * FROM random_mutation_cycles')
++                c.execute('DROP TABLE random_mutation_cycles');c.execute('ALTER TABLE old_shape RENAME TO random_mutation_cycles')
++            with patch('deadline_harness.secrets.randbelow', side_effect=AssertionError('no redraw')), DeadlineHarness(p) as h:
++                row=h.connection.execute('SELECT * FROM random_mutation_cycles').fetchone()
++                self.assertEqual((row['cycle_number'],row['interval_windows'],row['due_after_terminal_windows'],row['cadence_version']), (1,20,20,3))
++                self.assertEqual(h._terminal_window_count('fixture'),5)
++                self.assertEqual(before,[tuple(r) for r in h.connection.execute('SELECT * FROM tasks ORDER BY task_id')])
++                self.assertEqual(h.connection.execute('PRAGMA foreign_key_check').fetchall(),[])
++            with patch('deadline_harness.secrets.randbelow', side_effect=AssertionError('no redraw')), DeadlineHarness(p) as h:
++                self.assertEqual(h.list_tasks(now=2)['random_mutation']['due_after_terminal_windows'],20)
++
++    def test_due_or_resolved_old_cycle_is_unchanged(self):
++        for due, resolved in [(True,False),(False,True)]:
++            with self.subTest(due=due), tempfile.TemporaryDirectory() as d:
++                p=Path(d)/'state.sqlite3'
++                with patch('deadline_harness.secrets.randbelow',side_effect=[0,0]), DeadlineHarness(p) as h:
++                    self.complete(h,1)
++                    h.connection.execute('UPDATE random_mutation_cycles SET interval_windows=10,due_after_terminal_windows=10,cadence_version=2,due_task_id=?,resolution_evidence=?,ordinary_resolution_evidence=?',('t-0' if due else None,'historical resolution' if resolved else None,'historical resolution' if resolved else None))
++                    h.connection.commit();before=tuple(h.connection.execute('SELECT * FROM random_mutation_cycles').fetchone())
++                with DeadlineHarness(p) as h:
++                    self.assertEqual(tuple(h.connection.execute('SELECT * FROM random_mutation_cycles').fetchone()),before)
++
++    def test_elapsed_old_boundary_without_due_marker_is_not_postponed(self):
++        with tempfile.TemporaryDirectory() as d:
++            p=Path(d)/'state.sqlite3'
++            with patch('deadline_harness.secrets.randbelow',side_effect=[0,0]), DeadlineHarness(p) as h:
++                self.complete(h,10)
++                h.connection.execute('UPDATE random_mutation_cycles SET interval_windows=10,due_after_terminal_windows=10,cadence_version=2,due_task_id=NULL')
++                h.connection.commit()
++            with DeadlineHarness(p) as h:
++                row=h.connection.execute('SELECT interval_windows,due_after_terminal_windows,cadence_version FROM random_mutation_cycles').fetchone()
++                self.assertEqual(tuple(row),(10,10,2))
++                self.assertTrue(h.list_tasks(now=2)['random_mutation']['due'])
++
++if __name__ == '__main__': unittest.main()

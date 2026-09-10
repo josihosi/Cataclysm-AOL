@@ -1,0 +1,29 @@
+{
+  "before": {
+    "required": false,
+    "generation": 49,
+    "expected_run_id": "restart-49-ea8f738949cc4ecb8af7b5754d2fd3ca",
+    "run_id": "restart-49-ea8f738949cc4ecb8af7b5754d2fd3ca",
+    "reason": "random mutation cycle 14 resolved"
+  },
+  "after": {
+    "required": true,
+    "generation": 50,
+    "expected_run_id": null,
+    "run_id": null,
+    "reason": "Owner gate 5e457436075e resolved: random cadence is 20\u201350 completed worker windows, version3, no worker cap. Current cycle15 retains start349/count350 and now has interval20/due369; historical/due cycles and valid work preserved. Evidence .de67/task-logs/review-owner-5e457436075e/report.md. A later agent-supplied live-coordination proposal remains deferred and grants no authority or extra restart."
+  },
+  "request": {
+    "coordinator_restart": {
+      "generation": 50,
+      "pending": true
+    },
+    "created": true
+  },
+  "remaining_gate": {
+    "kind": "incident-review",
+    "identity": "R-029-rolling-ambush-native-066",
+    "selected_lane": null
+  },
+  "coordinator_launched_by_reviewer": false
+}

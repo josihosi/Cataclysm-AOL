@@ -1,0 +1,34 @@
+{
+  "current_cycle": {
+    "lineage_id": "semantic-surface-cockpit",
+    "cycle_number": 15,
+    "interval_windows": 20,
+    "cadence_version": 3,
+    "due_after_terminal_windows": 369,
+    "selected_lane": "test-and-task-guidelines.md",
+    "due_task_id": null,
+    "resolution_evidence": null,
+    "ordinary_resolution_evidence": null,
+    "universal_required": 0,
+    "universal_resolution_evidence": null,
+    "universal_receipt_id": null,
+    "universal_capability_status": null,
+    "universal_capability_reason": null,
+    "universal_capability_checked_at": null,
+    "universal_capability_roster_digest": null,
+    "restart_generation": null
+  },
+  "terminal_count": 350,
+  "elapsed_in_cycle": 1,
+  "remaining_windows": 19,
+  "historical_cycles_unchanged": true,
+  "stable_table_hashes": {
+    "tasks": "031d59e698b4e1dbb3eccea05c231f5a0c9abc39f080b4ddf73495f317e125a0",
+    "claim_acceptances": "9515fbafaf74f3756bff624971d139b3bfa651cac7d50247231c12d1552f7be7",
+    "incidents": "881267fda581b26f4011033a169bc8611bf4c3b5e42e2092bb6d4e53e274f936",
+    "normal_method_receipts": "53ff9a67529327007655db9dc75a373ba9c8e76a4607f145f0cb21e90577d85a"
+  },
+  "integrity": "ok",
+  "foreign_key_violations": [],
+  "reopen_unchanged": true
+}
