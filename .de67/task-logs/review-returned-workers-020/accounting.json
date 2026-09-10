@@ -1,0 +1,22 @@
+{
+  "root_turn_id": "01a08bdd-55f8-7dd2-b81e-0f49baf738ea",
+  "cutoff": "2026-09-10T15:23:55.151Z",
+  "threads": {
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "responses": 63,
+      "input_tokens": 5677437,
+      "cached_input_tokens": 5569536,
+      "output_tokens": 22006,
+      "total_tokens": 5699443
+    },
+    "01a08bde-09a2-7372-a03b-8d55dc1d45be": {
+      "responses": 27,
+      "input_tokens": 2364426,
+      "cached_input_tokens": 2214400,
+      "output_tokens": 8848,
+      "total_tokens": 2373274
+    }
+  },
+  "total_tokens": 8072717,
+  "limits": "Root and one Luna helper, including retries, deduplicated response_id; excludes remaining closeout after cutoff. No matched control or measured savings."
+}

@@ -1,0 +1,36 @@
+{
+  "receipt": "96908f9efd14a20aa918d06c32f70ddd31e2374d0b64f1a64a0219e2eea676e6",
+  "micro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-029",
+    "deadline_generation": 20,
+    "component": "micro",
+    "disposition": "applied",
+    "receipt_id": null,
+    "pending_components": [
+      "macro"
+    ],
+    "coordinator_restart": null
+  },
+  "macro": {
+    "recorded": true,
+    "lineage_id": "semantic-surface-cockpit",
+    "claim_id": "R-029",
+    "deadline_generation": 20,
+    "component": "macro",
+    "disposition": "applied",
+    "receipt_id": "96908f9efd14a20aa918d06c32f70ddd31e2374d0b64f1a64a0219e2eea676e6",
+    "pending_components": [],
+    "coordinator_restart": {
+      "generation": 52,
+      "pending": true,
+      "requested_at": 1789053949.0696151,
+      "reason": "deadline mutation resolved for R-029; successor must set a fresh clock without inheritance",
+      "claimed_at": null,
+      "expected_run_id": null,
+      "acknowledged_at": null,
+      "run_id": null
+    }
+  }
+}
