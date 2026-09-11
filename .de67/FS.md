@@ -1,1299 +1,445 @@
-# Semantic-Surface Cockpit and Fresh CAOL Feature Package FS — Functional Specification
+# Zombies and light — Functional Specification
 
 Status: Refrozen
 WEC: `.de67/WEC.md`
-Source baseline: `Cataclysm-AOL-hostile-ecology-dev | dev | 1bfcf283417d63ae407bc66fc9950a90a68dd5b5 | tree 1bbb62eebc15bc887c133b26055f8b5f8720c5ec | inspected 2026-09-06 | no tracked product changes; unrelated untracked run.witness.json excluded`
+Source baseline: `Cataclysm-AOL-hostile-ecology-dev | dev | 77ef2445bf30a274dd13cef60847eb08d7cd9005 | inspected 2026-09-11 on Josefs-Mac-mini.local`
 
-## Document authority
+## Document authority and scope
 
-Owner refinement 2026-09-10: activation, sound and expanded E4B command testing are authorized
-against inspected `dev` source at `1bc4925cf2da52883f4230254876b696996e4ad0`; red sections below are required work,
-not implementation or gameplay acceptance. Earlier source-bound receipts retain their original identity.
+This is the single canonical functional specification. `.de67/DFS.md` is its SHA-256-bound compatibility pointer, not a second editable specification. `DE67:DFS-SLICE` selects coherent requirement sections. The WEC and owner decide intended behavior; source inspection decides what the code currently does. Proposed symbols below do not yet exist. Their names and decomposition are replaceable implementation tactics; their stated behavior, ownership and proof are the contract.
 
-One canonical `FS.md` describes code behavior: data, functions, ownership, interactions and errors. `DFS.md` is its hash-bound compatibility pointer; `DE67:DFS-SLICE` remains the stable selector syntax. `work-ledger.md` owns assignments and delivery state, projected from durable acceptance. Historical proof remains at its existing artifact, receipt or Git identity.
+The completed predecessor is preserved byte-for-byte at `.de67/history/20260911-completed-semantic-surface-cockpit/{FS.md,DFS.md,WEC.md}`, with hashes in `archive.json`. It remains historical evidence, including its original acceptance scope. Its stalker/rider exclusions and its decision not to redesign player light do not apply to this WEC. Existing acceptance and runtime evidence earn no credit for the new `R-ZL-*` obligations. Existing nonconflicting product behavior remains binding. In particular, this work must not turn creature investigation into humanoid camp discovery, dossiers, bounty, reporting, shakedowns or raids.
 
-This is the mechanistic product contract derived from the owner-authorized WEC and current source.
-The WEC decides intended behavior and authorization; source decides what the implementation does.
-The WEC's 2026-09-06 refinement requires fresh behavioral coverage of every in-scope CAOL family,
-including historically accepted features. A red proof obligation does not by itself authorize a
-CAOL gameplay repair. The WEC preserves the owner's fault responsibilities and promotion boundary.
+This document specifies gameplay changes and future proof. It does not authorize their execution in phase 2. No gameplay implementation, product-test edit or new playtest is part of this freeze.
 
-The previous DFS is preserved exactly in Git at `1bfcf283417d63ae407bc66fc9950a90a68dd5b5:.de67/DFS.md`.
-Its stable claim identities, acceptance decisions, scenarios, reports and evidence remain history.
-The accepted statements below retain their historical scope; they do not assert fresh campaign
-success. Dated continuation instructions in that previous version are not current product facts.
-This refreeze replaces its stale code map and separates fresh proof obligations from old acceptance.
+## Functional contract and project language
 
+Use **writhing stalker**, **zombie rider**, **rider band**, **light emission**, **escaping light**, **detection**, **recognition**, **last-observed location**, **local**, **abstract**, and **OMT**. Keep existing C++ production code, JSON content and Catch2 tests. Player-facing descriptions are translated English prose consistent with surrounding monster definitions. A rider and its mount remain one composite monster.
 
-<!-- DE67:DFS-SLICE:BEGIN id=DE67-MAINT-CADENCE-S001 claim=DE67-MAINT-CADENCE -->
-
-### Coordinator review cadence maintenance
-
-- DE67-MAINT-CADENCE — Schedule periodic evidence-led workflow review after an inclusive
-  20–50 completed worker windows under the existing once-per-terminal-attempt counting semantics.
-  This owner refinement (`5e457436075e`, 2026-09-10) supersedes the temporary 10–20 range and
-  introduces no worker cap. New cycles persist cadence version 3 and draw uniformly across both
-  inclusive bounds. The next review chooses a useful improvement from current evidence; legacy
-  random-lane metadata does not prescribe the inquiry.
-- Preserve completed task history and the cumulative count. An old not-yet-due cycle keeps its
-  cumulative start and clamps its saved interval into 20–50 once, without a new random draw.
-  Already-due cycles (including an elapsed boundary without its due marker) and resolved cycles
-  remain unchanged. Reopening preserves the resulting schedule. Storage continues to accept old
-  interval/version values so migration does not rewrite historical proof or cancel a due review.
-- Verify inclusive draw bounds, once-per-terminal-attempt counting, pending-cycle progress,
-  due/resolved history, foreign-key integrity, and persistence across a fresh reopen. Leave active
-  workers, product acceptance and the existing rare-review capability rules unchanged.
-
-<!-- DE67:DFS-SLICE:END id=DE67-MAINT-CADENCE-S001 claim=DE67-MAINT-CADENCE -->
-
-## Functional contract
-
-CDDA is the semantic authority. The current input owner publishes the semantic surface, surface
-stack, frame ID, stable IDs and valid actions. The cockpit replaces its active presentation with
-that frame and receives the receipt from the exact consuming or rejecting owner.
+- A weak, relatively common early-game stalker notices a situation, shadows or searches, commits when prey becomes vulnerable, reaches contact, attacks, and genuinely breaks contact when driven away. Daylight is caution, never an absolute veto. Perceived zombie pressure can overcome it; darkness also supplies a solitary opportunity.
+- A powerful late-game rider investigates credible evidence, acquires prey, pursues through bow cooldown and beyond bow range, shoots and closes, and makes physical contact before running out of arrows. Riders form durable bands by meeting, not by selecting the same destination.
+- A working light can illuminate its surroundings and disclose a glow. Carried, worn, weapon-mounted, ground, field, terrain, furniture and vehicle sources share physical emission and occlusion rules. Height helps when a ray clears an obstruction; it cannot expose a sealed upstairs room through walls or floors.
+- Both predators continue as the same actors outside the reality bubble. No system receives the unseen player's current coordinates as a substitute for perception. Unloading is neither death nor permission to move an actor twice.
 
 ```text
-native input owner -> current descriptor -> exact frame-bound semantic request
--> native binding -> receipt and actual successor owner -> observed gameplay consequence
+powered emitter -> source-specific escape -> observer-specific detection
+-> reaction to an uncertain light location -> physical investigation
+-> direct prey observation, if it happens -> pursuit/contact
 ```
 
-A child hides parent actions. An unsupported interface publishes its owner and diagnostics with no
-executable actions and stops automated input. There is no raw-key, OCR, guessed Escape, parent-action
-or screenshot-guided fallback. The same protocol supports graphical and curses rendering. Shared
-native menu instrumentation and focused custom adapters provide broad coverage without a menu quota.
-The wait/overmap loops are proving routes, not a delivery ceiling.
-
-Fresh players receive understandable situations and gameplay questions, choose useful actions,
-investigate consequences and retain both mechanical and gameplay-feel evidence. The package covers
-living NPC intent/context and follow/camp routing; camp establishment and missions; Locker, Patrol,
-Food and Storage; bandit signal/scout/demand/payment/refusal/return; cannibal discovery/day hold/night
-departure/approach through dawn; signal controls and world boundaries; persistence; flesh raptors;
-and integrated performance. Ordinary CDDA actions are dependencies where these routes need them.
-Writhing stalkers and zombie riders remain excluded. The shared player-light implementation is not
-redesigned by the hostile-ecology refinement; its relevant signal behavior still receives fresh tests.
-
-Bandits and cannibals discover player-created physical signals through staffed observation, camp
-memory, physical scouting, scout report and travel. Policy may differ after the report. Cannibals
-wait at rally for night, then remain committed through dawn. Normal bandit contact presents the
-shakedown before aggression. Completed payment protects the exact group's departure; refusal,
-incomplete payment or player attack releases combat. The forced Pay or Fight interface and the
-favorable rolling-travel ambush remain intentional. No automatic theft or contact-time night gate
-is required.
-
-Each test has an independent result. Accepted input, valid witness structure, launch, setup, or an
-old green report cannot substitute for the new gameplay result. A mixed run may support one claim,
-contradict another and leave another unobserved.
-
-## Project language and terminology
-
-Use **semantic surface**, **input owner**, **surface stack**, **frame ID**, **stable ID**, **valid
-actions**, **receipt**, **native binding**, **physical signal**, **staffed observer**, **camp memory**,
-**scout report**, **night raid**, **shakedown**, **payment**, **refusal**, and **rolling-travel ambush**
-as defined by the WEC. Namespaced action examples are not exhaustive whitelists. Screen position,
-menu letter, hotkey, label, process address and an obsolete frame are not actionable stable IDs.
-An item UID identifies the live selectable item; after native transfer or reload, rediscover the
-current UID and use type/count/location/actor evidence for cross-boundary continuity.
+The first useful integrated proof is an exposed elevated or carried light detected by a legitimate abstract observer, followed by physical approach. A diagnostic decision string does not prove this chain.
 
 ## Current code map
 
-All source references below are at the inspected HEAD, rather than the old dirty-tree manifests.
-Tests named here supply mechanism evidence unless explicitly described as live gameplay evidence.
+The anchors are symbols at the baseline above; line numbers are navigation aids, not immutable identifiers.
 
-| Concern | Production files and symbols | Current behavior and evidence boundary |
+| Concern | Production anchors | Inspected behavior and causal gap |
 |---|---|---|
-| Surface truth and transport | `src/semantic_surface.h/.cpp :: semantic_surface_manager`, `semantic_surface_scope`, `submit_request`, `consume_top_request`, `republish_top`; `src/input_context.cpp :: handle_input` | Run-local stack, request queue and completed-request cache; top game-thread consumer owns native action. Changed publication/push/pop creates a frame; deferred receipts bind actual successors. Renderer backends wake only. |
-| World and wait | `src/handle_action.cpp :: game::handle_action`, `wait` (file-local), `openclaw_harness_semantic_surface_manager`, `openclaw_harness_world_payload` | World scope is in real input handling (around 4410), not draw-time ownership. Duration owner at 2385 suppresses duplicate uilist ownership and maps `wait.1m`/`wait.5m` to native durations. Qualification records three 5-minute waits; this verifies the WEC's narrow precedent, not ecology. |
-| Shared menu/prompt family | `src/uilist.cpp :: uilist::query`, `src/popup.cpp :: query_popup`, `src/string_input_popup.cpp` | Entry-owned IDs, native enabled state and prompt validation are implemented. Caller-owned scopes suppress the generic scope when a custom owner is authoritative. |
-| Focused surfaces | `src/overmap_ui.cpp :: overmap_ui::display`; `src/inventory_ui.cpp :: inventory_selector` and derived selectors; `src/npctalk.cpp :: dialogue::opt`; `src/action.cpp :: choose_direction`; `src/ranged.cpp :: target_ui::run`; `src/editmap.cpp`; `src/debug_menu.cpp` | Existing focused adapters publish native state, stable targets and exact requests. Old descriptions saying these adapters do not exist are superseded. Accepted renderer witnesses are retained below; qualification is narrower than every reachable owner. |
-| New inspection and terminal owners | `src/npc_inspection.cpp :: show_npc_inspection`, `resolve_npc_inspection_actor`, `npc_inspection_item_payload`; `src/end_screen.cpp`; `src/game.cpp :: game::is_game_over`; `src/do_turn.cpp :: turn_handler::cleanup_at_end` | Actor/item inspection and native terminal choices exist. The qualified NO/NO death route reaches truthful actionless `MESSAGE_LOG`. Full message-viewer operation remains unsupported. |
-| Input inventory | `tools/openclaw_harness/input_owner_coverage_test.py`; `src/input_context.cpp :: unsupported_semantic_input_owner` | The file-level inventory is not per-loop completeness proof. Current test fails because `src/npc_inspection.cpp` is absent from its classified sets. The inspection owner itself has native scopes and `tests/npc_inspection_test.cpp`. |
-| Cockpit and player client | `tools/openclaw_harness/cockpit.py :: CockpitRunChannel`, `CockpitService`; `startup_harness.py :: execute_semantic_act`, `refresh_semantic_step_trace`; `semantic_state.py`; `play_cli.py :: PlayerClient` | Descriptor-only dispatch, retained exact receipts, successor-timeout distinction, pending request collection, cooperative cancel, reentry generation and explicit finish. Legacy non-descriptor dispatch returns `native_surface_descriptor_required`. Failures preserve the game. |
-| Evidence | `playtest_witness.py :: validate_witness_statement`, `validate_witness_bundle`, `review_witness`; `scenario_registry_store.py :: record_playtest_witness`, `review_playtest_witness`; `cockpit_file_bridge.py` | Independent claim witnesses, immutable full artifacts, exact selectors and separate causal review exist. Mechanical validity does not settle gameplay or bug responsibility. |
-| Living NPC policy | `src/llm_intent.cpp :: build_snapshot_json`, `enqueue_*`; `src/npcmove.cpp :: npc::execute_llm_intent_action`; `src/npc.cpp :: llm_intent_state_map`; `src/npctalk.cpp`, `src/npctalk_funcs.cpp` | NPC request context and native action execution are separate from cockpit input ownership. Intent-map state is process-local; NPC assignment/mission/rules are saved. Actual utterance/recipient/reply must be correlated, not inferred from prewarm. |
-| Camp | `src/faction_camp.cpp :: talk_function::start_camp`, `talk_function::basecamp_mission`, `basecamp::start_mission`, `camp_food_supply`, `locker_policy_ui`; `src/basecamp.cpp :: form_storage_zones`, `process_camp_locker_downtime`, `service_camp_locker`, `refresh_patrol_shift_cache`, `get_current_patrol_runtime` | Native establishment, mission/food accounting, zone-derived storage, queued Locker service and Patrol runtime exist. A prepared camp or opening the selector proves none of their natural completion. |
-| Signal and response | `src/do_turn.cpp :: overmap_npc_move`, `live_bandit_staffed_camp_signal_reads`; `src/bandit_live_world.cpp :: record_staffed_camp_signal_observations`, `advance_structural_bounty_maintenance` | Five-minute signal reads and ordinary structural maintenance own observation and response. The cannibal-only dispatcher remains an unused definition, with no production call. Player-opportunity adoption is a separate discovery path; structural sound recording belongs to active-scout investigation. Proof distinguishes both from idle staffed observation. |
-| Hostile contact | `src/do_turn.cpp :: advance_live_bandit_hostile_approaches`, `live_bandit_handle_hostile_shakedown_contact`, `live_bandit_commit_paid_return`, `live_bandit_choose_fight`; `src/bandit_live_world.cpp :: hostile_operation_player_relationship_for`, `choose_local_gate_posture`; `src/npc.cpp :: guaranteed_hostile`, `attitude_to` | Night gates rally departure only. Exact operation members receive parley/paid-departure overrides before generic hostility. This implementation supersedes the old claim that protection is absent; full fresh natural turn-order proof is still open. |
-| Persistence | `src/savegame_json.cpp :: npc::serialize/deserialize`, `monster::serialize/deserialize`; `src/bandit_live_world.cpp :: site_record::serialize/deserialize`, `hostile_operation_state::serialize/deserialize`; `src/overmapbuffer.cpp`; `src/clzones.cpp` | Durable actors/rules/camp/zone/ecology state has production save paths. Frame identities, LLM queues and camp caches do not become durable truth. Reload must use a new process and the saved world without fixture reinstall. |
-| Flesh raptors | `src/monmove.cpp :: is_flesh_raptor`, `apply_flesh_raptor_plan`; `src/flesh_raptor_ai.cpp :: choose_orbit_destination`; `tests/flesh_raptor_test.cpp` | Native monster planning selects orbit/swoop/fallback with visibility, occupancy, cadence and held-destination state. Pure scorer and staged monster tests are not fresh encounter proof. |
-| Performance | `tools/hostile_camp_benchmark.py`; `tools/openclaw_harness/process_performance.py :: ProcessPerformance`, `sample_owned_session`, `compare_records`; native renderer and hostile-camp timing | Exact process CPU/RSS and native-action timings are available. Finite qualification samples and parser-allocation experiments do not qualify integrated gameplay performance. |
-
-## Mechanistic requirements
-
-The following semantic contracts retain their strength. Their acceptance summaries are historical;
-current-source coverage gaps are explicit in R-SURFACE-011 and fresh gameplay obligations below.
-
-### 1. Semantic surface stack and frame identity
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-001-S001 claim=R-SURFACE-001 -->
-
-Mechanism:
-
-- Files and symbols: `src/semantic_surface.h` and `src/semantic_surface.cpp` define
-  `semantic_surface_manager`, `semantic_surface_scope`, `semantic_surface_descriptor`,
-  `semantic_action_request`, and `semantic_action_receipt`; the manager connects at the native input
-  loops named by this FS.
-- Entry point: a native input owner constructs a `semantic_surface_scope` before its first frame can
-  accept input and destroys it only after the owner yields or returns.
-- Inputs: `kind`, owner-provided breadcrumb label, structured surface state, stable entries,
-  and owner-provided native bindings.
-- Preconditions: the harness is enabled for one run; the scope has one owning native loop; a parent
-  scope may exist but cannot be executable while the child is topmost.
-- Transition: pushing a scope creates a new `surface_id`, adds it to the surface stack, and publishes
-  a new frame ID. Any state change that changes information or valid actions publishes a new frame
-  ID. Popping a scope invalidates every child frame and republishes the parent with a fresh frame ID.
-- Postconditions: exactly the top scope can advertise or consume an action. The descriptor contains
-  schema version, run ID, surface ID, frame ID, kind, complete breadcrumbs, payload, and valid
-  actions.
-- Failure behavior: an input loop without a supported explicit scope registers an `unsupported`
-  scope before automation can act. Its valid-actions collection is empty. A stale, wrong-surface,
-  missing or malformed request changes no game state. An exact duplicate request returns its
-  recorded receipt without applying the action again; pending duplicates are not queued twice.
-- Persistence/compatibility: surface IDs and frame IDs are runtime identities and are not save-game
-  state. Each run starts a new identity domain. The mechanism is independent of Tiles, Android, and
-  curses rendering.
-
-Historical acceptance (full attempt history remains in the prior Git version):
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-001-S001 claim=R-SURFACE-001 -->
-
-### 2. Native semantic request and receipt path
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-002-S001 claim=R-SURFACE-002 -->
-
-Mechanism:
-
-- Files and symbols: `src/semantic_surface.h` and `src/semantic_surface.cpp` integrate request
-  delivery with `src/input_context.cpp :: input_context::handle_input` and
-  `src/input.h :: input_manager::get_input_event`. The renderer backends provide wake-only support.
-  `tools/openclaw_harness/startup_harness.py :: execute_semantic_act` submits descriptor-bound JSON
-  requests and native wakes; `semantic_broker.py :: SemanticStepChannel` and `CockpitRunChannel`
-  validate transactions. The executable descriptor path no longer uses physical dispatch.
-- Entry point: the cockpit submits `semantic_action_request { run_id, surface_id, frame_id,
-  request_id, action_id, stable_id?, parameters? }` to the live CDDA process.
-- Inputs: only fields advertised by the current descriptor are accepted. Private key sequences are
-  not part of the descriptor or request.
-- Preconditions: request run, surface, frame, action namespace, target stable ID, and parameter
-  schema match the current top scope. The request ID has not been consumed.
-- Transition: the top native owner resolves the semantic action through its registered native
-  binding and selects/invokes the same native behavior used by local input. It records the exact
-  consuming frame and emits an accepted or rejected receipt. Deferred accepted receipts are completed
-  when the actual successor publishes; synchronous modal actions may receipt before opening a child.
-- Concurrency and ordering: `semantic_surface_manager::submit_request` checks nonempty request
-  identity, suppresses pending duplicates and replays completed receipts; the transport parser builds
-  requests. Only the game-thread top scope validates or rejects the semantic
-  action. Request arrival makes the queue observable to a blocking
-  `input_manager::get_input_event` implementation but does not manufacture an `input_event`, action
-  descriptor, key, mouse event, or timeout. The game thread asks the current top scope to consume the
-  queued request before it processes another physical event. CDDA serializes consumption and native
-  state mutation. `republish_top` publishes a real successor before completing a deferred receipt
-  with that frame ID. Consumers bind the receipt and successor by identity, not assumed log order.
-  If the successor is missing, the adapter preserves any accepted receipt, reports the missing
-  successor separately and revokes stale action authority.
-- Postconditions: the receipt contains request ID, run ID, requested surface ID and frame ID,
-  consuming or rejecting surface ID and frame ID, action ID, accepted state, rejection reason when
-  present, and resulting frame ID when a fresh frame exists. For an accepted action, requested and
-  consuming identities are equal. For a stale or wrong-surface rejection, the receipt preserves the
-  requested identities and identifies the current frame that rejected the request.
-- Failure behavior: transport loss does not synthesize acceptance. Duplicate request IDs return the
-  recorded result without applying the action twice. No path translates the request to a keyboard
-  event, Escape, menu letter, mouse coordinate, or screenshot-guided control.
-- Persistence/compatibility: requests and receipts are run-scoped runtime records. Their protocol is
-  common to graphical and terminal rendering. `llm_intent` remains a separate NPC policy system and
-  cannot intercept or fabricate cockpit receipts.
-
-Historical acceptance (full attempt history remains in the prior Git version):
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-002-S001 claim=R-SURFACE-002 -->
-
-### 3. Shared generic menu and prompt instrumentation
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-003-S001 claim=R-SURFACE-003 -->
-
-Mechanism:
-
-- Files and symbols: `src/uilist.h` / `src/uilist.cpp :: uilist_entry`, `uilist::query`,
-  `query_once`; `src/popup.h` / `src/popup.cpp :: query_popup`;
-  `src/string_input_popup.h` / `src/string_input_popup.cpp` use the common semantic surface manager.
-- Entry point: each ordinary menu or prompt constructs its semantic scope from the same native data
-  it renders and checks before its input loop.
-- Parameters: each executable entry stores an opaque `semantic_stable_id` assigned when that entry object is
-  created. It remains unchanged across filtering, sorting, scrolling, selection, and redraw. A
-  caller may supply a domain ID. Otherwise the entry owns a scope-local opaque token; it is never
-  derived from vector index, display order, hotkey, or coordinates.
-- Inputs: menu title and text, entry label and description, enabled state, current selection, native
-  logical action, prompt constraints, and text value come from the native control.
-- Preconditions: only actions that the native control can execute in its current state are
-  advertised. A callback-defined operation without an explicit semantic binding is visible but not
-  executable.
-- Transition: `menu.select`, `menu.choose`, `menu.filter`, `menu.clear_filter`, `menu.cancel`, and
-  prompt actions change native control state through the control's existing decision path. Direct
-  selection by stable ID replaces row-by-row screen navigation when both reach the same native
-  selection state. The adapter exposes a distinct semantic action when the native owner assigns
-  behavior to selection movement itself. `menu.cancel` exists only when that owner supports
-  cancellation. A text prompt accepts structured text through `prompt.submit`, subject to its native
-  constraints.
-- Postconditions: the next frame reflects selection, filtering, validation, or parent restoration.
-  The exact child frame receipts the action.
-- Failure behavior: disabled, missing, duplicate, stale, or constraint-invalid stable IDs are
-  rejected. No universal meaning is assigned to Escape.
-- Persistence/compatibility: generic IDs are stable for the life of the native surface. Domain IDs
-  may be more durable. The same structured descriptor drives Tiles and curses presentations.
-
-Historical acceptance (full attempt history remains in the prior Git version):
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-003-S001 claim=R-SURFACE-003 -->
-
-### 4. World semantic surface
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-004-S001 claim=R-SURFACE-004 -->
-
-Mechanism:
-
-- Files and symbols: the World scope surrounds actual input handling in
-  `src/handle_action.cpp :: game::handle_action`; visibility, map, entity and zone builders populate
-  `openclaw_harness_world_payload`. `src/messages.h` / `src/messages.cpp` owns structured retained messages.
-- Entry point: world input becomes top owner after load or after a child scope returns.
-- Inputs: avatar state, local map, visible creatures, terrain, zones, the full retained player
-  message history from `Messages::recent_messages( Messages::size() )`, current world mode, and
-  currently valid native world actions.
-- Preconditions: world is the exact top owner; no activity prompt, inventory, dialogue, targeting,
-  direction, overmap, or other child owns input.
-- Transition: namespaced world actions invoke the matching logical game action. A native action that
-  opens a child completes with a receipt from the world frame and a fresh child frame.
-- Postconditions: the cockpit receives the local map and current world facts only while world owns
-  input. Returning from a child produces a fresh world frame.
-- Failure behavior: if world state cannot be built consistently, the owner publishes no executable
-  actions. The existing `MESSAGE_LIMIT` option bounds the native retained message history. Cockpit
-  code does not add a message count or change the semantic payload based on renderer viewport size.
-- Persistence/compatibility: world observation does not mutate or persist state. It is renderer
-  independent.
-
-Historical acceptance (full attempt history remains in the prior Git version):
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-004-S001 claim=R-SURFACE-004 -->
-
-### 5. Overmap semantic surface
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-005-S001 claim=R-SURFACE-005 -->
-
-Mechanism:
-
-- Files and symbols: `src/overmap_ui.cpp :: overmap_ui::display` and its
-  `overmap_draw_data_t` state with a focused semantic scope.
-- Entry point: `OVERMAP` becomes active before its first render/input iteration.
-- Inputs: only discovered terrain visible under native rules, player position, cursor position,
-  selected location and detail, route preview when present, level/zoom/mode state, and currently
-  valid overmap actions.
-- Preconditions: the overmap loop is top owner. Debug-only actions require the same native debug
-  authorization as local input.
-- Transition: `overmap.move_cursor`, `overmap.select`, `overmap.choose_destination`,
-  `overmap.add_note`, `overmap.change_level`, `overmap.close`, and other supported namespaced
-  actions invoke the corresponding native overmap branch. Coordinate or entry targets carry stable
-  IDs tied to the current overmap surface state.
-- Postconditions: cursor, selection, preview, or parent restoration is visible in a fresh frame.
-- Failure behavior: undiscovered data is not exposed. Invalid coordinates, stale selections, or
-  unavailable actions are rejected without moving the native cursor.
-- Persistence/compatibility: normal overmap note/destination persistence remains owned by existing
-  game code. The semantic layer adds no second store.
-
-Historical acceptance (full attempt history remains in the prior Git version):
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-005-S001 claim=R-SURFACE-005 -->
-
-### 6. Inventory semantic surfaces
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-006-S001 claim=R-SURFACE-006 -->
-
-Mechanism:
-
-- Files and symbols: `src/inventory_ui.h/.cpp :: inventory_selector` and its derived
-  selectors; use `src/item.h :: item_uid` and `src/item_location.cpp :: find_item_by_uid`.
-- Entry point: each selector becomes a semantic scope before selection begins and supplies its
-  purpose in the breadcrumb, such as `world › inventory` or `world › inventory › use lighter`.
-- Inputs: entries, item details already available to the selector, enabled state, highlighted item,
-  selected quantity/count, selector mode, and the exact inventory actions that mode accepts.
-- Preconditions: item-backed entries resolve to the same live item UID and location under the
-  selector's native validity rules. Non-item entries have explicit scope-local stable IDs.
-- Transition: the adapter maps namespaced semantic actions to the current selector's existing
-  `process_input`, `on_input`, or derived `execute` branch. The action set includes selection,
-  filter/reset, examine/details, contents, quantity, the selector's mode-specific commit operation,
-  and cancellation when the native selector permits each operation. Derived selectors also expose
-  their permitted operations, including wield, wear, pickup, drop, insert, or trade behavior when
-  that selector registers and handles the corresponding native action. The stable target ID, never
-  an invlet or row, selects the entry.
-- Postconditions: selection/detail state or the resulting child/parent surface appears in a fresh
-  frame. The exact selector frame receipts the action.
-- Failure behavior: moved, destroyed, merged, inaccessible, disabled, stale, or wrong-selector items
-  are rejected and are not retargeted by name, invlet, display order, or coordinate.
-- Persistence/compatibility: action identity stays owned by the live `item_uid`. Native transfer or reload may change
-  UIDs; callers must rediscover targets. Persistence proof compares type/count/location and actor
-  identity, rather than requiring unchanged UIDs. The adapter creates no second item identity.
-
-Historical acceptance (full attempt history remains in the prior Git version):
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-006-S001 claim=R-SURFACE-006 -->
-
-### 7. Dialogue semantic surface
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-007-S001 claim=R-SURFACE-007 -->
-
-Mechanism:
-
-- Files and symbols: `src/dialogue.h :: talk_response` stores a runtime `semantic_stable_id` assigned
-  when the response is created; `src/npctalk.cpp :: dialogue::opt` and response generation publish
-  and resolve that response-owned identity.
-- Entry point: the dialogue response loop becomes top semantic owner after responses are generated.
-- Inputs: speaker stable identity, speaker display name, recent native dialogue history, current
-  prompt/challenge, response text, enabled/condition state, trial information already visible to the
-  player, and valid dialogue actions.
-- Preconditions: the response stable ID belongs to the current dialogue frame and its condition is
-  still true at consumption.
-- Transition: `dialogue.choose` resolves the stable ID to the same `talk_response`, rechecks native
-  conditions, then invokes the existing trial/effect/topic transition. `dialogue.cancel` exists only
-  when the native dialogue owner permits it.
-- Postconditions: the receipt names the consuming dialogue frame; the next topic, nested prompt, or
-  parent surface has a fresh frame.
-- Failure behavior: regenerated, unavailable, disabled, stale, or wrong-speaker responses are
-  rejected. Hotkeys and response indexes cannot identify a response.
-- Persistence/compatibility: response IDs are stable for the response object's life and need not
-  enter save data. NPC identity and dialogue effects remain owned by existing game state.
-
-Historical acceptance (full attempt history remains in the prior Git version):
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-007-S001 claim=R-SURFACE-007 -->
-
-### 8. Direction and targeting semantic surfaces
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-008-S001 claim=R-SURFACE-008 -->
-
-Mechanism:
-
-- Files and symbols: `src/action.cpp :: choose_direction` and
-  `src/ranged.cpp :: target_ui::run`, `init_window_and_input` with focused scopes.
-- Entry point: each custom loop pushes a child scope before accepting its first input.
-- Inputs: direction choices, allowed vertical choices, origin/cursor/destination coordinates,
-  targeting mode, range, trajectory facts visible to the player, candidate entities, and currently
-  valid native actions.
-- Preconditions: the requested direction, coordinate, or candidate stable ID is advertised by the
-  exact current frame. Character targets may bind their existing character ID. Monster and other
-  candidates receive an opaque target-scope token that resolves back to the same tracked `Creature`
-  while it remains a valid native candidate; the token never exposes or serializes the current
-  process address. Coordinate targets use a frame-scoped coordinate token.
-- Transition: `direction.choose`, `direction.cancel`, `target.move_cursor`, `target.choose`,
-  `target.select_candidate`, and `target.cancel` invoke the existing loop branches.
-- Postconditions: a changed cursor/candidate or the nested/parent surface is published in a fresh
-  frame.
-- Failure behavior: out-of-range, hidden, moved, stale, or invalid candidates are rejected without
-  retargeting. The direction loop's `DEFAULTMODE` category never grants world ownership or actions.
-- Persistence/compatibility: these are runtime surfaces. Existing action consequences remain owned
-  by their callers.
-
-Historical acceptance (full attempt history remains in the prior Git version):
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-008-S001 claim=R-SURFACE-008 -->
-
-### 9. Broad input-owner coverage and hard stop
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-009-S001 claim=R-SURFACE-009 -->
-
-Mechanism:
-
-- Files and symbols: use shared `uilist`, `query_popup`, and string-input instrumentation for the
-  ordinary family; add focused adapters to custom owners in `src/debug_menu.cpp`,
-  `src/editmap.cpp`, overmap editors, and every other discovered input loop whose absence would
-  leave the caller blind; maintain an executable input-owner coverage test that enumerates native
-  `handle_input`, `get_input_event`, and custom loop entry points against supported or explicitly
-  unsupported scope registration.
-- Entry point: any input owner reached while cockpit automation is active must be classified before
-  it can consume an automated action.
-- Inputs: the actual source-level owner inventory and live owner transitions, not screenshots or an
-  arbitrary menu list.
-- Preconditions: ordinary controls use the shared adapter; custom interfaces use focused adapters
-  only when their state/action model cannot be represented by the ordinary family. Every discovered
-  input owner whose absence would leave the agent blind is required coverage, not an optional
-  unsupported classification.
-- Transition: a required discovered owner publishes its supported semantic surface. An input owner
-  that has not yet reached required coverage publishes `unsupported` with breadcrumbs, diagnostics
-  identifying the owner, and no valid actions while its adapter remains incomplete.
-- Postconditions: every required discovered owner has sufficient semantic actions to navigate,
-  complete, or yield from its reachable states. Any newly discovered or still incomplete owner stops
-  automated play instead of inheriting executable behavior.
-- Failure behavior: absence of an adapter never falls through to parent actions, raw input, OCR, or
-  guessed cancellation.
-- Persistence/compatibility: coverage is renderer neutral and includes useful debug and map-editor
-  routes under their existing native authorization.
-
-Historical acceptance (full attempt history remains in the prior Git version):
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-009-S001 claim=R-SURFACE-009 -->
-
-### 10. Cockpit active-surface projection and end-to-end proof
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-010-S001 claim=R-SURFACE-010 -->
-
-Mechanism:
-
-- Files and symbols: `tools/openclaw_harness/semantic_state.py`,
-  `semantic_broker.py`, `cockpit.py :: CockpitRunChannel/CockpitService`, the terminal cockpit
-  projection, and their focused tests.
-- Entry point: `game.observe` reads one native top-surface descriptor. `game.act` accepts only the
-  exact descriptor's action schema.
-- Inputs: semantic surface descriptor and receipt from CDDA. The cockpit does not merge cached
-  parent facts or actions into a child.
-- Preconditions: descriptor schema/run/frame identity is valid and newer than the last consumed
-  transition. A public action is one of the current valid actions.
-- Transition: observing replaces the active view with a surface-specific World, Overmap,
-  Inventory, Dialogue, Menu/Prompt, Direction, Target, or Unsupported projection. Breadcrumbs render
-  the complete surface stack. Acting uses the native semantic request route.
-- Postconditions: graphical and terminal cockpit projections show the same structured facts,
-  actions, frame identity, breadcrumbs, and receipt result. Unsupported surfaces show no executable
-  action and stop the automated route.
-- Failure behavior: malformed, missing, stale, or out-of-order native frames and receipts fail
-  closed. Legacy OCR/log/key routes may remain diagnostic but cannot supply executable cockpit
-  actions or acceptance evidence.
-- Persistence/compatibility: public schema changes are versioned. Existing `llm_intent` behavior is
-  regression-tested unchanged. The semantic protocol remains presentation independent.
-
-Historical acceptance (full attempt history remains in the prior Git version):
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-010-S001 claim=R-SURFACE-010 -->
-
-### 11. Current owner coverage after qualification
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-SURFACE-011-S001 claim=R-SURFACE-011 -->
-
-`input_owner_coverage_test.py` scans direct native input call sites by source file. On this baseline,
-`test_every_direct_native_input_source_is_classified` fails for `src/npc_inspection.cpp`; the other
-73 tests in the combined coverage, semantic-state and semantic-step invocation pass. The inspector
-already has actor-bound native scopes (`show_npc_inspection` and `show_item`) and focused native tests.
-This is a source-inventory omission, not evidence that NPC inspection is absent or that NPC gameplay
-is wrong. Classification must follow the actual loops, not merely add a filename to silence failure.
-
-The qualified post-death route also names `MESSAGE_LOG` as unsupported. The input-context boundary
-must keep unknown owners actionless while focused support is incomplete. Classification alone does
-not satisfy the earlier broad coverage contract: discovered input owners that leave the agent blind
-need native state and complete mode-valid actions, including useful custom/debug/editor routes.
-The current inventory contains mixed files such as `action.cpp`, `npctalk.cpp` and `ranged.cpp`;
-file membership alone cannot prove every loop supported or safely stopped.
-
-<!-- DE67:DFS-SLICE:END id=R-SURFACE-011-S001 claim=R-SURFACE-011 -->
-
-### 12. Fresh package and retained acceptance
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-026-S001 claim=R-026 -->
-
-The existing established-base package is the starting feature overview. Reuse
-`tools/openclaw_harness/fixtures/saves/live-debug/bandit_basecamp_prepared_base_v1_2026-04-22/manifest.json`
-and its profile only while their current source/fixture audit remains true. Its assignment transform
-for actors 2 and 3 is setup. A prepared camp cannot prove establishment. Controlled derivatives and
-a separate native establishment route may supply the missing preconditions without replacing the
-historical package. Combined living-base/hostile workloads remain required where their interaction
-is the question; independent branches need not be forced into one uninterrupted walkthrough.
-
-`r026.living_npc_package_v001_mcw.json` and `r026.camp_zone_manager_v001_mcw.json` are existing route
-seeds. The qualified `harness.living_camp_freeplay_mcw.json` is a useful exploratory view/interaction
-seed but explicitly has `grants_gameplay_proof: false`. Its old witness must never be relabeled as
-new product proof. New claim-bound scenarios/charters must bind the actual source, executable,
-world/profile and proof question, retain all transforms and allow players to investigate outcomes.
-Changing a declared evidence ceiling is not itself causal evidence.
-
-The reusable package guide must name available scenes, meaningful player questions, current binding
-and launch prerequisites, supported observation/action routes, preparation limits, independent
-verdicts and evidence handles. It must preserve earlier scenarios and reports instead of replacing
-them. Current qualification documentation is implementation/use evidence, not a second product ledger.
-
-The final package evidence map also binds the newly authorized R-029 activation/sound results and
-the R-037 local-LLM command coverage report, preserving each result's independent scope and limits.
-
-<!-- DE67:DFS-SLICE:END id=R-026-S001 claim=R-026 -->
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-027-S001 claim=R-027 -->
-Current obligation: R-033 requires fresh observation/control/world-boundary evidence and R-029
-    requires the full natural signal/scout/report/response route. Historical green does not close them.
-
-<!-- DE67:DFS-SLICE:END id=R-027-S001 claim=R-027 -->
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-028-S001 claim=R-028 -->
-Current obligation: R-036 requires fresh integrated comparison with the qualified harness.
-
-<!-- DE67:DFS-SLICE:END id=R-028-S001 claim=R-028 -->
-
-### 13. Coherent bandit and cannibal discovery and contact
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-029-S001 claim=R-029 -->
-
-`src/do_turn.cpp :: overmap_npc_move` consumes significant sounds, gathers physical fields on the
-five-minute cadence, refreshes staffed readiness on its existing cadence, calls
-`record_staffed_camp_signal_observations`, then ordinary structural maintenance and hostile
-rally/approach/return. A newly bootstrapped candidate is zero-credit registration and defers that
-maintenance pass. `dispatch_live_cannibal_signal_contacts` is now an unused definition; no live
-call remains. Do not restore a second cannibal distance response path.
-
-`src/bandit_live_world.cpp :: record_staffed_camp_signal_observations` requires an eligible idle
-staffed camp and ready at-home observer, validates physical reads, and normalizes durable
-source/channel `camp-signal:` leads. `advance_structural_bounty_maintenance` owns scout assignment,
-investigation, returned report assessment and `plan_hostile_operation_with_authorized_response` /
-`apply_hostile_operation_plan_with_authorized_response`. Bandit/cannibal policy diverges at the
-report assessment, not by bypassing physical observation or scout travel.
-
-There are separate writers with different provenance: `observe_live_bandit_player_target_opportunity`
-/ `adopt_observed_hostile_player_opportunities` can create a direct loaded player-at-basecamp
-`player@...` terrain-opportunity lead, whereas `record_live_bandit_structural_sounds` records sound
-evidence for an already active structural scout outing. The latter is active-scout investigation,
-not a second idle-camp discovery mechanism. Neither substitutes for the required idle staffed
-physical-signal observation -> camp memory boundary. Trace exact source/lead/report ancestry;
-a preloaded `returned_report` or separately adopted player opportunity cannot prove that boundary.
-Whether a naturally observed alternate discovery route violates the intended shared-route behavior
-is an explicit gameplay uncertainty, not permission to remove code. Use the first divergent
-identity/transition to distinguish provenance error from absent behavior.
-
-`site_record` owns `intelligence_map`, `current_scout_report`, `camp_decision`, `acted_reports`,
-`active_outing` and `active_hostile_operation`. Report identity includes revision, source generation,
-source activity and application key; decision pins report and target lead/revision. The hostile
-operation persists reservation/members/generation, kind, phase, report identity, payment branch and
-rally. Load rejects incomplete current schemas and normalizes/deduplicates records; legacy nonlost
-hostile outings migrate to safe homeward ownership. `claim_hostile_target_opportunity` accepts an
-exact duplicate as `already_applied` and rejects changed identity/revision. Terminal aftermath is
-applied once after return; exact duplicate receipt is read-only and mismatched replay is stale.
-These boundaries forbid double dispatch, duplicate payment or outcome application on reload.
-
-Owner refinement, gate `5a3101b86a3b` (2026-09-09): an otherwise ready cannibal raid leaves
-after sundown, using the existing game-night predicate `is_night(calendar::turn)` rather than
-a fixed clock hour or a promised travel duration. Night is an initial-departure condition only.
-Once departed, it continues toward the target and attacks on arrival even after sunrise. Dawn
-must not reset its phase, return it to rallying, clear its committed route, or make it wait for
-another night. This commitment survives save/load and exact-world process replacement; unrelated
-valid loss/return conditions retain their meaning.
-
-The existing production route is `src/do_turn.cpp :: advance_live_bandit_hostile_approaches`,
-called by `overmap_npc_move`. It already contains a night-gated `rallying -> approaching` call,
-following abstract-owner, cursor, member, route and rally-position checks. The phase validator in
-`src/bandit_live_world.cpp` also permits `waiting_night -> approaching`, but the live loop currently
-selects only rallying/approaching operations. Required implementation must make the eligible
-night departure and later approach/contact reachable through the existing authoritative route,
-including any reachable waiting-night state, without introducing a second distance dispatcher.
-The observed operation that stayed rallying overnight does not prove which prerequisite failed;
-reconcile the complete caller chain and exact recorded state before selecting the repair.
-
-Once departed, the persisted operation and physical route remain authoritative through dawn;
-contact has no second night gate. Abstract/local handoffs retain site, generation, operation,
-member IDs and route progress. Generic travel may not advance a concurrently locally owned actor.
-Verification distinguishes pre-departure daylight holding, eligible night departure, and a route
-that crosses dawn and still reaches attack, including reload continuity. Setup and a phase write
-alone do not establish physical movement or attack. The separately promoted activation and sound repairs are specified in R-029-S002/S003.
-
-`live_bandit_handle_hostile_shakedown_contact` and `choose_local_gate_posture` distinguish normal
-shakedown from favorable rolling-travel attack. The forced native payment UI remains.
-`live_bandit_commit_paid_return` commits `committed_contact -> returning_home` with branch `paid`;
-`live_bandit_choose_fight` records combat release for explicit refusal/incomplete payment;
-technical preparation failure must remain distinct from player refusal. Player attack
-calls `release_shakedown_combat_on_player_attack` for an exact parley member.
-`hostile_operation_player_relationship_for` validates active hostile reservation, toll/shakedown
-kind, member identity and non-dead/non-missing membership. It returns parley at committed contact,
-combat release on Fight, and paid departure while returning home, including abstract return.
-`npc::guaranteed_hostile` and `npc::attitude_to` consult this before faction dislike; the generic
-NPC cache/player targeting and `NPCATT_KILL` paths must yield to it. This protects only this group's
-relationship to the player and leaves unrelated hostiles intact.
-
-The strongest counterexample is the first normal contact turn: generic NPC movement occurs before
-some aftermath processing. A demand screenshot or a `paid` write alone cannot show protection on
-that turn or the next. Bind actor HP/attitude/target/offensive events before demand, through native
-trade, later ordinary turns, travel ownership changes and save/reload. One member attacking early
-or resuming aggression after accepted payment contradicts that branch even if dialogue also succeeds.
-
-<!-- DE67:DFS-SLICE:END id=R-029-S001 claim=R-029 -->
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-029-S002 claim=R-029 -->
-#### 🔴 Authorized repair: active hostile contact and single movement ownership
-
-R029-F004 is promoted to implementation and fresh native verification. In
-`src/do_turn.cpp::materialize_committed_bandit_shakedown`, preserve the exact active hostile
-reservation, operation/member IDs and shared NPC objects. Validate the complete party and empty
-in-bounds placements before moving inactive members; place the party, then call canonical
-`game::load_npcs()` once. Its tracker insertion and `on_load` handling remain authoritative;
-manual tracker insertion, cloning NPCs or broad `reload_npcs()` are not the activation route.
-Require every intended living member to be the same object, active, in the reality bubble and
-present exactly once in the creature tracker before local parley, attack or stalking can proceed.
-An already valid active party is idempotent: no re-placement or attitude reset. A missing member,
-blocked placement or partial/rejected admission remains an explicit recoverable failure with no
-local-interaction success credit; an inactive overmap record returned by `find_npc` is insufficient.
-Use the same active-member predicate at downstream local-contact and sight-avoid gates.
-
-Chosen movement arbitration: retain inherited strategic orders, but exclude exact IDs belonging
-to an active `committed_contact` hostile reservation with `simulation_owner::local` from generic
-`overmap_npc_move` travel. Derive the exclusion from current operation/owner identity, alongside
-the existing abstract-approach exclusion; do not globally stop NPC AI or clear unrelated missions.
-The exclusion ends on authoritative return/terminal handoff, so paid return and surviving members'
-return routes continue normally. Keep the existing local stalking/hold-off motor and the rolling
-ambush exception to normal first-contact negotiation. Normal parley and successful Pay must retain
-their established protection against premature or renewed player-directed attacks.
-
-Verification binds exact party pointers/IDs, active tracker membership and single movement owner,
-including stale inherited travelling orders and repeated admission ticks. Fresh native routes
-must establish a normal refusal and player-initiated attack against a real active target, an
-attributable melee/ranged combat consequence where applicable, casualty/aftermath and surviving
-return state, plus affected save/reload continuity. Include failed admission and unrelated-NPC
-controls. The accepted rolling gate/control/reload and paid-return receipts remain valid at their
-original ceilings; rerun only affected integration boundaries. Setup, an attack posture, target
-selection, input acceptance and rendered text do not prove actual combat or aftermath.
-<!-- DE67:DFS-SLICE:END id=R-029-S002 claim=R-029 -->
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-029-S003 claim=R-029 -->
-#### 🔴 Authorized repair: fresh sound information versus physical investigation
-
-R029-F002 now has a promoted semantic correction. A distant bang is fresh, uncertain information;
-a site actually investigated is temporarily known. Keep the existing three-hour sound horizon
-and six-hour physical-check cooldown. Correct their event semantics instead of making a detected
-sound automatically compel a sortie or raising drive to bypass missing candidates.
-
-In `record_staffed_camp_signal_observations`, a newly sensed sound lead uses the sound's emitted
-minute for `first_seen_minutes`/`last_seen_minutes` and leaves `last_checked_minutes` and
-`last_scouted_minutes` absent. When refreshing the same lead, preserve any existing physical-check
-and scouting timestamps: distant information must neither reset, extend nor erase those clocks.
-Apply that preservation before both unchanged-payload comparison and upsert, since upsert replaces
-the lead. Re-reading the same event does not renew its lifetime or create revision churn; a genuinely
-new sound can refresh the observation time. Preserve other signal channels' existing behavior.
-Actual physical investigation/arrival or structural checks retain their existing timestamp writers.
-
-Sound strength is positive only before emitted minute + 180, and unsupported evidence ages at that
-boundary. A true check at T suppresses repeat investigation before T + 360, then permits ordinary
-eligibility again. The normal five-minute cadence, readiness, pair, risk, route and mission-slot
-requirements continue to decide whether an eligible lead is acted on. A favorable ready-camp
-case must show that the corrected sound can reach candidate evaluation and the existing scouting
-route before expiry; unfavorable cases may correctly decline with an attributable reason.
-
-Existing saves may contain detection-written `last_checked_minutes` that cannot be distinguished
-safely from an earlier real check after later observations. Preserve ambiguous historical stamps
-until their finite cooldown expires; do not erase potentially real investigation evidence based
-only on the last outcome label. New detections must not perpetuate that legacy delay. No new save
-field or invented timer is required for this repair.
-
-Verify event age 179/180, check age 359/360, repeated identical reads, a genuinely new sound,
-refresh after a real investigation, and save/reload of new and legacy-stamped leads. Bind a fresh
-source-bound sound -> memory -> eligible candidate -> ordinary scout/investigation consequence
-under valid conditions, with an expired/cooldown control and realistic uncertainty in the result.
-Report the first later rejecting gate if another premise blocks the route; detection, a score or
-an injected lead alone does not prove investigation. Preserve accepted detection and signal controls.
-<!-- DE67:DFS-SLICE:END id=R-029-S003 claim=R-029 -->
-
-
-### 14. Lossless CAOL evidence transport
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-030-S001 claim=R-030 -->
-For this package, `cockpit_file_bridge.py` retains compact response status, exact `response-slice`,
-full digest-verified `response-artifact`, scoped `log-query` and offset/length/hash `record-artifact`.
-`PlayerClient.controls` discovers launch-published native/transition logs and shared NPC diagnostics.
-Missing metadata/files mean unavailable evidence, not absent gameplay. Shared logs require explicit
-run/time/actor/request correlation. `refresh_semantic_step_trace` streams retained history into its
-existing recent-event window; the full disk record stays intact. Counts and page sizes are
-presentation details, not proof limits or permission to discard history.
-
-The existing witness bundle calls its defect array `findings`; that schema label is not evidence
-of Josef's promotion decision. A suspected gameplay defect records expected versus observed behavior,
-exact evidence, affected tests and any blocking consequence. Retain the original observation and
-any later correction/decision separately, with the authorization boundary supplied by the WEC.
-
-Witnesses and later causal judgments are separate append-only facts in `playtest_witness.py` and
-`scenario_registry_store.py`. A bundle keeps each claim's verdict and identifies affected and
-unaffected claims. Citations must resolve to exact typed native facts; the witness author's chronology
-or stop reason is not independent evidence. Qualification's corrected fire, clothing and item-location
-interpretations demonstrate why mechanical validation alone cannot establish causality.
-
-<!-- DE67:DFS-SLICE:END id=R-030-S001 claim=R-030 -->
-
-### 15. Fresh living NPC intent, context and routing
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-031-S001 claim=R-031 -->
-
-`llm_intent.cpp :: build_snapshot_json` gathers visible map/creatures, follower and remembered context;
-`enqueue_*` owns request submission. `npcmove.cpp :: execute_llm_intent_action` resolves valid native
-behavior; follow-close/far updates rules, and native movement/arrival processing advances the target.
-`npctalk.cpp` and `npctalk_funcs.cpp` choose hearers/camp workers using actor and `assigned_camp` state.
-`data/llm_prompts/` templates and `tools/llm_runner/` are NPC product inputs, not repository-agent policy.
-Their current configuration and actual runner response identity belong in the evidence.
-
-Native danger/combat, companion mission and Patrol ownership can defer or supersede ordinary LLM
-movement; one once-per-turn action must not compete with another owner moving the same actor.
-`npc::llm_intent_state_map` is process-local and keyed by `character_id`; destruction erases it.
-Save/load preserves NPC rules, mission and assignment, not the in-flight queue or transient target.
-Do not invent durable LLM-memory semantics. An observed contradiction in intended follow/camp behavior
-is distinct from a correctly nonpersistent queue.
-
-
-The owner accepts the established camp-craft gameplay result with the explicit historical
-source-binding-file limitation described by receipt
-`33656681a25465607762bc4efcf348ecd0dea6ff183a2a85888b673604254944`.
-The missing `ff285f904d73126f5ec052fc5b16237612c7ce158e08dfd95dd2424a3d839c50`
-bytes remain unavailable; the retained legacy file has a different hash. Future immutable receipt
-archival is repaired. Acceptance must state that limit and must not fabricate provenance or replay
-camp crafting solely to recover it. This exception does not waive new command-level local-LLM
-proof required separately by R-037.
-
-<!-- DE67:DFS-SLICE:END id=R-031-S001 claim=R-031 -->
-
-### 16. Fresh camp establishment, missions and zones
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-032-S001 claim=R-032 -->
-
-`talk_function::start_camp` checks native site eligibility, nearby camps and blueprint collision,
-then establishes through `get_basecamp`. `talk_function::basecamp_mission` resolves assigned/nearby
-camp, access and bulletin board, rebuilds storage and lists native missions. `basecamp::start_mission`
-checks food before assignment, records companion mission/return time/exertion, consumes food through
-`camp_food_supply`/faction stock, consumes selected equipment from `src_set`, and saves camp map.
-Mission return must resolve the same worker and real result; UI acceptance alone is insufficient.
-
-`form_storage_zones` derives `src_set` from faction-scoped enabled `CAMP_STORAGE` zones. Food-zone
-contents and faction food stock are different facts; loading a food zone is not proof that stock
-or feeding changed. `locker_policy_ui` writes durable camp policy. `process_camp_locker_downtime`
-queues eligible assigned workers; `service_camp_locker`/`service_camp_locker_impl` select native
-zone candidates and execute equipment/ammo/medical readiness service. Queue, reservations, derived
-inventory/cache and service timing are not a second persistent item store.
-
-`refresh_patrol_shift_cache` validates assigned workers and `ACT_CAMP_PATROL` priority, zone geometry,
-shift and alarm before choosing a plan. `get_current_patrol_runtime` synchronizes orders and retries
-after invalidation; `npc::set_camp_patrol_order`/`clear_camp_patrol_order` and native movement consume
-it. Mission/assignment/patrol-order state is saved, whereas shift caches/excluded-worker sets are
-rebuilt. Zone revisions reject stale UI mutation. Reassignment, removal/disable of a zone, or danger
-must invalidate the affected plan and yield to the correct native owner without duplicated service.
-
-<!-- DE67:DFS-SLICE:END id=R-032-S001 claim=R-032 -->
-
-### 17. Fresh signal controls and world boundaries
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-033-S001 claim=R-033 -->
-
-`observe_live_bandit_field_signals_near_player`, significant-sound consumption in `overmap_npc_move`,
-`live_bandit_staffed_camp_signal_reads` and `record_staffed_camp_signal_observations` are the physical
-source/observer owners. They use current source intensity, emission time/channel, range, LOS,
-elevation and weather. Stable camp leads deduplicate/refresh the same source, age without fresh
-support and remain distinct from player-only observation. Five-minute signal and ordinary structural
-cadences are implementation facts, not invented deadlines for success. Candidate bootstrap supplies
-no dispatch/contact/knowledge credit.
-
-Local/abstract travel handoffs in `do_turn.cpp` and `bandit_live_world.cpp` bind member IDs, generation,
-route/waypoint and simulation owner. Loaded NPC movement yields at handoff; abstract travel cannot
-move locally owned members again. Reentry must materialize the same admitted group rather than clone
-it or substitute another site's record. Use absolute map-square/OMT coordinates with explicit units.
-
-<!-- DE67:DFS-SLICE:END id=R-033-S001 claim=R-033 -->
-
-### 18. Fresh persistence and continuation
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-034-S001 claim=R-034 -->
-
-`savegame_json.cpp` writes NPC identity, rules, assignment, mission, inventory, patrol flag and
-monster movement state. Camp policy, zones and `overmap_global_state` preserve their authoritative
-stores; `site_record`, report/decision and hostile-operation serialization preserve the ecology
-identity chain described in R-029. `PlayerClient.collect` recognizes the declared saved-world
-continuation in a new process/generation; old frame grants are discarded and the fixture is not
-reinstalled. Native saving, original-process exit, restored state and later behavior are distinct facts.
-
-<!-- DE67:DFS-SLICE:END id=R-034-S001 claim=R-034 -->
-
-### 19. Fresh flesh-raptor behavior
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-035-S001 claim=R-035 -->
-
-`monmove.cpp :: is_flesh_raptor` selects `mon_spawn_raptor`, `_shady`, `_unstable`, `_electric`,
-`_dusted`, `_fungalize`, and `mon_fungal_raptor`. The production plan requires same-Z visible target;
-legal candidates use native mobility/occupancy, crowding and held destination. The present scorer
-uses an orbit distance of 4–6 and phase from native turn/absolute position modulo 6; these describe
-the inspected tactic, not newly chosen balance requirements. It commits a swoop destination, stores
-orbit `wander_pos`/`wandf`, or yields to ordinary movement when no orbit is suitable. Native monster
-movement, run effects, target visibility and save/load remain competing readers/writers of that state.
-
-<!-- DE67:DFS-SLICE:END id=R-035-S001 claim=R-035 -->
-
-### 20. Fresh integrated performance
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-036-S001 claim=R-036 -->
-
-`ProcessPerformance`, `sample_owned_session` and `PlayerClient.performance` bind samples to process
-identity, run and binding; PID reuse, session end and changed owners reject attribution. CPU is a
-process-core percentage; a mixed-context interval is labeled mixed. `compare_records` uses an
-explicit workload label but that label cannot prove comparability. Native renderer timing, camp
-cadence counters and action completion measure different costs and must remain separate from
-controller/bridge memory, retained evidence size and NPC-runner/model work.
-
-<!-- DE67:DFS-SLICE:END id=R-036-S001 claim=R-036 -->
+| Emission | `src/item.cpp::item::getlight/getlight_emit` (3671); `src/character.cpp::Character::active_light` (3787); `src/lightmap.cpp::map::add_item_light_recursive/apply_character_light/generate_lightmap` | Native emission handles pockets, gunmods, dimming and character light through different paths. `getlight_emit` documents a multimag empty-power bug. Character light aggregates maximum luminance before escape. |
+| Signal scan | `src/do_turn.cpp::observe_live_bandit_field_signals_near_player` (6919), `live_bandit_light_side_leakage_near` (6856), `live_bandit_note_light_source` (6886) | Ground/field/terrain/furniture and vehicle scan; no character sources. OMT aggregation ORs outside/roof and maximizes leakage independently of representative source. Interior escape uses a same-z radius of three map squares. |
+| Optical detection | `src/do_turn.cpp::live_bandit_overmap_los_from` (7779), `live_bandit_structural_observer_sight` (7821), `live_bandit_staffed_camp_signal_reads` (8635), structural scout reader near 8485 | The LOS helper rejects unequal z. Ambient terrain-recognition sight also gates light detection. Scout and at-home observers both consume these rules. |
+| Light timing and policies | `src/do_turn.cpp` signal block near 11426; `signal_live_hordes_from_light_observations` (7423); `signal_live_zombie_riders_from_light_observations` (7641); `src/bandit_mark_generation.cpp::adapt_light_packet` (948) | Five-minute scans; horde light calls generic sound-like `signal_hordes`. Rider selection uses loaded monsters, position-based IDs and destination selection as band formation. |
+| Local stalker | `src/monmove.cpp::writhing_stalker_live_context`, `writhing_stalker_zombie_pressure`, `writhing_stalker_shadow_destination`, `apply_writhing_stalker_plan`; `src/writhing_stalker_ai.{h,cpp}` | Pressure counts nearby zombie species without hostility/visibility/target checks; focus is `target.sees(stalker)`; evidence age is fabricated as 0 or 5; “minutes” decrement once per planning call; strike increments before movement; retreat destination is recomputed from the live target. |
+| Local rider | `src/monmove.cpp::apply_zombie_rider_plan`, `zombie_rider_pressure_destination`, camp-intent helpers; `src/mattack_actors.cpp::gun_actor::call/shoot` | Candidate annulus 3–6 tiles around prey and maximum hop 6 can fail when far away, then withdraw. At half HP it withdraws. Bow cooldown/close proximity encourage retreat/repositioning. `HIT_AND_RUN` changes destination after a shot. |
+| Attack ownership | `src/monmove.cpp::monster::plan/move/attack_at`; `src/monster.cpp::monster::attack_target/melee_attack/process_turn/on_hit` | Specialized adapters run before generic destination fallback. `attack_target()` resolves the creature at `get_dest()`, not a separate durable target. Specials run before ordinary movement and may run more than one attack per move invocation. Cooldowns tick in `process_turn`. |
+| Evolution and ammo | `src/monster.cpp::monster::try_upgrade/poly/on_load`; `src/game.cpp::game::place_critter_at/place_critter_around`; `src/map.cpp::map::spawn_monsters_submap`; `src/savegame_json.cpp::monster::load/store` | Gate checked only before catch-up loop. `poly` preserves ammo; direct placement assigns starting ammo. Explicit saved `upgrades:false` overrides new type defaults. |
+| Abstract actors | `src/horde_entity.{h,cpp}`, `src/horde_map.{h,cpp}`, `src/overmap.cpp::overmap::move_hordes`, `src/overmapbuffer.cpp::spawn_monster/despawn_monster` | Lightweight type-only or full-monster payload; positions are container keys. Generic signal/movement competes over destination. `last_processed` prevents a second abstract movement in the same turn. Materialization has incomplete destination synchronization. |
+| Geometry and persistence | `src/lightmap.cpp::build_transparency_cache/build_seen_cache`, `src/shadowcasting.h::cast_zlight`; `src/map.cpp::map::on_unload`; `src/overmap_map_data_cache.h::map_data_summary`; `src/savegame.cpp` horde/map-data readers and writers | Native floor/transparency caches exist. Off-screen summaries contain passability only, not optical geometry. Heavy horde payloads serialize monster state; light-only global rider memory is not a durable actor/band model. |
+| Content | `data/json/monsters/zed_misc.json`, `data/json/monstergroups/zombies.json` | Stalker HP 90/speed 120, singleton direct group weight 50/cost multiplier 25. Rider HP 220/speed 165/900 L, 18 arrows, bow range 4–18 and cooldown 4. Predator gate is eight configured seasons. These are baseline facts, not new tuning mandates. |
+
+## Shared spatial, time and evidence contract — S-ZL-FOUNDATION
+
+A map square (`ms`) is the native tile unit, not a metre. One submap is `SEEX` by `SEEY` (currently 12 by 12); one OMT spans two submaps on each horizontal axis (currently 24 by 24 squares). `tripoint_bub_ms` is valid only in the current map frame. Persist `tripoint_abs_ms`; project to `tripoint_abs_omt` with `project_to`, and recover local coordinates with `map::get_bub`. Never multiply a z-level by the horizontal OMT scale. Existing floors/ledges determine cross-z visibility and matching stairs/ramp connections determine movement. Do not add an unconditional elevation score or assume every z step is traversable.
+
+Use `time_point` and `time_duration`, measured against `calendar::turn`. A game turn currently represents one second. Movement points are a separate budget. `plan()` and `move()` may execute repeatedly in a game turn; observation timestamps, cooldowns, memory age, commitment expiry, band encounter identity and source sampling must not advance per invocation. Repeated processing with the same identity and timestamp is idempotent. On nonpositive elapsed time, do not decrement durations, refresh evidence, or credit progress. On load, expire obsolete observations against current game time before acting; do not replay attacks or manufacture observations for skipped time.
+
+Proposed shared value `predator_observation` contains `kind` (direct creature, light, sound), optional recognized actor identity, observed absolute location/area, `observed_at`, `expires_at`, uncertainty, and observation identity/provenance. An observation is a fact as of a time. Copying it within a band keeps its original timestamp and provenance. Reading it never refreshes it. Light or unidentified sound contains no recognized player/NPC ID. A last-seen target may retain its ID for later matching, but its location changes only after a new observation.
+
+The local adapter receives a visible `Creature` only to construct fresh observations. Lost-contact processing takes stored evidence, not a `Creature &` from which hidden location, health, stamina, activity, allies or velocity could leak. Local target properties used for opportunity must have a credible observable basis; low-stamina scoring may use visible exhaustion behavior, not remote private stamina reads. Existing debug measurements may separately record ground truth for tests, clearly marked as diagnostics and never fed back to policy.
+
+## External research sweep
+
+Research was limited to the WEC's unresolved optical mechanism and the matching live upstream source. No external architecture replaces repository ownership.
+
+| Stable source | Finding | Effect on mechanism |
+|---|---|---|
+| E-ZL-OPTICS-1 — [CDDA upstream lightmap](https://github.com/CleverRaven/Cataclysm-DDA/blob/de7ba16cba3fb514cdb72dd17e1c8079c53e23a8/src/lightmap.cpp), `build_seen_cache`/floor and transparency arrays; retrieved 2026-09-11, commit `de7ba16cba3fb514cdb72dd17e1c8079c53e23a8` | Cross-level shadowcasting already accepts floor and transparency grids. The inspected local implementation has the same usable primitive. | R-ZL-LIGHT-OPTICS uses a private query/scratch output over these physical inputs; calling `build_seen_cache` directly for remote agents would overwrite player visibility caches. |
+| E-ZL-OPTICS-2 — [NOAA Coast Pilot 5, chapter 1](https://nauticalcharts.noaa.gov/publications/coast-pilot/files/cp5/CPB5_C01_WEB.pdf), discussion of luminous/geographic range; retrieved 2026-09-11 | Brightness/weather range and geometry limited by height are separate constraints. | Height changes which paths survive occlusion; it does not multiply an enclosed source's brightness. No nautical numeric range is imported. |
+| E-ZL-OPTICS-3 — [PBRT v4 Light Interface](https://www.pbr-book.org/4ed/Light_Sources/Light_Interface), emitted versus incident illumination; retrieved 2026-09-11 | Emission is an input to visibility/transport, not proof of received light. | Source enumeration, escape, and observer detection are separate values. This is conceptual support, not a requirement to implement a renderer or global illumination. |
+
+The repo-native precedents are stronger implementation anchors: `map::add_item_light_recursive`, `cast_zlight`, `sight_calc`/`accumulate_transparency`, and the committed branch of `apply_flesh_raptor_plan`. Reinspect if their signatures or physical semantics change.
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-LIGHT-EMISSION-S001 claim=R-ZL-LIGHT-EMISSION -->
+## 1. Enumerate working light sources before aggregation
+
+- [ ] 🔴 R-ZL-LIGHT-EMISSION — Carried and stationary light use the same actual emission facts without borrowed exposure or phantom power.
+
+**Current gap.** The scanner in `do_turn.cpp` does not enumerate avatar/NPC equipment, ignores nested ground lights, reduces luminance to an intensity band early, and combines source geometry by OMT. `Character::active_light()` returns a maximum rather than distinct sources. `item::getlight_emit()` has a documented empty-multimag power hole and special handling for gunmods/UPS/bionics. An extra flashlight row alone leaves these contradictions.
+
+**Mechanism.** Introduce a proposed `physical_light_source` and collector in a small shared production module, proposed `src/physical_light.{h,cpp}`. Inputs are the loaded map, current characters/vehicles/items and `calendar::turn`; output is individual sources with sample-local ID, absolute source position, native luminance, angular width/direction where present, source class and sampling time. An ID identifies the source within a sample, not the player. Stationary terrain/furniture/fields can use coordinate plus source kind; carried item/vehicle identities can be ephemeral source handles and are never durable predator identities.
+
+Refactor the emitter enumeration used by `map::add_item_light_recursive`, `map::apply_character_light` and `observe_live_bandit_field_signals_near_player` to consume the same emitter facts. Preserve the existing local visual result except when correcting the in-scope container/power discrepancy. Do not count a gun's light once through the gun fallback and again through its gunmod. Walk equipped/held/worn sources and only optically transmitting pocket paths. An opaque enclosing pocket contributes zero escaping item emission. Use the item's native `getlight` direction and dimmed luminance. A lit character effect or mutation is a separate physical source, not a second copy of its flashlight; the transient `haslight` effect produced by `apply_character_light` must not become a self-refreshing source after the lamp is off.
+
+The carrier-aware emission query (proposed overload where the present API is insufficient) answers whether the existing active tool form is actually powered. Resolve local battery/magazine, linked power, UPS and bionic supply through existing item/character power APIs. Querying light consumes no charge and changes no on/off state. An off tool, depleted supply, disabled/broken vehicle lamp, or lamp inside an opaque enclosure cannot emit just because JSON contains `light_emission`/`bonus`. Keep native dimming and beam conventions. Investigate the documented multimag path as part of this claim; do not reproduce its false light in the new collector.
+
+For vehicle lights retain `vehicle::lights()` eligibility and native `generate_lightmap` cone, facing, part offset and obstacle behavior. Fields, furniture and terrain use their actual live luminance. Shared emission preserves multiple physically separate lights even when they occupy one OMT. Do not use `reading.outside |= ...`, maximum leakage from another tile, or lowest-z representative selection to expose an unrelated lamp. Aggregate only *detected* observations as described in section 2.
+
+**Failure and lifetime.** Out-of-bounds/stale handles are skipped with source diagnostics; they cannot become sources at zero coordinates. A sample does not retain raw item/monster pointers beyond its turn. Moving/deleting/switching off the source stops current emission; stored observer memory is a separate owner in section 3.
+
+**Proof.** Extend `tests/bandit_mark_generation_test.cpp` only for retained projection behavior and add proposed `tests/physical_light_test.cpp` for the real collector. Use the same source held, worn, mounted on a weapon and dropped; test off/on/depleted/dimming, transparent/opaque nested pockets and powered/unpowered vehicle parts. Compare native illumination and collected emission on the same state, including an empty multimag, UPS and gunmod case. Two lights in one OMT—bright sealed upstairs and weak exposed outside—must never combine brightness from the former with exposure from the latter. Native controls must use actual item activation/movement/power depletion, not synthetic light packets.
+<!-- DE67:DFS-SLICE:END id=R-ZL-LIGHT-EMISSION-S001 claim=R-ZL-LIGHT-EMISSION -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-LIGHT-OPTICS-S001 claim=R-ZL-LIGHT-OPTICS -->
+## 2. Source escape and observer detection, including elevation
+
+- [ ] 🔴 R-ZL-LIGHT-OPTICS — Physical light reaches each observer through believable geometry independently of terrain recognition.
+
+**Entry points and owners.** The source collector calls proposed `trace_light_escape(source, geometry)`; observer adapters call proposed `detect_physical_light(escaped_source, observer, geometry, now)`. Use `physical_light` for these shared physical rules, native map caches for loaded geometry, and an optical extension to `map_data_summary` for known off-screen geometry. These queries do not dispatch humanoids, move monsters, write camp knowledge or mutate the player's seen cache.
+
+**Escape.** Keep native source luminance until the physical transport step has resolved the source's own geometry. Use source-centered private scratch grids with the floor/transparency and angular semantics of `cast_zlight`/native light arcs. The source-to-aperture path must be continuous; a solid wall/floor stops it. Traverse actual transmitting cells until light falls below the native propagation threshold or reaches the boundary of available geometry. There is no three-tile room-size rule. A large clear hall can transmit toward an opening; a bend with no native-supported illuminated escape is concealed. This does not introduce speculative bounced global illumination.
+
+Return directly exposed source visibility and/or the exterior aperture/lit surface reached by that source, with outgoing direction, remaining luminance and provenance. An open window and clear glass transmit according to terrain/furniture transparency. Closed opaque curtains/shutters stop transmission even if the adjacent room is marked outside by a coarse cache. A transparent window is not inferred from movement passability. A floor is not transparent because the air above it is outside. Inspect live terrain/furniture flags and current vehicle occlusion; do not hard-code window names into the policy layer.
+
+**Observer path.** The proposed detector receives the observer's absolute location, optical capability, source sample and geometry. It tests a continuous 3D path to the directly visible source or its escaped light surface. If the observer is below a lamp on an exposed roof, a ray outside the building can succeed. A parapet may block the lower lamp and clear the raised lamp. If observer or source is enclosed, both ends' walls/floors constrain that same path. Never join independently visible but geometrically incompatible entry and exit portals. Do not call the existing same-z `live_bandit_overmap_los_from` as a final light gate, and do not remove its same-z restriction for unrelated ordinary recognition callers.
+
+Use separate optical transmission and brightness-range tests. Solid geometry rejects immediately. Partial obstruction attenuates the source's visible contribution; native transparency coefficients and `sight_calc`/`accumulate_transparency` define local attenuation. For off-screen partial-obstruction transport, use the native exponential form on accumulated excess attenuation above clear open air; clear-air distance and weather are handled by the luminous-range calibration below. This avoids applying the native short-range illumination falloff again as a terrain-recognition cap on a distant luminous source. Loaded source-to-aperture scratch propagation retains native local attenuation. Weather must be applied once along the represented path, not once in every adapter; retain base geometry separately from weather-adjusted scratch results. Existing `adapt_light_packet` source/time/weather range calibration can supply the *initial luminous-range envelope* after source-specific escape: set packet persistence to zero for instantaneous detection, derive source strength from remaining luminance, and remove additive height bonuses from this production route. Its current 0–30 OMT clamp is an existing calibration to evaluate, not a newly asserted physical law or final balance threshold. Do not add ordinary ambient `observer.sight_range()` as a second range cap on visible light. Blindness/absence of optical senses still prevents detection. Recognition of a person remains governed by ordinary creature sight independently.
+
+Initial integration retains existing daylight/twilight/night and weather calibration in `adapt_light_packet`, with its exact tuning recorded in experiments. Any replacement calibration must preserve the inequalities below and be justified by R-ZL-PLAYTEST measurements; the contract does not invent a flashlight distance or exposure-duration number. Separate calibration from obstruction so tuning distance cannot make a wall transparent. Bright-source detection may exceed recognition distance without identifying the carrier.
+
+**Off-screen geometry.** `map_data_summary` currently stores only `passable[24*24]`. Add optional, versioned optical data for sampled/generated OMTs: known-cell mask, physical transparency/attenuation, floor blocking and passage/clearance facts needed at movement boundaries. Record optical data from current loaded caches and update the relevant quadrant on `map::on_unload`, including unmodified generated rooms; the existing `player_adjusted_map` condition is insufficient for optics. Dirty loaded geometry wins over its retained summary. Terrain/furniture/vehicle/field changes invalidate derived scratch results. Cache generations and weather/sample identity prevent reuse after curtain closure, weather change or map shift.
+
+Queries use `overmapbuffer::get_existing`/`get_omt_summary`, never `get`/`ter` if that call can generate an overmap. Absent detailed cells must remain explicitly unknown. Coarse known overmap terrain may supply conservative obstruction/attenuation for the *intervening outdoor segment*; it cannot certify an unknown interior aperture or the observer's room as open. Unknown local enclosure is a failed/uncertain observation, not false visibility. Cache only the relevant generated geometry, and stop at the source-derived candidate envelope; do not load submaps or generate terrain to answer a sight query. This allows abstract observers with known outdoor footing to see lights without constructing the whole intervening world. Test known/unknown boundaries explicitly; unexplained systematic blindness of eligible outdoor observers is not acceptable closure.
+
+**Output and policy handoff.** Return detected/not detected/unknown, reason, signal location or area, uncertainty, observed time, received strength, source sample ID, geometry provenance and no automatic actor/camp identity. For a window glow, the observable location is the window/exterior patch, not a hidden exact lamp or carrier coordinate. Convert detected results into `bandit_live_world::structural_signal_read` for at-home observers and structural scouts; both paths use the same optical result. Keep smoke and sound separate. If several sources are detected, combine compatible observations afterward, preserving each contributing source and never refreshing a hidden source. Humanoid dispatch and scout/report policy remain unchanged.
+
+**Why this works.** E-ZL-OPTICS-1 supplies the floor-aware primitive, E-ZL-OPTICS-2 separates height from luminous range, and E-ZL-OPTICS-3 separates emission from received light. A simple z-equality removal still leaks through floors; a blanket elevation bonus still reveals sealed rooms; increasing dark terrain sight grants unrelated knowledge. Revisit the scratch/summary tactic if its measured cost or geometric conservatism prevents the required legitimate response, rather than weakening the physical controls.
+
+**Proof.** Proposed `physical_light_test.cpp` and existing `tests/vision_test.cpp`, `tests/shadowcasting_test.cpp`, `tests/overmap_map_data_cache_test.cpp` provide the focused route. Hold source power, weather and observer fixed while comparing ground/exposed raised/parapet/sealed upper room, observer above and below, open window/clear glass/curtains/shutter/door, hall depth/corner, beam toward/away, and two differently exposed lights in one OMT. A raised source must gain a useful sightline in a suitable obstruction case; merely accepting unequal z is insufficient. Verify scratch queries leave player seen/camera caches unchanged, and save/load of summaries preserves geometry. In the native proof, an off-screen observer detects light and physically approaches while still unable to recognize the player; negative controls prevent detection through the wall/floor. Source/observer/channel, z, weather, actual path result and later movement are required evidence.
+<!-- DE67:DFS-SLICE:END id=R-ZL-LIGHT-OPTICS-S001 claim=R-ZL-LIGHT-OPTICS -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-LIGHT-CONTINUITY-S001 claim=R-ZL-LIGHT-CONTINUITY -->
+## 3. Short exposure, observer memory and separate reactions
+
+- [ ] 🔴 R-ZL-LIGHT-CONTINUITY — A brief real exposure can be noticed, and stale light cannot keep refreshing pursuit.
+
+**Timing.** `game::do_turn` currently moves hordes early, then later processes vehicle movement, fields and items, rebuilds map caches and calls `monmove`. Add the shared source sample/detection pass after current emission-affecting item/field/vehicle processing and cache preparation, before local monster planning. Sample once per advancing game turn, independently of the existing five-minute bandit scan. Deliver that sample to current eligible local and abstract observers. Abstract movement may consume it on the next normal horde tick; do not move all hordes a second time to eliminate that one-turn handoff. A source active for a complete game turn is eligible for observation; opening an inventory, rendering again or querying a debug view advances no exposure. A zero-time on/off action is not a fabricated full-turn flash.
+
+Enumerate sources on every relevant loaded z-level, using native emitter lists/caches and dirty geometry rather than the old player-centered same-z radius. Cache unchanged stationary emission/escape inputs, but validate power and sample time each advancing turn; sample moving/equipped sources at their current position. Candidate observers come from existing spatial buckets within the source-derived envelope. Do not multiply a full-map rescan by every observer. The source owner holds only current samples. Persist *observations*, not a claim that an unloaded light is still on. On source removal, depletion, switch-off, movement out of sampled space or map unload, no new sample is emitted from its old position. Do not scan/generate distant submaps just to keep lights alive. A stationary unloaded source may refresh only if another already-authorized world simulation owner actually supplies current power/emission/geometry evidence; this change must not invent such a simulation. The first implementation stops refresh on unload and allows already acquired memories to age.
+
+**Memory.** Use S-ZL-FOUNDATION timestamps and unique sample identities. A detector can publish a brief observation immediately; humanoid dispatch still follows its existing scheduler. At-home `record_staffed_camp_signal_observations` and scout observation ingestion must accept timestamped optical observations without requiring the lamp to remain on until the next five-minute callback. An event observed at time T remains an observation at T when consumed later; the reader cannot label it current. Keep only the observations needed for active investigation/uncertainty and existing policy retention, coalescing repeated exposure of the same observable area without extending time past the last real detection. Save/load must preserve the age, not restart it at zero.
+
+For predators, observed light creates investigation of an area; direct prey observation supersedes it. Existing rider light memory supplies a starting decay calibration (90–300 turns, strength decay at 60-turn intervals), but no actor or source may retain an immortal TTL by reading the record. Write `expires_at` from `observed_at + chosen_duration` once; a new detection may replace it, a repeated delivery may not. Preserve the original observation timestamp across band sharing. A blink can be remembered for finite time without becoming a stream of current positions. Stalker human memory and retreat durations are governed by section 4, not the rider's TTL.
+
+**Reactions.** Route every eligible observer through section 2, then apply its policy:
+
+| Recipient | Physical evidence owner | Reaction owner and limit |
+|---|---|---|
+| Ordinary horde entities | shared detector at each entity's location/capability | A light-specific interest adapter may update destination/tracking intensity for entities that detected it. Remove the production call from light to `overmap_buffer.signal_hordes`; sound continues to use `horde_map::signal_entities`. A wall or blindness cannot be bypassed by the sound route. |
+| Bandit/cannibal staffed observer or scout | shared detector, correct observer identity and footing | Existing `bandit_live_world` observation/memory/scout/report/travel flow. Light alone supplies neither player identity nor a camp/dossier/bounty. Distinct bandit/cannibal policy, including already accepted departure behavior, stays intact. |
+| Stalker | shared detector plus its direct/sound evidence | Finite uncertain investigation/shadowing, then its own opportunity state machine. No raid/report owner. |
+| Rider | shared detector plus its direct/sound evidence | Sustained investigation/pursuit of existing actors; no global creation of riders at a light. Natural world-age gating belongs to evolution, not to whether an already existing rider can see. |
+
+Adapt local `monster::hear_sound` as well as abstract `horde_map::signal_sm` to publish the native perceived sound location/error without directly replacing a protected predator destination. When generic horde sound reaches a specialized predator, it becomes a sound observation for the predator owner. It may not overwrite a committed attack, a driven-away stalker's retreat, or a newer recognized-target observation. Dormant/immobile/dead/friendly actors retain their existing eligibility semantics; light does not wake or recruit every entity indiscriminately. The old `max_riders_drawn_by_light` is neither a band-size limit nor proof of meeting. Do not introduce new arbitrary signal-population caps; measure practical response density with the existing population.
+
+**Proof.** Use a lamp on for one advancing turn between two former five-minute scan boundaries, with a suitably placed eligible observer. Observe a timestamped detection and later physical investigation; do not assert every flash must be noticed at every distance. Repeat off/depleted/occluded and daylight/poor weather controls. Turn off and move away, then compare current samples, last observation and expiry across unload/reload/save/load. Show no updates after the final detection and no unseen moving target coordinate. Exercise ordinary horde, bandit, cannibal, stalker and rider consumers independently, including a sound-only control that must remain sound-only. A correctly emitted packet with no eligible detecting observer is not attraction proof.
+<!-- DE67:DFS-SLICE:END id=R-ZL-LIGHT-CONTINUITY-S001 claim=R-ZL-LIGHT-CONTINUITY -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-STALKER-S001 claim=R-ZL-STALKER -->
+## 4. Writhing stalker: observed pressure, commitment and real attack accounting
+
+- [ ] 🔴 R-ZL-STALKER — The stalker exploits a credible opening, reaches contact and counts attacks instead of approach decisions.
+
+**State and entry points.** Keep `writhing_stalker::evaluate_live_response` as the policy facade and `apply_writhing_stalker_plan` as the local action adapter. Add a no-live-target branch to `monster::plan` for stored investigation/search/retreat. Both branches use the same persistent predator state from section 7, not unrelated handoff strings with invented freshness. Pure policy input contains observations and current self/route facts. Policy output selects an intent, destination/evidence identity and any one-time transition; it never spends movement or attack budget itself.
+
+The state has a phase (investigating, shadowing, approaching, attacking, searching, retreating, cooling off), current evidence, committed absolute waypoint, retreat waypoint, attempts spent in the current burst, phase-entered time, cooldown-until, last-progress time and remaining-route progress. Persist these fields. Do not convert old `caol_writhing_stalker_*` string values into the typed state: the owner declined backward-compatibility migration for old predators.
+
+**Perceptible pressure.** Replace both the pressure counter and the quiet-side zombie vector with a single proposed `observe_zombie_pressure(stalker, observed_target, now)` result. Each contributing monster must be alive, nonhallucinatory, not the stalker itself, a zombie hostile to that same target, and perceptible to the stalker through actual local sight. Sealed-wall, friendly, dead and unrelated-fight zombies contribute nothing. Proximity alone is not closing behavior. Count an actual recent attack on this target or two timestamp-distinct perceived positions demonstrating movement toward that target along a reachable approach; keep the target identity and observation times with the contribution. Do not read an unseen zombie's destination as a substitute for observed movement. A just-seen nearby zombie can be a weak situational cue but cannot be credited as an attacker without the corresponding evidence. The same qualifying set supplies quiet-side vectors, preventing the destination heuristic from reintroducing rejected pressure.
+
+Record active counterpressure when a target/ally perceptibly attempts an attack against the stalker, including a miss, or visibly closes to attack it. `monster::on_hit` can contribute actual hits, but alone cannot cover missed attacks; add a narrowly scoped notification at real melee/projectile attack resolution for the stalker target. Damage alone is not required for threat. Mere `target.sees(stalker)` is *visibility*, not focus or an attack. Do not create a fictional player-facing cone.
+
+**Ordered transitions.** Apply this precedence in the policy facade and its callers:
+
+```text
+advance elapsed-time state once; expire stale observations
+if dead/controlled/pacified/physically unable: yield to that existing owner
+else if retreat/cooldown is active: continue its retained waypoint; do not relatch
+else if meaningful injury or current hostile counterpressure makes contact untenable:
+    select a reachable retreat waypoint once; enter retreat; set cooldown once
+else if approaching/attacking with live commitment:
+    retain approach; update prey location only from new observation
+    if contact is legal and burst budget remains: allow an actual attack
+    if evidence is lost: go to the last observed area, then search
+    if route becomes invalid or stops making progress: replan from known geometry
+        or search/disengage; do not silently restart an orbit
+else if evidence supports a reachable opening:
+    enter approaching, select a reachable interception/contact route, attempts=0
+else if credible evidence remains:
+    shadow via cover or the quiet side; search if the observed area is reached
+else:
+    disengage/idle; do not acquire a target from global player coordinates
+```
+
+Evaluate daylight exposure as a finite cost against perceived pressure/vulnerability. No latch/approach/confidence subroutine may short-circuit solely on daylight, brightness or visibility before a pressure-supported commitment can be considered. Reconcile `advance_latch`'s exposure break, `choose_approach`, `evaluate_threat_state`, `evaluate_opportunity` and `evaluate_confidence`, not just the final branch. A sufficiently pressured target in daylight must be reachable by the strike path even if it can see the stalker. A solitary reachable target in darkness must also be able to produce commitment; the current outside-only anti-loiter condition must not accidentally forbid every dark interior encounter.
+
+Use the existing vulnerability/caution terms as the initial scoring basis, with finite pressure contribution and separately observable counterpressure. Keep weights and the commitment threshold in one explicit tuning structure. The owner has left the pressure balance for prototypes; section 10 requires recording the tested weights and empirical crossover rather than canonizing a zombie count here. This is not permission to leave an unchosen code branch: the implementation must choose and exercise one explicit scoring rule for the first prototype. Its required qualitative inequalities are dark isolated opportunity; no imaginary pressure; and real pressure capable of outweighing daylight caution. Strong active threat and meaningful injury may still drive the weak stalker away.
+
+**Approach and progress.** Start with a committed rush through ordinary movement; a leap is not required for this contract. Reuse the raptor's causal precedent—retain an already selected approach rather than recomputing orbit targets—but retain stalker-specific cover/opportunity policy. Local `map::route` and `monster::can_move_to` determine legal steps. The existing path `max_dist` is only a local planning horizon, so use reachable intermediate waypoints for a remembered route spanning a couple of OMTs. Progress is actual movement reducing remaining route distance or reaching the chosen waypoint. A changing `shadow` decision/reason does not count. Track unsuccessful route progress by elapsed time, not plan-call count; select the finite stall interval as a measured tuning value. On a stalled route, try an actually different known reachable route; if no route exists, search the last credible area or commit to a real retreat. Do not oscillate between the same two quiet-side tiles indefinitely.
+
+**Actual attacks.** Remove increments from `apply_writhing_stalker_plan`'s `decision::strike` branch and `writeback_handoff_memory`'s planner-based strike accounting. Increment exactly once when an attack against the selected prey actually enters attack resolution after range/LOS/attitude/physical preconditions. A miss or armor absorption is still an attempt. A path step, failed precondition, unavailable special, leap or merely setting `dest` is not. Cover both `monster::melee_attack(Creature&, float)` and actual `melee_actor::call` scratch/bite paths; counting only `attack_at` misses specials. Do not double-count a special through two hooks. Give each attempt an actor-local monotonic sequence and update burst state at the attack owner. Budget exhaustion immediately prevents further discretionary specials/ordinary strikes in that burst, even if `monster::move` would otherwise iterate several specials. Valid separate attacks can each count; the implementation must not silently conflate attack attempts with game turns.
+
+Entering approach must not reset a partially spent burst every turn. Reset after completed disengagement/cooldown and a new engagement. Existing special cooldowns remain in `monster::process_turn`; game-time cooldown-until does not decrement in `writhing_stalker_live_context`. `effect_run` is a temporary locomotion effect, not a second self-refreshing engagement timer. Store a retreat point selected from known target position/terrain once and follow it; replan only on a blocked route or genuinely new threat. Losing sight does not cause immediate reversal toward the player's new location.
+
+**Proof.** Extend `tests/writhing_stalker_test.cpp` using real `monster::plan`, `process_turn`, `move`, attack resolution and save/load. Matched daytime no/modest/heavy observed pressure and darkness must produce the intended transition ordering. Include hidden-behind-wall, friendly, stationary unrelated and different-target attackers as negatives. Observe actual movement/contact/attempts from beyond the current burst length in walking steps. Repeated plan calls at the same game time must consume neither cooldown minutes nor attacks. Test misses, blocked attacks, scratch/bite plus ordinary melee, burst exhaustion mid-special loop, loss of sight, unreachable path, completed retreat and reload. Existing tests requiring sight alone to withdraw or helper “strike” to count as a blow must be revised to this WEC. Native runs must show a horrible *actual* attack moment and a genuine retreat, not just a favorable evaluator score.
+<!-- DE67:DFS-SLICE:END id=R-ZL-STALKER-S001 claim=R-ZL-STALKER -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-RIDER-PURSUIT-S001 claim=R-ZL-RIDER-PURSUIT -->
+## 5. Zombie rider: pursue through range, cover and cooldown
+
+- [ ] 🔴 R-ZL-RIDER-PURSUIT — A rider maintains physical pressure instead of retreating after shots or failed annulus selection.
+
+**Entry points.** Keep `apply_zombie_rider_plan` as the visible-prey adapter, add the no-target stored-evidence branch in `monster::plan`, and adapt the current no-target light intent helpers to consume predator observations. `zombie_rider_pressure_destination` is not the pursuit owner: its near-target annulus fails for distant prey and encourages backing away at contact range. Replace routine annulus movement with route progress toward visible prey/last observation; lateral repositioning is allowed only when it resolves a real obstacle or firing obstruction without dropping the pursuit.
+
+**Precedence.** Existing death, pacification, control, paralysis, terrain danger, occupancy and mount clearance retain authority. For an autonomous hostile rider, a directly perceived reachable prey takes precedence over light investigation and old `caol_zombie_rider_camp_*` posture. There is no routine half-health retreat in either the target or no-target path, and `choose_camp_pressure_posture` must not reintroduce it. Remove `HIT_AND_RUN` from the rider's data so `gun_actor::shoot` cannot redirect it after firing; do not change that flag's behavior for other monsters. A lost prey yields investigation/search of the last observed position, not global retargeting and not instant abandonment.
+
+```text
+visible hostile prey -> update timestamped observation
+    legal contact -> contact impact if prepared/ready, otherwise normal legal melee
+    outside contact -> retain pursuit target and compute reachable local path/hop
+        bow ready + ammo + native LOS + range 4..18 -> normal gun special may fire
+        cooldown / no ammo / outside bow range / firing obstruction -> keep closing
+no visible prey -> remembered direct evidence, then light/sound investigation
+    reach last observed area -> search nearby known reachable cover/exits
+    evidence expires and search yields no new observation -> end that pursuit
+```
+
+A shot consumes the configured move cost and ammo through `gun_actor::shoot`, with normal cooldown reset and `process_turn` ticking. “Shoot while closing” means interleaved legitimate actions over time, not a free shot and free full movement in the same budget. Contact priority does not wait for the eighteenth arrow. Bow range and readiness remain attack preconditions, never pursuit range limits.
+
+`monster::attack_target()` currently reads the creature at `get_dest()`. Therefore keep the visible prey as the logical attack destination when pursuing it; route waypoints must not erase the target needed by the ranged special. Retain `dest=observed prey abs_ms` and a separate effective movement waypoint in predator state. Adapt the existing `zombie_rider_camp_open_destination` path-horizon calculation to select that reachable waypoint. In `monster::move`, use this waypoint for `local_dest`, the path-horizon distance check and `path.back()` validation for these species only. The inspected code accepts a cached path only when `path.back()==local_dest`; merely filling a partial path while leaving all checks against distant `get_dest()` would discard it. Specials still resolve the current visible prey through `attack_target()` and normal sight checks. Do not place the logical attack destination on an empty waypoint or resolve an unseen remembered actor for firing.
+
+For no visible prey, `dest` is only the last observed area/waypoint. A blocking wall must cause a route around it, a move to an observable opening or an honest search failure. No-pressure-tile failure cannot reverse the rider away from a distant visible target. Use `map::route(rider, ...)`, `can_move_to`, `know_danger_at`, occupancy and existing large-body passage checks on every executed step. Never teleport across a wall or through a vehicle to satisfy a planned destination. Different z-levels require actual traversable stairs/ramp routes; seeing an elevated light does not grant flying movement.
+
+**Proof.** Extend `tests/zombie_rider_test.cpp`: prey at contact, inside bow range, beyond bow range and beyond local path horizon; bow ready/cooldown/empty; clear field/corner/door/vehicle/small passage; HP above and below the former cliff; target escapes sight. Test turn-by-turn progress, emitted arrows and ammo count, successful contact, blocked-route behavior and last-seen search. Change the existing `...bow_shot_sets_cooldown_and_repositions`, `...bunny_hops...` and `...injured_withdraws...` expectations where they conflict. Preserve tests for native blocked LOS and large-body clearance. Native evidence must show an individual rider hunting, including during cooldown, with no injected pursuit destination after initial setup.
+<!-- DE67:DFS-SLICE:END id=R-ZL-RIDER-PURSUIT-S001 claim=R-ZL-RIDER-PURSUIT -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-RIDER-IMPACT-S001 claim=R-ZL-RIDER-IMPACT -->
+## 6. Zombie rider: a physical run-down contact attack
+
+- [ ] 🔴 R-ZL-RIDER-IMPACT — A mounted rider's approach produces a real, terrain-respecting contact impact.
+
+The WEC selects **contact impact** as the first prototype. A run-through beyond the victim is an owner-level possible refinement, not required or silently selected here. Retain the composite rider/mount and existing stats initially; no separate mount entity or dismount lifecycle.
+
+**Mechanism.** Add a proposed named special `zombie_rider_contact_impact` in the rider JSON, implemented by a proposed specialized actor using existing `melee_actor` damage/dodge/armor/effect machinery (`src/mattack_actors.{h,cpp}` plus registration in `src/monstergenerator.cpp`). Do not relabel `push_to`, `PUSH_VEH`, an ordinary bite or a hulk knockback as trampling. The attack must receive the visible hostile adjacent target, the rider's preceding successful movement history, current state and cooldown. A ready impact requires a real closing approach: at least the preceding executed movement step was toward this prey, the approach has not been interrupted by teleport/setup/blocked movement, and contact is now physically legal. Store approach readiness only from successful movement in the rider owner. Repeated planning does not charge it.
+
+Check same-z contact or an explicitly supported native adjacent connection, large-body passability, intervening vehicle/terrain and occupancy before applying effects. The victim's occupied square does not need to become a valid movement destination: this prototype ends beside the victim and resolves contact there. It does not move the rider through the victim, throw prey down the road, damage through a wall or phase through a vehicle. If contact/LOS/hostility/readiness fails, return a rejected special without impact effects or a fabricated hit; ordinary pursuit/melee remains available.
+
+The attack spends its configured move cost, makes one native hit/dodge resolution and applies bash contact damage through normal armor. Use existing melee damage as the initial scale rather than copying hulk damage. The impact may briefly knock down a susceptible standing target; do not refresh knockdown on an already downed victim. Consume approach readiness on an actual attempt, hit or miss. A later impact requires fresh physical approach and its native special cooldown; standing adjacent through cooldown cannot repeatedly count as a charge. Persistent readiness and cooldown survive save/load without replenishment, and become invalid when their target/approach evidence expires. This combination prevents a single rider from pinning prey forever through automatic repeated impact. Multi-rider recovery/lock behavior still requires the empirical control below.
+
+**Action arbitration.** The rider contact special has priority at legal prepared contact before its ordinary bite or standard melee. Because `monster::move` currently iterates all specials and may then move/attack, gate rider offensive actions through one common rider action selector for the current action invocation. A successful impact cannot also fall through to an extra free bite/ordinary strike. It may leave legitimate positive move points for a later normal invocation. Check capability/condition paths, including the behavior-tree special entry, so a second entry cannot bypass readiness or the spent budget. Other monsters' special scheduling remains unchanged.
+
+Damage, knockdown duration and cooldown are explicit prototype tuning values in data, chosen and logged against existing rider melee/bow cadence. The WEC does not settle their numeric values. Acceptance requires actual contact, a meaningful forceful effect, normal mitigation and a practical recovery opportunity; neither a zero-damage cosmetic animation nor a permanent stun-lock qualifies.
+
+**Proof.** Use `zombie_rider_test.cpp` with movement into contact, attack miss, armor absorption, already downed target, stationary adjacency, cooldown, blocked doorway, narrow passage, vehicle and save/load. Verify native damage/effect event, move cost, attempt consumption and no second free attack. Matched multi-turn native runs include an empty bow and a still-stocked bow, single and multiple riders, and a downed player who gets a legitimate recovery/action opportunity when the terrain and underlying status permit it. Ground-truth contact/path/HP/effect timeline decides the result, not an “impact” log label.
+<!-- DE67:DFS-SLICE:END id=R-ZL-RIDER-IMPACT-S001 claim=R-ZL-RIDER-IMPACT -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-PREDATOR-LIFECYCLE-S001 claim=R-ZL-PREDATOR-LIFECYCLE -->
+## 7. One actor across local and abstract life
+
+- [ ] 🔴 R-ZL-PREDATOR-LIFECYCLE — Stalkers and riders perceive, investigate and travel beyond their loaded representation without duplicate control or lost memory.
+
+**Durable owner.** Add a proposed optional `caol_predator_state` member to `monster`, declared in a small shared predator-state header (proposed `src/predator_state.h`). It is the only durable owner of an individual predator's identity, observations, engagement/retreat state, attempt sequence and movement handoff epoch. Serialize it as a versioned `caol_predator` object in `monster::store/load` (`src/savegame_json.cpp`). Do not persist bubble coordinates or raw pointers. Use the same object in a heavy `horde_entity::monster_data`; do not create a second actor registry containing another independently moving monster.
+
+Allocate a stable opaque actor ID once when the relevant existing entity first needs predator state. Use a collision-resistant random token from the native RNG (proposed 32-character token using `random_string`) with a known-live-ID collision check; it is not a positional `active@x,y,z`, display name, address or list index. Identity survives `poly`, serialization and movement. A new biological/debug-created actor receives a new ID; a handoff copy retains the old ID. If two loaded owners claim the same persisted ID outside a deliberate transfer, reject/quarantine the second ownership claim with diagnostics instead of moving both or silently rewriting one identity. No world scan is required to allocate or locate actors.
+
+Minimum persistent fields are schema version, actor ID, handoff epoch, last abstract/local time advanced, current phase, `predator_observation`, phase-entered time, commitment and retreat waypoints, cooldown-until, last-progress time, route-progress baseline, attack-attempt sequence and burst count. Rider state also carries ammo-initialization version, impact approach readiness and a band reference/revision cache. Predators without observations have no target location. These fields are proposed; existing `goal`, `wander_pos`, `wandf`, `moves`, effects, HP, inventory and special cooldowns remain native monster state.
+
+**Initially abstract actors.** Enumerate spatially relevant active/idle horde buckets in existing overmaps, not only `g->all_monsters()`. `horde_map` already stores individual type-only entities. When an eligible stalker/rider is first processed, create its full monster payload *in that horde entry*, at the container's absolute position, and initialize its identity/state once. This is not a local placement, duplicate spawn or forced encounter. Preserve existing heavy payloads. Relevant predator evolution is handled in section 8 before deciding which species policy applies. Never expand every ordinary zombie into a full payload solely to search for candidates.
+
+Current observations come from actual shared light detection and legitimate local/abstract perception at that actor's position. Abstract direct recognition must have observer capability and known geometry sufficient for ordinary recognition; otherwise it remains uncertain light/sound investigation. A light-only record cannot supply player health, activity or current travel route. No-target movement is centered on the last observed region. Start the stalker's remembered operating scale from its existing 60-map-square leash (about 2.5 OMTs), rather than treating the current `cautious_stalk_distance_omt=5` as an owner-selected five-OMT tracking radius. Use the WEC's couple-of-OMTs intent to tune shadow/search distance; do not make the current player the leash center after contact is lost.
+
+**Abstract advancement.** Add a specialized predator branch before generic `overmap::move_hordes` destination mutation. Once an entity is claimed by that branch, generic movement/sound target assignment yields for that entity. The predator chooses its intent from stored/current observations and proposes a legal next absolute step. Retain `horde_entity::last_processed`'s once-per-turn protection across bucket/overmap transfers. `moves` remains a native action-point budget and each executed abstract step deducts the same chosen movement cost consistently; do not grant an extra speed allotment after migration. Expire timers by elapsed game time, not by the number of buckets visited. Do not simulate off-screen attacks against the player or apply remote damage.
+
+Use known passability and optical/passage summaries from section 2 for abstract steps. Large riders cannot traverse a passage known to be too small. Unknown tight interiors are blocked/uncertain, not certified traversable by the generic passability bit. For outdoor coarse terrain, use existing passability conservatively and revalidate exact local steps when materialized. A missing destination overmap must preserve the actor at its last owned position, not drop its extracted node. A blocked step retains the actor and progresses the stall/search policy; it cannot set position to the destination. Off-screen cross-z movement needs known traversable connections; otherwise investigate an accessible approach on the actor's level.
+
+**Transfers.** Cover both materialization routes: `overmapbuffer::spawn_monster(abs_sm, spawn_nonlocal)` during submap load and `overmap::move_hordes` when an actor reaches the loaded bubble. Cover dematerialization through `game::despawn_monster -> overmapbuffer::despawn_monster -> horde_map::spawn_entity`. The container key is authoritative for abstract position; update the heavy payload position before handoff. The abstract owner's current intent/observation, destination and remaining moves supersede a stale payload `goal` or `wander_pos`.
+
+```text
+abstract -> local:
+  reserve existing node identity + epoch; prepare one copy with synchronized position/state
+  attempt native placement at a legal point
+  on failure: keep/reinsert the same node and unchanged remaining ownership
+  on success: bind placed monster to next epoch and remaining action budget
+              erase the abstract owner; local state now owns future actions
+local -> abstract:
+  snapshot current identity, observations, phase, position and remaining budget
+  insert into the exact destination bucket; acknowledge successful ownership
+  then remove local owner; failed insert leaves local actor owned
+```
+
+A place-around fallback must not cross a sealed wall or narrow passage to find a convenient square. If no reachable valid placement exists, keep the abstract actor outside and retry through normal simulation. `on_load` must not replay the same elapsed time or refill ammo after a transfer. A transfer within a game turn carries the last-advanced stamp and remaining moves so it cannot receive both a full abstract move and a fresh local turn. Do not discard native HP, inventory, effects, cooldowns or saved state when constructing the local copy. Idempotent retries are keyed by actor ID and transfer epoch, not coordinates.
+
+**Save/load.** Heavy horde payload serialization already writes the full monster object; use it rather than adding an unversioned field to the positional `horde_map` tuple. Type-only entries created by ordinary world simulation use the lazy payload initialization above; this is an active runtime path, not an old-predator conversion campaign. Add optical summaries in a separate versioned `optical_map_data` member of overmap JSON, keyed by OMT, preserving the existing `map_data` passability array. A summary contains known-cell mask, physical transparency coefficients, floor mask and needed passage flags; readers treat missing fields/cells as unknown. Existing passability-only worlds still load. Use explicit schema versions for actor/optical/band additions and skip unsupported optional state with visible diagnostics, preserving the underlying monster rather than deleting it.
+
+The owner explicitly declined backward-compatibility migration for old predators. Do not translate old stalker counters/intent strings, rider camp memory or positional pseudo-identities into the new predator/band state. New state starts from normal initialization and fresh legitimate observations; missing historical fields never authorize reading the unseen player position. Preserve native serialized values through the existing readers. Normal new-world actors, abstract payload initialization, evolution and subsequent save/load remain required. No migration project or legacy behavior-conversion proof is required.
+
+**Proof.** Extend `tests/horde_map_test.cpp`, `tests/overmap_test.cpp` and species tests with type-only and heavy entities. Exercise local→abstract→local and save/load during follow, approach, retreat, cooldown and rider empty-ammo pursuit. Assert constant actor identity/count, correct position/goal, remaining moves, elapsed timers, no HP/inventory/ammo loss and no new unseen player position. Force placement failure, occupied destination, missing adjacent overmap, cross-bucket migration in one turn and duplicate delivery/epoch; no actor may disappear, duplicate or move twice. For native proof, begin with an abstract actor, supply a legitimate perception opportunity, observe abstract progress, materialization and physical consequences. A locally spawned monster with only handoff strings does not prove initially abstract participation.
+<!-- DE67:DFS-SLICE:END id=R-ZL-PREDATOR-LIFECYCLE-S001 claim=R-ZL-PREDATOR-LIFECYCLE -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-EVOLUTION-S001 claim=R-ZL-EVOLUTION -->
+## 8. Rider evolution and exactly-once ammunition
+
+- [ ] 🔴 R-ZL-EVOLUTION — Natural riders receive their initial ammunition exactly once, with the correct season gate and explicit old-save semantics.
+
+**Current paths.** `mon_zombie_hunter` upgrades to `mon_zombie_predator`; the predator upgrade group contains the rider and is gated by `upgrade_world_age_gate_seasons=8`. `monster::try_upgrade(bool pin_time)` checks the current type's gate before its catch-up loop. A hunter can become a predator *inside* that loop without the new type's gate being checked again. `monster::poly` replaces stats/specials while keeping ammo; fresh `game::place_critter_*` and map spawn routes populate starting ammo. `monster::load` honors explicit serialized `upgrades:false`, and `on_load` calls `try_upgrade(false)`.
+
+**Evolution.** Move/repeat the existing world-age eligibility check at each catch-up iteration before choosing an upgrade from the current type. Compare `calendar::turn` to `calendar::start_of_cataclysm + 8 * calendar::season_length()` for the predator gate. With 91-day seasons this is 728 days, not a fixed 730. Respect `EVOLUTION_INVERSE_MULTIPLIER`, blacklist handling, existing `pin_time` semantics, scheduled upgrade time and the random group choice. Do not force every eligible predator to become a rider at the gate; the group/half-life still controls probability. A failed gate leaves the current type and future schedule intact for later eligibility. Recheck after every intermediate `poly`, not only at initial entry.
+
+Natural abstract evolution must also reach the rider. For relevant type-only/heavy hunter/predator entries, reuse the same temporal/group-choice primitive when their evolution is due, without local placement or side effects at the avatar's location. A concrete route is extract the single-monster upgrade-choice/timing calculation from `try_upgrade` so both local and horde adapters can apply it to the same monster payload, preserving RNG/schedule semantics. Keep unrelated reproduction, biosignatures and multi-spawn upgrades out of that off-screen adapter. The inspected hunter→predator→rider route is single-monster; if future data introduces a multi-spawn edge, reject that unsupported abstract operation with a clear diagnostic rather than spawning offspring around the player.
+
+**Ammunition.** Add proposed `initialize_rider_ammunition_once(monster &, transition_kind)` at the entry into rider form, shared by fresh initialization and actual non-rider→rider evolution. If initialization is not recorded and the transition is a *new rider creation/evolution*, assign the rider's configured starting amount (currently 18) for its arrow key, preserve unrelated inventory/ammo and set the durable initialization marker in the same mutation. Do not use `ammo.empty()` as the initialization predicate. `gun_actor::shoot` alone decrements spent arrows; rejected shots and movement do not. `on_load`, `deserialize`, ordinary copying, repeated `poly` to the same rider type and local/abstract transitions must not replenish it.
+
+A load is not a rider-creation/evolution event. It preserves serialized ammunition even when the new initialization marker is absent; no old-rider migration or refill is required or authorized. Normal new-world evolution, including evolution after saving and loading that world, receives starting arrows once through the actual form transition. Prove that new-format save/load and local/abstract transfers retain the marker and consumed ammunition.
+
+**Owner decision — old predators.** Skip backward-compatibility migration for old predators. Preserve explicit saved `upgrades:false`; missing `upgrades` continues to use the current type default. Do not re-enable old frozen predators or retrofit their behavior state. This decision is settled. Normal new-world evolution, configured season gates, world evolution disablement and save/load remain in scope.
+
+**Proof.** Extend `zombie_rider_test.cpp` beyond its present type-data and gate checks. Test direct rider placement, local new-world predator evolution including after save/load, initially abstract evolution, multi-stage catch-up before/at/after the gate, nonstandard 14/91/127-day seasons, evolution disabled and blacklist. Seed/control the random group only to reproduce its real production transition, and separately retain a natural evolution witness. After evolution, fire real shots, unload/reload and serialize repeatedly; the arrow count must remain starting amount minus actual consumption. Test new-world riders saved with zero and partial ammunition, and retain the existing explicit-false upgrade behavior. No legacy conversion matrix is required. No test may force `ammo=18` after evolution and then claim initialization parity.
+<!-- DE67:DFS-SLICE:END id=R-ZL-EVOLUTION-S001 claim=R-ZL-EVOLUTION -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-RIDER-BANDS-S001 claim=R-ZL-RIDER-BANDS -->
+## 9. Rider bands form through encounters and survive separation
+
+- [ ] 🔴 R-ZL-RIDER-BANDS — Riders meet, form/merge durable bands and share bounded observations without positional identities or telepathy.
+
+**Replace the false formation boundary.** `evaluate_rider_convergence` currently sets `band_formed` from the number selected for a light and `reserve_rider_convergence` marks selection as membership. `signal_live_zombie_riders_from_light_observations` identifies riders by position and treats any old camp intent as a band. Selection may request independent investigation; none of those facts creates membership. Remove those production writes and route formation through actual encounters.
+
+**Encounter.** An encounter is two living compatible riders at their real local/abstract positions with reciprocal ordinary perception and a reachable local meeting/communication route. Sharing an OMT or a light target alone is insufficient. A sealed wall, different unconnected floor or unseen distant bandmate blocks a new encounter. Use section 2's known geometry and native recognition limits; light detection range is not a social-contact radius. Evaluate from a position snapshot once per advancing turn so iteration order cannot make one actor observe a future position of another. Already grouped riders remain members through separation; only communication and new merging need a current encounter.
+
+**Membership owner.** Add proposed `rider_band_state` to `overmap_global_state` (`src/overmapbuffer.h`, clear in `overmapbuffer.cpp`, JSON in `src/savegame.cpp::overmap_global_state::serialize/deserialize`). It owns band IDs, membership, merge aliases, revision and confirmed casualties. A monster's band reference is a cache of that authority, not an independent member list. Bands do not own or instantiate monster bodies.
+
+Use a canonical band ID chosen deterministically from the participating stable rider IDs/band roots. On encounter, collect both canonical roots, union their member IDs once, choose the canonical surviving root, preserve the other root as a merge alias and advance the revision. Update loaded participants' cached references after the registry mutation; absent members resolve the alias when next loaded. Replaying the same encounter/revision is a no-op. Do not scan the whole world to rewrite absent monsters, delete a member merely because it left the bubble, or create a replacement body from a membership record. There is no invented band-size ceiling; the old two-rider light draw cap cannot truncate a merged membership set.
+
+Hook confirmed death at `monster::die` in `src/monster.cpp` (and any explicit permanent removal route), distinct from `on_unload`/despawn. Death removes/confirms casualty for the exact actor ID and survives reload; it does not dissolve unrelated surviving members or reset the band to a newly spawned identity. A lone survivor retains its band identity and can later meet others. Permanent cleanup of an empty band is allowed only when all known members are confirmed dead/removed and no unresolved alias/reference needs it; absence from the active map is insufficient. A malformed/missing band reference resolves to an ungrouped existing actor with diagnostics, not a newly spawned bandmate. Preserve valid membership history and reject contradictory duplicate ownership.
+
+**Target sharing.** Individual actors remain the owners of what they know. On a credible communication encounter, copy the strongest applicable observation with its original observed time, uncertainty, target identity (if recognized), source and expiry. Existing band membership alone does not deliver a fresh remote location to every separated rider. Sharing through a connected set of riders can propagate an observation, but receiving/repeating it cannot refresh its timestamp or reduce uncertainty. Prefer newer direct observation over older direct evidence and identified prey over unrelated light while a current pursuit remains valid. At equal provenance/time, use deterministic source/actor identity ordering so results do not depend on container iteration. A remembered observation can guide search; actual targeting/shooting still requires current native sight.
+
+**Proof.** Extend `zombie_rider_test.cpp` and proposed predator lifecycle tests: two riders select the same lamp but remain separated (no band); they physically meet (one band); bands meet and merge (union); the order of encounters is reversed (same final membership); separate/unload/reload/one casualty/lone survivor/reunion; stale actor band revision; duplicate encounter and conflicting ownership. Hide the player after a genuine observation and move it elsewhere: communicated knowledge retains the old coordinates/time and no rider follows the hidden current position. Native evidence must identify the actual meeting, persistent membership, observed movement and later cooperative pressure; a convergence helper's `band_formed=true` is not proof.
+<!-- DE67:DFS-SLICE:END id=R-ZL-RIDER-BANDS-S001 claim=R-ZL-RIDER-BANDS -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-ENCOUNTERS-S001 claim=R-ZL-ENCOUNTERS -->
+## 10. Encounter footing, descriptions and owner-level prototype choices
+
+- [ ] 🔴 R-ZL-ENCOUNTERS — The intended creatures occur naturally at the intended stage and their descriptions fit the delivered experience.
+
+`data/json/monstergroups/zombies.json` includes a start-zero singleton stalker with weight 50 and cost multiplier 25. The current test calls it “early uncommon”; that label is not the WEC's “relatively common.” Inspect actual group weighting/cost and natural encounters before changing it. Keep HP 90, speed 120 and the existing damage/armor as the initial baseline; improve timing first. If ordinary early city play scarcely produces stalkers, adjust only the relevant spawn weight/cost after documenting natural encounter density. Do not replace natural spawn proof with a debug singleton and do not raise durability/damage to hide poor decision timing.
+
+Riders remain late-game predator evolutions rather than direct ordinary zombie-group spawns. Preserve the configured season-based timing and powerful composite footing. Debug scenarios may stage them for focused behavior proof but do not establish natural prevalence or evolution.
+
+Replace both descriptions in `data/json/monsters/zed_misc.json` with concise sensory prose. Proposed text, to be checked in the actual description UI:
+
+- Stalker: “A gaunt, trembling figure keeps to the edges of cover, its long arms clutched around a body that never stops writhing.  Its frantic eyes follow each struggle, and its wet teeth show whenever someone falters.”
+- Rider: “A towering corpse rides a six-legged, horse-sized tangle of muscle and chitin.  Blood-red eyes peer over a bow of wet bone and sinew as the mount's feet hammer across the ground.”
+
+These drafts preserve recognizable anatomy and tone without promising unavoidable death or explaining internal AI scores. Keep translation plumbing and existing names. Revise the current test's old exact rider description assertion; do not freeze awkward prose solely to keep it green.
+
+**Choices deliberately left to observed prototypes.** The first implementation uses committed ordinary stalker movement and rider contact impact. A literal stalker leap or rider run-through is an owner-level refinement after feel evidence, not a prerequisite. The pressure crossover, flashlight detection/retention calibration, impact damage/duration/cooldown and relative stalker frequency require documented starting values and matched observations. This FS settles the mechanism and discriminating controls, not arbitrary numeric balance. A subsequent balance choice must preserve the WEC and record its evidence; materially different behavior returns to the owner.
+
+**Proof.** Inspect ordinary start-zero city populations and late-world evolution over existing spawn/upgrade paths, retaining world age, season length, group and actual actor identities. Compare stalker encounter density and outcome with the baseline, without inventing a quota. Review both descriptions in native UI for readability and localization behavior. Tests verify type/name/stage and mechanics, while free-play decides whether timing, rarity and tone fit the requested experience.
+<!-- DE67:DFS-SLICE:END id=R-ZL-ENCOUNTERS-S001 claim=R-ZL-ENCOUNTERS -->
 
 ## Competing systems and override direction
 
-| State/action | Readers | Writers / competing owners | Authoritative decision |
+This table supplies the shared ownership rules referenced by every slice. Native single-thread execution does not eliminate duplicate ownership: callbacks, copied payloads and later phases of the same turn can still overwrite an earlier decision.
+
+| State/action | Readers | Writers or competitors | Authoritative decision and yield rule |
 |---|---|---|---|
-| Active surface/frame | Cockpit, client, projections | Native scope stack, input-context fallback, cached World | Exact top native owner wins. A child hides all parent actions; obsolete transient parents remain private until real successor publication. Unknown owner hard-stops. Frames are run-local, not save truth. |
-| Request/receipt | Native owner, broker, evidence | Request transport, local physical input, duplicate queue entries | Game-thread consumer alone mutates native action. Run/surface/frame/action/target validation precedes it; completed request IDs replay receipt without action. A missing successor does not erase an accepted native receipt or restore stale authority. |
-| Item/response/actor target | Inventory/dialogue/inspection/target adapter | Native UID/object, regenerated responses, cached labels | Resolve exact currently advertised object and recheck validity. Reject moved/removed/stale IDs; rediscover after native transfer or reload. Never choose by label, letter or row. |
-| NPC intent/turn | LLM runner, native movement, camp | `llm_intent` queue, combat, mission, Patrol, follow rules | NPC policy is separate from cockpit input. Native eligibility/danger/mission owners may override an ordinary intent; one actor cannot receive duplicate competing movement in the same turn. Durable assignment/rules win after reload; transient queues do not resurrect. |
-| Camp service/resources | Mission, Locker, Patrol, crafting | Zone manager, assignment/mission writers, stock/item owners, cached plans | Native camp/zone/faction/item state owns truth. Plans and reservations derive from it and invalidate on relevant changes; actual service must revalidate actor, item and resources before consumption. No duplicate transfer/food debit on retry or reload. |
-| Signal memory/report | Structural drive and response | Staffed physical observation, active-scout reads, player opportunity adoption, setup | Exact production observer/source/channel creates signal-discovery truth. Scout/report/decision owners advance response. Competing provenance must be explicit and cannot receive credit for the required shared discovery route. |
-| Hostile local/abstract travel | NPC movement, overmap scheduler | Reservation, handoff/materialization, generic travel | One simulation owner per exact operation/member generation. Handoff retains route/identity and makes the old owner yield; retries cannot clone actors or double-advance them. |
-| Shakedown/player relationship | `guaranteed_hostile`, `attitude_to`, AI targeting | Persisted operation phase/member/branch, faction dislike, player attack, trade | Exact parley and paid return override generic hostility. Refusal/incomplete payment/player attack releases this group. Favorable rolling ambush is separate. Terminal receipt applies once after return. |
-| Night raid | Rally/approach/contact | Native clock and persisted operation | Night controls departure only. After departure, dawn does not invalidate the operation or route. |
-| Save/reload | Restored actors/camp/ecology, client | Native serializers, fixture installer, runtime caches | Saved world owns durable truth. Reload replaces process/frame domain and reconstructs caches; fixture reinstall cannot masquerade as continuation. |
-| Raptor movement | Monster plan/move/save | Orbit scorer, target/run effects, held destination, ordinary movement | Scorer proposes only legal native candidates; movement owns consequence. Fallback yields to ordinary AI; existing identity/state prevents a held orbit from becoming another actor's state. |
-| Proof and performance | Player, evidence consumers | Native observations, witness prose, setup, aggregate result | Exact retained facts support each independent verdict. Mechanical validity and cleanup are separate from causality/feel. Matched native context owns a performance comparison, not its label. |
+| Powered emission | lightmap and shared collector | item/character power processing, vehicle lights, fields, terrain/furniture | Native item/vehicle/field state owns emission. Optical queries are read-only. One emitter enumeration feeds both views; no query consumes battery or refreshes `haslight`. |
+| Escape and visibility | all five observer families | old OMT aggregate, same-z LOS gate, ordinary terrain sight | Shared physical detector owns optical outcome. Old light-specific gates yield; unrelated smoke/sound/recognition callers retain their semantics. Per-source provenance survives aggregation. |
+| Current source versus remembered observation | adapters and pursuit | five-minute scanner, read/refresh loops, save/load, band copying | Current turn sampling alone supplies new light. Observer-owned memory preserves time and expiry. Repeated reads and copied events are no-ops for freshness. |
+| Humanoid activity | bandit/cannibal scouts and sites | physical-light event delivery versus drive/report/dispatch | Detector supplies observations only. Existing site/outing ownership and scheduler alone dispatch and learn camp facts; creature IDs/state never enter that ownership domain. |
+| Predator target and local destination | `monster::plan/move/attack_target`, specialized adapters | generic target/flee/patrol/smell/sound, old rider camp intents | Recognized current prey outranks light for a rider; active stalker retreat/cooldown outranks reacquisition. Species owner sets discretionary intent. Existing physical inability/control/pacification wins. No-target branch returns owned intent before generic fallback overwrites it. |
+| Discretionary movement/attitude | `monster::move`, path selection | `MATT_IGNORE/FOLLOW/FLEE`, `KEEP_DISTANCE`, fear triggers, raptor override | A valid predator approach/pursuit phase must reach normal movement despite generic follow/keep-distance caution. Use a species-scoped analogue of the raptor committed-swoop override. Do not set global unbreakable morale or erase meaningful injury/threat retreat. Physical movement/effect checks still win. |
+| Route waypoint versus attack target | `monster::move` path logic and ranged/melee specials | `get_dest`, `path.back`, local path horizon | Keep current visible prey as logical `dest`; use a separately stored effective movement waypoint for path calculation/consumption. Both distance-to-path-target and `path.back` checks use that waypoint for these species. A waypoint cannot erase the visible target required by `attack_target`. |
+| Attack attempt and impact readiness | species budget, cooldown, diagnostics | planner output, special loop, behavior-tree special, ordinary melee | The real attack owner alone increments attempts and consumes readiness after valid preconditions. Misses count, walking does not. A consumed offensive action cannot fall through into a free extra attack. |
+| Time and local/abstract action points | planners, timers, save/load | `process_turn`, `move_hordes`, `on_load`, transfers | Time-point state ages once against calendar time. Carry remaining moves and last-advanced stamp across identity/epoch-bound transfers; losing representation is erased only on successful acquisition. |
+| Abstract destination | horde iterator, specialized policy | generic `signal_sm`, generic `move_hordes`, full payload `goal` | Specialized branch alone advances owned predators. Sound supplies observations. Generic ordinary hordes remain separate. Synchronize payload from container-owned position/destination before materializing. |
+| Evolution and ammo | load/spawn/evolution/attacks | `try_upgrade` catch-up, `poly`, starting-ammo assignment, reload | Shared current-type gate per upgrade iteration; new rider entry initializes ammo once, shots consume it. Existing saved riders preserve all counts. Explicit false evolution policy follows the freeze record. |
+| Identity and band membership | local/abstract actors, encounter sharing | positional IDs, convergence selection, aliases, death, reload | Actor identity persists in one payload; global band registry owns membership only. Encounter union and casualty transitions are revision-bound/idempotent. No body is spawned from membership. |
 
-## Acceptance and proof
+## Acceptance and production proof
 
-Shared proof shape:
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-PLAYTEST-S001 claim=R-ZL-PLAYTEST -->
+## 11. End-to-end outcomes, native playtesting and performance
 
-```text
-current source/executable + audited scenario/world + declared zero-credit preparation
--> native player action -> authoritative production transition
--> identity-continuous native facts and actual consequence
--> immutable evidence + independent mechanical/causal/feel/persistence/cleanup result
-```
+- [ ] 🔴 R-ZL-PLAYTEST — The three requested experiences are demonstrated in real play, with honest source and lifecycle binding.
 
-Every newly credited result binds commit/tree or relevant source digest, executable digest, fixture
-and profile manifests/options, world/save, run/process/generation, actor/item/site/lead/report/
-operation identities where applicable, native request/frame/receipt and game time. Record setup and
-interventions at their actual time and bound later causal credit accordingly. Current bindings must
-be rechecked when source, executable, scenario or world changes; no old token or source label alone
-supplies current authority. Freshness means new behavior observed for this requested package after
-this refreeze, not a report reingestion, historical witness reinterpretation or startup rerun.
+No new gameplay has been run for this specification. Source findings above are inspected defects/risks, not newly reproduced native failures. The WEC identifies the historical light run `.userdata/dev-harness/harness_runs/20260907_152331_c3938384751f47dfa1e1049b7e3236b5`. That run had source-positive light observations and cross-level `blocked_line_of_sight`, not a successful lead/approach. Verify its actual optical channel when retrieving historical evidence. A mislabeled smoke callback cannot close a light claim.
 
-| Red ID | Outcome test | Evidence and false-green boundary |
+**Evidence route.** Each proof retains current source/dirty-tree identity, executable hash, scenario and fixture revision, run/world/player IDs, actor IDs, game-time interval and local/abstract owner. The production event is observed through native receipts, world state, attacks/movement and exact log fields. Ground-truth diagnostics may measure unseen targets but must be demonstrably absent from decision inputs. Debug placement/time setup can establish a controlled initial condition and receives no natural encounter/evolution credit. Do not set a lead, commitment, band, destination, hit, ammo result or observer verdict directly and then call it production proof.
+
+Use the repository CAOL harness entrypoints in `.agents/skills/caol-harness/SKILL.md`. Future executable selection is via `tools/openclaw_harness/scenario_registry_cli.py registry-query --query-file <typed-question-file>`; consume its current returned source/binding/readiness and launch route only in an authorized implementation/playtest phase. The current source-bound Mac build helper is `tools/openclaw_harness/build_source_bound_macos.py --renderer tiles` (or `curses` for that renderer). Scenario querying is inert; a saved scenario or old ready binding is not proof against new source. Use advertised native semantic actions and a matching charter/witness for the proof question. Raw key scripts, screenshots/OCR and a startup modal dismissal are not native gameplay proof. GUI recovery, if needed, follows the authorized Peekaboo route.
+
+**Existing scenario sources to reuse as fixtures, not as accepted new outcomes.**
+
+| Existing source under `tools/openclaw_harness/scenarios/` | Useful starting condition | Required correction/extension before proof |
 |---|---|---|
-| R-SURFACE-011 | Current input sources are truly classified; required discovered owners operate and unsupported owners hard-stop. | Source inventory result, actual native scope/action/child proof, affected renderer route and actionless control. Filename membership or truthful unsupported status is not completed support. |
-| R-026 | The complete fresh feature package is usable and all its required independent outcomes are proved. | Current scene/charter/guide and immutable independent results for R-029/R-031–R-036; no old green, single aggregate verdict or deleted history. |
-| R-029 | Shared natural signal/scout/report/travel, safe normal demand/payment/return, combat-release branches, intentional rolling ambush, cannibal dawn commitment. | Exact identity and ordered native events across each independent branch/control and reload; prepared report/contact, demand screenshot or paid write alone fails. |
-| R-031 | Actual NPC request/context/reply/action and follow/stay/camp routing. | Bound utterance, recipient, snapshot, runner result, physical behavior and competing-owner context; prewarm/promise alone fails. |
-| R-032 | Native camp establishment, completed mission and actual Locker/Patrol/Food/Storage service. | Actor/resource/item/zone/policy/plan-to-outcome records with controls and independent verdicts; prepared camp or selector acceptance alone fails. |
-| R-033 | Fresh channel sensing/memory controls and local/overmap continuity. | Source/observer/channel/lead and route/member/owner identities across controls; player-only knowledge, unrelated site logs or double ownership fails. |
-| R-034 | Native new-process save/load and resumed durable behavior. | Before/save/exit/reload/later-turn evidence without reinstall or stale grants; successful cleanup or saved file alone fails. |
-| R-035 | Native raptor orbit/swoop/fallback and readable encounter behavior. | Plan plus actual positions/combat in open/crowded/blocked situations; debug spawn/pure scorer alone fails. |
-| R-036 | Matched combined workload cost and feel. | Raw pacing/update/action/process distributions, context, variability and bounded conclusions; labels, unmatched scenes or automatic kill limits fail. |
-
-Preserved R-SURFACE-001–010, R-027, R-028 and R-030 acceptance remains at its original evidence
-strength. The earlier wait prototype `20260826_135902` remains narrow historical evidence only.
-Qualification at `54d6c00dfefafc3443f80097f5a3bf1664192348`, documented by
-`1bfcf283417d63ae407bc66fc9950a90a68dd5b5`, establishes reusable harness capabilities and their
-limits. It does not close this new campaign. The selected Mac scenarios do not certify full
-Windows/Linux game runtime; renderer or platform claims require their own applicable production
-route and source-bound executable.
-
-## Freeze and retained evidence
-
-Status: Refrozen. Original inspected baseline, WEC identities, source reconciliation, acceptance
-scope and complete freeze history are retained exactly at `2f7d9ea2bcd7643a6e64d44e9adc703a91c6070f:.de67/DFS.md`
-and `state/review-incident-prompt-delivery-20260908/baseline/DFS.md`.
-The 2026-09-08 owner-scoped refinement changes functional descriptions and tooling representation;
-it grants no new gameplay acceptance. Original R-SURFACE/R-027/R-028/R-030 proof retains its scope;
-R-031–R-036 require fresh independent proof. Named evidence may close a requirement without weakening
-it. The WEC owns intent, exclusions and gameplay-fix promotion authority; source/evidence may refine
-mechanisms within that contract. No scenario, witness, receipt, clock or accepted result is replaced.
-
-## Owner-authorized delivery tooling — cycle 9
-
-These named maintenance slices enable the existing campaign's evidence route; they add no gameplay
-acceptance, change no product outcome and confer no authority over policy, clocks, guard invariants,
-owner decisions or accepted records. The cycle-9 owner queue authorizes Sol to commission repository
-implementation and focused verification, with exclusive file/runtime ownership per assignment.
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-COMPACT-IO-S001 claim=R-MAINT-COMPACT-IO -->
-- R-MAINT-COMPACT-IO — Existing build and native/query interfaces return useful bounded
-  decision fields, errors/contradictions and exact full-artifact handles while retaining original
-  output. Actor/active-service prerequisites and recorded startup uncertainty remain observable.
-  - Proof: controlled success/failure builds retain complete logs and return honest status; historical
-    Patrol frames and inactive-owner counterexamples preserve identities, priority/order and runtime;
-    loading/modal/ready/exited fixtures preserve uncertainty and exact recovery handles. No gameplay
-    acceptance or live-process action is implied. See the named ledger assignments for edit ownership.
-  - Owner extension f5319eac0adc, consolidated with cycle 9: optional selected native views expose
-    stable entities/relevant fields, source/run/frame/turn identity, freshness, unknowns and original
-    handles. Before/after comparisons preserve both observations and distinguish changed, unchanged,
-    added, removed, unknown and incompatible bindings; different-time views are not atomic. Existing
-    event/journal queries follow recorded request/actor/source links to native acceptance, rejection
-    and results, retaining pending/missing links and competing listeners/writers without inferred
-    causality. Reuse inspector/cockpit facts, adding narrow read-only native instrumentation only
-    when needed. No new DSL, verdict oracle, automatic setup/time advancement or receipt framework.
-  - Prove crafting recipient/camp/capability, recipe/resources/tools/ownership/location and job,
-    and signal observer/source/visibility/lead/content/timestamps through shared machinery. Cover
-    missing fields/resources/capability, source freshness, process/actor identity incompatibility,
-    same-content timestamp refresh and unrelated-writer contamination. Apply it to Patrol or Pay
-    through selections/adapters only. Use original native artifacts and isolated tests first, then
-    the smallest necessary source-bound native integration test. Sol supplies selected task facts
-    through existing context preparation and verifies actual worker input/use; no replay for adoption.
-<!-- DE67:DFS-SLICE:END id=R-MAINT-COMPACT-IO-S001 claim=R-MAINT-COMPACT-IO -->
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-RESULT-REUSE-S001 claim=R-MAINT-RESULT-REUSE -->
-- R-MAINT-RESULT-REUSE — Selected accepted facts and remaining boundaries enter the next
-  prepared worker packet through the existing context tool, with immutable references and current
-  source/evidence dependencies. Sol judges validity; tools do not invent acceptance or proof.
-  - Proof: an isolated actual packet preserves generation-0 save/exit and assigns only the missing
-    generation-1 continuation, retains independent contributions, rejects stale dependencies and
-    replaces obsolete current conclusions without destroying their archived revisions. Demonstrate
-    the interface's next relevant use without replaying accepted product evidence solely for adoption.
-<!-- DE67:DFS-SLICE:END id=R-MAINT-RESULT-REUSE-S001 claim=R-MAINT-RESULT-REUSE -->
-
-## Owner-authorized advisory integration — review d1cfc813605b
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-CONSULT-S001 claim=R-MAINT-CONSULT -->
-`integrations/openclaw_advisory/advisory_consult.py` sends a task-bound request through the
-configured Gateway route and correlates its non-authoritative reply. The request binds current
-coordinator ownership, workspace, lineage, run, task, assignment revision, sender, recipient and
-correlation identity. Stale, rebound, duplicate, unavailable, echo and authority-escalation cases
-must remain distinguishable. A transport acknowledgement or timeout leaves the request unresolved;
-only a correlated reply changes its durable state to replied. Advice cannot promote the owner queue,
-change acceptance, grant repair authority or impersonate an owner decision. The existing adapter's
-focused tests and retained harmless round trip discriminate these boundaries without resending it.
-
-<!-- DE67:DFS-SLICE:END id=R-MAINT-CONSULT-S001 claim=R-MAINT-CONSULT -->
-
-Scoped refreeze 2026-09-08, review d1cfc813605b: owner relays6f6a959b0eab,4673b7453329,
-f5319eac0adc refine preparation, the existing workbench assignment, R033-F002 repair and advisory
-integration. Source inspected at the HEAD in `state/review-owner-d1cfc813605b/source-baseline.json`.
-All existing stable claims/slices, accepted proof, clocks and independent assignments remain intact.
-This record grants the named implementation route, not completed capability or gameplay proof.
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-PROMPT-DELIVERY-S001 claim=R-MAINT-PROMPT-DELIVERY -->
-Legacy slice identity retained for existing references. S002 defines the current coordinator,
-continuation and reviewer prompt-loader behavior. The obsolete `run_coordinator` description and
-commissioning history are retrievable at the pre-review Git baseline above and in the ledger.
-
-<!-- DE67:DFS-SLICE:END id=R-MAINT-PROMPT-DELIVERY-S001 claim=R-MAINT-PROMPT-DELIVERY -->
-
-
-## Owner-scoped retrieval evaluation — 2026-09-08
-
-Refrozen under owner gate `c895367b1fc2`, source HEAD
-`7fdb917c8e149b87634ae04a1afadacbbf90f50c` on `dev`. This adds a non-product tooling
-experiment and clarifies effective prompt delivery. Prior claims, accepted proof and independent
-assignments remain intact. Specification is not implementation or adoption evidence.
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-PROMPT-DELIVERY-S002 claim=R-MAINT-PROMPT-DELIVERY -->
-### Current prompt delivery
-
-S002 supersedes S001's source description without rebinding either slice identity.
-`coordinator_supervisor.py::_fresh_prompt_module` reads the installed UTF-8 source anew at an
-authorized transition, compiles it and loads its prompt producers in an isolated module.
-`run_child` uses the resulting coordinator or continuation producer; `run_mutation_reviewer`
-uses its reviewer producer. A missing, undecodable, corrupt or load-failing source marks the run
-failed before Popen. Exact gate, workspace/state/lineage/run bindings and generation-specific
-restart reason flow to the sole authorized child. Owner stop, clock, policy and external-supervisor
-launch ownership remain authoritative. No extra child or supervisor restart is a test dependency.
-
-The discriminating check loads a supervisor, changes on-disk prompt text and verifies fake-runner
-stdin at the next authorized transition for each role and continuation; unchanged process memory
-must not select the earlier text. Invalid source must launch zero children. Live adoption means
-retained input and use by a naturally authorized child, distinct from isolated rendering. Current
-implementation evidence and remaining adoption/closure work are in the ledger and receipt
-`d193034a63642833354c61a41d60f84bfc495c454a9a34ebf46c5184dff97579`.
-<!-- DE67:DFS-SLICE:END id=R-MAINT-PROMPT-DELIVERY-S002 claim=R-MAINT-PROMPT-DELIVERY -->
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-EVIDENCE-SEARCH-S001 claim=R-MAINT-EVIDENCE-SEARCH -->
-### Experience and authority
-
-A caller describes an unknown passage/event, optionally constrains task, run, feature, actor,
-producer or revision, and receives a compact ranked page of original excerpts. Each hit identifies
-why it matched, its source/occurrence, verified expansion handle, source generation/revision,
-known run/task/actor bindings and freshness. Unknown attribution stays unknown; similar text never
-confers proof, acceptance, current instructions or owner authority. The caller can expand context
-or use existing exact queries without an indexing chore. The outcome is discovery plus an honest
-usefulness evaluation; it does not require a particular vendor, positive verdict or global rollout.
-
-### Existing sources and boundaries
-
-Reuse `tools/openclaw_harness/cockpit_evidence.py::query/record_artifact`: source snapshots and
-`{path, offset, length, sha256}` handles already bind raw records; original recovery rejects changed
-bytes. `evidence_events.py::parse/envelopes` supplies native/NPC/runner event projections and null
-unpublished correlations. Its `query` currently reads complete source files, so it is a reference
-for semantics, not an incremental ingestion implementation. `cockpit_file_bridge.py` exposes
-`log-query`, `record-artifact` and response status/artifact/slice retrieval. Keep these entrypoints
-usable. Respect their distinction between a recorded request and its gameplay result.
-
-`work_context_provider.py::session_context` deliberately follows exact referenced sessions, not an
-archive walk or guessed newest run. `worker_receipt.py::compact_worker_receipt` exposes artifact
-references/entrypoints; `context_library.py::catalog/show` provides revisioned section retrieval.
-Bootstrap a declared source manifest from existing receipt/session/artifact inventories and explicit
-selected historical sources. Register newly produced evidence automatically through the narrow
-existing producer/inventory integration chosen by the worker; periodically reconcile registered
-sources to recover missed notifications. Report source coverage, exclusions and unavailable roots.
-Do not recursively inject the workspace/history or change existing receipt acceptance semantics.
-No `.de67/no-go-zone/`, secrets, credentials, unrelated workspaces or live owner data are index inputs.
-
-Start with logs, worker findings and investigation artifacts whose location or terminology is
-unknown. Plain-text/Markdown chunks must point to original spans, not solely generated summaries.
-Chunk JSONL at complete records and group meaningful adjacent evidence with constituent handles;
-preserve raw unparsed records and diagnostic context. Dedupe text for embedding reuse while keeping
-all occurrence identities. Repeated polling must not bury a rare diagnostic or contradictory outcome.
-Code indexing is a later extension; if included after the decision, bind functions/sections to source
-revisions and make current versus historical lookup explicit.
-
-### Implementation contract
-
-`tools/openclaw_harness/evidence_search_index.py::EvidenceIndex` owns the derived SQLite state.
-`sources.path` identifies a registered original; `generations.generation_id` is globally unique,
-while `generations.generation` is only a per-path revision counter. `sources.active_generation`
-and `occurrences.generation_id` refer to the global ID and must resolve to that source's path.
-`_new_generation` publishes the source pointer and generation atomically. `ingest` must leave
-unrelated sources untouched; `coverage` joins this same global identity. Embedding cache identity
-includes content hash, model/version and chunking version, while each original occurrence retains
-its own source span and hash. Text deduplication must never merge occurrence identities.
-Schema migration may repair pointers only using that source's generations; if a legacy index has
-already lost current coverage or duplicated occurrences, recover from verified originals or expose
-the degraded state. A pointer rewrite alone must not claim repaired coverage.
-
-The semantic backend is an available local or already-authorized implementation, with visible
-model/version and failure state. No new spending or upload authority is granted. Lexical fallback
-remains usable but cannot establish semantic usefulness; hardcoded synonyms or stub ranking cannot
-deliver the natural-language route.
-
-For immutable completed artifacts, ingest once per content identity. For growing logs, checkpoint
-only committed complete records; retain a partial trailing record for the next pass. Detect source
-replacement, truncation and rotation, distinguish generations, and resume after crash without lost
-or duplicate occurrences. Changed/deleted registered sources must become visibly stale/unavailable
-or be refreshed; existing records cannot silently masquerade as current. Publish an index generation
-only after its writes/cursor state are coherent. Rebuild from originals and reuse matching embeddings
-where possible. Keep recovery/indexing automatic and independent of task lifecycle; bound resource
-use with adjustable execution settings, not acceptance quotas or worker waiting requirements.
-
-`evidence_search_query.py::EvidenceSearch.query(text, filters, offset, limit, expand)` returns
-ranked verified originals and coverage. Negative offset/expansion or nonpositive limit returns
-`invalid_paging`. Occurrence metadata filters apply to explicitly supported stored fields;
-other keys select fields in the recovered original JSON. Recover with `record_artifact` and its
-exact path/offset/length/hash before evaluating original-only fields such as `feature=crafting`.
-Do not reject those fields because an occurrence row lacks them. An absent original key differs
-from a present JSON null; absent keys do not satisfy an explicit null filter. Literal filters
-must remain literal and any inferred interpretation must be visible and adjustable.
-
-Results expose source/occurrence identity, source generation, match reason and expansion handle,
-indexed coverage and committed position, pending catch-up and partial/degraded/no-match status.
-Changed bytes or missing originals produce visible stale/unavailable evidence, never unverified
-cached excerpts. Paging/expansion preserves the selected source generation. Missing model/index,
-corrupt state and backend failure expose errors/degradation with the existing exact-query route.
-Alternate or contradictory hits remain discoverable. Partial-index no-match cannot prove absence;
-retrieval confers no current instruction, acceptance or causal authority.
-
-### Behavioral proof
-
-Use existing `cockpit_evidence_test.py` exact filtering/hash-tamper fixtures and
-`evidence_display_test.py` append-stable/replaced-prefix fixtures as compatibility footing. Extend
-focused tests against the chosen implementation for:
-
-- Two sources A/B with local revision 1 but distinct global IDs: unchanged B re-ingestion preserves A/B once each and source-correct coverage, including database reopen and legacy migration. Initial and repeated ingestion; append catch-up after process restart; interrupted writes/partial
-  records; crash between index and cursor commits; truncation, replacement, rotation and deletion.
-  Verify exact occurrence counts/identities and recoverable positions, not only successful commands.
-- Content reuse across multiple run occurrences, model/chunking-version mismatch and rebuild,
-  unparsed records, repetitive polling with retained rare/contradictory evidence, and missing inputs.
-- Natural paraphrases with little terminology overlap using the real selected semantic backend;
-  misleading near-matches, conflicting outcomes and unrelated runs; exact task/run/revision/actor
-  filters, original-only `feature=crafting`, absent versus explicit-null keys, mixed stored/original selectors, null identities and visible query interpretation. Controlled fixtures may test failure
-  mechanics, but mocked embeddings alone cannot prove semantic utility.
-- Original excerpt and surrounding-record round-trip, hash mismatch/source replacement after search,
-  stable paging for a selected index generation, stale/partial coverage, no match, unavailable model,
-  corrupted index, and a functioning exact/structured fallback. Preserve existing query behavior.
-
-Complete build/test logs and source/model/fixture identities remain retrievable through existing
-artifacts/receipts. Source or isolated proof grants no gameplay credit. A fresh game campaign is not
-required merely to verify retrieval; use retained original evidence and normal upcoming work.
-
-### Convenience evaluation and owner decision
-
-After functional tests, enable explicit trial use by workers on representative difficult lookups
-in their normal assignments and by Sol for coordinator-side discovery. Verify actual tool invocation,
-returned originals and their use in answering the question; installed commands, selected bundles or
-positive self-report alone are insufficient. Workers should be able to ask directly without first
-learning source filenames, event spelling or indexing administration. Record concise friction,
-misses and follow-up searches along with successes through existing results, not a parallel form.
-
-Compare against existing exact/structured queries and bounded Luna retrieval where appropriate.
-Use comparable questions and disclose prior-knowledge/order effects; separate development/tuning
-examples from evaluation questions when practical. Cover enough differing cases to change a keep,
-revise or retire decision, without an arbitrary example quota. Do not replay accepted gameplay.
-Measure answer relevance/misses and source fidelity, elapsed effort, follow-up/helper/retry burden,
-returned and ingested context, and non-overlapping full-tree cached/uncached/output token use where
-available. Include indexing/embedding/search, cold and incremental cost, storage and maintenance
-friction. Preserve measurement boundaries and missing accounting; bytes, latency and subjective
-convenience are not substitutes for measured token savings.
-
-Sol presents Josef a compact evidence-backed keep/adopt, revise/retest or retire recommendation,
-with original handles, actual worker/coordinator use, failures, cost boundaries and tradeoffs.
-An explicit owner decision precedes making retrieval the default or expanding scope. That decision
-applies to this tool, not unrelated delivery. A negative evaluation and retirement decision can
-complete this experiment while retaining evidence and exact-query capability. A revision decision
-keeps the concrete remaining work open. A keep decision requires demonstrated functional behavior
-and convenience; it does not retroactively turn unit tests into adoption evidence. Preserve accepted
-work and reduce obsolete retrieval guidance if adoption makes it unnecessary.
-<!-- DE67:DFS-SLICE:END id=R-MAINT-EVIDENCE-SEARCH-S001 claim=R-MAINT-EVIDENCE-SEARCH -->
-
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-CONTEXT-ROUTING-S001 claim=R-MAINT-CONTEXT-ROUTING -->
-### Declared functional slices reach worker context
-
-`policy_kernel.py::_exploration_route` finds the exact assignment's owning active ledger item,
-validates its `DFS slices:` selectors through `mutation_guard` slice APIs and extracts the selected
-claim-bound slices in declared order. Missing, duplicate, wrong-claim or malformed selection fails;
-no first-same-claim or stale-context fallback is valid. `_dfs_worker_boundary` removes only the
-projection after `Implementation status:`; all functional contract text precedes that delimiter.
-Independent same-claim assignments, issued packet hashes and prepared-context revisions remain bound
-to their owners. This affects context extraction, not policy rules, clocks, proof or launch ownership.
-
-The counterexample selects S002 from a document containing earlier S001: actual packet reference
-context must contain S002 and exclude S001. Multiple selectors preserve order; invalid selectors
-fail before dispatch. Retained baseline and current isolated output are in
-`state/review-owner-c895367b1fc2/` and `state/review-incident-prompt-delivery-20260908/`.
-Implementation/acceptance progress belongs in the ledger; these tests define the functional result.
-
-<!-- DE67:DFS-SLICE:END id=R-MAINT-CONTEXT-ROUTING-S001 claim=R-MAINT-CONTEXT-ROUTING -->
-
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-FS-MIGRATION-S001 claim=R-MAINT-FS-MIGRATION -->
-### Functional Specification identity and delivery projection
-
-One canonical `.de67/FS.md` holds functional behavior, source references and discriminating
-acceptance criteria. Existing `.de67/DFS.md` references resolve through an explicit compatibility
-mapping to that same content, never a second independently mutable specification. Keep durable
-claim/slice identities and existing marker/selector syntax readable; old packets and receipts
-retain their original bytes, hashes and historical meaning.
-
-A shared resolver used by `policy_kernel`, `mutation_guard`, `deadline_harness`,
-`coordinator_supervisor` and `method_provenance` selects the canonical specification or the legacy
-one during migration. Conflicting dual content, missing target and malformed identity fail visibly.
-Policy extraction passes the exact ordered, claim-bound slices selected by each independent ledger
-assignment to the worker. It rejects missing, duplicate and wrong-claim selectors. Prepared context
-revision checks remain effective; an old packet is not silently rewritten to a new specification.
-
-Delivery assignments and current progress are projected in the existing `work-ledger.md`; historical
-proof remains at its exact existing artifact, receipt, Git revision or SQLite handle. Durable SQLite
-acceptance owns acceptance/reopen transitions. `deadline_harness` projects that state into the ledger
-without requiring an implementation-status prose block inside the FS. Missing or invalid acceptance
-evidence still fails; an absent decorative FS status block cannot obstruct otherwise valid acceptance.
-Supervisor open-work/completion, provenance and every guard baseline resolve the same contract
-and ledger. Legacy `selected_lane='DFS.md'` and path arguments retain their receipt identities while
-validation inspects canonical FS content: a changed target with stale pointer fails, and a valid
-pointer cannot hide protected content or slice changes. `coordinator_supervisor::_fresh_deadline_harness` loads the installed delivery writer for
-post-review projection. An explicitly authorized service restart may create a new runtime epoch;
-completed work and evidence retain their original identities. Runtime PID and journal-owner
-continuity are not functional requirements. Migrate status baselines without resetting proof or clocks. Extract behavior embedded in old status blocks into its existing
-slice before relocating tracking; retaining an empty slice ID alone does not preserve its contract.
-
-Prove on isolated copies: ordered multi-slice dispatch and independent same-claim assignments;
-old references/issued packets unchanged; missing/conflicting/cross-claim rejection; durable accept
-and reopen with a functional-only FS, including the current COMPACT-IO and RESULT-REUSE status-block
-counterexamples; supervisor completion/open-work and old receipt/provenance compatibility. Verify
-the migrated functional content actually reaches packet callers. Current consumer references are in
-`state/review-incident-prompt-delivery-20260908/fs-consumers.md`. This is an owner-authorized
-representation migration, not authority to weaken evidence, change product outcomes or launch a process.
-
-<!-- DE67:DFS-SLICE:END id=R-MAINT-FS-MIGRATION-S001 claim=R-MAINT-FS-MIGRATION -->
-
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-REVIEW-CONTEXT-S001 claim=R-MAINT-REVIEW-CONTEXT -->
-### Shared mutator conversation
-
-Owner-directed undo, 2026-09-09: this section supersedes the separate-review-context
-experiment. Its prior receipts remain historical evidence, not a requirement to restore it.
-
-With `persistent_mutator` enabled, `codex_app_server_runner.py::run` resumes the same
-`MutatorSession.thread_id()` for owner messages and supervisor mutation reviews. The existing
-owner thread remains canonical when reading state from the split-context version. Review
-invocations carry their current instructions into that conversation; completed reviews remain
-history. Thread selection does not require a gate ID or create a separate review conversation.
-
-The existing workspace lock preserves one mutator invocation. Owner messages reach the active
-mutator through the existing relay and mailbox interfaces, including during reviews. Pending
-input, uncertain-delivery recovery, correlated replies, current mutation authority, and supervisor
-restart ownership retain their existing semantics. Conversation continuity does not create
-another mutation owner or replay a completed request.
-
-Refine coordinator and worker context to support useful decisions and effective work. Keep
-Josef's conversation in the mutator's context, including during reviews.
-
-<!-- DE67:DFS-SLICE:END id=R-MAINT-REVIEW-CONTEXT-S001 claim=R-MAINT-REVIEW-CONTEXT -->
-
-
-## Optional checkpoint command context
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-CHECKPOINT-CONTEXT-S001 claim=R-MAINT-CHECKPOINT-CONTEXT -->
-
-`work_context.py::context_view()` should make the supported checkpoint command discoverable for
-one explicitly queried live task. From the same authoritative task/worker snapshot used for its
-current bindings, expose an optional `deadline_harness.py checkpoint-worker` argument-array template
-with the state, lineage, task and actual current worker filled in. Leave the descriptive kind and
-evidence for the coordinator to supply. This is an available command, never a required next action
-or a grant of authority. An unknown, terminal or unclaimed task must not acquire an invented worker
-binding. Retrieval performs no checkpoint or delivery-state transition.
-
-Execution retains the existing task/worker ownership check, so a template retrieved before ownership
-changes is rejected when stale. Integrate the concise handle into the existing context response;
-no duplicate prompt syntax, new receipt, universal command framework or checkpoint requirement.
-Verify exact emitted bindings, absence of a live-worker template when inapplicable, no retrieval
-mutation of authoritative state, and stale-template rejection. The owner proposal's rejected and
-corrected task-064 commands provide the before-change counterexample; later natural use establishes
-whether corrective exchanges decrease, not a synthetic gameplay replay.
-
-<!-- DE67:DFS-SLICE:END id=R-MAINT-CHECKPOINT-CONTEXT-S001 claim=R-MAINT-CHECKPOINT-CONTEXT -->
-
-
-<!-- DE67:DFS-SLICE:BEGIN id=R-037-S001 claim=R-037 -->
-### 🔴 R-037 — Complete supported NPC command coverage through the local LLM
-
-Establish a source-bound coverage manifest for every supported primary intent and secondary action
-in `src/llm_intent.cpp::allowed_actions` / `parse_csv_payload`, the prompt templates, and their
-actual `npcmove.cpp` consumers. The current primary catalog is `wait_here`, `hold_position`,
-`follow_close`, `follow_far`, `equip_gun`, `equip_melee`, `equip_bow`, `panic_on`, `panic_off`,
-`look_around`, `look_inventory`, `idle`, `attack=<target>`, and `move=<dx>,<dy>` with wait/hold
-arrival behavior. The inventory-selection route additionally supports wear, wield, activate and
-drop. Reconcile any source changes or discrepancies before testing; do not silently omit a command
-because a UI menu or the queued-action enum lacks it. Ambient speech and camp-request routes retain
-their separate existing receipts and are not substitutes for this command catalog.
-
-Use E4B through the actual local Ollama/model runner as the primary playtest model, recording
-exact model/quantization identity, prompt and
-configuration, request/recipient IDs, returned text, parse result, applying native turn and concrete
-consequence. Use controlled, appropriate scenarios and natural direct requests; do not inject or
-replace model output, force a parser result or promise deterministic model behavior. Distinguish an
-LLM choosing the wrong action from parser rejection, dispatch deferral and native execution failure.
-Existing direct-state/unit tests and successful generated replies are useful controls, not end-to-end
-command proof. On a failed NPC-LLM playtest, record the observed failure in the bug list with its
-exact actor, request, model, intended/observed behavior, source/run and first known divergence;
-then retry the same bug case through the existing OpenAI API route using `gpt-4.1-mini`, the existing runner's low-cost non-reasoning default. Preserve equivalent native premises and the prompt's semantic
-content, recording any necessary provider-format differences. Both primary and secondary requests
-must use the selected provider for that comparison. Fix a broken test setup enough to reach the
-intended route before claiming a model comparison; if the API route or credentials are unavailable,
-retain the precise setup blocker and original failure without claiming the retry ran.
-
-Configure the existing API backend/provider/model fields rather than changing the response contract:
-`LLM_INTENT_BACKEND=api`, provider `openai`, and `LLM_INTENT_API_MODEL=gpt-4.1-mini`.
-First verify the selected API Python imports `any_llm`, the child receives a configured credential
-without printing it, and a bounded runner request returns the expected response shape. This is
-transport setup only; the failed case still requires its native retry. Use the existing secret
-lookup through the configured environment-variable name or secure store; do not unload the owner's
-Ollama server as an API cleanup side effect.
-
-Use the owner's existing API-key configuration or standard runtime secret environment; keep secret
-values out of prompts, terminal output, checked-in files and evidence logs. The owner authorizes
-these low-cost failure-comparison calls. Record actual API model/configuration, usage and resulting
-native consequence. An API success narrows the investigation but does not erase the E4B failure or
-count as a local-model pass; failure on both routes may indicate an integration/game issue and must
-retain its causal uncertainty. API control and local verdicts remain independently visible.
-
-The coverage manifest must provide a verdict and exact evidence handle for each command and each
-material execution branch: both follow distances; wait versus hold and release/arrival; gun, melee
-and bow equipment with appropriate inventory; panic on/off across turns; look-around selection
-through actual ground/item pickup; inventory wear/wield/activate/drop; dynamic movement through
-path progress and wait/hold arrival; and an attack against the named target through native melee
-and ranged engagement/consequence. `idle` means no injected intent and continued ordinary AI,
-not an invented action. Include valid and missing/stale target or item cases where they change
-behavior, plus relevant ally eligibility, danger, mission/Patrol and other movement-owner controls.
-Melee equipment selection alone does not prove a melee attack. Record damage or another attributable
-native combat outcome, rather than inferring a hit from posture or a model promise.
-
-Reuse valid current-source proof only for the precise command, model route and conditions it
-establishes. Group compatible cases in isolated native scenarios without imposing a worker count,
-fixed retry budget or one scenario per command. Repair repository-owned observation/fixture routes
-when needed; preserve all failed outputs and source-bound contradictions. Any newly discovered
-unpromoted gameplay behavior defect remains an explicit finding with its causal path. Do not remove
-commands, narrow intended behavior or relabel failures to obtain a green coverage report. Preserve
-process ownership and exact cleanup, and keep fixture preparation/OCR/rendered text at zero proof
-credit. Stateful consequences use the existing persistence contract; transient LLM queues are not
-made durable by this testing requirement.
-
-Earlier E2B/E4B qualification proves local runner operation at its stated ceilings, not a quality
-ranking or full command coverage. `tools/openclaw_harness/QUALIFICATION.md` and the September 5–6
-E2B nonthinking/E4B runner artifacts retain that distinction. No matched comparative verdict is
-currently established; the expanded command report must not imply model superiority from different
-scenarios or cold-versus-warm timings. Record useful behavioral quality, grounding and latency
-observations with their actual sample limits.
-<!-- DE67:DFS-SLICE:END id=R-037-S001 claim=R-037 -->
+| `bandit.r033_pure_light_channel_mcw.json` | Isolated night lamp and source/observer separation | Replace old five-minute-only premise; add actual cross-level positive/negative geometry and physical approach. Its own setup gate grants no gameplay proof. |
+| `bandit.all_light_source_live_adapter_mcw.json` | Multiple native emitter families | Add held/worn/weapon/power/container cases, independent source exposure, movement/off and observer response. |
+| `writhing_stalker.live_zombie_distraction_mcw.json`, `writhing_stalker.live_no_omniscient_beeline_mcw.json` | Zombie pressure and hidden-target controls | Match daylight/darkness and same-target perception; record actual attack attempts and spatial progress, not just planner strings. |
+| `writhing_stalker.live_hit_fade_retreat_mcw.json`, `writhing_stalker.live_anti_gnome_bad_loiter_mcw.json` | Retreat/stall situations | Preserve a route to contact before burst exhaustion, game-time cooldown, persistent retreat and reload. |
+| `zombie_rider.live_open_field_pressure_mcw.json`, `zombie_rider.live_cover_escape_mcw.json` | Bow/pursuit/cover fixtures | Current reposition/withdrawal expectations and raw-key steps are not this contract. Use native actions and record sustained pursuit/contact. |
+| `zombie_rider.live_camp_light_band_mcw.json` | Riders near light | Selection is not formation. Add physical encounters, separation, merge and persistent identities; do not create a camp dependency. |
+| `performance.mixed_hostile_stalker_horde_mcw.json` | Mixed population | Add current optical sampling, actor continuity and matched baseline measurements; helper timing alone is insufficient. |
+
+These files exist at the inspected baseline. New scenario IDs and fixtures may be authored when implementing the missing coverage; this FS does not pretend that all required routes already exist or are executable.
+
+**Discriminating matrix.** Each row is a separate outcome, even when a native session supplies several rows.
+
+| Red ID(s) | Preconditions → owner → transition → outcome | Required artifacts and failure controls |
+|---|---|---|
+| R-ZL-LIGHT-EMISSION | Actual powered lamp in each supported location → native emitter query → per-source record and native illumination | Source/power/container/position facts and matched local illumination. Off/depleted/opaque nested cases yield no emitted light; two sources cannot lend each other geometry. |
+| R-ZL-LIGHT-OPTICS | Fixed lamp/observer with changed height/obstruction → shared detector → detected glow where path clears, rejection where blocked | Source and observer z, geometry/weather/provenance, detection result and later actual approach. Ground/parapet/open upper floor/sealed upper room and observer above/below controls. Clear glass versus opaque curtains, deep hall/corner and toward/away beam. |
+| R-ZL-LIGHT-CONTINUITY | One-turn use between former scan boundaries → observation ingestion → finite investigation after source-off | Exact sample/detection/expiry times, consumer identity and movement; no post-off refresh, no source at old moving position, no player/camp recognition from light. Five distinct consumer checks plus sound-only control. |
+| R-ZL-STALKER | Same prey/terrain with varied observable pressure and lighting → stalker phase owner → committed movement, actual attempts, break contact | Perceived contributors and threat events, path/position timeline, attempt sequence, HP/effects and retreat endpoint. Hidden/friendly/unrelated pressure, planner repetitions, failed/missed specials, lost contact and save/load. |
+| R-ZL-RIDER-PURSUIT | Visible prey through bow-ready/cooldown/empty/range states → rider planner + native actions → closing, shots and contact | Position/remaining-route distance, arrows and move-cost/cooldown timeline. Distant prey must not trigger withdrawal; half HP has no artificial cliff; corner/door/vehicle path remains physical. |
+| R-ZL-RIDER-IMPACT | Real closing approach to legal adjacent prey → impact attack owner → paid attack, mitigated damage/effect, recovery | Movement-readiness and actual hit/miss/effect receipts. Stationary, blocked, narrow, vehicle and already-downed controls; no free extra attack or permanent status refresh. Include multiple riders. |
+| R-ZL-PREDATOR-LIFECYCLE | Initially abstract or locally unloaded actor → one identity/epoch owner → abstract progress, legal materialization and continued action | Actor count/ID, container and local positions, remaining moves/HP/ammo/state before and after transfer/reload. Forced failure and same-turn migration controls cannot lose/duplicate/advance twice. |
+| R-ZL-EVOLUTION | Correct world age/seasons and real scheduled predator path → current-type upgrade gate → rider with once-only ammo | Evolution source type, schedule/group/gate/season values; first arrow and subsequent reload counts. Multi-stage pre-gate catch-up must not bypass; exhausted legacy riders remain exhausted. |
+| R-ZL-RIDER-BANDS | Unrelated existing riders then real encounter → membership registry → union, persistence and credible sharing | Stable member IDs, actual encounter path/perception, revision, alias and casualty history. Same destination without meeting produces no band; sharing retains old observed time/location after prey hides. |
+| R-ZL-ENCOUNTERS | Ordinary early city / late-world ecology → spawn/evolution → intended encounter availability and descriptions | Actual natural actor origins, world age and encounter observations; native description review. A debug singleton or forced upgrade is not natural density proof. |
+| R-ZL-PLAYTEST | All preceding mechanisms on current source → ordinary play → stalker opportunism, rider hunting and understandable light risk | Separate play accounts and native evidence for daytime looting, nighttime flashlight travel, lit-base exposure and late-game rider travel; retain failures, interventions and cleanup. No staged decision-by-decision guidance. |
+
+**Tests and platform route.** Build before behavioral verification when implementation occurs. Use the existing Catch2 targets in `tests/CMakeLists.txt` and focused files/tags: `[writhing_stalker]`, `[zombie_rider]`, horde-map/overmap persistence tests, vision/shadowcasting tests and the proposed physical-light tests. The existing baseline tests are source evidence; their old expectation text does not override the WEC. Exercise actual production adapters in addition to pure scoring tests. Keep JSON/style/translation validation for the changed monster data. Test renderer-independent logic in the repository's supported C++ build routes; `.github/workflows/matrix.yml` and `msvc-full-features.yml` establish Linux/macOS/Windows builds. Native Mac tiles is the principal local proof route; cover curses where changes affect its shared rendering/input path, and report platform gaps honestly rather than treating Mac compilation as Windows proof. Do not launch Windows GUI work from this phase.
+
+**Measurements.** Compare matched before/after sources, scenarios, seeds, weather, geometry and populations. Measure detection delay from actual source exposure; time/distance to first approach and contact; actual attack attempts and ammo consumption; pursuit progress during cooldown; time and route after loss of contact; total turn time and attributable collector/detector/policy cost; number/bytes of retained source observations, optical summaries and predator/band records after repeated travel and save/load. Include quiet turns, steady lit interiors, many mixed sources and mixed horde populations. Report p50/tail distributions when sample size supports them and exact sample count/boundary; do not invent a performance cap or claim a single helper microbenchmark proves whole-turn cost. A regression that makes ordinary play unresponsive or makes save/state grow with duplicate samples remains a defect to investigate. Preserve complete artifacts with compact exact handles.
+
+**Feel and closeout.** The questions are: did the stalker choose a horrible moment; did the rider genuinely hunt; could the player understand and manage light attention? Let the player naturally move, take cover, turn lights off, close curtains and escape sight. The intended outcomes must arise without staging every decision. Record what was observed, what was merely inferred and what remains uncertain. A mixed run can pass one claim and fail another. Stop/clean up only owned finished test processes and disposable worlds after preserving evidence; never use an unrelated live game as the fixture.
+<!-- DE67:DFS-SLICE:END id=R-ZL-PLAYTEST-S001 claim=R-ZL-PLAYTEST -->
+
+## Freeze record
+
+- Status: Refrozen, 2026-09-11, after the explicit owner decision to skip old-predator backward-compatibility migration. The 11 new stable claims and their proof routes were checked against the current production owners. Native gameplay proof remains future work.
+- WEC outcome: three connected experiences—stalker opportunism, rider pursuit/bands, and manageable physical-light attention—with existing worlds and unrelated accepted work preserved.
+- User-owned prototype choices: pressure crossover and light risk calibration; optional stalker leap after committed-rush proof; optional rider run-through after contact-impact proof. No numeric balance threshold is asserted as settled.
+- Owner-decided legacy scope: skip backward-compatibility migration for old predators; preserve explicit `upgrades:false` and saved ammunition. Normal new-world evolution and save/load remain required. No legacy re-enable, state retrofit or empty-rider refill is authorized.
+- Historical scope: the archived predecessor and existing durable acceptance retain their original identities. All `R-ZL-*` obligations are new and unproved.
+- Evidence-implied refinements: none; this is the initial specification for the new WEC.
+
+After freeze, evidence may close an existing red item only after its named proof, or support the phase skill's nonmaterial clarification/same-contract append-only expansion and immediate refreeze. Preserve stable claim identities, accepted scope and acceptance strength. Product intent, language, permissions, balance and materially different behavior remain owner decisions. Models, task dispatch, deadlines and review procedure are outside this functional document.
+
+### Frozen source identity
+
+The feature files below are unchanged from the inspected HEAD. Existing dirty LLM/NPC-command, runner, harness, ledger and runtime evidence paths were preserved; they are not gameplay changes from this phase. SHA-256 fingerprints bind the main inspected owners:
+
+| File | SHA-256 |
+|---|---|
+| `src/do_turn.cpp` | `4fc029536278aa40b9c984b78d71d6f238b8bf0d3bc3ca495f067381538eed23` |
+| `src/monmove.cpp` | `4edbdf62db0b1f9ecd32bf3688a1c108d06df8ab41f3c729028b1dd7c6f0fa33` |
+| `src/monster.cpp` | `7ef076ab4c0143eb64c9faac183fa3c4e9b1de356aba20b0a3acba67bf761b8d` |
+| `src/savegame.cpp` | `dac0bbadba231943a83b5d92a6d0e940c305e99bf299f6e6cb017388f509d26e` |
+| `src/savegame_json.cpp` | `f55b39e7ca11ac4c2b1ff81eee6afafa27ce5fde764f97d8b5cb183172e05652` |
+| `src/overmap.cpp` | `f4a228fd7e4c57a04d3b2a018dddad039580dcd06f3ff8fa31b4ebd9c4d7863b` |
+| `src/overmapbuffer.cpp` | `e6e68fb14db6127165dc01a77eb7bc19e3abcd0ad1c244eacbaf9474efcb7f2d` |
+| `src/lightmap.cpp` | `67b36fa4ce92738f31a996c5aba5690764d3ba791b39f369eb178d7f6503caa0` |
+| `src/writhing_stalker_ai.cpp` | `1ca4915e7accc8c7644b804fe0e255993c97a9538b84f1a5ff20cec2fe9dfa01` |
+| `src/zombie_rider_overmap_ai.cpp` | `9d93e056ac9f78809d02a81bfe629ccc93643268400cdf26ece0584840d0bdf5` |
+| `data/json/monsters/zed_misc.json` | `e40f94f9e591af7760dd40379d9957875b7f4293dda48091a4bfb7ffc856c3c2` |
+| `data/json/monstergroups/zombies.json` | `2f1c088127aa34c62d8de03eee80fe08453632460aa5070ca2ee4a8037e5e608` |

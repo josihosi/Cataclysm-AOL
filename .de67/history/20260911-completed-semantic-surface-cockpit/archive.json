@@ -1,0 +1,18 @@
+{
+  "baseline": "77ef2445bf30a274dd13cef60847eb08d7cd9005",
+  "reason": "Owner-authorized replacement for zombies and light; historical acceptance retains original scope",
+  "files": {
+    "FS.md": {
+      "sha256": "59b33822cb050e6e07896a076e063336510ce3f63b69aecbeedbb072e92698c7",
+      "bytes": 102902
+    },
+    "DFS.md": {
+      "sha256": "ddd29f9c48b6a3e5ea70ddbe9b49ebb1f9abe9099c386a2146c56b29ab9404ff",
+      "bytes": 112
+    },
+    "WEC.md": {
+      "sha256": "0f5bbe0c255d81d925cb28c0a7ae62e1bc437c691588c59b86a6623609523a7c",
+      "bytes": 22024
+    }
+  }
+}

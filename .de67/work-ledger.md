@@ -1,3 +1,55 @@
+# Zombies and light — phase-2 checkpoint (2026-09-11)
+
+## Current owner outcome
+
+The owner requested native phase 2 in this exact dev worktree. The previous run is complete: PIDs 36281/36955/36956 were absent and no worker claims were unreleased. The canonical `.de67/FS.md` now specifies stalkers, riders and light; `.de67/DFS.md` is its hash-bound pointer. The old FS/pointer/WEC set is preserved exactly in `.de67/history/20260911-completed-semantic-surface-cockpit/` with an archive manifest. Existing acceptance below remains historical and supplies no credit for R-ZL claims. Phase 2 launched no gameplay. Josef now authorizes the external phase-3 service to implement and playtest only the new zombies/light FS. Historical predecessor rows are retained as evidence and are not current dispatch authority for unrelated project work.
+
+## Phase-2 context audit and native preparation
+
+- Global `/Users/josefhorvath/.codex/AGENTS.md`: effective shared Mac/MSW guidance, read and retained; no conflict with the new WEC. It is the audited setup guidance source. The phase owner, fresh CLI probe coordinator and all three nonce workers received the global and repository instruction text. No new reviewer context was launched or claimed proved.
+- Parent workspace AGENTS: filesystem/storage facts apply; the explicit exact native workspace request takes precedence over older OpenClaw transport examples. No parent guidance was edited.
+- Root `AGENTS.md`: command, evidence and ledger habits apply and are retained. The repo has no additional root agent instruction file.
+- Prior FS/WEC: superseded only by explicit owner authorization, with exact recoverable archival. Prior feature exclusions are historical. The existing work-ledger body below is retained intact as the predecessor projection; its dated continuation instructions do not launch the completed run.
+- `.de67/test-and-task-guidelines.md`, compiled `phase3-policy.d67` and its JSON policy/contracts, and `mutation-suggestions.md`: existing delivery/runtime surfaces, preserved. Their delivery procedure is not run in phase 2. The pending deferred owner suggestion explicitly leaves the next phase-3 launch to Josef. No no-go-zone was inventoried or read, and no guidance was silently archived or neutralized.
+- Installed FS resolver confirms the canonical naming contract. The current workspace-setup helper prepares/preserves compiled policy files plus the test/task guidelines and ledgers; its actual runtime no longer installs an orchestrator-guidelines file. No obsolete competing instruction file was fabricated.
+- Project `.codex/config.toml` already has `agents.default_subagent_model = "gpt-5.6-luna"` and no pinned effort. Fresh CLI 0.153.2 accepted strict configuration. Nonce probes proved Luna/low (`ZL-LUNA-LOW-6d14798c`), Luna/medium (`ZL-LUNA-MED-462a0d1b`) and Terra/medium (`ZL-TERRA-MED-2710c9aa`). The Luna calls omitted model; Terra supplied it; all used fork_turns=none. Resolved model/effort metadata was independently verified. Probe coordinator: `01a091f7-b879-7fc1-a884-c5e227a0c971`. Detailed local evidence is in `.de67/task-logs/zombies-light-phase2-20260911/verified-worker-capabilities.json`.
+- The owner settled legacy scope: skip backward-compatibility migration for old predators, preserve `upgrades:false`, and retain normal new-world evolution and save/load. The FS is refrozen with this decision; no legacy conversion campaign is authorized. Prototype balance and optional leap/run-through choices remain explicit in the FS, with committed rush/contact impact as the starting mechanisms.
+
+## Approved setup and checkpoint
+
+Josef approved the exact one-line common post-commit hook replacement. The hook now uses Python 3.14 and the installed workspace-setup helper; its content matches the reviewed proposal. The guarded setup succeeded, preserved all existing runtime files and the semantic-surface-cockpit clock lineage, retained origin/dev as the sole automatic push target, recorded the three proved worker pairs and current audited shared guidance, and successfully pushed the existing HEAD. Evidence: `.de67/task-logs/zombies-light-phase2-20260911/workspace-setup-approved.json`.
+
+The phase-2 checkpoint contains only this new ledger prefix over the committed historical ledger, the new WEC/FS/pointer, and the exact predecessor archive. Preexisting working-ledger additions, mutation suggestions, source edits and runtime evidence remain outside that checkpoint. The full prior working-ledger body is preserved verbatim below. Launch authority is the owner's explicit request for the native external supervisor; the launcher does not own implementation coordination.
+
+## New specification obligations
+
+- [ ] R-ZL-LIGHT-EMISSION — Carried and stationary light use the same actual emission facts without borrowed exposure or phantom power.
+  - DFS slices: `R-ZL-LIGHT-EMISSION-S001`
+- [ ] R-ZL-LIGHT-OPTICS — Physical light reaches each observer through believable geometry independently of terrain recognition.
+  - DFS slices: `R-ZL-LIGHT-OPTICS-S001`
+- [ ] R-ZL-LIGHT-CONTINUITY — A brief real exposure can be noticed, and stale light cannot keep refreshing pursuit.
+  - DFS slices: `R-ZL-LIGHT-CONTINUITY-S001`
+- [ ] R-ZL-STALKER — The stalker exploits a credible opening, reaches contact and counts attacks instead of approach decisions.
+  - DFS slices: `R-ZL-STALKER-S001`
+- [ ] R-ZL-RIDER-PURSUIT — A rider maintains physical pressure instead of retreating after shots or failed annulus selection.
+  - DFS slices: `R-ZL-RIDER-PURSUIT-S001`
+- [ ] R-ZL-RIDER-IMPACT — A mounted rider's approach produces a real, terrain-respecting contact impact.
+  - DFS slices: `R-ZL-RIDER-IMPACT-S001`
+- [ ] R-ZL-PREDATOR-LIFECYCLE — Stalkers and riders perceive, investigate and travel beyond their loaded representation without duplicate control or lost memory.
+  - DFS slices: `R-ZL-PREDATOR-LIFECYCLE-S001`
+- [ ] R-ZL-EVOLUTION — Natural riders receive their initial ammunition exactly once, with the correct season gate and explicit old-save semantics.
+  - DFS slices: `R-ZL-EVOLUTION-S001`
+- [ ] R-ZL-RIDER-BANDS — Riders meet, form/merge durable bands and share bounded observations without positional identities or telepathy.
+  - DFS slices: `R-ZL-RIDER-BANDS-S001`
+- [ ] R-ZL-ENCOUNTERS — The intended creatures occur naturally at the intended stage and their descriptions fit the delivered experience.
+  - DFS slices: `R-ZL-ENCOUNTERS-S001`
+- [ ] R-ZL-PLAYTEST — The three requested experiences are demonstrated in real play, with honest source and lifecycle binding.
+  - DFS slices: `R-ZL-PLAYTEST-S001`
+
+## Historical predecessor delivery projection
+
+The following preexisting content is preserved for receipts and acceptance compatibility. It is not an instruction to resume the prior run.
+
 # Active Phase-3 projection
 
 ## Current delivery frontier
