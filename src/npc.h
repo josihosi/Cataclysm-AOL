@@ -1102,7 +1102,9 @@ class npc : public Character
         void clear_llm_intent_actions();
         void set_llm_intent_response_pending( bool pending ) const;
         void set_llm_intent_item_request_pending( bool pending ) const;
-        void set_llm_intent_item_targets( const std::vector<llm_item_target> &targets ) const;
+        void set_llm_intent_item_targets( const std::vector<llm_item_target> &targets,
+                                          const std::string &secondary_request_id = "" ) const;
+        std::map<std::string, std::string> get_llm_intent_diagnostic_state() const;
         bool has_llm_intent_actions() const;
         std::vector<llm_intent_action> get_llm_intent_actions_for_test() const;
         void add_llm_intent_memory( const std::string &player_utterance,
@@ -1627,6 +1629,7 @@ class npc : public Character
             // Keep ordinary pickup AI from consuming a different item while
             // the second-stage look-around selection is in flight.
             bool look_around_request_pending = false;
+            std::string look_around_request_id;
             std::deque<llm_item_target> look_around_targets;
             llm_item_target look_around_active_target;
             llm_action_status active_status;

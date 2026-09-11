@@ -1,0 +1,1 @@
+{"ok":false,"error":"selected_response_slice_is_unavailable","presentation":{"budget_bytes":8192,"full_evidence":{"sha256":"feb7bd7665f12fa62b9ec611927fea183451633feb29cbf1414746cb8d3963e3","json_bytes":61},"retrieve":"python3 tools/openclaw_harness/evidence_display.py --sha256 HASH [--selector FIELD] [--offset N --limit N] [--export FILE]"}}

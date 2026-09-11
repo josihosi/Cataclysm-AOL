@@ -1,0 +1,103 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "disposition": "completed",
+  "verdict": "current_twenty_row_manifest_reconciled_without_claim_acceptance",
+  "outcome": "The 20-row R-037 manifest now keeps each historical result at its source, runtime, model, charter, and cleanup ceiling. It replaces the obsolete stale-target gap with task003's exact attack.target_missing result and records task004 only as pickup.panic_override under the flee effect. The claim remains unqualified.",
+  "summary": "The current manifest binds task002's positive pickup and ranged ammunition result, task003's stale-target terminal, and task004's panic block without converting failures, partial controls, unavailable API controls, or unobserved zone/ownership behavior into passes.",
+  "material_changes": [
+    "Created a current reconciliation manifest; no product or harness behavior changed.",
+    "Replaced obsolete source identities with the current dirty-product binding while retaining immutable historical bindings for prior evidence."
+  ],
+  "tests": [
+    "jq parsed the reconciliation manifest and confirmed exactly 20 case rows.",
+    "git diff --check passed.",
+    "Current source token and consumer anchors were read directly from src/llm_intent.cpp and src/npcmove.cpp."
+  ],
+  "live_actions": [
+    "None; no build, launch, game input, API call, or runtime ownership was created."
+  ],
+  "evidence_ceiling": [
+    "The manifest is a reconciliation artifact, not R-037 acceptance.",
+    "Task004's pickup.panic_override does not prove zone/ownership handling or transfer.",
+    "Same-case OpenAI controls remain unavailable before descriptor creation because safe provisioning reports OPENAI_API_KEY missing."
+  ],
+  "bindings": {
+    "current_git_head": "542a56b794e7d03e9d0a28bbb24e1b6bcbc6c181",
+    "current_product_source_sha256": "92b876ffcdd49ea6e6c6c4c974197a76b9997b1908b0e13acf5d32e001e51a9e",
+    "current_executable_sha256": "86f662070d8a3593059f80b8840a90cd840e5f9947415db8aaa8a45c1ab37038",
+    "task002_receipt_sha256": "4552908e9a1e82a35eaf348b52b6768c1e35976c6cc84d02b745137762075127",
+    "task003_receipt_sha256": "82d4b9afa92864a06bc17c27063c92f957d10240a0096ac71c3d30c6667e6315",
+    "task004_receipt_id": "6b18502b9dc2b78c15343482fc9be8ecc771978e96c09e9831e903fe108caa88"
+  },
+  "journal_entries": [
+    {
+      "id": "manifest-current-binding",
+      "sequence": "reconciliation",
+      "event_type": "source_binding",
+      "evidence_class": "repository",
+      "artifact_ref": ".de67/task-logs/r037-coverage-manifest-reconciliation-005.json",
+      "summary": "The artifact records the current dirty-product source and executable binding without upgrading historical run evidence."
+    },
+    {
+      "id": "manifest-stale-target",
+      "sequence": "reconciliation",
+      "event_type": "native_action_status",
+      "evidence_class": "accepted_receipt",
+      "artifact_ref": ".de67/task-logs/r037-native-consequence-fixture-repair-003-worker-receipt.json",
+      "summary": "The stale-target row is reconciled to task003's exact-target natural-removal and attack.target_missing result."
+    },
+    {
+      "id": "manifest-pickup-panic-boundary",
+      "sequence": "reconciliation",
+      "event_type": "native_action_status",
+      "evidence_class": "accepted_receipt",
+      "artifact_ref": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-004-worker-receipt.json",
+      "summary": "The forbidden-pickup control is retained solely as the flee-effect panic override branch."
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r037-coverage-manifest-reconciliation-005.json",
+      "sha256": "ed2cf4aed9f4154afffc193049654c37cc4dac6585ddd1b39fbd1612838fac2c",
+      "role": "current 20-row reconciliation manifest"
+    },
+    {
+      "path": ".de67/task-logs/r037-local-llm-command-coverage-009-worker-receipt.json",
+      "sha256": "4552908e9a1e82a35eaf348b52b6768c1e35976c6cc84d02b745137762075127",
+      "role": "accepted task002 positive pickup, ranged, divergence, and API boundary receipt"
+    },
+    {
+      "path": ".de67/task-logs/r037-native-consequence-fixture-repair-003-worker-receipt.json",
+      "sha256": "82d4b9afa92864a06bc17c27063c92f957d10240a0096ac71c3d30c6667e6315",
+      "role": "accepted task003 stale-target and forbidden-pickup evidence ceiling"
+    },
+    {
+      "path": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-004-worker-receipt.json",
+      "sha256": "7da2cbf0136bc80581ce71fae82832e2f37c2e09c4937329167098efc7fd1dce",
+      "role": "accepted task004 panic-block dispatch repair receipt"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not replay historical gameplay to create this manifest.",
+    "Do not reuse pickup.panic_override as a zone/ownership or transfer result.",
+    "Do not access, copy, reuse, or record credentials to manufacture API comparisons."
+  ],
+  "active_work": [],
+  "first_open_boundary": "",
+  "narrow_queries": [
+    "A separately authorized no-flee forbidden-pickup route for a zone/ownership terminal.",
+    "A safe owner-provided OpenAI credential path for same-case API verdicts.",
+    "The individual changed-premise E4B rows listed in the reconciliation manifest."
+  ],
+  "entrypoints": [
+    ".de67/task-logs/r037-coverage-manifest-reconciliation-005.json",
+    "src/llm_intent.cpp",
+    "src/npcmove.cpp"
+  ],
+  "context_metrics": {
+    "reconciled_case_rows": 20,
+    "new_native_runs": 0,
+    "new_api_attempts": 0
+  }
+}

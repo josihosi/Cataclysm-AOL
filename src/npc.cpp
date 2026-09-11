@@ -3160,6 +3160,7 @@ void npc::clear_llm_intent_actions()
     goto_to_this_pos = std::nullopt;
     state.response_pending = false;
     state.look_around_request_pending = false;
+    state.look_around_request_id.clear();
     state.look_around_targets.clear();
     state.look_around_active_target = npc::llm_item_target{};
 }
@@ -3189,10 +3190,12 @@ void npc::set_llm_intent_legend_map( const std::string &request_id,
     state.legend_targets_by_request[request_id] = std::move( legend );
 }
 
-void npc::set_llm_intent_item_targets( const std::vector<llm_item_target> &targets ) const
+void npc::set_llm_intent_item_targets( const std::vector<llm_item_target> &targets,
+                                       const std::string &secondary_request_id ) const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
     state.look_around_request_pending = false;
+    state.look_around_request_id = secondary_request_id;
     if( state.active_status.kind == llm_action_kind::look_around_pickup &&
         !is_terminal_llm_action_phase( state.active_status.phase ) ) {
         finish_llm_action( llm_action_phase::cancelled, "intent.targets_reset" );
@@ -3204,6 +3207,11 @@ void npc::set_llm_intent_item_targets( const std::vector<llm_item_target> &targe
             state.look_around_targets.push_back( target );
         }
     }
+    llm_intent::log_event( string_format(
+                               "look_around targets installed npc=\"%s\" id=%d primary=%s secondary=%s pending=false queued=%d",
+                               get_name(), getID().get_value(), state.request_id,
+                               state.look_around_request_id,
+                               static_cast<int>( state.look_around_targets.size() ) ) );
 }
 
 void npc::set_llm_intent_response_pending( const bool pending ) const
@@ -3214,6 +3222,31 @@ void npc::set_llm_intent_response_pending( const bool pending ) const
 void npc::set_llm_intent_item_request_pending( const bool pending ) const
 {
     llm_intent_state_for( *this ).look_around_request_pending = pending;
+}
+
+std::map<std::string, std::string> npc::get_llm_intent_diagnostic_state() const
+{
+    const llm_intent_state &state = llm_intent_state_for( *this );
+    std::string queued_targets;
+    for( const llm_item_target &target : state.look_around_targets ) {
+        if( !queued_targets.empty() ) {
+            queued_targets += ", ";
+        }
+        queued_targets += target.name;
+        if( target.quantity >= 0 ) {
+            queued_targets += string_format( ":%d", target.quantity );
+        }
+    }
+    return {
+        { "primary_request_id", state.request_id },
+        { "secondary_request_id", state.look_around_request_id },
+        { "response_pending", state.response_pending ? "true" : "false" },
+        { "look_around_request_pending", state.look_around_request_pending ? "true" : "false" },
+        { "queued_target_count", std::to_string( state.look_around_targets.size() ) },
+        { "queued_targets", queued_targets },
+        { "active_target", state.look_around_active_target.name },
+        { "fetching_item", fetching_item ? "true" : "false" }
+    };
 }
 
 void npc::add_llm_intent_memory( const std::string &player_utterance,

@@ -3394,6 +3394,7 @@ class llm_intent_manager
         struct look_around_context {
             character_id npc_id;
             std::string npc_name;
+            std::string primary_request_id;
             std::vector<look_around_item_entry> items;
         };
         struct look_inventory_context {
@@ -3615,7 +3616,8 @@ class llm_intent_manager
             }
         }
 
-        bool enqueue_look_around_request( npc &listener, const std::string &player_utterance ) {
+        bool enqueue_look_around_request( npc &listener, const std::string &player_utterance,
+                                          const std::string &primary_request_id ) {
             static constexpr int look_max_tokens = 128;
             static constexpr size_t max_item_entries = 60;
             std::vector<look_around_item_entry> items = collect_look_around_items( listener, 5,
@@ -3640,7 +3642,12 @@ class llm_intent_manager
             look_around_context context;
             context.npc_id = req.npc_id;
             context.npc_name = req.npc_name;
+            context.primary_request_id = primary_request_id;
             context.items = items;
+            const std::string secondary_request_id = req.request_id;
+            const std::string queued_npc_name = context.npc_name;
+            const character_id queued_npc_id = context.npc_id;
+            const size_t offered_item_count = context.items.size();
 
             append_llm_intent_log( string_format( "look_around request %s (%s)\n%s\n\n",
                                                   req.npc_name,
@@ -3651,6 +3658,11 @@ class llm_intent_manager
                 look_around_requests.emplace( req.request_id, std::move( context ) );
                 request_queue.push( std::move( req ) );
             }
+            llm_intent::log_event( string_format(
+                                       "look_around secondary queued npc=\"%s\" id=%d primary=%s secondary=%s offered=%d",
+                                       queued_npc_name, queued_npc_id.get_value(),
+                                       primary_request_id, secondary_request_id,
+                                       static_cast<int>( offered_item_count ) ) );
             ensure_worker();
             cv.notify_one();
             return true;
@@ -3698,16 +3710,27 @@ class llm_intent_manager
                                                           context.npc_name, resp.request_id, joined ) );
                 }
             }
-            if( npc *target = g->find_npc( context.npc_id ) ) {
-                if( target->is_player_ally() ) {
-                    std::vector<npc::llm_item_target> targets;
-                    targets.reserve( selected.size() );
-                    for( const look_around_selection &sel : selected ) {
-                        targets.push_back( npc::llm_item_target{ sel.name, sel.quantity } );
-                    }
-                    target->set_llm_intent_item_targets( targets );
-                }
+            npc *target = g == nullptr ? nullptr : g->find_npc( context.npc_id );
+            if( target == nullptr ) {
+                llm_intent::log_event( string_format(
+                                           "look_around secondary dropped npc=\"%s\" id=%d primary=%s secondary=%s stage=target_lookup",
+                                           context.npc_name, context.npc_id.get_value(),
+                                           context.primary_request_id, resp.request_id ) );
+                return;
             }
+            if( !target->is_player_ally() ) {
+                llm_intent::log_event( string_format(
+                                           "look_around secondary dropped npc=\"%s\" id=%d primary=%s secondary=%s stage=ally_gate",
+                                           context.npc_name, context.npc_id.get_value(),
+                                           context.primary_request_id, resp.request_id ) );
+                return;
+            }
+            std::vector<npc::llm_item_target> targets;
+            targets.reserve( selected.size() );
+            for( const look_around_selection &sel : selected ) {
+                targets.push_back( npc::llm_item_target{ sel.name, sel.quantity } );
+            }
+            target->set_llm_intent_item_targets( targets, resp.request_id );
         }
 
         void enqueue_look_inventory_request( npc &listener, const std::string &player_utterance ) {
@@ -4069,7 +4092,8 @@ class llm_intent_manager
                     }
                     if( npc *target = g->find_npc( resp.npc_id ) ) {
                         if( target->is_player_ally() &&
-                            enqueue_look_around_request( *target, player_utterance ) ) {
+                            enqueue_look_around_request( *target, player_utterance,
+                                    resp.request_id ) ) {
                             target->set_llm_intent_item_request_pending( true );
                         }
                     }

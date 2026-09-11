@@ -1,0 +1,106 @@
+{
+  "schema": "r037-coverage-manifest-reconciliation-v2",
+  "task": "R-037-coverage-manifest-reconciliation-005",
+  "claim": "R-037",
+  "reconciled_at": "2026-09-11",
+  "claim_verdict": "not_qualified",
+  "current_source": {
+    "git_head": "542a56b794e7d03e9d0a28bbb24e1b6bcbc6c181",
+    "product_source_sha256": "92b876ffcdd49ea6e6c6c4c974197a76b9997b1908b0e13acf5d32e001e51a9e",
+    "executable": "cataclysm-tiles",
+    "executable_sha256": "86f662070d8a3593059f80b8840a90cd840e5f9947415db8aaa8a45c1ab37038",
+    "build_receipt": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-008-flee-consumer-repair-build.json",
+    "scope": "Current dirty-product binding for the task004 panic-block repair. Historical rows retain their own immutable bindings; this does not silently upgrade their evidence."
+  },
+  "current_source_catalog": {
+    "allowed_primary_tokens": ["wait_here", "hold_position", "follow_close", "follow_far", "equip_gun", "equip_melee", "equip_bow", "panic_on", "panic_off", "look_around", "look_inventory", "idle"],
+    "move_syntax": "move=<dx>,<dy> wait_here|hold_position",
+    "inventory_secondary_labels": ["wear", "wield", "act", "drop"],
+    "native_consumers": {
+      "primary_actions": "src/npcmove.cpp:1816",
+      "attack_target_and_missing": "src/npcmove.cpp:1908-2445",
+      "look_around_second_stage": "src/llm_intent.cpp:3671 and src/npcmove.cpp:2115",
+      "look_around_pickup": "src/npcmove.cpp:5370",
+      "inventory_second_stage": "src/llm_intent.cpp:1699",
+      "arrival": "src/npcmove.cpp:3238-3258"
+    },
+    "task004_dispatch_change": "src/npcmove.cpp:2329 now includes effect_npc_flee_player in llm_item_safe, matching the existing helper guard."
+  },
+  "model_and_evidence_rules": {
+    "local_model": "ollama / hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest",
+    "per_case_minimum": ["recipient and ally premise", "exact model request/response and parse/dispatch", "accepted native turns", "attributable native consequence", "source/executable/run binding and cleanup"],
+    "not_proof": ["OCR", "fixture/debug setup", "input transport", "synthetic response injection", "a different row's model response", "an earlier build without its own binding"]
+  },
+  "accepted_receipts": [
+    {
+      "task": "R-037-local-llm-command-coverage-002",
+      "path": ".de67/task-logs/r037-local-llm-command-coverage-009-worker-receipt.json",
+      "sha256": "4552908e9a1e82a35eaf348b52b6768c1e35976c6cc84d02b745137762075127",
+      "binding": "source 4f6921e9… / executable 3bc999ab…",
+      "contributions": ["positive unowned-bandage pickup", "ranged exact-target six-shooter ammunition 6→4", "wrong-action and API-boundary verdicts"]
+    },
+    {
+      "task": "R-037-native-consequence-fixture-repair-003",
+      "path": ".de67/task-logs/r037-native-consequence-fixture-repair-003-worker-receipt.json",
+      "sha256": "82d4b9afa92864a06bc17c27063c92f957d10240a0096ac71c3d30c6667e6315",
+      "binding": "source dbee76… / executable d089e7a3…",
+      "contributions": ["natural removal after exact E4B stale-target request", "three grace turns then attack.target_missing", "forbidden pickup remains without a native terminal item disposition"]
+    },
+    {
+      "task": "R-037-secondary-pickup-dispatch-observation-004",
+      "receipt_id": "6b18502b9dc2b78c15343482fc9be8ecc771978e96c09e9831e903fe108caa88",
+      "path": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-004-worker-receipt.json",
+      "sha256": "7da2cbf0136bc80581ce71fae82832e2f37c2e09c4937329167098efc7fd1dce",
+      "binding": "source 92b876ff… / executable 86f66207… / run f5cb2cef…",
+      "contributions": ["flee-effect consumer/helper mismatch diagnosed", "existing panic block pickup.panic_override reached", "queue cleared and fetching_item=false", "no zone, ownership, or transfer claim"]
+    }
+  ],
+  "case_verdicts": [
+    {"id":"wait_here","verdict":"partial_native_application","basis":"task001 journal a375c6…","remaining":"distinctness, release, and material controls unproved"},
+    {"id":"hold_position","verdict":"partial_native_application","basis":"task001 journal a375c6…","remaining":"release and arrival material controls unproved"},
+    {"id":"follow_close","verdict":"native_applied","basis":"task001 journal a375c6…","remaining":"no expanded control claim"},
+    {"id":"follow_far","verdict":"partial_native_application","basis":"task001 journal a375c6…","remaining":"ordinary far-radius/control proof"},
+    {"id":"equip_gun","verdict":"native_wield_observed","basis":"task001 melee journal 47764f…","remaining":"separate ranged consequence is supplied only by task002"},
+    {"id":"equip_melee","verdict":"native_applied","basis":"task001 journal a375c6…","remaining":"no expanded control claim"},
+    {"id":"equip_bow","verdict":"partial_native_application","basis":"task001 journal a375c6…","remaining":"silent ranged engagement"},
+    {"id":"panic_on","verdict":"partial_then_wrong_action_divergence","basis":"task001 journals a375c6… and 61782e…","remaining":"full forced-panic duration and ordinary flee consequence"},
+    {"id":"panic_off","verdict":"wrong_local_action","basis":"task002: both exact prompts returned follow_close|idle","api":"unavailable: safe child Keychain provisioner reported OPENAI_API_KEY missing before descriptor"},
+    {"id":"look_around_pickup","verdict":"positive_pickup_proved; separate_panic_block_proved","basis":"task002 safe run 2be83f… / journal 9aef38… proves unowned-bandage pickup; task004 run f5cb2cef… requested then blocked pickup.panic_override","remaining":"foreign-owner / NO_NPC_PICKUP-zone disposition and transfer remain unproved; do not infer them from panic"},
+    {"id":"look_inventory_wear","verdict":"inconclusive_no_worn_state_change","basis":"task002 journal 5e6006…","api":"unavailable secure provisioning"},
+    {"id":"look_inventory_wield","verdict":"wrong_secondary_action","basis":"task002 exact response look_inventory|equip_gun, not wield","api":"unavailable secure provisioning"},
+    {"id":"look_inventory_activate","verdict":"inconclusive_no_attributable_activation","basis":"task002 journal 5e6006…","api":"unavailable secure provisioning"},
+    {"id":"look_inventory_drop","verdict":"wrong_local_action_no_drop_selection","basis":"task001/002 retained no E4B drop selection","api":"unavailable secure provisioning"},
+    {"id":"idle","verdict":"not_pure_idle","basis":"task002 exact response wait_here|idle then ordinary AI changed wielded item","api":"unavailable secure provisioning"},
+    {"id":"move_wait_arrival","verdict":"proved","basis":"task002: E4B two tiles west then wait_here only after native arrival"},
+    {"id":"move_hold_arrival","verdict":"proved","basis":"task002: E4B two tiles east then hold_position only after native arrival"},
+    {"id":"attack_exact_target_melee","verdict":"proved_exact_target_native_damage","basis":"task001 journal 47764f…"},
+    {"id":"attack_exact_target_ranged","verdict":"proved_exact_target_native_ammunition_change","basis":"task002 combat run 99b74e… / journal 9fb113…: six-shooter 6→4"},
+    {"id":"attack_missing_or_stale_target","verdict":"proved_attack_target_missing","basis":"task003 stale run 236bcaa…: exact target, natural removal, three grace turns, then attack.target_missing","remaining":"does not validate earlier absent-target fixture attempts"}
+  ],
+  "remaining_smallest_independent_e4b_native_rows": [
+    {"row":"panic_off","changed_premise":"pre-existing panic plus a response that actually selects panic_off","required_native_result":"run-away effect removal and observed 30-turn calm reduction"},
+    {"row":"look_inventory_wear","changed_premise":"a selectable wearable and native before/after worn-state observation","required_native_result":"completed wear or explicit source terminal"},
+    {"row":"look_inventory_activate","changed_premise":"an activatable item with observable postcondition","required_native_result":"native activation consequence beyond attempted status"},
+    {"row":"look_inventory_drop","changed_premise":"an E4B response that emits drop for an owned eligible item","required_native_result":"item leaves NPC inventory and is observed at its tile"},
+    {"row":"idle","changed_premise":"a response that is idle alone","required_native_result":"no LLM action queued while ordinary AI proceeds"},
+    {"row":"look_around_pickup_forbidden","changed_premise":"same staged foreign/zone item with flee effect absent","required_native_result":"one current native item terminal such as pickup.zone_forbidden, pickup.situation_changed, or actual transfer; outcome not predetermined"},
+    {"row":"partial controls","changed_premise":"independent ordinary movement/control opportunities","required_native_result":"complete the explicit wait/hold/follow/equip/panic control requirements rather than reusing partial application"}
+  ],
+  "separate_api_boundary": {
+    "model": "openai / gpt-4.1-mini",
+    "scope": "Each retained local wrong-action or no-consequence failure needs a same-premise API verdict and its own native consequence.",
+    "status": "unavailable",
+    "reason": "The isolated child-only secure Keychain provisioner reported OPENAI_API_KEY missing before a descriptor. No credential was accessed, copied, reused, or recorded.",
+    "not_a_local_pass": true
+  },
+  "lifecycle": {
+    "historical_runs":"Each cited receipt retains its own verified PID/bridge exit ceiling.",
+    "task004":"Diagnostic PID 63004 and repaired PID 63623, plus their bridges, were observed absent after explicit quit.",
+    "current_task":"No build or native runtime was started."
+  },
+  "rejected_obsolete_language": [
+    "attack_missing_or_stale_target is not still unclassified: task003 proves attack.target_missing at its exact source/runtime ceiling.",
+    "look_around_pickup_forbidden is not a zone or ownership pass: task004 proves only pickup.panic_override under effect_npc_flee_player.",
+    "No old source or executable identity is promoted to current source; historical receipts remain independently bound."
+  ]
+}

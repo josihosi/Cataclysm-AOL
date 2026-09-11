@@ -2115,13 +2115,26 @@ void npc::apply_llm_intent_target() {
 bool npc::apply_llm_intent_item_targets() {
   llm_intent_state &state = llm_intent_state_for(*this);
   if (state.look_around_targets.empty()) {
+    llm_intent::log_event( string_format(
+                               "look_around apply skipped npc=\"%s\" id=%d primary=%s secondary=%s reason=empty_queue",
+                               get_name(), getID().get_value(), state.request_id,
+                               state.look_around_request_id ) );
     return false;
     }
     if( attitude == NPCATT_FLEE || attitude == NPCATT_FLEE_TEMP ||
         has_effect( effect_npc_flee_player ) ) {
+        llm_intent::log_event( string_format(
+                                   "look_around apply skipped npc=\"%s\" id=%d primary=%s secondary=%s reason=flee_guard attitude=%d flee_effect=%s",
+                                   get_name(), getID().get_value(), state.request_id,
+                                   state.look_around_request_id, static_cast<int>( attitude ),
+                                   has_effect( effect_npc_flee_player ) ? "true" : "false" ) );
         return false;
     }
     if( fetching_item ) {
+        llm_intent::log_event( string_format(
+                                   "look_around apply skipped npc=\"%s\" id=%d primary=%s secondary=%s reason=already_fetching",
+                                   get_name(), getID().get_value(), state.request_id,
+                                   state.look_around_request_id ) );
         return true;
     }
 
@@ -2129,10 +2142,16 @@ bool npc::apply_llm_intent_item_targets() {
     static constexpr int look_radius = 5;
     while( !state.look_around_targets.empty() ) {
         const llm_item_target target = state.look_around_targets.front();
+        llm_intent::log_event( string_format(
+                                   "look_around apply begin npc=\"%s\" id=%d primary=%s secondary=%s target=%s queued=%d",
+                                   get_name(), getID().get_value(), state.request_id,
+                                   state.look_around_request_id, target.name,
+                                   static_cast<int>( state.look_around_targets.size() ) ) );
         item_location best_item;
         tripoint_bub_ms best_pos = tripoint_bub_ms::invalid;
     int best_dist = 0;
     bool found = false;
+    int zone_skipped_points = 0;
 
     const auto consider = [&](const tripoint_bub_ms &p, item_location loc,
                               item &node) {
@@ -2154,6 +2173,7 @@ bool npc::apply_llm_intent_item_targets() {
     for (const tripoint_bub_ms &p :
          closest_points_first(pos_bub(), look_radius)) {
       if (is_player_ally() && g->check_zone(zone_type_NO_NPC_PICKUP, p)) {
+        ++zone_skipped_points;
         continue;
       }
             if( !here.sees_some_items( p, *this ) || !sees( here, p ) ) {
@@ -2195,18 +2215,28 @@ bool npc::apply_llm_intent_item_targets() {
         }
 
         if( found && best_pos != tripoint_bub_ms::invalid ) {
+            llm_intent::log_event( string_format(
+                                       "look_around apply selected npc=\"%s\" id=%d primary=%s secondary=%s target=%s zone_skips=%d",
+                                       get_name(), getID().get_value(), state.request_id,
+                                       state.look_around_request_id, target.name,
+                                       zone_skipped_points ) );
             wanted_item_pos = best_pos;
             wanted_item = best_item;
       fetching_item = true;
       state.look_around_active_target = target;
       state.look_around_targets.pop_front();
       begin_llm_action(llm_action_kind::look_around_pickup, target.name,
-                       target.name, here.get_abs(best_pos));
+                       target.name, here.get_abs(best_pos), state.look_around_request_id);
       return true;
     }
     begin_llm_action(llm_action_kind::look_around_pickup, target.name,
-                     target.name);
+                     target.name, std::nullopt, state.look_around_request_id);
     finish_llm_action(llm_action_phase::blocked, "pickup.item_missing");
+    llm_intent::log_event( string_format(
+                               "look_around apply blocked npc=\"%s\" id=%d primary=%s secondary=%s target=%s reason=pickup.item_missing zone_skips=%d",
+                               get_name(), getID().get_value(), state.request_id,
+                               state.look_around_request_id, target.name,
+                               zone_skipped_points ) );
     state.look_around_targets.pop_front();
   }
 
@@ -2298,9 +2328,17 @@ void npc::move() {
   }
   const bool llm_item_safe = ai_cache.danger <= 0 && target == nullptr &&
                              !sees_dangerous_field(pos_bub()) &&
-                             !has_effect(effect_npc_fire_bad);
+                             !has_effect(effect_npc_fire_bad) &&
+                             !has_effect(effect_npc_flee_player);
   if (get_option<bool>("LLM_INTENT_ENABLE") && !fetching_item &&
       !state.look_around_targets.empty()) {
+    llm_intent::log_event( string_format(
+                               "look_around consumer npc=\"%s\" id=%d primary=%s secondary=%s pending=%s queued=%d safe=%s",
+                               get_name(), getID().get_value(), state.request_id,
+                               state.look_around_request_id,
+                               state.look_around_request_pending ? "true" : "false",
+                               static_cast<int>( state.look_around_targets.size() ),
+                               llm_item_safe ? "true" : "false" ) );
     if (!llm_item_safe) {
       const bool panic_block = attitude == NPCATT_FLEE ||
                                attitude == NPCATT_FLEE_TEMP ||
@@ -2318,9 +2356,21 @@ void npc::move() {
                                     : std::vector<std::string>{});
       state.look_around_targets.clear();
       state.look_around_active_target = llm_item_target{};
-        } else if( apply_llm_intent_item_targets() ) {
+        } else {
+            const bool fetching_before_apply = fetching_item;
+            const bool apply_result = apply_llm_intent_item_targets();
+            llm_intent::log_event( string_format(
+                                       "look_around consumer apply-result npc=\"%s\" id=%d primary=%s secondary=%s before_fetching=%s after_fetching=%s result=%s queued=%d",
+                                       get_name(), getID().get_value(), state.request_id,
+                                       state.look_around_request_id,
+                                       fetching_before_apply ? "true" : "false",
+                                       fetching_item ? "true" : "false",
+                                       apply_result ? "true" : "false",
+                                       static_cast<int>( state.look_around_targets.size() ) ) );
+            if( apply_result ) {
             execute_action( npc_pickup );
             return;
+            }
         }
     }
     const bool llm_attack_override = state.target_attacks_remaining > 0 &&

@@ -318,6 +318,9 @@ std::map<std::string, std::string> npc_inspection_payload( npc &actor, avatar &v
                 }
                 json.end_object();
             } ) },
+        { "diagnostic_llm_intent", json_text( [&]( JsonOut & json ) {
+                json.write( actor.get_llm_intent_diagnostic_state() );
+            } ) },
         { "diagnostic_camp_patrol", json_text( [&]( JsonOut & json ) {
                 json.start_object();
                 json.member( "provenance", "Read-only assigned-camp patrol shift-cache diagnostic; it never refreshes the plan or synchronizes this actor's patrol order." );

@@ -1,0 +1,122 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-037-secondary-pickup-dispatch-observation-004",
+  "claim_id": "R-037",
+  "worker_id": "01a08ce7-2f93-7263-9c96-547779b446bd",
+  "disposition": "completed",
+  "verdict": "secondary_pickup_dispatch_obstruction_repaired_and_native_block_proved",
+  "outcome": "A current source-bound E4B request reached Katharina's secondary bandage target. The diagnostic control proved that effect_npc_flee_player made the helper reject an otherwise-safe consumer and fall through to generic find_item. The consumer now treats that same effect as unsafe, so the existing targeted panic branch owns the request. The repaired control recorded pickup.panic_override and cleared the target queue without fetching the bandage.",
+  "summary": "The missing application link was a mismatched flee-effect guard, not callback lookup, ally gating, queue installation, item/zone selection, or a missing terminal logger. The task-local repair aligns the consumer predicate with the helper guard and the fresh control has an attributable native blocked action-status result.",
+  "material_changes": [
+    "Added correlated helper-exit and consumer-result diagnostics for the existing look-around item route.",
+    "Added effect_npc_flee_player to the existing consumer safety predicate; no pickup candidate, ownership, zone, or terminal-reason rules were changed."
+  ],
+  "tests": [
+    "python3 -m py_compile tools/openclaw_harness/startup_harness.py",
+    "python3 -m unittest tools.openclaw_harness.scenario_registry_integration_test: 7 passed",
+    "source-bound macOS tiles build succeeded and git diff --check passed"
+  ],
+  "live_actions": [
+    "Diagnostic E4B run 5173181295bcb052fc684f4173324548b580bd2a7116b28251582ecd7001900c reached queued=1, safe=true, helper flee_guard=true, and apply_result=false.",
+    "Repaired E4B run f5cb2cef6316e26305c764e13c280375f447a4490b2077e4b43b1bf010910096 reached queued=1, safe=false, requested look_around_pickup, and blocked pickup.panic_override.",
+    "Both task-owned games and bridges were explicitly quit and then observed exited."
+  ],
+  "evidence_ceiling": [
+    "The terminal disposition is the existing panic override; it does not establish a NO_NPC_PICKUP-zone or ownership skip, nor an inventory transfer.",
+    "No matching witness charter was supplied, so these bootstrap live records are not promoted to a journal-backed gameplay witness.",
+    "The broader R-037 catalog and safe API credential boundary remain independent and unqualified."
+  ],
+  "bindings": {
+    "diagnostic_binding_id": "d0f1dcd77106aee6bb5ead4f31fed8769573c1e36f3c900ebe041eba22902629",
+    "diagnostic_run_id": "5173181295bcb052fc684f4173324548b580bd2a7116b28251582ecd7001900c",
+    "repaired_binding_id": "9a7fde1a09fba69ac9453dbc6ea66e4f8c114aa6c6c970696d00e086f244dee8",
+    "repaired_executable_sha256": "86f662070d8a3593059f80b8840a90cd840e5f9947415db8aaa8a45c1ab37038",
+    "repaired_product_source_sha256": "92b876ffcdd49ea6e6c6c4c974197a76b9997b1908b0e13acf5d32e001e51a9e",
+    "repaired_run_id": "f5cb2cef6316e26305c764e13c280375f447a4490b2077e4b43b1bf010910096"
+  },
+  "journal_entries": [
+    {
+      "id": "helper-flee-guard",
+      "sequence": "diagnostic",
+      "event_type": "native_dispatch_diagnosis",
+      "evidence_class": "run_bound_npc_log",
+      "summary": "Queued bandage target remained while fetching_item became true; the correlated run log identifies effect_npc_flee_player as the helper's false result.",
+      "artifact_ref": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-007-after-consumer-state.json"
+    },
+    {
+      "id": "repaired-terminal-block",
+      "sequence": "repaired-control",
+      "event_type": "native_action_status",
+      "evidence_class": "run_bound_npc_log",
+      "summary": "At game turn 5241601, the queue installed, consumer reported safe=false, and requested then blocked look_around_pickup with pickup.panic_override.",
+      "actor_id": "character:2",
+      "action_id": "look_around_pickup",
+      "artifact_ref": ".userdata/harness-npc-llm-coverage/harness_runs/20260911_034016_0fe0b33709464871821031d3588be25c/llm.action-status.events.jsonl"
+    },
+    {
+      "id": "repaired-final-state",
+      "sequence": "repaired-control",
+      "event_type": "native_npc_inspection",
+      "evidence_class": "run_bound_native_observation",
+      "summary": "Post-terminal inspection reports queued_target_count=0 and fetching_item=false.",
+      "actor_id": "character:2",
+      "artifact_ref": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-008-final-state.json"
+    },
+    {
+      "id": "repaired-cleanup",
+      "sequence": "post-terminal",
+      "event_type": "process_exit",
+      "evidence_class": "harness_cleanup",
+      "summary": "The expected game PID 63623 was observed exited and bridge cleanup was accepted.",
+      "artifact_ref": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-008-quit-collect.json"
+    }
+  ],
+  "artifacts": [
+    {
+      "path": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-007-after-consumer-state.json",
+      "sha256": "06c5fef7dabe11e28adedc572273c9fd37b95723d9e96b5303b9aa6c88add600",
+      "role": "run-bound NPC state following the helper flee-guard diagnostic"
+    },
+    {
+      "path": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-008-flee-consumer-repair-build.json",
+      "sha256": "224db81019277fadf6192d0ea03f264cd7db06e31ba463fe6fc8b0e03db60576",
+      "role": "source-bound repaired executable build receipt"
+    },
+    {
+      "path": ".userdata/harness-npc-llm-coverage/harness_runs/20260911_034016_0fe0b33709464871821031d3588be25c/llm.action-status.events.jsonl",
+      "sha256": "8bbd406ba3df584c5a0559c5fdf24098dba8dd61d275a77b3cf3bf1020937f4a",
+      "role": "current repaired E4B run-bound consumer and terminal action-status events"
+    },
+    {
+      "path": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-008-final-state.json",
+      "sha256": "f909c2e6bdc73e426c4f0a1f13563691fd12fdd8f3d5fabe3c80c1ed3a21c59e",
+      "role": "post-terminal native NPC intent state"
+    },
+    {
+      "path": ".de67/task-logs/r037-secondary-pickup-dispatch-observation-008-quit-collect.json",
+      "sha256": "10eb6fd82345c53d321328f46af5bba78c59fcc29efe287013e8b7f34acf7cfd",
+      "role": "repaired E4B process-exit and bridge-cleanup receipt"
+    }
+  ],
+  "first_divergence": null,
+  "accepted_no_replay": [
+    "Do not replay task003's sealed forbidden-pickup input cycle unchanged.",
+    "Retain the diagnostic and repaired E4B runs as the correlated dispatch and terminal evidence."
+  ],
+  "active_work": [],
+  "first_open_boundary": "",
+  "narrow_queries": [
+    "If a later claim specifically requires a zone or ownership disposition, use a distinct route where effect_npc_flee_player is absent rather than relabeling pickup.panic_override."
+  ],
+  "entrypoints": [
+    "src/npcmove.cpp",
+    ".de67/task-logs/r037-secondary-pickup-dispatch-observation-008-flee-consumer-repair-build.json",
+    ".userdata/harness-npc-llm-coverage/harness_runs/20260911_034016_0fe0b33709464871821031d3588be25c/llm.action-status.events.jsonl"
+  ],
+  "context_metrics": {
+    "diagnostic_e4b_runs": 1,
+    "repaired_e4b_runs": 1,
+    "verified_game_exits": 2
+  }
+}
