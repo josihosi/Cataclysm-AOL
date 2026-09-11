@@ -1,0 +1,63 @@
+{
+  "schema": "de67.worker-result-receipt.v1",
+  "lineage_id": "semantic-surface-cockpit",
+  "task_id": "R-037-native-consequence-fixture-repair-003",
+  "claim_id": "R-037",
+  "worker_id": "01a08ce7-2f93-7263-9c96-547779b446bd",
+  "disposition": "finding",
+  "finding_kind": "blocker",
+  "verdict": "stale_target_native_consequence_proved_forbidden_pickup_terminal_disposition_unobserved",
+  "outcome": "The repaired stale-target route is complete: current-source E4B selected the exact zombie dog, native combat removed it, and ordinary native turns reached attack.target_missing. The repaired forbidden-pickup route improved the causal race: the accepted E4B request and sole-item E4B selection were retained without the earlier ordinary herbal-tea pickup, and inspection showed no bandage transfer. Its native item action-status block/skip did not arrive before the deadline; it is not claimed as proved.",
+  "summary": "No API control was attempted. The separate OpenAI credential boundary remains unchanged. The final forbidden-pickup run was explicitly quit after the deadline checkpoint and its game, bridge, and runner PIDs were absent by exact OS query.",
+  "material_changes": [
+    "Fixture/startup support preserves controlled NPC/monster turn state and exposes the run-bound LLM action-status stream.",
+    "NPC LLM state now suppresses ordinary AI while a primary response or look-around item selection is pending, preventing the observed unrelated herbal-tea pickup race."
+  ],
+  "tests": [
+    "python3 -m py_compile tools/openclaw_harness/startup_harness.py",
+    "ScenarioFixtureContractTest.test_r037_forbidden_pickup_fixture_isolates_one_zoned_foreign_item",
+    "git diff --check",
+    "source-bound Tiles build recorded in r037-forbidden-pickup-response-pending-build.json"
+  ],
+  "live_actions": [
+    "Stale-target run 236bcaa4567d6c4744a4927b58ae57d5433bb765694fb4e4774f0d8fd4508cda used one accepted natural E4B request and ordinary native pauses only.",
+    "Forbidden-pickup run 09e2020ded8416a2c9e26da04f64028780f31831926644336ce63be6ba72b0c0 used one accepted natural E4B request and native pauses only; it was explicitly quit at the deadline checkpoint."
+  ],
+  "evidence_ceiling": [
+    "The forbidden route proves request acceptance, primary E4B look_around reply, the sole offered bandage selection item_1:a, no unrelated herbal-tea pickup during the response-pending interval, and no bandage in the inspected NPC inventory.",
+    "No run-bound action_status event establishes pickup.item_missing, zone block, or transfer disposition before the preserved terminal boundary.",
+    "No witness/journal citation was available because no matching witness charter was supplied; bootstrap live evidence is not promoted to a witness."
+  ],
+  "bindings": {
+    "forbidden_pickup_run_id": "09e2020ded8416a2c9e26da04f64028780f31831926644336ce63be6ba72b0c0",
+    "forbidden_pickup_binding_id": "b514aaee570e740c3c484dd4dd4e96bfebfe1907c528eb2b3113d005a21c14c1",
+    "forbidden_pickup_prompt_request": "play-568a",
+    "forbidden_pickup_final_quit_request": "play-edfeea20f14149348dc5d6eae6073a33",
+    "stale_target_run_id": "236bcaa4567d6c4744a4927b58ae57d5433bb765694fb4e4774f0d8fd4508cda",
+    "current_executable_sha256": "d089e7a3",
+    "current_runtime_source_sha256": "dbee76"
+  },
+  "journal_entries": [
+    {"id":"stale-attack-target-missing","sequence":1,"event_type":"native_action_status","evidence_class":"native","artifact_ref":".userdata/harness-npc-llm-coverage-combat/harness_runs/20260911_021111_589913b521b246cdbf573e27c6cca732/llm.action-status.events.jsonl","summary":"Exact target resolution, natural removal, three grace turns, and terminal attack.target_missing were retained."},
+    {"id":"forbidden-selection","sequence":2,"event_type":"runner_response","evidence_class":"runtime","artifact_ref":"config/llm_intent_runner.log","summary":"The sole offered bandage was selected as item_1:a after the accepted E4B look-around request."},
+    {"id":"forbidden-no-transfer","sequence":3,"event_type":"native_npc_inspection","evidence_class":"native","artifact_ref":".userdata/openclaw_harness/bridge-sessions/r037-native-consequence-fixture-repair-003-forbidden-pickup-response-pending-fixed/responses/play-3256f654ca4e47e5b3ab4591f087cb4c.json","summary":"Katharina's retained inspected inventory has no bandage."},
+    {"id":"forbidden-cleanup","sequence":4,"event_type":"native_quit_cleanup","evidence_class":"native","artifact_ref":".userdata/harness-npc-llm-coverage/harness_runs/20260911_024415_c3d5ba08d4b54246bb5654f9417bf18b/operate_r037_forbidden_pickup.cockpit.live.final.json","summary":"Explicit quit requested cleanup; the final report records PID 54030 terminated."}
+  ],
+  "artifacts": [
+    {"path":".userdata/harness-npc-llm-coverage-combat/harness_runs/20260911_021111_589913b521b246cdbf573e27c6cca732/llm.action-status.events.jsonl","role":"stale-target exact resolution and attack.target_missing stream"},
+    {"path":"config/llm_intent_runner.log","role":"current E4B primary and second-stage runner responses"},
+    {"path":".userdata/openclaw_harness/bridge-sessions/r037-native-consequence-fixture-repair-003-forbidden-pickup-response-pending-fixed/responses/play-3256f654ca4e47e5b3ab4591f087cb4c.json","role":"native NPC inspection response"},
+    {"path":".de67/task-logs/r037-forbidden-pickup-response-pending-build.json","sha256":"e2059feb83f2f85c3d65e6e878446ef1ac292eda236af34327304bc9b4a48336","role":"successful source-bound Tiles build"},
+    {"path":".de67/task-logs/r037-forbidden-pickup-response-pending-fixed-pre-npc.json","sha256":"d69bcf0805d079661f29c32cc079f4fe245b543c8faf0c12cb7c81613c7c016e","role":"pre-action native NPC/item premise"},
+    {"path":".userdata/harness-npc-llm-coverage/harness_runs/20260911_024415_c3d5ba08d4b54246bb5654f9417bf18b/llm.action-status.events.jsonl","sha256":"4a934a2656982e516886af6212e64d7bdd43a6581c7f9bf03e32e664c6481753","role":"run-bound action-status stream showing the missing terminal item disposition"},
+    {"path":".userdata/harness-npc-llm-coverage/harness_runs/20260911_024415_c3d5ba08d4b54246bb5654f9417bf18b/operate_r037_forbidden_pickup.cockpit.live.final.json","role":"explicit quit and PID cleanup result"},
+    {"path":".de67/task-logs/r037-stale-melee-native-witness.json","role":"stale-target native evidence candidate; no charter-backed witness claim"}
+  ],
+  "first_divergence": {"class":"missing_run_bound_forbidden_pickup_terminal_disposition","summary":"After the selected item response, the retained native action-status stream contains no pickup block/skip/transfer event before the deadline boundary."},
+  "accepted_no_replay": ["Do not replay this final forbidden-pickup input cycle unchanged; retain its response-pending race evidence and final cleanup."],
+  "active_work": [],
+  "first_open_boundary": "A separately authorized observation/dispatch repair must expose why the selected second-stage item target did not yield a run-bound native terminal action-status result; a matching witness charter is additionally required for journal-backed witness packaging.",
+  "narrow_queries": ["second-stage look-around response-to-npc-target dispatch correlation", "run-bound forbidden-pickup action-status emission", "witness charter provision"],
+  "entrypoints": ["src/llm_intent.cpp", "src/npcmove.cpp", "tools/openclaw_harness/scenarios/r037.npc_llm_command_forbidden_pickup_v001_mcw.json"],
+  "context_metrics": {"stale_target_completed_runs":1,"forbidden_pickup_final_runs":1,"verified_absent_final_pids":3}
+}

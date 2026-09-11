@@ -10,6 +10,7 @@
 #include <cstddef>
 #include <cstdint>
 #include <cstdlib>
+#include <cstring>
 #include <cerrno>
 #include <deque>
 #include <exception>
@@ -98,6 +99,67 @@ std::mutex llm_intent_log_mutex;
 constexpr const char *llm_intent_log_filename = "llm_intent.log";
 constexpr const char *llm_intent_event_log_filename = "llm_intent_events.log";
 constexpr std::streamoff llm_intent_log_rotate_bytes = 50 * 1024 * 1024;
+
+std::string openclaw_harness_bound_semantic_run_id()
+{
+    const char *const active_run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const char *const bound_run_id = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID" );
+    if( active_run_id == nullptr || bound_run_id == nullptr || active_run_id[0] == '\0' ||
+        bound_run_id[0] == '\0' || std::strcmp( active_run_id, bound_run_id ) != 0 ) {
+        return {};
+    }
+    return active_run_id;
+}
+
+std::string openclaw_harness_json_quote( const std::string &value )
+{
+    std::ostringstream out;
+    out << '"';
+    for( const unsigned char character : value ) {
+        switch( character ) {
+            case '"': out << "\\\""; break;
+            case '\\': out << "\\\\"; break;
+            case '\b': out << "\\b"; break;
+            case '\f': out << "\\f"; break;
+            case '\n': out << "\\n"; break;
+            case '\r': out << "\\r"; break;
+            case '\t': out << "\\t"; break;
+            default:
+                if( character < 0x20 ) {
+                    out << string_format( "\\u%04x", character );
+                } else {
+                    out << character;
+                }
+                break;
+        }
+    }
+    out << '"';
+    return out.str();
+}
+
+void append_openclaw_harness_semantic_llm_event( const std::string &message )
+{
+    const std::string run_id = openclaw_harness_bound_semantic_run_id();
+    // Surface descriptors and their receipts share the semantic trace.  This
+    // LLM diagnostic is intentionally a separate run-owned JSONL stream: it
+    // must not impersonate a semantic surface event or invalidate the
+    // cockpit's parser.
+    const char *const path = std::getenv( "OPENCLAW_HARNESS_LLM_EVENT_PATH" );
+    if( run_id.empty() || path == nullptr || path[0] == '\0' ) {
+        return;
+    }
+    const bool action_status = message.rfind( "action_status ", 0 ) == 0;
+    std::ofstream stream( path, std::ios::app | std::ios::binary );
+    if( stream ) {
+        stream << "{\"schema\":\"openclaw-harness-llm-event-v1\",\"event\":"
+               << openclaw_harness_json_quote( action_status ? "llm_action_status" : "llm_intent_event" )
+               << ",\"run_id\":" << openclaw_harness_json_quote( run_id )
+               << ",\"game_minutes\":"
+               << to_minutes<int>( calendar::turn - calendar::start_of_cataclysm )
+               << ",\"game_turn\":" << to_turns<int>( calendar::turn - calendar::turn_zero )
+               << ",\"message\":" << openclaw_harness_json_quote( message ) << "}\n";
+    }
+}
 
 std::filesystem::path central_llm_config_dir_path()
 {
@@ -3370,6 +3432,7 @@ class llm_intent_manager
                         continue;
                     }
                     pending_primary_npcs.insert( listener->getID() );
+                    listener->set_llm_intent_response_pending( true );
                     pending_primary_requests.push_back( { listener->getID(), player_utterance } );
                 }
             }
@@ -3387,6 +3450,7 @@ class llm_intent_manager
                 }
                 pending_primary_npcs.insert( listener.getID() );
             }
+            listener.set_llm_intent_response_pending( true );
             llm_intent_request req;
             req.request_id = next_request_id();
             req.npc_id = listener.getID();
@@ -3497,6 +3561,7 @@ class llm_intent_manager
                     serial_primary_request_ids.insert( req.request_id );
                     request_queue.push( std::move( req ) );
                 }
+                listener->set_llm_intent_response_pending( true );
                 ensure_worker();
                 cv.notify_one();
                 return;
@@ -3550,13 +3615,13 @@ class llm_intent_manager
             }
         }
 
-        void enqueue_look_around_request( npc &listener, const std::string &player_utterance ) {
+        bool enqueue_look_around_request( npc &listener, const std::string &player_utterance ) {
             static constexpr int look_max_tokens = 128;
             static constexpr size_t max_item_entries = 60;
             std::vector<look_around_item_entry> items = collect_look_around_items( listener, 5,
                     max_item_entries );
             if( items.empty() ) {
-                return;
+                return false;
             }
             for( size_t i = 0; i < items.size(); ++i ) {
                 items[i].id = string_format( "item_%d", static_cast<int>( i + 1 ) );
@@ -3588,6 +3653,7 @@ class llm_intent_manager
             }
             ensure_worker();
             cv.notify_one();
+            return true;
         }
 
         void process_look_around_response( const llm_intent_response &resp,
@@ -3755,10 +3821,12 @@ class llm_intent_manager
                     }
                 }
                 bool is_ambient_response = false;
+                bool is_primary_response = false;
                 std::string player_utterance;
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     is_ambient_response = ambient_request_ids.count( resp.request_id ) > 0;
+                    is_primary_response = primary_request_ids.count( resp.request_id ) > 0;
                     auto it = utterance_by_request.find( resp.request_id );
                     if( it != utterance_by_request.end() ) {
                         player_utterance = it->second;
@@ -3803,6 +3871,11 @@ class llm_intent_manager
                     }
                     local.pop();
                     continue;
+                }
+                if( is_primary_response ) {
+                    if( npc *target = g->find_npc( resp.npc_id ) ) {
+                        target->set_llm_intent_response_pending( false );
+                    }
                 }
                 std::string parse_error;
                 std::string action_error;
@@ -3995,8 +4068,9 @@ class llm_intent_manager
                         }
                     }
                     if( npc *target = g->find_npc( resp.npc_id ) ) {
-                        if( target->is_player_ally() ) {
-                            enqueue_look_around_request( *target, player_utterance );
+                        if( target->is_player_ally() &&
+                            enqueue_look_around_request( *target, player_utterance ) ) {
+                            target->set_llm_intent_item_request_pending( true );
                         }
                     }
                 }
@@ -4016,7 +4090,6 @@ class llm_intent_manager
                     }
                 }
                 bool dispatch_next_serial = false;
-                bool is_primary_response = false;
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     utterance_by_request.erase( resp.request_id );
@@ -4267,6 +4340,10 @@ void log_event( const std::string &message )
         }
     }
     append_llm_intent_event_log( "[CAOL_EVENT] " + framed_message + "\n" );
+    // The profile log is shared between games and cannot establish that a
+    // pickup/attack disposition belongs to a live cockpit run.  Mirror only
+    // when both launch-bound IDs agree, into the run-owned semantic stream.
+    append_openclaw_harness_semantic_llm_event( message );
 }
 
 std::string build_snapshot_for_test( npc &listener, const std::string &player_utterance,

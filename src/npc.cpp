@@ -3158,6 +3158,8 @@ void npc::clear_llm_intent_actions()
     state.move_arrival_state = llm_intent_action::none;
     state.hold_position_active = false;
     goto_to_this_pos = std::nullopt;
+    state.response_pending = false;
+    state.look_around_request_pending = false;
     state.look_around_targets.clear();
     state.look_around_active_target = npc::llm_item_target{};
 }
@@ -3190,6 +3192,7 @@ void npc::set_llm_intent_legend_map( const std::string &request_id,
 void npc::set_llm_intent_item_targets( const std::vector<llm_item_target> &targets ) const
 {
     llm_intent_state &state = llm_intent_state_for( *this );
+    state.look_around_request_pending = false;
     if( state.active_status.kind == llm_action_kind::look_around_pickup &&
         !is_terminal_llm_action_phase( state.active_status.phase ) ) {
         finish_llm_action( llm_action_phase::cancelled, "intent.targets_reset" );
@@ -3201,6 +3204,16 @@ void npc::set_llm_intent_item_targets( const std::vector<llm_item_target> &targe
             state.look_around_targets.push_back( target );
         }
     }
+}
+
+void npc::set_llm_intent_response_pending( const bool pending ) const
+{
+    llm_intent_state_for( *this ).response_pending = pending;
+}
+
+void npc::set_llm_intent_item_request_pending( const bool pending ) const
+{
+    llm_intent_state_for( *this ).look_around_request_pending = pending;
 }
 
 void npc::add_llm_intent_memory( const std::string &player_utterance,

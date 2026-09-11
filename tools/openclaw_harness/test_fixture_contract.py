@@ -6690,6 +6690,12 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             "typeid": "bandages", "offset_ms": [2, 0, 0], "count": 1,
             "owner": "hells_raiders",
         }])
+        npc_transform = next(
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "basecamp_assigned_npc_items" and transform["npc_id"] == 2
+        )
+        self.assertEqual(npc_transform["offset_ms"], [1, 0, 0])
+        self.assertEqual(npc_transform["moves"], 100)
         zones = [
             transform for transform in resolved["save_transforms"]
             if transform["kind"] == "source_firewood_zone_near_player"
@@ -6712,13 +6718,22 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         target = monster_transforms[-1]["monsters"][0]
         self.assertEqual(target["fixture_actor_id"], "r037-fragile-zombie-dog")
         self.assertEqual(target["typeid"], "mon_zombie_dog")
-        self.assertEqual(target["offset_ms"], [7, 0, 0])
+        self.assertEqual(target["offset_ms"], [1, 0, 0])
         self.assertEqual(target["hp"], 1)
+        self.assertEqual(target["dodges_left"], 0)
+        self.assertEqual(target["dodge_bonus"], -10.0)
         self.assertEqual(target["friendly"], 1)
         self.assertEqual(target["faction"], "zombie")
         self.assertEqual(target["anger"], 100)
         self.assertEqual(target["morale"], 100)
         self.assertTrue(target["aggro_character"])
+        npc_item_transforms = [
+            transform for transform in resolved["save_transforms"]
+            if transform["kind"] == "basecamp_assigned_npc_items" and transform["npc_id"] == 2
+        ]
+        self.assertEqual(npc_item_transforms[-1]["items"], [{
+            "typeid": "machete", "count": 1, "slot": "weapon",
+        }])
 
     def test_hostile_operation_bootstrap_clears_inherited_member_routes(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:

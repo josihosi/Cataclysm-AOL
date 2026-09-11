@@ -1,0 +1,21 @@
+{
+  "verdict": "contradicted",
+  "smallest_supported_claim": "The declared fragile target was not present in the first native World observation, so no E4B attack was attempted.",
+  "causal_account": "The launch artifact recorded a requested zero move budget but the applied save transform serialized 120 moves; the first native frame then listed no fixture target.",
+  "citations": [
+    {
+      "citation_id": "J0002",
+      "meaning": "First native World observation has no visible target.",
+      "checks": {"value.surface.facts.visible_entities": "[{\"identity\":{\"kind\":\"npc\",\"id\":\"character:3\"},\"kind\":\"npc\",\"name\":\"Robbie Knox\",\"attitude\":\"friendly\",\"dx\":-9,\"dy\":-6,\"absolute_ms\":[3363,990,0],\"health\":{\"hp\":1260,\"maximum_hp\":1260,\"dead\":false,\"provenance\":\"diagnostic_visible_creature_state\"}}]"}
+    },
+    {
+      "citation_id": "J0003",
+      "meaning": "The run stopped before E4B input after the materialization divergence.",
+      "checks": {}
+    }
+  ],
+  "recommended_disposition": "repair",
+  "contradictions": ["J0002: first World frame has no declared fixture target"],
+  "remaining_unknowns": ["Whether preserving zero moves restores first-frame materialization"],
+  "evidence_ceiling": "focused"
+}

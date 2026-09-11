@@ -21304,6 +21304,7 @@ def semantic_request_transport_child_environment(run_dir: Path, run_id: str) -> 
         "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH": str(path.resolve()),
         "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH": str(trace_path.resolve()),
         "OPENCLAW_HARNESS_SEMANTIC_SNAPSHOT_PATH": str((run_dir / "semantic.native.log").resolve()),
+        "OPENCLAW_HARNESS_LLM_EVENT_PATH": str((run_dir / "llm.action-status.events.jsonl").resolve()),
     }
 
 
@@ -21713,6 +21714,7 @@ def record_bridge_game_process(process: subprocess.Popen, env: Mapping[str, str]
     for name, key in (
         ("native_semantic_events", "OPENCLAW_HARNESS_SEMANTIC_TRACE_PATH"),
         ("native_semantic_snapshot", "OPENCLAW_HARNESS_SEMANTIC_SNAPSHOT_PATH"),
+        ("llm_action_status", "OPENCLAW_HARNESS_LLM_EVENT_PATH"),
         ("transition_events", "OPENCLAW_HARNESS_TRANSITION_EVENT_PATH"),
     ):
         path = str(env.get(key, "")).strip()
@@ -23504,6 +23506,16 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 raise SystemExit(
                     f"Fixture save_transforms[{index}] basecamp_assigned_npc_items needs integer npc_id/offset_ms in {manifest_path}"
                 )
+            moves: Optional[int] = None
+            if "moves" in raw:
+                try:
+                    # An explicit zero is meaningful too: some fixtures use it
+                    # to defer an NPC's first action until after a World frame.
+                    moves = int(raw.get("moves"))
+                except (TypeError, ValueError):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}] basecamp_assigned_npc_items moves must be an integer in {manifest_path}"
+                    )
             raw_camp = raw.get("assigned_camp_omt", [])
             assigned_camp_omt: Optional[List[int]] = None
             if raw_camp not in (None, "", []):
@@ -23588,6 +23600,8 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 "items": items,
                 "ensure_follower": bool(raw.get("ensure_follower", True)),
             }
+            if moves is not None:
+                transform["moves"] = moves
             # Preserve normalized shape for older fixtures that do not use a
             # rule override; only the explicit new contract carries rules.
             if "rules" in raw:
@@ -23741,12 +23755,17 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                 try:
                     offset = [int(raw_offset[0]), int(raw_offset[1]), int(raw_offset[2])]
                     hp = int(monster_raw.get("hp", 90) or 90)
+                    # Preserve zero: a fixture may deliberately defer the
+                    # actor's first turn until after its first World frame.
+                    moves = int(monster_raw.get("moves", 120))
+                    dodges_left = int(monster_raw.get("dodges_left", 1))
+                    dodge_bonus = float(monster_raw.get("dodge_bonus", 0.0))
                     friendly = int(monster_raw.get("friendly", 0) or 0)
                     anger = int(monster_raw.get("anger", 100) or 100)
                     morale = int(monster_raw.get("morale", 100) or 100)
                 except (TypeError, ValueError):
                     raise SystemExit(
-                        f"Fixture save_transforms[{index}].monsters[{monster_index}] has non-integer offset/hp/friendly/anger/morale in {manifest_path}"
+                        f"Fixture save_transforms[{index}].monsters[{monster_index}] has invalid offset/hp/moves/dodge/friendly/anger/morale in {manifest_path}"
                     )
                 raw_qualification_offset = monster_raw.get("qualification_offset_ms", offset)
                 if not isinstance(raw_qualification_offset, list) or len(raw_qualification_offset) < 3:
@@ -23810,6 +23829,9 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                     "offset_ms": offset,
                     "qualification_offset_ms": qualification_offset,
                     "hp": hp,
+                    "moves": moves,
+                    "dodges_left": dodges_left,
+                    "dodge_bonus": dodge_bonus,
                     "friendly": friendly,
                     "faction": str(monster_raw.get("faction", "zombie") or "zombie").strip(),
                     "anger": anger,
@@ -26901,6 +26923,12 @@ def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict
     requested_npc_id = int(transform.get("npc_id", 0) or 0)
     assigned_camp_omt = transform.get("assigned_camp_omt")
     ensure_follower = bool(transform.get("ensure_follower", True))
+    requested_moves = transform.get("moves")
+    if requested_moves is not None:
+        try:
+            requested_moves = int(requested_moves)
+        except (TypeError, ValueError):
+            raise SystemExit("Basecamp assigned NPC transform moves must be an integer")
     requested_rules = transform.get("rules", {})
     if not isinstance(requested_rules, dict):
         raise SystemExit("Basecamp assigned NPC transform rules must be an object")
@@ -26947,6 +26975,8 @@ def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict
     added_items: List[Dict[str, Any]] = []
     try:
         selected_npc["location"] = target_location
+        if requested_moves is not None:
+            selected_npc["moves"] = requested_moves
         if assigned_camp_omt not in (None, [], ""):
             selected_npc["assigned_camp"] = [int(value) for value in assigned_camp_omt]
         if ensure_follower:
@@ -27020,6 +27050,7 @@ def apply_basecamp_assigned_npc_items_transform(world_dir: Path, transform: Dict
         "npc_name": selected_npc.get("name"),
         "location_ms": target_location,
         "offset_ms": offset,
+        "moves": requested_moves,
         "assigned_camp_omt": assigned_camp_omt,
         "rules": requested_rules,
         "added_items": added_items,
@@ -27325,19 +27356,22 @@ def apply_active_monsters_near_player_transform(world_dir: Path, transform: Dict
         }
         monster_payload = {
             "location": location,
-            "moves": int(raw_monster.get("moves", 120) or 120),
+            # A zero move budget intentionally holds a staged actor until
+            # the first native World frame.  ``or 120`` silently converted
+            # that valid value into an immediate pre-frame turn.
+            "moves": int(raw_monster.get("moves", 120)),
             "pain": 0,
             "effects": {},
             "damage_over_time_map": [],
             "values": dict(raw_monster.get("values", {}) or {}),
             "blocks_left": 1,
-            "dodges_left": 1,
+            "dodges_left": int(raw_monster.get("dodges_left", 1)),
             "num_blocks_bonus": 0,
             "num_dodges_bonus": 0,
             "armor_bonus": {},
             "speed": int(raw_monster.get("speed", 120) or 120),
             "speed_bonus": 0,
-            "dodge_bonus": 0.0,
+            "dodge_bonus": float(raw_monster.get("dodge_bonus", 0.0)),
             "block_bonus": 0,
             "hit_bonus": 0.0,
             "bash_bonus": 0,
@@ -27407,6 +27441,9 @@ def apply_active_monsters_near_player_transform(world_dir: Path, transform: Dict
             "fixture_actor_id": fixture_actor_id,
             "typeid": typeid,
             "offset_ms": offset,
+            "moves": monster_payload["moves"],
+            "dodges_left": monster_payload["dodges_left"],
+            "dodge_bonus": monster_payload["dodge_bonus"],
             "qualification_offset_ms": list(qualification_offset),
             "location_ms": location,
             "faction": monster_payload["faction"],

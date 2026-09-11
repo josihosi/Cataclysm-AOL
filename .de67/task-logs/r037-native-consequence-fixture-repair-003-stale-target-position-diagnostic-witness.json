@@ -1,0 +1,19 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The fresh run with moves preserved still did not expose the declared target in its first native World frame; no E4B attack was attempted.",
+  "causal_account": "The bound World observation identifies only Robbie Knox in visible_entities.  The save-transform receipt for this run retained moves zero, so the remaining actionable fixture premise is target placement/visibility rather than the earlier normalizer omission.",
+  "citations": [
+    {
+      "citation_id": "J0002",
+      "meaning": "The first bound World observation lists no declared zombie-dog target.",
+      "checks": {
+        "value.visible_entities": []
+      }
+    }
+  ],
+  "contradictions": ["The fixture's declared fragile target is absent from the first native World descriptor."],
+  "remaining_unknowns": ["E4B exact-target attack", "natural removal", "reacquisition grace disposition"],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

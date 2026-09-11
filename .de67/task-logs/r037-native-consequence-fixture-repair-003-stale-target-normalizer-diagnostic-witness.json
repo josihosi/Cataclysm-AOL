@@ -1,0 +1,23 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The fresh, source-bound stale-target run reached its first World frame, but it did not materialize the declared fragile target; no E4B attack was attempted.",
+  "causal_account": "The run-bound World observation has an empty visible_entities list.  The current fixture manifest declared a zero move budget, while the installed transform receipt retained 120 because normalization omitted moves.  This classifies the missing target as a fixture-normalization defect, without inferring any combat or missing-target behavior.",
+  "citations": [
+    {
+      "citation_id": "J0002",
+      "meaning": "The first bound World observation has no visible creatures and provides the exact run/frame identity.",
+      "checks": {
+        "value.visible_entities": []
+      }
+    }
+  ],
+  "contradictions": [
+    "The declared fragile target is absent from the first native World observation."
+  ],
+  "remaining_unknowns": [
+    "E4B exact-target attack", "native removal", "reacquisition grace disposition"
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

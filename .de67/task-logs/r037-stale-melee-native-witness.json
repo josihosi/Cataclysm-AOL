@@ -1,0 +1,10 @@
+{
+  "verdict": "satisfied",
+  "summary": "A current bound native run accepted the E4B request, resolved its exact zombie-dog target, removed it through native combat with attacks pending, and then recorded all three reacquire-grace turns before attack.target_missing.",
+  "run_id": "236bcaa4567d6c4744a4927b58ae57d5433bb765694fb4e4774f0d8fd4508cda",
+  "evidence": {
+    "event_stream": ".userdata/harness-npc-llm-coverage-combat/harness_runs/20260911_021111_589913b521b246cdbf573e27c6cca732/llm.action-status.events.jsonl",
+    "grace_values": [2, 1, 0],
+    "terminal_reason": "attack.target_missing"
+  }
+}

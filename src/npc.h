@@ -1100,6 +1100,8 @@ class npc : public Character
         void set_llm_intent_move_target( const std::optional<tripoint_abs_ms> &target,
                                          llm_intent_action arrival_state );
         void clear_llm_intent_actions();
+        void set_llm_intent_response_pending( bool pending ) const;
+        void set_llm_intent_item_request_pending( bool pending ) const;
         void set_llm_intent_item_targets( const std::vector<llm_item_target> &targets ) const;
         bool has_llm_intent_actions() const;
         std::vector<llm_intent_action> get_llm_intent_actions_for_test() const;
@@ -1619,6 +1621,12 @@ class npc : public Character
             std::map<std::string, std::map<char, weak_ptr_fast<Creature>>> legend_targets_by_request;
             llm_intent_action move_arrival_state = llm_intent_action::none;
             bool hold_position_active = false;
+            // Defer ordinary AI while a player-requested LLM response is in
+            // flight, so a later item selection cannot race a generic pickup.
+            bool response_pending = false;
+            // Keep ordinary pickup AI from consuming a different item while
+            // the second-stage look-around selection is in flight.
+            bool look_around_request_pending = false;
             std::deque<llm_item_target> look_around_targets;
             llm_item_target look_around_active_target;
             llm_action_status active_status;

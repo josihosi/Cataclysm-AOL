@@ -1,0 +1,17 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The repaired fixture exposed the declared fragile zombie dog in the first native World frame, but the first E4B prompt submission was not classifiable because a harness semantic-trace parser fault followed it.",
+  "causal_account": "The first native World observation established the target identity and state.  The later prompt receipt timed out and the follow-up observer reported malformed_semantic_step, so no LLM response or combat outcome can be inferred.  The new run-owned LLM-event stream separates action-status observation from surface records for a fresh attempt.",
+  "citations": [
+    {
+      "citation_id": "J0002",
+      "meaning": "The bound first World frame contains the scenario-authored fragile zombie dog.",
+      "checks": {}
+    }
+  ],
+  "contradictions": [],
+  "remaining_unknowns": ["E4B response", "native attack", "natural removal", "reacquisition grace disposition"],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "focused"
+}

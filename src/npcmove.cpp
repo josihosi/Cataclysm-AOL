@@ -2291,6 +2291,11 @@ void npc::move() {
                 target_name, ai_cache.danger, *confident_range_cache);
 
   llm_intent_state &state = llm_intent_state_for(*this);
+  if (get_option<bool>("LLM_INTENT_ENABLE") &&
+      (state.response_pending || state.look_around_request_pending)) {
+    execute_action(npc_pause);
+    return;
+  }
   const bool llm_item_safe = ai_cache.danger <= 0 && target == nullptr &&
                              !sees_dangerous_field(pos_bub()) &&
                              !has_effect(effect_npc_fire_bad);

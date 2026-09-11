@@ -1,0 +1,21 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "The R-037 stale-target fixture presents its declared fragile target in the first native World frame; an actual E4B exact-target attack is then observed through natural/scenario-authored removal and the native reacquisition grace disposition.",
+  "material_proof": "Bind the current source/executable, scenario, run, frame, target identity, E4B request/response, native combat/removal, and each ordinary grace turn. Fixture materialization and rendered text receive no gameplay credit.",
+  "current_uncertainty": "The repaired first-frame target may still not produce an E4B exact attack or natural removal. Classify the first missing native link without inferring it.",
+  "material_contradiction": [
+    "a target not in the first native World descriptor is treated as present",
+    "fixture/debug mutation or a synthetic response is credited as the attack/removal route",
+    "an unrelated creature or run is treated as the declared target"
+  ],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": [
+    "physical input, OCR, direct state mutation, synthetic response, direct target removal",
+    "injecting attack.target_missing"
+  ],
+  "honest_stop_conditions": [
+    "preserve and classify the first missing native link",
+    "finish only after actual cleanup"
+  ],
+  "requested_evidence_ceiling": "focused"
+}
