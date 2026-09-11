@@ -1,0 +1,44 @@
+[
+  {
+    "claim": "R-MAINT-COMPACT-IO",
+    "task": "R-MAINT-COMPACT-IO-closure-build-patrol-001",
+    "result": {
+      "lineage_id": "semantic-surface-cockpit",
+      "claim_id": "R-MAINT-COMPACT-IO",
+      "acceptance_number": 1,
+      "task_id": "R-MAINT-COMPACT-IO-closure-build-patrol-001",
+      "closure_sequence": 2,
+      "accepted_at": 1789091701.830522,
+      "evidence": "Isolated cycle15 reproduction only; existing completed independent closure evidence.",
+      "invalidated_at": null,
+      "invalidation_reason": null,
+      "recorded": true,
+      "closure_gap_id": "compact-build-and-patrol-view",
+      "deadline_missed": false,
+      "dfs_status_synchronized": [
+        "R-MAINT-COMPACT-IO"
+      ]
+    }
+  },
+  {
+    "claim": "R-MAINT-RESULT-REUSE",
+    "task": "R-MAINT-RESULT-REUSE-evidence-lifecycle-001",
+    "result": {
+      "lineage_id": "semantic-surface-cockpit",
+      "claim_id": "R-MAINT-RESULT-REUSE",
+      "acceptance_number": 1,
+      "task_id": "R-MAINT-RESULT-REUSE-evidence-lifecycle-001",
+      "closure_sequence": 2,
+      "accepted_at": 1789091701.861595,
+      "evidence": "Isolated cycle15 reproduction only; existing completed independent closure evidence.",
+      "invalidated_at": null,
+      "invalidation_reason": null,
+      "recorded": true,
+      "closure_gap_id": "evidence-lifecycle",
+      "deadline_missed": false,
+      "dfs_status_synchronized": [
+        "R-MAINT-RESULT-REUSE"
+      ]
+    }
+  }
+]

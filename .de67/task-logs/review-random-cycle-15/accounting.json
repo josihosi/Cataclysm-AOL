@@ -1,0 +1,24 @@
+{
+  "root_turn_id": "01a08e2b-45af-7d20-bbb7-39255bf0a1a4",
+  "cutoff": "2026-09-11T01:57:35.095Z",
+  "threads": {
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "input_tokens": 2752106,
+      "cached_input_tokens": 2715008,
+      "output_tokens": 6297,
+      "total_tokens": 2758403
+    },
+    "01a08e2b-b8a8-7ed0-ac38-5037e8ed2f9e": {
+      "input_tokens": 551287,
+      "cached_input_tokens": 500992,
+      "output_tokens": 3225,
+      "total_tokens": 554512
+    }
+  },
+  "total_tokens": 3312915,
+  "source_paths": [
+    "/Users/josefhorvath/.codex/sessions/2026/09/08/rollout-2026-09-08T14-41-13-01a08109-6d0f-7391-8d01-0209be85fbeb.jsonl",
+    "/Users/josefhorvath/.codex/sessions/2026/09/11/rollout-2026-09-11T03-53-45-01a08e2b-b8a8-7ed0-ac38-5037e8ed2f9e.jsonl"
+  ],
+  "limits": "Includes root and one Luna helper plus retries, deduplicated response_id. Later closeout excluded. No equivalent-progress control or measured savings."
+}

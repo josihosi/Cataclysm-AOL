@@ -1,0 +1,41 @@
+{
+  "recorded": true,
+  "cycle_number": 15,
+  "selected_lane": "test-and-task-guidelines.md",
+  "component": "ordinary",
+  "resolution_evidence": ".de67/task-logs/review-random-cycle-15/report.md; Guarded method/FS no-op. Task004/005 demonstrate use and honest proof ceilings. Isolated acceptance probes refute stale maintenance metadata blockers; current ledger replaces those blockers and obsolete R037 frontier. Existing deferred supervisor-loop adoption check remains conditional on a future authorized external start.",
+  "universal_receipt_id": null,
+  "random_mutation": {
+    "cycle_number": 16,
+    "interval_windows": 23,
+    "cadence_version": 3,
+    "due_after_terminal_windows": 392,
+    "selected_lane": "DFS.md",
+    "completed_terminal_windows": 369,
+    "due": false,
+    "due_task_id": null,
+    "ordinary_resolved": false,
+    "universal_signature_seen": false,
+    "universal_required": false,
+    "universal_resolved": true,
+    "universal_receipt_id": null,
+    "universal_capability_status": null,
+    "universal_capability_reason": null,
+    "universal_capability_checked_at": null,
+    "universal_capability_roster_digest": null,
+    "pending_components": [
+      "ordinary"
+    ],
+    "restart_generation": null
+  },
+  "coordinator_restart": {
+    "generation": 55,
+    "pending": true,
+    "requested_at": 1789091939.305525,
+    "reason": "random mutation cycle 15 resolved",
+    "claimed_at": null,
+    "expected_run_id": null,
+    "acknowledged_at": null,
+    "run_id": null
+  }
+}
