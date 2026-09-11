@@ -1,0 +1,22 @@
+{
+  "path": ".userdata/harness-npc-llm-coverage/harness_runs/20260911_024415_c3d5ba08d4b54246bb5654f9417bf18b/llm.action-status.events.jsonl",
+  "sha256": "4a934a2656982e516886af6212e64d7bdd43a6581c7f9bf03e32e664c6481753",
+  "events": [
+    {
+      "schema": "openclaw-harness-llm-event-v1",
+      "event": "llm_intent_event",
+      "run_id": "09e2020ded8416a2c9e26da04f64028780f31831926644336ce63be6ba72b0c0",
+      "game_minutes": 8159,
+      "game_turn": 5241593,
+      "message": "camp routing check npc=\"Katharina Leach\" id=2 uses_basecamp=no camp_found=no assigned_camp=140,41,0 attitude=Following mission=11 walking_with=yes player_ally=yes role=<empty> reason=ordinary_llm_hearer"
+    },
+    {
+      "schema": "openclaw-harness-llm-event-v1",
+      "event": "llm_intent_event",
+      "run_id": "09e2020ded8416a2c9e26da04f64028780f31831926644336ce63be6ba72b0c0",
+      "game_minutes": 8159,
+      "game_turn": 5241596,
+      "message": "move target Katharina Leach (req_0): delta=(0,-10) origin=(3373,996,0) final=(3373,1006,0) arrival=wait_here"
+    }
+  ]
+}

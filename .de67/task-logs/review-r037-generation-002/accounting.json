@@ -1,0 +1,19 @@
+{
+  "cutoff": "2026-09-11T01:09:17.755Z",
+  "threads": {
+    "01a08109-6d0f-7391-8d01-0209be85fbeb": {
+      "input_tokens": 2939512,
+      "cached_input_tokens": 2913408,
+      "output_tokens": 7509,
+      "total_tokens": 2947021
+    },
+    "01a08dff-3c0a-7211-a4d8-3fe27b0957a0": {
+      "input_tokens": 1318467,
+      "cached_input_tokens": 1240064,
+      "output_tokens": 4734,
+      "total_tokens": 1323201
+    }
+  },
+  "total_tokens": 4270222,
+  "limits": "Root plus one Luna helper, response_id deduplicated, retries included. Closeout after cutoff excluded; no equivalent-progress control or savings claim."
+}
