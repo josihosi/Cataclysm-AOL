@@ -3,3 +3,5 @@
 # Keep this file in release artifacts so Catapult-Dabubu can install harness
 # dependencies into the shared C-AOL LLM/debug Python venv.
 flatbuffers==25.12.19
+# Required by tools/llm_runner/runner.py when the API backend is selected.
+any-llm-sdk[openai]==1.27.2

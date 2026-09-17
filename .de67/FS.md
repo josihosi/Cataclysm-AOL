@@ -443,3 +443,35 @@ The feature files below are unchanged from the inspected HEAD. Existing dirty LL
 | `src/zombie_rider_overmap_ai.cpp` | `9d93e056ac9f78809d02a81bfe629ccc93643268400cdf26ece0584840d0bdf5` |
 | `data/json/monsters/zed_misc.json` | `e40f94f9e591af7760dd40379d9957875b7f4293dda48091a4bfb7ffc856c3c2` |
 | `data/json/monstergroups/zombies.json` | `2f1c088127aa34c62d8de03eee80fe08453632460aa5070ca2ee4a8037e5e608` |
+
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-MAINT-ASTRA-WORKER-S001 claim=R-MAINT-ASTRA-WORKER -->
+## Optional Astra implementation worker and dashboard
+
+- [ ] 🔴 R-MAINT-ASTRA-WORKER — Sol can choose a verified Astra/low worker, and the galaxy shows its real role and activity.
+
+Owner addition, 2026-09-12: implement optional `gpt-6-astra` with `reasoning_effort=low` through the existing ordinary worker system. Preserve Luna and Terra, Sol coordination, the persistent Astra mutator's separate identity, focused self-contained worker context, exact task/runtime ownership and exclusive mutation/restart authority. Selection remains Sol's judgment for challenging coding or high uncertainty, never a default, forced escalation, quota or duplicate implementation race.
+
+The usable capability must agree across actual model availability, recorded workspace capabilities, model-choice presentation, named/native dispatch validation, worker runtime launch and verified ownership. Do not advertise Astra while any downstream consumer rejects or omits it. Preserve existing pairs; only Astra/low is added by this authority. An unavailable capability must remain visibly unavailable with its exact evidence and continuation, rather than a false roster claim.
+
+Owner clarification, 2026-09-13: combine ordinary Astra workers and the persistent Astra mutator in one Astra legend category and counters, using the existing luminous galaxy treatment. Count each actual active session once at its recorded effort and combine their observed usage under Astra. Keep internal roles, authority and task ownership separate. Show actual task, status and usage from the existing data flow. Do not create a second registry, fake activity or brightness implying unobserved progress. Preserve Luna/Terra display and ownership filtering.
+
+Verify actual capability selection and dispatch-input compatibility, exact ownership and dashboard rendering for Astra alongside existing models. Use bounded existing tests and a minimal availability probe where needed, without launching a second coordinator or premature gameplay assignment. The first naturally suitable task may supply result, rework, elapsed time and full-tree usage including helpers/retries/review; keep quality and savings hypothetical until that evidence exists. This future observation is not a mandatory benchmark or prerequisite for delivering the verified capability and UI.
+<!-- DE67:DFS-SLICE:END id=R-MAINT-ASTRA-WORKER-S001 claim=R-MAINT-ASTRA-WORKER -->
+
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-ZL-CREATURE-SPRITES-S001 claim=R-ZL-CREATURE-SPRITES -->
+## Separate creature sprite integration — owner addition, 2026-09-14
+
+Implementation status:
+
+- [ ] 🔴 R-ZL-CREATURE-SPRITES — The existing stalker and rider sprite drafts appear for their intended creatures through a separate asset integration and receive a small in-game visual check.
+
+Owner request: wire the existing writhing stalker and "zombie stalker" sprites into the game separately from Ultica and test whether they look good. The located two-creature bundle is `gfx/caol-creature-sprites-v1/`: `mon_writhing_stalker.png` and `mon_zombie_rider.png`, both 32×32 transparent drafts described by its README. No separate zombie-stalker asset or monster ID was found. The working interpretation is that the second name refers to the zombie rider; preserve this naming assumption in the assignment and apply any owner correction before mapping a different creature. Do not invent a new monster to satisfy the wording.
+
+Keep these assets and mappings separately maintained from Ultica's base files. The existing `mod_tileset` route in `src/mod_tileset.cpp` and `src/tileset_loader.cpp`, documented in `doc/JSON/JSON_INFO.md` under MOD tileset, supports extra sheets and creature-ID overrides for the selected compatible tileset (`UltimateCataclysm`). Reuse that supported loading route or an equally small existing mechanism that preserves the separate asset boundary. Make the integration reproducible in the repository: `gfx/` is ignored, so necessary shipped assets must be deliberately retained in a suitable tracked location. Preserve the supplied art as the starting point and leave unrelated creature behavior and base tileset files intact.
+
+Prove both intended creature IDs resolve to these sprites in the actual game with the integration enabled. Inspect representative normal-scale rendering and lighting for selection, scale, alignment, transparency and silhouette readability. Give a short honest aesthetic assessment, including any loss of rider/bow/leg detail at 32×32; fix concrete integration or presentation defects within this scope. A source mapping check or standalone preview alone does not establish the requested in-game appearance. Diagnostic spawning is appropriate for this visual check and gives no gameplay-behavior credit. Use the supported native harness and exact owned GUI/process route; close owned test processes and preserve unrelated sessions. No benchmark campaign or unrelated art redesign is required.
+
+This owner-authorized addition is refrozen as the sprite integration outcome. Existing FS requirements, accepted proof and stable claim identities are unchanged. Integration and visual acceptance remain future delivery work owned by Sol.
+<!-- DE67:DFS-SLICE:END id=R-ZL-CREATURE-SPRITES-S001 claim=R-ZL-CREATURE-SPRITES -->

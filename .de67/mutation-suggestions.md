@@ -19,5 +19,3 @@ applicable policy's stored target, scope, authority, and evidence limits; a guar
 more than its inputs.
 
 ## Pending suggestions
-
-- Owner-authorized [defer]: Remaining deployment portion of Josef's returned-worker/checkpoint relaxation: installed source and focused regressions are complete in `.de67/task-logs/review-returned-workers-020/report.md`, but supervisor36914 loaded its loop before the repair. Its prompt refresh does not replace imported checkpoint/mutation-gate functions. At the next owner-authorized external service restart, verify that the new supervisor loads the installed optional-checkpoint and returned-worker review behavior. Do not replay accepted product proof, investigate why workers returned, or introduce another review/restart solely for this deferred entry. The current review requests only its ordinary one fresh coordinator; the reviewer does not launch it. Exact original authority and evidence remain in `.de67/state/review-returned-workers-020/baseline/mutation-suggestions.md`.

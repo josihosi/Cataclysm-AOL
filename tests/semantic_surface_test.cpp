@@ -1,3 +1,8 @@
+#include <algorithm>
+#include <chrono>
+#include <cstdlib>
+#include <filesystem>
+#include <fstream>
 #include <string>
 #include <vector>
 
@@ -86,6 +91,67 @@ TEST_CASE( "semantic surface scopes hide parent actions and republish after pop"
     CHECK( manager.top()->valid_actions.front().id == "world.wait" );
 }
 
+TEST_CASE( "a native child popup does not republish an expired activity owner",
+           "[semantic_surface]" )
+{
+    semantic_surface_manager manager( "test-run" );
+    std::vector<semantic_surface_descriptor> descriptors;
+    std::vector<semantic_action_receipt> receipts;
+    manager.set_descriptor_observer( [&descriptors]( const semantic_surface_descriptor &descriptor ) {
+        descriptors.push_back( descriptor );
+    } );
+    manager.set_receipt_observer( [&receipts]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+
+    std::optional<semantic_surface_scope> activity;
+    activity.emplace( manager, "activity_distraction", "Activity distraction",
+                      std::map<std::string, std::string>{},
+                      std::vector<semantic_action_descriptor>{
+        { "activity.continue", "", "Continue", true }
+    } );
+    const std::string activity_surface = manager.top()->surface_id;
+
+    // This mirrors the non-semantic branch of cancel_activity_or_ignore_query:
+    // the native popup, not the parent activity surface, owns its input.  Its
+    // retired parent stays private while the actionless native-return
+    // successor supplies the deferred receipt.
+    REQUIRE( manager.withhold_parent_authority_until_recreated( activity_surface ) );
+    {
+        semantic_surface_scope prompt( manager, "prompt", "Stop waiting?", {}, {
+            { "prompt.choose", "prompt-option:1", "YES", true }
+        }, []( const semantic_action_request & ) {
+            return semantic_action_dispatch_result{ true };
+        } );
+        REQUIRE( manager.top() );
+        CHECK( manager.top()->kind == "prompt" );
+        const semantic_surface_descriptor prompt_frame = *manager.top();
+        REQUIRE( manager.submit_request( { "test-run", prompt_frame.surface_id, prompt_frame.frame_id,
+                                           "ignore", "prompt.choose", "prompt-option:1", {} } ) );
+        REQUIRE( prompt.consume_request() );
+    }
+
+    CHECK_FALSE( manager.top() );
+    CHECK( receipts.empty() );
+    std::string return_frame;
+    {
+        semantic_surface_scope activity_return( manager, "activity_resumed", "Activity resumed" );
+        REQUIRE( manager.top() );
+        return_frame = manager.top()->frame_id;
+        CHECK( manager.top()->valid_actions.empty() );
+    }
+
+    REQUIRE( receipts.size() == 1 );
+    CHECK( receipts.front().request_id == "ignore" );
+    CHECK( receipts.front().accepted );
+    CHECK( receipts.front().resulting_frame_id == return_frame );
+    CHECK( std::none_of( descriptors.begin(), descriptors.end(),
+    [&activity_surface]( const semantic_surface_descriptor &descriptor ) {
+        return descriptor.surface_id == activity_surface &&
+               descriptor.frame_id != "test-run:frame:1";
+    } ) );
+}
+
 TEST_CASE( "dialogue semantic receipts are emitted before a native modal",
            "[semantic_surface]" )
 {
@@ -123,6 +189,202 @@ TEST_CASE( "dialogue semantic receipts are emitted before a native modal",
     } );
     CHECK( receipts.size() == 1 );
     CHECK( manager.top()->kind == "dialogue" );
+}
+
+TEST_CASE( "terminal main menu intent is receipted without a GUI successor",
+           "[semantic_surface]" )
+{
+    semantic_surface_manager manager( "test-run" );
+    std::vector<semantic_action_receipt> receipts;
+    manager.set_receipt_observer( [&receipts]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+    bool native_quit_selected = false;
+    semantic_surface_scope menu( manager, "main_menu", "Main menu", {}, {
+        { "main_menu.quit", "", "Quit", true }
+    }, [&native_quit_selected]( const semantic_action_request &request ) {
+        if( request.action_id != "main_menu.quit" || request.stable_id ) {
+            return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+        }
+        native_quit_selected = true;
+        return semantic_action_dispatch_result{ true, "", "", false, false };
+    } );
+    const semantic_surface_descriptor frame = *manager.top();
+
+    REQUIRE( manager.submit_request( { "test-run", frame.surface_id, frame.frame_id,
+                                       "quit", "main_menu.quit", std::nullopt, {} } ) );
+    REQUIRE( menu.consume_request() );
+    REQUIRE( native_quit_selected );
+    REQUIRE( receipts.size() == 1 );
+    CHECK( receipts.front().request_id == "quit" );
+    CHECK( receipts.front().accepted );
+    CHECK( receipts.front().resulting_frame_id.empty() );
+
+    REQUIRE( manager.submit_request( { "test-run", "other-surface", frame.frame_id,
+                                       "wrong-owner", "main_menu.quit", std::nullopt, {} } ) );
+    CHECK_FALSE( menu.consume_request() );
+    REQUIRE( receipts.size() == 2 );
+    CHECK( receipts.back().rejection_reason == "wrong_surface" );
+
+    REQUIRE( manager.submit_request( { "test-run", frame.surface_id, "stale-frame",
+                                       "stale", "main_menu.quit", std::nullopt, {} } ) );
+    CHECK_FALSE( menu.consume_request() );
+    REQUIRE( receipts.size() == 3 );
+    CHECK( receipts.back().rejection_reason == "stale_frame" );
+}
+
+TEST_CASE( "a repeated overmap destination request receipts without an unchanged successor",
+           "[semantic_surface]" )
+{
+    semantic_surface_manager manager( "repeat-terminal-run" );
+    std::vector<semantic_action_receipt> receipts;
+    manager.set_receipt_observer( [&receipts]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+
+    {
+        semantic_surface_scope overmap( manager, "overmap", "Overmap", {}, {
+            { "overmap.choose_destination", "omt:1,1,0", "Choose destination", true }
+        }, []( const semantic_action_request & ) {
+            // The native route selection may preserve this exact descriptor.
+            // Its receipt therefore cannot depend on a future republish.
+            return semantic_action_dispatch_result{ true, "", "", false, false };
+        } );
+        const semantic_surface_descriptor first = *manager.top();
+        REQUIRE( manager.submit_request( { manager.run_id(), first.surface_id, first.frame_id,
+                                           "first", "overmap.choose_destination", "omt:1,1,0", {} } ) );
+        REQUIRE( overmap.consume_request() );
+        REQUIRE( receipts.size() == 1 );
+        CHECK( receipts.front().request_id == "first" );
+        CHECK( receipts.front().resulting_frame_id.empty() );
+
+        const semantic_surface_descriptor second = *manager.top();
+        REQUIRE( manager.submit_request( { manager.run_id(), second.surface_id, second.frame_id,
+                                           "second", "overmap.choose_destination", "omt:1,1,0", {} } ) );
+        REQUIRE( overmap.consume_request() );
+        CHECK( receipts.size() == 2 );
+    }
+
+    REQUIRE( receipts.size() == 2 );
+    CHECK( receipts.back().request_id == "second" );
+    CHECK( receipts.back().accepted );
+    CHECK( receipts.back().resulting_frame_id.empty() );
+}
+
+TEST_CASE( "a queued semantic request re-wakes its native owner after FIFO wake loss",
+           "[semantic_surface]" )
+{
+    semantic_surface_manager manager( "queued-wake-run" );
+    semantic_surface_manager_session session( manager );
+    std::vector<semantic_action_receipt> receipts;
+    manager.set_receipt_observer( [&receipts]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+    semantic_surface_scope overmap( manager, "overmap", "Overmap", {}, {
+        { "overmap.choose_destination", "omt:1,1,0", "Choose destination", true }
+    }, []( const semantic_action_request & ) {
+        return semantic_action_dispatch_result{ true, "", "", false, false };
+    } );
+    const semantic_surface_descriptor frame = *manager.top();
+
+    // This models the JSONL record already being queued after an inner
+    // context consumed its FIFO byte.  No new transport bytes are available
+    // on the next SDL poll, so pending work must still wake the true owner.
+    REQUIRE( manager.submit_request( { manager.run_id(), frame.surface_id, frame.frame_id,
+                                       "queued-after-wake-loss", "overmap.choose_destination",
+                                       "omt:1,1,0", {} } ) );
+    CHECK( poll_active_semantic_surface_request() );
+    CHECK( take_active_semantic_surface_wake() );
+    REQUIRE( overmap.consume_request() );
+    REQUIRE( receipts.size() == 1 );
+    CHECK( receipts.front().request_id == "queued-after-wake-loss" );
+    CHECK( receipts.front().accepted );
+}
+
+TEST_CASE( "semantic transport records JSONL offsets through a lost FIFO wake",
+           "[semantic_surface]" )
+{
+    const std::filesystem::path transport_path = std::filesystem::temp_directory_path() /
+            ( "semantic-surface-transport-" + std::to_string(
+                  std::chrono::steady_clock::now().time_since_epoch().count() ) + ".jsonl" );
+    const char *const previous_path = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH" );
+    const std::string saved_path = previous_path == nullptr ? "" : previous_path;
+    setenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", transport_path.c_str(), 1 );
+
+    semantic_surface_manager manager( "transport-run" );
+    semantic_surface_manager_session session( manager );
+    std::vector<semantic_request_transport_event> transport_events;
+    std::vector<semantic_action_receipt> receipts;
+    manager.set_transport_observer( [&transport_events]( const semantic_request_transport_event &event ) {
+        transport_events.push_back( event );
+    } );
+    manager.set_receipt_observer( [&receipts]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+    semantic_surface_scope overmap( manager, "overmap", "Overmap", {}, {
+        { "overmap.choose_destination", "omt:1,1,0", "Choose destination", true }
+    }, []( const semantic_action_request & ) {
+        return semantic_action_dispatch_result{ true, "", "", false, false };
+    } );
+    const semantic_surface_descriptor first = *manager.top();
+
+    {
+        std::ofstream stream( transport_path );
+        stream << "{\"run_id\":\"transport-run\",\"surface_id\":\"" << first.surface_id
+               << "\",\"frame_id\":\"" << first.frame_id
+               << "\",\"request_id\":\"first\",\"action_id\":\"overmap.choose_destination\","
+               << "\"stable_id\":\"omt:1,1,0\"}\n";
+    }
+    REQUIRE( manager.poll_request_transport() );
+    REQUIRE_FALSE( transport_events.empty() );
+    const auto first_record = std::find_if( transport_events.begin(), transport_events.end(),
+    []( const semantic_request_transport_event &event ) {
+        return event.event == "jsonl_record" && event.request_id == "first";
+    } );
+    REQUIRE( first_record != transport_events.end() );
+    CHECK( first_record->queued );
+    CHECK( first_record->offset_after > first_record->offset_before );
+
+    // The byte that caused the first poll has already been drained by an
+    // inner context.  The queued record must still wake its owning context.
+    REQUIRE( poll_active_semantic_surface_request() );
+    REQUIRE( take_active_semantic_surface_wake() );
+    REQUIRE( overmap.consume_request() );
+    CHECK( receipts.size() == 1 );
+    CHECK( receipts.front().request_id == "first" );
+    CHECK( std::any_of( transport_events.begin(), transport_events.end(),
+    []( const semantic_request_transport_event &event ) {
+        return event.event == "wake_marked";
+    } ) );
+    CHECK( std::any_of( transport_events.begin(), transport_events.end(),
+    []( const semantic_request_transport_event &event ) {
+        return event.event == "request_consumed" && event.request_id == "first";
+    } ) );
+
+    REQUIRE( overmap.publish( { { "route_destination", "1,1,0" } }, first.valid_actions ) );
+    const semantic_surface_descriptor second = *manager.top();
+    {
+        std::ofstream stream( transport_path, std::ios::app );
+        stream << "{\"run_id\":\"transport-run\",\"surface_id\":\"" << second.surface_id
+               << "\",\"frame_id\":\"" << second.frame_id
+               << "\",\"request_id\":\"second\",\"action_id\":\"overmap.choose_destination\","
+               << "\"stable_id\":\"omt:1,1,0\"}\n";
+    }
+    REQUIRE( manager.poll_request_transport() );
+    const auto second_record = std::find_if( transport_events.begin(), transport_events.end(),
+    []( const semantic_request_transport_event &event ) {
+        return event.event == "jsonl_record" && event.request_id == "second";
+    } );
+    REQUIRE( second_record != transport_events.end() );
+    CHECK( second_record->offset_before > 0 );
+    CHECK( second_record->offset_after > second_record->offset_before );
+
+    if( saved_path.empty() ) {
+        unsetenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH" );
+    } else {
+        setenv( "OPENCLAW_HARNESS_SEMANTIC_REQUEST_PATH", saved_path.c_str(), 1 );
+    }
+    std::filesystem::remove( transport_path );
 }
 
 TEST_CASE( "item info is a semantic child and restores its selector parent",
@@ -1287,6 +1549,42 @@ TEST_CASE( "query popup consumes its bound semantic option in test mode",
 
     const query_popup::result result = query_popup().message( "%s", "Continue?" ).option( "YES" ).query();
     CHECK( result.action == "YES" );
+}
+
+TEST_CASE( "auto-move cancellation popup binds YES to its native successor frame",
+           "[semantic_surface]" )
+{
+    semantic_surface_manager manager( "test-run" );
+    std::vector<semantic_action_receipt> receipts;
+    manager.set_receipt_observer( [&receipts]( const semantic_action_receipt &receipt ) {
+        receipts.push_back( receipt );
+    } );
+    semantic_surface_manager_session session( manager );
+    manager.set_descriptor_observer( [&manager]( const semantic_surface_descriptor &descriptor ) {
+        if( descriptor.kind != "prompt" ) {
+            return;
+        }
+        const semantic_action_descriptor &yes = descriptor.valid_actions.front();
+        REQUIRE( manager.submit_request( { "test-run", descriptor.surface_id, descriptor.frame_id,
+                                           "cancel-auto-move", "prompt.choose", yes.stable_id, {} } ) );
+    } );
+
+    const query_popup::result result = query_popup()
+                                      .context( "YESNO" )
+                                      .message( "%s", "feral human spotted! Cancel auto move?" )
+                                      .option( "YES" )
+                                      .option( "NO" )
+                                      .await_semantic_successor()
+                                      .query();
+    CHECK( result.action == "YES" );
+    {
+        semantic_surface_scope successor( manager, "auto_move_canceled", "Auto move canceled" );
+        REQUIRE( receipts.size() == 1 );
+        CHECK( receipts.front().request_id == "cancel-auto-move" );
+        CHECK( receipts.front().accepted );
+        CHECK_FALSE( receipts.front().resulting_frame_id.empty() );
+        CHECK( receipts.front().resulting_frame_id == manager.top()->frame_id );
+    }
 }
 
 TEST_CASE( "string prompt accepts constraint-valid structured semantic text",

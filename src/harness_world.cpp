@@ -4,7 +4,8 @@
 #include <limits>
 
 std::optional<harness_world_options> parse_harness_world_options(
-    const std::string_view world_name, const std::string_view raw_seed, std::string *error )
+    const std::string_view world_name, const std::string_view raw_seed, std::string *error,
+    const std::string_view scenario_id )
 {
     const auto fail = [error]( const char *message ) -> std::optional<harness_world_options> {
         if( error != nullptr ) {
@@ -36,5 +37,5 @@ std::optional<harness_world_options> parse_harness_world_options(
         return fail( "harness raw seed must be non-zero" );
     }
 
-    return harness_world_options{ std::string( world_name ), parsed_seed };
+    return harness_world_options{ std::string( world_name ), parsed_seed, std::string( scenario_id ) };
 }

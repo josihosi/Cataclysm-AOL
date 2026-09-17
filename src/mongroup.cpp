@@ -415,6 +415,24 @@ bool MonsterGroupManager::monster_is_blacklisted( const mtype_id &m )
              !monster_species_whitelist.empty() );
 }
 
+MonsterGroupManager::blacklist_state MonsterGroupManager::snapshot_blacklist_state()
+{
+    return { monster_blacklist, monster_whitelist, monster_categories_blacklist,
+             monster_categories_whitelist, monster_species_blacklist,
+             monster_species_whitelist, monster_whitelist_is_exclusive };
+}
+
+void MonsterGroupManager::restore_blacklist_state( const blacklist_state &state )
+{
+    monster_blacklist = state.monsters;
+    monster_whitelist = state.whitelist;
+    monster_categories_blacklist = state.categories;
+    monster_categories_whitelist = state.categories_whitelist;
+    monster_species_blacklist = state.species;
+    monster_species_whitelist = state.species_whitelist;
+    monster_whitelist_is_exclusive = state.whitelist_is_exclusive;
+}
+
 void MonsterGroupManager::FinalizeMonsterGroups()
 {
     for( const std::string &mtid : monster_whitelist ) {

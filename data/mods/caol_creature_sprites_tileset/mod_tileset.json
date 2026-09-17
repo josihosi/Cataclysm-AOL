@@ -1,0 +1,17 @@
+[
+  {
+    "type": "mod_tileset",
+    "compatibility": [ "UltimateCataclysm", "Larwick Overmap" ],
+    "tiles-new": [
+      {
+        "file": "creatures.png",
+        "sprite_width": 32,
+        "sprite_height": 32,
+        "tiles": [
+          { "id": "mon_writhing_stalker", "fg": 0 },
+          { "id": "mon_zombie_rider", "fg": 1 }
+        ]
+      }
+    ]
+  }
+]

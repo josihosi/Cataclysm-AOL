@@ -130,6 +130,29 @@ TEST_CASE( "map_bash_chances", "[map][bash]" )
     }
 }
 
+TEST_CASE( "rider_fixture_source_off_requires_verified_state_change", "[map][bash][light]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    const tripoint_bub_ms source( 40, 40, 0 );
+    const furn_str_id powered( "f_caol_powered_exposed_lamp" );
+    here.ter_set( source, ter_str_id( "t_floor" ) );
+    REQUIRE( here.furn_set( source, powered ) );
+    REQUIRE( here.furn( source ).obj().id == powered );
+    REQUIRE( here.furn( source ).obj().light_emitted == 240 );
+
+    // The old native smash route can accept an input while its strength gate
+    // leaves this custom fixture unchanged.  That must be observable as a
+    // no-op, never credited as source loss.
+    here.bash( source, 0 );
+    CHECK( here.furn( source ).obj().id == powered );
+    CHECK( here.furn( source ).obj().light_emitted == 240 );
+
+    REQUIRE( here.furn_set( source, furn_str_id::NULL_ID() ) );
+    CHECK( here.furn( source ).obj().id == furn_str_id::NULL_ID() );
+    CHECK( here.furn( source ).obj().light_emitted == 0 );
+}
+
 static void test_bash_fields( const std::function<void( map &, const tripoint_bub_ms & )> &place,
                               const std::function<bool( map &, const tripoint_bub_ms & )> &present,
                               const std::function<std::pair<int, int>()> &bash_limits,

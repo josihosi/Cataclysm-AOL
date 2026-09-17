@@ -1,0 +1,39 @@
+{
+  "name": "r033_bandit_light_continuity_stalker_v1",
+  "source_fixture": "r033_bandit_light_only_observer_v1",
+  "source_profile": "live-debug",
+  "description": "R-033 physical night lamp plus one saved hostile writhing stalker. The lamp remains the only authored cue; stalker light memory must come from the live production scan, never an injected target or memory field.",
+  "save_transforms": [
+    {
+      "kind": "remove_overmap_npcs",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "scan_all_overmaps": true
+    },
+    {
+      "kind": "map_furniture_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "furniture": [
+        {"id": "f_locker", "offset_ms": [4, -1, 0]},
+        {"id": "f_locker", "offset_ms": [4, 0, 0]},
+        {"id": "f_locker", "offset_ms": [4, 1, 0]}
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": false,
+      "monsters": [
+        {
+          "typeid": "mon_writhing_stalker",
+          "fixture_actor_id": "r033_light_continuity_stalker",
+          "offset_ms": [9, 0, 0],
+          "hp": 90,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100
+        }
+      ]
+    }
+  ]
+}

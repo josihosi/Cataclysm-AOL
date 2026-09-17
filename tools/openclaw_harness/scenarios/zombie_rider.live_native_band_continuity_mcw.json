@@ -1,0 +1,50 @@
+{
+  "manifest_version": 1,
+  "name": "zombie_rider.live_native_band_continuity_mcw",
+  "description": "A focused continuation of the accepted replacement proof: two tagged hostile riders begin on reciprocal east lanes, with only the east rider directly seeing the avatar.  A native southward path crosses behind a wall screen so the still-open bounded-relay and later-pressure boundary can be tested without replaying persistence.",
+  "profile": "rider-band-continuity-001",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_zombie_rider_band_continuity_sight_loss_2026-09-14",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {"runtime.entry_mode": "cockpit_live_session", "capabilities.r_zl_rider.native_band_continuity": "native_encounter_bounded_sharing_replacement_reload_controls"},
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_band_membership", "debug:inject_target_knowledge", "debug:inject_destination", "debug:inject_attack", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "rider-band-continuity-001",
+    "fixture": "mcwilliams_live_debug_zombie_rider_band_continuity_sight_loss_2026-09-14",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"build/rider-band-native/cataclysm-tiles","profile":"rider-band-continuity-001","fixture":"mcwilliams_live_debug_zombie_rider_band_continuity_sight_loss_2026-09-14","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "grants_gameplay_proof": true,
+    "require_screen_observability": false
+  },
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["zombie_rider", "openclaw_harness_semantic_step"],
+  "steps": [
+    {"kind":"wait","label":"native_rider_band_fixture_settle","seconds":1.0,"capture_after":true,"expected_visible_fact":"two identified hostile riders load to the native World"},
+    {"kind":"audit_saved_game_turn","label":"audit_saved_rider_band_time","required_time_of_day_seconds":43200,"required_time_tolerance_seconds":60,"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_rider_band_time_setup_missing","abort_reason":"installed save did not prove expected noon footing"},
+    {"kind":"audit_saved_map_tile_near_player","label":"audit_saved_rider_band_open_lanes","offsets":[[1,0,0],[2,0,0],[3,0,0],[4,0,0],[5,0,0],[6,0,0],[6,1,0],[6,2,0],[6,3,0],[0,1,0],[0,2,0]],"required_terrain":["t_floor"],"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_rider_band_open_lanes_missing","abort_reason":"fixture lacks the native reciprocal lanes or southward hiding path"},
+    {"kind":"audit_saved_active_monsters","label":"audit_saved_identified_rider_band_footing","required_monsters":[{"typeid":"mon_zombie_rider","offset_ms":[6,0,0],"friendly":0,"hallucination":false,"dead":false,"faction":"zombie","aggro_character":true,"values":{"caol_fixture_actor_id":{"str":"rider-direct-east"}}},{"typeid":"mon_zombie_rider","offset_ms":[6,3,0],"friendly":0,"hallucination":false,"dead":false,"faction":"zombie","aggro_character":true,"values":{"caol_fixture_actor_id":{"str":"rider-relay-southeast"}}}],"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_rider_band_footing_missing","abort_reason":"saved active_monsters did not prove the direct and relay riders"},
+    {"kind":"cockpit_live_session","label":"operate_native_rider_band_continuity","cleanup_on_finish":true,"stop_after_live_session":true,"objective":"Preserve the accepted replacement proof; do not replay it. Let the reciprocal riders take a native turn, confirm that only the east rider has direct sight, then move south on the declared floor path behind the screen. Observe a relay only if the southeast rider records relayed_direct_rider_sight sourced by the east rider with unchanged old position, observed turn and expiry. Continue only long enough to observe later native cooperative closing or pressure. Do not mutate membership, observations, destinations or attacks.","proof_targets":["native encounter-derived band membership","bounded shared old-location evidence after real sight loss","cooperative native closing or pressure","exact actor/run/process/source binding"],"authority":["advertised native actions","run.witness","run.finish"],"invariants":["fixture setup is zero-credit","accepted replacement proof is predecessor evidence and is not replayed","no injected membership, observation, destination or attack","diagnostic is observation only","false convergence and blocked-route controls retain separate verdicts"],"live_operations":["game.act","game.wait","game.move_relative"],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1},
+    {"kind":"semantic_terminal_action_chain","label":"save_native_rider_band_for_replacement","objective":"Use the advertised native Save and Quit path, then Main-menu Quit and its native confirmation, so the encounter-derived band and bounded evidence cross a real replacement-process boundary.","observation_timeout_seconds":30.0,"observation_interval_seconds":0.1,"required_action_chain":["world.save_quit","prompt.yes","main_menu.quit","prompt.yes"],"expected_visible_fact":"the saved native world reaches Main menu and the original rider process exits before replacement"}
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label":"save_native_rider_band_for_replacement",
+    "terminal_exit_timeout_seconds":30.0,
+    "steps":[
+      {"kind":"native_semantic_bootstrap","label":"bind_relaunched_native_rider_band_world","native_semantic_checkpoint":{"required_actions":["world.wait"],"required_state":"world","require_initial_hud_world_ready_frame":false}},
+      {"kind":"audit_saved_active_monsters","label":"audit_relaunched_native_rider_band_actors","required_monsters":[{"typeid":"mon_zombie_rider","values":{"caol_fixture_actor_id":{"str":"rider-empty-east"}}},{"typeid":"mon_zombie_rider","values":{"caol_fixture_actor_id":{"str":"rider-stocked-south"}}}],"abort_on_metadata_failure":true,"abort_verdict":"blocked_relaunched_native_rider_band_actors_missing","abort_reason":"replacement process did not reload both tagged riders from the saved world"},
+      {"kind":"cockpit_live_session","label":"observe_relaunched_native_rider_band","cleanup_on_finish":true,"stop_after_live_session":true,"objective":"Observe the replacement native world only. The read-only band diagnostic must retain the same tagged actor IDs, one encounter-derived registry membership, revision and any unexpired bounded evidence. Finish for exact cleanup.","proof_targets":["replacement process generation","same saved rider identities","persisted band registry membership and bounded evidence","exact cleanup"],"authority":["advertised native observations","run.witness","run.finish"],"invariants":["fixture is not reinstalled","no gameplay input","diagnostic is observation only"],"live_operations":[],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}
+    ]
+  },
+  "recommended_test_command":"python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_native_band_continuity_mcw",
+  "evidence_contract":{"claim":"two native zombie riders form a durable encounter-derived band, share only bounded direct prey evidence, and apply later cooperative pressure without a shortcut","load_only_verdict":"load proof only / inconclusive","writeback_note":"fixture setup earns no behavior credit; native movement/turn receipts plus fixture-gated read-only diagnostic and replacement-process audit are required"},
+  "proof_route":{"precondition":["native_rider_band_fixture_settle","audit_saved_rider_band_time","audit_saved_identified_rider_band_footing"],"production_behavior":["operate_native_rider_band_continuity"],"terminal_persistence":["save_native_rider_band_for_replacement","observe_relaunched_native_rider_band"],"artifact_verdict":["operate_native_rider_band_continuity","observe_relaunched_native_rider_band"],"disallowed_shortcuts":["operate_native_rider_band_continuity"]}
+}

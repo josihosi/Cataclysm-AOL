@@ -55,6 +55,19 @@ struct semantic_action_receipt {
     std::string outcome;
 };
 
+// This records the durable-request handoff without conflating a written FIFO
+// byte with native consumption.  It is diagnostic evidence only; the receipt
+// remains the sole authority for an accepted native action.
+struct semantic_request_transport_event {
+    std::string event;
+    std::string request_id;
+    std::size_t offset_before = 0;
+    std::size_t offset_after = 0;
+    std::size_t transport_end = 0;
+    bool queued = false;
+    bool wake_pending = false;
+};
+
 struct semantic_action_dispatch_result {
     semantic_action_dispatch_result( bool accepted = false, std::string rejection_reason = {},
                                      std::string resulting_frame_id = {}, bool await_child_successor = false,
@@ -121,6 +134,8 @@ class semantic_surface_manager
             std::function<void( const semantic_surface_descriptor & )> observer );
         void set_receipt_observer(
             std::function<void( const semantic_action_receipt & )> observer );
+        void set_transport_observer(
+            std::function<void( const semantic_request_transport_event & )> observer );
 
     private:
         struct surface_state {
@@ -154,6 +169,8 @@ class semantic_surface_manager
         std::optional<std::pair<std::string, std::string>> native_intent_;
         std::function<void( const semantic_surface_descriptor & )> descriptor_observer_;
         std::function<void( const semantic_action_receipt & )> receipt_observer_;
+        std::function<void( const semantic_request_transport_event & )> transport_observer_;
+        void observe_transport( semantic_request_transport_event event ) const;
 };
 
 // Binds a manager to the game thread while a native owner may open nested

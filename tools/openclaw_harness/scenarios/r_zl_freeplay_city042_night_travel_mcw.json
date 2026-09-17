@@ -1,0 +1,37 @@
+{
+  "manifest_version": 1,
+  "name": "r_zl_freeplay_city042_night_travel_mcw",
+  "description": "One distinct disposable ordinary nighttime city-travel account, installed from the native-saved zero-credit night setup copy. Only player-selected native actions in this account may supply ordinary-play evidence.",
+  "profile": "r-zl-freeplay-city042-night-travel",
+  "world": "zl-natural-stalker-city-042-missed",
+  "fixture": "r_zl_freeplay_city042_night_setup_20260916",
+  "fixture_profile": "r-zl-freeplay-city042-night-setup",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_playtest.integrated_account": "nighttime_flashlight_travel",
+    "capabilities.r_zl_playtest.city_start": "native_saved_night_setup_copy",
+    "capabilities.r_zl_playtest.account_generation": "separate_ordinary_night_account"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_observer", "debug:inject_attention", "debug:inject_knowledge", "debug:inject_contact", "debug:inject_attack", "debug:inject_target_knowledge", "debug:inject_dispatch", "debug:inject_local_contact", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-zl-freeplay-city042-night-travel",
+    "fixture": "r_zl_freeplay_city042_night_setup_20260916",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"r-zl-freeplay-city042-night-travel","fixture":"r_zl_freeplay_city042_night_setup_20260916","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {"kind":"wait","label":"settle_native_night_copy","seconds":1.0,"capture_after":true,"expected_visible_fact":"the saved nighttime city copy loads before any ordinary player choice"},
+    {"kind":"cockpit_live_session","label":"operate_ordinary_night_flashlight_travel","cleanup_on_finish":false,"stop_after_live_session":true,"objective":"Make ordinary player-visible nighttime city travel decisions. Use the currently advertised native inventory/item controls if a flashlight is needed; choose route, pauses, disengagement, or interaction from the actual World surface. Preserve broad visible context and any natural survival, lighting, base, or rider consequence, but do not use a focused-light fixture or pre-script decisions.","proof_targets":["ordinary player-selected nighttime travel and elapsed time","current native flashlight/inventory action if chosen","visible lighting and local survival consequences","any naturally player-legible lit-base or late-rider consequence","native action receipts and source/executable/process/run binding"],"authority":["advertised native actions","worker-chosen bounded waits","run.witness","run.finish"],"invariants":["the saved setup copy is zero-credit footing only","no debug, observer, attention, knowledge, contact, actor, or route injection","no diagnostic-selected light fixture or actor","no scenario-scripted player decision sequence","only player-visible native facts support the account conclusion"],"live_operations":["game.act","game.wait","game.move_relative"],"transition_timeout_seconds":20.0,"observe_interval_seconds":0.1},
+    {"kind":"semantic_terminal_action_chain","label":"save_and_exit_ordinary_night_account","objective":"At the honest ordinary-play boundary, use native Save and Quit, native Main-menu Quit, and their native confirmations.","observation_timeout_seconds":30.0,"observation_interval_seconds":0.1,"required_action_chain":["world.save_quit","prompt.yes","main_menu.quit","prompt.yes"],"expected_visible_fact":"the ordinary account saves, returns to the main menu, and its owned process exits"}
+  ],
+  "recommended_test_command":"python3 tools/openclaw_harness/startup_harness.py probe r_zl_freeplay_city042_night_travel_mcw",
+  "evidence_contract":{"claim":"one separate source-bound ordinary nighttime account may supply a partial assessment of player-visible flashlight travel and any naturally occurring lit-base or late-rider consequence","load_only_verdict":"native-saved setup footing only / zero inherited setup credit","writeback_note":"the copied nighttime footing earns no ordinary evidence; only player-selected actions in this fresh account do"},
+  "proof_route":{"precondition":["settle_native_night_copy"],"production_behavior":["operate_ordinary_night_flashlight_travel"],"terminal_persistence":["save_and_exit_ordinary_night_account"],"artifact_verdict":["operate_ordinary_night_flashlight_travel"],"disallowed_shortcuts":["operate_ordinary_night_flashlight_travel"]}
+}

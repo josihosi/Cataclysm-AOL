@@ -43,7 +43,8 @@ def bound() -> dict[str, object]:
 
 
 class KeepWatchTest(unittest.TestCase):
-    def service(self, frames: list[dict[str, object]]) -> tuple[cockpit.CockpitService, list[str]]:
+    def service(self, frames: list[dict[str, object]], *,
+                omit_activity_successor: bool = False) -> tuple[cockpit.CockpitService, list[str]]:
         index = [0]
         dispatched: list[str] = []
 
@@ -60,6 +61,17 @@ class KeepWatchTest(unittest.TestCase):
                     "requested_surface_id": issuing["surface_id"],
                     "consuming_surface_id": issuing["surface_id"],
                 })
+            if omit_activity_successor and action_id.startswith("activity."):
+                native_receipt.pop("requested_surface_id", None)
+                native_receipt.pop("consuming_surface_id", None)
+                return {
+                    "native_receipt": native_receipt,
+                    "surface_request": {
+                        "run_id": issuing["run_id"], "surface_id": issuing["surface_id"],
+                        "frame_id": issuing["frame_id"], "action_id": action_id,
+                    },
+                    "next_frame": None,
+                }
             return {
                 "native_receipt": native_receipt,
                 "next_frame": frames[index[0]],
@@ -261,6 +273,50 @@ class KeepWatchTest(unittest.TestCase):
         self.assertEqual(dispatched, ["world.wait", "prompt.choose"])
         self.assertEqual(result["result"]["handled_interruptions"], [{
             "classification": "damage_detected",
+            "decision": "ignore_explicit_damage_prompt",
+            "observation_id": "keep-watch-proof:2",
+            "action_id": "prompt.choose",
+            "stable_id": "prompt-option:4",
+        }])
+
+    def test_permissive_watch_receipts_the_explicit_semantic_hostile_proximity_ignore_prompt(self) -> None:
+        safety = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, safety)
+        hostile_prompt = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "keep-watch-proof",
+            "frame_id": "keep-watch-proof:2", "surface_id": "surface:2", "kind": "prompt",
+            "breadcrumbs": ["Activity distraction", "CANCEL_ACTIVITY_OR_IGNORE_QUERY"],
+            "payload": {
+                "title": "CANCEL_ACTIVITY_OR_IGNORE_QUERY",
+                "text": "The writhing stalker is dangerously close! Stop waiting? (Case Sensitive)",
+            },
+            "valid_actions": [
+                {"id": "prompt.choose", "stable_id": "prompt-option:1", "label": "YES", "enabled": True},
+                {"id": "prompt.choose", "stable_id": "prompt-option:2", "label": "NO", "enabled": True},
+                {"id": "prompt.choose", "stable_id": "prompt-option:3", "label": "MANAGER", "enabled": True},
+                {"id": "prompt.choose", "stable_id": "prompt-option:4", "label": "IGNORE", "enabled": True},
+            ],
+        }
+        target = frame(3, 101, safety)
+        target.update({
+            "schema_version": 1, "event": "surface_descriptor", "surface_id": "surface:3",
+            "kind": "world", "breadcrumbs": ["World"], "payload": {},
+            "valid_actions": [{
+                "id": "world.wait", "stable_id": "", "label": "world.wait", "enabled": True,
+            }],
+        })
+        service, dispatched = self.service([start, hostile_prompt, target])
+
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait"],
+            "danger_handling": "ignore_danger_and_interruptions",
+        }})
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "prompt.choose"])
+        self.assertEqual(result["result"]["handled_interruptions"], [{
+            "classification": "hostile_proximity",
             "decision": "ignore_explicit_damage_prompt",
             "observation_id": "keep-watch-proof:2",
             "action_id": "prompt.choose",
@@ -1263,6 +1319,48 @@ class KeepWatchTest(unittest.TestCase):
             "action_id": "activity.ignore",
         }])
 
+    def test_semantic_activity_owner_uses_its_fresh_ignore_not_the_wait_recipe(self) -> None:
+        safety = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, safety)
+        activity = {
+            "schema_version": 1, "event": "surface_descriptor", "run_id": "keep-watch-proof",
+            "frame_id": "keep-watch-proof:2", "surface_id": "surface:2",
+            "kind": "activity_distraction", "breadcrumbs": ["Activity distraction"],
+            "payload": {},
+            "valid_actions": [
+                {"id": "activity.stop", "stable_id": "", "label": "activity.stop", "enabled": True},
+                {"id": "activity.continue", "stable_id": "", "label": "activity.continue", "enabled": True},
+                {"id": "activity.manage", "stable_id": "", "label": "activity.manage", "enabled": True},
+                {"id": "activity.ignore", "stable_id": "", "label": "activity.ignore", "enabled": True},
+            ],
+        }
+        target = frame(3, 101, safety)
+        target.update({
+            "schema_version": 1, "event": "surface_descriptor", "surface_id": "surface:3",
+            "kind": "world", "breadcrumbs": ["World"], "payload": {},
+            "valid_actions": [{
+                "id": "world.wait", "stable_id": "", "label": "world.wait", "enabled": True,
+            }],
+        })
+        service, dispatched = self.service(
+            [start, activity, target], omit_activity_successor=True,
+        )
+
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "recipe": ["world.wait"],
+            "danger_handling": "ignore_danger_and_interruptions",
+        }})
+
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "activity.ignore"])
+        self.assertEqual(result["result"]["handled_interruptions"], [{
+            "classification": "clear",
+            "decision": "ignore_clear_activity_distraction",
+            "observation_id": "keep-watch-proof:2",
+            "action_id": "activity.ignore",
+        }])
+
     def test_clear_activity_same_minute_world_recovery_restarts_only_the_declared_wait(self) -> None:
         start = frame(1, 100, {
             "classification": "clear", "monster": False, "danger": False, "damage": False,
@@ -1356,6 +1454,43 @@ class KeepWatchTest(unittest.TestCase):
         self.assertEqual(result["error"], "native_surface_successor_timeout")
         self.assertTrue(result["failure"]["detail"]["native_receipt"]["accepted"])
         self.assertEqual(result["failure"]["unused_authority"], "revoked")
+
+    def test_player_api_accepts_unchanged_overmap_owner_after_destination_choice(self) -> None:
+        issuing = self.menu_frame(1, stable_id="overmap.choose_destination", label="Choose destination")
+        issuing.update({
+            "state": "overmap", "surface_id": "surface-overmap",
+            "valid_actions": [{
+                "id": "overmap.choose_destination", "stable_id": "overmap.choose_destination",
+                "label": "Choose destination", "enabled": True,
+            }],
+        })
+
+        def dispatch(_issuing: dict[str, object], action_id: str,
+                     _stable_id: str | None = None) -> dict[str, object]:
+            return {
+                "accepted": True, "reason": "native_surface_transition_accepted",
+                "native_receipt": {
+                    "run_id": "keep-watch-proof", "requested_run_id": "keep-watch-proof",
+                    "requested_surface_id": issuing["surface_id"],
+                    "requested_frame_id": issuing["frame_id"],
+                    "consuming_surface_id": issuing["surface_id"],
+                    "consuming_frame_id": issuing["frame_id"], "frame_id": issuing["frame_id"],
+                    "action_id": action_id, "accepted": True,
+                },
+                "next_frame": dict(issuing),
+            }
+
+        channel = cockpit.CockpitRunChannel(
+            lambda: issuing, dispatch, binding_id="binding-a", read_binding_id=lambda: "binding-a",
+        )
+        service = cockpit.CockpitService(run_channel=channel)
+        observed = service.call({"action": "game.observe"})["result"]
+        result = service.call({
+            "action": "game.act", "observation_id": observed["observation_id"],
+            "action_id": "overmap.choose_destination",
+        })
+
+        self.assertTrue(result["ok"], result)
 
 
 if __name__ == "__main__":

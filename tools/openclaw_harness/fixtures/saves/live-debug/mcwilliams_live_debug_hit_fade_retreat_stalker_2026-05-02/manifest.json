@@ -1,7 +1,7 @@
 {
   "name": "mcwilliams_live_debug_hit_fade_retreat_stalker_2026-05-02",
   "source_fixture": "mcwilliams_live_debug_2026-04-07",
-  "description": "Harness-only vulnerable-midnight writhing-stalker hit-fade restage with saved active monster footing on the clean south lane. It stages one hostile stalker eight tiles south of the player, avoiding the east-wall placement from the older repeat fixture, so current-build live-plan logs can prove the bounded burst/fade retreat seam without a wall-location runtime error.",
+  "description": "Harness-only vulnerable-midnight writhing-stalker hit-fade restage with saved active monster footing on the passable east lane. It stages one hostile stalker four tiles east of the player, avoiding the south reinforced-wall obstruction found in the prior placement, so current-build live-plan logs can prove the bounded burst/fade retreat seam.",
   "save_transforms": [
     {
       "kind": "game_turn",
@@ -28,8 +28,8 @@
         {
           "typeid": "mon_writhing_stalker",
           "offset_ms": [
+            4,
             0,
-            8,
             0
           ],
           "hp": 90,

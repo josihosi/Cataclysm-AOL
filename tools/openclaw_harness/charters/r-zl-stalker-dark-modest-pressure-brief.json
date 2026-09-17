@@ -1,0 +1,7 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-STALKER-closure-native-attack-retreat-001",
+  "outcome": "R-ZL-STALKER matched darkness modest-pressure control: observed nearby zombies may amplify an already evidenced vulnerable opportunity, but only native melee resolution counts as an attack.",
+  "scenario": "writhing_stalker.live_zombie_distraction_mcw",
+  "query": {"requirements": [{"key": "capabilities.r_zl_stalker.darkness_control", "op": "eq", "value": "matched_dark_modest_zombie_pressure_native_attack", "minimum_evidence": "declared"}], "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]}
+}

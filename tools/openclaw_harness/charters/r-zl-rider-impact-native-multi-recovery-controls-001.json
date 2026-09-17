@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-RIDER-IMPACT multi-rider recovery controls: current-source native play binds distinct empty-bow and stocked-bow riders, native physical impact/downing, and an advertised accepted player recovery action without same-invocation ordinary attack or multi-rider lock.",
+  "material_proof": "Native cockpit evidence ties each rider's fixture identity and exact arrow premise to real positions, closing/contact, named impact messages, HP/effect timeline, then an advertised and accepted player action after native downing on the audited terrain.  It also preserves same-invocation messages and source/executable/run/cleanup identity.",
+  "current_uncertainty": "Whether two independently scheduled riders preserve the one-turn recovery opportunity once one native impact has downed the player, and whether the empty-bow premise remains visible rather than being refilled by setup/load.",
+  "material_contradiction": ["fixture-only actor placement", "replenished empty bow", "stationary adjacency without closing", "injected downing or recovery", "no advertised/accepted player action after native downing when terrain permits", "bite-only or same-invocation second strike", "unclean owned process"],
+  "already_accepted_evidence": ["0a5cbb1ff2c31fb1a89c0a3fcdfe49a59656ec294d0b9a6e9381835bd660e687"],
+  "forbidden_shortcuts": ["debug attack or target injection", "debug player-effect injection", "direct save mutation after fixture install", "fixture setup credited as gameplay", "planner text without matching native receipts", "reinstalling fixture during the run"],
+  "honest_stop_conditions": ["the matched multi-rider bow/recovery controls settle, or first native divergence with cleanup"],
+  "requested_evidence_ceiling": "focused"
+}

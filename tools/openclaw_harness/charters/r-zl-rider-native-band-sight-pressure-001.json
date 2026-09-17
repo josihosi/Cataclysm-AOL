@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-RIDER-BAND remaining boundary: two tagged zombie riders form a reciprocal route-connected encounter; after one directly observes the avatar and the other is screen-blocked, the encounter relays only the original observation location, turn, expiry, and source.  Following real sight loss, neither rider receives unseen current coordinates and both later make native closing or pressure progress.",
+  "material_proof": "A source-bound native run must retain exact fixture tags, durable rider IDs, avatar/rider positions and turns, the production registry observation, per-rider pursuit provenance, native action receipts, and PID/birth cleanup evidence.",
+  "current_uncertainty": "Whether the screen fixture creates the stipulated one-direct/one-blocked footing and whether native turns yield relay and subsequent member pressure before the avatar is incapacitated.",
+  "material_contradiction": ["fixture placement credited as a relay", "injected membership, observation, destination or attack", "a relay whose time, expiry or observed location differs from the direct evidence", "a rider destination matching an unseen current avatar coordinate", "unclean owned runtime"],
+  "already_accepted_evidence": ["run 65981dfde43de058a8235c70de8b1fa2489e5499f6338c5f1ca088068ad8b066 establishes membership and replacement-process continuity only", "focused rider-band registry and relay tests"],
+  "forbidden_shortcuts": ["debug:inject_band_membership", "debug:inject_target_knowledge", "debug:inject_destination", "debug:inject_attack", "direct-state-mutation", "raw-save-rewrite-after-install", "crediting fixture setup as gameplay proof"],
+  "honest_stop_conditions": ["finish after the direct-to-relay old-location and later cooperative-pressure boundaries settle", "finish with the first exact native footing, relay, source-binding, or cleanup divergence"],
+  "requested_evidence_ceiling": "focused"
+}

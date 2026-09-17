@@ -1,0 +1,14 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-PLAYTEST-integrated-free-play-001",
+  "outcome": "R-ZL-PLAYTEST integrated free play, final separate ordinary daytime rider control: decide whether immediate player-legible evasive counterplay from the preserved daylight footing can break rider pressure and permit recovery/intermittence, or whether prompt evasion still produces a negative fairness/recovery result.",
+  "scenario": "r_zl_freeplay_city042_rider_final_control_mcw",
+  "query": {
+    "requirements": [
+      {"key":"capabilities.r_zl_playtest.integrated_account","op":"eq","value":"ordinary_rider_final_control","minimum_evidence":"declared"},
+      {"key":"capabilities.r_zl_playtest.account_generation","op":"eq","value":"separate_final_ordinary_rider_control","minimum_evidence":"declared"}
+    ],
+    "preferences": [{"key":"runtime.entry_mode","op":"eq","value":"cockpit_live_session","minimum_evidence":"declared"}]
+  },
+  "charter": "tools/openclaw_harness/charters/r-zl-playtest-city042-rider-final-control-001.json"
+}

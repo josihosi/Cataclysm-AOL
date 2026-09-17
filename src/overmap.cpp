@@ -10,6 +10,7 @@
 #include <set>
 #include <sstream>
 #include <stdexcept>
+#include <string>
 #include <unordered_set>
 #include <vector>
 
@@ -67,6 +68,19 @@ static const mongroup_id GROUP_RIVER( "GROUP_RIVER" );
 static const mongroup_id GROUP_SUBWAY_CITY( "GROUP_SUBWAY_CITY" );
 static const mongroup_id GROUP_SWAMP( "GROUP_SWAMP" );
 static const mongroup_id GROUP_ZOMBIE_HORDE( "GROUP_ZOMBIE_HORDE" );
+
+static bool loaded_predator_owns( const std::string &actor_id )
+{
+    if( actor_id.empty() ) {
+        return false;
+    }
+    for( const monster &existing : g->all_monsters() ) {
+        if( existing.is_caol_predator() && existing.predator_state().actor_id == actor_id ) {
+            return true;
+        }
+    }
+    return false;
+}
 
 static const oter_str_id oter_empty_rock( "empty_rock" );
 static const oter_str_id oter_field( "field" );
@@ -1546,6 +1560,15 @@ horde_entity *overmap::entity_at( const tripoint_om_ms &p )
     return hordes.entity_at( p );
 }
 
+std::vector<std::pair<tripoint_abs_ms, horde_entity *>> overmap::horde_entities()
+{
+    std::vector<std::pair<tripoint_abs_ms, horde_entity *>> result;
+    for( auto &entry : hordes ) {
+        result.emplace_back( entry.first, &entry.second );
+    }
+    return result;
+}
+
 // This should really be const but I don't want to mess with it right now.
 std::vector<std::unordered_map<tripoint_abs_ms, horde_entity>*> overmap::hordes_at(
     const tripoint_om_omt &p, int filter )
@@ -1561,7 +1584,18 @@ void overmap::move_hordes()
 {
     // TODO: throttle processing of monsters.
     // Specifically for throttling, only a process a subset of the eligible monster buckets per invocation.
-    std::unordered_map<tripoint_abs_ms, horde_entity> migrating_hordes;
+    // This is the existing horde scheduler; light discovery never adds a
+    // second movement pass.  It also returns finite light-only interest to
+    // the idle bucket before selecting active entities for this turn.
+    hordes.expire_light_interest( calendar::turn );
+    // Retain the source key independently of the extracted node.  A failed
+    // cross-overmap insertion must restore this exact owner/position.
+    struct pending_horde_migration {
+        tripoint_abs_ms source_position;
+        horde_entity source_state;
+        horde_map::node_type node;
+    };
+    std::vector<pending_horde_migration> migrating_hordes;
     for( horde_map::iterator mon = hordes.get_view( horde_map_flavors::active ).begin(),
          mon_end = hordes.end(); mon != mon_end; ) {
         // This might have an issue where a monster prevented from acting possibly should
@@ -1572,19 +1606,67 @@ void overmap::move_hordes()
             mon++;
             continue;
         }
-        mon->second.last_processed = calendar::turn;
+        // A predator handoff prepares a private heavy snapshot.  In
+        // particular, exact local placement may fail; no movement debit,
+        // payload position, or intent update may then leak into its abstract
+        // owner.  Ordinary hordes retain their established in-place path.
+        const std::string &type_id = mon->second.get_type()->id.str();
+        const bool predator_transfer = ( mon->second.monster_data &&
+                                         mon->second.monster_data->is_caol_predator() ) ||
+                                       type_id == "mon_writhing_stalker" ||
+                                       type_id == "mon_zombie_rider";
+        // Keep an immutable owner snapshot before evolution, intent, or
+        // movement bookkeeping.  A rejected prepared transfer must restore
+        // the exact lightweight owner rather than a partially advanced copy.
+        const horde_entity rollback_state( mon->second );
+        std::optional<horde_entity> prepared_predator;
+        horde_entity *acting = &mon->second;
+        bool evolution_advanced = false;
+        if( predator_transfer ) {
+            prepared_predator.emplace( mon->second );
+            acting = &*prepared_predator;
+        }
+        acting->last_processed = calendar::turn;
+        if( !predator_transfer && !mon->second.monster_data ) {
+            // Evolution can be the operation that turns a lightweight
+            // predator into a CAOL rider.  Run that transition on a private
+            // candidate so a later placement/ownership rejection can restore
+            // the original abstract owner byte-for-byte.
+            horde_entity evolved( mon->second );
+            evolution_advanced = evolved.advance_evolution( mon->first );
+            if( evolution_advanced && evolved.monster_data &&
+                evolved.monster_data->is_caol_predator() ) {
+                prepared_predator.emplace( std::move( evolved ) );
+                acting = &*prepared_predator;
+            } else if( evolution_advanced ) {
+                // Hunter -> predator is still an abstract evolution, but it
+                // has not entered the CAOL ownership protocol yet.  Commit
+                // it once and continue with the normal horde movement path.
+                mon->second = std::move( evolved );
+                acting = &mon->second;
+            }
+        }
+        if( !evolution_advanced ) {
+            acting->advance_evolution( mon->first );
+        }
+        // A predator becomes heavy only when it is actually scheduled by the
+        // abstract owner.  This preserves ordinary type-only horde entries.
+        acting->advance_predator_intent( mon->first, to_turn<int>( calendar::turn ) );
         // If we have a goal, proceed toward it.
-        if( mon->second.tracking_intensity > 0 && mon->first != mon->second.destination ) {
-            mon->second.tracking_intensity--;
-            mon->second.moves += mon->second.type_id->speed;
-            if( mon->second.moves <= 0 ) {
+        if( acting->tracking_intensity > 0 && mon->first != acting->destination ) {
+            acting->tracking_intensity--;
+            acting->moves += acting->type_id->speed;
+            if( acting->moves <= 0 ) {
+                if( prepared_predator ) {
+                    mon->second = std::move( *prepared_predator );
+                }
                 mon++;
                 continue;
             }
             std::vector<tripoint_abs_ms> viable_candidates;
             // Call up to overmapbuffer in case it needs to dispatch to an adjacent overmap.
             for( const tripoint_abs_ms &candidate :
-                 squares_closer_to( mon->first, mon->second.destination ) ) {
+                 squares_closer_to( mon->first, acting->destination ) ) {
                 // Just filter out cross-level candidates for now.
                 if( candidate.z() == mon->first.z() && overmap_buffer.passable( candidate ) ) {
                     viable_candidates.push_back( candidate );
@@ -1593,57 +1675,130 @@ void overmap::move_hordes()
             if( viable_candidates.empty() ) {
                 // We're stuck.
                 // TODO: try to wander to get around obstacles, or smash.
+                if( prepared_predator ) {
+                    // Candidate admission includes both terrain and horde
+                    // occupancy.  A blocked abstract handoff has no
+                    // transport commit, so retain its route, budget, and
+                    // payload unchanged while marking this scheduler turn
+                    // consumed.
+                    mon->second.last_processed = calendar::turn;
+                }
                 mon++;
                 continue;
             }
             // TODO: nuanced move costs.
-            mon->second.moves -= 100;
-            if( viable_candidates.front() == mon->second.destination ) {
-                mon->second.tracking_intensity = 0;
+            acting->moves -= 100;
+            if( viable_candidates.front() == acting->destination ) {
+                acting->tracking_intensity = 0;
             }
             // squares_closer_to already orders candidates by how close to the main line they are.
             // For now just pick the first non-blocked square, later we could fuzz/stumble.
             if( get_map().inbounds( viable_candidates.front() ) ) {
                 monster *placed_monster = nullptr;
-                if( mon->second.monster_data ) {
-                    placed_monster = g->place_critter_around( make_shared_fast<monster>( *mon->second.monster_data ),
-                                     get_map().get_bub( viable_candidates.front() ), 1 );
+                if( acting->monster_data ) {
+                    acting->synchronize_payload( viable_candidates.front() );
+                    if( acting->monster_data->is_caol_predator() ) {
+                        // The prepared copy carries the reservation.  A
+                        // failed exact placement discards it with no epoch
+                        // consumption by the retained abstract owner.
+                        ++acting->monster_data->predator_state().handoff_epoch;
+                    }
+                    const tripoint_bub_ms local = get_map().get_bub( viable_candidates.front() );
+                    // See overmapbuffer::spawn_monster: a predator cannot
+                    // turn an abstract route into an arbitrary nearby local
+                    // placement.  Retain it abstract if its exact step is
+                    // occupied or invalid.
+                    if( acting->monster_data->is_caol_predator() &&
+                        loaded_predator_owns( acting->monster_data->predator_state().actor_id ) ) {
+                        DebugLog( D_WARNING, D_GAME ) << "Refused duplicate local predator ownership.";
+                    } else {
+                        placed_monster = acting->monster_data->is_caol_predator() ?
+                                         g->place_critter_at( make_shared_fast<monster>( *acting->monster_data ),
+                                                 local ) :
+                                         g->place_critter_around( make_shared_fast<monster>( *acting->monster_data ),
+                                                 local, 1 );
+                    }
                 } else {
-                    placed_monster = g->place_critter_around( mon->second.type_id->id,
+                    placed_monster = g->place_critter_around( acting->type_id->id,
                                      get_map().get_bub( viable_candidates.front() ), 1 );
                 }
                 if( placed_monster == nullptr ) {
                     // If the tile is occupied it can't enter, just don't move for now.
+                    if( prepared_predator ) {
+                        // Keep the existing owner byte-for-byte intact except
+                        // for the scheduler's same-turn guard.
+                        mon->second.last_processed = calendar::turn;
+                    }
                     mon++;
                     continue;
                 }
+                if( placed_monster->is_caol_predator() ) {
+                    predator_lifecycle_state &state = placed_monster->predator_state();
+                    state.last_advanced_turn = to_turn<int>( calendar::turn );
+                }
                 // TODO: this should be bundled into a constructor.
-                if( mon->second.tracking_intensity > 0 ) {
-                    placed_monster->wander_to( mon->second.destination, mon->second.tracking_intensity );
+                if( acting->tracking_intensity > 0 ) {
+                    placed_monster->wander_to( acting->destination, acting->tracking_intensity );
                 }
                 mon = hordes.erase( mon );
                 continue;
             }
 
             horde_map::iterator moving_mon = mon;
+            const tripoint_abs_ms source_position = moving_mon->first;
+            // Snapshot before releasing the source node.  The outbound node
+            // is allowed to carry prepared intent and movement state, while
+            // rollback must always restore the pre-scheduler owner.
+            horde_entity source_state( rollback_state );
             // Advance the loop iterator past the current node, which we will be removing.
             mon++;
             auto monster_node = hordes.extract( moving_mon );
+            // Extract the untouched abstract owner first.  The prepared
+            // predator belongs only to the outbound transport node; should
+            // a destination reject it, source_state is exactly the node that
+            // was still owned before this scheduler pass.
+            if( prepared_predator ) {
+                monster_node.mapped() = std::move( *prepared_predator );
+            }
             monster_node.key() = viable_candidates.front();
-            migrating_hordes.insert( std::move( monster_node ) );
+            migrating_hordes.push_back( { source_position, std::move( source_state ),
+                                          std::move( monster_node ) } );
+        } else if( prepared_predator ) {
+            // Scheduling/intent with no selected step remains an abstract
+            // state transition, so commit it once rather than reprocessing it
+            // on a later bucket visit in the same turn.
+            mon->second = std::move( *prepared_predator );
+            mon++;
+        } else {
+            mon++;
         }
     }
     while( !migrating_hordes.empty() ) {
-        auto monster_node = migrating_hordes.extract( migrating_hordes.begin() );
+        auto migrating = std::move( migrating_hordes.back() );
+        migrating_hordes.pop_back();
+        const tripoint_abs_ms source_position = migrating.source_position;
+        horde_map::node_type monster_node = std::move( migrating.node );
         point_abs_om dest_omp;
         tripoint_om_sm dest_sm;
         std::tie( dest_omp, dest_sm ) = project_remain<coords::om>( project_to<coords::sm>
                                         ( monster_node.key() ) );
         overmap *dest_om = overmap_buffer.get_existing( dest_omp );
-        if( dest_om == nullptr ) {
-            debugmsg( "A horde entity tried to wander into a non-existent overmap." );
+        // Candidate selection accepts only overmapbuffer::passable positions.
+        // passable itself uses get_existing and returns false for a missing
+        // destination, so this synchronous lookup necessarily has an owner.
+        cata_assert( dest_om != nullptr );
+        if( !dest_om->hordes.can_accept_entity( monster_node.key(), monster_node.mapped() ) ) {
+            monster_node.key() = source_position;
+            monster_node.mapped() = std::move( migrating.source_state );
+            // The source ownership snapshot is otherwise authoritative, but
+            // this scheduler invocation has been consumed.  Keep its guard
+            // so a destination rejection cannot create a second same-turn
+            // debit or handoff attempt.
+            monster_node.mapped().last_processed = calendar::turn;
+            hordes.insert( std::move( monster_node ) );
             continue;
         }
+        monster_node.mapped().synchronize_payload( monster_node.key() );
         dest_om->hordes.insert( std::move( monster_node ) );
     }
 }
@@ -1787,6 +1942,15 @@ void overmap::signal_hordes( const tripoint_abs_ms &p, const int sig_power )
         }
     }
     hordes.signal_entities( p, sig_power );
+}
+
+int overmap::attract_hordes_to_light( const tripoint_abs_ms &source, const int intensity,
+                                      const int observer_radius_sm, const std::string &sample_id,
+                                      const time_point &observed, const std::function<bool(
+                                              const tripoint_abs_ms &)> &visible, int *candidate_count )
+{
+    return hordes.attract_entities_to_light( source, intensity, observer_radius_sm, sample_id,
+            observed, visible, candidate_count );
 }
 
 void overmap::alert_entity( const tripoint_om_ms &location, const tripoint_abs_ms &destination,

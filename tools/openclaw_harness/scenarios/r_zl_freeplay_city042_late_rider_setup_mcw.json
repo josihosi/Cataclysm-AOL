@@ -1,0 +1,32 @@
+{
+  "manifest_version": 1,
+  "name": "r_zl_freeplay_city042_late_rider_setup_mcw",
+  "description": "Zero-credit native preparation of one disposable later-game rider footing from the native-saved nighttime city copy.  It may use only advertised native debug owners to place one ordinary hostile rider at a broad, recoverable distance, then natively save before a fresh ordinary account is installed.",
+  "profile": "r-zl-freeplay-city042-late-rider-setup",
+  "world": "zl-natural-stalker-city-042-missed",
+  "fixture": "r_zl_freeplay_city042_night_setup_20260916",
+  "fixture_profile": "r-zl-freeplay-city042-night-setup",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {"runtime.entry_mode":"cockpit_live_session","capabilities.r_zl_playtest.integrated_account":"none","capabilities.r_zl_playtest.repair_diagnostic":"late_rider_ordinary_account_setup_only"},
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["direct-state-mutation", "raw-save-rewrite-after-install", "debug:inject_observer", "debug:inject_attention", "debug:inject_knowledge", "debug:inject_contact", "debug:inject_attack", "debug:inject_target_knowledge", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-zl-freeplay-city042-late-rider-setup",
+    "fixture": "r_zl_freeplay_city042_night_setup_20260916",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"r-zl-freeplay-city042-late-rider-setup","fixture":"r_zl_freeplay_city042_night_setup_20260916","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {"kind":"wait","label":"settle_late_rider_setup","seconds":1.0,"capture_after":true,"expected_visible_fact":"the native-saved nighttime city copy loads before zero-credit setup"},
+    {"kind":"cockpit_live_session","label":"prepare_disposable_late_rider_copy","cleanup_on_finish":false,"stop_after_live_session":true,"objective":"Use only advertised native debug setup owners to place one ordinary hostile zombie rider at a broad, recoverable distance in the actual loaded city.  Do not inject observation, attention, knowledge, contact, attack, or player route.  Return to World and natively save the footing before any fresh ordinary account exists.","proof_targets":["one native zero-credit rider placement receipt","native nighttime footing and broad initial separation","bound disposable setup lifecycle"],"authority":["advertised native actions","run.witness","run.finish"],"invariants":["zero integrated-play credit","no observer, attention, knowledge, contact, or attack injection","no direct save mutation","no player action is credited as ordinary play"],"live_operations":["game.act"],"transition_timeout_seconds":20.0,"observe_interval_seconds":0.1}
+  ],
+  "recommended_test_command":"python3 tools/openclaw_harness/startup_harness.py probe r_zl_freeplay_city042_late_rider_setup_mcw",
+  "evidence_contract":{"claim":"setup-only native creation of a distinct nighttime city copy with one broad-distance rider footing","load_only_verdict":"zero-credit setup only / not ordinary play"},
+  "proof_route":{"precondition":["settle_late_rider_setup"],"production_behavior":["prepare_disposable_late_rider_copy"],"terminal_persistence":["prepare_disposable_late_rider_copy"],"artifact_verdict":["prepare_disposable_late_rider_copy"],"disallowed_shortcuts":["prepare_disposable_late_rider_copy"]}
+}

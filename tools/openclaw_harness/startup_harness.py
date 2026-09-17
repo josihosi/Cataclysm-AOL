@@ -18,6 +18,7 @@ from __future__ import annotations
 
 from cockpit_archive import Archive, ArchiveSequence, is_sequence, json_chunks, write_json_stream, resolve_wire, find_archive
 from cockpit_report_reference import write_report_reference
+from cockpit_memory_profile import snapshot as memory_snapshot, released as memory_released
 
 import argparse
 import copy
@@ -39,6 +40,7 @@ import tempfile
 import threading
 import time
 import uuid
+from collections.abc import MutableMapping
 from datetime import datetime, timezone
 from dataclasses import asdict, dataclass
 from pathlib import Path
@@ -235,6 +237,10 @@ LLM_KEYCHAIN_TIMEOUT_SECONDS = 15.0
 PEEKABOO_CAPTURE_TRANSPORT_ENV = "CAOL_PEEKABOO_CAPTURE_TRANSPORT"
 PEEKABOO_BRIDGE_SOCKET_ENV = "CAOL_PEEKABOO_BRIDGE_SOCKET"
 PEEKABOO_BINARY_ENV = "CAOL_PEEKABOO_BIN"
+# The Mac-mini harness is executed on the same host as this verified GUI
+# service.  Keep bridge commands pinned to its authorized socket unless a
+# caller intentionally supplies a different supported bridge.
+PEEKABOO_DEFAULT_BRIDGE_SOCKET = "/Users/josefhorvath/Library/Application Support/Peekaboo/bridge.sock"
 
 PAUSE_DISPATCH_MARKER = (
     b'openclaw_harness_ui_trace: component=default_action_dispatch '
@@ -308,6 +314,7 @@ def decide_run_semantic_state(
         previous_progress=previous_progress,
     )
 DEFAULT_ADVANCE_TURNS_MAX_AUTO_ACKNOWLEDGEMENTS = 32
+ADVANCE_TURNS_SEMANTIC_TRANSITION_TIMEOUT_SECONDS = 60.0
 DEFAULT_STEP_MAX_AUTO_ACKNOWLEDGEMENTS = 6
 
 STARTUP_ERROR_SCREEN_PATTERNS: Tuple[Pattern[str], ...] = (
@@ -374,6 +381,7 @@ class StartupPlan:
     run_dir: str
     harness_new_world: str = ""
     harness_raw_seed: str = ""
+    harness_new_world_scenario: str = ""
     harness_bandit_feasibility: bool = False
 
 
@@ -578,9 +586,10 @@ def append_semantic_surface_transition_event(
     """
     path = Path(run_dir) / TRANSITION_EVENT_FILENAME
     sequence = 0
-    for existing in _read_jsonl_objects(path):
-        if existing.get("run_id") == run_id and isinstance(existing.get("sequence"), int):
-            sequence = max(sequence, int(existing["sequence"]))
+    existing = _last_jsonl_object(path)
+    if existing is not None and existing.get("run_id") == run_id and \
+            isinstance(existing.get("sequence"), int):
+        sequence = int(existing["sequence"])
     accepted = receipt.get("accepted") is True
     event: Dict[str, Any] = {
         "schema_version": TRANSITION_EVENT_SCHEMA_VERSION,
@@ -1513,17 +1522,16 @@ def peekaboo_binary() -> str:
 def peekaboo_command(args: Sequence[str], *, channel: str) -> List[str]:
     """Build a Peekaboo command with explicit input/capture transport policy.
 
-    Input and focus default to the local macOS process because routing those
-    operations through a GUI bridge can target the wrong host or leave focus
-    unproved. Capture defaults to Peekaboo's bridge-aware routing because an
-    SSH-launched harness may not own Screen Recording permission while the
-    signed bridge host does. Both choices can be overridden without changing
-    scenario files.
+    Input, focus, and capture default to the verified Peekaboo GUI bridge.
+    The bridge is the authorized host on this Mac; a local fallback can
+    report delivery without reaching the exact game window.  Both choices can
+    still be overridden for an explicitly different supported host without
+    changing scenario files.
     """
     if channel not in {"input", "capture"}:
         raise ValueError(f"unsupported Peekaboo channel: {channel}")
     env_name = PEEKABOO_INPUT_TRANSPORT_ENV if channel == "input" else PEEKABOO_CAPTURE_TRANSPORT_ENV
-    default_transport = "local" if channel == "input" else "bridge"
+    default_transport = "bridge"
     transport = os.environ.get(env_name, default_transport).strip().lower() or default_transport
     if transport not in {"local", "bridge"}:
         raise ValueError(f"{env_name} must be 'local' or 'bridge', got {transport!r}")
@@ -1532,7 +1540,9 @@ def peekaboo_command(args: Sequence[str], *, channel: str) -> List[str]:
     if transport == "local":
         cmd.append("--no-remote")
     else:
-        bridge_socket = os.environ.get(PEEKABOO_BRIDGE_SOCKET_ENV, "").strip()
+        bridge_socket = os.environ.get(
+            PEEKABOO_BRIDGE_SOCKET_ENV, PEEKABOO_DEFAULT_BRIDGE_SOCKET
+        ).strip()
         if bridge_socket:
             cmd.extend(["--bridge-socket", bridge_socket])
     return cmd
@@ -1651,6 +1661,26 @@ def sha256_file(path: Path) -> Tuple[str, str]:
         with path.open("rb") as stream:
             for chunk in iter(lambda: stream.read(1024 * 1024), b""):
                 digest.update(chunk)
+    except OSError as exc:
+        return "", str(exc)
+    return digest.hexdigest(), ""
+
+
+def sha256_tree(path: Path) -> Tuple[str, str]:
+    """Hash a save tree deterministically, including relative names and bytes."""
+    root = Path(path)
+    digest = hashlib.sha256()
+    try:
+        if not root.is_dir():
+            return "", f"save snapshot is not a directory: {root}"
+        for child in sorted((item for item in root.rglob("*") if item.is_file()),
+                            key=lambda item: str(item.relative_to(root))):
+            relative = str(child.relative_to(root)).encode("utf-8")
+            digest.update(len(relative).to_bytes(8, "big"))
+            digest.update(relative)
+            with child.open("rb") as stream:
+                for chunk in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(chunk)
     except OSError as exc:
         return "", str(exc)
     return digest.hexdigest(), ""
@@ -2323,6 +2353,15 @@ def load_profile_config(profile: str) -> Dict[str, Any]:
             "post_input_wait_seconds": 1.0,
             "poll_seconds": 2.0,
             "timeout_seconds": 90.0,
+            # Native fresh-world creation includes full content loading and a
+            # save before exit.  It is not a normal readiness probe, and can
+            # legitimately exceed the interactive-start timeout on a cold
+            # profile.
+            "harness_new_world_timeout_seconds": 180.0,
+            # A semantic-only launch waits for the saved world to publish its
+            # first native owner.  That can take materially longer than the
+            # UI/readiness probe on a large ordinary save.
+            "semantic_startup_timeout_seconds": 360.0,
             "max_popup_dismissals": 6,
             "post_lastworld_wait_seconds": 0.0,
             "post_lastworld_continue_keys": [],
@@ -3084,6 +3123,15 @@ def validate_harness_new_world(world: str, raw_seed: str) -> Tuple[str, str]:
     return world_name, seed_text
 
 
+def validate_harness_new_world_scenario(scenario_id: str) -> str:
+    scenario = str(scenario_id or "").strip()
+    if not scenario:
+        return ""
+    if not re.fullmatch(r"[A-Za-z0-9_]+", scenario):
+        raise ValueError("harness new-world scenario must be a scenario id")
+    return scenario
+
+
 def detect_executable() -> Path:
     root = repo_root()
     for name in (
@@ -3194,9 +3242,11 @@ def build_plan(
     harness_raw_seed: str = "",
     harness_bandit_feasibility: bool = False,
     explicit_executable: str = "",
+    harness_new_world_scenario: str = "",
 ) -> StartupPlan:
     plan_harness_world = ""
     plan_harness_seed = ""
+    plan_harness_scenario = validate_harness_new_world_scenario(harness_new_world_scenario)
     if harness_new_world or harness_raw_seed:
         world_name, seed_text = validate_harness_new_world(harness_new_world, harness_raw_seed)
         if harness_bandit_feasibility and seed_text != R002_PRODUCTION_FEASIBILITY_SEED:
@@ -3215,6 +3265,8 @@ def build_plan(
         plan_harness_world = world_name
         plan_harness_seed = seed_text
     else:
+        if plan_harness_scenario:
+            raise ValueError("harness new-world scenario requires harness new-world mode")
         if harness_bandit_feasibility:
             raise ValueError("bandit feasibility requires harness new-world mode")
         strategy, reason, target_world, worlds = choose_strategy(profile, explicit_world)
@@ -3231,6 +3283,7 @@ def build_plan(
         run_dir=str(run_dir),
         harness_new_world=plan_harness_world,
         harness_raw_seed=plan_harness_seed,
+        harness_new_world_scenario=plan_harness_scenario,
         harness_bandit_feasibility=harness_bandit_feasibility,
     )
     return plan
@@ -3743,12 +3796,12 @@ SHIFT_SYMBOL_HOTKEYS = {
     "}": "shift,]",
 }
 
-# Peekaboo hotkey only accepts its documented physical key names.  It has no
-# portable name for the backslash key, so a `shift,\\` request can succeed at
-# the driver layer without delivering the `|` character which the game binds
-# to the native wait action.  Use its text input path for that declared
-# character binding instead.
-PEEKABOO_TEXT_INPUT_KEYS = frozenset( { "|" } )
+# Peekaboo hotkey only accepts its documented physical key names.  Some
+# shifted punctuation chords can succeed at the driver layer without arriving
+# as the configured character in the game: this was observed for `shift,]`
+# reaching Cataclysm as no `}` debug-menu binding.  Use text input for the two
+# declared character bindings that need their literal character semantics.
+PEEKABOO_TEXT_INPUT_KEYS = frozenset( { "|", "}" } )
 
 # Peekaboo's press action accepts these named physical keys directly.  Keep
 # them explicit so focus-once batches cannot silently fall back to text input.
@@ -3939,22 +3992,46 @@ def read_active_eoc_popup_trace(
     return active
 
 
-def read_scheduler_trace(profile: str, run_id: str) -> List[Dict[str, Any]]:
-    """Read only this run's opt-in global-EOC scheduler decisions."""
+SCHEDULER_TRACE_COMPACT_LIMIT = 32
+
+
+def read_scheduler_trace_summary(
+    profile: str, run_id: str, *, limit: int = SCHEDULER_TRACE_COMPACT_LIMIT,
+) -> Dict[str, Any]:
+    """Return a bounded current projection of this run's scheduler decisions.
+
+    The native log remains the complete source of scheduler evidence.  Live
+    observations, however, become immutable transcript entries; retaining the
+    full growing log tail in every one of them makes a long action session
+    quadratic.  Count every matching record, retain only the latest bounded
+    window, and let the archive preserve each observation independently.
+    """
     trace_run_id = str(run_id).strip()
     if not trace_run_id:
-        return []
+        return {"records": [], "total": 0, "truncated": False}
     log_path = config_dir_for_profile(profile) / "debug.log"
     if not log_path.is_file():
-        return []
+        return {"records": [], "total": 0, "truncated": False}
     try:
-        body = log_path.read_text(encoding="utf-8", errors="replace")[-EOC_POPUP_TRACE_READ_CAP_BYTES:]
+        # ``read_text()[-cap:]`` still allocates the whole native debug log.
+        # This reader executes once per live observation, so a long-running
+        # registry child previously retained a giant transient allocation on
+        # every action despite the apparent tail cap.
+        with log_path.open("rb") as source:
+            source.seek(0, os.SEEK_END)
+            source.seek(max(0, source.tell() - EOC_POPUP_TRACE_READ_CAP_BYTES))
+            body = source.read(EOC_POPUP_TRACE_READ_CAP_BYTES).decode(
+                "utf-8", errors="replace"
+            )
     except OSError:
-        return []
+        return {"records": [], "total": 0, "truncated": False}
+    limit = max(1, int(limit))
     records: List[Dict[str, Any]] = []
+    total = 0
     for match in SCHEDULER_TRACE_PATTERN.finditer(body):
         if match.group("run_id") != trace_run_id:
             continue
+        total += 1
         records.append({
             "eoc": match.group("eoc"),
             "due_turn": int(match.group("due_turn")),
@@ -3962,7 +4039,14 @@ def read_scheduler_trace(profile: str, run_id: str) -> List[Dict[str, Any]]:
             "decision": match.group("decision"),
             "outcome": match.group("outcome"),
         })
-    return records
+        if len(records) > limit:
+            del records[0]
+    return {"records": records, "total": total, "truncated": total > len(records)}
+
+
+def read_scheduler_trace(profile: str, run_id: str) -> List[Dict[str, Any]]:
+    """Read the bounded current projection used by legacy callers."""
+    return read_scheduler_trace_summary(profile, run_id)["records"]
 
 
 def read_active_semantic_ui_trace(
@@ -4566,9 +4650,17 @@ def semantic_step_source_trace(profile: str, run_dir: Optional[Path] = None) -> 
             # with the profile-shared debug log merely because no receipt has
             # been produced yet.  The prefix still keeps arbitrary nonsemantic
             # run artifacts from being selected as a source.
+            # This file grows by one native frame per dispatch.  Reading it
+            # wholesale just to establish that it is the run-owned semantic
+            # stream made a one-minute (60-action) wait allocate the whole
+            # accumulated action history once per action.  The writer emits
+            # its semantic marker at the beginning of the stream, so probe
+            # only its fixed header.  A nonsemantic or incomplete file still
+            # falls back to the profile debug log as before.
             try:
-                native_bytes = native_trace.read_bytes()
-                if SEMANTIC_STEP_PREFIX.encode( "utf-8" ) in native_bytes:
+                with native_trace.open("rb") as stream:
+                    native_prefix = stream.read(64 * 1024)
+                if SEMANTIC_STEP_PREFIX.encode( "utf-8" ) in native_prefix:
                     return native_trace
             except OSError:
                 pass
@@ -4604,6 +4696,39 @@ def decode_semantic_step_event(payload: bytes) -> Mapping[str, Any]:
     if not isinstance(event, Mapping):
         raise ValueError("semantic trace event is not an object")
     return event
+
+
+def iter_bounded_semantic_trace_lines(
+    handle: Any, size: int, max_line_bytes: int,
+) -> Iterable[bytes]:
+    """Yield only complete, bounded records from a sampled hot trace.
+
+    The native producer can be writing a JSON record while the observer takes
+    its size sample.  Never hand that partial record to ``raw_decode``: a
+    large unterminated string can make the decoder scan until the bridge is
+    interrupted.  Oversized records are drained in bounded chunks so they
+    cannot retain an unbounded line in memory or shift the next record's
+    boundary.
+    """
+    remaining = max(0, int(size) - int(handle.tell()))
+    max_line_bytes = max(1, int(max_line_bytes))
+    while remaining:
+        line = bytearray()
+        oversized = False
+        while remaining:
+            chunk = handle.readline(min(remaining, max_line_bytes + 1))
+            if not chunk:
+                return
+            remaining -= len(chunk)
+            if not oversized:
+                if len(line) + len(chunk) <= max_line_bytes:
+                    line.extend(chunk)
+                else:
+                    oversized = True
+            if chunk.endswith((b"\n", b"\r")):
+                if not oversized:
+                    yield bytes(line)
+                break
 
 
 def compact_semantic_step_channel_event(event: Mapping[str, Any]) -> Dict[str, Any]:
@@ -4722,21 +4847,25 @@ def refresh_semantic_step_trace(
         # only the byte range sampled above so appended lines cannot extend
         # this refresh, while keeping one line at a time in memory instead of
         # materializing the complete history and its split-line list.
-        while handle.tell() < size:
-            remaining = size - handle.tell()
-            raw_line = handle.readline(remaining)
-            if not raw_line:
-                break
+        for raw_line in iter_bounded_semantic_trace_lines(
+                handle, size, SEMANTIC_STEP_MAX_BYTES * 16):
             marker_offset = raw_line.find(marker)
             if marker_offset < 0:
                 continue
             payload = raw_line[marker_offset + len(marker):].strip()
             try:
-                event = decode_semantic_step_event(payload)
+                event = dict(decode_semantic_step_event(payload))
             except (TypeError, ValueError, json.JSONDecodeError):
                 continue
             if not isinstance(event, Mapping) or str(event.get("run_id", "")) != str(run_id):
                 continue
+            # ``semantic.native.log`` is a filtered projection, so its local
+            # byte offsets are not coordinates in the hot native trace.  Keep
+            # the original marker position with each retained event.  The
+            # registry child can then advance its cursor without re-reading
+            # and splitting the complete source log to rediscover one frame.
+            event["_source_offset"] = handle.tell() - len(raw_line) + marker_offset
+            event["_source_end"] = handle.tell()
             # Legacy duration selections publish a semantic ``receipt`` and
             # then an actionless wait_activity frame.  The bounded suffix can
             # otherwise evict that only correlation record before the adapter
@@ -4929,6 +5058,7 @@ def semantic_step_frame_source_offset(
 
 def current_semantic_step_frame(
     *, profile: str, run_dir: Path, run_id: str, start_offset: int,
+    history: Optional[MutableMapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Return the newest native wait or activity-query frame for adaptive play."""
     source, owned = refresh_semantic_step_trace(
@@ -4939,13 +5069,29 @@ def current_semantic_step_frame(
     if status != "ok":
         raise ValueError(f"semantic step trace is unavailable: {status}")
     for event in events:
-        event["_event_offset"] = effective_source_offset + int(event.get("_event_offset", 0))
+        source_offset = event.get("_source_offset")
+        event["_event_offset"] = (
+            int(source_offset) if isinstance(source_offset, int) and source_offset >= 0
+            else effective_source_offset + int(event.get("_event_offset", 0))
+        )
+    prior_events = history.get("tail", []) if isinstance(history, MutableMapping) else []
+    if not isinstance(prior_events, list) or any(not isinstance(event, Mapping) for event in prior_events):
+        prior_events = []
+    context_events = [*prior_events, *events]
+    if isinstance(history, MutableMapping):
+        # A raw compatibility frame may arrive in the next refresh after its
+        # action-owning descriptor has been consumed.  Three records cover
+        # descriptor/receipt/frame adjacency without retaining a growing
+        # shadow copy of the semantic stream.
+        history["tail"] = [dict(event) for event in context_events[-3:]]
     native = latest_semantic_step_frame(events)
     native_offset = int(native.get("_event_offset", -1)) if native else -1
     if native is not None:
-        source_offset = semantic_step_frame_source_offset(
-            source, start_offset=start_offset, frame_id=str(native.get("frame_id", "")),
-        )
+        source_offset = native.get("_source_offset", -1)
+        if not isinstance(source_offset, int) or source_offset < 0:
+            source_offset = semantic_step_frame_source_offset(
+                source, start_offset=start_offset, frame_id=str(native.get("frame_id", "")),
+            )
         if source_offset >= 0:
             native_offset = source_offset
             # The activity-query frames use positions in the original native
@@ -4970,7 +5116,8 @@ def current_semantic_step_frame(
         read_latest_activity_query_trace(activity_trace, activity_trace_start)
         if activity_trace_start is not None else None
     )
-    if native is not None and native.get("kind") == "activity_distraction" and \
+    if native is not None and native.get("event") != "surface_descriptor" and \
+            native.get("kind") == "activity_distraction" and \
             latest_activity_return is not None and latest_activity_return.get("event") == "return" and \
             latest_activity_return.get("game_minutes") == native.get("game_minutes") and \
             str(latest_activity_return.get("action", "")) in {"YES", "NO", "MANAGER", "IGNORE"} and \
@@ -4994,7 +5141,7 @@ def current_semantic_step_frame(
     # enter actionless wait_activity without a successor surface receipt.
     # That accepted same-run/action/turn chain invalidates a stale duration
     # descriptor until native code publishes another real owner.
-    duration_receipts = [event for event in events if event.get("event") == "receipt" and
+    duration_receipts = [event for event in context_events if event.get("event") == "receipt" and
                          event.get("accepted") is True and
                          str(event.get("action_id", "")).startswith("wait.")]
     if duration_receipts:
@@ -5005,7 +5152,16 @@ def current_semantic_step_frame(
                             if event.get("event") == "frame" and
                             event.get("state") == "wait_activity" and
                             str(event.get("observed_turn")) == parts[1]), None)
-            if waiting is not None:
+            # A wait can be interrupted before its next ordinary World frame.
+            # Its activity/prompt owner is newer than the raw wait frame and
+            # must remain actionable; otherwise the duration receipt would
+            # permanently mask that native descriptor.
+            newer_owner = waiting is not None and any(
+                event.get("event") == "surface_descriptor" and
+                int(event.get("_event_offset", -1)) > int(waiting.get("_event_offset", -1))
+                for event in events
+            )
+            if waiting is not None and not newer_owner:
                 return {
                     "run_id": run_id, "frame_id": str(waiting.get("frame_id", "")),
                     "state": "wait_activity", "valid_actions": [], "action_inputs": {},
@@ -5021,11 +5177,14 @@ def current_semantic_step_frame(
         # owner, but the adjacent raw frame still owns whether that action is
         # blocked pending completion.  Retain only a directly adjacent,
         # same-run raw frame; an older activity must never be borrowed.
-        _, complete_owned = refresh_semantic_step_trace(
-            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
-        )
-        complete_events, complete_status = read_semantic_step_trace(
-            complete_owned, Path(run_dir), run_id)
+        if isinstance(history, MutableMapping):
+            complete_events, complete_status = context_events, "ok"
+        else:
+            _, complete_owned = refresh_semantic_step_trace(
+                profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
+            )
+            complete_events, complete_status = read_semantic_step_trace(
+                complete_owned, Path(run_dir), run_id)
         if complete_status == "ok":
             descriptor_frame_id = str(native.get("frame_id", "")).strip()
             for index, candidate in enumerate(complete_events):
@@ -5048,9 +5207,11 @@ def current_semantic_step_frame(
                             str(successor.get("run_id", "")).strip() == run_id and \
                             successor.get("state") == "world" and native.get("kind") == "world":
                         successor_frame_id = str(successor.get("frame_id", ""))
-                        successor_offset = semantic_step_frame_source_offset(
-                            source, start_offset=0, frame_id=successor_frame_id,
-                        )
+                        successor_offset = successor.get("_source_offset", -1)
+                        if not isinstance(successor_offset, int) or successor_offset < 0:
+                            successor_offset = semantic_step_frame_source_offset(
+                                source, start_offset=0, frame_id=successor_frame_id,
+                            )
                         native.update({
                             "dispatch_descriptor_event_offset": native.get("_event_offset", -1),
                             "game_minutes": successor.get("game_minutes"),
@@ -5082,11 +5243,14 @@ def current_semantic_step_frame(
         # on its same-cycle compatibility frame.  Re-read the immutable
         # current-run trace only to recover that immediately preceding owner;
         # never infer a parent from an earlier cycle or a different run.
-        _, complete_owned = refresh_semantic_step_trace(
-            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
-        )
-        complete_events, complete_status = read_semantic_step_trace(
-            complete_owned, Path(run_dir), run_id)
+        if isinstance(history, MutableMapping):
+            complete_events, complete_status = context_events, "ok"
+        else:
+            _, complete_owned = refresh_semantic_step_trace(
+                profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
+            )
+            complete_events, complete_status = read_semantic_step_trace(
+                complete_owned, Path(run_dir), run_id)
         if complete_status == "ok":
             raw_frame_id = str(native.get("frame_id", "")).strip()
             for index, candidate in enumerate(complete_events):
@@ -5160,13 +5324,15 @@ def current_semantic_step_frame(
         # behind after the game has already emitted the resumed World frame.
         # The descriptor is no longer an active owner after the return, so do
         # not turn that newer native World frame into an actionless marker.
-        resumed_world = next(( dict( event ) for event in reversed( events )
+        resumed_world = next(( dict( event ) for event in reversed( context_events )
                                if event.get("event") == "frame" and
                                event.get("state") == "world" ), None)
         if resumed_world is not None:
-            resumed_offset = semantic_step_frame_source_offset(
-                                 source, start_offset=start_offset,
-                                 frame_id=str( resumed_world.get("frame_id", "") ) )
+            resumed_offset = resumed_world.get("_source_offset", -1)
+            if not isinstance(resumed_offset, int) or resumed_offset < 0:
+                resumed_offset = semantic_step_frame_source_offset(
+                                     source, start_offset=start_offset,
+                                     frame_id=str( resumed_world.get("frame_id", "") ) )
             if resumed_offset > activity_offset:
                 resumed_world["_event_offset"] = resumed_offset
                 return resumed_world
@@ -5227,18 +5393,21 @@ def current_semantic_step_frame(
         # Surface descriptors deliberately carry only their owner payload.
         # The adjacent run-bound native frame is the established authoritative
         # clock source for a bounded cadence transaction.
-        game_minutes = latest_semantic_game_minutes( events )
+        game_minutes = latest_semantic_game_minutes( context_events )
         if game_minutes is None:
             # The live service advances its cursor after an observed surface.
             # A descriptor published after its companion frame therefore has
             # no clock in the unconsumed suffix.  Re-read the owned run from
             # its origin; ``read_semantic_step_trace`` still filters by the
             # bound run ID, so another run can never supply this authority.
-            _, complete_owned = refresh_semantic_step_trace(
-                                    profile=profile, run_dir=run_dir,
-                                    run_id=run_id, start_offset=0 )
-            complete_events, complete_status = read_semantic_step_trace(
-                                                complete_owned, Path( run_dir ), run_id )
+            if isinstance(history, MutableMapping):
+                complete_events, complete_status = context_events, "ok"
+            else:
+                _, complete_owned = refresh_semantic_step_trace(
+                                        profile=profile, run_dir=run_dir,
+                                        run_id=run_id, start_offset=0 )
+                complete_events, complete_status = read_semantic_step_trace(
+                                                    complete_owned, Path( run_dir ), run_id )
             if complete_status == "ok":
                 game_minutes = latest_semantic_game_minutes( complete_events )
         if game_minutes is not None:
@@ -5305,6 +5474,7 @@ def open_cockpit_game_service(
     # the whole current-run history on every observation.  The existing cap
     # still rejects an overfull unconsumed window.
     semantic_cursor = {"offset": trace_start_offset}
+    semantic_history: Dict[str, Any] = {}
     latest_frame: Dict[str, Mapping[str, Any]] = {}
     performance = None
     performance_error = None
@@ -5317,7 +5487,7 @@ def open_cockpit_game_service(
         try:
             frame = current_semantic_step_frame(
                 profile=profile, run_dir=run_dir, run_id=run_id,
-                start_offset=cursor,
+                start_offset=cursor, history=semantic_history,
             )
         except ValueError as exc:
             # A recipe may take its initial safety frame and then immediately
@@ -5438,6 +5608,11 @@ def open_cockpit_game_service(
         runtime_binding_id=runtime_binding_id,
     )
 
+    # Evidence files are append-only for the lifetime of this controller.
+    # Keep their compact projection indexed by byte cursor instead of parsing
+    # the complete current-run history on every native observation.
+    evidence_cursor: Dict[str, Any] = {}
+
     def read_cancel_request() -> Mapping[str, Any]:
         session = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "")
         if not session:
@@ -5501,6 +5676,7 @@ def open_cockpit_game_service(
             child_resources=(performance.latest["resources"]
                              if performance is not None and performance.latest else None),
             binding_id=binding_id,
+            cursor=evidence_cursor,
         )
         if performance is not None:
             evidence["performance"] = performance.brief()
@@ -5621,10 +5797,115 @@ def _read_jsonl_objects(path: Path) -> List[Dict[str, Any]]:
     return values
 
 
+class _IncrementalRunJSONL:
+    """Keep the compact evidence view over an append-only JSONL stream.
+
+    The live cockpit asks for the same three facts on every fresh observation:
+    the current-run receipt count, its newest receipt, and the first rejected
+    receipt.  Re-decoding the complete receipt file for each observation made
+    that view quadratic in the number of actions.  This cursor consumes only
+    newly completed lines and retains the small derived state needed by the
+    public boundary.  A truncated/replaced stream starts a new epoch.
+    """
+
+    def __init__(self, path: Path, run_id: str, *, transition: bool = False) -> None:
+        self.path = Path(path)
+        self.run_id = str(run_id)
+        self.transition = transition
+        self.byte_offset = 0
+        self.receipt_count = 0
+        self.latest: Optional[Dict[str, Any]] = None
+        self.first_rejected: Optional[Dict[str, Any]] = None
+        self.latest_transition: Optional[Dict[str, Any]] = None
+        self.bytes_scanned = 0
+        self.poll_count = 0
+
+    def _reset(self) -> None:
+        self.byte_offset = 0
+        self.receipt_count = 0
+        self.latest = None
+        self.first_rejected = None
+        self.latest_transition = None
+
+    def poll(self) -> None:
+        self.poll_count += 1
+        try:
+            size = self.path.stat().st_size
+        except OSError:
+            return
+        if size < self.byte_offset:
+            self._reset()
+        if size == self.byte_offset:
+            return
+        try:
+            with self.path.open("rb") as stream:
+                stream.seek(self.byte_offset)
+                payload = stream.read(size - self.byte_offset)
+        except OSError:
+            return
+        complete_length = payload.rfind(b"\n") + 1
+        if complete_length <= 0:
+            return
+        complete = payload[:complete_length]
+        for raw_line in complete.splitlines():
+            if not raw_line.strip():
+                continue
+            try:
+                value = json.loads(raw_line.decode("utf-8"))
+            except (UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            if not isinstance(value, Mapping) or str(value.get("run_id", "")) != self.run_id:
+                continue
+            if self.transition:
+                self.latest_transition = dict(value)
+            else:
+                self.receipt_count += 1
+                self.latest = dict(value)
+                if self.first_rejected is None and value.get("accepted") is not True:
+                    self.first_rejected = dict(value)
+        self.byte_offset += complete_length
+        self.bytes_scanned += complete_length
+
+
+def _last_jsonl_object(path: Path) -> Optional[Dict[str, Any]]:
+    """Read only the final complete JSONL record from an append-only file."""
+    try:
+        with Path(path).open("rb") as stream:
+            stream.seek(0, os.SEEK_END)
+            end = stream.tell()
+            if end <= 0:
+                return None
+            # A writer may have left an incomplete tail. Exclude it, then
+            # locate the preceding newline and read exactly one record.
+            stream.seek(end - 1)
+            line_end = end - 1 if stream.read(1) == b"\n" else end
+            cursor = line_end
+            while cursor > 0:
+                start = max(0, cursor - 65536)
+                stream.seek(start)
+                chunk = stream.read(cursor - start)
+                boundary = chunk.rfind(b"\n")
+                if boundary >= 0:
+                    line_start = start + boundary + 1
+                    stream.seek(line_start)
+                    raw = stream.read(line_end - line_start)
+                    if raw.endswith(b"\r"):
+                        raw = raw[:-1]
+                    value = json.loads(raw.decode("utf-8"))
+                    return dict(value) if isinstance(value, Mapping) else None
+                cursor = start
+            stream.seek(0)
+            raw = stream.read(line_end)
+            value = json.loads(raw.decode("utf-8"))
+            return dict(value) if isinstance(value, Mapping) else None
+    except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+        return None
+
+
 def compact_cockpit_live_evidence(
     run_dir: Path, run_id: str, *, profile: str = "", pid: int = 0,
     child_resources: Optional[Mapping[str, Any]] = None,
-    binding_id: str = "",
+    binding_id: str = "", cursor: Optional[MutableMapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Return bounded semantic facts, never raw logs, for one live decision."""
     from r008_indoor_channel_observation import read_r008_indoor_channel_observation
@@ -5649,17 +5930,23 @@ def compact_cockpit_live_evidence(
                     (sha256_file(Path( run_dir ) / RUNTIME_BINDING_FILENAME)[0]
                      if (Path( run_dir ) / RUNTIME_BINDING_FILENAME).is_file() else "")),
     )
-    receipts = [
-        item for item in _read_jsonl_objects( run_dir / "semantic.steps.jsonl" )
-        if str( item.get( "run_id", "" ) ) == str( run_id )
-    ]
-    transitions = [
-        item for item in _read_jsonl_objects( run_dir / "transition.events.jsonl" )
-        if str( item.get( "run_id", "" ) ) == str( run_id )
-    ]
-    first_rejected = next((item for item in receipts if item.get( "accepted" ) is not True), None)
-    latest_receipt = receipts[-1] if receipts else None
-    latest_transition = transitions[-1] if transitions else None
+    # ``cursor`` is an internal per-live-session holder.  Standalone callers
+    # retain the old one-shot semantics; the live service supplies a holder so
+    # repeated observations scan only appended complete records.
+    holder = cursor if isinstance(cursor, MutableMapping) else {}
+    receipt_reader = holder.get("receipts")
+    if not isinstance(receipt_reader, _IncrementalRunJSONL):
+        receipt_reader = _IncrementalRunJSONL(run_dir / "semantic.steps.jsonl", str(run_id))
+        holder["receipts"] = receipt_reader
+    transition_reader = holder.get("transitions")
+    if not isinstance(transition_reader, _IncrementalRunJSONL):
+        transition_reader = _IncrementalRunJSONL(run_dir / "transition.events.jsonl", str(run_id), transition=True)
+        holder["transitions"] = transition_reader
+    receipt_reader.poll()
+    transition_reader.poll()
+    first_rejected = receipt_reader.first_rejected
+    latest_receipt = receipt_reader.latest
+    latest_transition = transition_reader.latest_transition
     actor_owners: List[Dict[str, Any]] = []
     if isinstance( latest_transition, Mapping ):
         raw_actors = latest_transition.get( "actor_ids", latest_transition.get( "member_ids", [] ) )
@@ -5697,7 +5984,9 @@ def compact_cockpit_live_evidence(
             "action_id": str( first_rejected.get( "action_id", "" ) ),
             "reason": str( first_rejected.get( "reason", "" ) ),
         })
-    scheduler_trace = read_scheduler_trace(profile, run_id) if profile else []
+    scheduler_trace = read_scheduler_trace_summary(profile, run_id) if profile else {
+        "records": [], "total": 0, "truncated": False,
+    }
     child_resources = dict(child_resources) if child_resources is not None else sample_child_resources(pid) if pid > 0 else {
         "pid": None,
         "platform": r009_host_platform(),
@@ -5707,7 +5996,7 @@ def compact_cockpit_live_evidence(
                             "reason": "the live game pid was unavailable"},
     }
     return {
-        "receipt_count": len( receipts ),
+        "receipt_count": receipt_reader.receipt_count,
         "latest_receipt": compact_receipt,
         "first_divergence": contradictory[0] if contradictory else None,
         "contradictory_evidence": contradictory,
@@ -5718,11 +6007,14 @@ def compact_cockpit_live_evidence(
             latest_transition.get( "persistence_acknowledged" ) is True else "unavailable"
         ),
         "evidence_refs": [
-            *( [f"semantic.steps.jsonl#receipt={len( receipts )}"] if receipts else [] ),
+            *( [f"semantic.steps.jsonl#receipt={receipt_reader.receipt_count}"]
+               if receipt_reader.receipt_count else [] ),
             *( [f"transition.events.jsonl#sequence={compact_transition['sequence']}"]
                if compact_transition is not None else [] ),
         ],
-        "scheduler_trace": scheduler_trace,
+        "scheduler_trace": scheduler_trace["records"],
+        "scheduler_trace_total": scheduler_trace["total"],
+        "scheduler_trace_truncated": scheduler_trace["truncated"],
         "production_channel_observation": channel_observation,
         "child_resources": child_resources,
     }
@@ -5801,7 +6093,11 @@ def finalize_cockpit_live_session(
 def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> int:
     """Serve public live-session requests without a harness-owned time window."""
     finished = False
+    archive = getattr(service.run_channel, "archive", None)
+    memory_snapshot("registry_child", "session_ready", archive=archive)
     for line in input_stream:
+        memory_snapshot("registry_child", "before_request_construction", archive=archive,
+                        response_bytes=len(line.encode("utf-8")))
         try:
             request = json.loads( line )
         except json.JSONDecodeError as exc:
@@ -5810,24 +6106,37 @@ def serve_cockpit_live(service: Any, input_stream: Any, output_stream: Any) -> i
             result = service.call( request ) if isinstance( request, Mapping ) else {
                 "ok": False, "error": "request must be an object",
             }
-        archive = getattr(service.run_channel, "archive", None)
+        memory_snapshot("registry_child", "after_response_construction", archive=archive)
         wire_result = archive.wire(result) if archive is not None else result
+        memory_snapshot("registry_child", "after_wire_projection", archive=archive)
+        response_bytes = 0
         for chunk in json_chunks(wire_result):
             output_stream.write(chunk)
+            response_bytes += len(chunk.encode("utf-8"))
         output_stream.write("\n")
         output_stream.flush()
+        memory_snapshot("registry_child", "after_stdout_delivery", archive=archive,
+                        response_bytes=response_bytes)
         state = service.run_channel.status()
+        del result, wire_result
+        memory_released("registry_child", "after_response_reference_release", archive=archive,
+                        response_bytes=response_bytes)
         if state["state"] == "finished":
             finished = True
             break
     if not finished:
         result = service.run_channel.close_unfinished()
-        archive = getattr(service.run_channel, "archive", None)
+        memory_snapshot("registry_child", "eof_after_response_construction", archive=archive)
         wire_result = archive.wire(result) if archive is not None else result
+        response_bytes = 0
         for chunk in json_chunks(wire_result):
             output_stream.write(chunk)
+            response_bytes += len(chunk.encode("utf-8"))
         output_stream.write("\n")
         output_stream.flush()
+        del result, wire_result
+        memory_released("registry_child", "eof_after_response_reference_release", archive=archive,
+                        response_bytes=response_bytes)
         return 1
     return 0
 
@@ -5952,12 +6261,47 @@ def execute_semantic_act(
             }
 
     latest_frame: Dict[str, Mapping[str, Any]] = {}
+    # One dispatch can poll several times before its receipt and successor
+    # arrive.  Keep its source cursor and correlation window local to this
+    # transaction rather than replaying the run from its launch cursor.
+    transaction_cursor: Dict[str, int] = {"offset": trace_start_offset}
+    transaction_history: Dict[str, Any] = {}
+    transaction_events: deque[Dict[str, Any]] = deque(maxlen=SEMANTIC_STEP_MAX_EVENTS)
+
+    def consume_transaction_trace() -> tuple[Path, list[Dict[str, Any]], str]:
+        source = semantic_step_source_trace(profile, run_dir)
+        cursor = semantic_step_effective_source_offset(source, transaction_cursor["offset"])
+        source, owned = refresh_semantic_step_trace(
+            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=cursor,
+        )
+        delta, status = read_semantic_step_trace(owned, run_dir, run_id)
+        if status != "ok":
+            return source, [], status
+        for event in delta:
+            source_offset = event.get("_source_offset")
+            event["_event_offset"] = (
+                int(source_offset) if isinstance(source_offset, int) and source_offset >= 0
+                else cursor + int(event.get("_event_offset", 0))
+            )
+            source_end = event.get("_source_end")
+            is_new = not isinstance(source_end, int)
+            if isinstance(source_end, int) and source_end > transaction_cursor["offset"]:
+                transaction_cursor["offset"] = source_end
+                is_new = True
+            # Mocked/legacy projections predate source offsets.  Retain their
+            # current event compatibility path; production records dedupe by
+            # their advancing source end above.
+            if is_new:
+                transaction_events.append(dict(event))
+        return source, list(transaction_events), "ok"
 
     def read_frame() -> Mapping[str, Any]:
         try:
+            source = semantic_step_source_trace(profile, run_dir)
+            cursor = semantic_step_effective_source_offset(source, transaction_cursor["offset"])
             frame = current_semantic_step_frame(
                 profile=profile, run_dir=run_dir, run_id=run_id,
-                start_offset=trace_start_offset,
+                start_offset=cursor, history=transaction_history,
             )
         except ValueError as exc:
             # Native input can be accepted before the trace writer publishes
@@ -5967,6 +6311,9 @@ def execute_semantic_act(
             if str(exc) == "the current run has not emitted a semantic frame" and latest_frame:
                 return dict(latest_frame["value"])
             raise
+        frame_end = frame.get("_source_end")
+        if isinstance(frame_end, int) and frame_end > transaction_cursor["offset"]:
+            transaction_cursor["offset"] = frame_end
         latest_frame["value"] = dict(frame)
         return frame
 
@@ -5975,10 +6322,7 @@ def execute_semantic_act(
     # semantic-surface descriptors and must not require a live semantic trace
     # merely to take their pre-existing dispatch route.
     if not before.get("surface_id") and before.get("frame_id") and not before.get("action_inputs"):
-        _, owned = refresh_semantic_step_trace(
-            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
-        )
-        events, trace_status = read_semantic_step_trace(owned, run_dir, run_id)
+        _, events, trace_status = consume_transaction_trace()
         descriptor = next((event for event in reversed(events)
                            if event.get("event") == "surface_descriptor" and
                            event.get("frame_id") == before.get("frame_id")), None)
@@ -6104,9 +6448,7 @@ def execute_semantic_act(
 
         while True:
             try:
-                source, owned = refresh_semantic_step_trace(
-                    profile=profile, run_dir=run_dir, run_id=run_id, start_offset=trace_start_offset,
-                )
+                source, events, status = consume_transaction_trace()
             except OSError:
                 cancelled = cancelled_dispatch()
                 if cancelled is not None:
@@ -6116,11 +6458,11 @@ def execute_semantic_act(
                     break
                 time.sleep(min(observe_interval_seconds, remaining))
                 continue
-            events, status = read_semantic_step_trace(owned, run_dir, run_id)
             if status == "ok":
                 native_receipt = next((event for event in events if
                                        event.get("event") == "surface_receipt" and
                                        event.get("request_id") == request_id), None)
+                native_receipt_event = native_receipt
                 # Duration menus are older native owners: their accepted
                 # semantic-step receipt names the internal turn-frame rather
                 # than the projected surface descriptor, and an accepted wait
@@ -6144,20 +6486,72 @@ def execute_semantic_act(
                     if len(legacy_matches) == 1:
                         legacy_receipt = legacy_matches[0]
                         legacy_frame = str(legacy_receipt.get("frame_id", ""))
+                        legacy_parts = legacy_frame.rsplit(":", 2)
+                        # The legacy event proves that native code accepted
+                        # this duration, but its internal turn-frame is not
+                        # the public menu authority that issued the request.
+                        # Retain both coordinates: project the receipt onto
+                        # the exact request identity for cockpit validation,
+                        # and preserve the native coordinate as provenance.
+                        # The following wait_activity frame is deliberately
+                        # actionless, so it is the native successor rather
+                        # than a second executable surface.
+                        # ``consume_transaction_trace`` has already advanced
+                        # its cursor past this dispatch's raw activity frame.
+                        # Asking ``read_frame`` to rediscover it therefore
+                        # sees an empty delta and (correctly) raises.  The
+                        # receipt's native turn identity lets us select that
+                        # exact actionless successor from this transaction
+                        # instead of falling back to the stale menu owner.
+                        wait_activity_event = next((event for event in reversed(events)
+                                                    if event.get("event") == "frame" and
+                                                    event.get("run_id") == run_id and
+                                                    event.get("state") == "wait_activity" and
+                                                    str(event.get("observed_turn")) == legacy_parts[1]), None)
+                        if wait_activity_event is None:
+                            # A legacy receipt alone proves input acceptance,
+                            # not the activity successor.  Keep polling for
+                            # that native state rather than fabricating a
+                            # completion or reusing the duration menu.
+                            continue
+                        wait_activity = {
+                            "run_id": run_id,
+                            "frame_id": str(wait_activity_event.get("frame_id", "")),
+                            "state": "wait_activity", "valid_actions": [],
+                            "action_inputs": {},
+                            "provenance": "native_wait_duration_receipt",
+                            "resolved_action": action_id,
+                            "game_minutes": wait_activity_event.get("game_minutes"),
+                            "_event_offset": wait_activity_event.get("_event_offset", -1),
+                            "_kind": "wait_activity",
+                        }
                         durable_receipt = {
                             "schema": "caol-semantic-step-receipt-v1", "run_id": run_id,
                             "session_id": session_id, "frame_id": str(before.get("frame_id", "")),
                             "action_id": action_id, "accepted": True,
                             "reason": "native_wait_duration_legacy_receipt_accepted",
                             "next_frame": None,
-                            "native_receipt": {"frame_id": legacy_frame, "action_id": action_id,
-                                               "accepted": True, "descriptor_game_turn": descriptor_turn},
+                            "native_receipt": {
+                                "run_id": run_id,
+                                "requested_run_id": run_id,
+                                "requested_surface_id": request["surface_id"],
+                                "requested_frame_id": request["frame_id"],
+                                "consuming_surface_id": request["surface_id"],
+                                "consuming_frame_id": request["frame_id"],
+                                "frame_id": request["frame_id"],
+                                "action_id": action_id,
+                                "accepted": True,
+                                "descriptor_game_turn": descriptor_turn,
+                                "legacy_native_frame_id": legacy_frame,
+                                "provenance": "native_wait_duration_legacy_receipt",
+                            },
                         }
                         SemanticStepChannel(run_id=run_id, session_id=session_id,
                             receipt_path=run_dir / "semantic.steps.jsonl", read_frame=read_frame)._persist(
                                 durable_receipt)
                         return {"accepted": True, "surface_request": request,
-                                "native_receipt": durable_receipt["native_receipt"], "next_frame": None}
+                                "native_receipt": durable_receipt["native_receipt"],
+                                "next_frame": wait_activity}
                 # A native activity-distraction prompt can return directly to
                 # its interrupted activity without publishing a second
                 # surface receipt.  Its run-bound query-return trace is the
@@ -6230,12 +6624,19 @@ def execute_semantic_act(
                     # surface, frame, and action the client submitted.  This
                     # keeps a malformed or stale post-launch receipt from
                     # being promoted into the adaptive-session transcript.
+                    # The request identity is immutable authority.  A native
+                    # wait/activity owner may publish an unsolicited surface
+                    # between dispatch and receipt; in that case the receipt
+                    # still names the submitted request while its consuming
+                    # surface/frame has advanced.  Correlate on the requested
+                    # identity and retain the later consumer as chronology,
+                    # rather than treating that legitimate handoff as a
+                    # mismatched action.  Wrong actions and stale requested
+                    # identities remain hard failures.
                     receipt_binding = {
                         "requested_run_id": run_id,
                         "requested_surface_id": request["surface_id"],
                         "requested_frame_id": request["frame_id"],
-                        "consuming_surface_id": request["surface_id"],
-                        "consuming_frame_id": request["frame_id"],
                         "action_id": action_id,
                     }
                     mismatched = {
@@ -6243,6 +6644,33 @@ def execute_semantic_act(
                         for key, expected in receipt_binding.items()
                         if native_receipt.get(key) != expected
                     }
+                    consuming_surface = str(native_receipt.get("consuming_surface_id", ""))
+                    consuming_frame = str(native_receipt.get("consuming_frame_id", ""))
+                    consuming_mismatch = consuming_surface != str(request["surface_id"]) or \
+                        consuming_frame != str(request["frame_id"])
+                    async_allowed = native_receipt.get("accepted") is True and \
+                        (action_id.startswith("activity.") or
+                         bool(native_receipt.get("resulting_frame_id")))
+                    if not mismatched and consuming_mismatch and async_allowed:
+                        # Preserve the fact that the visible owner advanced;
+                        # do not rewrite the submitted authority to the later
+                        # surface.  The native receipt's exact request_id,
+                        # requested_* fields and action_id above remain the
+                        # acceptance key.
+                        native_receipt = dict(native_receipt)
+                        native_receipt["async_consuming_surface"] = True
+                    elif not mismatched and consuming_mismatch and \
+                            native_receipt.get("accepted") is not False:
+                        mismatched.update({
+                            "consuming_surface_id": {
+                                "expected": request["surface_id"],
+                                "actual": native_receipt.get("consuming_surface_id"),
+                            },
+                            "consuming_frame_id": {
+                                "expected": request["frame_id"],
+                                "actual": native_receipt.get("consuming_frame_id"),
+                            },
+                        })
                     if mismatched:
                         return {
                             "accepted": False,
@@ -6285,7 +6713,7 @@ def execute_semantic_act(
                         # cannot authorize the following recipe action.
                         if next_frame is not None and str(next_frame.get(
                                 "surface_id", "")) == str(before.get("surface_id", "")):
-                            receipt_index = events.index(native_receipt)
+                            receipt_index = events.index(native_receipt_event)
                             has_fresh_owner = any(
                                 event.get("event") == "surface_descriptor" and
                                 str(event.get("surface_id", "")) != str(before.get("surface_id", ""))
@@ -6301,15 +6729,68 @@ def execute_semantic_act(
                             # frame identity.  Retain the first descriptor
                             # after the accepted receipt instead of treating
                             # this known owner handoff as a missing successor.
-                            receipt_index = events.index(native_receipt)
+                            receipt_index = events.index(native_receipt_event)
                             next_frame = next((dict(event) for event in events[receipt_index + 1:]
                                                if event.get("event") == "surface_descriptor" and
                                                str(event.get("surface_id", "")) != str(before.get("surface_id", ""))), None)
                     else:
-                        receipt_index = events.index(native_receipt)
+                        receipt_index = events.index(native_receipt_event)
                         next_frame = next((dict(event) for event in events[receipt_index + 1:]
                                            if event.get("event") == "surface_descriptor" and
                                            str(event.get("frame_id", "")) != str(before.get("frame_id", ""))), None)
+                    # Choosing an overmap destination can start travel while
+                    # retaining the current overmap owner.  The immediate
+                    # native receipt authenticates that exact owner, and an
+                    # unchanged owner need not emit another descriptor.
+                    # Reuse the observed descriptor only for this named,
+                    # empty-successor contract; other actions still require
+                    # a newly published native continuation.
+                    same_owner_overmap_continuation = action_id == "overmap.choose_destination" and \
+                        not resulting_frame_id
+                    prompt_payload = before.get("payload", {})
+                    chosen_label = next((str(action.get("label", "")) for action in
+                                         before.get("valid_actions", [])
+                                         if isinstance(action, Mapping) and
+                                         str(action.get("stable_id", "")) == str(stable_id or "")), "")
+                    auto_move_resume_event = None
+                    # NO reinstates native travel rather than returning a World
+                    # owner.  Its accepted selection receipt alone is not
+                    # enough: the original prompt may still be cached, or the
+                    # native route may have stopped.  Require a fresh resumed
+                    # travel fact after the receipt, paired to the hostile
+                    # boundary that opened this exact prompt.
+                    if action_id == "prompt.choose" and chosen_label == "NO" and \
+                            isinstance(prompt_payload, Mapping) and \
+                            "spotted! Cancel auto move?" in str(prompt_payload.get("text", "")) and \
+                            not resulting_frame_id:
+                        resumed = next((dict(event) for event in events[receipt_index + 1:]
+                                        if event.get("event") == "travel" and
+                                        str(event.get("run_id", "")) == run_id and
+                                        str(event.get("state", "")) == "resumed" and
+                                        event.get("destination_present") is True and
+                                        event.get("destination_cleared") is False), None)
+                        travel_id = str(resumed.get("travel_id", "")) if resumed else ""
+                        had_matching_boundary = bool(travel_id) and any(
+                            event.get("event") == "travel" and
+                            str(event.get("run_id", "")) == run_id and
+                            str(event.get("state", "")) == "hostile_boundary" and
+                            str(event.get("travel_id", "")) == travel_id
+                            for event in events[:receipt_index]
+                        )
+                        if resumed is not None and had_matching_boundary:
+                            auto_move_resume_event = resumed
+                            next_frame = {
+                                "event": "native_travel_resume",
+                                "run_id": run_id,
+                                "frame_id": str(before.get("frame_id", "")) +
+                                ":travel-resumed:" + travel_id,
+                                "state": "native_auto_move_resumed",
+                                "provenance": "native_auto_move_resume",
+                                "native_travel_receipt": resumed,
+                                "valid_actions": [],
+                            }
+                    if next_frame is None and same_owner_overmap_continuation:
+                        next_frame = dict(before)
                     if next_frame is None and not (
                             resulting_frame_id and action_id == "menu.choose" and
                             str(stable_id or "").startswith("wait-mode:")) and not (
@@ -6356,7 +6837,8 @@ def execute_semantic_act(
                                 "transition_event": transition_event, "next_frame": None}
                     if isinstance(next_frame, Mapping) and (
                             str(next_frame.get("frame_id", "")) == resulting_frame_id or
-                            str(next_frame.get("frame_id", "")) != str(before.get("frame_id", ""))):
+                            str(next_frame.get("frame_id", "")) != str(before.get("frame_id", "")) or
+                            (same_owner_overmap_continuation or same_owner_auto_move_cancel)):
                         bound_surface_receipt = {
                             **native_receipt,
                             "frame_id": str(before.get("frame_id", "")),
@@ -6949,6 +7431,16 @@ def advance_turns(
     if count <= 0:
         return timing
 
+    semantic_session_id = ""
+    semantic_session_source = ""
+    if expected_native_semantic_action and semantic_profile and semantic_run_id:
+        semantic_session_id, semantic_session_source = adaptive_semantic_session_identity()
+        timing["native_semantic_action"] = expected_native_semantic_action
+        timing["native_semantic_session"] = {
+            "session_id": semantic_session_id,
+            "identity_source": semantic_session_source,
+        }
+
     batch_size = timing["batch_size"]
     for start in range(0, count, batch_size):
         batch_count = min(batch_size, count - start)
@@ -6962,6 +7454,81 @@ def advance_turns(
         attempts: List[Dict[str, Any]] = []
         interruption_reports: List[Dict[str, Any]] = []
         while accepted_count < batch_count:
+            # A current surface descriptor is the native authority for an
+            # explicitly declared scenario action.  GUI key injection is not
+            # a fallback here: it can be reported as delivered without the
+            # game consuming it, while this route persists the request, wakes
+            # the run-bound FIFO, and requires the matching native receipt.
+            # Keep terminal and legacy inputs below for routes that have not
+            # published a surface descriptor.
+            semantic_frame: Dict[str, Any] = {}
+            semantic_dispatch: tuple[str, str] | None = None
+            if expected_native_semantic_action and semantic_profile and semantic_run_id:
+                try:
+                    candidate = current_semantic_step_frame(
+                        profile=semantic_profile, run_dir=run_dir or Path("."),
+                        run_id=semantic_run_id,
+                        start_offset=semantic_trace_start_offset,
+                    )
+                except (OSError, ValueError):
+                    candidate = {}
+                if isinstance(candidate, Mapping) and candidate.get("surface_id") and \
+                        any(isinstance(action, Mapping) for action in candidate.get("valid_actions", [])):
+                    semantic_frame = dict(candidate)
+                    semantic_dispatch = semantic_frame_dispatch(
+                        semantic_frame, expected_native_semantic_action,
+                    )
+            if semantic_dispatch is not None:
+                before_turn = semantic_frame.get("game_turn", semantic_frame.get("observed_turn"))
+                semantic_result = execute_semantic_act(
+                    run_dir=run_dir or Path("."), profile=semantic_profile, run_id=semantic_run_id,
+                    trace_start_offset=semantic_trace_start_offset, pid=pid,
+                    session_id=semantic_session_id, frame_id=str(semantic_frame.get("frame_id", "")),
+                    action_id=semantic_dispatch[0], stable_id=semantic_dispatch[1] or None,
+                    declared_action_id=expected_native_semantic_action,
+                    # A loaded native turn may not publish its surface receipt
+                    # until simulation work completes.  The action remains
+                    # bounded, but a short UI-style timeout would discard an
+                    # already submitted run-bound request before its durable
+                    # successor can arrive.
+                    transition_timeout_seconds=ADVANCE_TURNS_SEMANTIC_TRANSITION_TIMEOUT_SECONDS,
+                    observe_interval_seconds=0.05,
+                    observed_frame=semantic_frame, proof_step_label=label,
+                )
+                next_frame = semantic_result.get("next_frame", {})
+                after_turn = next_frame.get("game_turn", next_frame.get("observed_turn")) \
+                    if isinstance(next_frame, Mapping) else None
+                turn_advanced = isinstance(before_turn, int) and isinstance(after_turn, int) and \
+                    after_turn > before_turn
+                attempts.append({
+                    "declared_action": expected_native_semantic_action,
+                    "action_id": semantic_dispatch[0],
+                    "stable_id": semantic_dispatch[1],
+                    "surface_id": str(semantic_frame.get("surface_id", "")),
+                    "frame_id": str(semantic_frame.get("frame_id", "")),
+                    "before_turn": before_turn,
+                    "after_turn": after_turn,
+                    "turn_advanced": turn_advanced,
+                    "semantic_result": semantic_result,
+                    "input_observation": "native_surface_receipt",
+                })
+                if semantic_result.get("accepted") is not True:
+                    timing["status"] = "blocked_native_semantic_action_rejected"
+                    break
+                if not turn_advanced:
+                    timing["status"] = "blocked_native_semantic_turn_delta_missing"
+                    break
+                accepted_count += 1
+                timing["expected_native_semantic_owner"] = {
+                    "action": expected_native_semantic_action,
+                    "frame_id": str(semantic_frame.get("frame_id", "")),
+                    "surface_id": str(semantic_frame.get("surface_id", "")),
+                    "before_turn": before_turn,
+                    "after_turn": after_turn,
+                    "receipt": semantic_result.get("native_receipt"),
+                    "transition_event": semantic_result.get("transition_event"),
+                }
+                continue
             missing_count = batch_count - accepted_count
             # A curses child can consume all remaining bytes in a PTY write
             # after a newly opened modal.  Deliver one native pause at a time
@@ -9758,14 +10325,18 @@ def audit_log_contains(
     patterns: List[str],
     required_line_patterns: Optional[List[List[str]]] = None,
     required_any_line_patterns: Optional[List[List[str]]] = None,
+    required_numeric_line_patterns: Optional[List[Dict[str, Any]]] = None,
     filter_debug_noise: bool = False,
 ) -> Dict[str, Any]:
     line_pattern_groups = required_line_patterns or []
     any_line_pattern_groups = required_any_line_patterns or []
+    numeric_line_patterns = required_numeric_line_patterns or []
     any_group_label = " OR ".join(" && ".join(group) for group in any_line_pattern_groups)
     required_items = patterns + [" && ".join(group) for group in line_pattern_groups]
     if any_line_pattern_groups:
         required_items.append(any_group_label)
+    if numeric_line_patterns:
+        required_items.append("numeric line constraints")
     if artifact_log is None:
         return {
             "status": "failed",
@@ -9807,6 +10378,30 @@ def audit_log_contains(
         })
         if not any_lines:
             missing.append(any_group_label)
+    numeric_matches: List[Dict[str, Any]] = []
+    for constraint in numeric_line_patterns:
+        line_patterns = [str(value) for value in constraint.get("line_patterns", [])]
+        fields = constraint.get("fields", {})
+        matches = []
+        for line in log_lines:
+            if not all(pattern in line for pattern in line_patterns):
+                continue
+            values: Dict[str, int] = {}
+            okay = True
+            for field, bounds in fields.items():
+                match = re.search(rf"\b{re.escape(str(field))}=(\d+)", line)
+                if match is None:
+                    okay = False
+                    break
+                value = int(match.group(1))
+                values[str(field)] = value
+                if isinstance(bounds, Mapping) and "min" in bounds and value < int(bounds["min"]):
+                    okay = False
+            if okay:
+                matches.append({"line": line, "values": values})
+        numeric_matches.append({"line_patterns": line_patterns, "fields": fields, "matches": matches})
+        if not matches:
+            missing.append("numeric: " + " && ".join(line_patterns))
     return {
         "status": "required_state_present" if required_items and not missing else ("required_state_missing" if required_items else "scanned"),
         "source_log": str(artifact_log),
@@ -9817,6 +10412,7 @@ def audit_log_contains(
         "observed_items": [entry["pattern"] for entry in matches_by_pattern if entry.get("lines")],
         "missing_required_items": missing,
         "matches_by_pattern": matches_by_pattern,
+        "numeric_line_matches": numeric_matches,
         "matched_lines": [line for entry in matches_by_pattern for line in entry.get("lines", [])],
         "line_count": len(log_lines) if text else 0,
     }
@@ -12764,6 +13360,23 @@ def audit_saved_phase4_shadow_warning_wait_footings(
     }
 
 
+def normalize_saved_writhing_stalker_state(typeid: str, raw_state: Any) -> Dict[str, Any]:
+    """Return a read-only state view with native default fields materialized."""
+    if not isinstance(raw_state, dict):
+        return {}
+    state = dict(raw_state)
+    if typeid == "mon_writhing_stalker":
+        state.setdefault("evidence_target", 0)
+        state.setdefault("evidence_turn", -1)
+        state.setdefault("has_last_observed_position", False)
+        state.setdefault("has_light_observed_position", False)
+        state.setdefault("light_observed_turn", -1)
+        state.setdefault("light_expires_turn", -1)
+        state.setdefault("light_sample_id", "")
+        state.setdefault("has_committed_waypoint", False)
+    return state
+
+
 def audit_saved_active_monsters(
     world_dir: Path,
     *,
@@ -12837,6 +13450,9 @@ def audit_saved_active_monsters(
             ]
         if typeid:
             counts[typeid] = counts.get(typeid, 0) + 1
+        stalker_state = normalize_saved_writhing_stalker_state(
+            typeid, monster.get("writhing_stalker_state", {})
+        )
         monsters.append({
             "index": index,
             "typeid": typeid,
@@ -12845,12 +13461,26 @@ def audit_saved_active_monsters(
             "friendly": monster.get("friendly"),
             "hallucination": monster.get("hallucination"),
             "dead": monster.get("dead"),
+            "aggro_character": monster.get("aggro_character"),
             "hp": monster.get("hp"),
             "last_updated": monster.get("last_updated"),
             "last_updated_at_save_turn": monster.get("last_updated") == save_turn,
+            "upgrades": monster.get("upgrades"),
+            "upgrade_time": monster.get("upgrade_time"),
             "faction": monster.get("faction"),
             "ammo": monster.get("ammo", {}),
             "values": monster.get("values", {}),
+            "caol_predator": monster.get("caol_predator", {}),
+            # The native stalker lifecycle is serialized as a nested object on
+            # monster::store. Preserve it in this read-only audit so a native
+            # run can distinguish an actual attack seam/retreat transition
+            # from planner log text alone.
+            "writhing_stalker_state": stalker_state,
+            # The native rider pursuit lifecycle is serialized as a nested
+            # object on monster::store. Preserve it in the same read-only
+            # audit so save/reload evidence can bind to remembered pursuit
+            # state rather than planner text alone.
+            "zombie_rider_pursuit_state": monster.get("zombie_rider_pursuit_state", {}),
             "unique_name": monster.get("unique_name", ""),
             "nickname": monster.get("nickname", ""),
         })
@@ -12879,12 +13509,33 @@ def audit_saved_active_monsters(
                 for ammo_type, amount in raw.get("ammo", {}).items()
                 if str(ammo_type).strip()
             }
+        # ``ammo`` is deliberately a lower bound so ordinary scenarios can
+        # request a stocked weapon.  This separate predicate makes the
+        # materially different empty-bow control auditable rather than
+        # treating an omitted ammo entry as proof of zero.
+        if isinstance(raw.get("ammo_exact"), dict):
+            requirement["ammo_exact"] = {
+                str(ammo_type).strip(): int(amount)
+                for ammo_type, amount in raw.get("ammo_exact", {}).items()
+                if str(ammo_type).strip()
+            }
         if isinstance(raw.get("values"), dict):
             requirement["values"] = {
                 str(value_key).strip(): value
                 for value_key, value in raw.get("values", {}).items()
                 if str(value_key).strip()
             }
+        # Preserve the fixture's native hostile-actor footing as an explicit
+        # metadata predicate.  Type/location alone cannot distinguish an
+        # actual same-target zombie contributor from a friendly or
+        # hallucinatory decoy.
+        for key in ("friendly", "hallucination", "dead", "faction", "aggro_character"):
+            if key in raw:
+                requirement[key] = raw[key]
+        if isinstance(raw.get("writhing_stalker_state"), dict):
+            requirement["writhing_stalker_state"] = dict(raw["writhing_stalker_state"])
+        if isinstance(raw.get("zombie_rider_pursuit_state"), dict):
+            requirement["zombie_rider_pursuit_state"] = dict(raw["zombie_rider_pursuit_state"])
         if raw.get("last_updated_at_save_turn") is True:
             requirement["last_updated_at_save_turn"] = True
         required.append(requirement)
@@ -12924,6 +13575,17 @@ def audit_saved_active_monsters(
                         return False
                 except (TypeError, ValueError):
                     return False
+        required_exact_ammo = requirement.get("ammo_exact")
+        if isinstance(required_exact_ammo, dict):
+            observed_ammo = monster.get("ammo", {})
+            if not isinstance(observed_ammo, dict):
+                return False
+            for ammo_type, amount in required_exact_ammo.items():
+                try:
+                    if int(observed_ammo.get(ammo_type, 0) or 0) != int(amount):
+                        return False
+                except (TypeError, ValueError):
+                    return False
         required_values = requirement.get("values")
         if isinstance(required_values, dict):
             observed_values = monster.get("values", {})
@@ -12936,6 +13598,27 @@ def audit_saved_active_monsters(
                 if isinstance(required_value, dict) and "str" in required_value:
                     required_value = required_value.get("str")
                 if observed_value != required_value:
+                    return False
+        for key in ("friendly", "hallucination", "dead", "faction", "aggro_character"):
+            if key in requirement and monster.get(key) != requirement[key]:
+                return False
+        required_stalker_state = requirement.get("writhing_stalker_state")
+        if isinstance(required_stalker_state, dict):
+            observed_stalker_state = monster.get("writhing_stalker_state", {})
+            if not isinstance(observed_stalker_state, dict):
+                return False
+            for state_key, required_state_value in required_stalker_state.items():
+                observed_state_value = observed_stalker_state.get(state_key)
+                if observed_state_value != required_state_value:
+                    return False
+        required_rider_state = requirement.get("zombie_rider_pursuit_state")
+        if isinstance(required_rider_state, dict):
+            observed_rider_state = monster.get("zombie_rider_pursuit_state", {})
+            if not isinstance(observed_rider_state, dict):
+                return False
+            for state_key, required_state_value in required_rider_state.items():
+                observed_state_value = observed_rider_state.get(state_key)
+                if observed_state_value != required_state_value:
                     return False
         if requirement.get("last_updated_at_save_turn") is True and \
                 monster.get("last_updated_at_save_turn") is not True:
@@ -16912,6 +17595,32 @@ def screen_capture_succeeded(screen_summary: Dict[str, Any]) -> bool:
     return bool(screen_summary.get("capture_success") or screen_summary.get("peekaboo_success"))
 
 
+def screen_capture_has_bound_native_hud_fallback(screen_summary: Mapping[str, Any]) -> bool:
+    """Allow a bound native render trace when this process has no capturable window.
+
+    A tiles process launched through the cockpit can render on the native game
+    surface without being enumerable by the macOS window bridge.  This is not
+    a general OCR bypass: the fallback requires the same-run HUD trace that
+    the startup probe has already validated, plus the specific PID-bound
+    no-window result.  Visible errors and overlays remain checked by the
+    normal classifier.
+    """
+    probe = screen_summary.get("startup_screen_probe", {})
+    if not isinstance(probe, Mapping):
+        return False
+    body_types = probe.get("hud_body_marker_types", [])
+    status_types = probe.get("hud_status_marker_types", [])
+    return (
+        screen_summary.get("surface_identity_status") == "no_renderable_window_for_bound_pid"
+        and probe.get("classification") == "green_gameplay_hud_present"
+        and bool(str(probe.get("native_run_id", "")).strip())
+        and isinstance(body_types, list)
+        and isinstance(status_types, list)
+        and "native_rendered_hud_fallback" in body_types
+        and "native_rendered_hud_fallback" in status_types
+    )
+
+
 def fallback_screencapture(
     png_path: Path,
     capture_target: Optional[Dict[str, Any]] = None,
@@ -18582,7 +19291,11 @@ def metadata_checkpoint_verdict(metadata: Dict[str, Any]) -> Tuple[str, List[str
     if not metadata:
         return "yellow_step_no_immediate_screen_or_metadata", ["no_screen_or_metadata_artifact"]
     status = str(metadata.get("status", "")).strip()
-    if status in {"required_state_present", "required_fields_present"}:
+    if status in {
+        "required_state_present",
+        "required_fields_present",
+        "green_native_natural_evolution_persisted",
+    }:
         return "green_step_metadata_required_state_present", []
     if status in {
         "required_state_missing",
@@ -18660,6 +19373,7 @@ def r014_native_semantic_bootstrap_metadata(
     *, profile: str, run_dir: Path, run_id: str, start_offset: int,
     press_trace_offset: int, required_state: str, required_actions: Sequence[str],
     frame: Optional[Mapping[str, Any]] = None,
+    allow_any_native_input_owner: bool = False,
 ) -> Dict[str, Any]:
     """Bind startup to the one native HUD/world-ready semantic frame."""
     artifact_path = Path(run_dir) / "semantic.native.log"
@@ -18709,6 +19423,11 @@ def r014_native_semantic_bootstrap_metadata(
         return {**metadata, "status": "scanned", "reason": "wrong_run_or_missing_frame"}
     if frame_offset < int(press_trace_offset):
         return {**metadata, "status": "scanned", "reason": "stale_frame"}
+    if allow_any_native_input_owner:
+        if not is_surface_descriptor or not actions:
+            return {**metadata, "status": "scanned", "reason": "not_actionable_surface_descriptor"}
+        return {**metadata, "status": "required_state_present",
+                "startup_owner": "nonworld_native_input_owner"}
     if metadata["frame_state"] != str(required_state):
         return {**metadata, "status": "scanned", "reason": "wrong_state"}
     if not is_surface_descriptor and (metadata["frame_producer"] != "hud_world_ready" or \
@@ -18815,10 +19534,41 @@ def first_initial_hud_world_frame_after_boundary(
     return candidate
 
 
+def initial_hud_world_ready_satisfies_profile_startup_input(
+    *, profile: str, trace_offset: int, run_id: str, run_dir: Path,
+) -> Dict[str, Any]:
+    """Report whether this launch already owns the ordinary world boundary.
+
+    A profile's post-lastworld key is a recovery input for a still-blocking
+    startup owner. Sending it after the native HUD producer has published the
+    current run's first world frame creates a second, invalid startup boundary.
+    A malformed, stale, or incomplete frame remains fail-closed: callers keep
+    the profile input in those cases.
+    """
+    try:
+        frame = first_initial_hud_world_frame_after_boundary(
+            profile=profile,
+            trace_offset=trace_offset,
+            run_id=run_id,
+            required_state="world",
+            required_actions=["world.wait"],
+            run_dir=run_dir,
+        )
+    except ValueError as exc:
+        return {"ready": False, "reason": str(exc)}
+    return {
+        "ready": True,
+        "reason": "current_run_initial_hud_world_ready",
+        "frame_id": frame.get("frame_id"),
+        "frame_trace_offset": frame.get("_event_offset"),
+    }
+
+
 def await_r014_native_semantic_bootstrap(
     *, profile: str, run_dir: Path, run_id: str, required_state: str,
     required_actions: Sequence[str], timeout_seconds: float, poll_seconds: float,
     trace_start_offset: int = 0, require_initial_hud_world_ready_frame: bool = False,
+    allow_any_native_input_owner: bool = False,
 ) -> Dict[str, Any]:
     """Await the launcher's first same-run semantic frame without sending input.
 
@@ -18847,6 +19597,7 @@ def await_r014_native_semantic_bootstrap(
                 profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
                 press_trace_offset=effective_trace_offset, required_state=required_state,
                 required_actions=required_actions, frame=frame,
+                allow_any_native_input_owner=allow_any_native_input_owner,
             )
         except (OSError, ValueError) as exc:
             last_metadata = {
@@ -18871,6 +19622,26 @@ def await_r014_native_semantic_bootstrap(
                 "reason": "first_same_run_semantic_frame_timeout",
             }
         time.sleep( min( max( poll_seconds, 0.05 ), remaining ) )
+
+
+def cockpit_native_input_owner_ready(
+    *, profile: str, run_dir: Path, run_id: str, trace_start_offset: int,
+) -> Dict[str, Any]:
+    """Recognize a bound prompt/activity owner before it can update a save marker."""
+    try:
+        frame = current_semantic_step_frame(
+            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
+        )
+        source = semantic_step_source_trace(profile, run_dir)
+        press_trace_offset = semantic_step_effective_source_offset(source, trace_start_offset)
+        return r014_native_semantic_bootstrap_metadata(
+            profile=profile, run_dir=run_dir, run_id=run_id, start_offset=0,
+            press_trace_offset=press_trace_offset, required_state="world",
+            required_actions=["world.wait"], frame=frame,
+            allow_any_native_input_owner=True,
+        )
+    except (OSError, ValueError) as exc:
+        return {"status": "scanned", "reason": "native_frame_unavailable", "error": str(exc)}
 
 
 def r014_cockpit_observation_metadata(
@@ -21776,6 +22547,7 @@ def launch_game(
     scenario: str = "",
     harness_new_world: str = "",
     harness_raw_seed: str = "",
+    harness_new_world_scenario: str = "",
     transition_event_run_id: str = "",
     transition_event_path: str = "",
     executable: str = "",
@@ -21788,6 +22560,7 @@ def launch_game(
         target_world,
         harness_new_world=harness_new_world,
         harness_raw_seed=harness_raw_seed,
+        harness_new_world_scenario=harness_new_world_scenario,
     )
     env = dict(child_environment or game_child_environment(profile))
     env["OPENCLAW_HARNESS_RUN_DIR"] = str((artifact_run_dir or run_dir).resolve())
@@ -21920,10 +22693,13 @@ def build_game_command(
     *,
     harness_new_world: str = "",
     harness_raw_seed: str = "",
+    harness_new_world_scenario: str = "",
 ) -> List[str]:
     cmd = [str(executable), "--userdir", f".userdata/{profile}/"]
     if harness_new_world:
         cmd.extend(["--harness-new-world", harness_new_world, "--harness-raw-seed", harness_raw_seed])
+        if harness_new_world_scenario:
+            cmd.extend(["--harness-new-world-scenario", harness_new_world_scenario])
     elif target_world:
         cmd.extend(["--world", target_world])
     return cmd
@@ -22858,6 +23634,14 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
 
         if not player_save:
             raise SystemExit(f"Fixture save_transforms[{index}] needs player_save in {manifest_path}")
+
+        if kind == "world_option_overrides":
+            overrides = raw.get("overrides")
+            if not isinstance(overrides, Mapping) or not overrides:
+                raise SystemExit(f"Fixture save_transforms[{index}] world_option_overrides needs overrides in {manifest_path}")
+            transforms.append({"kind": kind, "player_save": player_save,
+                               "overrides": {str(key): str(value) for key, value in overrides.items()}})
+            continue
 
         if kind == "remove_inherited_shadow_flavor_producer_global_eocs":
             unexpected_keys = sorted(set(raw) - {"kind", "player_save"})
@@ -23823,6 +24607,16 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                         raise SystemExit(
                             f"Fixture save_transforms[{index}].monsters[{monster_index}] values[{normalized_key}] must be string, number, bool, or object in {manifest_path}"
                         )
+                upgrades = monster_raw.get("upgrades", False)
+                if not isinstance(upgrades, bool):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].monsters[{monster_index}] upgrades must be boolean in {manifest_path}"
+                    )
+                upgrade_time = monster_raw.get("upgrade_time", -1)
+                if isinstance(upgrade_time, bool) or not isinstance(upgrade_time, int):
+                    raise SystemExit(
+                        f"Fixture save_transforms[{index}].monsters[{monster_index}] upgrade_time must be an integer day cursor in {manifest_path}"
+                    )
                 monsters.append({
                     "fixture_actor_id": str(monster_raw.get("fixture_actor_id", "") or "").strip(),
                     "typeid": typeid,
@@ -23839,6 +24633,8 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
                     "aggro_character": bool(monster_raw.get("aggro_character", False)),
                     "hallucination": bool(monster_raw.get("hallucination", False)),
                     "dead": bool(monster_raw.get("dead", False)),
+                    "upgrades": upgrades,
+                    "upgrade_time": upgrade_time,
                     "ammo": ammo,
                     "values": values,
                 })
@@ -24139,7 +24935,7 @@ def normalize_fixture_save_transforms(raw_value: Any, *, manifest_path: Path) ->
             "overmap_npcs_near_player, repair_basecamp_npc_assignments, basecamp_npc_patrol_priority, basecamp_assigned_npc_items, npc_llm_panic_state, "
             "active_monsters_near_player, horde_entity_near_player, game_turn, "
             "bandit_active_sortie_clock, bandit_camp_map_lead, bandit_camp_supply, bandit_clear_site_evidence, "
-                "bandit_clone_site, bandit_site_roster_shape, bandit_registered_staffed_observer_bootstrap, bandit_projection_leases, bandit_structural_homeward_reentry, bandit_post_handoff_abstract_bootstrap, bandit_scheduler_response_candidate, bandit_hostile_operation_bootstrap"
+                "bandit_clone_site, bandit_site_roster_shape, bandit_registered_staffed_observer_bootstrap, bandit_projection_leases, bandit_structural_homeward_reentry, bandit_post_handoff_abstract_bootstrap, bandit_scheduler_response_candidate, bandit_hostile_operation_bootstrap, world_option_overrides"
         )
     return transforms
 
@@ -26498,11 +27294,12 @@ def iter_horde_map_entries(raw_horde_map: Any) -> List[Dict[str, Any]]:
         return []
     if not isinstance(raw_horde_map, list):
         raise SystemExit("Overmap horde_map is not a list")
-    if len(raw_horde_map) % 6 != 0:
-        raise SystemExit(f"Overmap horde_map length {len(raw_horde_map)} is not divisible by 6")
-
     entries: List[Dict[str, Any]] = []
-    for base in range(0, len(raw_horde_map), 6):
+    base = 0
+    entry_index = 0
+    while base < len(raw_horde_map):
+        if base + 6 > len(raw_horde_map):
+            raise SystemExit(f"Overmap horde_map has truncated entry at index {base}")
         location_raw = raw_horde_map[base]
         monster_raw = raw_horde_map[base + 1]
         destination_raw = raw_horde_map[base + 2]
@@ -26524,8 +27321,8 @@ def iter_horde_map_entries(raw_horde_map: Any) -> List[Dict[str, Any]]:
         else:
             monster_id = ""
         location = [int(location_raw[0]), int(location_raw[1]), int(location_raw[2])]
-        entries.append({
-            "index": base // 6,
+        entry = {
+            "index": entry_index,
             "base_index": base,
             "location_ms": location,
             "monster_id": monster_id,
@@ -26534,7 +27331,19 @@ def iter_horde_map_entries(raw_horde_map: Any) -> List[Dict[str, Any]]:
             "tracking_intensity": int(raw_horde_map[base + 3] or 0),
             "last_processed": raw_horde_map[base + 4],
             "moves": int(raw_horde_map[base + 5] or 0),
-        })
+        }
+        next_base = base + 6
+        # Current saves append one object after the six legacy fields.  Keep
+        # this decision per entry: fixture transforms can legitimately append
+        # a current entry to an older six-field stream, and savegame.cpp reads
+        # that mixed stream the same way.
+        if next_base < len(raw_horde_map) and isinstance(raw_horde_map[next_base], dict):
+            light_memory = raw_horde_map[next_base]
+            if isinstance(light_memory, dict):
+                entry["light_memory"] = dict(light_memory)
+        entries.append(entry)
+        base = next_base + (1 if next_base < len(raw_horde_map) and isinstance(raw_horde_map[next_base], dict) else 0)
+        entry_index += 1
     return entries
 
 
@@ -27415,8 +28224,12 @@ def apply_active_monsters_near_player_transform(world_dir: Path, transform: Dict
             "aggro_character": bool(raw_monster.get("aggro_character", False)),
             "ammo": dict(raw_monster.get("ammo", {}) or {}),
             "underwater": False,
-            "upgrades": False,
-            "upgrade_time": -1,
+            # Most focused fixture actors remain evolution-frozen.  An opted-in
+            # actor may supply a day cursor when the scenario needs a native
+            # production roll after load instead of randomized historical
+            # catch-up during load.
+            "upgrades": bool(raw_monster.get("upgrades", False)),
+            "upgrade_time": int(raw_monster.get("upgrade_time", -1)),
             "reproduces": False,
             "baby_timer": None,
             "biosignatures": False,
@@ -27429,6 +28242,14 @@ def apply_active_monsters_near_player_transform(world_dir: Path, transform: Dict
             "mounted_player_id": -1,
             "grabbed_limbs": [],
         }
+        if typeid == "mon_zombie_rider":
+            # The fixture serializer must retain the rider's named native
+            # contact action.  Omitting it leaves only bite/scratch in the
+            # saved monster and makes scheduler diagnosis impossible.
+            monster_payload["special_attacks"]["zombie_rider_impact"] = {
+                "cooldown": int(raw_monster.get("impact_cooldown", 0) or 0),
+                "enabled": True,
+            }
         if fixture_actor_id:
             monster_payload["values"]["caol_fixture_actor_id"] = fixture_actor_id
         active.append(monster_payload)
@@ -27451,6 +28272,8 @@ def apply_active_monsters_near_player_transform(world_dir: Path, transform: Dict
             "anger": monster_payload["anger"],
             "morale": monster_payload["morale"],
             "aggro_character": monster_payload["aggro_character"],
+            "upgrades": monster_payload["upgrades"],
+            "upgrade_time": monster_payload["upgrade_time"],
         })
     payload["active_monsters"] = active
     extracted_save.write_text(json.dumps(payload, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
@@ -27511,11 +28334,16 @@ def apply_horde_entity_near_player_transform(world_dir: Path, transform: Dict[st
         removed_entries = [entry for entry in existing_entries if entry.get("location_ms") == location_ms]
         if removed_entries:
             kept: List[Any] = []
-            for base in range(0, len(raw_horde_map), 6):
+            base = 0
+            while base < len(raw_horde_map):
+                if base + 6 > len(raw_horde_map):
+                    raise SystemExit(f"Overmap horde_map has truncated entry at index {base}")
                 loc = raw_horde_map[base]
-                if isinstance(loc, list) and len(loc) >= 3 and [int(loc[0]), int(loc[1]), int(loc[2])] == location_ms:
-                    continue
-                kept.extend(raw_horde_map[base:base + 6])
+                width = 7 if base + 6 < len(raw_horde_map) and isinstance(raw_horde_map[base + 6], dict) else 6
+                if not (isinstance(loc, list) and len(loc) >= 3 and
+                        [int(loc[0]), int(loc[1]), int(loc[2])] == location_ms):
+                    kept.extend(raw_horde_map[base:base + width])
+                base += width
             raw_horde_map[:] = kept
         raw_horde_map.extend([
             location_ms,
@@ -27524,6 +28352,13 @@ def apply_horde_entity_near_player_transform(world_dir: Path, transform: Dict[st
             int(transform.get("tracking_intensity", 0) or 0),
             int(transform.get("last_processed", 0) or 0),
             int(transform.get("moves", 0) or 0),
+            {
+                "source": [0, 0, 0],
+                "sample_id": "",
+                "observed": 0,
+                "expires": 0,
+                "strength": 0,
+            },
         ])
         write_overmap_payload(plain_path, version_line, payload)
     except Exception:
@@ -27607,6 +28442,13 @@ def audit_saved_hordes_near_player(
             requirement["min_moves"] = int(raw.get("min_moves") or 0)
         if "min_last_processed" in raw:
             requirement["min_last_processed"] = int(raw.get("min_last_processed") or 0)
+        if "required_light_memory_fields" in raw:
+            fields = raw.get("required_light_memory_fields")
+            if not isinstance(fields, list) or any(not str(field).strip() for field in fields):
+                raise SystemExit("required_light_memory_fields must be a non-empty list of names")
+            requirement["required_light_memory_fields"] = [str(field).strip() for field in fields]
+        if "min_light_memory_strength" in raw:
+            requirement["min_light_memory_strength"] = int(raw.get("min_light_memory_strength") or 0)
         for raw_key, normalized_key in (
             ("min_count", "min_count"),
             ("min_distance_chebyshev_ms", "min_distance_chebyshev_ms"),
@@ -27665,6 +28507,14 @@ def audit_saved_hordes_near_player(
             return False
         if "min_last_processed" in requirement and int(entry.get("last_processed") or 0) < int(requirement.get("min_last_processed") or 0):
             return False
+        if "required_light_memory_fields" in requirement:
+            memory = entry.get("light_memory")
+            if not isinstance(memory, dict) or any(field not in memory for field in requirement["required_light_memory_fields"]):
+                return False
+        if "min_light_memory_strength" in requirement:
+            memory = entry.get("light_memory")
+            if not isinstance(memory, dict) or int(memory.get("strength") or 0) < int(requirement["min_light_memory_strength"] or 0):
+                return False
         if "min_distance_chebyshev_ms" in requirement and int(entry.get("distance_chebyshev_ms") or 0) < int(requirement.get("min_distance_chebyshev_ms") or 0):
             return False
         if "max_distance_chebyshev_ms" in requirement and int(entry.get("distance_chebyshev_ms") or 0) > int(requirement.get("max_distance_chebyshev_ms") or 0):
@@ -29597,6 +30447,37 @@ def apply_bandit_hostile_operation_bootstrap_transform(world_dir: Path, transfor
             "touched_overmaps": touched_overmaps, "gameplay_credit": False}
 
 
+def apply_world_option_overrides_transform(
+    world_dir: Path, transform: Mapping[str, Any],
+) -> Dict[str, Any]:
+    """Apply deterministic world options to the fixture's saved world."""
+    path = world_dir / "worldoptions.json"
+    raw = json.loads(path.read_text(encoding="utf-8"))
+    if not isinstance(raw, list):
+        raise RuntimeError(f"World options are not a list: {path}")
+    overrides = transform.get("overrides", {})
+    if not isinstance(overrides, Mapping) or not overrides:
+        raise RuntimeError("world_option_overrides requires a non-empty overrides object")
+    by_name = {str(item.get("name", "")): item for item in raw if isinstance(item, Mapping)}
+    updated: List[str] = []
+    for name, value in overrides.items():
+        key = str(name).strip()
+        if not key:
+            raise RuntimeError("world_option_overrides contains an empty option name")
+        item = by_name.get(key)
+        if item is None:
+            item = {"info": "", "default": str(value), "name": key, "value": str(value)}
+            raw.append(item)
+            by_name[key] = item
+        else:
+            item["value"] = str(value)
+        updated.append(key)
+    path.write_text(json.dumps(raw, ensure_ascii=False, separators=(",", ":")), encoding="utf-8")
+    return {"kind": "world_option_overrides", "world": world_dir.name,
+            "overrides": {key: str(overrides[key]) for key in updated},
+            "gameplay_credit": False}
+
+
 def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, Any]]) -> List[Dict[str, Any]]:
     reports: List[Dict[str, Any]] = []
     for transform in transforms:
@@ -29702,6 +30583,9 @@ def apply_fixture_save_transforms(world_dir: Path, transforms: List[Dict[str, An
             continue
         if kind == "game_turn":
             reports.append(apply_game_turn_transform(world_dir, transform))
+            continue
+        if kind == "world_option_overrides":
+            reports.append(apply_world_option_overrides_transform(world_dir, transform))
             continue
         if kind == "bandit_camp_map_lead":
             reports.append(apply_bandit_camp_map_lead_transform(world_dir, transform))
@@ -29997,6 +30881,42 @@ def normalize_post_relaunch_contract(
     }
 
 
+def continuation_saved_world_snapshot(
+    args: argparse.Namespace, *, post_relaunch_continuation: bool,
+) -> Optional[Path]:
+    """Resolve the immutable saved-world handoff for a replacement probe.
+
+    The replacement registry child runs with ``--post-relaunch-continuation``
+    and therefore never executes ``run_probe_post_relaunch`` itself.  Its
+    ``--saved-world-snapshot`` argument is the only durable link to the
+    pre-launch handoff copy; without forwarding it, saved-world audits fall
+    back to the mutable profile world.
+    """
+    if not post_relaunch_continuation:
+        return None
+    raw = str(getattr(args, "saved_world_snapshot", "") or "").strip()
+    if not raw:
+        session_dir = str(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "") or "").strip()
+        if session_dir:
+            pointer = Path(session_dir) / "replacement_saved_world.snapshot.json"
+            try:
+                pointer_payload = json.loads(pointer.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                pointer_payload = {}
+            if isinstance(pointer_payload, Mapping):
+                raw = str(pointer_payload.get("snapshot", "") or "").strip()
+    if not raw:
+        raise SystemExit(
+            "post-relaunch continuation requires an immutable saved-world handoff"
+        )
+    snapshot = Path(raw).expanduser().resolve()
+    if not snapshot.is_dir():
+        raise SystemExit(
+            f"post-relaunch saved-world handoff is unavailable: {snapshot}"
+        )
+    return snapshot
+
+
 def run_probe_post_relaunch(
     *,
     initial_pid: int,
@@ -30084,6 +31004,50 @@ def run_probe_post_relaunch(
         })
         return result
 
+    # Freeze the exact post-save world before launching the replacement.  The
+    # replacement must consume this copy, never re-run fixture/bootstrap
+    # installation against the profile save that just proved persistence.
+    replacement_snapshot: Optional[Path] = None
+    replacement_snapshot_hash = ""
+    if artifact_run_dir is not None:
+        live_world = save_dir_for_profile(profile) / world
+        replacement_snapshot = artifact_run_dir / "replacement_saved_world" / world
+        if replacement_snapshot.exists():
+            shutil.rmtree(replacement_snapshot)
+        ensure_dir(replacement_snapshot.parent)
+        replacement_snapshot_hash, snapshot_error = sha256_tree(live_world)
+        if snapshot_error:
+            result.update({"status": "saved_world_snapshot_missing", "pid": initial_pid,
+                           "snapshot_error": snapshot_error})
+            return result
+        shutil.copytree(live_world, replacement_snapshot)
+        copied_hash, copied_error = sha256_tree(replacement_snapshot)
+        if snapshot_error or copied_error or copied_hash != replacement_snapshot_hash:
+            result.update({"status": "saved_world_snapshot_copy_failed", "pid": initial_pid,
+                           "snapshot_error": copied_error or "hash mismatch",
+                           "snapshot_source_sha256": replacement_snapshot_hash,
+                           "snapshot_copy_sha256": copied_hash})
+            return result
+        write_json(artifact_run_dir / "replacement_saved_world.snapshot.json", {
+            "schema": "caol-replacement-saved-world-snapshot-v1",
+            "source": str(live_world.resolve()),
+            "snapshot": str(replacement_snapshot.resolve()),
+            "sha256": replacement_snapshot_hash,
+            "immutable_source": True,
+        })
+        # The registered bridge starts the replacement as a new child through
+        # a precomputed reentry command, so publish this run-local handoff
+        # pointer through the bridge session for that child to consume.
+        bridge_session_dir = str(os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR", "") or "").strip()
+        if bridge_session_dir:
+            write_json(Path(bridge_session_dir) / "replacement_saved_world.snapshot.json", {
+                "schema": "caol-replacement-saved-world-snapshot-v1",
+                "source": str(live_world.resolve()),
+                "snapshot": str(replacement_snapshot.resolve()),
+                "sha256": replacement_snapshot_hash,
+                "immutable_source": True,
+            })
+
     start_cmd = [
         sys.executable,
         str(Path(__file__).resolve()),
@@ -30108,6 +31072,8 @@ def run_probe_post_relaunch(
         start_cmd.extend(["--registry-launch-receipt", registry_launch_receipt])
     if artifact_run_dir is not None:
         start_cmd.extend(["--harness-artifact-run-dir", str(artifact_run_dir.resolve())])
+    if replacement_snapshot is not None:
+        start_cmd.extend(["--saved-world-snapshot", str(replacement_snapshot.resolve())])
     certification_args = (
         certification_registry, certification_round_manifest,
         certification_lease_id, certification_recheck_inputs,
@@ -30163,6 +31129,12 @@ def run_probe_post_relaunch(
         "process_generation": replacement_generation,
         "start_command": start_cmd,
         "startup": start_result,
+        "replacement_saved_world_snapshot": {
+            "path": str(replacement_snapshot.resolve()) if replacement_snapshot else "",
+            "sha256": replacement_snapshot_hash,
+            "installed_sha256": (start_result.get("saved_world_snapshot", {}) or {}).get("installed_sha256", "")
+            if isinstance(start_result.get("saved_world_snapshot"), Mapping) else "",
+        },
         "start_stdout": start_stdout,
         "start_stderr": start_stderr,
     })
@@ -30649,6 +31621,225 @@ def execute_semantic_surface_rejection_matrix(
     return results
 
 
+def _zombie_rider_light_memory_fact(observation: Mapping[str, Any]) -> Dict[str, Any]:
+    """Decode the read-only native rider-light diagnostic from an observation."""
+    result = observation.get("result", {}) if isinstance(observation, Mapping) else {}
+    surface = result.get("surface", {}) if isinstance(result, Mapping) else {}
+    facts = surface.get("facts", {}) if isinstance(surface, Mapping) else {}
+    raw = facts.get("diagnostic_zombie_rider_light_memory") if isinstance(facts, Mapping) else None
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError:
+            raw = None
+    return dict(raw) if isinstance(raw, Mapping) else {}
+
+
+def _rider_light_memory_snapshot(fact: Mapping[str, Any]) -> Dict[str, Any]:
+    memories = fact.get("memories", [])
+    riders = fact.get("riders", [])
+    memory = memories[0] if isinstance(memories, list) and memories and isinstance(memories[0], Mapping) else {}
+    rider = riders[0] if isinstance(riders, list) and riders and isinstance(riders[0], Mapping) else {}
+    intent = rider.get("light_intent") if isinstance(rider, Mapping) else None
+    return {
+        "memory_active": bool(memory.get("active")) if memory else False,
+        "sample_id": str(memory.get("sample_id", "")),
+        "source_omt": list(memory.get("source_omt", [])) if isinstance(memory.get("source_omt"), list) else [],
+        "observed_at_turn": int(memory.get("observed_at_turn", 0) or 0),
+        "expires_at_turn": int(memory.get("expires_at_turn", 0) or 0),
+        "intent": str(intent.get("posture", "")) if isinstance(intent, Mapping) else "",
+        "intent_source_ms": list(intent.get("source_ms", [])) if isinstance(intent, Mapping) and isinstance(intent.get("source_ms"), list) else [],
+        "source_present": bool((fact.get("source_probe") or {}).get("present")) if isinstance(fact.get("source_probe"), Mapping) else False,
+        "rider_actor_id": str(rider.get("fixture_actor_id", "")) if isinstance(rider, Mapping) else "",
+        "rider_absolute_ms": list(rider.get("absolute_ms", [])) if isinstance(rider, Mapping) and isinstance(rider.get("absolute_ms"), list) else [],
+    }
+
+
+def validate_rider_light_memory_relaunch_continuity(
+    step_reports: Sequence[Mapping[str, Any]], relaunch: Mapping[str, Any]
+) -> Dict[str, Any]:
+    """Require a distinct replacement generation and exact first-frame continuity."""
+    initial = next((item for item in step_reports
+                    if item.get("label") == "sample_active_rider_light_memory_before_save"), None)
+    first = next((item for item in step_reports
+                  if item.get("label") == "audit_relaunched_first_observation_rider_light_memory"), None)
+    initial_snapshot = ((initial or {}).get("metadata") or {}).get("snapshot", {})
+    first_snapshot = ((first or {}).get("metadata") or {}).get("snapshot", {})
+    fields = ("sample_id", "source_omt", "observed_at_turn", "expires_at_turn", "rider_actor_id", "rider_absolute_ms")
+    mismatches = [field for field in fields if initial_snapshot.get(field) != first_snapshot.get(field)]
+    if initial_snapshot.get("source_present") is not False or first_snapshot.get("source_present") is not False:
+        mismatches.append("source_absent")
+    initial_pid = int(relaunch.get("initial_pid", 0) or 0)
+    replacement_pid = int(relaunch.get("pid", 0) or 0)
+    if relaunch.get("status") != "ready":
+        mismatches.append("replacement_status")
+    if not initial_pid or not replacement_pid or initial_pid == replacement_pid:
+        mismatches.append("replacement_pid")
+    initial_generation = relaunch.get("initial_process_generation", {})
+    replacement_generation = relaunch.get("process_generation", {})
+    if not isinstance(initial_generation, Mapping) or not isinstance(replacement_generation, Mapping) or \
+            initial_generation.get("birth_identity") == replacement_generation.get("birth_identity"):
+        mismatches.append("replacement_birth_identity")
+    if not relaunch.get("original_process_exited"):
+        mismatches.append("original_process_exit")
+    return {
+        "status": "green" if not mismatches else "red",
+        "initial_pid": initial_pid,
+        "replacement_pid": replacement_pid,
+        "initial_snapshot": initial_snapshot,
+        "replacement_first_observation": first_snapshot,
+        "mismatches": mismatches,
+        "save_identity": {
+            "terminal_save_quit_receipt": relaunch.get("terminal_save_quit_receipt", {}),
+            "original_process_exited": relaunch.get("original_process_exited", False),
+            "initial_birth_identity": initial_generation.get("birth_identity", "") if isinstance(initial_generation, Mapping) else "",
+            "replacement_birth_identity": replacement_generation.get("birth_identity", "") if isinstance(replacement_generation, Mapping) else "",
+        },
+    }
+
+
+def scenario_declares_rider_light_memory_relaunch_continuity(
+    scenario: Mapping[str, Any], post_relaunch: Optional[Mapping[str, Any]],
+) -> bool:
+    """Whether this scenario explicitly asks for the rider-memory continuity gate.
+
+    A relaunch by itself is not evidence that it owns rider-light memory.  The
+    gate is meaningful only when the initial segment samples that diagnostic
+    and the replacement segment declares an exact comparison to that sample.
+    """
+    if not isinstance(post_relaunch, Mapping):
+        return False
+    initial_steps = scenario.get("steps", [])
+    replacement_steps = post_relaunch.get("steps", [])
+    if not isinstance(initial_steps, list) or not isinstance(replacement_steps, list):
+        return False
+    initial_labels = {
+        str(step.get("label", "")).strip()
+        for step in initial_steps
+        if isinstance(step, Mapping) and
+        str(step.get("kind", "")).strip().lower() == "audit_native_zombie_rider_light_memory"
+    }
+    return any(
+        isinstance(step, Mapping) and
+        str(step.get("kind", "")).strip().lower() == "audit_native_zombie_rider_light_memory" and
+        str(step.get("compare_initial_label", "")).strip() in initial_labels
+        for step in replacement_steps
+    )
+
+
+def audit_saved_zombie_rider_light_memory(
+    world_dir: Path,
+    *,
+    required_source_present: bool,
+    required_memory_active: bool,
+    required_intent: str = "",
+) -> Dict[str, Any]:
+    """Read the exact serialized rider-light memory at a save boundary."""
+    path = world_dir / "dimension_data.gsav"
+    if not path.exists():
+        raise FileNotFoundError(f"dimension save not found: {path}")
+    # Cataclysm save files carry a version comment before the JSON object.
+    # Preserve the serialized payload verbatim for evidence, but ignore only
+    # leading comment lines when decoding the structured memory envelope.
+    serialized = path.read_text(encoding="utf-8")
+    payload = json.loads("\n".join(
+        line for line in serialized.splitlines()
+        if not line.lstrip().startswith("#")
+    ))
+    if not isinstance(payload, Mapping):
+        raise RuntimeError("dimension save is not an object")
+    raw = payload.get("zombie_rider_light_memory", [])
+    if not isinstance(raw, list):
+        raise RuntimeError("dimension save has non-list zombie_rider_light_memory")
+    memories = [dict(item) for item in raw if isinstance(item, Mapping)]
+    memory = memories[0] if memories else {}
+    # The native save schema does not serialize the diagnostic `active` flag;
+    # it records a live memory through its remaining duration (and observed
+    # turn/expiry pair).  Prefer the explicit flag when present, otherwise
+    # infer liveness from that authoritative serialized duration.
+    if memory and "active" in memory:
+        active = bool(memory.get("active"))
+    else:
+        try:
+            active = int(memory.get("turns_remaining", 0)) > 0
+        except (TypeError, ValueError):
+            active = False
+    intent = ""
+    if memory.get("riders") and isinstance(memory["riders"], list) and isinstance(memory["riders"][0], Mapping):
+        rider_intent = memory["riders"][0].get("light_intent")
+        if isinstance(rider_intent, Mapping):
+            intent = str(rider_intent.get("posture", ""))
+    issues = []
+    if active != required_memory_active:
+        issues.append(f"memory_active expected {required_memory_active}, observed {active}")
+    if "source_present" in memory and bool(memory.get("source_present")) != required_source_present:
+        issues.append("serialized source_present did not match declaration")
+    if required_intent and intent and intent != required_intent:
+        issues.append(f"intent expected {required_intent!r}, observed {intent!r}")
+    return {
+        "status": "green_required_state_present" if not issues else "red_required_state_missing",
+        "world_dir": str(world_dir),
+        "dimension_path": str(path),
+        "memory": memory,
+        "memory_count": len(memories),
+        "snapshot": _rider_light_memory_snapshot({"memories": memories, "riders": memory.get("riders", [])}),
+        "issues": issues,
+        "required_source_present": required_source_present,
+        "required_memory_active": required_memory_active,
+        "required_intent": required_intent,
+    }
+
+
+def semantic_menu_choose_label(
+    *, profile: str, run_dir: Path, run_id: str, trace_start_offset: int,
+    pid: int, session_id: str, frame: Mapping[str, Any], label: str,
+    proof_step_label: str, proof_step_index: int,
+) -> Tuple[Dict[str, Any], Dict[str, Any]]:
+    """Choose one currently advertised native menu entry by its exact label.
+
+    Debug setup must not infer that a physical shortcut reached an SDL menu.
+    The semantic surface exposes the owning menu and stable entry IDs, so each
+    selection is bound to its issuing frame and native successor receipt.
+    """
+    expected_label = str(label).strip()
+    if not expected_label:
+        raise SystemExit("semantic menu selection needs a non-empty label")
+    candidates = [
+        action for action in frame.get("valid_actions", [])
+        if isinstance(action, Mapping) and action.get("id") == "menu.choose" and
+        str(action.get("label", "")).strip() == expected_label and
+        str(action.get("stable_id", "")).strip()
+    ]
+    if len(candidates) != 1:
+        raise SystemExit(
+            f"native menu did not advertise exactly one choice {expected_label!r}"
+        )
+    stable_id = str(candidates[0]["stable_id"])
+    result = execute_semantic_act(
+        run_dir=run_dir, profile=profile, run_id=run_id,
+        trace_start_offset=trace_start_offset, pid=pid, session_id=session_id,
+        frame_id=str(frame.get("frame_id", "")), action_id="menu.choose",
+        stable_id=stable_id, transition_timeout_seconds=10.0,
+        observe_interval_seconds=0.1, observed_frame=frame,
+        proof_step_label=proof_step_label, proof_step_index=proof_step_index,
+        declared_action_id="menu.choose",
+    )
+    receipt = result.get("native_receipt")
+    successor = result.get("next_frame")
+    if result.get("accepted") is not True or not isinstance(receipt, Mapping) or \
+            receipt.get("accepted") is not True or not isinstance(successor, Mapping):
+        raise SystemExit(
+            f"native menu selection {expected_label!r} was not accepted with a successor frame"
+        )
+    return dict(successor), {
+        "action_id": "menu.choose",
+        "stable_id": stable_id,
+        "label": expected_label,
+        "native_receipt": dict(receipt),
+        "resulting_frame_id": str(successor.get("frame_id", "")),
+    }
+
+
 def execute_probe_steps(
     pid: int,
     run_dir: Path,
@@ -30674,6 +31865,7 @@ def execute_probe_steps(
     registry_authority: Any = None,
     scenario_source_sha256: str = "",
     startup_overlay_recovery: Any = None,
+    immutable_saved_world_snapshot: Optional[Path] = None,
     semantic_bootstrap_timeout_seconds: float = 0.0,
     semantic_bootstrap_poll_seconds: float = 0.0,
     structured_event_reader: Optional[StructuredTransitionEventReader] = None,
@@ -30934,6 +32126,8 @@ def execute_probe_steps(
                 "authority": list( step.get( "authority", [] ) ),
                 "invariants": list( step.get( "invariants", [] ) ),
                 "live_operations": sorted(allowed_live_operations) if allowed_live_operations is not None else [],
+                **({"post_relaunch_control": dict(step["post_relaunch_control"])}
+                   if isinstance(step.get("post_relaunch_control"), Mapping) else {}),
                 **({"relative_movement_operation": str(step["relative_movement_operation"])}
                    if isinstance(step.get("relative_movement_operation"), str) else {}),
                 "operations": ["game.observe", "game.look", "run.continue",
@@ -32514,6 +33708,7 @@ def execute_probe_steps(
             line_groups = [normalize_screen_text_patterns(group) for group in raw_line_groups]
             raw_any_line_groups = step.get("required_any_line_patterns", []) or []
             any_line_groups = [normalize_screen_text_patterns(group) for group in raw_any_line_groups]
+            numeric_line_patterns = step.get("required_numeric_line_patterns", []) or []
             if not patterns and not line_groups and not any_line_groups:
                 raise SystemExit(f"Scenario step '{label}' needs required_patterns/patterns/required_line_patterns/required_any_line_patterns")
             audit_baseline = artifact_baseline
@@ -32536,6 +33731,7 @@ def execute_probe_steps(
                 patterns=patterns,
                 required_line_patterns=line_groups,
                 required_any_line_patterns=any_line_groups,
+                required_numeric_line_patterns=numeric_line_patterns,
                 filter_debug_noise=filter_debug_noise,
             )
             if since_label:
@@ -32736,21 +33932,59 @@ def execute_probe_steps(
             })
         elif kind == "debug_spawn_overmap_threat":
             selection_key = str(step.get("selection_key", step.get("option_key", "")) or "").strip()
-            if not selection_key:
-                raise SystemExit(f"Scenario step '{label}' needs selection_key/option_key")
-            delay_ms = int(step.get("delay_ms", 250) or 250)
-            menu_settle_seconds = float(step.get("menu_settle_seconds", 0.45) or 0.45)
-            run_debug_menu_shortcut_path(
-                pid,
-                ["s", "H", selection_key],
-                delay_ms=delay_ms,
-                menu_settle_seconds=menu_settle_seconds,
+            selection_label = str(step.get("selection_label", "") or "").strip()
+            if not selection_key or not selection_label:
+                raise SystemExit(
+                    f"Scenario step '{label}' needs selection_key/option_key and selection_label"
+                )
+            if not semantic_run_id:
+                raise SystemExit(f"Scenario step '{label}' has no run-bound native semantic trace")
+            session_id, session_identity_source = adaptive_semantic_session_identity()
+            frame = current_semantic_step_frame(
+                profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                start_offset=semantic_trace_start,
             )
+            debug_result = execute_semantic_act(
+                run_dir=run_dir, profile=profile, run_id=semantic_run_id,
+                trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                frame_id=str(frame.get("frame_id", "")), action_id="world.debug_menu",
+                transition_timeout_seconds=10.0, observe_interval_seconds=0.1,
+                observed_frame=frame, proof_step_label=label, proof_step_index=index,
+                declared_action_id="world.debug_menu",
+            )
+            debug_receipt = debug_result.get("native_receipt")
+            frame = debug_result.get("next_frame")
+            if debug_result.get("accepted") is not True or not isinstance(debug_receipt, Mapping) or \
+                    debug_receipt.get("accepted") is not True or not isinstance(frame, Mapping):
+                raise SystemExit(f"Scenario step '{label}' could not open its advertised native debug menu")
+            menu_receipts: List[Dict[str, Any]] = [{
+                "action_id": "world.debug_menu", "native_receipt": dict(debug_receipt),
+                "resulting_frame_id": str(frame.get("frame_id", "")),
+            }]
+            for menu_label in (
+                "Spawning…", "Spawn overmap horde/stalker/rider threat…", selection_label,
+            ):
+                frame, selection_receipt = semantic_menu_choose_label(
+                    profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                    trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                    frame=frame, label=menu_label, proof_step_label=label,
+                    proof_step_index=index,
+                )
+                menu_receipts.append(selection_receipt)
             report.update({
                 "selection_key": selection_key,
-                "delay_ms": delay_ms,
-                "menu_settle_seconds": menu_settle_seconds,
-                "debug_menu_path": ["}", "s", "H", selection_key],
+                "selection_label": selection_label,
+                "semantic_setup_session": {
+                    "run_id": semantic_run_id,
+                    "session_id": session_id,
+                    "session_identity_source": session_identity_source,
+                    "native_actions": menu_receipts,
+                    "terminal_frame_id": str(frame.get("frame_id", "")),
+                },
+                "debug_menu_path": [
+                    "world.debug_menu", "Spawning…",
+                    "Spawn overmap horde/stalker/rider threat…", selection_label,
+                ],
                 "spawn_target": "overmap_horde_map",
             })
         elif kind == "r021_direct_hp_setter":
@@ -34115,6 +35349,132 @@ def execute_probe_steps(
                     }
                     reports.append(report)
                     return reports
+        elif kind == "audit_native_zombie_rider_light_memory":
+            if not semantic_run_id:
+                raise SystemExit(f"Scenario step '{label}' has no run-bound native semantic trace")
+            service = open_cockpit_game_service(
+                profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                trace_start_offset=semantic_trace_start,
+            )
+            observation = service.call({"action": "game.observe"})
+            # A terminal save/quit ends the bound process before this
+            # post-session audit runs.  In that case the live service can only
+            # return a process-exit frame; recover the last native world
+            # observation retained in the run-bound semantic step journal so
+            # the audit checks the actual pre-save state rather than an empty
+            # exit envelope.
+            if not _zombie_rider_light_memory_fact(observation):
+                journal_path = run_dir / "semantic.steps.jsonl"
+                try:
+                    for raw_line in reversed(journal_path.read_text(encoding="utf-8").splitlines()):
+                        entry = json.loads(raw_line)
+                        frame = entry.get("current_frame") if isinstance(entry, Mapping) else None
+                        native_observation = None
+                        # Action receipts retain the resulting descriptor as
+                        # `next_frame.payload` rather than a decoded
+                        # observation object; prefer that post-action frame so
+                        # a source-off transition is not mistaken for its
+                        # pre-action world frame.
+                        next_frame = entry.get("next_frame") if isinstance(entry, Mapping) else None
+                        payload = next_frame.get("payload") if isinstance(next_frame, Mapping) else None
+                        if isinstance(payload, Mapping) and payload.get("diagnostic_zombie_rider_light_memory"):
+                            native_observation = {"diagnostic_zombie_rider_light_memory": payload.get("diagnostic_zombie_rider_light_memory")}
+                        if native_observation is None:
+                            native_observation = frame.get("observation") if isinstance(frame, Mapping) else None
+                        if isinstance(native_observation, Mapping) and native_observation.get("diagnostic_zombie_rider_light_memory"):
+                            observation = {"result": {"surface": {"facts": {
+                                "diagnostic_zombie_rider_light_memory": native_observation.get("diagnostic_zombie_rider_light_memory")
+                            }}}}
+                            break
+                except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                    pass
+            fact = _zombie_rider_light_memory_fact(observation)
+            snapshot = _rider_light_memory_snapshot(fact)
+            required_active = bool(step.get("required_memory_active", False))
+            required_source = bool(step.get("required_source_present", False))
+            required_intent = str(step.get("required_intent", "") or "").strip()
+            issues = []
+            if snapshot["memory_active"] != required_active:
+                issues.append(f"memory_active expected {required_active}, observed {snapshot['memory_active']}")
+            if snapshot["source_present"] != required_source:
+                issues.append(f"source_present expected {required_source}, observed {snapshot['source_present']}")
+            if required_intent == "absent":
+                if snapshot["intent"]:
+                    issues.append(f"intent expected absent, observed {snapshot['intent']!r}")
+            elif required_intent and snapshot["intent"] != required_intent:
+                issues.append(f"intent expected {required_intent!r}, observed {snapshot['intent']!r}")
+            metadata = {
+                "status": "green_required_state_present" if not issues else "red_required_state_missing",
+                "phase": str(step.get("phase", "")),
+                "snapshot": snapshot,
+                "fact": fact,
+                "observation_id": observation.get("result", {}).get("observation_id", "")
+                if isinstance(observation.get("result"), Mapping) else "",
+                "issues": issues,
+                "required_memory_active": required_active,
+                "required_source_present": required_source,
+                "required_intent": required_intent,
+            }
+            artifact_path = run_dir / f"{label}.metadata.json"
+            write_json(artifact_path, metadata)
+            metadata["artifact_path"] = str(artifact_path)
+            report["metadata"] = metadata
+            report["action_description"] = "read the native rider-light memory diagnostic without mutating game state"
+            if issues and bool(step.get("abort_on_metadata_failure", True)):
+                report["abort"] = {
+                    "guard": "metadata",
+                    "status": "aborted_by_metadata_guard",
+                    "verdict": str(step.get("abort_verdict", "blocked_native_rider_light_memory")),
+                    "reason": str(step.get("abort_reason", "native rider-light memory predicate failed")),
+                    "issues": issues,
+                }
+                report["stop_after_step"] = True
+                reports.append(report)
+                return reports
+        elif kind == "audit_saved_zombie_rider_light_memory":
+            # A post-relaunch audit must read the immutable handoff copy made
+            # before starting the replacement process.  The profile world is
+            # mutable and may be rewritten by fixture/bootstrap cleanup.
+            snapshot_root = (
+                Path(immutable_saved_world_snapshot)
+                if immutable_saved_world_snapshot is not None else None
+            )
+            world_dir = snapshot_root if snapshot_root is not None else save_dir_for_profile(profile) / world
+            required_source = bool(step.get("required_source_present", False))
+            required_active = bool(step.get("required_memory_active", False))
+            required_intent = str(step.get("required_intent", "") or "").strip()
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                metadata = audit_saved_zombie_rider_light_memory(
+                    world_dir,
+                    required_source_present=required_source,
+                    required_memory_active=required_active,
+                    required_intent=required_intent,
+                )
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed", "error": str(exc), "world_dir": str(world_dir),
+                    "required_source_present": required_source,
+                    "required_memory_active": required_active,
+                    "required_intent": required_intent,
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            write_json(metadata_artifact, metadata)
+            report["metadata"] = metadata
+            report["action_description"] = "read the serialized rider-light memory from the saved world without reinstalling fixtures"
+            if bool(step.get("abort_on_metadata_failure", False)):
+                metadata_verdict, metadata_issues = metadata_checkpoint_verdict(metadata)
+                if not metadata_verdict.startswith("green"):
+                    report["abort"] = {
+                        "guard": "metadata",
+                        "status": "aborted_by_metadata_guard",
+                        "verdict": str(step.get("abort_verdict", metadata_verdict)),
+                        "reason": str(step.get("abort_reason", "saved rider-light memory predicate failed")),
+                        "issues": metadata_issues,
+                    }
+                    report["stop_after_step"] = True
+                    reports.append(report)
+                    return reports
         elif kind == "audit_saved_active_monsters":
             player_save = str(step.get("player_save", "") or "").strip()
             required_typeids = [
@@ -34180,6 +35540,89 @@ def execute_probe_steps(
                     }
                     reports.append(report)
                     return reports
+        elif kind == "audit_native_natural_evolution":
+            required_actor_id = str(step.get("required_actor_id", "") or "").strip()
+            required_rider_type = str(step.get("required_rider_type", "") or "").strip()
+            required_group = str(step.get("required_scheduled_group", "") or "").strip()
+            required_version = int(step.get("required_ammo_initialization_version", 0) or 0)
+            world_dir = save_dir_for_profile(profile) / world
+            metadata_artifact = run_dir / f"{label}.metadata.json"
+            try:
+                saved = audit_saved_active_monsters(
+                    world_dir,
+                    required_monsters=[{
+                        "typeid": required_rider_type,
+                        "values": {"caol_fixture_actor_id": required_actor_id},
+                    }],
+                )
+                actors = [
+                    actor for actor in saved.get("active_monsters", [])
+                    if actor.get("typeid") == required_rider_type and
+                    isinstance(actor.get("values"), dict) and
+                    (
+                        actor["values"].get("caol_fixture_actor_id", {}).get("str")
+                        if isinstance(actor["values"].get("caol_fixture_actor_id"), dict)
+                        else actor["values"].get("caol_fixture_actor_id")
+                    ) == required_actor_id
+                ]
+                actor = actors[0] if len(actors) == 1 else {}
+                predator_state = actor.get("caol_predator", {}) if isinstance(actor, dict) else {}
+                ammo = actor.get("ammo", {}) if isinstance(actor, dict) else {}
+                observed_version = predator_state.get("ammo_initialization_version") \
+                    if isinstance(predator_state, dict) else None
+                arrow_count = int(ammo.get("zombie_rider_tainted_bone_arrow", 0) or 0) \
+                    if isinstance(ammo, dict) else 0
+                issues = []
+                if len(actors) != 1:
+                    issues.append("required_exactly_one_tagged_rider_missing")
+                if observed_version != required_version:
+                    issues.append("ammo_initialization_version_mismatch")
+                if arrow_count <= 0:
+                    issues.append("initialized_rider_ammunition_missing")
+                metadata = {
+                    "status": "green_native_natural_evolution_persisted" if not issues else "failed",
+                    "required_actor_id": required_actor_id,
+                    "required_rider_type": required_rider_type,
+                    "required_scheduled_group": required_group,
+                    "required_ammo_initialization_version": required_version,
+                    "required_exactly_once": bool(step.get("required_exactly_once", False)),
+                    "matching_actor_count": len(actors),
+                    "actor": actor,
+                    "observed_ammo_initialization_version": observed_version,
+                    "tainted_bone_arrow_ammo": arrow_count,
+                    "issues": issues,
+                    "saved_active_monster_audit": saved,
+                }
+            except (Exception, SystemExit) as exc:
+                metadata = {
+                    "status": "failed",
+                    "error": str(exc),
+                    "required_actor_id": required_actor_id,
+                    "required_rider_type": required_rider_type,
+                    "required_scheduled_group": required_group,
+                    "required_ammo_initialization_version": required_version,
+                    "issues": ["saved_natural_evolution_audit_failed"],
+                }
+            metadata["artifact_path"] = str(metadata_artifact)
+            metadata_artifact.write_text(json.dumps(metadata, indent=2, ensure_ascii=False), encoding="utf-8")
+            report.update({
+                "world_dir": str(world_dir),
+                "metadata": metadata,
+                "action_description": "audit the saved tagged rider and its durable exactly-once ammunition marker",
+                "expected_immediate_state": "one tagged rider persists with initialization version 1 and positive configured ammunition",
+                "failure_rule": "missing tagged rider, missing durable initialization marker, or missing rider ammunition makes this step red/blocked",
+            })
+            if bool(step.get("abort_on_metadata_failure", False)) and metadata.get("status") != \
+                    "green_native_natural_evolution_persisted":
+                report["abort"] = {
+                    "guard": "metadata",
+                    "status": "aborted_by_metadata_guard",
+                    "verdict": str(step.get("abort_verdict", "blocked_natural_evolution_rider_not_generated")),
+                    "reason": str(step.get("abort_reason", "native natural evolution did not persist")),
+                    "issues": metadata.get("issues", []),
+                }
+                reports.append(report)
+                return reports
         elif kind == "audit_saved_hordes_near_player":
             player_save = str(step.get("player_save", "") or "").strip()
             required_hordes_raw = step.get("required_hordes", step.get("required_monsters", []))
@@ -35206,6 +36649,8 @@ def startup_screen_capture_verdict(screen_summary: Dict[str, Any]) -> str:
             and surface.get("ok") is True
         ):
             return "green_native_semantic_terminal_hud"
+        if screen_capture_has_bound_native_hud_fallback(screen_summary):
+            return "green_bound_native_rendered_hud"
         return "red_screen_capture_failed"
     runtime_version_match = screen_summary.get("version_matches_runtime_paths")
     if runtime_version_match is False:
@@ -35604,7 +37049,13 @@ def startup_proof_classification(
     screen_probe = screen_summary.get("startup_screen_probe", {})
     if not isinstance(screen_probe, dict):
         screen_probe = {}
-    if not screen_capture_succeeded(screen_summary):
+    native_hud_fallback = screen_capture_has_bound_native_hud_fallback(screen_summary)
+    if native_hud_fallback:
+        # The run-bound native HUD trace includes the advertised action
+        # surface, which is the input boundary for cockpit live sessions.
+        input_owner_proven = True
+    if not screen_capture_succeeded(screen_summary) and not \
+            screen_capture_has_bound_native_hud_fallback(screen_summary):
         status = "red"
         verdict = "startup_load_only_screen_capture_failed"
         clean_for_feature_steps = False
@@ -35635,7 +37086,7 @@ def startup_proof_classification(
         clean_for_feature_steps = False
         feature_gate = "runtime_version_mismatch"
     elif screen_summary.get("version_matches_runtime_paths") is not True and \
-            screen_summary.get("surface_identity_status") != "matched":
+            screen_summary.get("surface_identity_status") != "matched" and not native_hud_fallback:
         status = "yellow"
         verdict = "startup_load_only_runtime_version_unproven"
         clean_for_feature_steps = False
@@ -35771,8 +37222,10 @@ def probe_proof_classification(
 def declared_screen_artifact_matches(
     step_reports: Sequence[Dict[str, Any]],
     proof_route: Any,
+    *,
+    run_dir: Optional[Path] = None,
 ) -> List[Dict[str, Any]]:
-    """Promote only declared, matched screen guards to durable artifacts."""
+    """Promote declared screen guards or sealed semantic cockpit targets."""
     if not isinstance(proof_route, dict):
         return []
     labels = normalize_string_list(proof_route.get("artifact_verdict", []))
@@ -35786,6 +37239,37 @@ def declared_screen_artifact_matches(
     matches: List[Dict[str, Any]] = []
     for label in labels:
         report = reports_by_label.get(label, {})
+        metadata = report.get("metadata")
+        final_ref = str(metadata.get("final_report_ref", "")).strip() \
+            if isinstance(metadata, Mapping) else ""
+        if str(report.get("kind", "")).strip() == "cockpit_live_session" and final_ref and run_dir:
+            final_path = run_dir / final_ref
+            semantic_line = ""
+            try:
+                final = json.loads(final_path.read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                final = {}
+            stop_detail = final.get("stop_detail") if isinstance(final, Mapping) else None
+            target = stop_detail.get("target_receipt") if isinstance(stop_detail, Mapping) else None
+            witness = stop_detail.get("witness_validation") if isinstance(stop_detail, Mapping) else None
+            if (
+                final.get("state") == "finished" and
+                final.get("stop_reason") == "target_predicate_proved" and
+                isinstance(target, Mapping) and target.get("step_label") == label and
+                isinstance(witness, Mapping) and witness.get("status") == "mechanically_valid"
+            ):
+                semantic_line = (
+                    "sealed semantic target receipt: "
+                    f"run_id={target.get('run_id', '')} observation_id={target.get('observation_id', '')}"
+                )
+            matches.append({
+                "pattern": f"{label}: sealed semantic target artifact",
+                "lines": [semantic_line] if semantic_line else [],
+                "source": "cockpit_live_final",
+                "artifact_path": str(final_path),
+                "capture_policy": "sealed native target receipt and mechanically valid witness",
+            })
+            continue
         expectation = report.get("screen_after_text_expectation")
         if not isinstance(expectation, dict):
             expectation = report.get("screen_text_expectation")
@@ -35993,13 +37477,19 @@ def run_startup(args: argparse.Namespace) -> int:
     config = load_profile_config(config_profile)
     harness_new_world = str(getattr(args, "harness_new_world", "") or "").strip()
     harness_raw_seed = str(getattr(args, "harness_raw_seed", "") or "").strip()
+    harness_new_world_scenario = str(
+        getattr(args, "harness_new_world_scenario", "") or ""
+    ).strip()
     harness_bandit_feasibility = bool(
         getattr(args, "harness_bandit_feasibility", False)
     )
-    if harness_new_world or harness_raw_seed:
+    if harness_new_world or harness_raw_seed or harness_new_world_scenario:
         try:
             harness_new_world, harness_raw_seed = validate_harness_new_world(
                 harness_new_world, harness_raw_seed
+            )
+            harness_new_world_scenario = validate_harness_new_world_scenario(
+                harness_new_world_scenario
             )
         except ValueError as error:
             raise SystemExit(str(error)) from error
@@ -36008,6 +37498,7 @@ def run_startup(args: argparse.Namespace) -> int:
         if (save_dir_for_profile(profile) / harness_new_world).exists():
             raise SystemExit(f"harness new-world target already exists: {harness_new_world}")
     profile_snapshot = str(getattr(args, "profile_snapshot", "") or "").strip()
+    saved_world_snapshot = str(getattr(args, "saved_world_snapshot", "") or "").strip()
     profile_option_overrides = parse_profile_option_args(getattr(args, "profile_option", []) or [])
     artifact_run_dir_value = str(getattr(args, "harness_artifact_run_dir", "") or "").strip()
     artifact_run_dir: Optional[Path] = None
@@ -36024,7 +37515,8 @@ def run_startup(args: argparse.Namespace) -> int:
     if args.dry_run:
         plan = build_plan(
             profile, args.world, args.fixture, harness_new_world, harness_raw_seed,
-            harness_bandit_feasibility, str(getattr(args, "executable", "") or "")
+            harness_bandit_feasibility, str(getattr(args, "executable", "") or ""),
+            harness_new_world_scenario,
         )
         run_dir = Path(plan.run_dir)
         write_json(run_dir / "plan.json", asdict(plan))
@@ -36043,7 +37535,48 @@ def run_startup(args: argparse.Namespace) -> int:
         return 0
 
     profile_snapshot_result: Dict[str, Any] = {}
-    if profile_snapshot:
+    saved_world_snapshot_result: Dict[str, Any] = {}
+    if saved_world_snapshot:
+        source_world = Path(saved_world_snapshot).expanduser().resolve()
+        if not source_world.is_dir():
+            raise SystemExit(f"saved-world snapshot is not a directory: {source_world}")
+        target_world = str(args.world or "").strip()
+        if not target_world:
+            raise SystemExit("saved-world snapshot requires --world")
+        source_hash, source_error = sha256_tree(source_world)
+        if source_error:
+            raise SystemExit(source_error)
+        destination = (save_dir_for_profile(profile) / target_world).resolve()
+        save_root = save_dir_for_profile(profile).resolve()
+        try:
+            destination.relative_to(save_root)
+        except ValueError as error:
+            raise SystemExit("saved-world snapshot destination escaped profile save root") from error
+        ensure_dir(save_root)
+        staging = save_root / f".{target_world}.replacement-{uuid.uuid4().hex}.tmp"
+        if staging.exists():
+            shutil.rmtree(staging)
+        shutil.copytree(source_world, staging)
+        staged_hash, staged_error = sha256_tree(staging)
+        if staged_error or staged_hash != source_hash:
+            shutil.rmtree(staging, ignore_errors=True)
+            raise SystemExit(f"saved-world snapshot copy verification failed: {staged_error or 'hash mismatch'}")
+        if destination.exists():
+            shutil.rmtree(destination)
+        os.replace(staging, destination)
+        installed_hash, installed_error = sha256_tree(destination)
+        saved_world_snapshot_result = {
+            "status": "green_saved_world_snapshot_installed" if not installed_error and installed_hash == source_hash else "red_saved_world_snapshot_changed",
+            "source": str(source_world),
+            "destination": str(destination),
+            "source_sha256": source_hash,
+            "installed_sha256": installed_hash,
+            "error": installed_error,
+            "fixture_reseed_skipped": True,
+            "profile_snapshot_skipped": True,
+        }
+        profile_snapshot = ""
+    elif profile_snapshot:
         profile_snapshot_result = install_profile_snapshot(
             profile,
             profile_snapshot,
@@ -36053,7 +37586,7 @@ def run_startup(args: argparse.Namespace) -> int:
     if profile_option_overrides:
         profile_option_override_result = apply_profile_option_overrides(profile, profile_option_overrides)
     fixture_install_result: Dict[str, Any] = {}
-    if args.fixture:
+    if args.fixture and not saved_world_snapshot:
         fixture_install_result = install_fixture(
             profile,
             args.fixture,
@@ -36063,7 +37596,8 @@ def run_startup(args: argparse.Namespace) -> int:
     flexbuffer_cache_purge = purge_profile_flexbuffer_cache(profile)
     plan = build_plan(
         profile, args.world, args.fixture, harness_new_world, harness_raw_seed,
-        harness_bandit_feasibility, str(getattr(args, "executable", "") or "")
+        harness_bandit_feasibility, str(getattr(args, "executable", "") or ""),
+        harness_new_world_scenario,
     )
     run_dir = Path(plan.run_dir)
     write_json(run_dir / "plan.json", asdict(plan))
@@ -36325,6 +37859,7 @@ def run_startup(args: argparse.Namespace) -> int:
         scenario=str(getattr(args, "scenario_identity", "") or ""),
         harness_new_world=plan.harness_new_world,
         harness_raw_seed=plan.harness_raw_seed,
+        harness_new_world_scenario=plan.harness_new_world_scenario,
         transition_event_run_id=transition_binding["run_id"],
         transition_event_path=transition_binding["event_path"],
         executable=plan.executable,
@@ -36408,7 +37943,14 @@ def run_startup(args: argparse.Namespace) -> int:
         time.sleep(float(startup_cfg["post_input_wait_seconds"]))
 
     poll_seconds = float(startup_cfg["poll_seconds"])
-    timeout_seconds = float(startup_cfg["timeout_seconds"])
+    timeout_seconds = float(
+        startup_cfg.get("harness_new_world_timeout_seconds", startup_cfg["timeout_seconds"])
+        if plan.strategy == "harness_new_world"
+        else startup_cfg["timeout_seconds"]
+    )
+    semantic_startup_timeout_seconds = float(
+        startup_cfg.get("semantic_startup_timeout_seconds", timeout_seconds)
+    )
     debug_delta_count = 0
     debug_error_evidence_count = 0
     debug_popup_evidence_count = 0
@@ -36569,6 +38111,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "semantic_step_trace_start_offset": semantic_step_trace_start,
                 "final_startup_evidence": final_evidence,
                 "profile_snapshot": profile_snapshot_result,
+                "saved_world_snapshot": saved_world_snapshot_result,
                 "profile_option_overrides": profile_option_override_result,
                 "fixture_install": fixture_install_result,
                 "flexbuffer_cache_purge": flexbuffer_cache_purge,
@@ -36611,10 +38154,29 @@ def run_startup(args: argparse.Namespace) -> int:
         if not ok:
             ok, data = success_from_world_save_marker(profile, baseline_save_marker_mtime, expected_world)
             readiness_kind = "world_save_marker"
+        if not ok and ( semantic_only_startup or bool(
+                getattr(args, "cockpit_live_session", False) ) ):
+            # A saved run can be blocked by an already-rendered native prompt;
+            # that owner cannot advance the save marker until it is answered.
+            # Its fresh, bound semantic descriptor is sufficient readiness for
+            # the cockpit to take ownership without synthesizing GUI input.
+            native_owner = cockpit_native_input_owner_ready(
+                profile=profile, run_dir=run_dir, run_id=transition_binding["run_id"],
+                trace_start_offset=semantic_step_trace_start,
+            )
+            if native_owner.get("status") == "required_state_present":
+                ok = True
+                data = {"readiness": "native_semantic_input_owner", "native_owner": native_owner}
+                readiness_kind = "native_semantic_input_owner"
         if ok:
             post_lastworld_wait = float(startup_cfg.get("post_lastworld_wait_seconds", 0.0) or 0.0)
             if post_lastworld_wait > 0:
                 time.sleep(post_lastworld_wait)
+            # GUI-backed startup assigns this after remote discovery.  The
+            # semantic-only cockpit route deliberately has no GUI owner, yet
+            # its later screenshot fallback still consults the same result.
+            # Keep that fallback inert rather than reading an unbound local.
+            reacquisition: Dict[str, Any] = {}
             if gui_automation_required:
                 remote_discovery = wait_for_remote_window_discovery(
                     proc.pid,
@@ -36668,8 +38230,18 @@ def run_startup(args: argparse.Namespace) -> int:
                         )
                     )
                 elif focus_result.get("ok") and post_lastworld_continue_keys:
-                    peekaboo_press_sequence(proc.pid, [str(key) for key in post_lastworld_continue_keys])
-                    time.sleep(float(startup_cfg["post_input_wait_seconds"]))
+                    native_hud_readiness = initial_hud_world_ready_satisfies_profile_startup_input(
+                        profile=profile,
+                        trace_offset=semantic_step_trace_start,
+                        run_id=transition_binding["run_id"],
+                        run_dir=run_dir,
+                    )
+                    startup_overlay_recovery["profile_startup_input"] = native_hud_readiness
+                    if not native_hud_readiness["ready"]:
+                        peekaboo_press_sequence(
+                            proc.pid, [str(key) for key in post_lastworld_continue_keys]
+                        )
+                        time.sleep(float(startup_cfg["post_input_wait_seconds"]))
             else:
                 startup_overlay_recovery = {
                     "requested": bool(getattr(args, "startup_dismiss_blocking_overlay", False)),
@@ -36681,6 +38253,19 @@ def run_startup(args: argparse.Namespace) -> int:
                 "success",
                 semantic_only=semantic_only_startup or terminal_native_transport,
             )
+            # Remote discovery has already captured the PID-bound window and
+            # local focus reacquisition proved that exact window did not
+            # change.  A second capture can still fail transiently on the
+            # Mac bridge; do not discard the verified first capture and turn
+            # a clean native descriptor into a false startup red.
+            discovered_screen = remote_discovery.get( "screen", {} ) if gui_automation_required else {}
+            if not screen_capture_succeeded( screen.get( "screen_summary", {} ) ) and \
+                    reacquisition.get( "ok" ) and isinstance( discovered_screen, Mapping) and \
+                    screen_capture_succeeded( discovered_screen.get( "screen_summary", {} ) ):
+                screen = dict( discovered_screen )
+                screen_summary = screen.get( "screen_summary", {} )
+                if isinstance( screen_summary, MutableMapping ):
+                    screen_summary["startup_capture_reused_from_remote_discovery"] = True
             copy_file_if_exists(lastworld, run_dir / "lastworld.after.json")
             screen_summary = screen.get("screen_summary", {})
             native_semantic_startup = {}
@@ -36696,12 +38281,40 @@ def run_startup(args: argparse.Namespace) -> int:
                     run_id=transition_binding["run_id"],
                     required_state="world",
                     required_actions=["world.wait"],
-                    timeout_seconds=timeout_seconds,
+                    timeout_seconds=semantic_startup_timeout_seconds,
                     poll_seconds=poll_seconds,
                     trace_start_offset=semantic_step_trace_start,
                     require_initial_hud_world_ready_frame=False,
+                    # A saved ordinary world may already be stopped at a
+                    # native interruption.  Its prompt/activity descriptor is
+                    # a real owner and must be admitted to the cockpit rather
+                    # than waiting for a World frame that cannot appear until
+                    # that owner is answered.
+                    allow_any_native_input_owner=( semantic_only_startup or bool(
+                        getattr(args, "cockpit_live_session", False)
+                    ) ),
                 )
                 screen_summary["native_semantic_startup"] = native_semantic_startup
+                # A GUI-backed startup capture can legitimately precede the
+                # World descriptor and show Cataclysm's loading screen.  Once
+                # the bound native owner is present, recapture that GUI route
+                # rather than applying the gameplay-HUD OCR rule to stale
+                # pixels.  Semantic-only cockpit startup instead treats the
+                # bound native descriptor as its readiness evidence; a GUI
+                # capture is non-authoritative there and can block on SDL.
+                if native_semantic_startup.get("status") == "required_state_present" and \
+                        not semantic_only_startup and not bool(
+                            getattr(args, "cockpit_live_session", False)
+                        ):
+                    refreshed_screen = capture_screenshot(
+                        proc.pid, run_dir, "success.native_semantic_ready",
+                        semantic_only=semantic_only_startup or terminal_native_transport,
+                    )
+                    refreshed_summary = refreshed_screen.get("screen_summary", {})
+                    if screen_capture_succeeded(refreshed_summary):
+                        screen = refreshed_screen
+                        screen_summary = refreshed_summary
+                        screen_summary["native_semantic_startup"] = native_semantic_startup
             if terminal_identity is not None and terminal_identity.get("ok"):
                 screen_summary["surface_identity_status"] = "matched"
                 screen_summary["surface_identity"] = terminal_identity
@@ -36784,6 +38397,7 @@ def run_startup(args: argparse.Namespace) -> int:
                 "final_startup_evidence": final_evidence,
                 "strategy": plan.strategy,
                 "profile_snapshot": profile_snapshot_result,
+                "saved_world_snapshot": saved_world_snapshot_result,
                 "profile_option_overrides": profile_option_override_result,
                 "fixture_install": fixture_install_result,
                 "flexbuffer_cache_purge": flexbuffer_cache_purge,
@@ -36853,6 +38467,7 @@ def run_startup(args: argparse.Namespace) -> int:
         )
         readiness = {
             "kind": "harness_timeout",
+            "timeout_seconds": timeout_seconds,
             "baseline_save_marker": baseline_save_marker,
             "latest_save_marker": latest_world_save_marker(profile, expected_world),
             "pid": proc.pid,
@@ -36951,6 +38566,7 @@ def run_startup(args: argparse.Namespace) -> int:
         "final_startup_evidence": final_evidence,
         "strategy": plan.strategy,
         "profile_snapshot": profile_snapshot_result,
+        "saved_world_snapshot": saved_world_snapshot_result,
         "profile_option_overrides": profile_option_override_result,
         "fixture_install": fixture_install_result,
         "flexbuffer_cache_purge": flexbuffer_cache_purge,
@@ -38222,6 +39838,18 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     config_profile = resolve_startup_config_profile(scenario, profile)
     world = args.world or str(scenario.get("world", ""))
     fixture = args.fixture if args.fixture is not None else str(scenario.get("fixture", ""))
+    harness_new_world = str(scenario.get("harness_new_world", "")).strip()
+    harness_raw_seed = str(scenario.get("harness_raw_seed", "")).strip()
+    harness_new_world_scenario = str(scenario.get("harness_new_world_scenario", "")).strip()
+    if harness_new_world or harness_raw_seed or harness_new_world_scenario:
+        harness_new_world, harness_raw_seed = validate_harness_new_world(
+            harness_new_world, harness_raw_seed
+        )
+        harness_new_world_scenario = validate_harness_new_world_scenario(
+            harness_new_world_scenario
+        )
+        if world or fixture:
+            raise SystemExit("scenario harness new-world mode cannot declare world or fixture")
     fixture_profile = str(getattr(args, "fixture_profile", "") or scenario.get("fixture_profile", "")).strip()
     profile_snapshot = str(scenario.get("profile_snapshot", "")).strip()
     profile_snapshot_profile = str(scenario.get("profile_snapshot_profile", "")).strip()
@@ -38244,6 +39872,9 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     steps = normalize_scenario_steps(scenario.get("steps", []), advance_count, settle_seconds)
     post_relaunch = normalize_post_relaunch_contract(scenario.get("post_relaunch"), steps)
     post_relaunch_continuation = bool(getattr(args, "post_relaunch_continuation", False))
+    immutable_continuation_snapshot = continuation_saved_world_snapshot(
+        args, post_relaunch_continuation=post_relaunch_continuation,
+    )
     if post_relaunch_continuation:
         if handoff:
             raise SystemExit("post-relaunch continuation cannot use a deferred handoff")
@@ -38256,6 +39887,11 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             copy.deepcopy(step) for step in steps
             if str(step.get("kind", "")).strip().lower() == "native_semantic_bootstrap"
         ]
+        if not bootstrap_steps:
+            bootstrap_steps = [
+                copy.deepcopy(step) for step in post_relaunch["steps"]
+                if str(step.get("kind", "")).strip().lower() == "native_semantic_bootstrap"
+            ]
         if len(bootstrap_steps) != 1:
             raise SystemExit(
                 "post-relaunch continuation requires exactly one native semantic bootstrap step"
@@ -38456,6 +40092,14 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         start_cmd.extend(["--scenario-contract-path", scenario_contract_path])
     if world:
         start_cmd.extend(["--world", world])
+    if harness_new_world:
+        start_cmd.extend(["--harness-new-world", harness_new_world,
+                          "--harness-raw-seed", harness_raw_seed])
+        if harness_new_world_scenario:
+            start_cmd.extend(["--harness-new-world-scenario", harness_new_world_scenario])
+    explicit_saved_world_snapshot = str(getattr(args, "saved_world_snapshot", "") or "").strip()
+    if explicit_saved_world_snapshot:
+        start_cmd.extend(["--saved-world-snapshot", explicit_saved_world_snapshot])
     explicit_executable = str(getattr(args, "executable", "") or "").strip()
     if not explicit_executable:
         runtime_contract = scenario.get("runtime_contract", {})
@@ -38487,7 +40131,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
         start_cmd.append("--startup-dismiss-blocking-overlay")
     if scenario.get("suppress_profile_startup_input") is True:
         start_cmd.append("--suppress-profile-startup-input")
-    if scenario.get("semantic_only_startup") is True:
+    # A detached cockpit is driven solely by the native semantic surface.
+    # Its child start command does not carry the probe-only cockpit flag, so
+    # make that transport choice explicit here rather than falling back to a
+    # GUI screenshot gate before the World descriptor can be observed.
+    if scenario.get("semantic_only_startup") is True or \
+            bool(getattr(args, "cockpit_live_session", False)):
         start_cmd.append("--semantic-only-startup")
     if post_relaunch_continuation:
         # The saved game has no initial setup action to wake its ordinary
@@ -39079,6 +40728,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                             if registry_launch_receipt else {}),
         scenario_source_sha256=str(scenario_manifest.get("source", {}).get("sha256", "")),
         startup_overlay_recovery=start_result.get("startup_overlay_recovery"),
+        immutable_saved_world_snapshot=immutable_continuation_snapshot,
         semantic_bootstrap_timeout_seconds=semantic_bootstrap_timeout,
         semantic_bootstrap_poll_seconds=semantic_bootstrap_poll,
         structured_event_reader=transition_event_reader,
@@ -39223,6 +40873,12 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
                     relaunch.get("startup", {}).get("startup_overlay_recovery")
                     if isinstance(relaunch.get("startup"), Mapping) else None
                 ),
+                immutable_saved_world_snapshot=(
+                    Path(str(relaunch.get("replacement_saved_world_snapshot", {}).get("path", "")))
+                    if isinstance(relaunch.get("replacement_saved_world_snapshot"), Mapping)
+                    and str(relaunch.get("replacement_saved_world_snapshot", {}).get("path", "")).strip()
+                    else None
+                ),
                 semantic_bootstrap_timeout_seconds=semantic_bootstrap_timeout,
                 semantic_bootstrap_poll_seconds=semantic_bootstrap_poll,
                 structured_event_reader=transition_event_reader,
@@ -39238,6 +40894,13 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
             for report in post_reports:
                 report["phase"] = "post_relaunch"
             step_reports.extend(post_reports)
+        if relaunch.get("status") == "ready" and \
+                scenario_declares_rider_light_memory_relaunch_continuity(scenario, post_relaunch):
+            relaunch["rider_light_memory_continuity"] = validate_rider_light_memory_relaunch_continuity(
+                step_reports, relaunch
+            )
+            if relaunch["rider_light_memory_continuity"].get("status") != "green":
+                relaunch["status"] = "rider_light_memory_continuity_mismatch"
     derived_screen_reports = render_derived_screens(run_dir, derived_screens)
     screen_after = capture_screenshot(
         final_pid, run_dir, f"{mode}_after",
@@ -39339,6 +41002,7 @@ def run_probe_mode(args: argparse.Namespace, *, handoff: bool = False) -> int:
     declared_screen_matches = declared_screen_artifact_matches(
         step_reports,
         scenario.get("proof_route", {}),
+        run_dir=run_dir,
     )
     if not effective_artifact_patterns and not effective_matches_by_pattern and declared_screen_matches:
         effective_artifact_patterns = [str(entry.get("pattern", "")) for entry in declared_screen_matches]
@@ -39809,6 +41473,7 @@ def build_parser() -> argparse.ArgumentParser:
     plan_p.add_argument("--fixture", default="", help="Fixture name only for plan metadata.")
     plan_p.add_argument("--harness-new-world", default="", help=argparse.SUPPRESS)
     plan_p.add_argument("--harness-raw-seed", default="", help=argparse.SUPPRESS)
+    plan_p.add_argument("--harness-new-world-scenario", default="", help=argparse.SUPPRESS)
     plan_p.add_argument("--harness-bandit-feasibility", action="store_true", help=argparse.SUPPRESS)
 
     r009_preflight_p = subparsers.add_parser(
@@ -39836,6 +41501,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--certification-recheck-inputs", default="", help="Explicit current installed inputs used to recheck the sealed certification manifest.")
     start_p.add_argument("--profile-snapshot", default="", help="Install this captured profile snapshot before startup.")
     start_p.add_argument("--profile-snapshot-profile", default="", help="Profile snapshot source profile; defaults to the target profile.")
+    start_p.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--profile-option", action="append", default=[], metavar="NAME=VALUE", help="Override one option after profile snapshot install; may be repeated.")
     start_p.add_argument("--fixture", default="", help="Install this fixture before startup.")
     start_p.add_argument("--fixture-profile", default="", help="Fixture source profile; defaults to the target profile.")
@@ -39843,6 +41509,7 @@ def build_parser() -> argparse.ArgumentParser:
     start_p.add_argument("--dry-run", action="store_true", help="Resolve plan only; do not launch or press keys.")
     start_p.add_argument("--harness-new-world", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--harness-raw-seed", default="", help=argparse.SUPPRESS)
+    start_p.add_argument("--harness-new-world-scenario", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--harness-bandit-feasibility", action="store_true", help=argparse.SUPPRESS)
     start_p.add_argument("--harness-run-id", default="", help=argparse.SUPPRESS)
     start_p.add_argument("--harness-artifact-run-dir", default="", help=argparse.SUPPRESS)
@@ -39884,6 +41551,7 @@ def build_parser() -> argparse.ArgumentParser:
     probe_p.add_argument("--world", default="", help="Override scenario world.")
     probe_p.add_argument("--executable", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--fixture", nargs="?", default=None, help="Override scenario fixture; pass empty string to disable fixture install.")
+    probe_p.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
     probe_p.add_argument("--fixture-profile", default="", help="Override the fixture source profile.")
     probe_p.add_argument("--replace-existing-worlds", action="store_true", help="Allow fixture install to replace existing worlds.")
     probe_p.add_argument("--advance-turns", type=int, default=None, help="Override the deterministic turn-advance count.")
@@ -39991,6 +41659,7 @@ def main() -> int:
                 args.harness_new_world,
                 args.harness_raw_seed,
                 args.harness_bandit_feasibility,
+                harness_new_world_scenario=args.harness_new_world_scenario,
             )
         except ValueError as error:
             parser.error(str(error))

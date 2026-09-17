@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-STALKER matched daylight modest-pressure comparison: two distinct alive hostile zombies are visible and aimed at the same player target, and any native movement or attack is established independently of planner text.",
+  "material_proof": "Native cockpit observations bind the player, stalker, two zombie identities, their positions, attitudes, and game time; native messages or accepted movement receipts establish live behavior where present.",
+  "current_uncertainty": "Whether the modest fixture produces a native movement or attack before the bounded comparison window closes.",
+  "material_contradiction": ["friendly or dead contributors counted as zombie pressure", "planner text promoted without native evidence", "stale actor identity or binding drift"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["debug attack or retreat injection", "direct save mutation after fixture installation", "crediting planner text as native attack evidence"],
+  "honest_stop_conditions": ["native modest comparison footing and bounded behavior observed", "first exact native evidence or cleanup divergence"],
+  "requested_evidence_ceiling": "focused"
+}

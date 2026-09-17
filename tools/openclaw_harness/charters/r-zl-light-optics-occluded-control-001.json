@@ -1,0 +1,8 @@
+{
+  "outcome": "R-ZL matched physical-light containment control",
+  "scenario": "bandit.r033_pure_light_channel_occluded_control_mcw",
+  "query": {
+    "requirements": [{"key": "capabilities.r033.isolated_light_occluded_control", "op": "eq", "value": "night_lamp_only_staffed_observer_callback_with_contained_escape", "minimum_evidence": "declared"}],
+    "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]
+  }
+}

@@ -118,6 +118,37 @@ class SemanticStepChannelTest(unittest.TestCase):
         self.assertEqual(frame["_kind"], "activity")
         self.assertEqual(frame["activity_query_offset"], 7)
 
+    def test_wait_duration_activity_does_not_mask_newer_interrupt_prompt(self) -> None:
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            source = root / "debug.log"
+            source.write_text("", encoding="utf-8")
+            duration_receipt = {
+                "event": "receipt", "run_id": self.run_id,
+                "frame_id": f"{self.run_id}:100:duration", "action_id": "wait.30m",
+                "accepted": True, "_source_offset": 10,
+            }
+            waiting = self.frame("waiting", "wait_activity", {}, 100) | {"_source_offset": 20}
+            interrupt = {
+                "event": "surface_descriptor", "run_id": self.run_id,
+                "surface_id": "prompt-surface", "frame_id": "interrupt-prompt",
+                "kind": "prompt", "valid_actions": [{
+                    "id": "prompt.choose", "stable_id": "prompt-option:2",
+                    "label": "NO", "enabled": True,
+                }], "_source_offset": 30,
+            }
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(source, source)), \
+                    patch.object(startup_harness, "read_semantic_step_trace",
+                                 return_value=([duration_receipt, waiting, interrupt], "ok")), \
+                    patch.object(startup_harness, "semantic_step_frame_source_offset", return_value=10), \
+                    patch.object(startup_harness, "read_latest_activity_query_trace", return_value=None), \
+                    patch.object(startup_harness, "read_active_activity_query_trace", return_value=None):
+                frame = current_semantic_step_frame(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=0,
+                )
+        self.assertEqual(frame["frame_id"], "interrupt-prompt")
+        self.assertEqual(frame["kind"], "prompt")
+
     def test_adaptive_baseline_prefers_current_native_frame_over_prior_artifact(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -693,6 +724,50 @@ class SemanticStepChannelTest(unittest.TestCase):
             self.assertFalse(receipt["accepted"])
             self.assertEqual(receipt["reason"], "native_surface_descriptor_required")
 
+    def test_legacy_wait_receipt_uses_transaction_activity_without_rereading_empty_delta(self) -> None:
+        """A duration receipt and its raw activity share one consumed delta."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            duration = {
+                "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+                "surface_id": "duration", "frame_id": "menu:34", "game_turn": 5234989,
+                "kind": "menu", "breadcrumbs": ["World", "Wait duration"], "payload": {},
+                "valid_actions": [{"id": "wait.5m", "stable_id": "", "enabled": True}],
+            }
+            legacy_receipt = {
+                "event": "receipt", "run_id": self.run_id,
+                "frame_id": f"{self.run_id}:5234989:140", "action_id": "wait.5m",
+                "accepted": True,
+            }
+            activity = {
+                "event": "frame", "run_id": self.run_id,
+                "frame_id": f"{self.run_id}:5234989:141", "state": "wait_activity",
+                "observed_turn": 5234989, "game_minutes": 8049,
+                "valid_actions": [], "action_inputs": {},
+            }
+            trace = root / "semantic.native.log"
+            trace.write_text("\n".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event)
+                for event in (legacy_receipt, activity)
+            ) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                "status": "bound", "path": "pipe-contract",
+            }), patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1), \
+                    patch.object(startup_harness, "semantic_step_source_trace", return_value=trace), \
+                    patch.object(startup_harness, "current_semantic_step_frame",
+                                 side_effect=ValueError("the current run has not emitted a semantic frame")):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker-atomic",
+                    frame_id="menu:34", action_id="wait.5m",
+                    transition_timeout_seconds=0.02, observe_interval_seconds=0,
+                    observed_frame=duration,
+                )
+        self.assertTrue(result["accepted"], result)
+        self.assertEqual(result["next_frame"]["state"], "wait_activity")
+        self.assertEqual(result["next_frame"]["frame_id"], f"{self.run_id}:5234989:141")
+        self.assertEqual(result["native_receipt"]["frame_id"], "menu:34")
+
     def test_single_focus_activity_chord_uses_hotkey_without_refocus(self) -> None:
         with patch.object(startup_harness, "peekaboo_focus_pid", return_value={"ok": True}), \
                 patch.object(startup_harness, "peekaboo_hotkey") as hotkey, \
@@ -1107,6 +1182,235 @@ class SemanticStepChannelTest(unittest.TestCase):
         self.assertTrue(result["native_receipt"]["accepted"])
         self.assertIsNone(result["next_frame"])
 
+    def test_overmap_destination_accepts_an_unchanged_native_owner(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-overmap", "frame_id": "overmap-frame", "kind": "overmap",
+            "breadcrumbs": ["Overmap"], "payload": {}, "valid_actions": [{
+                "id": "overmap.choose_destination", "stable_id": "overmap.choose_destination",
+                "label": "Choose destination", "enabled": True,
+            }],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            request_id = (
+                "cockpit:worker:overmap-frame:overmap.choose_destination:" +
+                hashlib.sha256(json.dumps({"stable_id": None, "parameters": {}},
+                                           sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+            )
+            receipt = {
+                "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+                "requested_run_id": self.run_id, "requested_surface_id": "surface-overmap",
+                "requested_frame_id": "overmap-frame", "consuming_surface_id": "surface-overmap",
+                "consuming_frame_id": "overmap-frame", "action_id": "overmap.choose_destination",
+                "accepted": True, "rejection_reason": "", "resulting_frame_id": "",
+            }
+            # A same-owner continuation has no follow-up descriptor to read:
+            # the accepted receipt itself authenticates the observed owner.
+            trace.write_text(
+                "openclaw_harness_semantic_step: " + json.dumps(receipt) + "\n",
+                encoding="utf-8",
+            )
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="overmap-frame",
+                    action_id="overmap.choose_destination", transition_timeout_seconds=0.1,
+                    observe_interval_seconds=0.01, observed_frame=descriptor,
+                )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["next_frame"]["frame_id"], "overmap-frame")
+        self.assertEqual(result["native_receipt"]["request_id"], request_id)
+
+    def test_auto_move_cancel_yes_requires_its_native_successor(self) -> None:
+        """Cancelling a spotted-monster interruption cannot retain the prompt."""
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-prompt", "frame_id": "prompt-frame", "kind": "prompt",
+            "breadcrumbs": ["World", "Prompt"],
+            "payload": {"text": "tough zombie spotted! Cancel auto move?"},
+            "valid_actions": [
+                {"id": "prompt.choose", "stable_id": "prompt-option:15",
+                 "label": "YES", "enabled": True},
+                {"id": "prompt.choose", "stable_id": "prompt-option:16",
+                 "label": "NO", "enabled": True},
+            ],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            request_id = (
+                "cockpit:worker:prompt-frame:prompt.choose:" +
+                hashlib.sha256(json.dumps({"stable_id": "prompt-option:15", "parameters": {}},
+                                           sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+            )
+            receipt = {
+                "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+                "requested_run_id": self.run_id, "requested_surface_id": "surface-prompt",
+                "requested_frame_id": "prompt-frame", "consuming_surface_id": "surface-prompt",
+                "consuming_frame_id": "prompt-frame", "action_id": "prompt.choose",
+                "accepted": True, "rejection_reason": "", "resulting_frame_id": "",
+            }
+            trace.write_text("openclaw_harness_semantic_step: " + json.dumps(receipt) + "\n",
+                             encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="prompt-frame",
+                    action_id="prompt.choose", stable_id="prompt-option:15",
+                    transition_timeout_seconds=0.1, observe_interval_seconds=0.01,
+                    observed_frame=descriptor,
+                )
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["reason"], "native_surface_successor_timeout")
+
+    def test_auto_move_cancel_yes_binds_to_native_successor(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-prompt", "frame_id": "prompt-frame", "kind": "prompt",
+            "breadcrumbs": ["World", "Prompt"],
+            "payload": {"text": "tough zombie spotted! Cancel auto move?"},
+            "valid_actions": [{"id": "prompt.choose", "stable_id": "prompt-option:15",
+                               "label": "YES", "enabled": True}],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            request_id = (
+                "cockpit:worker:prompt-frame:prompt.choose:" +
+                hashlib.sha256(json.dumps({"stable_id": "prompt-option:15", "parameters": {}},
+                                           sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+            )
+            successor = {"event": "surface_descriptor", "schema_version": 1,
+                         "run_id": self.run_id, "surface_id": "surface-auto-move-canceled",
+                         "frame_id": "auto-move-canceled-frame", "kind": "auto_move_canceled",
+                         "breadcrumbs": ["Auto move canceled"], "payload": {}, "valid_actions": []}
+            receipt = {
+                "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+                "requested_run_id": self.run_id, "requested_surface_id": "surface-prompt",
+                "requested_frame_id": "prompt-frame", "consuming_surface_id": "surface-prompt",
+                "consuming_frame_id": "prompt-frame", "action_id": "prompt.choose",
+                "accepted": True, "rejection_reason": "",
+                "resulting_frame_id": "auto-move-canceled-frame",
+            }
+            trace.write_text("\n".join("openclaw_harness_semantic_step: " + json.dumps(event)
+                                         for event in (successor, receipt)) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="prompt-frame",
+                    action_id="prompt.choose", stable_id="prompt-option:15",
+                    transition_timeout_seconds=0.1, observe_interval_seconds=0.01,
+                    observed_frame=descriptor,
+                )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["next_frame"]["frame_id"], "auto-move-canceled-frame")
+
+    def test_auto_move_continue_no_requires_a_resumed_travel_receipt(self) -> None:
+        """A NO receipt without post-choice travel evidence cannot release the prompt."""
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-prompt", "frame_id": "prompt-frame", "kind": "prompt",
+            "breadcrumbs": ["World", "Prompt"],
+            "payload": {"text": "tough zombie spotted! Cancel auto move?"},
+            "valid_actions": [{"id": "prompt.choose", "stable_id": "prompt-option:16",
+                               "label": "NO", "enabled": True}],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            request_id = (
+                "cockpit:worker:prompt-frame:prompt.choose:" +
+                hashlib.sha256(json.dumps({"stable_id": "prompt-option:16", "parameters": {}},
+                                           sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+            )
+            trace.write_text("openclaw_harness_semantic_step: " + json.dumps({
+                "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+                "requested_run_id": self.run_id, "requested_surface_id": "surface-prompt",
+                "requested_frame_id": "prompt-frame", "consuming_surface_id": "surface-prompt",
+                "consuming_frame_id": "prompt-frame", "action_id": "prompt.choose",
+                "accepted": True, "rejection_reason": "", "resulting_frame_id": "",
+            }) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="prompt-frame",
+                    action_id="prompt.choose", stable_id="prompt-option:16",
+                    transition_timeout_seconds=0.1, observe_interval_seconds=0.01,
+                    observed_frame=descriptor,
+                )
+        self.assertFalse(result["accepted"])
+        self.assertEqual(result["reason"], "native_surface_successor_timeout")
+
+    def test_auto_move_continue_no_releases_only_matching_resumed_travel(self) -> None:
+        """NO is safe only after its prompt's travel operation is reinstalled."""
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-prompt", "frame_id": "prompt-frame", "kind": "prompt",
+            "breadcrumbs": ["World", "Prompt"],
+            "payload": {"text": "tough zombie spotted! Cancel auto move?"},
+            "valid_actions": [{"id": "prompt.choose", "stable_id": "prompt-option:16",
+                               "label": "NO", "enabled": True}],
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            request_id = (
+                "cockpit:worker:prompt-frame:prompt.choose:" +
+                hashlib.sha256(json.dumps({"stable_id": "prompt-option:16", "parameters": {}},
+                                           sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+            )
+            events = [
+                {"event": "travel", "run_id": self.run_id, "travel_id": "travel-7",
+                 "receipt_id": "travel-7:hostile_boundary", "destination": [103, 82, 0],
+                 "avatar_omt": [103, 83, 0], "state": "hostile_boundary",
+                 "destination_present": True, "destination_cleared": False},
+                {"event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+                 "requested_run_id": self.run_id, "requested_surface_id": "surface-prompt",
+                 "requested_frame_id": "prompt-frame", "consuming_surface_id": "surface-prompt",
+                 "consuming_frame_id": "prompt-frame", "action_id": "prompt.choose",
+                 "accepted": True, "rejection_reason": "", "resulting_frame_id": ""},
+                {"event": "travel", "run_id": self.run_id, "travel_id": "travel-7",
+                 "receipt_id": "travel-7:resumed", "destination": [103, 82, 0],
+                 "avatar_omt": [103, 83, 0], "state": "resumed",
+                 "destination_present": True, "destination_cleared": False,
+                 "remaining_omt_path": 3},
+            ]
+            trace.write_text("".join("openclaw_harness_semantic_step: " +
+                                     json.dumps(event) + "\n" for event in events), encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="prompt-frame",
+                    action_id="prompt.choose", stable_id="prompt-option:16",
+                    transition_timeout_seconds=0.1, observe_interval_seconds=0.01,
+                    observed_frame=descriptor,
+                )
+        self.assertTrue(result["accepted"])
+        self.assertEqual(result["next_frame"]["state"], "native_auto_move_resumed")
+        self.assertEqual(result["next_frame"]["native_travel_receipt"]["travel_id"], "travel-7")
+
     def test_surface_descriptor_request_preserves_native_receipt_identity(self) -> None:
         descriptor = {
             "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
@@ -1259,6 +1563,100 @@ class SemanticStepChannelTest(unittest.TestCase):
             "expected": "surface-world", "actual": "surface-other",
         })
 
+    def test_surface_receipt_accepts_async_consuming_surface_after_submitted_authority(self) -> None:
+        """Unsolicited frames may advance the consumer, but not the request identity."""
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [{
+                "id": "world.wait", "stable_id": "world.wait", "label": "Wait", "enabled": True,
+            }],
+        }
+        async_surface = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-activity", "frame_id": "activity-frame", "kind": "activity_distraction",
+            "breadcrumbs": ["Activity distraction"], "payload": {}, "valid_actions": [{
+                "id": "activity.ignore", "stable_id": "", "label": "activity.ignore", "enabled": True,
+            }],
+        }
+        successor = {**async_surface, "frame_id": "activity-frame-next"}
+        request_id = (
+            "cockpit:worker:surface-frame:world.wait:" +
+            hashlib.sha256(json.dumps({"stable_id": None, "parameters": {}},
+                                      sort_keys=True, separators=(",", ":")).encode("utf-8")).hexdigest()[:16]
+        )
+        receipt = {
+            "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+            "requested_run_id": self.run_id, "requested_surface_id": "surface-world",
+            "requested_frame_id": "surface-frame", "consuming_surface_id": "surface-activity",
+            "consuming_frame_id": "activity-frame", "action_id": "world.wait", "accepted": True,
+            "rejection_reason": "", "resulting_frame_id": "activity-frame-next",
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), \
+                patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            trace.write_text("\n".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event)
+                for event in (descriptor, async_surface, receipt, successor)
+            ) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="surface-frame",
+                    action_id="world.wait", transition_timeout_seconds=0.1,
+                    observe_interval_seconds=0.01, observed_frame=descriptor,
+                )
+        self.assertTrue(result["accepted"], result)
+        self.assertTrue(result["native_receipt"]["async_consuming_surface"])
+        self.assertEqual(result["native_receipt"]["requested_frame_id"], "surface-frame")
+        self.assertEqual(result["next_frame"]["frame_id"], "activity-frame-next")
+
+    def test_surface_rejection_with_async_consuming_owner_preserves_native_reason(self) -> None:
+        """A stale activity owner is a native rejection, not correlation corruption."""
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [{
+                "id": "activity.stop", "stable_id": "", "label": "Stop", "enabled": True,
+            }],
+        }
+        request_id = (
+            "cockpit:worker:surface-frame:activity.stop:" +
+            hashlib.sha256(json.dumps({"stable_id": None, "parameters": {}},
+                                      sort_keys=True, separators=(",", ":")).encode()).hexdigest()[:16]
+        )
+        receipt = {
+            "event": "surface_receipt", "run_id": self.run_id, "request_id": request_id,
+            "requested_run_id": self.run_id, "requested_surface_id": "surface-world",
+            "requested_frame_id": "surface-frame", "consuming_surface_id": "surface-activity",
+            "consuming_frame_id": "activity-frame", "action_id": "activity.stop",
+            "accepted": False, "rejection_reason": "wrong_surface", "resulting_frame_id": "",
+        }
+        with tempfile.TemporaryDirectory() as temp, \
+                patch.object(startup_harness, "semantic_wake_pipe_contract", return_value={
+                    "status": "bound", "path": "pipe-contract",
+                }), patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            trace.write_text("\n".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event)
+                for event in (descriptor, receipt)
+            ) + "\n", encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):
+                result = execute_semantic_act(
+                    run_dir=root, profile="ignored", run_id=self.run_id,
+                    trace_start_offset=0, pid=17, session_id="worker", frame_id="surface-frame",
+                    action_id="activity.stop", transition_timeout_seconds=0.1,
+                    observe_interval_seconds=0.01, observed_frame=descriptor,
+                )
+        self.assertFalse(result["accepted"], result)
+        self.assertEqual(result["reason"], "wrong_surface", result)
+        self.assertNotIn("mismatched_fields", result)
+
     def test_wait_parent_resume_yields_to_the_fresh_duration_owner(self) -> None:
         descriptor = {
             "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
@@ -1383,7 +1781,7 @@ class SemanticStepChannelTest(unittest.TestCase):
                     patch.object(startup_harness, "write_semantic_wake_pipe", return_value=1):
                 root = Path(temp)
                 trace = root / "semantic.native.log"
-                receipt = {**native, **({"consuming_frame_id": "other-frame"} if wrong_receipt else {})}
+                receipt = {**native, **({"requested_frame_id": "other-frame"} if wrong_receipt else {})}
                 trace.write_text("\n".join("openclaw_harness_semantic_step: " + json.dumps(event)
                                            for event in ([descriptor, receipt] if present else [descriptor])) + "\n")
                 with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)):

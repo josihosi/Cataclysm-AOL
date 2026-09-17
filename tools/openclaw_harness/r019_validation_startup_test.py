@@ -18,6 +18,7 @@ import startup_harness  # noqa: E402
 from startup_harness import (  # noqa: E402
     declared_startup_overlay_state_is_qualified,
     first_initial_hud_world_frame_after_boundary,
+    initial_hud_world_ready_satisfies_profile_startup_input,
     initial_hud_world_semantic_frame_is_qualified,
     load_scenario,
     recover_declared_startup_action_menu_overlay,
@@ -64,6 +65,19 @@ class R019ValidationStartupTest(unittest.TestCase):
         self.assertIn("!no_dead_watch_owns_turn", gate)
         self.assertNotIn("is_on_top", gate)
         self.assertNotIn("ui_stack_size", gate)
+
+    def test_wait_duration_receipt_is_written_to_the_run_bound_semantic_trace(self) -> None:
+        source = (HARNESS_DIR.parent.parent / "src" / "handle_action.cpp").read_text(
+            encoding="utf-8"
+        )
+        start = source.index("static void openclaw_harness_semantic_step_receipt")
+        end = source.index("static void openclaw_harness_semantic_movement_receipt", start)
+        receipt = source[start:end]
+        # A duration selection leaves its menu and enters an actionless wait
+        # activity.  Its sole binding receipt must therefore be available in
+        # the run-owned stream; profile-shared debug.log is not sufficient.
+        self.assertIn("openclaw_harness_write_semantic_step_event( event.str() )", receipt)
+        self.assertIn("openclaw_harness_semantic_step: \" << event.str()", receipt)
 
     def test_native_owner_accessor_reads_the_context_stack(self) -> None:
         source = (HARNESS_DIR.parent.parent / "src" / "input_context.cpp").read_text(
@@ -457,6 +471,42 @@ class R019ValidationStartupTest(unittest.TestCase):
                             profile="test", trace_offset=0, run_id="run-1", required_state="world",
                             required_actions=["world.wait"],
                         )
+
+    def test_current_run_hud_frame_suppresses_redundant_profile_startup_input(self) -> None:
+        """A cockpit launch must publish its descriptor instead of pressing Continue again."""
+        event = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:initial",
+            "state": "world", "valid_actions": ["world.wait"],
+            "producer": "hud_world_ready", "initial_world_ready": True,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory) / "semantic.native.events.jsonl"
+            trace.write_bytes(
+                b"openclaw_harness_semantic_step: " + json.dumps(event).encode() + b"\n"
+            )
+            with mock.patch("startup_harness.semantic_step_source_trace", return_value=trace):
+                result = initial_hud_world_ready_satisfies_profile_startup_input(
+                    profile="test", trace_offset=0, run_id="run-1", run_dir=Path(directory),
+                )
+        self.assertTrue(result["ready"])
+        self.assertEqual(result["frame_id"], "run-1:initial")
+
+    def test_incomplete_hud_frame_does_not_suppress_profile_startup_input(self) -> None:
+        event = {
+            "event": "frame", "run_id": "run-1", "frame_id": "run-1:initial",
+            "state": "world", "valid_actions": [],
+            "producer": "hud_world_ready", "initial_world_ready": True,
+        }
+        with tempfile.TemporaryDirectory() as directory:
+            trace = Path(directory) / "semantic.native.events.jsonl"
+            trace.write_bytes(
+                b"openclaw_harness_semantic_step: " + json.dumps(event).encode() + b"\n"
+            )
+            with mock.patch("startup_harness.semantic_step_source_trace", return_value=trace):
+                result = initial_hud_world_ready_satisfies_profile_startup_input(
+                    profile="test", trace_offset=0, run_id="run-1", run_dir=Path(directory),
+                )
+        self.assertFalse(result["ready"])
 
 
 if __name__ == "__main__":

@@ -1,30 +1,51 @@
 # Current gameplay findings
 
-Owner-promoted repairs and investigations are separated below. Accepted or repaired items leave this
-active intake; original observations and dispositions remain in
-`.de67/state/review-owner-d1cfc813605b/baseline/debug-findings.md` and durable receipts.
+## Confirmed active gameplay bugs
 
-## Owner-promoted repairs
+None currently established by the reconciled receipts. This is not an all-green test claim.
+R-037 coverage and dependent R-026 acceptance remain open for ordinary evidence reconciliation.
 
-R029-F005 leaves active intake: receipt `0892479ce584418db6ef41fc3ef4d594d82b16ca97d6dac9fb423f2c3687185f` proves eligible night departure, exact-world reload, continuation after dawn and later local hostile contact. The earlier rallying observation and incorrect missing-caller attribution remain historical evidence. Actual active combat/aftermath is separately covered by the promoted R029-F004 repair.
+## Current observations and limits
 
-R033-F002 is repaired and leaves active bug intake. The original observation and promotion remain in `.de67/state/review-owner-d1cfc813605b/baseline/debug-findings.md`. Receipt `df8d84806a3395b87181cf465a8bf57e955dbca534786b1ae86690e5b9a11494` proves the bounded comparison repair, focused boundary tests, native unchanged-source deduplication and a same-key refresh without duplication. The later R-033 closure receipts settle its required aging and boundary behavior; later pruning remains outside that accepted scope.
+- R-037 inventory: receipt `bebbc8ae96665d23837a79d2788a3049b08cfed91bedc493345b1695cdaf521d` records negative wear/wield results and direct activate choosing `look_inventory|equip_melee`, native rock wield and an inactive lighter. API controls remain separate negative/inconclusive results. The demonstrated POSIX runner EOF fault was repaired and tested; it is not an open defect. These observations do not establish another causal gameplay bug.
+- R-037 panic/calm: receipt `7c135856f634950dd5afa0a931cadf44d618d951ceb0a68a758cce702e42acfa` records E4B `panic_on` without attributable native flee/countdown, natural calm choosing `follow_close`, API panic-on movement/countdown/expiry, and an inconclusive API calm control. Preserve these distinctions in the coverage assessment; the API result does not prove the E4B route passed.
+- R037-F018 is not an active bug or an owner-promotion wait. Josef's 2026-09-11 clarification accepts `equip_bow` as existing silent/ranged preference with ordinary game selection/fallback. Receipt `f71f69f3ba06cb9468efa0cb2c441db32181de96f6cc106cc5dfc52299eab595` still records six-shooter retention and no demonstrated bow/arrow consequence on the E4B and API runs. Its firearms-only explanation is false: `shortbow` has `GUN` subtype. Preinspection lists bow UID 129 and arrows UID 130 in NPC inventory, not worn; their location at selection and the exact eligibility/noise/ranking branch were not established. Do not call that unknown a proven floor/setup problem, a native pass, or a new forced-bow requirement.
+- Broad fixture-suite failures and source/build limitations retain their existing evidence ceilings. No broad-suite pass is inferred from focused tests. Missing historical API usage remains unknown; old missing-credential and dependency entries are superseded by the verified, authorized `CATA_API_KEY` route.
+- R-037 owner-clarified reconciliation 011 publishes all 20 catalog rows in `.de67/task-logs/r037-owner-clarified-coverage-reconciliation-011-manifest.json` (SHA `4a142a6edc91484c267e4153f9377c34241879b35707b7fd7dc73dbf46153f96`). It retires the former firearms-only/forced-bow interpretation and keeps E4B/API verdicts separate. Ordinary closure is not ready: the first remaining material gap is foreign-owner and zone-terminal pickup behavior, which is already assigned within the authorized continuation scope. No active gameplay bug is asserted by this reconciliation.
 
-## Promoted active repairs
+## Reconciled repairs and evidence
 
-- R029-F004 — Bandit operation members are moved to the contact location but never become active NPCs. This matters because the player has nobody in the local game world to refuse, attack, kill or observe afterward. Fresh source-bound run `9f8137c9254c4d56b6671f7289551c9a` reached local committed contact at minute 8380 with exact members 18 and 19. Both members were found in overmap storage, but both remained inactive and absent from the active NPC registry before and after relocation. The semantic `visible_entities` set stayed empty. `src/creature.cpp:220` shows that `Creature::setpos` only changes position. `src/game.cpp:1166` shows the separate `game::load_npcs` path that activates nearby overmap NPCs and registers them with the creature tracker. No materialization-rejected event was present, so this result does not infer an absence rejection. Durable receipt `83459f43b78d9a86e4a8ab09ac3d3f26e0624b8526a8b56e4b34cbbe5c759fce` preserves the exact run, source evidence, cleanup and limits. OCR and terminal presentation were not used as gameplay proof. This blocks refusal, player attack, casualty and aftermath only. Disposition2026-09-07, owner70c4632e512e: targeted activation/arbitration plan is completed in receipt58e6879974cd7923a97f81904ed6fd4b6e24838434efb940e3a508e8d737667f and `build_logs/r029-activation-plan-001.md`. No gameplay fix is yet credited. Owner review 2a5bac92b69c promotes the concrete R-029-S002 approach: canonical activation and exact locally committed ID exclusion from generic travel until authoritative return handoff. Preserve ownership exceptions; no global AI rewrite is authorized. Independent R-029 tests continue.
+R029-F004 activation/aftermath and R029-F002 sound information are completed within accepted R-029 scope, not active repairs. Activation receipts `d7d55782706720d8c98bcb92c32a3c5fb400946acc3240de4272908e06111a08`, `dd6683cec9819497b6970907f7291f307716ac0230a34a9775dd0a5b9230af00` and `632168355fe0566c76f079b179a4130f99a0ef1838ea7ed4713640ef956e9c98` bind active ownership, combat, casualty, return and reload. Final sound receipt `c8d0ede5a40e26132e072df71bc783d3c6017f04a0bf08f01b81003ad996c7db` binds entry into the ordinary outing pipeline; no later report/arrival is added. Durable R-029 acceptance via `R-029-closure-sound-information-semantics-008` and the package guide retain all independent ceilings. Other previously repaired/accepted intake entries remain historical.
 
-- R029-F002 — Promoted sound timestamp/cooldown correction under owner review 2a5bac92b69c. The original receipt `01bbf939745acaba4fc874d500d88b669f15c2f528c717d6260372a892c9d87a` proves sound detection and aggregate drive347 rejection in run `4b7c5abbafc37adcf66a0865593798640999eafc61f64eaf6eaf5a550e70ba9f`. Its run-bound bootstrap records last_checked8225, so attempt8280 is inside the six-hour recent-check cooldown before candidate construction can admit the lead. Raising drive alone cannot create a missing candidate. The full component vector remains unavailable. See `.de67/state/review-owner-f918d28be953/sound-code-reproduction.md` and the source-predicate executable check; preserve the exact original observation and earlier attribution in this review’s `baseline/debug-findings.md`. The ledger carries the remaining distinction between distant sensing and physical investigation: current sensing sets last_checked while sound expires before the six-hour cooldown ends. The owner now authorizes R-029-S003: remote sound observation does not write or erase a physical-check timestamp; existing three-hour sound expiry and six-hour actual-investigation cooldown retain their distinct meanings. No threshold inflation or automatic scouting is implied.
+Full original observations, obsolete statuses and exact handles are preserved in
+`.de67/state/review-owner-5eb4cdd4a66d/local-before/debug-findings.md` and their durable receipts.
+The review report is `.de67/task-logs/review-owner-5eb4cdd4a66d/report.md`.
+Sol owns current coverage reconciliation and any independently necessary remaining investigation;
+owner clarification does not turn negative or inconclusive results into passes.
 
-R032-F001 is repaired and accepted through receipts `508f2d1a263a86dc61561a26e4634ceed303338e428b4de2f2539cd857d9e5e7` and `4a1ee0a32aac15442ec86e34b2f3581e8368528d9f721910aea827c3743f5a42`.
-R029-F003 same-minute Pay is repaired in completed receipt `ab383ab50726156a5948882c5c74fefc0853945cd7c06f7cc44a963c380a34ee`: native payment, physical return and post-reload continuation are preserved. Broader R-029 refusal/aftermath and natural ecology remain open; the cross-run classifier limit is not an active same-minute Pay defect.
-R033-F001 is the accepted same-OMT scope exception under owner70c4632e512e, not an active blocker.
-Other smoke sensing, Pay, activation/arbitration and sound-investigation scopes remain separate.
+## R-ZL-LIGHT-OPTICS route-repair witness
 
-An active gameplay defect needs an observed contradiction under valid conditions and its causal
-implementation path. Unsettled observations stay executable investigation on the work ledger.
-Only explicit owner promotion grants gameplay repair authority; harness and fixture repair remain
-ordinary recoverable work. Reconcile this intake with accepted repairs and owner decisions when
-settling the affected work, preserving exact evidence in existing artifacts.
+The source-bound native run `6b54a47aa8878afa99f9b70d20ef2ce83425c3465c9a974b967c941987ca8c23`
+bound the repaired executable and observed the isolated exposed light/control contrast through
+game minute 8639. The bridge then exited with `KeyboardInterrupt` while decoding a partial
+semantic JSON record, before the requested 8640 scheduler boundary; this leaves route ownership
+and approach-distance evidence unestablished. The owned game was closed through the exact-PID
+native quit route and its OS exit verified. Preserve the focused witness as inconclusive/repair:
+`.de67/task-logs/r-zl-light-optics-route-repair-witness.json`.
 
-NPC LLM playtest failures belong here as observed bugs with exact E4B request/response and native consequence, followed by the authorized same-case cheap OpenAI API comparison. Classify model, parser, execution and fixture failures from evidence; API success does not erase the local-model failure. Preserve complete evidence in task/run artifacts.
+## R-ZL natural-stalker fresh-account prompt obstruction
+
+Fresh ordinary source-bound run `caa2472cc75426c3ced81b34c1351023f8765cd5fc2c32654f492c9847ddb295`
+advanced through native movement and auto-travel until the game raised the player-visible prompt
+`feral human spotted! Cancel auto move? (Case Sensitive)`.  The native descriptor advertised YES
+and NO `prompt.choose` actions, but the submitted YES request
+`play-20869db661fc40e3b45e9ec59017c0f9` ended in
+`native_surface_receipt_timeout`; a fresh observation retained the identical prompt.  This is a
+concrete cockpit-route obstruction, not evidence of natural writhing-stalker opportunism.  The
+sealed witness is inconclusive/repair; terminalization verified the owned PID 8936 exited after
+scenario cleanup (SIGTERM, no native-exit credit).  Retained journal SHA:
+`0877676bdbc9f9b92168ab3a9363ce0f84141bfd9437b05b48fdac999178500a`.
+
+## Current pickup continuation after task012
+
+Task012's claim deadline expired with the branch unfinished; its earlier formal finding remains honest history. The repeated `pickup.item_missing` reason does not prove the item vanished or that no zone guard ran. Exact run `f01017a559f5afbb6c2387891e3ced0cb21b89e99274d5bc616d9b5c7a4e62f0` records `zone_skips=1` at the initial target consumer. The source skips NO_NPC_PICKUP tiles before searching their items, while the later `pickup.zone_forbidden` terminal belongs to the already-selected-target path. This is a demonstrated diagnostic ambiguity, not proof of a broken gameplay zone rule. Exact-item attribution/no-transfer and the distinct foreign-owner branch remain the material evidence question. Task013 commissions only the necessary observation/fixture/control and focused continuation; do not repeat persistence-only restaging or force a later reason code. Current handoff: `.de67/task-logs/review-r037-generation-007/handoff.md`.

@@ -1814,6 +1814,13 @@ void npc::regen_ai_cache() {
 }
 
 void npc::execute_llm_intent_action(llm_intent_action action) {
+  if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+    const llm_intent_state &state = llm_intent_state_for( *this );
+    llm_intent::log_event( string_format(
+        "intent execute npc=\"%s\" id=%d request=%s action=%d queued=%d panic_turns=%d calm_turns=%d",
+        get_name(), getID().get_value(), state.request_id, static_cast<int>( action ),
+        state.queue.size(), state.panic_forced_turns_remaining, state.calm_turns_remaining ) );
+  }
   switch (action) {
   case llm_intent_action::wait_here: {
     llm_intent_state &state = llm_intent_state_for(*this);
@@ -1902,6 +1909,14 @@ void npc::execute_llm_intent_action(llm_intent_action action) {
         }
         case llm_intent_action::none:
             break;
+  }
+  if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+    const llm_intent_state &state = llm_intent_state_for( *this );
+    llm_intent::log_event( string_format(
+        "intent executed npc=\"%s\" id=%d request=%s action=%d panic_turns=%d calm_turns=%d wielded=\"%s\" pos=%s",
+        get_name(), getID().get_value(), state.request_id, static_cast<int>( action ),
+        state.panic_forced_turns_remaining, state.calm_turns_remaining,
+        get_wielded_item() ? get_wielded_item()->tname() : "none", pos_abs().to_string_writable() ) );
   }
 }
 
@@ -2115,10 +2130,6 @@ void npc::apply_llm_intent_target() {
 bool npc::apply_llm_intent_item_targets() {
   llm_intent_state &state = llm_intent_state_for(*this);
   if (state.look_around_targets.empty()) {
-    llm_intent::log_event( string_format(
-                               "look_around apply skipped npc=\"%s\" id=%d primary=%s secondary=%s reason=empty_queue",
-                               get_name(), getID().get_value(), state.request_id,
-                               state.look_around_request_id ) );
     return false;
     }
     if( attitude == NPCATT_FLEE || attitude == NPCATT_FLEE_TEMP ||

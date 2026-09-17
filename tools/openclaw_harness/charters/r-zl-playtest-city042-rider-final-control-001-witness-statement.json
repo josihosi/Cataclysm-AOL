@@ -1,0 +1,68 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "proved",
+  "smallest_supported_claim": "For the preserved artificial daylight footing, the final ordinary no-debug control did not provide a survivable player-legible recovery or disengagement window: after immediate advertised southwest retreat, the rider's arrow caused a 31-torso-damage knockdown, and further fresh southwest evasions were spent struggling to stand while the rider closed from eight to two tiles before the avatar died. This is a negative fairness/recovery conclusion for this controlled footing only; it does not establish natural-city balance or a general rider tuning conclusion.",
+  "causal_account": "The fresh account loaded the preserved audited rider footing and used no debug or inventory/light action. The player disabled safe mode and immediately chose the advertised southwest movement. The resulting native World observation records the arrow, heavy bleeding, stagger, downed state, and 31 torso damage. Fresh advertised southwest attempts were then selected while the avatar was downed; the native state records struggle-to-stand turns and the rider closing to dx 5, then dx 3, then dx 2. Once the avatar stood, the next fresh southwest movement was accepted and resulted in a real death terminal. No run or sprint action was advertised by the World owner, so none was available to choose. No safe recovery window or attack-cadence observation occurred before death.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "identifies the final fresh source-bound ordinary rider control",
+      "checks": {
+        "scenario_id": "r_zl_freeplay_city042_rider_final_control_mcw",
+        "source_identity": "50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280",
+        "executable_identity": "e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"
+      }
+    },
+    {
+      "citation_id": "J0004",
+      "meaning": "records acceptance of the player's safe-mode release",
+      "checks": {"action_id": "world.toggle_safemode", "native_receipt.accepted": true}
+    },
+    {
+      "citation_id": "J0006",
+      "meaning": "records acceptance of the immediate player-selected southwest retreat",
+      "checks": {"action_id": "world.move.southwest", "native_receipt.accepted": true}
+    },
+    {
+      "citation_id": "J0005",
+      "meaning": "records the resulting rider arrow, 31 torso damage, heavy bleeding, stagger, downed state, and rider at dx 6 dy -1"
+    },
+    {
+      "citation_id": "J0007",
+      "meaning": "records a fresh recovery attempt struggling to stand while the rider closes to dx 5 dy -2"
+    },
+    {
+      "citation_id": "J0008",
+      "meaning": "records continued downed recovery pressure with the rider at dx 3 dy -2"
+    },
+    {
+      "citation_id": "J0009",
+      "meaning": "records the avatar standing only after the rider reaches dx 2 dy -2, with bleeding and stagger still present"
+    },
+    {
+      "citation_id": "J0011",
+      "meaning": "records acceptance of the final fresh southwest evasive movement after standing",
+      "checks": {"action_id": "world.move.southwest", "native_receipt.accepted": true}
+    },
+    {
+      "citation_id": "J0010",
+      "meaning": "records the real death terminal state",
+      "checks": {"value.surface.kind": "terminal", "value.surface.facts.actual_death": "true", "value.surface.facts.avatar_dead": "true"}
+    },
+    {
+      "citation_id": "J0025",
+      "meaning": "records the sealed final-control boundary and released unused authority",
+      "checks": {"unused_authority": "released"}
+    }
+  ],
+  "material_deviations": [
+    "The World owner never advertised a run or sprint action, so the final control used immediate currently advertised lateral/retreat movement instead.",
+    "The avatar died before a safe bounded wait, a recovery window, an attack-cadence interval, or native save-and-quit could be performed."
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "Whether a differently equipped, less exposed, or non-artificial footing changes rider counterplay; this final control does not answer that broader design question."
+  ],
+  "recommended_disposition": "accept",
+  "evidence_ceiling": "focused"
+}

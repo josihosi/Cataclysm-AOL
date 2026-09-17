@@ -182,6 +182,21 @@ class query_popup
         query_popup &preferred_keyboard_mode( keyboard_mode mode );
 
         /**
+         * Record an accepted semantic option as soon as this native popup has
+         * selected it.  Use for an input owner which has no guaranteed
+         * successor frame after the modal returns.
+         */
+        query_popup &receipt_on_native_selection( bool receipt_now = true );
+
+        /**
+         * Keep a semantic selection pending until the caller constructs its
+         * next native owner.  This is for synchronous popups whose selected
+         * branch returns directly to a known successor rather than exposing
+         * a useful frame while the popup unwinds.
+         */
+        query_popup &await_semantic_successor( bool await_successor = true );
+
+        /**
          * Query once and return the result. In order for this method to return
          * valid results, the popup must either have at least one option, or
          * have `allow_cancel` or `allow_anykey` set to true. Otherwise
@@ -219,6 +234,8 @@ class query_popup
         bool cancel;
         bool ontop;
         bool fullscr;
+        bool receipt_on_native_selection_;
+        bool await_semantic_successor_;
         keyboard_mode pref_kbd_mode;
 
         struct button {

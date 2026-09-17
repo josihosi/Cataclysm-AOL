@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "C-AOL exact writhing stalker and zombie rider IDs render their separate mod atlas cells at normal gameplay scale in bright and dark context.",
+  "material_proof": "Exact-ID native debug placement is zero-credit setup. Credit requires session-bound native frames showing both placed IDs under bright and dark conditions, plus process and bridge cleanup.",
+  "current_uncertainty": "Whether the session exposes exact native debug placement and both sprites remain readable at normal scale.",
+  "material_contradiction": ["a frame lacks exact setup identity", "a standalone preview substitutes for native rendering", "debug placement is treated as gameplay behavior"],
+  "forbidden_shortcuts": ["direct state mutation", "raw save rewrite after profile installation", "physical or foreground input"],
+  "honest_stop_conditions": ["finish when both exact IDs have bright/dark native frames", "finish inconclusive when placement or rendering cannot be observed"],
+  "requested_evidence_ceiling": "focused"
+}

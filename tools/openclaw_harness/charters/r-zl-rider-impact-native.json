@@ -1,0 +1,27 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-RIDER-IMPACT native impact closure: two hostile zombie riders independently make physical closing steps, produce named native impact outcomes, respect armor/health and downing semantics, require separation/cooldown before a fresh closing approach, and arbitrate one impact attack per rider without a same-turn ordinary bite or second strike.",
+  "material_proof": "Native cockpit movement receipts proving physical closing steps, native messages matching charges-into-you-but-you-dodge, slams-into-you-but-your-armor-holds, or tramples-you, target health/downed state, per-rider identities, separation/cooldown and later fresh approach, and two-rider independent pressure with no same-turn extra strike; source/executable binding and cleanup.",
+  "current_uncertainty": "Whether the dedicated two-rider fixture yields all impact, cooldown, re-approach and independent-pressure stages under native scheduling.",
+  "material_contradiction": [
+    "bite-only contact",
+    "fixture-only actor placement",
+    "stationary adjacency without a closing receipt",
+    "same-turn bite or second strike after impact",
+    "cooldown expiry without a fresh closing step",
+    "single-rider evidence presented as multi-rider arbitration",
+    "unclean owned process"
+  ],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": [
+    "debug attack or target injection",
+    "direct save mutation after fixture install",
+    "fixture setup credited as gameplay",
+    "planner text without matching native receipts",
+    "reinstalling fixture during the run"
+  ],
+  "honest_stop_conditions": [
+    "all dedicated impact claims settle, or first native divergence with cleanup"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

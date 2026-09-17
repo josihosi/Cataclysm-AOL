@@ -1,0 +1,31 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-STALKER: under matched darkness and daylight pressure conditions, a source-bound writhing stalker reaches a real native attack attempt and then retains a retreat waypoint after its bounded burst; loss of sight and save/reload controls must not fabricate contact or erase the lifecycle state.",
+  "material_proof": "Current-source native cockpit receipts bind the stalker and player identities, game-time and positions before and after movement, a native melee-resolution attempt count, the persisted lifecycle phase and retreat waypoint, and matched no/modest/heavy daylight-pressure, darkness, loss-of-sight, and save/reload observations.",
+  "current_uncertainty": "Whether the existing live-debug fixtures and current executable expose enough native time, position, attack-resolution, and persisted-state evidence to settle the complete matched matrix without a harness repair.",
+  "material_contradiction": [
+    "planner live_plan lines appear without a native attack-resolution receipt or persisted attempt increment",
+    "retreat is inferred only from a decision string without movement, retained waypoint, or phase evidence",
+    "daylight pressure is supplied by unobserved, unrelated, or wall-hidden zombies",
+    "loss of sight reveals a live player coordinate or causes a teleport/beeline",
+    "save/reload duplicates the actor, loses the lifecycle state, or allows simultaneous old/new owners",
+    "source, executable, actor identity, native receipt, or cleanup binding drifts"
+  ],
+  "already_accepted_evidence": [
+    "Receipt 95d5019f709767f9a75a43ec8e9d9dfda97deb64313ee4b9bc5a8537c2d4eef9 accepts typed stalker persistence and routing at linked source/unit scope.",
+    "Receipt a7a9cd41d5a1b2316c88e165b4c883dde8ad6e1e84f90624f9d441427b7ac690 accepts the perceived-pressure/counterpressure source/unit boundary.",
+    "Receipt c1df55c98192638c4156f4dcb5272c49e2ff8bca11e81cb26fcbc2117ec1c16f accepts focused source/unit pressure and native attack-attempt seams without native gameplay credit."
+  ],
+  "forbidden_shortcuts": [
+    "debug attack or retreat injection",
+    "direct save mutation after fixture installation",
+    "global-coordinate target acquisition or omniscient loss-of-sight interpretation",
+    "crediting planner logs, fixture setup, or transport success as an attack",
+    "replaying or borrowing another run's actor, receipt, or cleanup identity"
+  ],
+  "honest_stop_conditions": [
+    "the first native attack-resolution and retained-retreat observation that settles the positive claim together with the clean controls",
+    "the first exact source, fixture, native-owner, evidence, or cleanup divergence with the run preserved"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

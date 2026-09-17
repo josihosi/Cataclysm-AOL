@@ -1,0 +1,10 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-LIGHT-OPTICS-closure-native-observer-approach-001",
+  "outcome": "R-ZL-LIGHT-OPTICS: an ordinary off-screen observer detects an exposed elevated light and physically approaches its uncertain location, while a matched sealed or obstructed light produces no optical lead or light-caused approach.",
+  "scenario": "bandit.r033_pure_light_channel_mcw",
+  "query": {
+    "requirements": [{"key": "capabilities.r033.isolated_light_channel", "op": "eq", "value": "night_lamp_only_staffed_observer_callback", "minimum_evidence": "declared"}],
+    "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]
+  }
+}

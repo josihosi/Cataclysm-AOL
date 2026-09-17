@@ -54,6 +54,7 @@ void openclaw_harness_semantic_initial_world_frame_if_ready( const input_context
         bool no_activity_owns_turn, bool no_auto_move_owns_turn, bool no_dead_watch_owns_turn );
 void openclaw_harness_semantic_activity_distraction();
 void openclaw_harness_semantic_world_after_activity_distraction();
+void openclaw_harness_semantic_world_after_auto_move_cancel();
 // Native distant-travel facts are emitted only for a harness-bound run.  The
 // travel owner reports the accepted destination, every native handoff, and
 // the terminal outcome so harness code never treats a rendered HUD as proof
@@ -62,6 +63,10 @@ void openclaw_harness_semantic_native_travel_started( const avatar &player,
         const tripoint_abs_omt &destination );
 void openclaw_harness_semantic_native_travel_progress( const Character &player );
 void openclaw_harness_semantic_native_travel_hostile_boundary( const Character &player );
+// A NO response to the hostile auto-move prompt is not a new World input
+// owner: it reinstalls the travel activity.  Publish that fact separately so
+// a bound client can release the consumed prompt without reusing it.
+void openclaw_harness_semantic_native_travel_resumed( const Character &player );
 void openclaw_harness_semantic_native_travel_terminal( const Character &player,
         const char *terminal_state );
 

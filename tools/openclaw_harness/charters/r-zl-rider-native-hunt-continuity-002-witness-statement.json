@@ -1,0 +1,97 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "In the repaired native-hunt fixture, a player-visible World observation before and after a bounded native minute exposed no rider, and a subsequent accepted eastward player step did not make one visible. The fixture therefore does not establish a player-legible rider hunt, recovery, or intermittence on this run.",
+  "causal_account": "The run used the registry's source-bound repair route. It was observed at noon, advanced by the existing native pause recipe to one game minute later, then made one accepted ordinary eastward move. The last World observations still listed no visible entities. A proposed eight-step indoor route was rejected before movement by the guarded macro's unknown-event safety boundary; it was not forced. The player then used the native Save and Quit flow and exited from the native main menu.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "identifies the source-bound repair run and focused native-hunt scenario",
+      "checks": {
+        "scenario_id": "zombie_rider.live_native_hunt_continuity_mcw",
+        "source_identity": "50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280",
+        "executable_identity": "e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"
+      }
+    },
+    {
+      "citation_id": "J0123",
+      "meaning": "records the one-minute later World observation with no visible entities",
+      "checks": {
+        "value.game_minutes": 7921,
+        "value.visible_entities": []
+      }
+    },
+    {
+      "citation_id": "J0129",
+      "meaning": "records the accepted player-selected eastward World move",
+      "checks": {
+        "action_id": "world.move.east",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0132",
+      "meaning": "records the post-move World observation with no visible entities",
+      "checks": {
+        "value.game_minutes": 7921,
+        "value.visible_entities": []
+      }
+    },
+    {
+      "citation_id": "J0133",
+      "meaning": "records the guarded route's safety stop before any batched movement"
+    },
+    {
+      "citation_id": "J0136",
+      "meaning": "records acceptance of the native World Save and Quit action",
+      "checks": {
+        "action_id": "world.save_quit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0139",
+      "meaning": "records acceptance of the native save confirmation",
+      "checks": {
+        "action_id": "prompt.choose",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0142",
+      "meaning": "records acceptance of native main-menu Quit",
+      "checks": {
+        "action_id": "main_menu.quit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0145",
+      "meaning": "records acceptance of the native application quit confirmation",
+      "checks": {
+        "action_id": "prompt.choose",
+        "native_receipt.accepted": true
+      }
+    }
+  ],
+  "material_deviations": [
+    "The fixture's historical charter expected a rider hunt, but the current player-visible surface did not expose a rider or rider event during the bounded observation.",
+    "The guarded eight-step route stopped before movement on an unknown native event and was not replayed or overridden."
+  ],
+  "contradictions": [
+    {
+      "citation_id": "J0123",
+      "meaning": "The bounded later World observation contained no visible entities, contradicting a claim that a rider was currently player-legible."
+    },
+    {
+      "citation_id": "J0133",
+      "meaning": "The route safety stop means the intended longer ordinary path was not completed."
+    }
+  ],
+  "remaining_unknowns": [
+    "Whether a different native route, time horizon, or newly prepared zero-credit fixture can make a rider player-legible without scripted attention.",
+    "Whether any future encounter would be threatening, recoverable, fair, and intermittent."
+  ],
+  "recommended_disposition": "change-strategy",
+  "evidence_ceiling": "focused"
+}

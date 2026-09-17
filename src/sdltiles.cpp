@@ -30,6 +30,11 @@
 #include <stdexcept>
 #include <type_traits>
 #include <vector>
+#if !defined(_WIN32)
+#include <cerrno>
+#include <fcntl.h>
+#include <unistd.h>
+#endif
 #ifndef USE_SDL3
 #if defined(_MSC_VER) && defined(USE_VCPKG)
 #   include <SDL2/SDL_syswm.h>
@@ -167,6 +172,71 @@ input_event last_input;
 
 namespace
 {
+#if !defined(_WIN32)
+class semantic_wake_source
+{
+    public:
+        bool take_wake() {
+            const char *const descriptor = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_WAKE_READ_FD" );
+            const std::string requested_descriptor = descriptor == nullptr ? "" : descriptor;
+            if( requested_descriptor != descriptor_ ) {
+                fd_ = -1;
+                descriptor_ = requested_descriptor;
+                if( !descriptor_.empty() ) {
+                    char *end = nullptr;
+                    errno = 0;
+                    const long parsed = std::strtol( descriptor_.c_str(), &end, 10 );
+                    if( errno == 0 && end != descriptor_.c_str() && *end == '\0' && parsed >= 0 &&
+                        parsed <= std::numeric_limits<int>::max() ) {
+                        fd_ = static_cast<int>( parsed );
+                        const int flags = fcntl( fd_, F_GETFL );
+                        if( flags < 0 || fcntl( fd_, F_SETFL, flags | O_NONBLOCK ) != 0 ) {
+                            fd_ = -1;
+                        }
+                    }
+                }
+            }
+            if( fd_ < 0 ) {
+                return false;
+            }
+            char buffer[64];
+            bool received = false;
+            ssize_t read_count = 0;
+            while( ( read_count = read( fd_, buffer, sizeof( buffer ) ) ) > 0 ) {
+                received = true;
+            }
+            return received;
+        }
+
+    private:
+        int fd_ = -1;
+        std::string descriptor_;
+};
+
+semantic_wake_source &active_semantic_wake_source()
+{
+    static semantic_wake_source source;
+    return source;
+}
+#endif
+
+bool poll_sdl_semantic_surface_request()
+{
+#if !defined(_WIN32)
+    const bool received_wake = active_semantic_wake_source().take_wake();
+#else
+    const bool received_wake = false;
+#endif
+    bool request_polled = poll_active_semantic_surface_request();
+    // The request is flushed before its FIFO byte is written, but a newly
+    // opened reader can still observe the old extent.  A received wake gets
+    // one immediate retry and never becomes a physical input event.
+    if( received_wake && !request_polled ) {
+        request_polled = poll_active_semantic_surface_request();
+    }
+    return request_polled;
+}
+
 bool openclaw_harness_wait_input_trace_enabled()
 {
     const char *const selected_run_id = std::getenv( "OPENCLAW_HARNESS_WAIT_INPUT_TRACE_RUN_ID" );
@@ -6592,7 +6662,7 @@ input_event input_manager::get_input_event( const keyboard_mode preferred_keyboa
 
     if( inputdelay < 0 ) {
         do {
-            if( poll_active_semantic_surface_request() ) {
+            if( poll_sdl_semantic_surface_request() ) {
                 return input_event();
             }
             CheckMessages();
@@ -6606,7 +6676,7 @@ input_event input_manager::get_input_event( const keyboard_mode preferred_keyboa
         uint32_t endtime = 0;
         bool timedout = false;
         do {
-            if( poll_active_semantic_surface_request() ) {
+            if( poll_sdl_semantic_surface_request() ) {
                 return input_event();
             }
             CheckMessages();
@@ -6621,7 +6691,7 @@ input_event input_manager::get_input_event( const keyboard_mode preferred_keyboa
             }
         } while( !timedout );
     } else {
-        if( poll_active_semantic_surface_request() ) {
+        if( poll_sdl_semantic_surface_request() ) {
             return input_event();
         }
         CheckMessages();

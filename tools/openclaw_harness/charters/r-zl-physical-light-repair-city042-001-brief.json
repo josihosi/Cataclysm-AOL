@@ -1,0 +1,15 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-PLAYTEST-physical-light-repair-001",
+  "outcome": "R-ZL physical-light repair diagnostic: the current-source executable survives a single native city-fixture turn after the gun-mod traversal lifetime fix.",
+  "scenario": "r_zl_physical_light_repair_city042_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r_zl_playtest.repair_diagnostic", "op": "eq", "value": "physical_light_gun_mod_turn_advance", "minimum_evidence": "declared"},
+      {"key": "capabilities.r_zl_playtest.integrated_account", "op": "eq", "value": "none", "minimum_evidence": "declared"}
+    ],
+    "preferences": [
+      {"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}
+    ]
+  }
+}

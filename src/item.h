@@ -2231,7 +2231,7 @@ class item : public visitable
         /**
          * How much light (see lightmap.cpp) the item emits (it's assumed to be circular).
          */
-        int getlight_emit() const;
+        int getlight_emit( const Character *carrier = nullptr ) const;
         /**
          * Whether the item emits any light at all.
          */

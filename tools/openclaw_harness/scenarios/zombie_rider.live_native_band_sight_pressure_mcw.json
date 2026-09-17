@@ -1,0 +1,33 @@
+{
+  "manifest_version": 1,
+  "name": "zombie_rider.live_native_band_sight_pressure_mcw",
+  "description": "Focused post-continuity native proof: one tagged rider directly sees the avatar while the other is screen-blocked, then their reciprocal route-connected encounter may relay only the observed location/timestamp/expiry.  After the avatar moves south behind the same screen, both riders must route from bounded evidence rather than unseen coordinates before later native pressure is observed.",
+  "profile": "rider-band-sight-pressure-001",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_zombie_rider_band_sight_pressure_2026-09-14",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "semantic_only_startup": true,
+  "capabilities": {"runtime.entry_mode":"cockpit_live_session","capabilities.r_zl_rider.native_band_sight_pressure":"native_direct_to_relayed_old_location_then_cooperative_pressure"},
+  "runtime_contract": {
+    "permitted_input":["cockpit:game.act","cockpit:game.wait","cockpit:game.move_relative","cockpit:run.witness","cockpit:run.finish"],
+    "forbidden_input":["debug:inject_band_membership","debug:inject_target_knowledge","debug:inject_destination","debug:inject_attack","direct-state-mutation","raw-save-rewrite-after-install","guessed-key"],
+    "setup_only_debug":true,"disposable_copy":true,"helpers":["native file bridge"],"permissions":[],"platform":["macos"],"profile":"rider-band-sight-pressure-001","fixture":"mcwilliams_live_debug_zombie_rider_band_sight_pressure_2026-09-14",
+    "requirements":{"os":"macos","source":"current-worktree","executable":"build/rider-band-native/cataclysm-tiles","profile":"rider-band-sight-pressure-001","fixture":"mcwilliams_live_debug_zombie_rider_band_sight_pressure_2026-09-14","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "grants_gameplay_proof":true,
+    "require_screen_observability":false
+  },
+  "steps":[
+    {"kind":"wait","label":"native_rider_band_sight_fixture_settle","seconds":1.0,"capture_after":true,"expected_visible_fact":"two identified hostile riders load to the native World"},
+    {"kind":"audit_saved_game_turn","label":"audit_native_rider_band_sight_time","required_time_of_day_seconds":43200,"required_time_tolerance_seconds":60,"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_rider_band_sight_time_missing","abort_reason":"installed save did not prove noon footing"},
+    {"kind":"audit_saved_map_tile_near_player","label":"audit_native_rider_band_sight_screen","offsets":[[1,0,0],[2,0,0],[3,0,0],[4,0,0],[5,0,0],[6,0,0],[6,1,0],[6,2,0],[6,3,0],[0,1,0],[0,2,0]],"required_terrain":["t_floor"],"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_rider_band_sight_route_missing","abort_reason":"fixture lacks the direct/relay route and native hiding path"},
+    {"kind":"audit_saved_active_monsters","label":"audit_native_rider_band_sight_actors","required_monsters":[{"typeid":"mon_zombie_rider","offset_ms":[6,0,0],"friendly":0,"hallucination":false,"dead":false,"faction":"zombie","aggro_character":true,"values":{"caol_fixture_actor_id":{"str":"rider-direct-east"}}},{"typeid":"mon_zombie_rider","offset_ms":[6,3,0],"friendly":0,"hallucination":false,"dead":false,"faction":"zombie","aggro_character":true,"values":{"caol_fixture_actor_id":{"str":"rider-relay-southeast"}}}],"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_rider_band_sight_actors_missing","abort_reason":"fixture lacks the exact direct and relay riders"},
+    {"kind":"cockpit_live_session","label":"operate_native_rider_band_sight_pressure","cleanup_on_finish":true,"stop_after_live_session":true,"objective":"Use only advertised native actions. First allow a native turn while the east rider directly sees the avatar and the southeast rider is screen-blocked from the avatar but mutually visible and route-connected to the east rider. Record the fixture-gated read-only diagnostic. Then move the avatar south behind the screen using native movement, allow bounded native turns, and compare current avatar position with both riders' recorded old observed location, source actor, provenance, observed turn and expiry. Do not call a relay proof unless the southeast rider is marked relayed_direct_rider_sight with the east rider as source and the exact old position/time/expiry. Continue only long enough to observe both tagged live members make native closing or pressure progress; do not inject membership, observation, destination or attack.","proof_targets":["direct versus relayed source provenance","shared original old location/time/expiry after native hiding","no unseen-current-coordinate pursuit","later native cooperative closing or pressure","exact actor/run/process/source binding"],"authority":["advertised native actions","run.witness","run.finish"],"invariants":["fixture setup is zero-credit","diagnostic is read-only","no injected membership, observation, destination or attack","matching same-destination/no-meeting and blocked-contact controls remain negative in the focused rider-band tests"],"live_operations":["game.act","game.wait","game.move_relative"],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}
+  ],
+  "recommended_test_command":"python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_native_band_sight_pressure_mcw",
+  "evidence_contract":{"claim":"a source-bound native run distinguishes one direct rider sighting from encounter-bound relay, then shows bounded old-location pursuit and later cooperative member pressure","failure_rule":"missing relay provenance, a changed observed timestamp/expiry, a hidden-current-coordinate destination, or missing member pressure leaves the claim unproved"},
+  "proof_route":{"precondition":["native_rider_band_sight_fixture_settle","audit_native_rider_band_sight_time","audit_native_rider_band_sight_actors"],"production_behavior":["operate_native_rider_band_sight_pressure"],"terminal_persistence":["operate_native_rider_band_sight_pressure"],"artifact_verdict":["operate_native_rider_band_sight_pressure"],"disallowed_shortcuts":["operate_native_rider_band_sight_pressure"]}
+}

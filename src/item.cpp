@@ -3674,7 +3674,11 @@ bool item::getlight( float &luminance, units::angle &width, units::angle &direct
     width = 0_degrees;
     direction = 0_degrees;
     if( light.luminance > 0 ) {
-        luminance = static_cast<float>( light.luminance );
+        const int emitted = getlight_emit();
+        if( emitted <= 0 ) {
+            return false;
+        }
+        luminance = static_cast<float>( emitted );
         if( light.width > 0 ) {  // width > 0 is a light arc
             width = units::from_degrees( light.width );
             direction = units::from_degrees( light.direction );
@@ -3690,14 +3694,16 @@ bool item::getlight( float &luminance, units::angle &width, units::angle &direct
     return false;
 }
 
-// TODO(multimag): a multimag light-emitting tool with empty pockets will
-// emit free light because this gates on ammo_required(). Fixing this needs
-// a carrier-aware overload + recursive forwarding into gunmod-light path.
-int item::getlight_emit() const
+// Multimag light emission is evaluated against the actual carrier when one
+// is supplied, including recursive forwarding through a light gunmod.
+int item::getlight_emit( const Character *carrier ) const
 {
     const map &here = get_map();
 
     float lumint = type->light_emission;
+    if( lumint == 0 && light.luminance > 0 ) {
+        lumint = light.luminance;
+    }
 
     if( lumint == 0 ) {
         // gunmods can create light, but cache_visit_items_with() do not check items inside mod pockets
@@ -3705,7 +3711,7 @@ int item::getlight_emit() const
         if( is_gun() && !gunmods().empty() ) {
             for( const item *maybe_flashlight : gunmods() ) {
                 if( maybe_flashlight->type->light_emission != 0 ) {
-                    return maybe_flashlight->getlight_emit();
+                    return maybe_flashlight->getlight_emit( carrier );
                 }
             }
             return 0;
@@ -3716,7 +3722,13 @@ int item::getlight_emit() const
         has_flag( flag_USES_BIONIC_POWER ) ) {
         return lumint;
     }
-    if( ammo_remaining_linked( here ) == 0 ) {
+    int remaining = ammo_remaining_linked( here, carrier );
+    // Ground items have no carrier for external power, but their local
+    // magazine wells still need to be considered by the light query.
+    if( remaining == 0 && carrier == nullptr ) {
+        remaining = ammo_remaining();
+    }
+    if( remaining == 0 ) {
         return 0;
     }
     if( has_flag( flag_CHARGEDIM ) && is_tool() && !has_flag( flag_USE_UPS ) ) {
@@ -3735,8 +3747,8 @@ int item::getlight_emit() const
         // Falloff starts at 1/5 total charge and scales linearly from there to 0.
         const ammotype &loaded_ammo = ammo_data()->ammo->type;
         if( ammo_capacity( loaded_ammo ) &&
-            ammo_remaining_linked( here ) < ( ammo_capacity( loaded_ammo ) / 5 ) ) {
-            lumint *= ammo_remaining_linked( here ) * 5.0 / ammo_capacity( loaded_ammo );
+            remaining < ( ammo_capacity( loaded_ammo ) / 5 ) ) {
+            lumint *= remaining * 5.0 / ammo_capacity( loaded_ammo );
         }
     }
     return lumint;

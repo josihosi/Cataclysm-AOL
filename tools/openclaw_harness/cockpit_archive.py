@@ -30,6 +30,8 @@ def json_chunks(value, *, sort_keys=False):
             yield ":"
             yield from json_chunks(value[key], sort_keys=sort_keys)
         yield "}"
+    elif isinstance(value, ArchiveSequence):
+        yield from value.json_chunks(sort_keys=sort_keys)
     elif is_sequence(value):
         yield "["
         for index, item in enumerate(value):
@@ -86,7 +88,7 @@ class Archive:
                 CREATE TABLE IF NOT EXISTS metadata (key TEXT PRIMARY KEY, value TEXT);
                 CREATE TABLE IF NOT EXISTS streams (id TEXT PRIMARY KEY, count INTEGER NOT NULL);
                 CREATE TABLE IF NOT EXISTS records (stream TEXT, seq INTEGER, value TEXT NOT NULL,
-                    entry_key TEXT, kind TEXT, PRIMARY KEY(stream, seq));
+                    entry_key TEXT, kind TEXT, raw_sha256 TEXT, PRIMARY KEY(stream, seq));
                 CREATE INDEX IF NOT EXISTS record_key ON records(stream, entry_key);
                 CREATE TABLE IF NOT EXISTS objects (namespace TEXT, id TEXT, value TEXT,
                     used INTEGER, macro_stop INTEGER, identity TEXT, PRIMARY KEY(namespace,id));
@@ -94,6 +96,18 @@ class Archive:
             """)
             for key, value in (("run_id", run_id), ("binding_id", binding_id)):
                 self.connection.execute("INSERT OR IGNORE INTO metadata VALUES (?,?)", (key, value))
+            columns = {row[1] for row in self.connection.execute("PRAGMA table_info(records)")}
+            if "raw_sha256" not in columns:
+                self.connection.execute("ALTER TABLE records ADD COLUMN raw_sha256 TEXT")
+                # A legacy archive has no append-only sidecars, but retaining
+                # per-row integrity makes a later migrated stream tamper
+                # evident without decoding its logical observation values.
+                for stream, sequence, raw in self.connection.execute(
+                        "SELECT stream,seq,value FROM records WHERE raw_sha256 IS NULL"):
+                    self.connection.execute(
+                        "UPDATE records SET raw_sha256=? WHERE stream=? AND seq=?",
+                        (hashlib.sha256(raw.encode("utf-8")).hexdigest(), stream, sequence),
+                    )
             self.connection.commit()
         metadata = dict(self.connection.execute("SELECT key,value FROM metadata"))
         if metadata != {"run_id": run_id, "binding_id": binding_id}:
@@ -112,6 +126,12 @@ class Archive:
         stream = uuid.uuid4().hex
         with self.connection:
             self.connection.execute("INSERT INTO streams VALUES (?,0)", (stream,))
+        # Keep two append-only, index-addressed serializations beside the
+        # database rows.  They let final export and canonical reference
+        # hashing stream the original records without decoding every archived
+        # observation at terminalization time.  The SQLite records remain the
+        # authoritative indexed retrieval store.
+        ArchiveSequence(self, stream)._ensure_sidecars()
         return ArchiveSequence(self, stream)
 
     def derived(self, purpose):
@@ -173,9 +193,22 @@ class Archive:
             return value
         result = project(response, [])
         if references:
-            exported = exported or write_json_stream(self.path.parent / ("response-export-" + uuid.uuid4().hex + ".json"), response)
+            # A live response only needs an authenticated wire skeleton: the
+            # archive references below carry the lazy history and their
+            # per-stream digests protect retrieval.  Exporting ``response``
+            # here used to materialize every archived row once for each
+            # transport reply (run.witness, run.finish, and the bridge's
+            # final response).  Report sidecars still pass ``exported`` and
+            # retain the v1 full-logical-export contract.
+            wire_schema = "caol-live-artifact-reference-v1"
+            if exported is None:
+                exported = write_json_stream(
+                    self.path.parent / ("response-export-" + uuid.uuid4().hex + ".json"),
+                    result,
+                )
+                wire_schema = "caol-live-artifact-reference-v2"
             result["artifact_reference_envelope"] = {
-                "schema": "caol-live-artifact-reference-v1", "references": references,
+                "schema": wire_schema, "references": references,
                 "exported_response": exported, "run_id": self.run_id, "binding_id": self.binding_id}
         return result
 
@@ -191,6 +224,88 @@ class ArchiveSequence(Sequence):
         if row is None:
             raise ValueError("archive_sequence_missing")
         return row[0]
+
+    def _sidecar_path(self, *, sort_keys: bool) -> Path:
+        flavor = "canonical" if sort_keys else "export"
+        return self.archive.path.parent / (
+            self.archive.path.stem + ".stream-" + self.stream + "." + flavor + ".jsonl"
+        )
+
+    def _ensure_sidecars(self) -> None:
+        if self.archive.readonly:
+            return
+        for sort_keys in (False, True):
+            self._sidecar_path(sort_keys=sort_keys).touch(exist_ok=True)
+
+    def _append_sidecars(self, value, sequence: int) -> None:
+        """Append one record in both exact JSON orders without a history scan."""
+        for sort_keys in (False, True):
+            path = self._sidecar_path(sort_keys=sort_keys)
+            with path.open("a", encoding="utf-8") as stream:
+                if sequence:
+                    stream.write(",")
+                for chunk in json_chunks(value, sort_keys=sort_keys):
+                    stream.write(chunk)
+
+    def _rebuild_sidecars(self) -> None:
+        if self.archive.readonly:
+            return
+        for sort_keys in (False, True):
+            path = self._sidecar_path(sort_keys=sort_keys)
+            temporary = path.with_suffix(path.suffix + ".tmp")
+            with temporary.open("w", encoding="utf-8") as stream:
+                for index, item in enumerate(self):
+                    if index:
+                        stream.write(",")
+                    for chunk in json_chunks(item, sort_keys=sort_keys):
+                        stream.write(chunk)
+            temporary.replace(path)
+
+    def json_chunks(self, *, sort_keys=False):
+        """Emit a complete JSON array from its append-only sidecar when safe.
+
+        Older archives have no sidecar and retain the legacy indexed decode
+        path.  New archives avoid terminal full-history decode churn while
+        retaining byte-for-byte logical JSON and indexed retrieval.
+        """
+        path = self._sidecar_path(sort_keys=sort_keys)
+        if path.is_file():
+            if not self._sidecar_records_intact():
+                raise ValueError("archive_sequence_gap_or_truncated_digest_mismatch")
+            yield "["
+            with path.open("r", encoding="utf-8") as stream:
+                while True:
+                    chunk = stream.read(64 * 1024)
+                    if not chunk:
+                        break
+                    yield chunk
+            yield "]"
+            return
+        yield "["
+        for index, item in enumerate(self):
+            if index:
+                yield ","
+            yield from json_chunks(item, sort_keys=sort_keys)
+        yield "]"
+
+    def _sidecar_records_intact(self) -> bool:
+        """Validate compact indexed row hashes before trusting a sidecar.
+
+        The check streams stored JSON text rather than decoding its nested
+        maps.  It catches direct SQLite mutation while avoiding the former
+        full logical action/observation materialization at final export.
+        """
+        count = 0
+        cursor = self.archive.connection.execute(
+            "SELECT seq,value,raw_sha256 FROM records WHERE stream=? AND seq<? ORDER BY seq",
+            (self.stream, len(self)),
+        )
+        for sequence, raw, expected in cursor:
+            if sequence != count or not isinstance(expected, str) or \
+                    hashlib.sha256(raw.encode("utf-8")).hexdigest() != expected:
+                return False
+            count += 1
+        return count == len(self)
 
     def __iter__(self):
         cursor = self.archive.connection.execute(
@@ -221,11 +336,20 @@ class ArchiveSequence(Sequence):
         if self.count is not None:
             raise ValueError("archive_snapshot_is_immutable")
         raw = self.archive.encode(value)
+        raw_sha256 = hashlib.sha256(raw.encode("utf-8")).hexdigest()
         key = value.get("citation_id") if isinstance(value, Mapping) else None
         kind = value.get("kind") if isinstance(value, Mapping) else None
+        sequence = len(self)
+        # Serialize the current record once, at append time.  The result is
+        # bounded by one action/observation rather than every record in the
+        # terminal transcript; SQLite remains committed before it becomes
+        # visible through the stream count.
+        self._append_sidecars(value, sequence)
         with self.archive.connection:
-            sequence = len(self)
-            self.archive.connection.execute("INSERT INTO records VALUES (?,?,?,?,?)", (self.stream, sequence, raw, key, kind))
+            self.archive.connection.execute(
+                "INSERT INTO records (stream,seq,value,entry_key,kind,raw_sha256) VALUES (?,?,?,?,?,?)",
+                (self.stream, sequence, raw, key, kind, raw_sha256),
+            )
             self.archive.connection.execute("UPDATE streams SET count=count+1 WHERE id=?", (self.stream,))
 
     def __delitem__(self, index):
@@ -237,6 +361,7 @@ class ArchiveSequence(Sequence):
         with self.archive.connection:
             self.archive.connection.execute("DELETE FROM records WHERE stream=? AND seq>=?", (self.stream, start))
             self.archive.connection.execute("UPDATE streams SET count=? WHERE id=?", (start, self.stream))
+        self._rebuild_sidecars()
 
     def lookup(self, key):
         row = self.archive.connection.execute(
@@ -246,7 +371,7 @@ class ArchiveSequence(Sequence):
     def reference(self):
         digest = hashlib.sha256()
         size = 0
-        for chunk in json_chunks(self, sort_keys=True):
+        for chunk in self.json_chunks(sort_keys=True):
             raw = chunk.encode("utf-8")
             digest.update(raw)
             size += len(raw)
@@ -302,8 +427,28 @@ class ArchiveMap(MutableMapping):
         def changed(flag, updated):
             column = "used" if flag == "used" else "macro_stop"
             with self.archive.connection:
-                self.archive.connection.execute(f"UPDATE objects SET {column}=? WHERE namespace=? AND id=?",
-                                                 (bool(updated), self.namespace, key))
+                # Observation authority is single-use.  Its full public
+                # result remains in the ordered transcript, so retaining the
+                # native frame here after consumption only duplicates a large
+                # live response for the rest of the session.  Keep a small
+                # indexed tombstone so replay attempts still fail closed.
+                if self.namespace == "observations" and flag == "used" and bool(updated):
+                    compact = {
+                        name: value[name] for name in (
+                            "run_id", "actions", "action_stable_ids", "handles",
+                            "native_interruption", "macro_stop_decision",
+                        ) if name in value
+                    }
+                    compact["used"] = True
+                    self.archive.connection.execute(
+                        "UPDATE objects SET value=?,used=? WHERE namespace=? AND id=?",
+                        (self.archive.encode(compact), True, self.namespace, key),
+                    )
+                    if self.hot_key == key:
+                        self.hot_value = _Record(compact, changed)
+                else:
+                    self.archive.connection.execute(f"UPDATE objects SET {column}=? WHERE namespace=? AND id=?",
+                                                     (bool(updated), self.namespace, key))
         return _Record(value, changed)
 
     def __iter__(self):
@@ -349,7 +494,9 @@ def resolve_wire(response, *, directory, binding_id, exported_path=None):
     envelope = response.get("artifact_reference_envelope")
     if envelope is None:
         return response
-    if envelope.get("schema") != "caol-live-artifact-reference-v1" or envelope.get("binding_id") != binding_id:
+    schema = envelope.get("schema")
+    if schema not in {"caol-live-artifact-reference-v1", "caol-live-artifact-reference-v2"} or \
+            envelope.get("binding_id") != binding_id:
         raise ValueError("archive_envelope_binding_mismatch")
     exported = envelope.get("exported_response")
     if not isinstance(exported, Mapping):
@@ -366,6 +513,18 @@ def resolve_wire(response, *, directory, binding_id, exported_path=None):
         raise ValueError("archive_export_identity_mismatch")
     result = dict(response)
     result.pop("artifact_reference_envelope")
+    if schema == "caol-live-artifact-reference-v2":
+        # v2 authenticates the compact wire skeleton itself.  The archive
+        # references are checked below before their placeholders are replaced
+        # with lazy sequences, so no full history needs to be decoded merely
+        # to validate a transport response.
+        digest, size = hashlib.sha256(), 0
+        for chunk in json_chunks(result):
+            raw = chunk.encode("utf-8")
+            digest.update(raw)
+            size += len(raw)
+        if digest.hexdigest() != exported["sha256"] or size != exported["bytes"]:
+            raise ValueError("archive_export_reconstruction_mismatch")
     archive = None
     try:
         for item in envelope["references"]:
@@ -387,13 +546,14 @@ def resolve_wire(response, *, directory, binding_id, exported_path=None):
             if parent[final] != {"schema": "caol-archive-sequence-ref-v1", **reference}:
                 raise ValueError("archive_reference_placeholder_mismatch")
             parent[final] = sequence
-        digest, size = hashlib.sha256(), 0
-        for chunk in json_chunks(result):
-            raw = chunk.encode("utf-8")
-            digest.update(raw)
-            size += len(raw)
-        if digest.hexdigest() != exported["sha256"] or size != exported["bytes"]:
-            raise ValueError("archive_export_reconstruction_mismatch")
+        if schema == "caol-live-artifact-reference-v1":
+            digest, size = hashlib.sha256(), 0
+            for chunk in json_chunks(result):
+                raw = chunk.encode("utf-8")
+                digest.update(raw)
+                size += len(raw)
+            if digest.hexdigest() != exported["sha256"] or size != exported["bytes"]:
+                raise ValueError("archive_export_reconstruction_mismatch")
     except Exception as error:
         if archive is not None:
             archive.close()

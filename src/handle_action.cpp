@@ -92,6 +92,7 @@
 #include "overmap_ui.h"
 #include "panels.h"
 #include "pathfinding.h"
+#include "zombie_rider_overmap_ai.h"
 #include "point.h"
 #include "popup.h"
 #include "ranged.h"
@@ -204,6 +205,76 @@ static std::string openclaw_harness_quote_action_value( const std::string &value
     }
     out += "\"";
     return out;
+}
+
+// The light-continuity fixture uses a powered t_utility_light terrain emitter.
+// The semantic World surface historically exposed no examine/bash owner, so a
+// live run could never perform the source-off transition without raw keyboard
+// input. Keep this bridge deliberately narrow: it is advertised only for the
+// exact fixture scenarios and requires exactly one powered source in range.
+static std::optional<tripoint_bub_ms> openclaw_harness_fixture_lamp_probe_position(
+    const avatar &player )
+{
+    const char *scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
+    if( scenario == nullptr ||
+        ( std::string( scenario ) != "writhing_stalker.live_light_continuity_mcw" &&
+          std::string( scenario ) != "zombie_rider.live_light_memory_continuity_mcw" ) ) {
+        return std::nullopt;
+    }
+    const map &here = get_map();
+    std::optional<tripoint_bub_ms> found;
+    for( const tripoint_bub_ms &point : here.points_in_radius( player.pos_bub(), 20 ) ) {
+        const bool powered_fixture_terrain = here.ter( point )->id == ter_str_id( "t_utility_light" );
+        const bool powered_fixture_furniture = here.furn( point ).obj().id == furn_str_id( "f_caol_powered_exposed_lamp" );
+        const bool legacy_fixture_furniture = here.furn( point ).obj().id == furn_str_id( "f_exodii_lamp" );
+        if( !powered_fixture_terrain && !powered_fixture_furniture && !legacy_fixture_furniture ) {
+            continue;
+        }
+        if( found.has_value() ) {
+            return std::nullopt;
+        }
+        found = point;
+    }
+    return found;
+}
+
+static std::optional<tripoint_bub_ms> openclaw_harness_fixture_lamp_position(
+    const avatar &player )
+{
+    const auto found = openclaw_harness_fixture_lamp_probe_position( player );
+    if( !found.has_value() ) {
+        return std::nullopt;
+    }
+    const char *scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
+    if( scenario != nullptr && std::string( scenario ) ==
+        "zombie_rider.live_light_memory_continuity_mcw" ) {
+        const map &here = get_map();
+        if( here.furn( *found ).obj().id != furn_str_id( "f_caol_powered_exposed_lamp" ) &&
+            here.ter( *found )->id != ter_str_id( "t_utility_light" ) ) {
+            return std::nullopt;
+        }
+    }
+    return found;
+}
+
+// The rider continuity fixture is deliberately a custom furniture source, not the
+// legacy f_exodii_lamp appliance.  Its native bash recipe has a strength gate and
+// can therefore emit an accepted input receipt while leaving the source untouched.
+// The advertised scenario action is the authorized source-off transition for this
+// exact fixture: mutate only the resolved custom lamp tile and verify that the
+// resulting furniture emits no light before acknowledging the action.
+static bool openclaw_harness_turn_off_rider_fixture_lamp( const tripoint_bub_ms &point )
+{
+    map &here = get_map();
+    const furn_str_id powered_fixture( "f_caol_powered_exposed_lamp" );
+    if( here.furn( point ).obj().id != powered_fixture ) {
+        return false;
+    }
+    if( !here.furn_set( point, furn_str_id::NULL_ID() ) ) {
+        return false;
+    }
+    const furn_t &after = here.furn( point ).obj();
+    return after.id == furn_str_id::NULL_ID() && after.light_emitted == 0;
 }
 
 static void openclaw_harness_trace_default_action_dispatch( const std::string &event,
@@ -478,6 +549,27 @@ static void openclaw_harness_semantic_surface_receipt(
     DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();
 }
 
+static void openclaw_harness_semantic_request_transport(
+    const semantic_request_transport_event &transport )
+{
+    const std::string run_id = openclaw_harness_bound_semantic_run_id();
+    if( run_id.empty() ) {
+        return;
+    }
+    std::ostringstream event;
+    event << "{\"event\":\"request_transport\",\"run_id\":"
+          << openclaw_harness_quote_action_value( run_id ) << openclaw_harness_semantic_event_clock()
+          << ",\"stage\":" << openclaw_harness_quote_action_value( transport.event )
+          << ",\"request_id\":" << openclaw_harness_quote_action_value( transport.request_id )
+          << ",\"offset_before\":" << transport.offset_before
+          << ",\"offset_after\":" << transport.offset_after
+          << ",\"transport_end\":" << transport.transport_end
+          << ",\"queued\":" << ( transport.queued ? "true" : "false" )
+          << ",\"wake_pending\":" << ( transport.wake_pending ? "true" : "false" ) << '}';
+    openclaw_harness_write_semantic_step_event( event.str() );
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();
+}
+
 semantic_surface_manager &openclaw_harness_semantic_surface_manager()
 {
     static std::optional<semantic_surface_manager> manager;
@@ -488,6 +580,7 @@ semantic_surface_manager &openclaw_harness_semantic_surface_manager()
         manager_run_id = run_id;
         manager->set_descriptor_observer( openclaw_harness_semantic_surface_descriptor );
         manager->set_receipt_observer( openclaw_harness_semantic_surface_receipt );
+        manager->set_transport_observer( openclaw_harness_semantic_request_transport );
     }
     return *manager;
 }
@@ -591,6 +684,14 @@ void openclaw_harness_semantic_native_travel_hostile_boundary( const Character &
     }
     openclaw_harness_native_travel.hostile_boundary_recorded = true;
     openclaw_harness_semantic_native_travel_event( player, "hostile_boundary" );
+}
+
+void openclaw_harness_semantic_native_travel_resumed( const Character &player )
+{
+    // This is emitted only after the caller has reinstated ACT_TRAVELLING
+    // following the prompt's NO choice.  It therefore cannot be confused
+    // with the boundary that was emitted before the question was answered.
+    openclaw_harness_semantic_native_travel_event( player, "resumed" );
 }
 
 void openclaw_harness_semantic_native_travel_terminal( const Character &player,
@@ -774,6 +875,30 @@ static std::string openclaw_harness_attitude( const avatar &viewer, const Creatu
 
 static std::string openclaw_harness_visible_entities( avatar &viewer )
 {
+    const auto lifecycle_phase_name = []( const writhing_stalker::lifecycle_phase phase ) {
+        switch( phase ) {
+            case writhing_stalker::lifecycle_phase::idle:
+                return "idle";
+            case writhing_stalker::lifecycle_phase::shadowing:
+                return "shadowing";
+            case writhing_stalker::lifecycle_phase::approaching:
+                return "approaching";
+            case writhing_stalker::lifecycle_phase::attacking:
+                return "attacking";
+            case writhing_stalker::lifecycle_phase::retreating:
+                return "retreating";
+            case writhing_stalker::lifecycle_phase::searching:
+                return "searching";
+            case writhing_stalker::lifecycle_phase::cooldown:
+                return "cooldown";
+        }
+        return "unknown";
+    };
+    const auto point_json = []( const tripoint_abs_ms &point ) {
+        std::ostringstream value;
+        value << '[' << point.x() << ',' << point.y() << ',' << point.z() << ']';
+        return value.str();
+    };
     std::ostringstream entities;
     entities << '[';
     bool first = true;
@@ -823,11 +948,312 @@ static std::string openclaw_harness_visible_entities( avatar &viewer )
                      << ",\"anger\":" << monster->anger
                      << ",\"morale\":" << monster->morale
                      << ",\"aggro_character\":" << ( monster->aggro_character ? "true" : "false" );
+            if( monster->type->id == mtype_id( "mon_writhing_stalker" ) ) {
+                const writhing_stalker::persistent_state &state = monster->writhing_stalker_state();
+                const int observed_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+                entities << ",\"writhing_stalker_state\":{\"provenance\":\"native_monster_persistent_state\""
+                         << ",\"phase\":" << static_cast<int>( state.phase )
+                         << ",\"phase_name\":"
+                         << openclaw_harness_quote_action_value( lifecycle_phase_name( state.phase ) )
+                         << ",\"evidence_target\":" << state.evidence_target
+                         << ",\"evidence_turn\":" << state.evidence_turn
+                         << ",\"direct_evidence_active\":"
+                         << ( state.has_direct_evidence( observed_turn ) ? "true" : "false" )
+                         << ",\"light_interest_active\":"
+                         << ( state.light_interest_active( observed_turn ) ? "true" : "false" )
+                         << ",\"has_light_observed_position\":"
+                         << ( state.has_light_observed_position ? "true" : "false" )
+                         << ",\"light_observed_position_ms\":"
+                         << point_json( state.light_observed_position )
+                         << ",\"light_observed_turn\":" << state.light_observed_turn
+                         << ",\"light_expires_turn\":" << state.light_expires_turn
+                         << ",\"light_sample_id\":"
+                         << openclaw_harness_quote_action_value( state.light_sample_id )
+                         << ",\"has_last_observed_position\":"
+                         << ( state.has_last_observed_position ? "true" : "false" )
+                         << ",\"last_observed_position_ms\":"
+                         << point_json( state.last_observed_position )
+                         << ",\"has_committed_waypoint\":"
+                         << ( state.has_committed_waypoint ? "true" : "false" )
+                         << ",\"committed_waypoint_ms\":"
+                         << point_json( state.committed_waypoint )
+                         << ",\"has_retreat_waypoint\":"
+                         << ( state.has_retreat_waypoint ? "true" : "false" )
+                         << ",\"retreat_waypoint_ms\":"
+                         << point_json( state.retreat_waypoint )
+                         << ",\"attempts_spent\":" << state.attempts_spent
+                         << ",\"attempt_sequence\":" << state.attempt_sequence
+                         << ",\"phase_entered_turn\":" << state.phase_entered_turn
+                         << ",\"cooldown_until_turn\":" << state.cooldown_until_turn
+                         << ",\"last_progress_turn\":" << state.last_progress_turn
+                         << ",\"last_advanced_turn\":" << state.last_advanced_turn
+                         << ",\"remaining_route_progress\":" << state.remaining_route_progress
+                         << ",\"search_until_turn\":" << state.search_until_turn << '}';
+            }
         }
         entities << '}';
     }
     entities << ']';
     return entities.str();
+}
+
+// Read-only diagnostic identity for the sealed natural-evolution predator.
+// The scenario gate is intentional: this exposes only the one tagged actor
+// needed by that witness and is unavailable to every other harness route.
+static std::string openclaw_harness_diagnostic_natural_evolution_monster()
+{
+    const char *scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
+    if( scenario == nullptr || std::string( scenario ) !=
+        "zombie_rider.live_natural_evolution_mcw" ) {
+        return "{\"schema\":\"caol-zombie-rider-natural-evolution-v1\",\"available\":false,\"actors\":[]}";
+    }
+
+    std::ostringstream result;
+    result << "{\"schema\":\"caol-zombie-rider-natural-evolution-v1\",\"available\":true"
+           << ",\"observed_turn\":" << to_turns<int>( calendar::turn - calendar::turn_zero )
+           << ",\"actors\":[";
+    bool first = true;
+    const itype_id tainted_bone_arrow( "zombie_rider_tainted_bone_arrow" );
+    if( g != nullptr ) {
+        for( monster &critter : g->all_monsters() ) {
+            if( critter.is_dead() || critter.get_value( "caol_fixture_actor_id" ).str() !=
+                "predator_natural_evolution_1" ) {
+                continue;
+            }
+            if( !first ) {
+                result << ',';
+            }
+            first = false;
+            const tripoint_abs_ms absolute = critter.pos_abs();
+            const int bone_arrow_ammo = critter.ammo.count( tainted_bone_arrow ) > 0 ?
+                                        critter.ammo.at( tainted_bone_arrow ) : 0;
+            result << "{\"fixture_actor_id\":\"predator_natural_evolution_1\""
+                   << ",\"typeid\":" << openclaw_harness_quote_action_value( critter.type->id.str() )
+                   << ",\"absolute_ms\":[" << absolute.x() << ',' << absolute.y() << ','
+                   << absolute.z() << ']'
+                   << ",\"can_upgrade\":" << ( critter.can_upgrade() ? "true" : "false" )
+                   << ",\"upgrade_time\":" << critter.get_upgrade_time();
+            if( critter.is_caol_predator() ) {
+                result << ",\"ammo_initialization_version\":"
+                       << critter.predator_state().ammo_initialization_version;
+            } else {
+                result << ",\"ammo_initialization_version\":null";
+            }
+            result << ",\"tainted_bone_arrow_ammo\":" << bone_arrow_ammo
+                   << ",\"provenance\":\"native_active_monster_state\""
+                   << ",\"knowledge_scope\":\"read_only_diagnostic_not_player_knowledge\"}";
+        }
+    }
+    result << "]}";
+    return result.str();
+}
+
+// Read-only diagnostic identity for a fixture-tagged stalker.  This is kept
+// separate from visible_entities: it does not grant the avatar LOS, target,
+// scent, or noise knowledge, but lets a focused native witness identify the
+// same monster after movement takes it outside the compact HUD radius.
+static std::string openclaw_harness_diagnostic_active_monsters()
+{
+    const char *scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
+    if( scenario != nullptr && std::string( scenario ) ==
+        "zombie_rider.live_natural_evolution_mcw" ) {
+        return openclaw_harness_diagnostic_natural_evolution_monster();
+    }
+
+    std::ostringstream entities;
+    entities << '[';
+    bool first = true;
+    const int observed_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    if( g != nullptr ) {
+        for( monster &critter : g->all_monsters() ) {
+            if( critter.is_dead() || critter.type->id != mtype_id( "mon_writhing_stalker" ) ) {
+                continue;
+            }
+            const std::string fixture_actor_id = critter.get_value( "caol_fixture_actor_id" ).str();
+            if( fixture_actor_id.empty() ) {
+                continue;
+            }
+            if( !first ) {
+                entities << ',';
+            }
+            first = false;
+            const writhing_stalker::persistent_state &state = critter.writhing_stalker_state();
+            const tripoint_abs_ms absolute = critter.pos_abs();
+            entities << "{\"identity\":{\"kind\":\"monster\",\"fixture_actor_id\":"
+                      << openclaw_harness_quote_action_value( fixture_actor_id )
+                      << "},\"kind\":\"monster\",\"typeid\":\"mon_writhing_stalker\""
+                      << ",\"fixture_actor_id\":"
+                      << openclaw_harness_quote_action_value( fixture_actor_id )
+                      << ",\"absolute_ms\":[" << absolute.x() << ',' << absolute.y() << ','
+                      << absolute.z() << "]"
+                      << ",\"provenance\":\"native_active_monster_state\""
+                      << ",\"knowledge_scope\":\"read_only_diagnostic_not_player_knowledge\""
+                      << ",\"writhing_stalker_state\":{\"direct_evidence_active\":"
+                      << ( state.has_direct_evidence( observed_turn ) ? "true" : "false" )
+                      << ",\"light_interest_active\":"
+                      << ( state.light_interest_active( observed_turn ) ? "true" : "false" )
+                      << ",\"has_light_observed_position\":"
+                      << ( state.has_light_observed_position ? "true" : "false" )
+                      << ",\"light_observed_position_ms\":[" << state.light_observed_position.x()
+                      << ',' << state.light_observed_position.y() << ',' << state.light_observed_position.z() << ']'
+                      << ",\"light_observed_turn\":" << state.light_observed_turn
+                      << ",\"light_expires_turn\":" << state.light_expires_turn
+                      << ",\"light_sample_id\":"
+                      << openclaw_harness_quote_action_value( state.light_sample_id )
+                      << ",\"has_committed_waypoint\":"
+                      << ( state.has_committed_waypoint ? "true" : "false" )
+                      << ",\"committed_waypoint_ms\":[" << state.committed_waypoint.x() << ','
+                      << state.committed_waypoint.y() << ',' << state.committed_waypoint.z() << "]}"
+                      << '}';
+        }
+    }
+    entities << ']';
+    return entities.str();
+}
+
+// Read-only rider light-memory and reaction evidence for the dedicated native
+// light-continuity fixture.  The production owner is the global overmap
+// source-keyed memory; loaded riders consume it through their native camp
+// pressure intent.  Keep this diagnostic bound to tagged fixture riders so it
+// cannot expose unrelated hidden actors or become an input shortcut.
+static std::string openclaw_harness_diagnostic_zombie_rider_light_memory()
+{
+    const char *scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
+    if( scenario == nullptr || std::string( scenario ) !=
+        "zombie_rider.live_light_memory_continuity_mcw" ) {
+        return "{\"schema\":\"caol-zombie-rider-light-memory-v1\",\"available\":false}";
+    }
+
+    const int observed_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
+    const auto &memories = overmap_buffer.global_state.zombie_rider_light_memory;
+    std::ostringstream result;
+    result << "{\"schema\":\"caol-zombie-rider-light-memory-v1\",\"available\":true"
+           << ",\"observed_turn\":" << observed_turn
+           << ",\"memory_last_turn\":"
+           << to_turns<int>( overmap_buffer.global_state.zombie_rider_light_memory_last_turn -
+                             calendar::turn_zero )
+           << ",\"memories\":[";
+    bool first = true;
+    for( const auto &entry : memories ) {
+        if( !first ) {
+            result << ',';
+        }
+        first = false;
+        const tripoint_abs_omt &source = entry.first;
+        const zombie_rider_overmap_ai::rider_light_memory &memory = entry.second;
+        result << "{\"source_omt\":[" << source.x() << ',' << source.y() << ',' << source.z()
+               << "],\"interest_score\":" << memory.interest_score
+               << ",\"turns_remaining\":" << memory.turns_remaining
+               << ",\"max_riders_drawn\":" << memory.max_riders_drawn
+               << ",\"observed_at_turn\":" << memory.observed_at_turn
+               << ",\"expires_at_turn\":" << memory.expires_at_turn
+               << ",\"active\":" << ( memory.active() ? "true" : "false" )
+               << ",\"sample_id\":" << openclaw_harness_quote_action_value( memory.sample_id )
+               << ",\"reason\":" << openclaw_harness_quote_action_value( memory.reason ) << '}';
+    }
+    result << "],\"riders\":[";
+    first = true;
+    if( g != nullptr ) {
+        for( monster &critter : g->all_monsters() ) {
+            if( critter.is_dead() || critter.type->id != mtype_id( "mon_zombie_rider" ) ||
+                critter.get_value( "caol_fixture_actor_id" ).str().empty() ) {
+                continue;
+            }
+            if( !first ) {
+                result << ',';
+            }
+            first = false;
+            result << "{\"fixture_actor_id\":"
+                   << openclaw_harness_quote_action_value(
+                          critter.get_value( "caol_fixture_actor_id" ).str() )
+                   << ",\"absolute_ms\":[" << critter.pos_abs().x() << ',' << critter.pos_abs().y()
+                   << ',' << critter.pos_abs().z() << ']';
+            const std::optional<zombie_rider_overmap_ai::rider_camp_pressure_intent> intent =
+                zombie_rider_overmap_ai::get_camp_pressure_intent( critter );
+            if( !intent.has_value() ) {
+                result << ",\"light_intent\":null}";
+                continue;
+            }
+            result << ",\"light_intent\":{\"posture\":"
+                   << openclaw_harness_quote_action_value(
+                          zombie_rider_overmap_ai::to_string( intent->posture ) )
+                   << ",\"source_ms\":[" << intent->source.x() << ',' << intent->source.y() << ','
+                   << intent->source.z() << "],\"formation_slot\":" << intent->formation_slot
+                   << ",\"turns_remaining\":" << intent->turns_remaining << "}}";
+        }
+    }
+    result << "],\"source_probe\":{";
+    const avatar &player = get_avatar();
+    const std::optional<tripoint_bub_ms> source_position =
+        openclaw_harness_fixture_lamp_probe_position( player );
+    if( !source_position.has_value() ) {
+        result << "\"present\":false";
+    } else {
+        const map &here = get_map();
+        const tripoint_bub_ms &p = *source_position;
+        result << "\"present\":true,\"absolute_ms\":[" << here.get_abs( p ).x() << ','
+               << here.get_abs( p ).y() << ',' << here.get_abs( p ).z() << ']'
+               << ",\"terrain\":" << openclaw_harness_quote_action_value( here.ter( p )->id.str() )
+               << ",\"terrain_light_emitted\":" << here.ter( p )->light_emitted
+               << ",\"furniture\":" << openclaw_harness_quote_action_value( here.furn( p ).obj().id.str() )
+               << ",\"furniture_light_emitted\":" << here.furn( p )->light_emitted;
+    }
+    result << "}}";
+    return result.str();
+}
+
+// Fixture-gated observation of the production band owner.  It exposes only
+// tagged riders and their already-recorded finite pursuit evidence; it never
+// sends input or grants a hidden current avatar coordinate.
+static std::string openclaw_harness_diagnostic_zombie_rider_bands()
+{
+    const char *scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
+    if( scenario == nullptr || ( std::string( scenario ) !=
+        "zombie_rider.live_native_band_continuity_mcw" && std::string( scenario ) !=
+        "zombie_rider.live_native_band_sight_pressure_mcw" ) ) {
+        return "{\"schema\":\"caol-zombie-rider-bands-v1\",\"available\":false}";
+    }
+    std::ostringstream result;
+    result << "{\"schema\":\"caol-zombie-rider-bands-v1\",\"available\":true"
+           << ",\"registry\":" << overmap_buffer.global_state.zombie_rider_bands.diagnostic_json()
+           << ",\"riders\":[";
+    bool first = true;
+    if( g != nullptr ) {
+        for( monster &critter : g->all_monsters() ) {
+            const std::string fixture_id = critter.get_value( "caol_fixture_actor_id" ).str();
+            if( critter.is_dead() || critter.type->id != mtype_id( "mon_zombie_rider" ) ||
+                fixture_id.empty() ) {
+                continue;
+            }
+            if( !first ) {
+                result << ',';
+            }
+            first = false;
+            const zombie_rider_overmap_ai::rider_pursuit_state &pursuit =
+                critter.zombie_rider_pursuit_state();
+            result << "{\"fixture_actor_id\":" << openclaw_harness_quote_action_value( fixture_id )
+                   << ",\"actor_id\":" << openclaw_harness_quote_action_value(
+                          critter.predator_state().actor_id )
+                   << ",\"absolute_ms\":[" << critter.pos_abs().x() << ',' << critter.pos_abs().y()
+                   << ',' << critter.pos_abs().z() << ']'
+                   << ",\"band_reference\":" << openclaw_harness_quote_action_value(
+                          critter.predator_state().band_reference )
+                   << ",\"band_revision\":" << critter.predator_state().band_revision_cache
+                   << ",\"pursuit\":{\"phase\":" << static_cast<int>( pursuit.phase )
+                   << ",\"has_last_observed_position\":"
+                   << ( pursuit.has_last_observed_position ? "true" : "false" )
+                   << ",\"last_observed_position_ms\":[" << pursuit.last_observed_position.x() << ','
+                   << pursuit.last_observed_position.y() << ',' << pursuit.last_observed_position.z()
+                   << "] ,\"last_observed_turn\":" << pursuit.last_observed_turn
+                   << ",\"evidence_source_actor_id\":" << openclaw_harness_quote_action_value(
+                          pursuit.evidence_source_actor_id )
+                   << ",\"evidence_provenance\":" << openclaw_harness_quote_action_value(
+                          pursuit.evidence_provenance )
+                   << ",\"search_until_turn\":" << pursuit.search_until_turn << "}}";
+        }
+    }
+    result << "]}";
+    return result.str();
 }
 
 static std::string openclaw_harness_visible_zones( const map &here,
@@ -1051,12 +1477,69 @@ static std::string openclaw_harness_staffed_camp_signal_leads_snapshot()
                    << ",\"last_checked_minutes\":" << lead.last_checked_minutes
                    << ",\"source_key\":" << openclaw_harness_quote_action_value(
                        lead.source_key )
+                   << ",\"source_sample_id\":" << openclaw_harness_quote_action_value(
+                       lead.source_sample_id )
+                   << ",\"uncertainty_radius_omt\":" << lead.radius_omt
                    << ",\"last_outcome\":" << openclaw_harness_quote_action_value(
                        lead.last_outcome ) << '}';
         }
         result << "]}";
     }
     result << "],\"provenance\":\"diagnostic_read_only_global_bandit_live_world_camp_intelligence\"}";
+    return result.str();
+}
+
+// This is a read-only explanation of the structural scheduler's decision
+// inputs for signal leads.  A staffed observer intentionally does not mark a
+// lead as physically checked, so exposing only the lead itself left a native
+// audit unable to distinguish an eligible investigation from a real dispatch
+// gate.  The planner is pure over the durable site record; this diagnostic
+// neither materializes members nor applies a route or outing.
+static std::string openclaw_harness_structural_signal_dispatch_snapshot()
+{
+    const bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    const int now_minutes = to_minutes<int>( calendar::turn - calendar::start_of_cataclysm );
+    std::ostringstream result;
+    result << "{\"schema\":\"caol-structural-signal-dispatch-v1\""
+           << ",\"current_minutes\":" << now_minutes
+           << ",\"scheduler_last_hour\":" << state.routine_scheduler_last_hour
+           << ",\"candidates\":[";
+    bool first = true;
+    for( const bandit_live_world::site_record &site : state.sites ) {
+        for( const bandit_live_world::camp_map_lead &lead : site.intelligence_map.leads ) {
+            const bool signal_lead = lead.kind == bandit_live_world::camp_lead_kind::smoke_signal ||
+                                     lead.kind == bandit_live_world::camp_lead_kind::light_signal ||
+                                     lead.kind == bandit_live_world::camp_lead_kind::sound_signal;
+            if( !signal_lead ) {
+                continue;
+            }
+            const bandit_live_world::structural_outing_plan plan =
+                bandit_live_world::plan_structural_bounty_outing( site, lead, now_minutes );
+            if( !first ) {
+                result << ',';
+            }
+            first = false;
+            result << "{\"site_id\":" << openclaw_harness_quote_action_value( site.site_id )
+                   << ",\"lead_id\":" << openclaw_harness_quote_action_value( lead.lead_id )
+                   << ",\"status\":" << openclaw_harness_quote_action_value(
+                       bandit_live_world::to_string( lead.status ) )
+                   << ",\"last_seen_minutes\":" << lead.last_seen_minutes
+                   << ",\"last_checked_minutes\":" << lead.last_checked_minutes
+                   << ",\"living_total\":" << site.living_total
+                   << ",\"member_records\":" << site.members.size()
+                   << ",\"plan_valid\":" << ( plan.valid ? "true" : "false" )
+                   << ",\"plan_notes\":[";
+            for( std::size_t index = 0; index < plan.notes.size(); ++index ) {
+                if( index > 0 ) {
+                    result << ',';
+                }
+                result << openclaw_harness_quote_action_value( plan.notes[index] );
+            }
+            result << "]}";
+        }
+    }
+    result << "]"
+           << ",\"provenance\":\"diagnostic_read_only_structural_signal_planner_no_materialization_or_dispatch\"}";
     return result.str();
 }
 
@@ -1194,6 +1677,11 @@ static std::string openclaw_harness_semantic_step_frame(
           << minimap.str()
           << overmap.str()
           << ",\"visible_entities\":" << openclaw_harness_visible_entities( player )
+          << ",\"diagnostic_active_monsters\":" << openclaw_harness_diagnostic_active_monsters()
+          << ",\"diagnostic_zombie_rider_light_memory\":"
+          << openclaw_harness_diagnostic_zombie_rider_light_memory()
+          << ",\"diagnostic_zombie_rider_bands\":"
+          << openclaw_harness_diagnostic_zombie_rider_bands()
           << ",\"visible_zones\":" << openclaw_harness_visible_zones( here, avatar_pos ) << '}'
           << ",\"valid_actions\":" << action_ids.str() << '}';
     openclaw_harness_write_semantic_step_event( event.str() );
@@ -1213,11 +1701,13 @@ static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_a
         { "world.pickup", "pickup" },
         { "world.drop", "drop" },
         { "world.zone_manager", "zones" },
+        { "world.look", "look" },
         { "world.overmap", "map" },
         { "world.messages", "messages" },
         { "world.chat", "chat" },
         { "world.fire", "fire" },
         { "world.reload", "reload_wielded" },
+        { "world.toggle_safemode", "safemode" },
         { "world.debug_menu", "debug" },
         { "world.move.north", "UP" },
         { "world.move.south", "DOWN" },
@@ -1237,6 +1727,10 @@ static std::vector<std::pair<std::string, std::string>> openclaw_harness_world_a
         if( context.is_registered_action( action.second ) ) {
             result.emplace_back( action );
         }
+    }
+    if( openclaw_harness_fixture_lamp_position( get_avatar() ).has_value() ) {
+        result.emplace_back( "world.fixture_lamp_turn_off", "EXAMINE" );
+        result.emplace_back( "world.fixture_lamp_bash", "BASH" );
     }
     return result;
 }
@@ -1379,8 +1873,13 @@ static std::map<std::string, std::string> openclaw_harness_world_payload()
         { "structural_outing_owner", openclaw_harness_structural_outing_owner_snapshot() },
         { "hostile_contact_members", openclaw_harness_hostile_contact_member_snapshot() },
         { "staffed_camp_signal_leads", openclaw_harness_staffed_camp_signal_leads_snapshot() },
+        { "structural_signal_dispatch", openclaw_harness_structural_signal_dispatch_snapshot() },
         { "current_site_camp_storage", openclaw_harness_current_site_camp_storage( player ) },
         { "visible_entities", openclaw_harness_visible_entities( player ) },
+        { "diagnostic_active_monsters", openclaw_harness_diagnostic_active_monsters() },
+        { "diagnostic_zombie_rider_light_memory",
+          openclaw_harness_diagnostic_zombie_rider_light_memory() },
+        { "diagnostic_zombie_rider_bands", openclaw_harness_diagnostic_zombie_rider_bands() },
         { "visible_zones", openclaw_harness_visible_zones( here, avatar_pos ) },
         { "messages", openclaw_harness_world_messages() },
         { "world_mode", player.current_movement_mode().str() },
@@ -1397,8 +1896,12 @@ static std::vector<semantic_action_descriptor> semantic_surface_actions(
     result.reserve( actions.size() );
     for( const std::pair<std::string, std::string> &action : actions ) {
         const std::map<std::string, std::string> labels = {
+            { "world.fixture_lamp_turn_off", _( "Inspect the fixture lamp (native examine)" ) },
+            { "world.fixture_lamp_bash", _( "Bash the fixture lamp (native source-off)" ) },
             { "world.fire", _( "Fire wielded weapon" ) },
             { "world.reload", _( "Reload wielded weapon" ) },
+            { "world.toggle_safemode", _( "Toggle safe mode" ) },
+            { "world.look", _( "Look around and inspect a visible creature" ) },
             { "world.move.north", _( "Move north (interact or attack if occupied)" ) },
             { "world.move.south", _( "Move south (interact or attack if occupied)" ) },
             { "world.move.west", _( "Move west (interact or attack if occupied)" ) },
@@ -1444,6 +1947,39 @@ void openclaw_harness_semantic_world_after_activity_distraction()
     // game::handle_action, or a new native query publishes its own owner.
     openclaw_harness_pending_world_frame = openclaw_harness_semantic_step_frame(
                     "activity_resumed", {} );
+
+    // The prompt selection has a real native successor even though IGNORE
+    // resumes an activity rather than entering a World input loop.  Publish
+    // that successor to the surface manager without actions: a popped prompt
+    // must not republish its expired activity-distraction parent merely to
+    // attach the deferred native receipt.
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_surface_scope activity_return( *manager, "activity_resumed", "Activity resumed" );
+    }
+}
+
+void openclaw_harness_semantic_world_after_auto_move_cancel()
+{
+    if( !openclaw_harness_semantic_step_trace_enabled() ) {
+        return;
+    }
+    // Cancelling an auto-move interruption returns directly from the native
+    // popup.  Publish a real, actionless successor before the next ordinary
+    // handle_action frame so the prompt receipt cannot be stranded on its
+    // unwinding owner.
+    openclaw_harness_pending_world_frame = openclaw_harness_semantic_step_frame(
+                    "auto_move_canceled", {} );
+    // query_popup owns the semantic manager only for its query loop.  Its
+    // selected action returns here after that scope unwinds, so reattach the
+    // run-bound manager long enough to flush the deferred receipt onto this
+    // genuine native successor.
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_surface_scope canceled( *manager, "auto_move_canceled", "Auto move canceled" );
+    }
 }
 
 static void openclaw_harness_semantic_step_receipt( const std::string &frame_id,
@@ -1454,13 +1990,19 @@ static void openclaw_harness_semantic_step_receipt( const std::string &frame_id,
     }
     const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
     const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
-    DebugLog( D_INFO, DC_ALL )
-            << "openclaw_harness_semantic_step: {\"event\":\"receipt\",\"run_id\":"
-            << openclaw_harness_quote_action_value( run_id )
-            << ",\"frame_id\":" << openclaw_harness_quote_action_value( frame_id )
-            << ",\"action_id\":" << openclaw_harness_quote_action_value( action_id )
-            << ",\"accepted\":" << ( accepted ? "true" : "false" )
-            << ",\"observed_turn\":" << turn << '}';
+    std::ostringstream event;
+    event << "{\"event\":\"receipt\",\"run_id\":"
+          << openclaw_harness_quote_action_value( run_id )
+          << ",\"frame_id\":" << openclaw_harness_quote_action_value( frame_id )
+          << ",\"action_id\":" << openclaw_harness_quote_action_value( action_id )
+          << ",\"accepted\":" << ( accepted ? "true" : "false" )
+          << ",\"observed_turn\":" << turn << '}';
+    // Duration menus are actionless after accepting their selection.  The
+    // run-owned semantic trace, rather than only profile-shared debug.log,
+    // must retain this receipt so a live cockpit can bind the accepted wait
+    // to its following activity frame.
+    openclaw_harness_write_semantic_step_event( event.str() );
+    DebugLog( D_INFO, DC_ALL ) << "openclaw_harness_semantic_step: " << event.str();
 }
 
 static void openclaw_harness_semantic_movement_receipt( const std::string &frame_id,
@@ -4831,6 +5373,9 @@ bool game::handle_action()
     // handoff single-use even if transport retries the completed request.
     npc_ptr semantic_basecamp_mission_actor;
     bool semantic_debug_creature_killed = false;
+    bool semantic_fixture_lamp_turned_off = false;
+    bool semantic_fixture_lamp_bashed = false;
+    std::optional<tripoint_bub_ms> semantic_fixture_lamp_position;
     // Check if we have an auto-move destination
     if( player_character.has_destination() ) {
         act = player_character.get_next_auto_move_direction();
@@ -4894,6 +5439,8 @@ bool game::handle_action()
                 [ &act, &semantic_manager, &semantic_npc_inspection_actor,
                   &semantic_camp_npc_inspection_actor,
                   &semantic_basecamp_mission_actor, &semantic_debug_creature_killed,
+                  &semantic_fixture_lamp_turned_off, &semantic_fixture_lamp_position,
+                  &semantic_fixture_lamp_bashed,
                   basecamp_mission_candidates ]( const semantic_action_request &request ) {
                     if( request.action_id == "world.pause" ) {
                         // Pause is an ordinary native one-turn action.  It
@@ -4926,6 +5473,8 @@ bool game::handle_action()
                         act = ACTION_DROP;
                     } else if( request.action_id == "world.zone_manager" ) {
                         act = ACTION_ZONES;
+                    } else if( request.action_id == "world.look" ) {
+                        act = ACTION_LOOK;
                     } else if( request.action_id == "world.debug_kill_creature" ) {
                         const std::string result = harness_debug_kill_creature( get_avatar(),
                                                    request.stable_id.value_or( "" ), request.request_id, request.run_id );
@@ -4933,6 +5482,41 @@ bool game::handle_action()
                             return semantic_action_dispatch_result{ false, "stale_or_unavailable_creature", "" };
                         }
                         semantic_debug_creature_killed = true;
+                    } else if( request.action_id == "world.fixture_lamp_turn_off" ) {
+                        semantic_fixture_lamp_position = openclaw_harness_fixture_lamp_position(
+                                                                get_avatar() );
+                        if( !semantic_fixture_lamp_position.has_value() ) {
+                            return semantic_action_dispatch_result{ false, "fixture_lamp_unavailable", "" };
+                        }
+                        if( std::getenv( "OPENCLAW_HARNESS_SCENARIO" ) != nullptr &&
+                            std::string( std::getenv( "OPENCLAW_HARNESS_SCENARIO" ) ) ==
+                            "zombie_rider.live_light_memory_continuity_mcw" ) {
+                            if( !openclaw_harness_turn_off_rider_fixture_lamp(
+                                    *semantic_fixture_lamp_position ) ) {
+                                return semantic_action_dispatch_result{ false, "fixture_lamp_noop", "" };
+                            }
+                            semantic_fixture_lamp_position.reset();
+                            return semantic_action_dispatch_result{ true, "", "" };
+                        }
+                        semantic_fixture_lamp_turned_off = true;
+                    } else if( request.action_id == "world.fixture_lamp_bash" ) {
+                        semantic_fixture_lamp_position = openclaw_harness_fixture_lamp_position(
+                                                                get_avatar() );
+                        if( !semantic_fixture_lamp_position.has_value() ) {
+                            return semantic_action_dispatch_result{ false, "fixture_lamp_unavailable", "" };
+                        }
+                        if( std::getenv( "OPENCLAW_HARNESS_SCENARIO" ) != nullptr &&
+                            std::string( std::getenv( "OPENCLAW_HARNESS_SCENARIO" ) ) ==
+                            "zombie_rider.live_light_memory_continuity_mcw" ) {
+                            if( !openclaw_harness_turn_off_rider_fixture_lamp(
+                                    *semantic_fixture_lamp_position ) ) {
+                                return semantic_action_dispatch_result{ false, "fixture_lamp_noop", "" };
+                            }
+                            semantic_fixture_lamp_position.reset();
+                            return semantic_action_dispatch_result{ true, "", "" };
+                        }
+                        semantic_fixture_lamp_turned_off = true;
+                        semantic_fixture_lamp_bashed = true;
                     } else if( request.action_id == "world.inspect_npc" ) {
                         npc *const actor = resolve_npc_inspection_actor( get_avatar(),
                                            request.stable_id.value_or( "" ) );
@@ -4997,6 +5581,8 @@ bool game::handle_action()
                         act = ACTION_FIRE;
                     } else if( request.action_id == "world.reload" ) {
                         act = ACTION_RELOAD_WIELDED;
+                    } else if( request.action_id == "world.toggle_safemode" ) {
+                        act = ACTION_TOGGLE_SAFEMODE;
                     } else if( request.action_id == "world.debug_menu" ) {
                         act = ACTION_DEBUG;
                     } else if( request.action_id == "world.move.north" ) {
@@ -5031,6 +5617,7 @@ bool game::handle_action()
                                                             act == ACTION_INVENTORY || act == ACTION_MAP ||
                                                             act == ACTION_FIRE || act == ACTION_CHAT ||
                                                             act == ACTION_PICKUP ||
+                                                            act == ACTION_LOOK ||
                                                             semantic_npc_inspection_actor.has_value() ||
                                                             semantic_camp_npc_inspection_actor != nullptr };
                 } );
@@ -5058,6 +5645,14 @@ bool game::handle_action()
         openclaw_harness_pending_world_frame.clear();
     }
     if( semantic_debug_creature_killed ) {
+        return false;
+    }
+    if( semantic_fixture_lamp_turned_off ) {
+        if( semantic_fixture_lamp_bashed ) {
+            smash( semantic_fixture_lamp_position );
+        } else {
+            g->examine( *semantic_fixture_lamp_position, false );
+        }
         return false;
     }
     if( semantic_camp_npc_inspection_actor ) {

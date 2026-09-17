@@ -1,0 +1,22 @@
+{
+  "schema":"caol-playtest-witness-statement-v1",
+  "verdict":"proved",
+  "smallest_supported_claim":"This run created only a zero-credit, explicitly artificial local A/B footing: it selected one ordinary zombie in the native spawn picker, placed it eight cursor steps east, turned the active smartphone flashlight off through its advertised native menu, and native-saved before a separate ordinary account exists.",
+  "causal_account":"The run is a setup-only source-bound disposable copy. Debug actions were limited to the native spawn workflow; no observer, attention, knowledge, contact, attack, or route was injected. The flashlight-off choice used the currently advertised smartphone owner. The saved world was captured as r_zl_freeplay_city042_lit_ab_setup_20260916 after native Save and Quit, so the fixture is explicitly artificial and earns no natural-play credit.",
+  "citations":[
+    {"citation_id":"J0001","meaning":"identifies the source-bound setup-only A/B scenario","checks":{"scenario_id":"r_zl_freeplay_city042_lit_ab_setup_mcw","source_identity":"50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280","executable_identity":"e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"}},
+    {"citation_id":"J0016","meaning":"records native selection of the ordinary zombie spawn entry","checks":{"action_id":"menu.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0036","meaning":"records acceptance of the native cursor placement confirmation","checks":{"action_id":"cursor.confirm","native_receipt.accepted":true}},
+    {"citation_id":"J0051","meaning":"records acceptance of the advertised native Turn off flashlight menu choice","checks":{"action_id":"menu.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0054","meaning":"records acceptance of native World Save and Quit","checks":{"action_id":"world.save_quit","native_receipt.accepted":true}},
+    {"citation_id":"J0057","meaning":"records acceptance of native save confirmation","checks":{"action_id":"prompt.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0059","meaning":"records acceptance of native main-menu Quit","checks":{"action_id":"main_menu.quit","native_receipt.accepted":true}},
+    {"citation_id":"J0062","meaning":"records acceptance of native application-quit confirmation","checks":{"action_id":"prompt.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0063","meaning":"records the sealed zero-credit setup boundary","checks":{"unused_authority":"released"}}
+  ],
+  "material_deviations":[],
+  "contradictions":[],
+  "remaining_unknowns":["Whether a separate ordinary account can observe a player-legible on/off difference from this artificial footing."],
+  "recommended_disposition":"continue",
+  "evidence_ceiling":"zero-credit"
+}

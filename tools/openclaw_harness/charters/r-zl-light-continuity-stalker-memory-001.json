@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-LIGHT-CONTINUITY: a physical night lamp reaches the writhing stalker through the production scan, records a light sample/waypoint without player identity, remains active across native turns, and expires at its declared boundary.",
+  "material_proof": "Current-source registry launch, saved night/stalker footing, native movement or wait receipts, same-run light-interest sample id/position/expiry/waypoint, and post-expiry state from the same run.",
+  "current_uncertainty": "Whether the live bridge exposes the stalker memory fields and bounded expiry in one native run without direct-state inspection.",
+  "material_contradiction": ["debug target or memory injection", "lamp treated as player identity", "missing same-run sample/expiry/waypoint", "post-expiry state attributed to another run", "fixture setup credited as gameplay"],
+  "already_accepted_evidence": ["pure writhing-stalker light-memory and serialization tests"],
+  "forbidden_shortcuts": ["debug:inject_target_knowledge", "debug:inject_light_memory", "direct-state-mutation", "raw keyboard dispatch", "crediting fixture setup as gameplay proof"],
+  "honest_stop_conditions": ["same-run sample, persistence and expiry are collected", "the first exact registry, owner, receipt, source or cleanup divergence is retained and reported"],
+  "requested_evidence_ceiling": "focused"
+}

@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-PLAYTEST integrated free play, distinct ordinary nighttime flashlight-travel account: assess player-visible night travel and preserve any naturally encountered lighting, lit-base, or late-rider consequence.",
+  "material_proof": "Current source/executable-bound fresh account, player-visible native inventory/light and travel decisions, timestamps and positions, native movement/interaction or absence evidence, native save/quit lifecycle, and exact owned-process cleanup.",
+  "current_uncertainty": "Whether the saved city copy presents a player-legible flashlight choice, safe ordinary travel, a lit-base consequence, or a late-rider consequence without directed staging.",
+  "material_contradiction": ["reusing setup credit as ordinary play", "focused light fixture replay credited as integrated play", "injected observer, attention, knowledge, contact, actor, or route", "scripted player decisions", "planner text without native receipts", "missing source/process binding", "unclean owned process"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["debug setup after account launch", "direct save mutation", "synthetic observer/contact/knowledge", "diagnostic-selected lighting or rider target", "crediting setup time or flashlight state as ordinary gameplay"],
+  "honest_stop_conditions": ["a bounded ordinary night route with lifecycle evidence is preserved, or the first concrete native divergence is recorded and cleaned up"],
+  "requested_evidence_ceiling": "focused"
+}

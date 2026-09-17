@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL physical-light repair diagnostic: the current-source executable survives a single native city-fixture turn after the gun-mod traversal lifetime fix.",
+  "material_proof": "Current source/executable binding, native World-owner action receipt with a returned World frame, absence of an intervening crash, native save/quit chain, and exact process cleanup.",
+  "current_uncertainty": "Whether the former SIGSEGV path is exercised cleanly in the full native executable after the targeted unit regression passes.",
+  "material_contradiction": ["a SIGSEGV or crash log on the action", "lost native World owner after the action", "missing source/process binding", "unclean owned process", "any claim of integrated gameplay credit"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["debug injection", "direct save mutation", "more than one turn-advancing action", "claiming gameplay, ecology, or stalker-timing evidence"],
+  "honest_stop_conditions": ["one native turn returns to World with lifecycle evidence, or the first executable divergence is preserved and cleaned up"],
+  "requested_evidence_ceiling": "zero-credit"
+}

@@ -21,6 +21,16 @@ TEST_CASE( "harness_world_options_accepts_production_feasibility_seed" )
     CHECK( error.empty() );
 }
 
+TEST_CASE( "harness_world_options_preserves_requested_ordinary_scenario" )
+{
+    std::string error;
+    const auto parsed = parse_harness_world_options( "natural-missed", "2026091515", &error,
+                        "missed" );
+    REQUIRE( parsed );
+    CHECK( parsed->scenario_id == "missed" );
+    CHECK( error.empty() );
+}
+
 TEST_CASE( "harness_world_options_rejects_invalid_requests" )
 {
     std::string error;

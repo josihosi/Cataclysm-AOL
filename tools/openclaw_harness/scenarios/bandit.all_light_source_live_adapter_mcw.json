@@ -1,4 +1,5 @@
 {
+  "manifest_version": 1,
   "name": "bandit.all_light_source_live_adapter_mcw",
   "status": "green scenario / Slice 5 horde retarget-persistence proof (no local devirtualization claim)",
   "description": "Slice 5 all-light-source live adapter proof route: load the staged all-light fixture, audit saved fire/smoke/furniture/portable-item/household-item light and staged ground-z horde footing, run a bounded in-game wait through the real wait UI, require same-run live signal logs for smoke plus multiple exposed light packets, guard the post-wait save prompt/writeback, then inspect saved turn/weather and overmap horde destination/tracking metadata from the completed saved state. The fixture and run explicitly keep player/horde footing on ground z=0; local/reality-bubble zombie devirtualization is not claimed here.",
@@ -8,6 +9,47 @@
   "fixture_profile": "live-debug",
   "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
   "profile_snapshot_profile": "live-debug",
+  "adaptive_semantic_autodrive": true,
+  "semantic_only_startup": true,
+  "capabilities": {
+    "capabilities.r_zl_light_continuity.all_light_native_wait": "loaded_source_horde_interest_native_five_minute_wait",
+    "runtime.entry_mode": "cockpit_live_session"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.witness",
+      "cockpit:run.finish",
+      "cockpit:run.quit"
+    ],
+    "forbidden_input": [
+      "debug:inject_signal",
+      "debug:inject_target_knowledge",
+      "raw-key-dispatch",
+      "direct-state-mutation"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "bandit_all_light_source_live_adapter_v0_2026-05-04",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "bandit_all_light_source_live_adapter_v0_2026-05-04",
+      "helper": "native file bridge",
+      "peekaboo": false,
+      "ocr": false,
+      "input": ["advertised native actions"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": false
+  },
   "replace_existing_worlds": true,
   "capture_world_after": true,
   "artifact_source": "debug.log",
@@ -16,8 +58,8 @@
     "smoke_packets=1",
     "light_packets=4",
     "raw_weather=",
-    "bandit_live_world horde light signal:",
-    "horde_signal_power="
+    "bandit_live_world horde light interest:",
+    "light_interest="
   ],
   "steps": [
     {
@@ -94,12 +136,12 @@
         {
           "monster_id": "mon_zombie",
           "offset_ms": [
-            -228,
+            -276,
             0,
             0
           ],
           "destination_offset_ms": [
-            -228,
+            -276,
             0,
             0
           ],
@@ -113,28 +155,76 @@
       "expected_visible_fact": "same-save overmap metadata contains the staged idle ground-z horde before the light/smoke signal has a chance to retarget it"
     },
     {
-      "kind": "wait_action",
-      "label": "wait_5_minutes_for_all_light_source_signals",
-      "choice_key": "3",
-      "expected_duration": "5m",
-      "pre_menu_choice_key": "w",
-      "menu_settle_seconds": 0.8,
-      "pre_menu_settle_seconds": 0.8,
-      "after_choice_settle_seconds": 0.5,
-      "completion_wait_seconds": 120.0,
-      "allow_artifact_elapsed_without_menu_ocr": true,
-      "abort_on_interrupt": true,
+      "kind": "native_semantic_bootstrap",
+      "label": "bind_all_light_native_world",
+      "native_semantic_checkpoint": {
+        "required_actions": ["world.wait"],
+        "required_state": "world",
+        "require_initial_hud_world_ready_frame": true
+      }
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_all_light_source_live_adapter",
+      "objective": "From the bound World surface, use only advertised native owners to open world.wait, choose the current five-minute duration owner, collect the accepted receipt and successor World frame, then retain the same-run source/horde log and save evidence before sealing the run.",
+      "proof_targets": [
+        "loaded fire, smoke, furniture and portable light footing",
+        "accepted world.wait -> duration owner -> five-minute native receipt",
+        "successor World turn delta of at least five minutes",
+        "same-run light-interest log and saved horde processing metadata",
+        "owned-process cleanup"
+      ],
+      "authority": [
+        "advertised native actions and their currently advertised duration owners",
+        "world.quicksave when advertised",
+        "run.witness",
+        "run.finish",
+        "run.quit"
+      ],
+      "invariants": [
+        "no raw-key or GUI-dot dispatch",
+        "no debug signal, horde, target-knowledge or save mutation",
+        "fixture installation and audits are footing, not live proof",
+        "the light cue does not identify a player or other entity"
+      ],
+      "live_operations": ["game.act", "game.wait"],
+      "transition_timeout_seconds": 60.0,
+      "observe_interval_seconds": 0.5,
+      "stop_after_live_session": true
+    },
+    {
+      "kind": "adaptive_semantic_window",
+      "label": "advance_five_minutes_for_current_light_sample",
+      "objective": "Advance the ordinary five-minute native wait transaction so the loaded-source sample has an honest hostile scheduler cadence without player movement or raw-key dispatch.",
+      "minimum_elapsed_minutes": 5,
+      "observation_timeout_seconds": 60.0,
+      "observation_interval_seconds": 0.5,
+      "required_action_chain": [
+        "world.wait",
+        "wait.duration_menu",
+        "wait.5m"
+      ],
+      "adaptive_interrupt_actions": [],
+      "required_interrupt_action_chain": [],
+      "recovery_contract": {
+        "issuer_action": "wait.duration_menu",
+        "modal_state": "wait_duration_choice",
+        "modal_owner": "native_semantic_step_trace",
+        "actions": [
+          "wait.5m"
+        ]
+      },
       "abort_verdict": "blocked_all_light_source_wait_interrupted_or_prompt_visible",
-      "abort_reason": "bounded 5-minute wait was interrupted or left a prompt visible; do not credit all-light live proof without completed in-game elapsed-time footing",
+      "abort_reason": "the native five-minute wait transaction did not complete into a fresh world frame; do not credit all-light live proof without completed in-game elapsed-time footing",
       "artifact_state_patterns": [
         "bandit_live_world signal scan: signal_packet=yes",
         "smoke_packets=1",
         "light_packets=4",
         "raw_weather=",
-        "bandit_live_world horde light signal:",
-        "horde_signal_power="
+        "bandit_live_world horde light interest:",
+        "light_interest="
       ],
-      "expected_visible_fact": "the real wait UI is opened from loaded gameplay, Wait a while is chosen, 5 minutes elapse, and same-run debug artifacts show smoke plus four live light packets with weather/source logging and horde signal pressure"
+      "expected_visible_fact": "a native semantic five-minute wait runs from loaded gameplay into a fresh world frame, and same-run debug artifacts show the current shared light sample and horde interest"
     },
     {
       "kind": "audit_log_contains",
@@ -148,15 +238,27 @@
           "light_weather="
         ],
         [
-          "bandit_live_world horde light signal:",
-          "horde_signal_power=",
-          "current_signal=yes"
+          "bandit_live_world horde light interest:",
+          "light_interest=",
+          "current_light=yes"
         ]
+      ],
+      "required_numeric_line_patterns": [
+        {
+          "line_patterns": [
+            "bandit_live_world horde light interest:",
+            "current_light=yes"
+          ],
+          "fields": {
+            "candidate_entities": {"min": 1},
+            "attracted_entities": {"min": 1}
+          }
+        }
       ],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_all_light_source_live_signal_artifact_missing",
       "abort_reason": "same-run debug artifact did not contain the all-light/smoke live signal scan plus horde-light signal lines after the bounded wait",
-      "expected_visible_fact": "same-run debug artifact contains live smoke plus four non-fire/fire light packets, raw weather/light-weather logging, and horde light-signal current-source metadata"
+      "expected_visible_fact": "same-run debug artifact contains live smoke plus four non-fire/fire light packets, raw weather/light-weather logging, and the current light-specific horde-interest metadata"
     },
     {
       "kind": "audit_player_save_mtime",
@@ -199,11 +301,11 @@
       "kind": "audit_saved_game_turn",
       "label": "audit_saved_turn_after_all_light_wait",
       "baseline_label": "audit_saved_turn_before_all_light_wait",
-      "required_min_delta_turns": 250,
+      "required_min_delta_turns": 300,
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_all_light_source_wait_turn_delta_missing",
-      "abort_reason": "saved player turn counter did not advance by at least 250 turns after the bounded wait",
-      "expected_visible_fact": "post-wait saved player turn counter advanced by a bounded 5-minute-scale delta after the real wait UI path; this proves the wait path persisted the turn state on disk"
+      "abort_reason": "saved player turn counter did not advance by the five-minute exposure window",
+      "expected_visible_fact": "post-sample saved player turn counter advanced by at least five minutes, proving the shared advancing-turn sample persisted"
     },
     {
       "kind": "audit_saved_weather_state",
@@ -220,7 +322,9 @@
           {
             "monster_id": "mon_zombie",
             "max_distance_ms": 250,
-            "min_last_processed": 5266800
+            "min_last_processed": 5266800,
+            "required_light_memory_fields": ["sample_id", "source", "observed", "expires", "strength"],
+            "min_light_memory_strength": 1
           }
         ],
         "abort_on_metadata_failure": true,
@@ -230,6 +334,19 @@
       }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe --compact-stdout bandit.all_light_source_live_adapter_mcw",
+  "proof_route": {
+    "precondition": [
+      "audit_saved_all_light_source_footing_before_wait",
+      "audit_saved_weather_before_all_light_wait",
+      "audit_saved_turn_before_all_light_wait",
+      "audit_saved_horde_before_all_light_wait",
+      "bind_all_light_native_world"
+    ],
+    "production_behavior": ["operate_all_light_source_live_adapter"],
+    "terminal_persistence": ["operate_all_light_source_live_adapter"],
+    "artifact_verdict": ["operate_all_light_source_live_adapter"],
+    "disallowed_shortcuts": ["operate_all_light_source_live_adapter"]
+  },
   "proof_contract": {
     "claim": "Prove the Slice 5 live loaded-map adapter observes staged fire, smoke, furniture light, portable item light, and household smart-lamp light; logs weather/source interpretation; delivers exposed light pressure to hordes; and leaves saved horde destination/tracking metadata inspectable after a bounded real wait path.",
     "current_wip_blocker": "resolved by requiring ground-z staged horde footing plus saved overmap destination/last_processed persistence after the bounded wait; local active-monster devirtualization remains outside this Slice 5 checkpoint.",

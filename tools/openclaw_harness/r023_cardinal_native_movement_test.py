@@ -64,6 +64,9 @@ class CardinalNativeMovementTest(unittest.TestCase):
             self.assertIn(action, source)
         for action_id in ("UP", "DOWN", "LEFT", "RIGHT"):
             self.assertIn(action_id, source)
+        self.assertIn('{ "world.toggle_safemode", "safemode" }', source)
+        self.assertIn('request.action_id == "world.toggle_safemode"', source)
+        self.assertIn('act = ACTION_TOGGLE_SAFEMODE;', source)
         for outcome in ("blocked", "no_progress", "unexpected_displacement"):
             self.assertIn(f'"{outcome}"', source)
         self.assertIn('"post_step"', source)

@@ -1,0 +1,9 @@
+{
+  "profile_name": "r-zl-freeplay-city042-rider-legible",
+  "startup": {
+    "timeout_seconds": 210.0,
+    "poll_seconds": 2.0,
+    "post_lastworld_wait_seconds": 8.0,
+    "post_lastworld_continue_keys": []
+  }
+}

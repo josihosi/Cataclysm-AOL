@@ -1,0 +1,11 @@
+{
+  "outcome": "One source-bound native zombie predator naturally evolves through the configured predator schedule into one zombie rider in a substantially old world.",
+  "scenario_id": "zombie_rider.live_natural_evolution_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r_zl_evolution.natural_hunter_to_rider", "op": "eq", "value": "mature_native_hunter_predator_rider_upgrade", "minimum_evidence": "declared"},
+      {"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}
+    ],
+    "preferences": []
+  }
+}

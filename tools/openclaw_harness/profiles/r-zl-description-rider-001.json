@@ -1,0 +1,6 @@
+{
+  "profile_name": "r-zl-description-rider-001",
+  "startup": {
+    "post_lastworld_continue_keys": ["escape"]
+  }
+}

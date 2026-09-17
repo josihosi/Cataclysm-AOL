@@ -1,0 +1,33 @@
+{
+  "manifest_version": 1,
+  "name": "r_zl_freeplay_city042_late_rider_mcw",
+  "description": "One separate ordinary nighttime city account installed from a native-saved zero-credit broad-distance rider footing.  Only fresh player-visible movement, light, pauses, and recovery choices may support the account.",
+  "profile": "r-zl-freeplay-city042-late-rider",
+  "world": "zl-natural-stalker-city-042-missed",
+  "fixture": "r_zl_freeplay_city042_late_rider_setup_20260916",
+  "fixture_profile": "r-zl-freeplay-city042-late-rider-setup",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {"runtime.entry_mode":"cockpit_live_session","capabilities.r_zl_playtest.integrated_account":"ordinary_late_rider","capabilities.r_zl_playtest.account_generation":"separate_ordinary_late_rider_account","capabilities.r_zl_playtest.city_start":"native_saved_zero_credit_late_rider_copy"},
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_observer", "debug:inject_attention", "debug:inject_knowledge", "debug:inject_contact", "debug:inject_attack", "debug:inject_target_knowledge", "debug:inject_dispatch", "debug:inject_local_contact", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-zl-freeplay-city042-late-rider",
+    "fixture": "r_zl_freeplay_city042_late_rider_setup_20260916",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"r-zl-freeplay-city042-late-rider","fixture":"r_zl_freeplay_city042_late_rider_setup_20260916","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {"kind":"wait","label":"settle_ordinary_late_rider_copy","seconds":1.0,"capture_after":true,"expected_visible_fact":"the native-saved late-rider copy loads before any ordinary player decision"},
+    {"kind":"cockpit_live_session","label":"operate_ordinary_late_rider_route","cleanup_on_finish":false,"stop_after_live_session":true,"objective":"Make player-visible ordinary nighttime city decisions from the actual World surface.  Use light, movement, pauses, cover, withdrawal, or recovery only when currently advertised.  Let the rider's real turns and the player's chosen route determine whether pressure is threatening, recoverable, fair, intermittent, or absent; do not manufacture its attention, contact, or route.","proof_targets":["fresh player-visible route and time","native light choice if chosen","visible rider pressure, recovery, intermittence, or absence","ordinary survival and movement consequences","source/executable/process/run binding"],"authority":["advertised native actions","worker-chosen bounded waits","run.witness","run.finish"],"invariants":["the saved setup copy earns zero ordinary credit","no debug or injected observer, attention, knowledge, contact, actor, or route","no scripted player sequence","only player-visible native facts support the conclusion"],"live_operations":["game.act","game.wait","game.move_relative"],"transition_timeout_seconds":20.0,"observe_interval_seconds":0.1},
+    {"kind":"semantic_terminal_action_chain","label":"save_and_exit_ordinary_late_rider_account","objective":"At the honest ordinary-play boundary, use native Save and Quit, native Main-menu Quit, and their native confirmations.","observation_timeout_seconds":30.0,"observation_interval_seconds":0.1,"required_action_chain":["world.save_quit","prompt.yes","main_menu.quit","prompt.yes"],"expected_visible_fact":"the ordinary account saves, returns to the main menu, and its owned process exits"}
+  ],
+  "recommended_test_command":"python3 tools/openclaw_harness/startup_harness.py probe r_zl_freeplay_city042_late_rider_mcw",
+  "evidence_contract":{"claim":"one separate ordinary account may supply a partial assessment of player-visible late-rider pressure and recovery after a zero-credit native-saved footing","load_only_verdict":"native-saved zero-credit footing only / no inherited ordinary credit","writeback_note":"the rider placement earns no ordinary evidence; only player-selected choices and native in-account consequences do"},
+  "proof_route":{"precondition":["settle_ordinary_late_rider_copy"],"production_behavior":["operate_ordinary_late_rider_route"],"terminal_persistence":["save_and_exit_ordinary_late_rider_account"],"artifact_verdict":["operate_ordinary_late_rider_route"],"disallowed_shortcuts":["operate_ordinary_late_rider_route"]}
+}

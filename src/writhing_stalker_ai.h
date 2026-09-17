@@ -1,10 +1,103 @@
 #pragma once
 
+#include <cstdint>
 #include <string>
 #include <vector>
 
+#include "coordinates.h"
+
+class monster;
+class Creature;
+class JsonObject;
+class JsonOut;
+
 namespace writhing_stalker
 {
+
+using actor_identity = std::uint64_t;
+using resolution_id = std::uint64_t;
+
+enum class lifecycle_phase : std::uint8_t {
+    idle,
+    shadowing,
+    approaching,
+    attacking,
+    retreating,
+    searching,
+    cooldown
+};
+
+// The sole durable owner of a stalker's cross-turn/local-overmap commitment.
+// Old caol_writhing_stalker_* diagnostic values are intentionally not migrated
+// into this state.
+struct persistent_state {
+    lifecycle_phase phase = lifecycle_phase::idle;
+    actor_identity evidence_target = 0;
+    int evidence_turn = -1;
+    tripoint_abs_ms last_observed_position;
+    bool has_last_observed_position = false;
+    // A glow is an area observation, not recognition of a creature.  Keep it
+    // apart from direct-prey evidence so a later plan cannot turn a lamp into
+    // a live target identity.
+    tripoint_abs_ms light_observed_position;
+    bool has_light_observed_position = false;
+    int light_observed_turn = -1;
+    int light_expires_turn = -1;
+    std::string light_sample_id;
+    tripoint_abs_ms committed_waypoint;
+    bool has_committed_waypoint = false;
+    tripoint_abs_ms retreat_waypoint;
+    bool has_retreat_waypoint = false;
+    int attempts_spent = 0;
+    std::uint64_t attempt_sequence = 0;
+    int phase_entered_turn = -1;
+    int cooldown_until_turn = -1;
+    int last_progress_turn = -1;
+    int last_advanced_turn = -1;
+    int remaining_route_progress = -1;
+    int search_until_turn = -1;
+
+    void advance_to( int now_turn );
+    bool cooldown_active( int now_turn ) const;
+    bool has_direct_evidence( int now_turn ) const;
+    bool light_interest_active( int now_turn ) const;
+    // Returns false for an old/replayed sample or while fresher direct prey
+    // evidence owns the stalker's commitment.
+    bool observe_light_interest( const tripoint_abs_ms &position, const std::string &sample_id,
+                                 int observed_turn, int duration_turns );
+    void serialize( JsonOut &json ) const;
+    void deserialize( const JsonObject &json );
+};
+
+// Persisted on monster::value; this is an attempt count, not a plan/turn count.
+inline constexpr const char *burst_count_key = "caol_writhing_stalker_burst_count";
+
+// Called only after a melee actor has selected a target and is entering attack
+// resolution. Walking, planning, misses and blocked routes do not call it.
+void record_attack_attempt( monster &stalker );
+void record_counterpressure_attempt( monster &stalker, const Creature &attacker,
+                                     resolution_id resolution );
+resolution_id next_resolution_id();
+void observe_attack_resolution( const Creature *attacker, const Creature *target, int turn,
+                                resolution_id resolution );
+void record_observed_attack( const Creature *observer, const Creature *attacker,
+                             const Creature *target, int turn, resolution_id resolution );
+bool has_recent_observed_attack( const Creature *observer, const Creature *attacker,
+                                const Creature *target, int now_turn, int max_age );
+int observed_attack_count( const Creature *observer, const Creature *attacker,
+                           const Creature *target, resolution_id resolution );
+
+struct pressure_observation {
+    bool hostile = false;
+    bool visible_to_stalker = false;
+    bool same_target = false;
+    bool attacking = false;
+    bool closing = false;
+};
+
+// A nearby zombie contributes only when its observable local intent is aimed at
+// this target and it is either in attack range or moving toward that target.
+bool is_meaningful_pressure( const pressure_observation &observation );
 
 enum class interest_source {
     none,
@@ -121,6 +214,7 @@ struct opportunity_context {
     bool bright_exposure = false;
     bool player_focused = false;
     bool stalker_hurt = false;
+    bool counterpressure_recent = false;
     int distance_to_target = 0;
     int burst_strikes = 0;
 };
@@ -226,6 +320,7 @@ struct live_context {
     bool quiet_side_cutoff_available = false;
     bool near_cover_or_clutter = false;
     bool stalker_hurt = false;
+    bool counterpressure_recent = false;
     bool on_cooldown = false;
     int burst_strikes = 0;
     int bad_position_loiter_turns = 0;

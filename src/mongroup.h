@@ -238,6 +238,16 @@ struct enum_traits<mongroup::horde_behaviour> {
 class MonsterGroupManager
 {
     public:
+        struct blacklist_state {
+            std::set<std::string> monsters;
+            std::set<std::string> whitelist;
+            std::set<std::string> categories;
+            std::set<std::string> categories_whitelist;
+            std::set<std::string> species;
+            std::set<std::string> species_whitelist;
+            bool whitelist_is_exclusive = false;
+        };
+
         static void LoadMonsterGroup( const JsonObject &jo );
         static void LoadMonsterBlacklist( const JsonObject &jo );
         static void LoadMonsterWhitelist( const JsonObject &jo );
@@ -261,6 +271,8 @@ class MonsterGroupManager
         static void ClearMonsterGroups();
 
         static bool monster_is_blacklisted( const mtype_id &m );
+        static blacklist_state snapshot_blacklist_state();
+        static void restore_blacklist_state( const blacklist_state &state );
 
         static bool is_animal( const mongroup_id &group );
 

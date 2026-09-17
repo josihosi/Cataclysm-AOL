@@ -170,6 +170,8 @@ void bound_camp_map_lead_strings( camp_map_lead &lead )
     lead.lead_id.resize( std::min( lead.lead_id.size(), max_camp_lead_id_length ) );
     lead.target_id.resize( std::min( lead.target_id.size(), max_camp_lead_target_id_length ) );
     lead.source_key.resize( std::min( lead.source_key.size(), max_camp_lead_source_key_length ) );
+    lead.source_sample_id.resize( std::min( lead.source_sample_id.size(),
+                                            max_camp_lead_source_key_length ) );
     lead.source_summary.resize( std::min( lead.source_summary.size(),
                                          max_camp_lead_summary_length ) );
     lead.last_outcome.resize( std::min( lead.last_outcome.size(), max_camp_lead_outcome_length ) );
@@ -240,10 +242,22 @@ int omt_chebyshev_distance( const tripoint_abs_omt &from, const tripoint_abs_omt
                              std::numeric_limits<int>::max() ) );
 }
 
+// A signal can identify a source on another overmap z-level, but an ordinary camp
+// outing still needs a traversable waypoint on the camp's physical route plane.
+// Keep the source coordinate on the lead/footprint; only the route waypoint is
+// projected onto the anchor plane so terrain/path validation remains authoritative.
+tripoint_abs_omt structural_route_target_waypoint( const tripoint_abs_omt &anchor,
+        const tripoint_abs_omt &target )
+{
+    return target.z() == anchor.z() ? target :
+           tripoint_abs_omt( target.x(), target.y(), anchor.z() );
+}
+
 std::vector<tripoint_abs_omt> make_structural_radial_route(
     const tripoint_abs_omt &anchor, const tripoint_abs_omt &target )
 {
-    const int distance = omt_chebyshev_distance( anchor, target );
+    const tripoint_abs_omt route_target = structural_route_target_waypoint( anchor, target );
+    const int distance = omt_chebyshev_distance( anchor, route_target );
     if( distance <= 0 || distance > max_structural_route_cost_omt / 2 ) {
         return {};
     }
@@ -251,11 +265,14 @@ std::vector<tripoint_abs_omt> make_structural_radial_route(
     std::vector<tripoint_abs_omt> route;
     route.push_back( anchor );
     if( distance > 1 ) {
-        const int x_step = target.x() == anchor.x() ? 0 : target.x() > anchor.x() ? 1 : -1;
-        const int y_step = target.y() == anchor.y() ? 0 : target.y() > anchor.y() ? 1 : -1;
-        route.emplace_back( target.x() - x_step, target.y() - y_step, target.z() );
+        const int x_step = route_target.x() == anchor.x() ? 0 :
+                           route_target.x() > anchor.x() ? 1 : -1;
+        const int y_step = route_target.y() == anchor.y() ? 0 :
+                           route_target.y() > anchor.y() ? 1 : -1;
+        route.emplace_back( route_target.x() - x_step, route_target.y() - y_step,
+                            route_target.z() );
     }
-    route.push_back( target );
+    route.push_back( route_target );
     route.push_back( anchor );
     return route;
 }
@@ -519,8 +536,13 @@ int structural_outing_destination_waypoint(
 tripoint_abs_omt structural_outing_travel_destination(
     const bandit_live_world::active_outing_state &outing )
 {
-    return structural_outing_uses_watch_route( outing ) ?
-           outing.selected_watch_omt : outing.target_omt;
+    if( structural_outing_uses_watch_route( outing ) ) {
+        return outing.selected_watch_omt;
+    }
+    if( outing.shared_route.size() >= 3 ) {
+        return outing.shared_route[outing.shared_route.size() - 2];
+    }
+    return outing.target_omt;
 }
 
 bool structural_route_is_canonical_for_outing(
@@ -1742,6 +1764,7 @@ bool camp_map_lead_payload_matches( const camp_map_lead &lhs, const camp_map_lea
            lhs.status == rhs.status &&
            lhs.target_id == rhs.target_id && lhs.omt == rhs.omt &&
            lhs.radius_omt == rhs.radius_omt && lhs.source_key == rhs.source_key &&
+           lhs.source_sample_id == rhs.source_sample_id &&
            lhs.source_summary == rhs.source_summary &&
            lhs.first_seen_minutes == rhs.first_seen_minutes &&
            lhs.last_seen_minutes == rhs.last_seen_minutes &&
@@ -1776,6 +1799,7 @@ static std::string camp_map_lead_payload_diff( const camp_map_lead &lhs,
     field( "omt", lhs.omt.to_string(), rhs.omt.to_string() );
     field( "radius_omt", lhs.radius_omt, rhs.radius_omt );
     field( "source_key", lhs.source_key, rhs.source_key );
+    field( "source_sample_id", lhs.source_sample_id, rhs.source_sample_id );
     field( "source_summary", lhs.source_summary, rhs.source_summary );
     field( "first_seen", lhs.first_seen_minutes, rhs.first_seen_minutes );
     field( "last_seen", lhs.last_seen_minutes, rhs.last_seen_minutes );
@@ -6695,6 +6719,10 @@ void camp_map_lead::serialize( JsonOut &json ) const
     if( !source_key.empty() ) {
         json.member( "source_key", source_key.substr( 0, max_camp_lead_source_key_length ) );
     }
+    if( !source_sample_id.empty() ) {
+        json.member( "source_sample_id", source_sample_id.substr( 0,
+                         max_camp_lead_source_key_length ) );
+    }
     if( !source_summary.empty() ) {
         json.member( "source_summary", source_summary.substr( 0, max_camp_lead_summary_length ) );
     }
@@ -6779,6 +6807,7 @@ void camp_map_lead::deserialize( const JsonObject &jo )
     jo.read( "omt", candidate.omt );
     jo.read( "radius_omt", candidate.radius_omt );
     jo.read( "source_key", candidate.source_key );
+    jo.read( "source_sample_id", candidate.source_sample_id );
     jo.read( "source_summary", candidate.source_summary );
     jo.read( "first_seen_minutes", candidate.first_seen_minutes );
     jo.read( "last_seen_minutes", candidate.last_seen_minutes );
@@ -9526,7 +9555,8 @@ void site_record::deserialize( const JsonObject &jo )
             active_outing.shared_route = migrated_route;
             active_outing.waypoint_index = active_outing.phase == scout_phase::outbound ? 0 : 1;
             active_outing.expected_return_minutes = structural_expected_return_minutes(
-                    active_outing.started_minutes, anchor, active_outing.target_omt );
+                    active_outing.started_minutes, anchor,
+                    structural_outing_travel_destination( active_outing ) );
             active_outing.missing_deadline_minutes = minutes_after_saturated(
                     active_outing.expected_return_minutes, scout_missing_grace_minutes );
             active_outing.schema_version = 6;
@@ -12922,12 +12952,14 @@ namespace
 {
 int structural_outing_stalking_delay_minutes( const site_record &site, const camp_map_lead &lead )
 {
-    return structural_stalking_delay_minutes( site.anchor, lead.omt );
+    return structural_stalking_delay_minutes( site.anchor,
+            structural_route_target_waypoint( site.anchor, lead.omt ) );
 }
 
 int structural_outing_arrival_delay_minutes( const site_record &site, const camp_map_lead &lead )
 {
-    return structural_arrival_delay_minutes( site.anchor, lead.omt );
+    return structural_arrival_delay_minutes( site.anchor,
+            structural_route_target_waypoint( site.anchor, lead.omt ) );
 }
 
 int active_structural_outing_stalking_delay_minutes( const site_record &site )
@@ -13592,6 +13624,8 @@ bool structural_signal_reads_are_valid( const structural_threat_observer_request
             read.sense, read.source_omt
         };
         const bool sound_read = read.sense == sortie_observation_sense::sound;
+        const bool timed_light_read = read.sense == sortie_observation_sense::light &&
+                                      read.observed_minutes >= 0;
         const bool sound_kind_valid = !structural_sound_kind_name( read.sound_kind ).empty();
         const bool sound_time_valid = read.emitted_minutes >= 0 &&
                                       read.emitted_minutes >= request.observation_window_start_minutes &&
@@ -13600,6 +13634,7 @@ bool structural_signal_reads_are_valid( const structural_threat_observer_request
         if( structural_signal_sense_name( read.sense ).empty() ||
             ( sound_read ? ( !sound_kind_valid || !sound_time_valid ) :
               ( read.sound_kind != structural_sound_kind::none || read.emitted_minutes != -1 ) ) ||
+            ( timed_light_read && read.observed_minutes > now_minutes ) ||
             !source_is_permitted ||
             read.range_cap_omt < 1 || read.range_cap_omt > 40 ||
             omt_chebyshev_distance( request.current_omt, read.source_omt ) > read.range_cap_omt ||
@@ -13645,7 +13680,9 @@ sortie_observation make_structural_signal_observation( const site_record &site,
                                    structural_sound_kind_name( read.sound_kind ) : sense_name;
     const std::string source_id = "structural-" + class_name + "@" + read.source_omt.to_string();
     const int observed_minutes = read.sense == sortie_observation_sense::sound ?
-                                 read.emitted_minutes : now_minutes;
+                                 read.emitted_minutes :
+                                 read.sense == sortie_observation_sense::light &&
+                                 read.observed_minutes >= 0 ? read.observed_minutes : now_minutes;
     sortie_observation observation;
     observation.fact_key = "structural-signal:" + source_id;
     observation.summary = read.summary;
@@ -14589,7 +14626,8 @@ structural_outing_plan plan_structural_bounty_outing_impl( const site_record &si
                                             structural_outing_arrival_delay_minutes( site, lead ) ) : -1;
     plan.expected_return_minutes = now_minutes >= 0 ?
                                    structural_expected_return_minutes( now_minutes, site.anchor,
-                                           lead.omt ) : -1;
+                                           structural_route_target_waypoint( site.anchor,
+                                                   lead.omt ) ) : -1;
     plan.valid = true;
     plan.notes.push_back( "structural outing candidate=" + lead.lead_id +
                           " bounty=" + std::to_string( lead.bounty ) +
@@ -14738,7 +14776,8 @@ bool apply_structural_route_read( const site_record &site, const int now_minutes
     plan.final_route_quality = structural_candidate_route_quality( plan.full_route_cost );
     plan.final_score = structural_candidate_score( site, scoring_lead, now_minutes,
                        plan.final_route_quality, plan.terrain_fit, plan.static_risk );
-    const tripoint_abs_omt travel_destination = watch_destination.value_or( plan.target_omt );
+    const tripoint_abs_omt travel_destination = watch_destination.value_or(
+                structural_route_target_waypoint( site.anchor, plan.target_omt ) );
     plan.expected_stalking_minutes = minutes_after_saturated(
                                         now_minutes,
                                         structural_stalking_delay_minutes(
@@ -14837,7 +14876,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
                                     structural_route_is_canonical( plan.shared_route, site.anchor,
                                             plan.target_omt );
     const tripoint_abs_omt travel_destination = has_watch_route ?
-            watch_selection.omt : plan.target_omt;
+            watch_selection.omt : structural_route_target_waypoint( site.anchor, plan.target_omt );
     const bool route_risk_is_valid = hostile_camp_routine_route_risk_eligible(
                                          plan.static_risk, plan.max_route_segment_risk );
     if( now_minutes < 0 || !plan.valid || !plan.route_solved ||
@@ -14856,7 +14895,7 @@ bool apply_structural_bounty_outing_plan( site_record &site, const structural_ou
         plan.member_ids.size() > max_active_outing_members ||
         !route_is_canonical ||
         ( !has_watch_route &&
-          plan.target_omt != plan.shared_route[plan.shared_route.size() - 2] ) ||
+          travel_destination != plan.shared_route[plan.shared_route.size() - 2] ) ||
         plan.expected_stalking_minutes != minutes_after_saturated(
             now_minutes, structural_stalking_delay_minutes( site.anchor, travel_destination ) ) ||
         plan.expected_arrival_minutes != minutes_after_saturated(
@@ -15418,6 +15457,13 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
         if( reads.size() > max_structural_signal_reads ) {
             continue;
         }
+        const auto signal_range = [&request]( const structural_signal_read &read ) {
+            // Optical light can cross an exposed elevation; structural smoke and
+            // sound remain same-level overmap observations.
+            return read.sense == sortie_observation_sense::light ?
+                   rl_dist( request.camp_omt, read.source_omt ) :
+                   omt_chebyshev_distance( request.camp_omt, read.source_omt );
+        };
         std::sort( reads.begin(), reads.end(), []( const structural_signal_read &lhs,
         const structural_signal_read &rhs ) {
             return std::make_tuple( lhs.sense, lhs.source_omt.z(), lhs.source_omt.y(),
@@ -15448,7 +15494,7 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                     event.signal_channel = structural_signal_sense_name( read.sense );
                     event.source_omt = read.source_omt.to_string();
                     event.source_intensity = read.strength;
-                    event.range_actual = omt_chebyshev_distance( request.camp_omt, read.source_omt );
+                    event.range_actual = signal_range( read );
                     event.range_cap = read.range_cap_omt;
                     event.line_of_sight = read.line_of_sight;
                     event.elevation_delta = read.source_omt.z() - request.camp_omt.z();
@@ -15467,23 +15513,41 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                 continue;
             }
             const bool sound = read.sense == sortie_observation_sense::sound;
+            const bool timed_light = read.sense == sortie_observation_sense::light &&
+                                     read.observed_minutes >= 0;
             const bool valid_sound = !structural_signal_sense_name( read.sense ).empty() &&
                                      ( !sound || ( !structural_sound_kind_name( read.sound_kind ).empty() &&
                                                    read.emitted_minutes >= 0 &&
                                                    read.emitted_minutes <= now_minutes &&
                                                    now_minutes - read.emitted_minutes <= 180 ) ) &&
                                      ( sound || ( read.sound_kind == structural_sound_kind::none &&
-                                                   read.emitted_minutes == -1 ) );
+                                                   read.emitted_minutes == -1 ) ) &&
+                                     ( !timed_light || read.observed_minutes <= now_minutes );
             const std::pair<sortie_observation_sense, tripoint_abs_omt> identity = {
                 read.sense, read.source_omt
             };
-            if( !valid_sound || read.local_reality || read.range_cap_omt < 1 ||
+            const bool invalid_read = !valid_sound || read.local_reality || read.range_cap_omt < 1 ||
                 read.range_cap_omt > 40 ||
-                omt_chebyshev_distance( request.camp_omt, read.source_omt ) > read.range_cap_omt ||
+                signal_range( read ) > read.range_cap_omt ||
                 read.strength < 1 || read.strength > 6 || read.confidence < 0 ||
                 read.confidence > 100 || read.uncertainty_radius_omt < 1 ||
                 read.uncertainty_radius_omt > 40 || read.summary.size() > max_sortie_summary_length ||
-                std::find( identities.begin(), identities.end(), identity ) != identities.end() ) {
+                std::find( identities.begin(), identities.end(), identity ) != identities.end();
+            if( invalid_read ) {
+                DebugLog( D_INFO, DC_ALL ) << "bandit_live_world staffed_camp_signal_invalid_read"
+                                           << " site=" << site.site_id
+                                           << " sense=" << structural_signal_sense_name( read.sense )
+                                           << " source=" << read.source_omt
+                                           << " range=" << read.range_cap_omt
+                                           << " strength=" << read.strength
+                                           << " confidence=" << read.confidence
+                                           << " uncertainty=" << read.uncertainty_radius_omt
+                                           << " summary_size=" << read.summary.size()
+                                           << " distance=" << signal_range( read )
+                                           << " local_reality=" << ( read.local_reality ? "yes" : "no" )
+                                           << " duplicate=" << ( std::find( identities.begin(), identities.end(),
+                                                   identity ) != identities.end() ? "yes" : "no" )
+                                           << '\n';
                 valid = false;
                 break;
             }
@@ -15499,8 +15563,10 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
             learned.omt = read.source_omt;
             learned.radius_omt = read.uncertainty_radius_omt;
             learned.source_key = "camp-signal:" + source_id;
+            learned.source_sample_id = timed_light ? read.source_id : std::string();
             learned.source_summary = read.summary;
-            learned.first_seen_minutes = sound ? read.emitted_minutes : now_minutes;
+            learned.first_seen_minutes = sound ? read.emitted_minutes :
+                                         timed_light ? read.observed_minutes : now_minutes;
             learned.last_seen_minutes = learned.first_seen_minutes;
             // Staffed observation records information, not an investigation.  Keep
             // both clocks empty for every new signal lead; the ordinary scout owns
@@ -15514,6 +15580,13 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                                                 learned.omt );
             const camp_map_lead *existing = candidate.intelligence_map.find_lead( learned.lead_id );
             if( existing != nullptr ) {
+                // A cached delivery can arrive after a newer physical sample.
+                // Neither an old glow nor an old sound may move durable time
+                // backward, refresh its retention, or replace newer detail.
+                if( ( sound || timed_light ) && learned.last_seen_minutes <= existing->last_seen_minutes ) {
+                    result.unchanged_reads++;
+                    continue;
+                }
                 // Freshness alone is not a material fact.  Preserve the exact
                 // durable record while a persistent source reads identically;
                 // otherwise the five-minute cadence would manufacture revision
@@ -15524,10 +15597,10 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                 // fresh value unbounded makes an otherwise identical long read look
                 // like a payload change on every staffed cadence.
                 bound_camp_map_lead_strings( comparison );
-                if( sound ) {
+                if( sound || timed_light ) {
                     // The emitted minute is part of a sound event's durable
                     // identity: an identical reread is deduplicated, while a
-                    // genuinely new sound refreshes last_seen.  The original
+                    // genuinely new sample refreshes last_seen.  The original
                     // first observation remains the lead's first_seen value.
                     comparison.first_seen_minutes = existing->first_seen_minutes;
                     comparison.last_checked_minutes = existing->last_checked_minutes;
@@ -15559,7 +15632,7 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                         event.signal_channel = sense;
                         event.source_omt = read.source_omt.to_string();
                         event.source_intensity = read.strength;
-                        event.range_actual = omt_chebyshev_distance( request.camp_omt, read.source_omt );
+                        event.range_actual = signal_range( read );
                         event.range_cap = read.range_cap_omt;
                         event.line_of_sight = read.line_of_sight;
                         event.elevation_delta = read.source_omt.z() - request.camp_omt.z();
@@ -15567,6 +15640,9 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                         event.visibility_input = read.observer_sight_points;
                         event.visibility_result = read.line_of_sight;
                         event.emitted_minutes = read.emitted_minutes;
+                        event.observed_minutes = read.observed_minutes;
+                        event.source_sample_id = read.source_id;
+                        event.uncertainty_radius_omt = read.uncertainty_radius_omt;
                         event.lead_id = existing->lead_id;
                         event.lead_outcome = "unchanged";
                         event.work_reads = static_cast<int>( reads.size() );
@@ -15616,7 +15692,7 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                     event.signal_channel = sense;
                     event.source_omt = read.source_omt.to_string();
                     event.source_intensity = read.strength;
-                    event.range_actual = omt_chebyshev_distance( request.camp_omt, read.source_omt );
+                    event.range_actual = signal_range( read );
                     event.range_cap = read.range_cap_omt;
                     event.line_of_sight = read.line_of_sight;
                     event.elevation_delta = read.source_omt.z() - request.camp_omt.z();
@@ -15624,6 +15700,9 @@ camp_signal_observation_result record_staffed_camp_signal_observations( world_st
                     event.visibility_input = read.observer_sight_points;
                     event.visibility_result = read.line_of_sight;
                     event.emitted_minutes = read.emitted_minutes;
+                    event.observed_minutes = read.observed_minutes;
+                    event.source_sample_id = read.source_id;
+                    event.uncertainty_radius_omt = read.uncertainty_radius_omt;
                     event.lead_id = persisted->lead_id;
                     event.lead_outcome = existing == nullptr ? "created" : "refreshed";
                     event.work_reads = static_cast<int>( reads.size() );

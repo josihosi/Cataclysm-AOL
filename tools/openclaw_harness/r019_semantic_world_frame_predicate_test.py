@@ -8,11 +8,13 @@ from pathlib import Path
 
 
 SOURCE = Path( __file__ ).resolve().parents[2] / "src" / "handle_action.cpp"
+GAME_SOURCE = Path( __file__ ).resolve().parents[2] / "src" / "game.cpp"
 
 
 class R019SemanticWorldFramePredicateTest( unittest.TestCase ):
     def setUp( self ) -> None:
         self.source = SOURCE.read_text( encoding="utf-8" )
+        self.game_source = GAME_SOURCE.read_text( encoding="utf-8" )
 
     def test_alive_avatar_with_stale_watch_status_uses_default_input_context( self ) -> None:
         self.assertIn(
@@ -27,6 +29,13 @@ class R019SemanticWorldFramePredicateTest( unittest.TestCase ):
             "openclaw_harness_semantic_step_frame(\n                    \"world\", semantic_actions );",
             self.source,
         )
+
+    def test_live_continuation_clears_stale_watch_status_before_turn_ownership( self ) -> None:
+        start = self.game_source.index( "bool game::is_game_over()" )
+        end = self.game_source.index( "if( uquit == QUIT_DIED || uquit == QUIT_WATCH )", start )
+        guard = self.game_source[start:end]
+        self.assertIn( "if( uquit == QUIT_WATCH && !u.is_dead_state() )", guard )
+        self.assertIn( "uquit = QUIT_NO;", guard )
 
 
 if __name__ == "__main__":

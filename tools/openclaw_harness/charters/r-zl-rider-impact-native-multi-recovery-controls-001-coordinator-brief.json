@@ -1,0 +1,14 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-RIDER-IMPACT-closure-native-multi-rider-recovery-controls-001",
+  "outcome": "R-ZL-RIDER-IMPACT multi-rider recovery controls: current-source native play binds distinct empty-bow and stocked-bow riders, native physical impact/downing, and an advertised accepted player recovery action without same-invocation ordinary attack or multi-rider lock.",
+  "scenario": "zombie_rider.live_native_multi_recovery_controls_mcw",
+  "query": {
+    "requirements": [
+      {"key":"capabilities.r_zl_rider.native_multi_recovery_controls","op":"eq","value":"identified_empty_and_stocked_bow_riders_native_downing_recovery_action","minimum_evidence":"declared"}
+    ],
+    "preferences": [
+      {"key":"runtime.entry_mode","op":"eq","value":"cockpit_live_session","minimum_evidence":"declared"}
+    ]
+  }
+}

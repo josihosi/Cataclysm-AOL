@@ -1516,12 +1516,32 @@ static bool cancel_auto_move( Character &you, const std::string &text )
         // as observation evidence.
         openclaw_harness_semantic_native_travel_hostile_boundary( you );
     }
-    if( query_yn( _( "%s Cancel auto move?" ), text ) )  {
+    const bool force_uc = get_option<bool>( "FORCE_CAPITAL_YN" );
+    const auto &allow_key = force_uc ? input_context::disallow_lower_case_or_non_modified_letters
+                            : input_context::allow_all_keys;
+    // Both branches have an explicit native successor: YES cancels travel and
+    // publishes an actionless World handoff below, while NO reinstalls travel.
+    // Keep the receipt deferred so it binds to that successor rather than to
+    // the popup's transient input owner.
+    if( query_popup()
+        .preferred_keyboard_mode( keyboard_mode::keycode )
+        .context( "YESNO" )
+        .message( force_uc && !is_keycode_mode_supported() ?
+                  pgettext( "query_yn", "%s (Case Sensitive)" ) :
+                  pgettext( "query_yn", "%s" ),
+                  string_format( _( "%s Cancel auto move?" ), text ) )
+        .option( "YES", allow_key )
+        .option( "NO", allow_key )
+        .cursor( 1 )
+        .default_color( c_light_red )
+        .await_semantic_successor()
+        .query().action == "YES" )  {
         add_msg( m_warning, _( "%s Auto move canceled." ), text );
         if( you.has_distant_destination() ) {
             openclaw_harness_semantic_native_travel_terminal( you, "interrupted" );
         }
         you.abort_automove();
+        openclaw_harness_semantic_world_after_auto_move_cancel();
         return true;
     }
     return false;
@@ -1599,6 +1619,7 @@ bool game::cancel_activity_or_ignore_query( const distraction_type type, const s
             return true;
         } else {
             u.set_destination( u.get_auto_move_route(), player_activity( ACT_TRAVELLING ) );
+            openclaw_harness_semantic_native_travel_resumed( u );
             return false;
         }
     }
@@ -1640,6 +1661,17 @@ bool game::cancel_activity_or_ignore_query( const distraction_type type, const s
             return semantic_action_dispatch_result{ true, "", "" };
         } );
         semantic_scope->consume_request();
+    }
+    // A native popup owns the query when no semantic request was consumed by
+    // the activity surface.  Keep its parent private until the actionless
+    // activity-resumed successor is published: otherwise popping the popup
+    // republishes an expired activity-distraction descriptor while the
+    // activity has already resumed its long-running work.
+    if( semantic_action.empty() ) {
+        if( semantic_scope ) {
+            openclaw_harness_semantic_surface_manager().withhold_parent_authority_until_recreated(
+                semantic_scope->surface_id() );
+        }
     }
     const std::string action = semantic_action.empty() ? query_popup()
                                 .preferred_keyboard_mode( keyboard_mode::keycode )
@@ -1691,6 +1723,7 @@ bool game::portal_storm_query( const distraction_type type, const std::string &t
             return true;
         } else {
             u.set_destination( u.get_auto_move_route(), player_activity( ACT_TRAVELLING ) );
+            openclaw_harness_semantic_native_travel_resumed( u );
             return false;
         }
     }
@@ -1732,6 +1765,7 @@ bool game::cancel_activity_query( const std::string &text )
             return true;
         } else if( u.has_distant_destination() ) {
             u.set_destination( u.get_auto_move_route(), player_activity( ACT_TRAVELLING ) );
+            openclaw_harness_semantic_native_travel_resumed( u );
             return false;
         }
     }
@@ -3122,6 +3156,15 @@ bool game::is_game_over()
         death_semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
     }
     map &here = get_map();
+
+    // A saved death-camera status can outlive the death-cam avatar when a
+    // continuation restores a live/transformed avatar.  Treat that stale
+    // lifecycle marker as ordinary play before do_turn() decides whether it
+    // may advance past the current native input owner; otherwise every pause
+    // is handled inside the same turn with uquit == QUIT_WATCH.
+    if( uquit == QUIT_WATCH && !u.is_dead_state() ) {
+        uquit = QUIT_NO;
+    }
 
     if( uquit == QUIT_DIED || uquit == QUIT_WATCH ) {
         Creature *player_killer = u.get_killer();
@@ -6568,7 +6611,7 @@ look_around_result game::look_around(
             const auto coordinates = []( const auto &position ) {
                 return string_format( "[%d,%d,%d]", position.x(), position.y(), position.z() );
             };
-            const std::map<std::string, std::string> payload = {
+            std::map<std::string, std::string> payload = {
                 { "cursor", coordinates( absolute ) }, { "relative_to_avatar", coordinates( relative ) },
                 { "mode", is_moving_zone ? "move_zone" : select_zone ? "zone_bounds" : "look" },
                 { "selection_stage", has_first_point ? "second_corner" : "first_point" },
@@ -6585,9 +6628,34 @@ look_around_result game::look_around(
                 }
                 actions.push_back( { entry.first, "", entry.first.substr( 7 ), enabled } );
             }
+            // The native Look owner already exposes the extended-description
+            // modal for its selected tile.  Advertise that transition only
+            // while a visible creature is actually selected; the child modal
+            // remains the sole producer of the displayed translated text.
+            const Creature *const selected_creature =
+                get_creature_tracker().creature_at( lp, true );
+            if( selected_creature != nullptr && u.sees( here, *selected_creature ) ) {
+                payload.emplace( "selected_creature_name", selected_creature->disp_name() );
+                if( selected_creature->is_monster() ) {
+                    payload.emplace( "selected_creature_type",
+                                     selected_creature->as_monster()->type->id.str() );
+                }
+                actions.push_back( { "cursor.extended_description", "",
+                                     _( "Read creature description" ), true } );
+            }
             if( !semantic_scope ) {
                 semantic_scope.emplace( *manager, "look_cursor", _( "Select map position" ), payload,
                 actions, [&]( const semantic_action_request &request ) {
+                    if( request.action_id == "cursor.extended_description" ) {
+                        const Creature *const creature =
+                            get_creature_tracker().creature_at( lp, true );
+                        if( creature == nullptr || !u.sees( here, *creature ) ||
+                            request.stable_id.value_or( "" ) != "" || !request.parameters.empty() ) {
+                            return semantic_action_dispatch_result{ false, "no_visible_creature", "" };
+                        }
+                        semantic_native_action = "EXTENDED_DESCRIPTION";
+                        return semantic_action_dispatch_result{ true, "", "", true };
+                    }
                     const auto requested = cursor_actions.find( request.action_id );
                     if( requested == cursor_actions.end() || !request.stable_id.value_or( "" ).empty() ||
                         !request.parameters.empty() ) {
@@ -10790,12 +10858,14 @@ void game::update_overmap_seen()
 void game::despawn_monster( monster &critter )
 {
     bandit_live_world_probe::record_fixture_monster_lifecycle( critter, "despawn_monster", "local" );
-    critter.on_unload();
     // hallucinations aren't stored, they come and go as they like
     if( !critter.is_hallucination() ) {
-        // despawn_monster saves a copy of the monster in the overmap, so
-        // this must be called after on_unload (which updates state)
-        overmap_buffer.despawn_monster( critter );
+        // The overmap handoff prepares/unloads a copy and only accepts it
+        // transactionally, leaving this local owner valid on failure.
+        if( !overmap_buffer.despawn_monster( critter ) ) {
+            debugmsg( "Refusing to delete local monster after failed horde handoff." );
+            return;
+        }
     }
     remove_zombie( critter );
     // simulate it being dead so further processing of it (e.g. in monmove) will yield

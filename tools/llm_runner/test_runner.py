@@ -13,6 +13,21 @@ import runner
 
 
 class RunnerFinalResponseTest(unittest.TestCase):
+    def test_debug_events_bind_only_matching_run_ids_and_stay_opt_in(self):
+        with patch.dict(runner.os.environ, {"OPENCLAW_HARNESS_RUN_ID": "run-a",
+                                          "OPENCLAW_HARNESS_SEMANTIC_RUN_ID": "run-a"}):
+            before = runner.EVENT_SEQUENCE
+            runner.request_event(None, "llm_request_started", {"request_id": "req_0"})
+            self.assertEqual(runner.EVENT_SEQUENCE, before)
+            output = io.StringIO()
+            runner.request_event(output, "llm_request_started", {"request_id": "req_0"})
+            self.assertEqual(json.loads(output.getvalue())["run_id"], "run-a")
+        with patch.dict(runner.os.environ, {"OPENCLAW_HARNESS_RUN_ID": "run-a",
+                                          "OPENCLAW_HARNESS_SEMANTIC_RUN_ID": "run-b"}):
+            output = io.StringIO()
+            runner.request_event(output, "llm_request_started", {"request_id": "req_0"})
+            self.assertIsNone(json.loads(output.getvalue())["run_id"])
+
     def test_ollama_request_explicitly_disables_thinking(self):
         raw = {"response": "Holding.|wait_here", "thinking": "diagnostic only"}
         with patch.object(runner.urllib.request, "urlopen", return_value=io.BytesIO(json.dumps(raw).encode())) as send:

@@ -1,0 +1,23 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This separate, zero-credit setup run used the native monster picker to select Zombie rider and its native map-position cursor at eight tiles east, then completed native Save and Quit and application quit. It did not establish that the resulting local footing is player-legible or practical: a normal in-game look at that position did not identify a visible rider, and the later map-editor confirmation timed out.",
+  "causal_account": "The native picker was filtered to the single advertised Zombie rider entry, whose menu choice led to the native location cursor; eight accepted east movements selected the intended local point. That menu returned normally, but neither its receipt nor a subsequent normal look proves a placed, visible rider. A one-tile terrain edit was attempted only to remove a possible immediate blocker, then cancelled after no native receipt; it is not treated as having changed the map. The saved candidate is therefore zero-credit and unverified, suitable only for a distinct ordinary account to accept or reject through player-visible play.",
+  "citations": [
+    {"citation_id":"J0001","meaning":"identifies the isolated setup run and its source/executable binding","checks":{"scenario_id":"r_zl_freeplay_city042_tactical_rider_setup_mcw","source_identity":"50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280","executable_identity":"e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"}},
+    {"citation_id":"J0014","meaning":"the native filtered picker advertised exactly one Zombie rider entry","checks":{"value.surface.facts.filter":"zombie rider","value.surface.facts.filtered_entry_count":"1"}},
+    {"citation_id":"J0017","meaning":"the advertised native rider menu choice was accepted","checks":{"action_id":"menu.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0034","meaning":"records the final accepted east movement of the native spawn-location cursor","checks":{"action_id":"cursor.east","native_receipt.accepted":true}},
+    {"citation_id":"J0122","meaning":"the native World Save and Quit action was accepted","checks":{"action_id":"world.save_quit","native_receipt.accepted":true}},
+    {"citation_id":"J0125","meaning":"the native save confirmation was accepted","checks":{"action_id":"prompt.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0127","meaning":"the native main-menu Quit action was accepted","checks":{"action_id":"main_menu.quit","native_receipt.accepted":true}},
+    {"citation_id":"J0129","meaning":"records the game process exiting normally","checks":{"value.surface.kind":"process_exited","value.surface.facts.exit_code":0}}
+  ],
+  "material_deviations": ["The native map-editor confirmation returned no receipt and was cancelled; it is not evidence that terrain changed."],
+  "contradictions": [
+    {"citation_id":"J0129","meaning":"process exit does not establish the saved candidate's rider placement or player-visible route."}
+  ],
+  "remaining_unknowns": ["Whether a rider was actually placed at the selected location.", "Whether a distinct ordinary account will encounter player-legible, fair, recoverable, intermittent rider behavior."],
+  "recommended_disposition":"change-strategy",
+  "evidence_ceiling":"zero-credit"
+}

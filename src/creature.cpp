@@ -73,6 +73,9 @@
 #include "value_ptr.h"
 #include "vehicle.h"
 #include "vpart_position.h"
+#include "writhing_stalker_ai.h"
+
+static const mtype_id mon_writhing_stalker( "mon_writhing_stalker" );
 
 struct mutation_branch;
 
@@ -181,6 +184,19 @@ const std::set<material_id> Creature::cmat_flameres{
     material_stone, material_kevlar, material_steel
 };
 
+namespace
+{
+std::uint64_t next_creature_identity = 0;
+}
+
+creature_identity::creature_identity() : value_( ++next_creature_identity )
+{
+}
+
+creature_identity::creature_identity( const creature_identity & ) : value_( ++next_creature_identity )
+{
+}
+
 Creature::Creature()
 {
     moves = 0;
@@ -205,6 +221,23 @@ Creature::~Creature() = default;
 safe_reference<Creature> Creature::get_safe_reference()
 {
     return anchor->reference_to( this );
+}
+
+void writhing_stalker::observe_attack_resolution( const Creature *attacker,
+        const Creature *target, const int turn, const resolution_id resolution )
+{
+    if( attacker == nullptr || target == nullptr || g == nullptr || resolution == 0 ) {
+        return;
+    }
+    map &here = get_map();
+    for( monster &observer : g->all_monsters() ) {
+        if( observer.type->id != mon_writhing_stalker || observer.is_dead() ||
+            observer.is_hallucination() || !observer.sees( here, *attacker ) ||
+            !observer.sees( here, *target ) ) {
+            continue;
+        }
+        record_observed_attack( &observer, attacker, target, turn, resolution );
+    }
 }
 
 tripoint_bub_ms Creature::pos_bub() const
@@ -968,6 +1001,15 @@ float Creature::get_crit_factor( const bodypart_id &bp ) const
 
 int Creature::deal_melee_attack( Creature *source, int hitroll )
 {
+    const writhing_stalker::resolution_id resolution = writhing_stalker::next_resolution_id();
+    writhing_stalker::observe_attack_resolution( source, this, to_turn<int>( calendar::turn ),
+            resolution );
+
+    if( monster *stalker = as_monster(); stalker != nullptr && source != nullptr ) {
+        // Record before the dodge roll so misses and armor absorption count
+        // exactly once for the one melee resolution.
+        writhing_stalker::record_counterpressure_attempt( *stalker, *source, resolution );
+    }
 
     const float dodge = dodge_roll();
     on_try_dodge();
@@ -1379,6 +1421,18 @@ void Creature::deal_projectile_attack( map *here, Creature *source, dealt_projec
                                        const double &missed_by, bool print_messages,
                                        const weakpoint_attack &wp_attack )
 {
+    if( attack.writhing_stalker_resolution == 0 ) {
+        attack.writhing_stalker_resolution = writhing_stalker::next_resolution_id();
+    }
+    writhing_stalker::observe_attack_resolution( source, this, to_turn<int>( calendar::turn ),
+            attack.writhing_stalker_resolution );
+
+    if( monster *stalker = as_monster(); stalker != nullptr && source != nullptr ) {
+        // Record before total-miss and armor handling; hit callbacks are too
+        // late and omit misses entirely.
+        writhing_stalker::record_counterpressure_attempt( *stalker, *source,
+                attack.writhing_stalker_resolution );
+    }
     const bool magic = attack.proj.proj_effects.count( ammo_effect_MAGIC ) > 0;
     if( missed_by >= 1.0 && !magic ) {
         // Total miss

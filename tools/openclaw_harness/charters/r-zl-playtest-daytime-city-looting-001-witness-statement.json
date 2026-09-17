@@ -1,0 +1,71 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "proved",
+  "smallest_supported_claim": "The source- and executable-bound daytime account completed ordinary player-selected shop movement and two native pickup commits, then reached the main menu through native Save and Quit before quitting cleanly. It is only a partial daytime account and does not establish the requested stalker-opportunity assessment.",
+  "causal_account": "The bound account accepted the two inventory commits and the native save/quit chain. The post-save observation was the native main menu, after which the native menu quit confirmation exited the owned process. No debug action was selected; the deliberately bounded route therefore preserves a durable ordinary daytime account without claiming the unobserved stalker outcome or a night account.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "identifies the recovery scenario and the exact source and executable used by this account",
+      "checks": {
+        "scenario_id": "r_zl_freeplay_city042_day_recovery_mcw",
+        "source_identity": "1068dac0275ecc7036caa83c86671dc889b967f59c73c37566dcbc66de5cd139",
+        "executable_identity": "378c46a16251d73642fc8d8cbfda2dc5c215e8cfbfe0d65e54e56fed7b90779b"
+      }
+    },
+    {
+      "citation_id": "J0014",
+      "meaning": "the first player-selected pickup commit was accepted natively",
+      "checks": {
+        "action_id": "inventory.commit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0024",
+      "meaning": "the second player-selected pickup commit was accepted natively",
+      "checks": {
+        "action_id": "inventory.commit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0030",
+      "meaning": "the native Save and Quit command was accepted",
+      "checks": {
+        "action_id": "world.save_quit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0031",
+      "meaning": "the accepted save confirmation led to the native main menu",
+      "checks": {
+        "value.surface.kind": "main_menu"
+      }
+    },
+    {
+      "citation_id": "J0036",
+      "meaning": "the native final quit confirmation was accepted",
+      "checks": {
+        "action_id": "prompt.choose",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0037",
+      "meaning": "the account explicitly retained the night authority and avoided task terminalization",
+      "checks": {
+        "unused_authority": "No night-account authority exercised; no task terminalization requested."
+      }
+    }
+  ],
+  "material_deviations": [],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "This bounded daytime route did not expose a player-legible stalker opportunity.",
+    "The separate night account remains intentionally unstarted."
+  ],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "focused"
+}

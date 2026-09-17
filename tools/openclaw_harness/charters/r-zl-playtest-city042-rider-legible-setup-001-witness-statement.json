@@ -1,0 +1,23 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "proved",
+  "smallest_supported_claim": "This source-bound, zero-credit setup run native-saved an explicitly artificial daytime open-field footing with one player-visible hostile zombie rider eight tiles east of the avatar.  It establishes only the saved tactical starting state for a separate ordinary account.",
+  "causal_account": "The run used the native debug menu only to set daytime, teleport to an open location, and place the selected rider through the native cursor.  It did not inject attention, knowledge, contact, an observer, a route, an attack, or a recovery.  The final World observation shows exactly the placed visible rider; the World Save and Quit action and its native confirmation were accepted.  This setup earns no ordinary-gameplay credit.",
+  "citations": [
+    {"citation_id": "J0001", "meaning": "identifies the source-bound rider-legibility setup run", "checks": {"scenario_id": "r_zl_freeplay_city042_rider_legible_setup_mcw", "source_identity": "50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280", "executable_identity": "e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"}},
+    {"citation_id": "J0024", "meaning": "records acceptance of the native daytime hour submission", "checks": {"action_id": "prompt.submit", "native_receipt.accepted": true}},
+    {"citation_id": "J0034", "meaning": "records acceptance of the native teleport-coordinate submission", "checks": {"action_id": "prompt.submit", "native_receipt.accepted": true}},
+    {"citation_id": "J0063", "meaning": "records acceptance of the native cursor placement confirmation", "checks": {"action_id": "cursor.confirm", "native_receipt.accepted": true}},
+    {"citation_id": "J0064", "meaning": "records the final World surface with the hostile mon_zombie_rider at dx 8, dy 0 and 220/220 health", "checks": {"value.surface.facts.visible_entities": "[{\"identity\":{\"kind\":\"monster\",\"id\":\"process:0x1751bb018\"},\"kind\":\"monster\",\"name\":\"the zombie rider\",\"attitude\":\"hostile\",\"dx\":8,\"dy\":0,\"absolute_ms\":[5724,7970,0],\"health\":{\"hp\":220,\"maximum_hp\":220,\"dead\":false,\"provenance\":\"diagnostic_visible_creature_state\"},\"fixture_actor_id\":\"\",\"typeid\":\"mon_zombie_rider\",\"faction\":\"zombie\",\"friendly\":0,\"anger\":100,\"morale\":35,\"aggro_character\":true}]"}},
+    {"citation_id": "J0069", "meaning": "records acceptance of native World Save and Quit", "checks": {"action_id": "world.save_quit", "native_receipt.accepted": true}},
+    {"citation_id": "J0071", "meaning": "records acceptance of the native save confirmation", "checks": {"action_id": "prompt.choose", "native_receipt.accepted": true}},
+    {"citation_id": "J0072", "meaning": "records the sealed zero-credit setup boundary", "checks": {"unused_authority": "released"}}
+  ],
+  "material_deviations": [],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "Whether a separate ordinary no-debug account can show rider approach, player counterplay or disengagement, a bounded recovery, and later intermittence from this footing."
+  ],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "zero-credit"
+}

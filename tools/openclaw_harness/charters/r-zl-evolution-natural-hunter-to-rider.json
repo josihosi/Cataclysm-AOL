@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "One source-bound native zombie predator naturally evolves through the configured predator schedule into one zombie rider in a substantially old world.",
+  "material_proof": "Native receipts bind the tagged predator actor identity, old world age and season length, the configured scheduled/group choice, exactly-once rider payload/ammo initialization, rider identity after production evolution, source/executable binding, and cleanup.",
+  "current_uncertainty": "Whether monster::on_load/try_upgrade performs enough ordinary overdue half-life rolls for the isolated old-world predator to reach the rider without a debug rider spawn or ammo mutation.",
+  "material_contradiction": ["debug rider spawn", "debug ammo injection", "missing or duplicate actor identity", "wrong upgrade group", "wrong world age or season length", "unclean owned process"],
+  "forbidden_shortcuts": ["debug:spawn_monster mon_zombie_rider", "debug:poly mon_zombie_rider", "direct-state-mutation", "setting rider ammunition", "raw-save-rewrite-after-install"],
+  "honest_stop_conditions": ["native rider generated once and serialized/observed with cleanup", "or the first exact divergence in the natural schedule with cleanup"],
+  "requested_evidence_ceiling": "focused"
+}

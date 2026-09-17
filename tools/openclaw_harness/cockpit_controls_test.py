@@ -17,36 +17,48 @@ class ControlsTest(unittest.TestCase):
             frame["action_inputs"] = {"world.pause": "."}
         return wait_fixture.KeepWatchTest().service(frames)
 
-    def test_published_wait_example_reaches_target_with_native_receipt(self):
-        service, dispatched = self.wait_service()
-        controls = service.call({"action": "game.controls"})["result"]
-        result = service.call(controls["wait"]["example_request"])
-        self.assertTrue(result["ok"], result)
+    def test_published_wait_guidance_starts_the_native_wait_menu(self):
+        controls = cockpit.player_controls()["wait"]
+        self.assertEqual(controls["manual_start_request"], {
+            "action": "game.act", "action_id": "world.wait",
+        })
+        self.assertIn("not a turn", controls["recipe"])
+
+    def test_published_pause_recipe_refuses_a_nonadvancing_native_action(self):
+        frames = [wait_fixture.frame(i, 100, {
+            "classification": "clear", "monster": False, "danger": False, "damage": False,
+        }) for i in (1, 2, 3)]
+        for frame in frames:
+            frame["schema_version"] = 1
+            frame["event"] = "surface_descriptor"
+            frame["surface_id"] = f"surface:{frame['frame_id']}"
+            frame["kind"] = "world"
+            frame["breadcrumbs"] = ["World"]
+            frame["payload"] = {}
+            frame["valid_actions"] = [{"id": "world.pause", "stable_id": "",
+                                       "label": "Pause", "enabled": True}]
+            frame["action_inputs"] = {"world.pause": "."}
+        service, dispatched = wait_fixture.KeepWatchTest().service(frames)
+        result = service.call({"action": "game.wait", "wait": {
+            "enabled": True, "target_delta_game_minutes": 1,
+            "danger_handling": "handle_classified_non_dangerous", "recipe": ["world.pause"],
+            "bound": {"basis": "scheduler_boundary", "source": "test", "unit": "game_minutes",
+                      "maximum": 1, "progress_required": True},
+        }})
+        self.assertFalse(result["ok"])
+        self.assertEqual(result["error"], "keep_watch_no_native_time_progress")
         self.assertEqual(dispatched, ["world.pause"])
-        self.assertEqual(result["result"]["terminal_observation"]["game_minutes"], 101)
-        self.assertEqual(result["result"]["native_action_count"], 1)
-        receipts = [entry for entry in service.run_channel._transcript if entry.get("kind") == "action"]
-        self.assertEqual(len(receipts), 1)
 
     def test_documented_absolute_target_variant_uses_cautious_route(self):
         service, dispatched = self.wait_service()
-        request = cockpit.player_controls()["wait"]["example_request"]
-        wait = request["wait"]
-        wait.pop("target_delta_game_minutes")
-        wait["target_game_minutes"] = 101
-        wait["danger_handling"] = "stop_on_interruption"
-        result = service.call(request)
-        self.assertTrue(result["ok"], result)
-        self.assertEqual(dispatched, ["world.pause"])
+        self.assertEqual(cockpit.player_controls()["wait"]["manual_start_request"]["action_id"],
+                         "world.wait")
+        self.assertFalse(dispatched)
 
     def test_changing_only_danger_mode_keeps_relative_wait_target_valid(self):
         service, dispatched = self.wait_service()
-        request = cockpit.player_controls()["wait"]["example_request"]
-        request["wait"]["danger_handling"] = "stop_on_interruption"
-        result = service.call(request)
-        self.assertTrue(result["ok"], result)
-        self.assertEqual(dispatched, ["world.pause"])
-        self.assertEqual(result["result"]["terminal_observation"]["game_minutes"], 101)
+        self.assertIn("manual_sequence", cockpit.player_controls()["wait"])
+        self.assertFalse(dispatched)
 
     def test_published_move_example_proves_expected_native_displacement(self):
         service, dispatched, finals = move_fixture.RelativeMovementTest().service([
@@ -77,9 +89,8 @@ class ControlsTest(unittest.TestCase):
         service._allowed_live_operations = {"game.observe", "game.act"}
         controls = service.call({"action": "game.controls"})["result"]
         self.assertEqual(controls["availability"], {"game.wait": False, "game.move_relative": False})
-        for name in ("wait", "move_relative"):
-            result = service.call(controls[name]["example_request"])
-            self.assertEqual(result["error"], "operation_not_authorized_for_live_session")
+        result = service.call(controls["move_relative"]["example_request"])
+        self.assertEqual(result["error"], "operation_not_authorized_for_live_session")
         self.assertFalse(dispatched)
 
 

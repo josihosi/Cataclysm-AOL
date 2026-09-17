@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-LIGHT-CONTINUITY rider consumer: one source-bound native zombie rider samples a current exposed physical lamp, acts through the production source-keyed finite light memory after source loss, then stops refreshing and ages that memory to expiry.",
+  "material_proof": "Native cockpit receipts and typed diagnostic frames bind the current lamp sample, observed and expiry turns, source-keyed rider memory, rider investigation intent, source-off transition, no-refresh interval, and expired memory, with exact source/executable/run/actor/PID cleanup identities.",
+  "current_uncertainty": "Whether the native loaded rider receives the current lamp packet and consumes the finite source-keyed memory without another channel substituting for light.",
+  "material_contradiction": ["fire/smoke/sound substitution", "direct player or scent target", "debug memory injection", "planner text without typed memory/intent", "refresh after source loss", "unexpired memory past its declared expiry", "unclean owned process"],
+  "already_accepted_evidence": ["pure rider light-memory timestamp/duplicate/expiry tests"],
+  "forbidden_shortcuts": ["debug:inject_light_memory", "debug:inject_target_knowledge", "direct-state-mutation", "raw-save-rewrite-after-install", "crediting fixture placement as gameplay proof"],
+  "honest_stop_conditions": ["native rider memory and expiry settle, with save/reload only if nonempty memory is reached, or the first exact source/observer/expiry divergence with cleanup"],
+  "requested_evidence_ceiling": "focused"
+}

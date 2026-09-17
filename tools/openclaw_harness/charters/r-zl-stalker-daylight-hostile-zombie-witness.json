@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "Four alive, non-hallucinatory hostile zombies perceptible to the stalker and aimed at the same player target produce a real daylight heavy-pressure stalker bite/attack; the two-zombie row is a modest comparison.",
+  "material_proof": "Native cockpit observations bind player/stalker/zombie identities and timestamps; native attack-resolution evidence establishes the bite/attack; debug zombie_pressure fields corroborate but do not substitute for that event.",
+  "current_uncertainty": "Whether current native movement and attack receipts expose the qualifying same-target zombie contributors before the player takes lethal damage.",
+  "material_contradiction": ["friendly NPCs counted as zombie pressure", "dead or hallucinated contributors", "planner text without a native attack-resolution receipt", "stale or unrelated actor identity", "binding drift"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["debug attack or retreat injection", "direct save mutation after fixture installation", "crediting planner logs as native attacks", "borrowing another run's actor or cleanup identity"],
+  "honest_stop_conditions": ["native heavy bite/attack with bound qualifying contributors and honest modest comparison", "first exact native evidence or cleanup divergence"],
+  "requested_evidence_ceiling": "focused"
+}

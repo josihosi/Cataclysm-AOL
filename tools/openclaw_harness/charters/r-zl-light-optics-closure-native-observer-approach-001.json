@@ -1,0 +1,10 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-LIGHT-OPTICS: an ordinary off-screen observer detects an exposed elevated light and physically approaches its uncertain location, while a matched sealed or obstructed light produces no optical lead or light-caused approach.",
+  "material_proof": "A current-source disposable run binds the exact night f_exodii_lamp source, source and observer elevations, exposure, range, optical channel, uncertain location, stable observer identity and native approach-distance timeline. The matched contained or obstructed control remains free of an optical lead and light-caused movement. Fixture placement, camp registration and setup are zero-credit; no player or camp identity may be inferred from the light cue.",
+  "current_uncertainty": "Whether the loaded map and ordinary scheduler provide a clean exposed/control pair and enough native cadence for the staffed observer to begin physical approach.",
+  "material_contradiction": ["fire, smoke, sound, authored lead, dispatch, report, operation, contact or identity recognition is used as the light proof", "missing source/exposure/elevation/observer binding or uncertain-location fields", "the observer does not reduce route distance in the exposed case", "the sealed or obstructed control creates an optical lead or light-caused approach"],
+  "forbidden_shortcuts": ["debug signal injection", "direct camp-memory, NPC-route or operation mutation", "staged movement decisions", "treating fixture placement or roster materialization as gameplay proof"],
+  "honest_stop_conditions": ["the first native exposed callback and subsequent approach-distance result, plus the matched control", "the first exact source, geometry, scheduler or harness divergence with the owned run preserved"],
+  "requested_evidence_ceiling": "focused"
+}

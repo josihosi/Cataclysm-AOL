@@ -179,6 +179,9 @@ struct transition_event {
     int visibility_input = -1;
     bool visibility_result = false;
     int emitted_minutes = -1;
+    int observed_minutes = -1;
+    std::string source_sample_id;
+    int uncertainty_radius_omt = -1;
     std::string lead_id;
     std::string lead_outcome;
     int work_reads = 0;

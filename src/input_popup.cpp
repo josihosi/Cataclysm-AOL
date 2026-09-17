@@ -1,6 +1,7 @@
 #include "input_popup.h"
 
 #include <cstddef>
+#include <sstream>
 
 #include "coordinates.h"
 #include "imgui/imgui.h"
@@ -338,10 +339,14 @@ std::string string_input_popup_imgui::query()
     is_cancelled = false;
     std::optional<std::string> semantic_submitted_text;
     bool semantic_cancelled = false;
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
     std::optional<semantic_surface_scope> semantic_scope;
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
-        semantic_scope.emplace( *manager, "string_prompt", label.empty() ? "Text input" : label,
-        std::map<std::string, std::string>{ { "text", text } },
+        semantic_scope.emplace( *manager, "string_prompt", id.empty() ? "Text input" : id,
+        std::map<std::string, std::string>{ { "title", id }, { "text", text } },
         std::vector<semantic_action_descriptor>{
             { "prompt.submit", "", _( "Submit" ), true },
             { "prompt.cancel", "", _( "Cancel" ), true }
@@ -351,7 +356,8 @@ std::string string_input_popup_imgui::query()
                 return semantic_action_dispatch_result{ true, "", "" };
             }
             const auto submitted = request.parameters.find( "text" );
-            if( request.action_id != "prompt.submit" || submitted == request.parameters.end() ) {
+            if( request.action_id != "prompt.submit" || request.parameters.size() != 1 ||
+                submitted == request.parameters.end() || submitted->second.size() > 4096 ) {
                 return semantic_action_dispatch_result{ false, "invalid_parameters", "" };
             }
             semantic_submitted_text = submitted->second;
@@ -368,7 +374,7 @@ std::string string_input_popup_imgui::query()
         ui_manager::redraw_invalidated();
 
         if( semantic_scope ) {
-            semantic_scope->publish( { { "text", text } },
+            semantic_scope->publish( { { "title", id }, { "text", text } },
                                       { { "prompt.submit", "", _( "Submit" ), true },
                                         { "prompt.cancel", "", _( "Cancel" ), true } } );
             semantic_scope->consume_request();
@@ -461,10 +467,69 @@ void number_input_popup<float>::draw_input_control()
 template<typename T>
 T number_input_popup<T>::query()
 {
+    is_cancelled = false;
+    bool semantic_submitted = false;
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
+    std::optional<semantic_surface_scope> semantic_scope;
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "string_prompt", id.empty() ? "Numeric input" : id,
+        std::map<std::string, std::string>{
+            { "title", id }, { "text", std::to_string( value ) }, { "numeric", "true" }
+        }, std::vector<semantic_action_descriptor>{
+            { "prompt.submit", "", _( "Submit" ), true },
+            { "prompt.cancel", "", _( "Cancel" ), true }
+        }, [this, &semantic_submitted]( const semantic_action_request &request ) {
+            if( request.action_id == "prompt.cancel" ) {
+                is_cancelled = true;
+                return semantic_action_dispatch_result{ true, "", "" };
+            }
+            const auto submitted = request.parameters.find( "text" );
+            if( request.action_id != "prompt.submit" || request.parameters.size() != 1 ||
+                submitted == request.parameters.end() || submitted->second.size() > 4096 ) {
+                return semantic_action_dispatch_result{ false, "invalid_parameters", "" };
+            }
+            std::istringstream stream( submitted->second );
+            T parsed{};
+            stream >> parsed;
+            if( stream.fail() || !stream.eof() ) {
+                return semantic_action_dispatch_result{ false, "constraint_invalid", "" };
+            }
+            value = parsed;
+            semantic_submitted = true;
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
 
     while( true ) {
         ui_manager::redraw_invalidated();
+        if( semantic_scope ) {
+            semantic_scope->publish( {
+                { "title", id }, { "text", std::to_string( value ) }, { "numeric", "true" }
+            }, {
+                { "prompt.submit", "", _( "Submit" ), true },
+                { "prompt.cancel", "", _( "Cancel" ), true }
+            } );
+            semantic_scope->consume_request();
+            if( is_cancelled ) {
+                break;
+            }
+            if( semantic_submitted ) {
+                return value;
+            }
+        }
         std::string action = ctxt.handle_input();
+
+        // A file-bridge semantic wake is deliberately not a physical input
+        // event.  The input boundary can consume it and return CATA_ERROR
+        // after this popup's ImGui window has already been retired.  Honor
+        // the accepted native value before the ordinary closed-window route
+        // would turn that successful submission back into old_value.
+        if( semantic_submitted ) {
+            return value;
+        }
 
         if( handle_custom_callbacks( action ) ) {
             continue;

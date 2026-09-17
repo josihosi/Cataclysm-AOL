@@ -2,7 +2,7 @@
   "name": "r033_bandit_light_only_observer_v1",
   "source_fixture": "r008_fire_signal_roof_bandit_v1",
   "source_profile": "live-debug",
-  "description": "R-033 isolated physical-light footing. It sets a night turn and places one f_exodii_lamp (native light_emitted 90) at a named roof offset, with a nearby seeded bandit camp and concrete candidate observer. The copied map contains no injected fd_fire or fd_smoke, no significant sound, and no authored lead, dispatch, report, operation, contact, or hostile actor state. Fixture placement and camp registration are zero-credit; only a bound production scan and a later eligible staffed-camp read can establish observation.",
+  "description": "R-033 isolated physical-light footing. It sets a night turn and places one f_exodii_lamp (native light_emitted 90) at a named roof offset, with a nearby seeded bandit camp and a concrete observer-plus-escort candidate pair. The copied map contains no injected fd_fire or fd_smoke, no significant sound, and no authored lead, dispatch, report, operation, contact, or hostile actor state. Fixture placement, registration, and roster materialization are zero-credit; only a bound production scan, a later eligible staffed-camp read, and a native scheduler decision can establish observation or an approach.",
   "save_transforms": [
     {
       "kind": "player_mutations",
@@ -25,13 +25,13 @@
     {
       "kind": "overmap_npcs_near_player",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
-      "offsets_ms": [[0, -24, -1]],
+      "offsets_ms": [[0, -24, -1], [1, -24, -1]],
       "source_npc_id": 4,
       "clone_follower_template": false,
       "npc_faction": "hells_raiders",
       "npc_mission": 7,
       "chat_topic": "TALK_STRANGER_NEUTRAL",
-      "name_prefix": "R033 light observer"
+      "name_prefix": "R033 light routine member"
     },
     {
       "kind": "map_furniture_near_player",

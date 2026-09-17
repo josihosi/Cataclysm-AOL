@@ -1,0 +1,28 @@
+{
+  "manifest_version": 1,
+  "name": "r_zl_freeplay_city042_lit_ab_observation_mcw",
+  "description": "A fresh ordinary observation account installed from a separately native-saved, explicitly artificial local A/B flashlight footing. Player choices may turn the flashlight on and off and make bounded stationary/withdrawal decisions; results are controlled-fixture observations, never natural city-hostile credit.",
+  "profile": "r-zl-freeplay-city042-lit-ab-observation",
+  "world": "zl-natural-stalker-city-042-missed",
+  "fixture": "r_zl_freeplay_city042_lit_ab_setup_20260916",
+  "fixture_profile": "r-zl-freeplay-city042-lit-ab-setup",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {"runtime.entry_mode":"cockpit_live_session","capabilities.r_zl_playtest.integrated_account":"ordinary_lit_ab_observation","capabilities.r_zl_playtest.account_generation":"separate_ordinary_artificial_lit_ab_observation","capabilities.r_zl_playtest.city_start":"native_saved_artificial_lit_ab_copy"},
+  "runtime_contract": {
+    "permitted_input":["cockpit:game.act","cockpit:game.wait","cockpit:game.move_relative","cockpit:run.witness","cockpit:run.finish"],
+    "forbidden_input":["debug:inject_observer","debug:inject_attention","debug:inject_knowledge","debug:inject_contact","debug:inject_attack","debug:inject_target_knowledge","debug:inject_dispatch","debug:inject_local_contact","direct-state-mutation","raw-save-rewrite-after-install","guessed-key"],
+    "setup_only_debug":false,"disposable_copy":true,"helpers":["native file bridge"],"permissions":[],"platform":["macos"],
+    "profile":"r-zl-freeplay-city042-lit-ab-observation","fixture":"r_zl_freeplay_city042_lit_ab_setup_20260916",
+    "requirements":{"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"r-zl-freeplay-city042-lit-ab-observation","fixture":"r_zl_freeplay_city042_lit_ab_setup_20260916","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "grants_gameplay_proof":false
+  },
+  "steps":[
+    {"kind":"wait","label":"settle_ordinary_artificial_lit_ab_copy","seconds":1.0,"capture_after":true,"expected_visible_fact":"the native-saved artificial A/B copy loads before the ordinary player's first decision"},
+    {"kind":"cockpit_live_session","label":"operate_ordinary_lit_ab_observation","cleanup_on_finish":false,"stop_after_live_session":true,"objective":"Use only currently advertised native player owners. Make an ordinary player choice to turn the flashlight on, observe a bounded stationary interval and any player-visible hostile/lighting consequence, then turn it off and observe or withdraw according to the actual World surface. Do not debug, manufacture attention, inject contact/knowledge, or script an outcome. Report the result only as an artificial-fixture on/off observation.","proof_targets":["player-selected native on and off light controls","bounded before/after stationary observations","any player-visible hostile behavior, survival choice, or honest absence","native save/quit lifecycle","source/executable/process binding"],"authority":["advertised native actions","worker-chosen bounded waits","run.witness","run.finish"],"invariants":["no debug after ordinary account launch","fixture's placement and light-off state earn zero ordinary credit","no natural-city or generalized hostile-attention conclusion","only player-visible native facts support the observation"],"live_operations":["game.act","game.wait","game.move_relative"],"transition_timeout_seconds":20.0,"observe_interval_seconds":0.1},
+    {"kind":"semantic_terminal_action_chain","label":"save_and_exit_ordinary_lit_ab_observation","objective":"At the honest boundary, use native Save and Quit, native Main-menu Quit, and their native confirmations.","observation_timeout_seconds":30.0,"observation_interval_seconds":0.1,"required_action_chain":["world.save_quit","prompt.yes","main_menu.quit","prompt.yes"],"expected_visible_fact":"the ordinary A/B observation account saves, returns to main menu, and its owned process exits"}
+  ],
+  "recommended_test_command":"python3 tools/openclaw_harness/startup_harness.py probe r_zl_freeplay_city042_lit_ab_observation_mcw",
+  "evidence_contract":{"claim":"one separate ordinary, controlled-fixture observation can assess a player-selected flashlight on/off contrast without claiming natural hostile behavior","load_only_verdict":"native-saved artificial fixture only / zero inherited ordinary credit","writeback_note":"The artificial placement and starting light state are setup evidence only; the ordinary player actions and visible outcomes may support only the labeled A/B observation."},
+  "proof_route":{"precondition":["settle_ordinary_artificial_lit_ab_copy"],"production_behavior":["operate_ordinary_lit_ab_observation"],"terminal_persistence":["save_and_exit_ordinary_lit_ab_observation"],"artifact_verdict":["operate_ordinary_lit_ab_observation"],"disallowed_shortcuts":["operate_ordinary_lit_ab_observation"]}
+}

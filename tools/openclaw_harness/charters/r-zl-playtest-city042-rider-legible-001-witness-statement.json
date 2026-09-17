@@ -1,0 +1,70 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "This separate ordinary, no-debug account began from the native-saved daytime open footing with a player-visible zombie rider.  The rider applied visible ranged pressure after the player chose to move; the account reached a real death terminal state before it could establish a safe counterplay or disengagement, bounded recovery, or intermittence.",
+  "causal_account": "The account was freshly source/executable-bound to the zero-credit saved footing and used no debug action.  Safe mode was switched off, then the player chose a westward movement.  The next World observation records the rider's arrow, torso damage, bleeding, and stagger.  The player opened the native inventory and selected the active smartphone's advertised flashlight-off menu option, then chose another westward movement.  The resulting terminal observation records an actual avatar death.  This is evidence of player-legible pressure, not a causal attribution of the death solely to the rider, nor evidence of successful disengagement, recovery, or later intermittence.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "identifies the fresh source-bound ordinary rider-legibility account",
+      "checks": {
+        "scenario_id": "r_zl_freeplay_city042_rider_legible_mcw",
+        "source_identity": "50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280",
+        "executable_identity": "e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"
+      }
+    },
+    {
+      "citation_id": "J0004",
+      "meaning": "records the player-visible rider footing and the player-facing safe-mode warning"
+    },
+    {
+      "citation_id": "J0005",
+      "meaning": "records acceptance of the player's native safe-mode toggle",
+      "checks": {"action_id": "world.toggle_safemode", "native_receipt.accepted": true}
+    },
+    {
+      "citation_id": "J0006",
+      "meaning": "records the post-movement World observation with the rider's arrow, torso damage, bleeding, and stagger"
+    },
+    {
+      "citation_id": "J0007",
+      "meaning": "records acceptance of the first player-selected westward movement",
+      "checks": {"action_id": "world.move.west", "native_receipt.accepted": true}
+    },
+    {
+      "citation_id": "J0009",
+      "meaning": "records acceptance of the player's native inventory opening",
+      "checks": {"action_id": "world.inventory", "native_receipt.accepted": true}
+    },
+    {
+      "citation_id": "J0016",
+      "meaning": "records acceptance of the advertised native flashlight-off menu choice",
+      "checks": {"action_id": "menu.choose", "native_receipt.accepted": true}
+    },
+    {
+      "citation_id": "J0019",
+      "meaning": "records acceptance of the second player-selected westward movement",
+      "checks": {"action_id": "world.move.west", "native_receipt.accepted": true}
+    },
+    {
+      "citation_id": "J0018",
+      "meaning": "records the real death terminal state",
+      "checks": {"value.surface.kind": "terminal", "value.surface.facts.actual_death": "true", "value.surface.facts.avatar_dead": "true"}
+    },
+    {
+      "citation_id": "J0030",
+      "meaning": "records the sealed ordinary-account boundary and released unused authority",
+      "checks": {"unused_authority": "released"}
+    }
+  ],
+  "material_deviations": [
+    "The account died before a safe counterplay or disengagement, recovery, or intermittence observation could be made; therefore no native save-and-quit lifecycle was available for this deceased account."
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "Whether a survivable ordinary footing can demonstrate rider-specific counterplay or disengagement.",
+    "Whether pressure can subside and later recur under ordinary play without conflating other hostiles or environmental factors."
+  ],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "focused"
+}

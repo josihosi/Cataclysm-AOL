@@ -2577,6 +2577,25 @@ void monster::load( const JsonObject &data )
         type = &mon_breather.obj();
         DebugLog( D_WARNING, DC_ALL ) << "mtype '" << montype.str() << "' is invalid, set to mon_breather";
     }
+    if( type->id.str() == "mon_writhing_stalker" && data.has_object( "writhing_stalker_state" ) ) {
+        writhing_stalker_state().deserialize( data.get_object( "writhing_stalker_state" ) );
+    }
+    if( type->id.str() == "mon_zombie_rider" && data.has_object( "zombie_rider_pursuit_state" ) ) {
+        zombie_rider_pursuit_state().deserialize( data.get_object( "zombie_rider_pursuit_state" ) );
+    }
+    if( is_caol_predator() && data.has_object( "caol_predator" ) ) {
+        JsonObject predator = data.get_object( "caol_predator" );
+        predator.allow_omitted_members();
+        predator_lifecycle_state &state = predator_state();
+        state.schema_version = predator.get_int( "schema", 1 );
+        predator.read( "actor_id", state.actor_id );
+        predator.read( "handoff_epoch", state.handoff_epoch );
+        predator.read( "last_advanced_turn", state.last_advanced_turn );
+        predator.read( "ammo_initialization_version", state.ammo_initialization_version );
+        predator.read( "band_reference", state.band_reference );
+        predator.read( "band_revision_cache", state.band_revision_cache );
+        ensure_predator_state();
+    }
 
     data.read( "unique_name", unique_name );
     data.read( "nickname", nickname );
@@ -2744,6 +2763,27 @@ void monster::store( JsonOut &json ) const
 {
     Creature::store( json );
     json.member( "typeid", type->id );
+    if( type->id.str() == "mon_writhing_stalker" ) {
+        json.member( "writhing_stalker_state" );
+        writhing_stalker_state().serialize( json );
+    }
+    if( type->id.str() == "mon_zombie_rider" ) {
+        json.member( "zombie_rider_pursuit_state" );
+        zombie_rider_pursuit_state().serialize( json );
+    }
+    if( is_caol_predator() ) {
+        const predator_lifecycle_state &state = predator_state();
+        json.member( "caol_predator" );
+        json.start_object();
+        json.member( "schema", state.schema_version );
+        json.member( "actor_id", state.actor_id );
+        json.member( "handoff_epoch", state.handoff_epoch );
+        json.member( "last_advanced_turn", state.last_advanced_turn );
+        json.member( "ammo_initialization_version", state.ammo_initialization_version );
+        json.member( "band_reference", state.band_reference );
+        json.member( "band_revision_cache", state.band_revision_cache );
+        json.end_object();
+    }
     json.member( "unique_name", unique_name );
     json.member( "nickname", nickname );
     json.member( "goal", goal );

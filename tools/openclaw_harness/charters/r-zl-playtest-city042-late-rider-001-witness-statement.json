@@ -1,0 +1,24 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The separate ordinary late-rider account performed a bounded, player-visible nighttime route: it waited, stopped after the native zapper-zombie interruption, and turned off its active smartphone flashlight before completing native save and quit. No player-visible rider encounter occurred, so no claim about rider threat, fairness, recovery, or intermittence is supported.",
+  "causal_account": "The ordinary run began from the separately native-saved zero-credit fixture and used only advertised native owners. The player selected a 30-minute wait, chose to stop after the native interruption named a zapper zombie, and then used the native inventory and smartphone menu to turn off the active flashlight. Ambient zombie messages and a visible writhing stalker were not attributed to the rider. The account then followed native Save and Quit, its confirmation, main-menu Quit, and its confirmation.",
+  "citations": [
+    {"citation_id":"J0001","meaning":"identifies the distinct ordinary account and its exact runtime binding","checks":{"scenario_id":"r_zl_freeplay_city042_late_rider_mcw","source_identity":"50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280","executable_identity":"e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"}},
+    {"citation_id":"J0012","meaning":"the player-selected native 30-minute wait was accepted","checks":{"action_id":"wait.30m","native_receipt.accepted":true}},
+    {"citation_id":"J0014","meaning":"the native interruption specifically named a zapper zombie, not a rider","checks":{"value.surface.facts.text":"<color_light_red>zapper zombie spotted! Stop waiting? (Case Sensitive)</color>"}},
+    {"citation_id":"J0016","meaning":"the player chose the native stop response","checks":{"action_id":"prompt.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0024","meaning":"the currently advertised native smartphone menu exposed Turn off flashlight","checks":{"value.surface.kind":"menu"}},
+    {"citation_id":"J0026","meaning":"the player-selected native flashlight menu action was accepted","checks":{"action_id":"menu.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0029","meaning":"the native World Save and Quit action was accepted","checks":{"action_id":"world.save_quit","native_receipt.accepted":true}},
+    {"citation_id":"J0031","meaning":"the native save confirmation was accepted","checks":{"action_id":"prompt.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0033","meaning":"the native main-menu Quit action was accepted","checks":{"action_id":"main_menu.quit","native_receipt.accepted":true}},
+    {"citation_id":"J0035","meaning":"the native application-quit confirmation was accepted","checks":{"action_id":"prompt.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0036","meaning":"records the honest boundary and released unused authority","checks":{"unused_authority":"released"}}
+  ],
+  "material_deviations": ["Four attempted cardinal moves were natively blocked without advancing a turn; the account did not force an alternate route or use debug actions."],
+  "contradictions": [{"citation_id":"J0014","meaning":"The only named interruption was a zapper zombie, so it cannot establish rider pressure."}],
+  "remaining_unknowns": ["Whether the saved broad-distance rider can become player-visible through a longer ordinary route.","Whether any resulting rider pressure would be threatening, recoverable, fair, or intermittent."],
+  "recommended_disposition":"continue",
+  "evidence_ceiling":"focused"
+}

@@ -248,10 +248,16 @@ def _validate_journal_integrity(
     }
     if schema not in labels or journal.get("charter_id") != normalized_charter["charter_id"]:
         raise WitnessError("witness_journal_charter_mismatch")
-    expected_digest = _digest(
-        labels[schema],
-        {key: value for key, value in journal.items() if key != "journal_sha256"},
-    )
+    try:
+        expected_digest = _digest(
+            labels[schema],
+            {key: value for key, value in journal.items() if key != "journal_sha256"},
+        )
+    except ValueError as exc:
+        # A lazy archive can reject an indexed row before its logical journal
+        # sequence is decoded.  Keep the public witness integrity contract
+        # rather than leaking that storage distinction to a citation caller.
+        raise WitnessError("witness_journal_digest_mismatch") from exc
     if journal.get("journal_sha256") != expected_digest:
         raise WitnessError("witness_journal_digest_mismatch")
     return schema

@@ -1,0 +1,35 @@
+{
+  "name": "mcwilliams_live_debug_zombie_rider_impact_multi_recovery_controls_2026-09-12",
+  "source_fixture": "mcwilliams_live_debug_zombie_rider_native_hunt_open_2026-09-12",
+  "source_profile": "live-debug",
+  "description": "Two identified hostile riders on clear east/south closing lanes: east rider has an empty bow; south rider retains 18 arrows.  Player begins standing at full health so downing, recovery and any subsequent action remain native consequences.",
+  "save_transforms": [
+    {
+      "kind": "map_terrain_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "terrain": [
+        {"id":"t_floor","offset_ms":[1,0,0]}, {"id":"t_floor","offset_ms":[2,0,0]}, {"id":"t_floor","offset_ms":[3,0,0]}, {"id":"t_floor","offset_ms":[4,0,0]}, {"id":"t_floor","offset_ms":[5,0,0]},
+        {"id":"t_floor","offset_ms":[0,1,0]}, {"id":"t_floor","offset_ms":[0,2,0]}, {"id":"t_floor","offset_ms":[0,3,0]}, {"id":"t_floor","offset_ms":[0,4,0]}, {"id":"t_floor","offset_ms":[0,5,0]},
+        {"id":"t_floor","offset_ms":[-1,0,0]}, {"id":"t_floor","offset_ms":[-2,0,0]}, {"id":"t_floor","offset_ms":[-3,0,0]},
+        {"id":"t_floor","offset_ms":[0,-1,0]}, {"id":"t_floor","offset_ms":[0,-2,0]}, {"id":"t_floor","offset_ms":[0,-3,0]}
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "fixture_actor_id":"rider-empty-east", "typeid":"mon_zombie_rider", "offset_ms":[3,0,0], "qualification_offset_ms":[3,0,0],
+          "hp":220, "moves":0, "friendly":0, "faction":"zombie", "anger":100, "morale":100, "aggro_character":true,
+          "ammo":{}
+        },
+        {
+          "fixture_actor_id":"rider-stocked-south", "typeid":"mon_zombie_rider", "offset_ms":[0,3,0], "qualification_offset_ms":[0,3,0],
+          "hp":220, "moves":0, "friendly":0, "faction":"zombie", "anger":100, "morale":100, "aggro_character":true,
+          "ammo":{"zombie_rider_tainted_bone_arrow":18}
+        }
+      ]
+    }
+  ]
+}

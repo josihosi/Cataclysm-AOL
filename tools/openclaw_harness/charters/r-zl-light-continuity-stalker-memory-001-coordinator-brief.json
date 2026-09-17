@@ -1,0 +1,7 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-LIGHT-CONTINUITY-closure-stalker-memory-001",
+  "outcome": "R-ZL-LIGHT-CONTINUITY: a physical night lamp reaches the writhing stalker through the production scan, records a light sample/waypoint without player identity, remains active across native turns, and expires at its declared boundary.",
+  "scenario": "writhing_stalker.live_light_continuity_mcw",
+  "query": {"requirements": [{"key": "capabilities.r_zl_light_continuity.stalker_memory", "op": "eq", "value": "physical_light_sample_persists_and_expires_from_native_turns", "minimum_evidence": "declared"}], "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]}
+}

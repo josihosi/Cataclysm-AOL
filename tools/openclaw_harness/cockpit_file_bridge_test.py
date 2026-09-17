@@ -13,11 +13,13 @@ import tempfile
 import threading
 import time
 import unittest
+from types import MappingProxyType
 from contextlib import redirect_stdout
 from pathlib import Path
 
 sys.path.insert(0, str(Path(__file__).resolve().parent))
-from cockpit_file_bridge import FileBackedCockpitBridge, FileBackedCockpitClient, FreshObservationSequence, main
+from cockpit_file_bridge import (FileBackedCockpitBridge, FileBackedCockpitClient,
+                                 FreshObservationSequence, _decode_bridge_response, _tree_digest, main)
 import startup_harness
 
 
@@ -31,6 +33,17 @@ SESSION_CHILD = (
     "import json,os,sys; "
     "print(json.dumps({'cockpit_live_session':{'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session','run_id':'run-a','binding_id':'native-a','bridge_binding_id':os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']}}),flush=True); "
     "[print(json.dumps({'ok':True,'result':json.loads(line)}),flush=True) for line in sys.stdin]"
+)
+INITIAL_FRAME_CHILD = (
+    "import json,sys; "
+    "d={'schema':'caol-cockpit-live-session-v1','entry_mode':'cockpit_live_session',"
+    "'run_id':'run-frame','binding_id':'native-a','bridge_binding_id':'bound-a'}; "
+    "print(json.dumps({'cockpit_live_session':d}),flush=True); "
+    "print(json.dumps({'event':'frame','run_id':'run-frame','frame_id':'run-frame:frame:1',"
+    "'state':'world','initial_world_ready':True}),flush=True); "
+    "line=sys.stdin.readline(); req=json.loads(line); "
+    "print(json.dumps({'ok':True,'result':{'action':req['action'],'sequence':1,"
+    "'observation':'x'*1200000}}),flush=True)"
 )
 
 PREFIX = [
@@ -76,6 +89,17 @@ OBSERVATION_CHAIN_CHILD = (
     "  frame += 1; result={'ok':True,'result':{'observation_id':f'frame:{frame}'}}\n"
     " else:\n"
     "  result={'ok':True,'result':request}\n"
+    " print(json.dumps(result),flush=True)\n"
+)
+
+ACTION_SUCCESSOR_OBSERVATION_CHILD = (
+    "import json,sys\n"
+    "for line in sys.stdin:\n"
+    " request=json.loads(line)\n"
+    " if request.get('action') == 'game.observe':\n"
+    "  result={'ok':True,'result':{'observation_id':'frame:1'}}\n"
+    " else:\n"
+    "  result={'ok':True,'observation':{'observation_id':'frame:2'},'receipt':{'accepted':True}}\n"
     " print(json.dumps(result),flush=True)\n"
 )
 
@@ -258,6 +282,38 @@ for line in sys.stdin:
             thread.join(2)
             self.assertFalse(thread.is_alive())
 
+    def test_nested_mapping_request_crosses_json_boundary_with_exact_shape(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = FileBackedCockpitBridge(directory, [sys.executable, "-u", "-c", CHILD], binding_id="bound-a")
+            bridge.prepare()
+            bridge._write_status("ready")
+            request = MappingProxyType({
+                "action": "run.witness",
+                "witness": MappingProxyType({
+                    "verdict": "inconclusive",
+                    "citations": (MappingProxyType({"citation_id": "J0001"}),),
+                }),
+            })
+            submitted = bridge.send_request(
+                directory, request_id="nested-1", binding_id="bound-a", request=request,
+            )
+            self.assertEqual(submitted, {"ok": True, "request_id": "nested-1"})
+            envelope = json.loads((directory / "requests/nested-1.json").read_text())
+            self.assertEqual(envelope["request"], {
+                "action": "run.witness",
+                "witness": {"verdict": "inconclusive", "citations": [{"citation_id": "J0001"}]},
+            })
+
+    def test_post_initial_frame_decoded_response_keeps_object_shape_and_wire_bytes(self):
+        response, wire = _decode_bridge_response({
+            "ok": True,
+            "result": {"observation_id": "run:frame:2", "state": "world"},
+        })
+        self.assertEqual(response["result"]["observation_id"], "run:frame:2")
+        self.assertEqual(json.loads(wire), response)
+        self.assertTrue(wire.endswith(b"\n"))
+
     def test_delayed_response_collection_never_resubmits_request_identity(self):
         with tempfile.TemporaryDirectory() as temp:
             directory = Path(temp) / "session"
@@ -351,6 +407,35 @@ for line in sys.stdin:
             self.assertEqual(len(receipts), 5)
             identities = [json.loads(path.read_text())["request_id"] for path in receipts]
             self.assertEqual(len(identities), len(set(identities)))
+            self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+
+    def test_action_successor_observation_id_handoff_never_serializes_empty_id(self):
+        """An act response's successor frame becomes the next action authority."""
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", ACTION_SUCCESSOR_OBSERVATION_CHILD], binding_id="bound-a",
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            while not (directory / "status.json").is_file() or \
+                    json.loads((directory / "status.json").read_text())["state"] == "starting":
+                time.sleep(0.01)
+            client = FreshObservationSequence(directory, "bound-a", "successor")
+            observe_id = client.observe()
+            while not (directory / "responses" / (observe_id + ".receipt.json")).exists():
+                time.sleep(0.01)
+            self.assertEqual(client.accept_observation(observe_id), "frame:1")
+            action_id = client.act("prompt.choose", "prompt-option:2")
+            while not (directory / "responses" / (action_id + ".receipt.json")).exists():
+                time.sleep(0.01)
+            self.assertEqual(client.accept_observation(action_id), "frame:2")
+            self.assertEqual(client._latest_observation_id, "frame:2")
+            request = json.loads((directory / "requests" / (action_id + ".json")).read_text())
+            self.assertEqual(request["request"]["observation_id"], "frame:1")
+            self.assertEqual(request["request"]["stable_id"], "prompt-option:2")
             self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
             thread.join(2)
             self.assertFalse(thread.is_alive())
@@ -487,6 +572,88 @@ for line in sys.stdin:
             while not (directory / "responses" / "observe-1.receipt.json").is_file():
                 time.sleep(0.01)
             self.assertEqual(bridge.response_slice(directory, "observe-1", "result.action")["slice"], "game.observe")
+            bridge.cleanup(directory, "bound-a")
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+
+    def test_hud_progress_then_profile_descriptor_precedes_partial_stdout_read(self):
+        """A HUD-ready child with a durable non-default-profile descriptor is admitted."""
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            directory = root / ".userdata" / "openclaw_harness" / "bridge-sessions" / "session"
+            descriptor_path = root / ".userdata" / "reload-harness" / "harness_runs" / "run" / \
+                "operate.cockpit_live_session.json"
+            child = root / "child.py"
+            child.write_text(
+                "import json, os, sys, time\n"
+                "from pathlib import Path\n"
+                "p = Path(sys.argv[1]); p.parent.mkdir(parents=True, exist_ok=True)\n"
+                "b = os.environ['OPENCLAW_COCKPIT_BRIDGE_BINDING_ID']\n"
+                "print(json.dumps({'cockpit_bridge_progress': {'schema': 'caol-cockpit-bridge-progress-v1',"
+                "'state': 'startup_hud_ready', 'bridge_binding_id': b, 'run_id': 'run-profile',"
+                "'pid': 42, 'gameplay_credit': False}}), flush=True)\n"
+                "d = {'schema': 'caol-cockpit-live-session-v1', 'entry_mode': 'cockpit_live_session',"
+                "'run_id': 'run-profile', 'binding_id': b, 'bridge_binding_id': b, 'bootstrap_only': False}\n"
+                "p.write_text(json.dumps(d), encoding='utf-8')\n"
+                "sys.stdout.write('partial-startup-record'); sys.stdout.flush(); os.close(1)\n"
+                "for line in sys.stdin:\n"
+                " req = json.loads(line); print(json.dumps({'ok': True, 'result': req}), flush=True)\n",
+                encoding="utf-8",
+            )
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", str(child), str(descriptor_path)],
+                binding_id="bound-a", require_session_ready=True,
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                if (directory / "status.json").exists() and \
+                        json.loads((directory / "status.json").read_text())["state"] == "ready":
+                    break
+                time.sleep(0.01)
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["state"], "ready")
+            self.assertEqual(status["startup_progress"]["state"], "startup_hud_ready")
+            self.assertEqual(status["session_descriptor"]["run_id"], "run-profile")
+            self.assertTrue(bridge.cleanup(directory, "bound-a")["ok"])
+            thread.join(2)
+            self.assertFalse(thread.is_alive())
+
+    def test_initial_frame_is_drained_before_first_request_response(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            bridge = FileBackedCockpitBridge(
+                directory, [sys.executable, "-u", "-c", INITIAL_FRAME_CHILD],
+                binding_id="bound-a", require_session_ready=True,
+            )
+            thread = threading.Thread(target=bridge.serve, daemon=True)
+            thread.start()
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline:
+                if (directory / "status.json").exists() and \
+                        json.loads((directory / "status.json").read_text())["state"] == "ready":
+                    break
+                time.sleep(0.01)
+            status = json.loads((directory / "status.json").read_text())
+            self.assertEqual(status["session_descriptor"]["run_id"], "run-frame")
+            self.assertTrue(bridge.send_request(
+                directory, request_id="initial-frame-observe", binding_id="bound-a",
+                request={"action": "game.observe"},
+            )["ok"])
+            deadline = time.monotonic() + 5
+            while time.monotonic() < deadline and not \
+                    (directory / "responses/initial-frame-observe.receipt.json").exists():
+                time.sleep(0.01)
+            receipt = json.loads((directory / "responses/initial-frame-observe.receipt.json").read_text())
+            self.assertEqual(receipt["sequence"], 1)
+            self.assertEqual(receipt["binding_id"], "bound-a")
+            self.assertEqual(receipt["request_identity"], {"action": "game.observe"})
+            self.assertTrue((directory / "child.startup.stdout.jsonl").exists())
+            response = bridge.response_artifact(directory, "initial-frame-observe", receipt["response_sha256"])
+            self.assertTrue(response["ok"])
+            self.assertEqual(response["response"]["result"]["sequence"], 1)
+            self.assertEqual(len(response["response"]["result"]["observation"]), 1200000)
             bridge.cleanup(directory, "bound-a")
             thread.join(2)
             self.assertFalse(thread.is_alive())
@@ -750,6 +917,28 @@ for line in sys.stdin:
             self.assertEqual(status["state"], "terminalizing")
             self.assertEqual(status["declared_reentry_skipped"], "native_save_quit_not_observed")
             self.assertEqual(bridge.session_reentries, 1)
+
+    def test_post_relaunch_reentry_freezes_owned_saved_world_snapshot(self):
+        with tempfile.TemporaryDirectory() as temp:
+            directory = Path(temp) / "session"
+            userdir = Path(temp) / "user"
+            saved_world = userdir / "save" / "McWilliams"
+            saved_world.mkdir(parents=True)
+            (saved_world / "worldoptions.json").write_text('{"saved":true}', encoding="utf-8")
+            bridge = FileBackedCockpitBridge(directory, ["unused"], binding_id="bound-a")
+            bridge.prepare()
+            (directory / "game-process.json").write_text(json.dumps({
+                "command": f"/registered/native/game --userdir {userdir} --world McWilliams",
+            }), encoding="utf-8")
+
+            bridge._freeze_saved_world_for_reentry()
+
+            pointer = json.loads((directory / "replacement_saved_world.snapshot.json").read_text())
+            snapshot = Path(pointer["snapshot"])
+            self.assertTrue(pointer["immutable_source"])
+            self.assertTrue(snapshot.is_dir())
+            self.assertEqual((snapshot / "worldoptions.json").read_text(encoding="utf-8"), '{"saved":true}')
+            self.assertEqual(pointer["sha256"], _tree_digest(snapshot))
 
     def test_declared_reentry_replaces_live_registry_wrapper_after_registered_game_exits(self):
         """A live launcher is retired only after its separately owned game exits."""

@@ -1,0 +1,23 @@
+{
+  "name": "r033_bandit_light_occluded_control_v1",
+  "source_fixture": "r033_bandit_light_only_observer_v1",
+  "source_profile": "live-debug",
+  "description": "Matched R-033 physical-light control.  It inherits the identical night turn, one f_exodii_lamp, nearby camp, and two ready members from the exposed fixture.  The sole experimental change is a one-tile indoor enclosure at the existing lamp coordinate: an INDOORS floor under the lamp and opaque wall cells in its local aperture.  No signal, lead, dispatch, report, operation, contact, roster, or clock is authored by this leaf fixture.",
+  "save_transforms": [
+    {
+      "kind": "map_terrain_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "terrain": [
+        { "id": "t_floor", "offset_ms": [10, 0, 0] },
+        { "id": "t_wall", "offset_ms": [9, -1, 0] },
+        { "id": "t_wall", "offset_ms": [10, -1, 0] },
+        { "id": "t_wall", "offset_ms": [11, -1, 0] },
+        { "id": "t_wall", "offset_ms": [9, 0, 0] },
+        { "id": "t_wall", "offset_ms": [11, 0, 0] },
+        { "id": "t_wall", "offset_ms": [9, 1, 0] },
+        { "id": "t_wall", "offset_ms": [10, 1, 0] },
+        { "id": "t_wall", "offset_ms": [11, 1, 0] }
+      ]
+    }
+  ]
+}

@@ -1,0 +1,29 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-ENCOUNTERS: one current-source tagged zombie predator naturally selects the configured GROUP_ZOMBIE_PREDATOR_UPGRADE rider branch in the repaired day-10000 fixture, producing exactly one zombie rider with durable exactly-once ammunition initialization and its native frozen rider description.",
+  "material_proof": "A new source-bound disposable session records the tagged predator and repaired scheduled-roll footing, then its native production records correlate that same fixture actor to mon_zombie_rider through GROUP_ZOMBIE_PREDATOR_UPGRADE, show ammunition initialization version 1 exactly once in durable state, and expose the native rider description before the advertised save-and-quit chain and process cleanup. The existing focused 3-of-3 repair diagnostic and prior non-rider control are accepted only as route evidence, never as rider proof.",
+  "current_uncertainty": "Whether an independent unseeded native production attempt now selects the five-percent rider branch; every previous repaired attempt that selected the non-rider outcome remains a legitimate control rather than a failure of the route.",
+  "material_contradiction": [
+    "the rider or its ammunition is spawned, polymorphed, injected, forced, seeded, replayed, or directly state-mutated",
+    "the observed rider lacks exact tagged predator-to-rider origin or the configured native upgrade group",
+    "ammunition initialization is missing, non-durable, or occurs other than exactly once",
+    "the rider description is synthesized rather than presented by the native rider surface",
+    "source/executable/run/PID identity cannot be bound or owned processes cannot be gracefully closed and verified exited"
+  ],
+  "already_accepted_evidence": [
+    "the explicit day-10000 upgrade cursor repair and focused 3-of-3 diagnostic",
+    "a previous current-source scheduled production roll with a legitimate non-rider outcome",
+    "the settled load-catchup diagnosis, which must not be replayed"
+  ],
+  "forbidden_shortcuts": [
+    "debug rider spawn or polymorph",
+    "ammo injection or direct save mutation after fixture install",
+    "forcing, seeding, injecting, or replaying the stochastic production outcome",
+    "crediting fixture placement as gameplay proof"
+  ],
+  "honest_stop_conditions": [
+    "one independent native rider result with the requested origin, durable ammo, description, identity, journal, and cleanup evidence is collected",
+    "a fresh exact source, executable, registry, native production, or graceful-cleanup divergence is retained and reported"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

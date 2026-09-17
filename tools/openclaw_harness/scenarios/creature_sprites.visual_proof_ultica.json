@@ -1,0 +1,23 @@
+{
+  "manifest_version": 1,
+  "name": "creature_sprites.visual_proof_ultica",
+  "description": "Disposable Ultica visual proof for the C-AOL writhing stalker and zombie rider sprite overrides.  Exact-ID debug placement is setup only; this route proves rendering, not creature behavior.",
+  "capabilities": { "runtime.entry_mode": "cockpit_live_session", "capabilities.creature_sprites.visual_render": "exact_id_normal_scale_bright_dark_rendering" },
+  "runtime_contract": {
+    "permitted_input": [ "debug:spawn", "cockpit:game.act", "cockpit:game.wait", "cockpit:run.witness", "cockpit:run.finish" ],
+    "forbidden_input": [ "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key" ],
+    "setup_only_debug": true, "disposable_copy": true, "helpers": [ "native file bridge" ], "permissions": [], "platform": [ "macos" ],
+    "profile": "creature-sprites-visual", "fixture": "VisualSpriteTest",
+    "requirements": { "os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "creature-sprites-visual", "fixture": "VisualSpriteTest", "helper": "native file bridge", "peekaboo": false, "ocr": false, "input": [ "advertised native cockpit actions" ], "cleanup": true },
+    "grants_gameplay_proof": false
+  },
+  "profile": "creature-sprites-visual", "world": "VisualSpriteTest", "artifact_source": "debug.log", "steps": [
+    { "kind": "cockpit_live_session", "label": "render_exact_creature_sprite_ids", "cleanup_on_finish": true, "stop_after_live_session": true,
+      "objective": "Use advertised native debug placement to place exactly mon_writhing_stalker and mon_zombie_rider in the disposable world, capture normal-scale bright and dark frames, and bind the render observations to the live source, process and session.",
+      "proof_targets": [ "exact ID setup receipts", "normal-scale bright/dark frames", "session/process cleanup" ],
+      "invariants": [ "debug placement is zero-credit setup", "no creature behavior claim", "native rendering observation is required" ],
+      "live_operations": [ "game.act", "game.wait", "game.raw_wait", "game.move_relative" ], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1 }
+  ],
+  "proof_route": { "precondition": [ "render_exact_creature_sprite_ids" ], "production_behavior": [ "render_exact_creature_sprite_ids" ], "terminal_persistence": [ "render_exact_creature_sprite_ids" ], "artifact_verdict": [ "render_exact_creature_sprite_ids" ], "disallowed_shortcuts": [ "render_exact_creature_sprite_ids" ] },
+  "evidence_contract": { "claim": "the two exact monster IDs render their separate C-AOL sprite cells at normal gameplay scale under bright and dark conditions", "load_only_verdict": "load proof is insufficient; native rendered frames are required" }
+}

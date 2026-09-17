@@ -108,6 +108,26 @@ class InputOwnerCoverageTest( unittest.TestCase ):
         self.assertIn( '"unclassified_native_input_owner"', boundary )
         self.assertIn( '"unsupported"', boundary )
 
+    def test_string_input_rebinds_the_active_run_and_keeps_submit_payload_explicit( self ) -> None:
+        source = ( SOURCE_ROOT / "string_input_popup.cpp" ).read_text()
+        imgui_source = ( SOURCE_ROOT / "input_popup.cpp" ).read_text()
+        self.assertIn( "openclaw_harness_semantic_session_active()", source )
+        self.assertIn( "semantic_submit_max_bytes", source )
+        self.assertIn( 'request.parameters.size() == 1', source )
+        self.assertIn( '"prompt.submit"', source )
+        self.assertIn( '"text"', source )
+        self.assertIn( "number_input_popup<T>::query()", imgui_source )
+        self.assertIn( "openclaw_harness_semantic_session_active()", imgui_source )
+        self.assertIn( '"numeric", "true"', imgui_source )
+        # A semantic transport wake can retire the native ImGui popup before
+        # its input loop resumes.  Its accepted value must win over the
+        # ordinary closed-window fallback to old_value.
+        query_start = imgui_source.index( "T number_input_popup<T>::query()" )
+        after_input = imgui_source.index( "std::string action = ctxt.handle_input();", query_start )
+        accepted_return = imgui_source.index( "if( semantic_submitted ) {\n            return value;", after_input )
+        closed_window = imgui_source.index( "if( !get_is_open() )", after_input )
+        self.assertLess( accepted_return, closed_window )
+
     def test_debug_menu_has_a_focused_spell_editor_owner( self ) -> None:
         source = ( SOURCE_ROOT / "debug_menu.cpp" ).read_text()
         self.assertIn( '"debug_spells"', source )

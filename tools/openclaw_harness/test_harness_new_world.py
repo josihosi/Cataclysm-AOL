@@ -47,6 +47,18 @@ class HarnessNewWorldTest(unittest.TestCase):
             ],
         )
 
+    def test_game_argv_carries_an_explicit_ordinary_scenario(self) -> None:
+        command = harness.build_game_command(
+            Path("/game/cataclysm-tiles"), "r002-missed", "natural-missed",
+            harness_new_world="natural-missed", harness_raw_seed="2026091515",
+            harness_new_world_scenario="missed",
+        )
+        self.assertEqual(command[-2:], ["--harness-new-world-scenario", "missed"])
+
+    def test_harness_scenario_requires_a_fresh_named_world(self) -> None:
+        with self.assertRaisesRegex(ValueError, "requires harness new-world mode"):
+            harness.build_plan("profile", "", "", harness_new_world_scenario="missed")
+
     def test_harness_startup_skips_permission_focus_and_input_owners(self) -> None:
         self.assertFalse(harness.startup_gui_automation_required("harness_new_world"))
         self.assertTrue(harness.startup_gui_automation_required("play_now_default"))

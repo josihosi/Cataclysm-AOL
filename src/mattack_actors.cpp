@@ -62,11 +62,13 @@
 #include "viewer.h"
 #include "vpart_position.h"
 #include "weighted_list.h"
+#include "writhing_stalker_ai.h"
 
 static const damage_type_id damage_bash( "bash" );
 
 static const efftype_id effect_badpoison( "badpoison" );
 static const efftype_id effect_bite( "bite" );
+static const efftype_id effect_downed( "downed" );
 static const efftype_id effect_grabbed( "grabbed" );
 static const efftype_id effect_grabbing( "grabbing" );
 static const efftype_id effect_infected( "infected" );
@@ -881,6 +883,14 @@ bool melee_actor::call( monster &z ) const
         }
     }
 
+    // This is the attack-resolution seam: target selection and actor
+    // preconditions succeeded, so a stalker attempt is now real. Do not count
+    // the planner's earlier decision or a failed target search.
+    if( z.type->id == mtype_id( "mon_writhing_stalker" ) &&
+        z.is_adjacent( target, true ) && z.sees( here, *target ) ) {
+        writhing_stalker::record_attack_attempt( z );
+    }
+
     z.mod_moves( -move_cost );
 
     const std::string mon_name = get_player_character().sees( here, z.pos_bub( here ) ) ?
@@ -1277,6 +1287,71 @@ void bite_actor::on_damage( monster &z, Creature &target, dealt_damage_instance 
 std::unique_ptr<mattack_actor> bite_actor::clone() const
 {
     return std::make_unique<bite_actor>( *this );
+}
+
+void zombie_rider_impact_actor::load_internal( const JsonObject &obj, const std::string &src )
+{
+    melee_actor::load_internal( obj, src );
+}
+
+bool zombie_rider_impact_actor::call( monster &z ) const
+{
+    if( z.type->id != mtype_id( "mon_zombie_rider" ) ) {
+        return false;
+    }
+    zombie_rider_overmap_ai::rider_pursuit_state &state = z.zombie_rider_pursuit_state();
+    if( !state.impact_ready ) {
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider impact_attempt ready=no turn="
+                                   << to_turn<int>( calendar::turn ) << '\n';
+        return false;
+    }
+
+    Creature *target = z.attack_target();
+    const bool legal_contact = target != nullptr && !target->is_dead_state() &&
+                                target->get_identity() == state.target_identity &&
+                                target->posz() == z.posz() &&
+                                z.is_adjacent( target, false ) &&
+                                z.attitude_to( *target ) == Creature::Attitude::HOSTILE &&
+                                z.sees( get_map(), *target );
+    if( !legal_contact ) {
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider impact_attempt ready=yes legal=no turn="
+                                   << to_turn<int>( calendar::turn ) << '\n';
+        return false;
+    }
+
+    DebugLog( D_INFO, DC_ALL ) << "zombie_rider impact_attempt ready=yes legal=yes turn="
+                               << to_turn<int>( calendar::turn ) << '\n';
+
+    // Readiness is a single closing-step token.  Consume it only after all
+    // contact predicates pass; melee_actor then charges the configured cost
+    // for both hits and misses.
+    state.impact_ready = false;
+    state.impact_ready_turn = -1;
+
+    // The shared melee machinery performs ordinary dodge, armor, damage and
+    // move-cost resolution.  A dodge or armor hold may make melee_actor::call
+    // return false, but the named impact was still attempted and paid for;
+    // report scheduler success so the generic loop cannot fall through to a
+    // bite in the same invocation.
+    ( void )melee_actor::call( z );
+    // Leave one full subsequent game turn to the target.  The rider resumes
+    // ordinary pursuit afterwards; this is not a disengage or retreat.
+    state.impact_recovery_until_turn = to_turn<int>( calendar::turn ) + 1;
+    return true;
+}
+
+void zombie_rider_impact_actor::on_damage( monster &z, Creature &target,
+        dealt_damage_instance &dealt ) const
+{
+    melee_actor::on_damage( z, target, dealt );
+    if( !target.has_effect( effect_downed ) ) {
+        target.add_effect( effect_downed, 1_turns, true );
+    }
+}
+
+std::unique_ptr<mattack_actor> zombie_rider_impact_actor::clone() const
+{
+    return std::make_unique<zombie_rider_impact_actor>( *this );
 }
 
 gun_actor::gun_actor() : description( to_translation( "The %1$s fires its %2$s!" ) ),

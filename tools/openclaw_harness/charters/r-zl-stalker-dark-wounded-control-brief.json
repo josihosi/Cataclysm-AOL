@@ -1,0 +1,7 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-STALKER-closure-native-attack-retreat-001",
+  "outcome": "R-ZL-STALKER matched darkness wounded control: a badly injured stalker must withdraw without a native strike snapback.",
+  "scenario": "writhing_stalker.live_wounded_predator_mcw",
+  "query": {"requirements": [{"key": "capabilities.r_zl_stalker.darkness_control", "op": "eq", "value": "matched_dark_wounded_native_non_attack", "minimum_evidence": "declared"}], "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]}
+}

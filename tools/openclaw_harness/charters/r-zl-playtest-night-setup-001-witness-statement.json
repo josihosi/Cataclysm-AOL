@@ -1,0 +1,81 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The isolated, source- and executable-bound setup run reached 11:00 PM through the advertised numeric prompt and activated the carried smartphone flashlight through advertised native inventory/menu actions. It did not establish a saved nighttime copy or any ordinary nighttime gameplay account.",
+  "causal_account": "The bound native prompt accepted the clock value and the later World observation records game_minutes 8580 (11:00 PM). The carried smartphone was selected from inventory and its advertised Turn on flashlight command was accepted natively. The ordinary flashlight was explicitly uncharged, so it was not represented as a successful light source. After the journal sealed actions before save, the harness rejected World save/quit; exact-PID GUI input did not change the native World surface. Therefore no native save/menu-quit proof exists and the setup profile must not seed an ordinary account.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "identifies the isolated night-setup scenario and its bound runtime identities",
+      "checks": {
+        "scenario_id": "r_zl_freeplay_city042_night_setup_mcw",
+        "source_identity": "50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280",
+        "executable_identity": "e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"
+      }
+    },
+    {
+      "citation_id": "J0014",
+      "meaning": "the native numeric hour prompt advertised only prompt.submit and prompt.cancel",
+      "checks": {
+        "value.surface.kind": "string_prompt",
+        "value.surface.facts.numeric": "true"
+      }
+    },
+    {
+      "citation_id": "J0016",
+      "meaning": "the advertised prompt.submit action was accepted natively",
+      "checks": {
+        "action_id": "prompt.submit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0143",
+      "meaning": "the carried smartphone was selected through native inventory",
+      "checks": {
+        "action_id": "inventory.select",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0149",
+      "meaning": "the advertised smartphone menu command was accepted natively",
+      "checks": {
+        "action_id": "menu.choose",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0151",
+      "meaning": "the final native World observation was at game minute 8580 with no visible entities and no interruption",
+      "checks": {
+        "value.game_minutes": 8580,
+        "value.active_interruption": null,
+        "value.visible_entities": []
+      }
+    },
+    {
+      "citation_id": "J0152",
+      "meaning": "the setup run records zero-credit scope and released unused authority for terminalization",
+      "checks": {
+        "unused_authority": "released"
+      }
+    }
+  ],
+  "material_deviations": [
+    "The originally spawned ordinary flashlight had zero charges; the carried smartphone flashlight app was used instead through its advertised native menu.",
+    "The journal action sealed the harness before native save/quit. Exact-PID GUI input delivery was attempted after that seal but did not change the native World surface."
+  ],
+  "contradictions": [
+    {
+      "citation_id": "J0152",
+      "meaning": "No native save or main-menu quit receipt was captured before terminalization, so no durable setup copy or ordinary-night account is claimed."
+    }
+  ],
+  "remaining_unknowns": [
+    "Whether a fresh setup run can execute native Save and Quit before any journal seal.",
+    "The separate ordinary nighttime account remains intentionally uncreated."
+  ],
+  "recommended_disposition": "repair",
+  "evidence_ceiling": "zero-credit"
+}

@@ -16,10 +16,17 @@
       "items": [{"typeid": "machete", "count": 1, "slot": "weapon"}]
     },
     {
+      "kind": "npc_llm_panic_state",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_id": 2,
+      "active": false,
+      "duration_turns": 0
+    },
+    {
       "kind": "map_items_near_player",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "items": [
-        {"typeid": "bandages", "count": 1, "owner": "hells_raiders", "offset_ms": [2, 0, 0]}
+        {"typeid": "bandages", "count": 1, "owner": "hells_raiders", "offset_ms": [0, 0, 0]}
       ]
     },
     {
@@ -28,8 +35,8 @@
       "name": "R037 forbidden selected bandages",
       "zone_type": "NO_NPC_PICKUP",
       "faction": "your_followers",
-      "start_offset_ms": [2, 0, 0],
-      "end_offset_ms": [2, 0, 0],
+      "start_offset_ms": [0, 0, 0],
+      "end_offset_ms": [0, 0, 0],
       "write_temp": true,
       "write_global": true
     },

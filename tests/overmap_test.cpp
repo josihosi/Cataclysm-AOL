@@ -32,10 +32,13 @@
 #include "item_factory.h"
 #include "itype.h"
 #include "map.h"
+#include "map_helpers.h"
 #include "map_helpers_tests.h"
 #include "map_iterator.h"
 #include "map_scale_constants.h"
 #include "mapbuffer.h"
+#include "monster.h"
+#include "mtype.h"
 #include "omdata.h"
 #include "options.h"
 #include "output.h"
@@ -52,8 +55,12 @@
 #include "value_ptr.h"
 #include "vehicle.h"
 #include "vpart_position.h"
+#include "writhing_stalker_ai.h"
+#include "zombie_rider_overmap_ai.h"
 
 static const overmap_special_id overmap_special_Cabin( "Cabin" );
+static const mtype_id mon_zombie( "mon_zombie" );
+static const mtype_id mon_zombie_predator( "mon_zombie_predator" );
 
 class overmap_test_helper
 {
@@ -73,6 +80,9 @@ class overmap_test_helper
             std::bitset<4> &neighbor_connections ) {
             return om.highway_select_end_points( neighbor_overmaps, end_points,
                                                  neighbor_connections, std::bitset<4>(), 0 );
+        }
+        static void move_hordes( overmap &om ) {
+            om.move_hordes();
         }
 };
 
@@ -108,6 +118,228 @@ static bool any_terrain_with_flag( const oter_flags flag )
         }
     }
     return false;
+}
+
+TEST_CASE( "predator cross-overmap handoff cannot advance twice in one turn",
+           "[overmap][hordes][predator]" )
+{
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = calendar::turn_zero + 1_turns;
+    clear_overmaps();
+    clear_map_and_put_player_underground();
+
+    const point_abs_om source_om_pos = project_to<coords::om>(
+                                           get_player_character().pos_abs() ).xy();
+    const point_abs_om destination_om_pos = source_om_pos + point::east;
+    overmap_buffer.get( source_om_pos );
+    overmap_buffer.get( destination_om_pos );
+    overmap *source_om = overmap_buffer.get_existing( source_om_pos );
+    overmap *destination_om = overmap_buffer.get_existing( destination_om_pos );
+    REQUIRE( source_om != nullptr );
+    REQUIRE( destination_om != nullptr );
+
+    const tripoint_abs_ms source = project_combine( source_om_pos,
+                                     tripoint_om_ms( OMAPX * 2 * SEEX - 1, 20 * SEEX, 0 ) );
+    const tripoint_abs_ms handoff = source + point_rel_ms( 1, 0 );
+    const tripoint_abs_ms goal = handoff + point_rel_ms( 1, 0 );
+    REQUIRE( project_to<coords::om>( handoff ).xy() == destination_om_pos );
+    REQUIRE_FALSE( get_map().inbounds( handoff ) );
+    overmap_buffer.set_passable( handoff, true );
+    overmap_buffer.set_passable( goal, true );
+
+    point_abs_om ignored_om;
+    tripoint_om_ms source_local;
+    tripoint_om_ms handoff_local;
+    std::tie( ignored_om, source_local ) = project_remain<coords::om>( source );
+    std::tie( ignored_om, handoff_local ) = project_remain<coords::om>( handoff );
+    for( int dx = -1; dx <= 1; ++dx ) {
+        for( int dy = -1; dy <= 1; ++dy ) {
+            const tripoint_abs_ms candidate = source + point_rel_ms( dx, dy );
+            if( candidate != handoff ) {
+                overmap_buffer.set_passable( candidate, false );
+            }
+        }
+    }
+    for( const mtype_id &type : { mtype_id( "mon_writhing_stalker" ),
+                                  mtype_id( "mon_zombie_rider" ) } ) {
+        // A short-lived alert horde supplies a native active-map node.  Its
+        // public extraction/insertion API lets this test put the predator
+        // representation into that same production scheduler bucket without
+        // adding a production-only test hook.
+        monster carrier( mon_zombie );
+        carrier.wander_to( goal, 1 );
+        REQUIRE( source_om->hordes.spawn_entity( source, carrier ) );
+        horde_map::iterator carrier_node = source_om->hordes.find( source_local );
+        REQUIRE( carrier_node != source_om->hordes.end() );
+        horde_map::node_type node = source_om->hordes.extract( carrier_node );
+
+        monster original( type );
+        original.set_moves( 47 );
+        original.wander_to( goal, 9 );
+        node.mapped() = horde_entity( original );
+        source_om->hordes.insert( std::move( node ) );
+        horde_entity *outbound = source_om->entity_at( source_local );
+        REQUIRE( outbound != nullptr );
+        REQUIRE( outbound->monster_data != nullptr );
+        outbound->monster_data->set_hp( 83 );
+        outbound->monster_data->add_item( item( itype_id( "rock" ) ) );
+        outbound->monster_data->ammo[itype_id( "zombie_rider_tainted_bone_arrow" )] = 0;
+        outbound->monster_data->predator_state().handoff_epoch = 5;
+        outbound->monster_data->predator_state().last_advanced_turn = to_turn<int>( calendar::turn );
+        const std::string actor_id = outbound->monster_data->predator_state().actor_id;
+        if( type == mtype_id( "mon_writhing_stalker" ) ) {
+            writhing_stalker::persistent_state &state = outbound->monster_data->writhing_stalker_state();
+            state.phase = writhing_stalker::lifecycle_phase::cooldown;
+            state.cooldown_until_turn = to_turn<int>( calendar::turn ) + 20;
+        } else {
+            zombie_rider_overmap_ai::rider_pursuit_state &state =
+                outbound->monster_data->zombie_rider_pursuit_state();
+            state.observe( 42, goal, to_turn<int>( calendar::turn ) - 1 );
+        }
+        const int expected_moves = 47 + type->speed - 100;
+
+        // This native friend-access helper invokes the source scheduler only,
+        // then the receiving scheduler below in the same calendar turn.
+        overmap_test_helper::move_hordes( *source_om );
+        horde_entity *const source_after = source_om->entity_at( source_local );
+        CAPTURE( source_after != nullptr ? source_after->tracking_intensity : -1 );
+        CAPTURE( source_after != nullptr ? source_after->moves : -1 );
+        CAPTURE( source_after != nullptr ? source_after->last_processed : calendar::turn_zero );
+        REQUIRE( source_om->entity_at( source_local ) == nullptr );
+        horde_entity *received = destination_om->entity_at( handoff_local );
+        REQUIRE( received != nullptr );
+        REQUIRE( received->monster_data != nullptr );
+        CHECK( received->destination == goal );
+        CHECK( received->tracking_intensity == 8 );
+        CHECK( received->moves == expected_moves );
+        CHECK( received->last_processed == calendar::turn );
+        CHECK( received->monster_data->pos_abs() == handoff );
+        CHECK( received->monster_data->get_hp() == 83 );
+        CHECK( received->monster_data->inv.size() == 1 );
+        CHECK( received->monster_data->inv.front().typeId() == itype_id( "rock" ) );
+        CHECK( received->monster_data->ammo[itype_id( "zombie_rider_tainted_bone_arrow" )] == 0 );
+        CHECK( received->monster_data->predator_state().actor_id == actor_id );
+        CHECK( received->monster_data->predator_state().handoff_epoch == 5 );
+        if( type == mtype_id( "mon_writhing_stalker" ) ) {
+            const writhing_stalker::persistent_state &state =
+                received->monster_data->writhing_stalker_state();
+            CHECK( state.phase == writhing_stalker::lifecycle_phase::cooldown );
+            CHECK( state.cooldown_until_turn == to_turn<int>( calendar::turn ) + 20 );
+        } else {
+            const zombie_rider_overmap_ai::rider_pursuit_state &state =
+                received->monster_data->zombie_rider_pursuit_state();
+            CHECK( state.target_identity == 42 );
+            CHECK( state.has_last_observed_position );
+            CHECK( state.last_observed_position == goal );
+        }
+
+        // This is the material guard: the receiving OMap is visited again in
+        // the same turn, and must retain rather than debit/move the handoff.
+        overmap_test_helper::move_hordes( *destination_om );
+        received = destination_om->entity_at( handoff_local );
+        REQUIRE( received != nullptr );
+        CHECK( overmap_buffer.entity_at( goal ) == nullptr );
+        CHECK( received->tracking_intensity == 8 );
+        CHECK( received->moves == expected_moves );
+        CHECK( received->last_processed == calendar::turn );
+        CHECK( received->monster_data->pos_abs() == handoff );
+        CHECK( received->monster_data->get_hp() == 83 );
+        CHECK( received->monster_data->ammo[itype_id( "zombie_rider_tainted_bone_arrow" )] == 0 );
+        CHECK( received->monster_data->predator_state().actor_id == actor_id );
+        CHECK( received->monster_data->predator_state().handoff_epoch == 5 );
+
+        source_om->hordes.clear();
+        destination_om->hordes.clear();
+    }
+}
+
+TEST_CASE( "just-evolved predator uses transactional ownership handoff",
+           "[overmap][hordes][predator][evolution]" )
+{
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    restore_on_out_of_scope restore_start_of_cataclysm( calendar::start_of_cataclysm );
+    clear_overmaps();
+    clear_map_and_put_player_underground();
+    calendar::start_of_cataclysm = calendar::turn_zero;
+    calendar::turn = calendar::start_of_cataclysm +
+                     zombie_rider_overmap_ai::mature_world_gate_days() * 1_days + 10000_days;
+
+    const point_abs_om source_om_pos = project_to<coords::om>(
+                                           get_player_character().pos_abs() ).xy();
+    const point_abs_om destination_om_pos = source_om_pos + point::east;
+    overmap_buffer.get( source_om_pos );
+    overmap_buffer.get( destination_om_pos );
+    overmap *source_om = overmap_buffer.get_existing( source_om_pos );
+    overmap *destination_om = overmap_buffer.get_existing( destination_om_pos );
+    REQUIRE( source_om != nullptr );
+    REQUIRE( destination_om != nullptr );
+
+    const tripoint_abs_ms source = project_combine( source_om_pos,
+                                     tripoint_om_ms( OMAPX * 2 * SEEX - 1, 20 * SEEX, 0 ) );
+    const tripoint_abs_ms handoff = source + point_rel_ms( 1, 0 );
+    REQUIRE( project_to<coords::om>( handoff ).xy() == destination_om_pos );
+    REQUIRE_FALSE( get_map().inbounds( handoff ) );
+    overmap_buffer.set_passable( handoff, true );
+
+    point_abs_om ignored_om;
+    tripoint_om_ms source_local;
+    tripoint_om_ms handoff_local;
+    std::tie( ignored_om, source_local ) = project_remain<coords::om>( source );
+    std::tie( ignored_om, handoff_local ) = project_remain<coords::om>( handoff );
+    for( int dx = -1; dx <= 1; ++dx ) {
+        for( int dy = -1; dy <= 1; ++dy ) {
+            const tripoint_abs_ms candidate = source + point_rel_ms( dx, dy );
+            if( candidate != handoff ) {
+                overmap_buffer.set_passable( candidate, false );
+            }
+        }
+    }
+
+    unsigned int evolution_seed = 0;
+    for( unsigned int seed = 1; seed != 10000 && evolution_seed == 0; ++seed ) {
+        rng_set_engine_seed( seed );
+        horde_entity probe( mon_zombie_predator );
+        if( probe.advance_evolution( source ) && probe.monster_data &&
+            probe.monster_data->is_caol_predator() ) {
+            evolution_seed = seed;
+        }
+    }
+    REQUIRE( evolution_seed != 0 );
+    rng_set_engine_seed( evolution_seed );
+
+    // Use the production active bucket, but retain a type-only predator.  The
+    // mature world age makes the normal monster::try_upgrade path select the
+    // configured predator -> rider endpoint without poly() or a debug spawn.
+    monster carrier( mon_zombie );
+    carrier.wander_to( handoff, 1 );
+    REQUIRE( source_om->hordes.spawn_entity( source, carrier ) );
+    horde_map::iterator carrier_node = source_om->hordes.find( source_local );
+    REQUIRE( carrier_node != source_om->hordes.end() );
+    horde_map::node_type node = source_om->hordes.extract( carrier_node );
+    horde_entity lightweight( mon_zombie_predator );
+    lightweight.destination = handoff;
+    lightweight.tracking_intensity = 9;
+    lightweight.moves = 47;
+    node.mapped() = std::move( lightweight );
+    source_om->hordes.insert( std::move( node ) );
+    monster blocker( mon_zombie );
+    blocker.wander_to( handoff, 1 );
+    REQUIRE( destination_om->hordes.spawn_entity( handoff, blocker ) );
+    REQUIRE( destination_om->entity_at( handoff_local ) != nullptr );
+    // An occupied transfer candidate forces the prepared rider to be
+    // discarded.  The source must remain the original lightweight predator,
+    // proving that evolution did not bypass the rollback snapshot.
+    overmap_test_helper::move_hordes( *source_om );
+    horde_entity *retained = source_om->entity_at( source_local );
+    CAPTURE( retained != nullptr );
+    REQUIRE( retained != nullptr );
+    CHECK( retained->get_type()->id == mon_zombie_predator );
+    CHECK( retained->get_type()->id == mon_zombie_predator );
+    CHECK( retained->destination == handoff );
+    CHECK( retained->last_processed == calendar::turn );
+
+    source_om->hordes.clear();
+    destination_om->hordes.clear();
 }
 
 TEST_CASE( "oter_flags_string_round_trip", "[overmap][flags]" )
@@ -335,6 +567,64 @@ TEST_CASE( "overmap_special_instance_origins_roundtrip", "[overmap][save]" )
     reloaded->unserialize( serialized_input );
 
     CHECK( collect_origin_counts( *reloaded ) == live_origin_counts );
+}
+
+TEST_CASE( "horde_light_interest_save_roundtrip_and_legacy_entry", "[overmap][save][hordes][light]" )
+{
+    const point_abs_om origin{};
+    const tripoint_om_ms local_position( 60, 60, 0 );
+    const tripoint_abs_ms position = project_combine( origin, local_position );
+    const tripoint_abs_ms source = position + point_rel_ms( 24, 0 );
+    std::unique_ptr<overmap> original = std::make_unique<overmap>( origin );
+    const std::optional<std::unordered_map<tripoint_abs_ms, horde_entity>::iterator> inserted =
+        original->hordes.spawn_entity( position, mon_zombie );
+    REQUIRE( inserted.has_value() );
+    horde_entity &entity = ( *inserted )->second;
+    entity.destination = source;
+    entity.tracking_intensity = 4;
+    entity.light_source = source;
+    entity.light_sample_id = "save-light@40";
+    entity.light_observed = calendar::turn_zero + 40_turns;
+    entity.light_expires = calendar::turn_zero + 46_turns;
+    entity.light_interest_strength = 4;
+
+    std::ostringstream serialized;
+    original->serialize( serialized );
+    const std::string current_save = serialized.str();
+    std::unique_ptr<overmap> reloaded = std::make_unique<overmap>( origin );
+    std::istringstream current_input( current_save );
+    reloaded->unserialize( current_input );
+    horde_entity *loaded = reloaded->entity_at( local_position );
+    REQUIRE( loaded != nullptr );
+    CHECK( loaded->light_source == source );
+    CHECK( loaded->light_sample_id == "save-light@40" );
+    CHECK( loaded->light_observed == calendar::turn_zero + 40_turns );
+    CHECK( loaded->light_expires == calendar::turn_zero + 46_turns );
+    CHECK( loaded->light_interest_strength == 4 );
+
+    // Pre-light-interest saves end the horde array entry immediately after
+    // `moves`; removing the optional object reproduces that layout.
+    std::string legacy_save = current_save;
+    const size_t horde_map_start = legacy_save.find( "\"horde_map\"" );
+    const size_t sample_id = legacy_save.find( "\"sample_id\"", horde_map_start );
+    REQUIRE( horde_map_start != std::string::npos );
+    REQUIRE( sample_id != std::string::npos );
+    const size_t memory_start = legacy_save.rfind( '{', sample_id );
+    const size_t memory_end = legacy_save.find( '}', sample_id );
+    const size_t preceding_separator = legacy_save.rfind( ',', memory_start );
+    REQUIRE( memory_start != std::string::npos );
+    REQUIRE( memory_end != std::string::npos );
+    REQUIRE( preceding_separator != std::string::npos );
+    legacy_save.erase( preceding_separator, memory_end - preceding_separator + 1 );
+
+    std::unique_ptr<overmap> legacy_loaded = std::make_unique<overmap>( origin );
+    std::istringstream legacy_input( legacy_save );
+    legacy_loaded->unserialize( legacy_input );
+    horde_entity *legacy = legacy_loaded->entity_at( local_position );
+    REQUIRE( legacy != nullptr );
+    CHECK( legacy->light_sample_id.empty() );
+    CHECK( legacy->light_expires == calendar::turn_zero );
+    CHECK( legacy->light_interest_strength == 0 );
 }
 
 TEST_CASE( "is_ot_match", "[overmap][terrain]" )

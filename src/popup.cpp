@@ -205,7 +205,9 @@ void query_popup_impl::on_resized()
 
 query_popup::query_popup()
     : cur( 0 ), default_text_color( c_white ), anykey( false ), cancel( false ),
-      ontop( false ), fullscr( false ), pref_kbd_mode( keyboard_mode::keycode )
+      ontop( false ), fullscr( false ), receipt_on_native_selection_( false ),
+      await_semantic_successor_( false ),
+      pref_kbd_mode( keyboard_mode::keycode )
 {
 }
 
@@ -287,6 +289,18 @@ query_popup &query_popup::preferred_keyboard_mode( const keyboard_mode mode )
 {
     invalidate_ui();
     pref_kbd_mode = mode;
+    return *this;
+}
+
+query_popup &query_popup::receipt_on_native_selection( const bool receipt_now )
+{
+    receipt_on_native_selection_ = receipt_now;
+    return *this;
+}
+
+query_popup &query_popup::await_semantic_successor( const bool await_successor )
+{
+    await_semantic_successor_ = await_successor;
     return *this;
 }
 
@@ -398,6 +412,7 @@ query_popup::result query_popup::query_once()
     // must therefore be receipted before that return, not deferred to a frame
     // that cannot exist.
     const bool receipt_before_native_exit =
+        receipt_on_native_selection_ ||
         is_openclaw_harness_main_menu_quit_confirmation( category, text );
     if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
         std::vector<semantic_action_descriptor> semantic_actions;
@@ -441,7 +456,7 @@ query_popup::result query_popup::query_once()
             }
             if( matches == 1 ) {
                 semantic_action = selected_option->action;
-                return semantic_action_dispatch_result{ true, "", "", false,
+                return semantic_action_dispatch_result{ true, "", "", await_semantic_successor_,
                                                         !receipt_before_native_exit };
             }
             if( matches > 1 ) {

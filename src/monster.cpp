@@ -1,4 +1,6 @@
 #include "monster.h"
+#include "writhing_stalker_ai.h"
+#include "rng.h"
 
 #include <algorithm>
 #include <cmath>
@@ -92,6 +94,8 @@
 #include "weather.h"
 
 static const ammo_effect_str_id ammo_effect_WHIP( "WHIP" );
+static const mtype_id mon_writhing_stalker( "mon_writhing_stalker" );
+static const mtype_id mon_zombie_rider( "mon_zombie_rider" );
 
 static const anatomy_id anatomy_default_anatomy( "default_anatomy" );
 
@@ -327,6 +331,10 @@ monster::monster( const mtype_id &id ) : monster()
         }
     }
     aggro_character = type->aggro_character;
+    if( is_caol_predator() ) {
+        ensure_predator_state();
+        initialize_predator_ammo_once();
+    }
 }
 
 monster::monster( const mtype_id &id, const tripoint_bub_ms &p ) : monster( id )
@@ -339,6 +347,50 @@ monster::monster( const mtype_id &id, const tripoint_bub_ms &p ) : monster( id )
 
 monster::monster( const monster & ) = default;
 monster::monster( monster && ) noexcept( map_is_noexcept ) = default;
+
+bool monster::is_caol_predator() const
+{
+    return type != nullptr && ( type->id == mon_writhing_stalker || type->id == mon_zombie_rider );
+}
+
+void monster::ensure_predator_state()
+{
+    cata_assert( is_caol_predator() );
+    if( lifecycle_state.actor_id.empty() ) {
+        // This token is allocated once for a biological/debug-created actor.
+        // Handoff copies and save/reload instances retain it; coordinates and
+        // Creature's copy-local ID are intentionally not used as the durable
+        // identity.  Do not police uniqueness with process-global state: a
+        // legitimate copy/handoff or same-process save/reload necessarily
+        // observes the same persisted actor ID more than once.
+        lifecycle_state.actor_id = random_string( 32 );
+    }
+}
+
+void monster::initialize_predator_ammo_once()
+{
+    if( type == nullptr || type->id != mon_zombie_rider ||
+        lifecycle_state.ammo_initialization_version != 0 ) {
+        return;
+    }
+    // The transition owner is the only place that may grant rider arrows.
+    // The marker survives copies and save/load, so an empty or partially used
+    // quiver is never treated as an invitation to refill it.
+    ammo = type->starting_ammo;
+    lifecycle_state.ammo_initialization_version = 1;
+}
+
+predator_lifecycle_state &monster::predator_state()
+{
+    cata_assert( is_caol_predator() );
+    return lifecycle_state;
+}
+
+const predator_lifecycle_state &monster::predator_state() const
+{
+    cata_assert( is_caol_predator() );
+    return lifecycle_state;
+}
 monster::~monster() = default;
 monster &monster::operator=( const monster & ) = default;
 monster &monster::operator=( monster && ) noexcept( string_is_noexcept ) = default;
@@ -348,6 +400,40 @@ void monster::on_move( const tripoint_abs_ms &old_pos )
     Creature::on_move( old_pos );
     if( old_pos == pos_abs() ) {
         return;
+    }
+    if( type->id == mtype_id( "mon_zombie_rider" ) ) {
+        if( physical_move_to_step ) {
+            zombie_rider_overmap_ai::rider_pursuit_state &state = zombie_rider_pursuit_state();
+        const int now_turn = to_turn<int>( calendar::turn );
+        const bool before_ready = state.impact_ready;
+        DebugLog( D_INFO, DC_ALL ) << "zombie_rider impact_arm_check old=" << old_pos.to_string_writable()
+                                   << " new=" << pos_abs().to_string_writable()
+                                   << " target=" << state.target_identity
+                                   << " player=" << get_player_character().get_identity()
+                                   << " ready_before=" << ( before_ready ? "yes" : "no" ) << '\n';
+        auto arm_if_contact = [&]( Creature *target ) {
+            if( target != nullptr && !target->is_dead_state() &&
+                target->get_identity() == state.target_identity &&
+                target->posz() == posz() && old_pos.z() == posz() &&
+                rl_dist( old_pos, target->pos_abs() ) == rl_dist( pos_abs(), target->pos_abs() ) + 1 &&
+                rl_dist( old_pos, pos_abs() ) == 1 && is_adjacent( target, false ) &&
+                attitude_to( *target ) == Creature::Attitude::HOSTILE ) {
+                state.impact_ready = true;
+                state.impact_ready_turn = now_turn;
+                DebugLog( D_INFO, DC_ALL ) << "zombie_rider impact_armed turn=" << now_turn
+                                           << " target=" << state.target_identity << '\n';
+            }
+        };
+        arm_if_contact( &get_player_character() );
+        if( !state.impact_ready ) {
+            for( const tripoint_bub_ms &p : get_map().points_in_radius( pos_bub(), 1 ) ) {
+                arm_if_contact( get_creature_tracker().creature_at( p ) );
+                if( state.impact_ready ) {
+                    break;
+                }
+            }
+        }
+        }
     }
     g->update_zombie_pos( *this, old_pos, pos_abs() );
     if( has_effect( effect_onfire ) ||
@@ -399,6 +485,13 @@ void monster::poly( const mtype_id &id )
     reproduces = type->reproduces;
     biosignatures = type->biosignatures;
     aggro_character = type->aggro_character;
+    // A type transition can be the first time an existing monster becomes a
+    // predator.  Allocate the durable identity at that boundary; an existing
+    // predator's state is retained by poly and is never replaced here.
+    if( is_caol_predator() ) {
+        ensure_predator_state();
+        initialize_predator_ammo_once();
+    }
 }
 
 bool monster::can_upgrade() const
@@ -542,6 +635,9 @@ void monster::try_upgrade( bool pin_time )
                 new_type = MonsterGroupManager::GetRandomMonsterFromGroup( type->upgrade_group );
             }
             if( !new_type.is_empty() ) {
+                if( new_type && MonsterGroupManager::monster_is_blacklisted( new_type ) ) {
+                    return;
+                }
                 if( new_type ) {
                     poly( new_type );
                 } else {
@@ -2439,6 +2535,15 @@ void monster::deal_projectile_attack( map *here, Creature *source, dealt_project
                                       const double &missed_by, bool print_messages,
                                       const weakpoint_attack &wp_attack )
 {
+    if( attack.writhing_stalker_resolution == 0 ) {
+        attack.writhing_stalker_resolution = writhing_stalker::next_resolution_id();
+    }
+    writhing_stalker::observe_attack_resolution( source, this, to_turn<int>( calendar::turn ),
+            attack.writhing_stalker_resolution );
+    if( source != nullptr && type->id == mon_writhing_stalker ) {
+        writhing_stalker::record_counterpressure_attempt( *this, *source,
+                attack.writhing_stalker_resolution );
+    }
     const projectile &proj = attack.proj;
     const auto &effects = proj.proj_effects;
 
@@ -3119,6 +3224,10 @@ void monster::die( map *here, Creature *nkiller )
     }
     g->set_critter_died();
     dead = true;
+    if( type->id == mon_zombie_rider && !lifecycle_state.actor_id.empty() ) {
+        overmap_buffer.global_state.zombie_rider_bands.record_casualty( lifecycle_state.actor_id,
+                to_turns<int>( calendar::turn - calendar::turn_zero ) );
+    }
     bandit_live_world_probe::record_fixture_monster_lifecycle( *this, "death", "local" );
     set_killer( nkiller );
     if( get_killer() != nullptr ) {
@@ -4231,6 +4340,13 @@ void monster::on_unload()
 
 void monster::on_load()
 {
+    // Save fixtures and older saves can deserialize a rider before it has
+    // lifecycle metadata.  Establish its durable predator identity at the
+    // load boundary, before early returns or live-turn consumers observe it.
+    if( is_caol_predator() ) {
+        ensure_predator_state();
+        initialize_predator_ammo_once();
+    }
     try_upgrade( false );
     try_reproduce();
     try_biosignature();

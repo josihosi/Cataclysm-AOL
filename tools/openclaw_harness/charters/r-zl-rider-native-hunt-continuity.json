@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-RIDER-PURSUIT native hunt continuity: one rider fires, closes, reaches legal contact or attack opportunity, searches only its last observed area after sight loss, and retains typed pursuit evidence across native save/reload.",
+  "material_proof": "Native cockpit receipts for firing, physical closing/contact and sight loss/search, exact rider actor/run identity, native save/reload replacement boundary, typed pursuit audit, source/executable binding and cleanup.",
+  "current_uncertainty": "Whether the current native sequence reaches all hunt stages before the honest first divergence.",
+  "material_contradiction": ["planner text without native receipts", "fixture-only state", "unseen-coordinate tracking", "missing typed replacement audit", "same-process relaunch", "unclean owned process"],
+  "already_accepted_evidence": ["e62000b0e81039a404df0d140981c7cd1b0c51681337b6b1e8a9c04cb223b222", "b08c9ee3b23ef31a515fcefb52342bc4adaca4463d9963f5c21d6245c1c3e6aa"],
+  "forbidden_shortcuts": ["debug attack or target injection", "direct save mutation", "crediting planner logs as attacks", "reinstalling fixture after save"],
+  "honest_stop_conditions": ["native hunt continuity and replacement audit settle, or first divergence with cleanup"],
+  "requested_evidence_ceiling": "focused"
+}

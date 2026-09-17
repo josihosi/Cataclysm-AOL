@@ -1,0 +1,96 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "proved",
+  "smallest_supported_claim": "The distinct source- and executable-bound nighttime account completed one ordinary player-selected inventory visit and six native movement actions, then reached the main menu through native Save and Quit and exited through native quit confirmation. It is a partial night-travel account only: it does not establish a lit-base or late-rider outcome.",
+  "causal_account": "The fresh account was separately bound to the native-saved night fixture. It accepted a World inventory action and then native west/north movement actions selected from the current World surface; no debug or injected action was used. At the honest boundary it accepted native Save and Quit and its confirmation, reached the native main menu, and accepted native application quit confirmation. The available route did not present a player-legible lit-base or late-rider outcome, so neither is claimed.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "identifies the distinct nighttime account and exact source/executable binding",
+      "checks": {
+        "scenario_id": "r_zl_freeplay_city042_night_travel_mcw",
+        "source_identity": "50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280",
+        "executable_identity": "e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"
+      }
+    },
+    {
+      "citation_id": "J0006",
+      "meaning": "the player-selected native inventory visit was accepted",
+      "checks": {
+        "action_id": "world.inventory",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0011",
+      "meaning": "the player-selected west move was accepted natively",
+      "checks": {
+        "action_id": "world.move.west",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0014",
+      "meaning": "the first player-selected north move was accepted natively",
+      "checks": {
+        "action_id": "world.move.north",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0026",
+      "meaning": "the later player-selected north move was accepted natively",
+      "checks": {
+        "action_id": "world.move.north",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0029",
+      "meaning": "the native World Save and Quit action was accepted",
+      "checks": {
+        "action_id": "world.save_quit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0031",
+      "meaning": "the native save confirmation was accepted",
+      "checks": {
+        "action_id": "prompt.choose",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0033",
+      "meaning": "the native main-menu quit command was accepted",
+      "checks": {
+        "action_id": "main_menu.quit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0035",
+      "meaning": "the native application-quit confirmation was accepted",
+      "checks": {
+        "action_id": "prompt.choose",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0036",
+      "meaning": "the account released unused authority for scenario cleanup",
+      "checks": {
+        "unused_authority": "released"
+      }
+    }
+  ],
+  "material_deviations": [],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "This bounded ordinary night route did not reveal a player-legible lit-base consequence.",
+    "This bounded ordinary night route did not reveal a player-legible late-rider consequence."
+  ],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "focused"
+}

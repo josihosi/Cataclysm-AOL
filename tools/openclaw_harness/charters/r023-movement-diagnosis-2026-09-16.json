@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-PLAYTEST movement diagnosis: verify a current-source native cardinal movement receipt on a deliberately free local tile, and distinguish that control path from an actual terrain block.",
+  "material_proof": "A current source/executable binding, a disposable cardinal scene with declared free and blocked offsets, ordered native movement receipts, before/expected/after coordinates, and exact cleanup.",
+  "current_uncertainty": "Whether the city-start blocked successors reflect genuine impassable local terrain or a semantic cardinal-action mapping/input defect.",
+  "material_contradiction": ["unbound or simulated movement receipt", "fallback to a different movement operation", "fixture setup claimed as gameplay", "missing exact process cleanup"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["direct save mutation after installation", "primitive movement fallback", "debug movement", "gameplay credit"],
+  "honest_stop_conditions": ["a valid free-cardinal native movement receipt distinguishes the city observation, or the first exact validation failure is preserved and cleaned"],
+  "requested_evidence_ceiling": "focused"
+}

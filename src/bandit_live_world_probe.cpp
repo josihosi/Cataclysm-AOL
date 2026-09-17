@@ -575,6 +575,9 @@ bool append_live_transition_event( const bandit_live_world_probe::transition_eve
         json.start_object();
         json.member( "game_minutes", event.game_minutes );
         json.member( "emitted_minutes", event.emitted_minutes );
+        json.member( "observed_minutes", event.observed_minutes );
+        json.member( "sample_id", event.source_sample_id );
+        json.member( "uncertainty_radius_omt", event.uncertainty_radius_omt );
         json.end_object();
         json.member( "lead" );
         json.start_object();

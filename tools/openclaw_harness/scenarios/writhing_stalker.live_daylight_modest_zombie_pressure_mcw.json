@@ -1,0 +1,62 @@
+{
+  "manifest_version": 1,
+  "name": "writhing_stalker.live_daylight_modest_zombie_pressure_mcw",
+  "description": "Native daylight modest-pressure comparison: two saved alive non-hallucinatory hostile zombies must be perceptible to the stalker and aimed at the same player target before their pressure is considered.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_noon_modest_zombie_stalker_2026-09-12",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_stalker.daylight_pressure": "matched_daylight_modest_hostile_zombie_pressure_native_comparison"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_attack", "debug:inject_target_knowledge", "debug:inject_retreat", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "mcwilliams_live_debug_noon_modest_zombie_stalker_2026-09-12",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "mcwilliams_live_debug_noon_modest_zombie_stalker_2026-09-12", "helper": "native file bridge", "peekaboo": false, "ocr": false, "input": ["advertised native cockpit actions"], "cleanup": true},
+    "grants_gameplay_proof": true
+  },
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["writhing_stalker live_plan:", "zombie_pressure=", "decision=shadow", "decision=strike", "eval_us="],
+  "steps": [
+    {"kind": "wait", "label": "post_load_daylight_modest_zombie_settle", "seconds": 1.0, "capture_after": true, "expected_visible_fact": "local-noon vulnerable player, stalker, and two hostile zombies load to the live map"},
+    {"kind": "audit_saved_game_turn", "label": "audit_saved_noon_before_daylight_modest_zombie_pressure", "required_time_of_day_seconds": 43200, "required_time_tolerance_seconds": 60, "abort_on_metadata_failure": true, "abort_verdict": "blocked_daylight_modest_zombie_noon_setup_missing", "abort_reason": "saved turn did not prove the local-noon comparison footing"},
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_daylight_modest_hostile_zombie_predicate",
+      "required_monsters": [
+        {"typeid": "mon_writhing_stalker", "offset_ms": [3, 0, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "aggro_character": true},
+        {"typeid": "mon_zombie", "offset_ms": [4, 0, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "aggro_character": true},
+        {"typeid": "mon_zombie", "offset_ms": [4, 1, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "aggro_character": true}
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_daylight_modest_hostile_zombie_footing_missing",
+      "abort_reason": "saved active_monsters did not prove two alive non-hallucinatory hostile zombie contributors distinct from the stalker"
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_native_daylight_modest_zombie_pressure_comparison",
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "objective": "Use only advertised native World actions. Observe the same player target, stalker, and hostile zombies; wait for timestamp-distinct visible closing movement or a native attack-resolution receipt. Current zombie_pressure debug fields are corroboration only and cannot substitute for the native event.",
+      "proof_targets": ["native actor identities and positions", "same-target hostile zombie visibility", "timestamp-distinct native movement or attack-resolution receipt", "source, executable, witness, and cleanup binding"],
+      "authority": ["advertised native actions", "run.witness", "run.finish"],
+      "invariants": ["fixture setup is zero-credit", "allied_support is not zombie_pressure", "planner text is corroboration only", "no direct state mutation, target injection, or hidden-coordinate use"],
+      "live_operations": ["game.act", "game.wait", "game.raw_wait", "game.move_relative"],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "proof_route": {"precondition": ["post_load_daylight_modest_zombie_settle", "audit_saved_noon_before_daylight_modest_zombie_pressure", "audit_saved_daylight_modest_hostile_zombie_predicate"], "production_behavior": ["operate_native_daylight_modest_zombie_pressure_comparison"], "terminal_persistence": ["operate_native_daylight_modest_zombie_pressure_comparison"], "artifact_verdict": ["operate_native_daylight_modest_zombie_pressure_comparison"], "disallowed_shortcuts": ["operate_native_daylight_modest_zombie_pressure_comparison"]},
+  "evidence_contract": {"claim": "two actual hostile zombie contributors provide a daylight modest comparison footing; any native strike or movement must be evidenced independently of planner text", "load_only_verdict": "load proof only / inconclusive", "writeback_note": "native event evidence is required; saved fixture transforms earn no feature credit"}
+}

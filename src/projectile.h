@@ -2,6 +2,7 @@
 #ifndef CATA_SRC_PROJECTILE_H
 #define CATA_SRC_PROJECTILE_H
 
+#include <cstdint>
 #include <map>
 #include <memory>
 #include <set>
@@ -81,6 +82,7 @@ struct dealt_projectile_attack {
     bool shrapnel = false; // True if the projectile is generated from an explosive
     // Critters that hit by the projectile or null
     std::map<Creature *, std::pair<int, int>> targets_hit;
+    std::uint64_t writhing_stalker_resolution = 0;
 };
 
 void apply_ammo_effects( Creature *source, const tripoint_bub_ms &p,

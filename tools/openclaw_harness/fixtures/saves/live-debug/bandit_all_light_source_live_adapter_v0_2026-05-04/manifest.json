@@ -53,8 +53,8 @@
       "kind": "horde_entity_near_player",
       "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
       "monster_id": "mon_zombie",
-      "offset_ms": [-228, 0, 0],
-      "destination_offset_ms": [-228, 0, 0],
+      "offset_ms": [-276, 0, 0],
+      "destination_offset_ms": [-276, 0, 0],
       "tracking_intensity": 0,
       "last_processed": 0,
       "moves": 0

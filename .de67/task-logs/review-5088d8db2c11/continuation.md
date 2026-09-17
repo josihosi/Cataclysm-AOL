@@ -1,0 +1,9 @@
+# Current recovery premise
+
+You are the coordinator. The external supervisor launches/restarts coordinator and reviewer processes. You arrange recovery and supported graceful cleanup of task-owned games and helpers with their worker, using exact PID/birth checks, preserving unsaved state and exclusive input ownership. The old interpretation that only the supervisor can close game PID 41919 is withdrawn; do not forward it as a constraint. Explicitly deliver this correction to the named worker.
+
+The last worker receipt 86542912674e1a36d3ebb6271df2c01bf411572289eaa33f40c61290ada12f8c establishes real-profile compatibility with the tested append-only orphan recovery path. It does not establish child exit, finished migration, or gameplay proof. Existing migration 315a3bb7c809a049a5849b63f4f07778902fb2717bed9531323901832a2c4188 has the retained launch attempt 93eaaf8b6afbade4c4b3c8bfe7cc6b17fad7968e18b48d9c5c63758899459c51. At diagnosis game PID41919, birth Wed Sep16 11:48:38 2026, was alive under PPID1 with the migration userdir and world McWilliams, after a launch without a file-bridge binding. Reobserve exact identity/state before choosing graceful recovery; historical PID alone is not authority.
+
+Once exact child exit is observed, resume the same migration and reconcile its retained claim through the tested append-only route. Do not fabricate exit or create a duplicate migration to evade live ownership. External service startup normalized DE67 task002; that administrative history is distinct from the retained registry migration claim. Let policy prepare a fresh correctly bound deadline attempt and reuse worker knowledge, current code and saved ordinary footing.
+
+Then resume the original natural-stalker opportunism outcome. No game cleanup, migration completion, native prompt success or natural behavior was credited by this review. Original sealed receipts remain evidence; this correction controls current ownership interpretation.

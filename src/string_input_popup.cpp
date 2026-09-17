@@ -33,9 +33,22 @@
 #endif
 
 #include <algorithm>
+#include <cstddef>
 #include <memory>
 #include <string>
 #include <vector>
+
+namespace
+{
+constexpr size_t semantic_submit_max_bytes = 4096;
+
+bool valid_semantic_submit_parameters( const semantic_action_request &request )
+{
+    const auto text = request.parameters.find( "text" );
+    return request.action_id == "prompt.submit" && request.parameters.size() == 1 &&
+           text != request.parameters.end() && text->second.size() <= semantic_submit_max_bytes;
+}
+} // namespace
 
 string_input_popup::string_input_popup() = default;
 
@@ -422,6 +435,15 @@ const std::string &string_input_popup::query_string( const bool loop, const bool
     _confirmed = false;
     std::optional<std::string> semantic_submitted_text;
     bool semantic_canceled = false;
+    // A string field can be opened synchronously after its parent World or
+    // menu owner has unwound (for example, the debug time editor).  It still
+    // owns native input for the run, so bind the existing run-local manager
+    // here rather than letting STRING_INPUT fall through to the generic
+    // actionless boundary.
+    std::optional<semantic_surface_manager_session> semantic_session;
+    if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+        semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+    }
     std::optional<semantic_surface_scope> semantic_scope;
     // A draw-only pass is often made by the parent UI immediately before it
     // enters this prompt for input.  It must not publish a short-lived
@@ -445,7 +467,7 @@ const std::string &string_input_popup::query_string( const bool loop, const bool
                 return semantic_action_dispatch_result{ true, "", "" };
             }
             const auto text = request.parameters.find( "text" );
-            if( request.action_id != "prompt.submit" || text == request.parameters.end() ) {
+            if( !valid_semantic_submit_parameters( request ) ) {
                 return semantic_action_dispatch_result{ false, "invalid_parameters", "" };
             }
             const utf8_wrapper submitted( text->second );

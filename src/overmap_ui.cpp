@@ -3422,6 +3422,14 @@ static tripoint_abs_omt display()
                     semantic_native_action = "CONFIRM";
                 } else if( request.action_id == "overmap.choose_destination" ) {
                     semantic_native_action = "CHOOSE_DESTINATION";
+                    // Choosing a route can leave the overmap descriptor
+                    // byte-for-byte unchanged (the route was already
+                    // selected), or synchronously enter its confirmation
+                    // prompt.  In neither case is a same-owner republish a
+                    // reliable successor for this request.  Receipt the
+                    // accepted native dispatch now; any prompt publishes its
+                    // own authoritative surface immediately afterwards.
+                    return semantic_action_dispatch_result{ true, "", "", false, false };
                 } else if( request.action_id == "overmap.add_note" ) {
                     semantic_native_action = "CREATE_NOTE";
                 } else {

@@ -1,0 +1,41 @@
+{
+  "manifest_version": 1,
+  "name": "zombie_rider.live_native_impact_two_mcw",
+  "description": "Dedicated native two-rider impact fixture for physical closing, named impact outcomes, cooldown/re-approach and independent single-attack arbitration.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_zombie_rider_impact_two_2026-09-12",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_rider.native_impact": "native_physical_close_named_impact_cooldown_reapproach_two_rider_arbitration"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_attack", "debug:inject_target_knowledge", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "mcwilliams_live_debug_zombie_rider_impact_two_2026-09-12",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "mcwilliams_live_debug_zombie_rider_impact_two_2026-09-12", "helper": "native file bridge", "peekaboo": false, "ocr": false, "input": ["advertised native cockpit actions"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["zombie_rider live_plan:", "zombie rider"],
+  "steps": [
+    {"kind": "wait", "label": "native_impact_fixture_settle", "seconds": 1.0, "capture_after": true, "expected_visible_fact": "two staged hostile zombie riders and full-health armored player load to live map"},
+    {"kind": "audit_saved_game_turn", "label": "audit_saved_native_impact_time", "required_time_of_day_seconds": 43200, "required_time_tolerance_seconds": 60, "abort_on_metadata_failure": true, "abort_verdict": "blocked_native_rider_impact_time_setup_missing", "abort_reason": "installed save did not prove expected noon footing before native impact"},
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_saved_native_impact_passable_escape_lanes", "offsets": [[1, 0, 0], [2, 0, 0], [3, 0, 0], [4, 0, 0], [5, 0, 0], [0, 1, 0], [0, 2, 0], [0, 3, 0], [0, 4, 0], [0, 5, 0]], "required_terrain": ["t_floor"], "abort_on_metadata_failure": true, "abort_verdict": "blocked_native_rider_impact_passable_escape_lane_missing", "abort_reason": "saved map audit did not prove every intended multi-tile east and south separation lane tile is t_floor/passable"},
+    {"kind": "audit_saved_active_monsters", "label": "audit_saved_native_impact_two_rider_footing", "required_monsters": [{"typeid": "mon_zombie_rider", "offset_ms": [3, 0, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "ammo": {"zombie_rider_tainted_bone_arrow": 18}}, {"typeid": "mon_zombie_rider", "offset_ms": [0, 3, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "ammo": {"zombie_rider_tainted_bone_arrow": 18}}], "abort_on_metadata_failure": true, "abort_verdict": "blocked_native_rider_impact_two_rider_footing_missing", "abort_reason": "saved active_monsters did not prove two alive hostile riders at independent closing approaches"},
+    {"kind": "cockpit_live_session", "label": "operate_native_rider_impact_two", "cleanup_on_finish": false, "stop_after_live_session": true, "objective": "Use only advertised native World actions. Allow each rider to make a real physical closing step; capture one of the named impact outcomes, including damage/downing or armor/dodge resolution. Separate from contact through native movement and allow cooldown, then obtain a later impact opportunity only after a fresh closing step. Preserve per-rider native receipts, positions, timestamps, impact messages, health/downed state, cooldown and exact same-turn message ordering. Demonstrate both riders can pressure independently and that one rider's impact does not produce an ordinary bite or second strike in the same turn.", "proof_targets": ["two-rider setup audit", "physical closing receipt before impact", "named rider impact outcome", "damage/downed or armor/dodge resolution", "separation and cooldown", "fresh closing approach and later impact opportunity", "independent two-rider pressure and one-attack arbitration", "source/executable/process/run binding"], "authority": ["advertised native actions", "run.witness", "run.finish"], "invariants": ["fixture setup is zero-credit", "no debug attack or target injection", "no stationary adjacency credited as closing", "no bite-only contact credited as impact", "cooldown does not re-arm without a fresh closing step", "no same-turn extra strike after impact"], "live_operations": ["game.act", "game.wait", "game.move_relative"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_native_impact_two_mcw",
+  "evidence_contract": {"claim": "two current native zombie riders produce named physical impact outcomes with cooldown/re-approach and independent one-attack arbitration", "load_only_verdict": "load proof only / inconclusive", "writeback_note": "fixture setup earns no behavior credit; native closing receipts and named impact messages are required"},
+  "proof_route": {"precondition": ["native_impact_fixture_settle", "audit_saved_native_impact_time", "audit_saved_native_impact_two_rider_footing"], "production_behavior": ["operate_native_rider_impact_two"], "terminal_persistence": ["operate_native_rider_impact_two"], "artifact_verdict": ["operate_native_rider_impact_two"], "disallowed_shortcuts": ["operate_native_rider_impact_two"]}
+}

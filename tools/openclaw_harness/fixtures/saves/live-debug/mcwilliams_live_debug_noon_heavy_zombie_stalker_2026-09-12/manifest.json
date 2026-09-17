@@ -1,0 +1,30 @@
+{
+  "name": "mcwilliams_live_debug_noon_heavy_zombie_stalker_2026-09-12",
+  "source_fixture": "mcwilliams_live_debug_2026-04-07",
+  "source_profile": "live-debug",
+  "description": "Harness-only local-noon heavy-pressure footing: a fully rested player, one stalker, and four alive non-hallucinatory hostile zombies placed on clear same-target lanes for a native close attack opportunity. Full HP is the only player intervention; baseline stamina and source-save effects remain unchanged so survivability does not alter the hostile roster or stalker AI.",
+  "save_transforms": [
+    {
+      "kind": "game_turn",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "turn": 5227200
+    },
+    {
+      "kind": "player_condition",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "hp_percent": 100
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {"typeid": "mon_writhing_stalker", "offset_ms": [3, 0, 0], "hp": 90, "friendly": 0, "faction": "zombie", "anger": 100, "morale": 100, "aggro_character": true},
+        {"typeid": "mon_zombie", "offset_ms": [4, 0, 0], "hp": 80, "friendly": 0, "faction": "zombie", "anger": 100, "morale": 100, "aggro_character": true},
+        {"typeid": "mon_zombie", "offset_ms": [4, 1, 0], "hp": 80, "friendly": 0, "faction": "zombie", "anger": 100, "morale": 100, "aggro_character": true},
+        {"typeid": "mon_zombie", "offset_ms": [4, -1, 0], "hp": 80, "friendly": 0, "faction": "zombie", "anger": 100, "morale": 100, "aggro_character": true},
+        {"typeid": "mon_zombie", "offset_ms": [5, 0, 0], "hp": 80, "friendly": 0, "faction": "zombie", "anger": 100, "morale": 100, "aggro_character": true}
+      ]
+    }
+  ]
+}

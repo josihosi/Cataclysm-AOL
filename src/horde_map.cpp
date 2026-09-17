@@ -164,6 +164,14 @@ std::optional<std::unordered_map<tripoint_abs_ms, horde_entity>::iterator> horde
     point_abs_om omp;
     tripoint_om_sm sm;
     std::tie( omp, sm ) = project_remain<coords::om>( project_to<coords::sm>( p ) );
+    // Do this before emplacing.  Returning an iterator to an already-owned
+    // actor looks like a successful local->abstract handoff to callers and
+    // can make them release the real local owner.
+    const horde_entity candidate( mon );
+    if( !can_accept_entity( p, candidate ) ) {
+        DebugLog( D_WARNING, D_GAME ) << "Refused duplicate predator ownership for " << mon.name();
+        return result;
+    }
     bool inserted;
     // The [] operator creates a nested std::map if not present already.
     std::tie( result, inserted ) = target_map[sm].emplace( p, mon );
@@ -173,7 +181,33 @@ std::optional<std::unordered_map<tripoint_abs_ms, horde_entity>::iterator> horde
         debugmsg( "Attempted to insert a %s at %s, but there's already a %s there!",
                   mon.name(), p.to_string(), ( *result )->second.get_type()->nname() );
     }
-    return result;
+    return inserted ? result : std::optional<std::unordered_map<tripoint_abs_ms,
+           horde_entity>::iterator>();
+}
+
+bool horde_map::can_accept_entity( const tripoint_abs_ms &p, const horde_entity &entity )
+{
+    const monster *payload = entity.monster_data.get();
+    if( !payload || !payload->is_caol_predator() ) {
+        return true;
+    }
+    const std::string &actor_id = payload->predator_state().actor_id;
+    if( actor_id.empty() ) {
+        return true;
+    }
+    for( const std::pair<const tripoint_abs_ms, horde_entity> &existing : get_view( horde_map_flavors::active |
+            horde_map_flavors::idle | horde_map_flavors::dormant | horde_map_flavors::immobile ) ) {
+        if( existing.second.monster_data && existing.second.monster_data->is_caol_predator() &&
+            existing.second.monster_data->predator_state().actor_id == actor_id ) {
+            return false;
+        }
+    }
+    // An ordinary positional collision is still an ownership rejection.  It
+    // matters to transfer callers even when no predator is involved.
+    point_abs_om ignored_om;
+    tripoint_om_ms local;
+    std::tie( ignored_om, local ) = project_remain<coords::om>( p );
+    return entity_at( local ) == nullptr;
 }
 
 static void signal_sm( const tripoint_abs_ms &origin, const tripoint_abs_sm &sm_dest,
@@ -236,6 +270,110 @@ void horde_map::signal_entities( const tripoint_abs_ms &origin, int volume )
     while( !migrating_hordes.empty() ) {
         auto monster_node = migrating_hordes.extract( migrating_hordes.begin() );
         insert( std::move( monster_node ) );
+    }
+}
+
+int horde_map::attract_entities_to_light( const tripoint_abs_ms &origin, const int intensity,
+        const int observer_radius_sm, const std::string &sample_id, const time_point &observed,
+        const std::function<bool( const tripoint_abs_ms &)> &visible, int *candidate_count )
+{
+    if( candidate_count != nullptr ) {
+        *candidate_count = 0;
+    }
+    if( intensity <= 0 || observer_radius_sm <= 0 || sample_id.empty() ) {
+        return 0;
+    }
+    int attracted = 0;
+    std::unordered_map<tripoint_abs_ms, horde_entity> migrating_hordes;
+    const tripoint_abs_sm source_sm = project_to<coords::sm>( origin );
+    const auto consider = [this, &origin, &source_sm, intensity, observer_radius_sm, &sample_id,
+    &observed, &visible, &attracted, &migrating_hordes, candidate_count]( auto &outer ) {
+        for( auto outer_it = outer.begin(); outer_it != outer.end(); ) {
+            // The outer key is an existing spatial bucket.  Reject it before
+            // touching its entities so source delivery is bounded by the
+            // source-centred envelope rather than by every horde in a loaded
+            // overmap.
+            const tripoint_abs_sm bucket_sm = project_combine( location, outer_it->first );
+            if( rl_dist( bucket_sm, source_sm ) > observer_radius_sm ) {
+                ++outer_it;
+                continue;
+            }
+            auto &bucket = outer_it->second;
+            for( auto entity_it = bucket.begin(); entity_it != bucket.end(); ) {
+                horde_entity &entity = entity_it->second;
+                if( candidate_count != nullptr ) {
+                    ++*candidate_count;
+                }
+                if( !entity.can_perceive_light() || ( visible && !visible( entity_it->first ) ) ||
+                    entity.light_sample_id == sample_id ) {
+                    ++entity_it;
+                    continue;
+                }
+                const int distance = rl_dist( project_to<coords::sm>( entity_it->first ),
+                                              project_to<coords::sm>( origin ) );
+                if( distance > observer_radius_sm ) {
+                    ++entity_it;
+                    continue;
+                }
+                const int remaining_interest = intensity - distance;
+                if( remaining_interest <= entity.tracking_intensity ) {
+                    ++entity_it;
+                    continue;
+                }
+                entity.destination = origin;
+                entity.tracking_intensity = remaining_interest;
+                entity.light_source = origin;
+                entity.light_sample_id = sample_id;
+                entity.light_observed = observed;
+                entity.light_expires = observed + intensity * 1_turns;
+                entity.light_interest_strength = remaining_interest;
+                auto moving = entity_it++;
+                auto node = bucket.extract( moving );
+                migrating_hordes.insert( std::move( node ) );
+                attracted++;
+            }
+            if( bucket.empty() ) {
+                outer_it = outer.erase( outer_it );
+            } else {
+                ++outer_it;
+            }
+        }
+    };
+    // Active entities may revise a weaker destination; idle entities become
+    // active. Dormant and immobile entries remain outside ordinary light AI.
+    consider( active_monster_map );
+    consider( idle_monster_map );
+    while( !migrating_hordes.empty() ) {
+        auto node = migrating_hordes.extract( migrating_hordes.begin() );
+        insert( std::move( node ) );
+    }
+    return attracted;
+}
+
+void horde_map::expire_light_interest( const time_point &now )
+{
+    std::unordered_map<tripoint_abs_ms, horde_entity> migrating_hordes;
+    for( auto outer_it = active_monster_map.begin(); outer_it != active_monster_map.end(); ) {
+        auto &bucket = outer_it->second;
+        for( auto entity_it = bucket.begin(); entity_it != bucket.end(); ) {
+            entity_it->second.expire_light_interest( now );
+            if( entity_it->second.is_active() ) {
+                ++entity_it;
+                continue;
+            }
+            auto moving = entity_it++;
+            auto node = bucket.extract( moving );
+            migrating_hordes.insert( std::move( node ) );
+        }
+        if( bucket.empty() ) {
+            outer_it = active_monster_map.erase( outer_it );
+        } else {
+            ++outer_it;
+        }
+    }
+    while( !migrating_hordes.empty() ) {
+        auto node = migrating_hordes.extract( migrating_hordes.begin() );
+        insert( std::move( node ) );
     }
 }
 

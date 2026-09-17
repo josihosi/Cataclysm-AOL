@@ -1,0 +1,50 @@
+{
+  "manifest_version": 1,
+  "name": "zombie_rider.live_native_hunt_continuity_mcw",
+  "description": "Native rider hunt continuity: one saved rider legitimately fires, keeps closing, reaches contact or a legal attack opportunity, follows only last-observed prey area after sight loss, then preserves its typed pursuit state across native save/reload.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_zombie_rider_native_hunt_open_2026-09-12",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_rider.native_hunt_continuity": "native_shot_close_contact_loss_of_sight_save_reload"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_attack", "debug:inject_target_knowledge", "debug:inject_retreat", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "mcwilliams_live_debug_zombie_rider_native_hunt_open_2026-09-12",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "mcwilliams_live_debug_zombie_rider_native_hunt_open_2026-09-12", "helper": "native file bridge", "peekaboo": false, "ocr": false, "input": ["advertised native cockpit actions"], "cleanup": true},
+    "grants_gameplay_proof": true
+  },
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["zombie_rider live_plan:", "decision=bow_pressure", "decision=pursue", "decision=reposition"],
+  "steps": [
+    {"kind": "wait", "label": "post_load_native_rider_hunt_settle", "seconds": 1.0, "capture_after": true, "expected_visible_fact": "staged hostile rider and player load to live map"},
+    {"kind": "audit_saved_game_turn", "label": "audit_saved_noon_before_native_rider_hunt", "required_time_of_day_seconds": 43200, "required_time_tolerance_seconds": 60, "abort_on_metadata_failure": true, "abort_verdict": "blocked_native_rider_hunt_time_setup_missing", "abort_reason": "installed save did not prove expected noon footing before native rider hunt"},
+    {"kind": "audit_saved_active_monsters", "label": "audit_saved_native_rider_hunt_footing", "required_monsters": [{"typeid": "mon_zombie_rider", "offset_ms": [10, 4, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "ammo": {"zombie_rider_tainted_bone_arrow": 18}}], "abort_on_metadata_failure": true, "abort_verdict": "blocked_native_rider_hunt_footing_missing", "abort_reason": "saved active_monsters did not prove one alive hostile rider with finite bow ammunition"},
+    {"kind": "cockpit_live_session", "label": "operate_native_rider_hunt_continuity", "cleanup_on_finish": false, "stop_after_live_session": true, "objective": "Use only advertised native World actions. Move and wait enough for the rider to legitimately perceive and fire, continue closing during cooldown or empty/out-of-range pressure, reach legal contact or a legal native attack opportunity, then create real sight loss and observe only last-observed-area pursuit/search. Preserve native receipts, exact actor/run identities, timestamps, positions, ammunition and typed pursuit state; planner text is corroboration only.", "proof_targets": ["native rider shot and ammo/cooldown receipt", "timestamped physical closing and legal contact or attack opportunity", "real sight loss followed by bounded last-observed-area search", "typed pursuit state at save boundary", "source/executable/process/run binding"], "authority": ["advertised native actions", "run.witness", "run.finish"], "invariants": ["fixture setup is zero-credit", "no target injection or hidden-coordinate use", "planner text cannot substitute for native attack or movement", "do not reinstall fixture after save"], "live_operations": ["game.act", "game.wait", "game.raw_wait", "game.move_relative"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1},
+    {"kind": "semantic_terminal_action_chain", "label": "save_native_rider_hunt_for_replacement", "objective": "Use the native save-and-quit path, then the native Main-menu Quit action and confirmation, so the saved pursuit state becomes the replacement-process boundary.", "observation_timeout_seconds": 30.0, "observation_interval_seconds": 0.1, "required_action_chain": ["world.save_quit", "prompt.yes", "main_menu.quit", "prompt.yes"], "expected_visible_fact": "native saved world reaches Main menu and original rider process exits before replacement"}
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "save_native_rider_hunt_for_replacement",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {"kind": "native_semantic_bootstrap", "label": "bind_relaunched_native_rider_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": false}},
+      {"kind": "audit_saved_active_monsters", "label": "audit_relaunched_native_rider_pursuit_state", "required_monsters": [{"typeid": "mon_zombie_rider", "zombie_rider_pursuit_state": {}}], "abort_on_metadata_failure": true, "abort_verdict": "blocked_relaunched_native_rider_pursuit_state_missing", "abort_reason": "replacement process did not expose the typed rider pursuit state serialized at the native save boundary", "expected_visible_fact": "replacement-generation active_monsters metadata contains the saved rider pursuit state"},
+      {"kind": "cockpit_live_session", "label": "observe_relaunched_native_rider_hunt", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Observe the replacement native world without reinstalling the fixture. Confirm the same rider identity and typed pursuit state, then finish for exact cleanup.", "proof_targets": ["replacement process generation", "typed rider pursuit audit", "same saved world and actor", "exact cleanup"], "authority": ["advertised native observations", "run.witness", "run.finish"], "invariants": ["fixture is not reinstalled", "no gameplay input", "planner text does not replace saved typed state"], "live_operations": [], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}
+    ]
+  },
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_native_hunt_continuity_mcw",
+  "evidence_contract": {"claim": "one current native zombie rider genuinely hunts through firing, closing/contact and last-observed-area search, and retains its typed pursuit state across native save/reload", "load_only_verdict": "load proof only / inconclusive", "writeback_note": "fixture setup earns no behavior credit; native receipts and replacement-generation typed audit are required"},
+  "proof_route": {"precondition": ["post_load_native_rider_hunt_settle", "audit_saved_noon_before_native_rider_hunt", "audit_saved_native_rider_hunt_footing"], "production_behavior": ["operate_native_rider_hunt_continuity"], "terminal_persistence": ["save_native_rider_hunt_for_replacement", "audit_relaunched_native_rider_pursuit_state"], "artifact_verdict": ["operate_native_rider_hunt_continuity", "audit_relaunched_native_rider_pursuit_state"], "disallowed_shortcuts": ["operate_native_rider_hunt_continuity"]}
+}

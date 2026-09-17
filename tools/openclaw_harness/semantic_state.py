@@ -95,7 +95,7 @@ def read_semantic_step_trace(
         event = str(value.get("event", ""))
         frame_id = str(value.get("frame_id", "")).strip()
         if event not in {"frame", "receipt", "surface_descriptor", "surface_receipt", "travel",
-                         "gate_decision"}:
+                         "gate_decision", "request_transport"}:
             return [], "malformed_semantic_step"
         normalized = dict(value)
         normalized["_event_offset"] = start_offset + byte_cursor + len(
@@ -177,7 +177,7 @@ def read_semantic_step_trace(
                     str(normalized.get("receipt_id", "")).strip() == "" or \
                     str(normalized.get("state", "")) not in {
                         "active", "progress", "completed_cleared", "blocked", "interrupted",
-                        "hostile_boundary",
+                        "hostile_boundary", "resumed",
                     } or not isinstance(destination, list) or len(destination) != 3 or \
                     any(isinstance(value, bool) or not isinstance(value, int) for value in destination) or \
                     not isinstance(normalized.get("destination_present"), bool) or \
@@ -195,6 +195,16 @@ def read_semantic_step_trace(
                     not isinstance(normalized.get("input"), Mapping) or \
                     not isinstance(normalized.get("decision"), Mapping):
                 return [], "malformed_semantic_gate_decision"
+        elif event == "request_transport":
+            offset_fields = ("offset_before", "offset_after", "transport_end")
+            if not isinstance(normalized.get("stage"), str) or not normalized["stage"] or \
+                    not isinstance(normalized.get("request_id"), str) or \
+                    any(isinstance(normalized.get(field), bool) or
+                        not isinstance(normalized.get(field), int) or normalized[field] < 0
+                        for field in offset_fields) or \
+                    not isinstance(normalized.get("queued"), bool) or \
+                    not isinstance(normalized.get("wake_pending"), bool):
+                return [], "malformed_semantic_request_transport"
         if event_filter is not None and event not in event_filter:
             byte_cursor += len(raw_line.encode("utf-8"))
             continue

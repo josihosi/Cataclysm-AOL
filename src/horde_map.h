@@ -3,6 +3,7 @@
 #define CATA_SRC_HORDE_MAP_H
 
 #include <iterator>
+#include <functional>
 #include <optional>
 #include <unordered_map>
 #include <utility>
@@ -69,7 +70,23 @@ class horde_map
         std::optional<std::unordered_map<tripoint_abs_ms, horde_entity>::iterator> spawn_entity(
             const tripoint_abs_ms &p,
             const monster &mon );
+        // A predator's opaque ID identifies one owner.  This is deliberately
+        // map-local: transfers ask the destination owner before releasing the
+        // source, rather than maintaining a second global actor registry.
+        bool can_accept_entity( const tripoint_abs_ms &p, const horde_entity &entity );
         void signal_entities( const tripoint_abs_ms &origin, int volume );
+        /** Apply visual-light interest to ordinary horde entities.  This is
+         * deliberately separate from sound signalling: no mongroups, random
+         * hearing roll, or distant map creation is involved. */
+        int attract_entities_to_light( const tripoint_abs_ms &origin, int intensity,
+                                       int observer_radius_sm, const std::string &sample_id,
+                                       const time_point &observed, const std::function<bool(
+                                                   const tripoint_abs_ms &)> &visible = {},
+                                       int *candidate_count = nullptr );
+        // Called from the existing ordinary horde tick.  Expired light-only
+        // interest must return to the idle spatial bucket rather than remain
+        // scheduled as an active entity.
+        void expire_light_interest( const time_point &now );
         void insert( node_type &&node );
         void clear();
         void clear_chunk( const tripoint_om_sm &p );

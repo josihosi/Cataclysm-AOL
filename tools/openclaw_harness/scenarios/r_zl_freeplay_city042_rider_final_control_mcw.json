@@ -1,0 +1,40 @@
+{
+  "manifest_version": 1,
+  "name": "r_zl_freeplay_city042_rider_final_control_mcw",
+  "description": "Exactly one final fresh ordinary no-debug control from the preserved native-saved daylight rider-legibility fixture. Immediate player-legible evasive counterplay may use only currently advertised sprint/run, lateral or retreat movement, natural cover, and bounded safe waits; it decides this controlled footing without repeating setup or persistence diagnosis.",
+  "profile": "r-zl-freeplay-city042-rider-final-control",
+  "world": "zl-natural-stalker-city-042-missed",
+  "fixture": "r_zl_freeplay_city042_rider_legible_setup_20260916",
+  "fixture_profile": "r-zl-freeplay-city042-rider-legible-setup",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_playtest.integrated_account": "ordinary_rider_final_control",
+    "capabilities.r_zl_playtest.account_generation": "separate_final_ordinary_rider_control",
+    "capabilities.r_zl_playtest.city_start": "preserved_native_saved_artificial_daytime_rider_legibility_footing"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_observer", "debug:inject_attention", "debug:inject_knowledge", "debug:inject_contact", "debug:inject_attack", "debug:inject_target_knowledge", "debug:inject_dispatch", "debug:inject_local_contact", "debug:menu", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-zl-freeplay-city042-rider-final-control",
+    "fixture": "r_zl_freeplay_city042_rider_legible_setup_20260916",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"r-zl-freeplay-city042-rider-final-control","fixture":"r_zl_freeplay_city042_rider_legible_setup_20260916","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {"kind":"wait","label":"settle_final_ordinary_rider_control_copy","seconds":1.0,"capture_after":true,"expected_visible_fact":"the preserved native-saved daylight rider copy loads before any ordinary player choice"},
+    {"kind":"audit_saved_game_turn","label":"audit_final_control_daylight_footing","player_save":"#VGVvZmlsYSBFYXNvbg==.sav.zzip","required_time_of_day_seconds":36000,"required_time_tolerance_seconds":60,"abort_on_metadata_failure":true,"abort_verdict":"blocked_final_control_daylight_footing_missing","abort_reason":"saved player metadata did not prove the preserved daytime rider footing"},
+    {"kind":"audit_saved_active_monsters","label":"audit_final_control_rider_footing","player_save":"#VGVvZmlsYSBFYXNvbg==.sav.zzip","required_monsters":[{"typeid":"mon_zombie_rider","offset_ms":[8,0,0],"friendly":0,"hallucination":false,"dead":false,"faction":"zombie","aggro_character":true,"ammo":{"zombie_rider_tainted_bone_arrow":18}}],"abort_on_metadata_failure":true,"abort_verdict":"blocked_final_control_rider_footing_missing","abort_reason":"saved active_monsters did not prove the one live hostile rider at the native eight-tile footing"},
+    {"kind":"cockpit_live_session","label":"operate_final_ordinary_rider_evasion_control","cleanup_on_finish":false,"stop_after_live_session":true,"objective":"Use only player-visible ordinary native choices. Immediately choose currently advertised run/sprint and lateral or retreat movement for evasion; use naturally available terrain or cover only if visible, and bounded waits only when safe. Do not use inventory/light fiddling, debug, injected attention/contact/knowledge, actor placement, or a scripted route. Decide whether prompt evasive counterplay breaks pressure, whether bleeding/stagger recovery is survivable, and whether rider attacks are intermittent. If the avatar dies despite this prompt evasive play, record the controlled-footing negative fairness/recovery conclusion and end this final control.","proof_targets":["fresh player-visible rider pressure","immediate player-chosen evasive counterplay","pressure break or concrete death despite prompt evasion","survivable recovery window and/or attack cadence if safely reached","source/executable/process/run binding"],"authority":["advertised native actions","worker-chosen bounded waits","run.witness","run.finish"],"invariants":["the artificial setup earns zero ordinary credit","no debug or injected observer, attention, knowledge, contact, actor, or route","no inventory/light detour","only player-visible native facts support the decision","exactly this one final ordinary control"],"live_operations":["game.act","game.wait","game.move_relative"],"transition_timeout_seconds":20.0,"observe_interval_seconds":0.1},
+    {"kind":"semantic_terminal_action_chain","label":"save_and_exit_final_ordinary_rider_control","objective":"If the avatar survives to the honest boundary, use native Save and Quit, the native confirmation, native main-menu Quit, and its native confirmation.","observation_timeout_seconds":30.0,"observation_interval_seconds":0.1,"required_action_chain":["world.save_quit","prompt.yes","main_menu.quit","prompt.yes"],"expected_visible_fact":"the surviving ordinary account saves, reaches the main menu, and its owned process exits"}
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe r_zl_freeplay_city042_rider_final_control_mcw",
+  "evidence_contract": {"claim":"one final fresh ordinary control decides player-legible rider evasive fairness/recovery and, if safely reachable, cadence from the preserved artificial daylight footing","load_only_verdict":"native-saved zero-credit candidate footing only / no inherited ordinary credit","writeback_note":"the setup's rider placement earns no ordinary evidence; only immediate player-selected evasive choices and native in-account consequences support the final decision"},
+  "proof_route": {"precondition":["settle_final_ordinary_rider_control_copy","audit_final_control_daylight_footing","audit_final_control_rider_footing"],"production_behavior":["operate_final_ordinary_rider_evasion_control"],"terminal_persistence":["save_and_exit_final_ordinary_rider_control"],"artifact_verdict":["operate_final_ordinary_rider_evasion_control"],"disallowed_shortcuts":["operate_final_ordinary_rider_evasion_control"]}
+}

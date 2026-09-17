@@ -82,7 +82,7 @@
     "LLM_INTENT_BACKEND": "api",
     "LLM_INTENT_API_PROVIDER": "openai",
     "LLM_INTENT_API_MODEL": "gpt-4.1-mini",
-    "LLM_INTENT_API_KEY_ENV": "OPENAI_API_KEY",
+    "LLM_INTENT_API_KEY_ENV": "CATA_API_KEY",
     "LLM_INTENT_PYTHON": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/openclaw_harness/task_envs/r037-api-control-002-py314/bin/python",
     "LLM_INTENT_RANDOM_CALL": "0",
     "DEBUG_LLM_INTENT": "true",

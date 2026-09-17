@@ -16,6 +16,8 @@
 #include "point.h"
 #include "worldfactory.h"
 
+struct harness_world_options;
+
 class main_menu
 {
     public:
@@ -27,7 +29,7 @@ class main_menu
         static std::string queued_save_id_to_load;
 
         /** Run the hidden harness-only fresh normal-world route. */
-        static bool create_harness_world( const std::string &world_name, std::uint32_t raw_seed );
+        static bool create_harness_world( const harness_world_options &options );
     private:
         // ASCII art that says "Cataclysm Dark Days Ahead"
         std::vector<std::string> mmenu_title;

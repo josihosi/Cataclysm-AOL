@@ -8,6 +8,51 @@ import startup_harness as harness
 
 
 class NativeOnlyStartupCaptureTest(unittest.TestCase):
+    def test_cockpit_bootstrap_admits_an_initial_native_prompt_owner(self):
+        frame = {
+            "event": "surface_descriptor", "run_id": "bound-run",
+            "surface_id": "prompt-1", "frame_id": "frame-1", "kind": "prompt",
+            "valid_actions": [{"id": "prompt.choose", "enabled": True}],
+            "_event_offset": 10,
+        }
+        accepted = harness.r014_native_semantic_bootstrap_metadata(
+            profile="master", run_dir=Path("/tmp"), run_id="bound-run", start_offset=0,
+            press_trace_offset=0, required_state="world", required_actions=["world.wait"],
+            frame=frame, allow_any_native_input_owner=True,
+        )
+        self.assertEqual(accepted["status"], "required_state_present")
+        self.assertEqual(accepted["startup_owner"], "nonworld_native_input_owner")
+
+    def test_native_prompt_is_cockpit_readiness_before_a_save_marker(self):
+        frame = {
+            "event": "surface_descriptor", "run_id": "bound-run",
+            "surface_id": "prompt-1", "frame_id": "frame-1", "kind": "prompt",
+            "valid_actions": [{"id": "prompt.choose", "enabled": True}],
+            "_event_offset": 10,
+        }
+        with patch.object(harness, "current_semantic_step_frame", return_value=frame), \
+                patch.object(harness, "semantic_step_source_trace", return_value=Path(__file__)), \
+                patch.object(harness, "semantic_step_effective_source_offset", return_value=0):
+            ready = harness.cockpit_native_input_owner_ready(
+                profile="master", run_dir=Path("/tmp"), run_id="bound-run", trace_start_offset=0,
+            )
+        self.assertEqual(ready["status"], "required_state_present")
+
+    def test_semantic_only_startup_is_the_propagated_cockpit_readiness_flag(self):
+        source = Path(__file__).with_name("startup_harness.py").read_text(encoding="utf-8")
+        self.assertIn("semantic_only_startup or bool(\n                getattr(args, \"cockpit_live_session\"", source)
+
+    def test_cockpit_native_readiness_does_not_recapture_the_sdl_window(self):
+        source = Path(__file__).with_name("startup_harness.py").read_text(encoding="utf-8")
+        self.assertIn("not semantic_only_startup and not bool(\n                            getattr(args, \"cockpit_live_session\", False)", source)
+
+    def test_semantic_startup_has_a_separate_bounded_saved_world_deadline(self):
+        config = harness.load_profile_config("master")["startup"]
+        self.assertEqual(config["timeout_seconds"], 90.0)
+        self.assertEqual(config["semantic_startup_timeout_seconds"], 360.0)
+        self.assertGreater(
+            config["semantic_startup_timeout_seconds"], config["timeout_seconds"])
+
     def test_native_startup_and_failure_reports_need_no_capture_backend(self):
         with tempfile.TemporaryDirectory() as tmp, \
                 patch.object(harness, "choose_capture_window", side_effect=FileNotFoundError("peekaboo")) as windows, \
@@ -66,6 +111,40 @@ class NativeOnlyStartupCaptureTest(unittest.TestCase):
             ok=True, screen_summary=summary, native_semantic_startup_ready=True)
         self.assertEqual(result["status"], "green")
         self.assertTrue(result["startup_clean_for_feature_steps"])
+
+    def test_bound_native_hud_trace_survives_missing_renderable_window(self):
+        summary = {
+            "capture_success": False,
+            "surface_identity_status": "no_renderable_window_for_bound_pid",
+            "startup_screen_probe": {
+                "classification": "green_gameplay_hud_present",
+                "gameplay_hud_present": True,
+                "native_run_id": "bound-run",
+                "hud_body_marker_types": ["native_rendered_hud_fallback"],
+                "hud_status_marker_types": ["native_rendered_hud_fallback"],
+            },
+        }
+        self.assertEqual(
+            harness.startup_screen_capture_verdict(summary),
+            "green_bound_native_rendered_hud",
+        )
+        result = harness.startup_proof_classification(ok=True, screen_summary=summary)
+        self.assertEqual(result["status"], "green")
+        self.assertTrue(result["input_owner_proven"])
+
+    def test_unbound_hud_label_cannot_bypass_missing_capture(self):
+        summary = {
+            "capture_success": False,
+            "surface_identity_status": "no_renderable_window_for_bound_pid",
+            "startup_screen_probe": {
+                "classification": "green_gameplay_hud_present",
+                "native_run_id": "",
+                "hud_body_marker_types": ["native_rendered_hud_fallback"],
+                "hud_status_marker_types": ["native_rendered_hud_fallback"],
+            },
+        }
+        self.assertEqual(harness.startup_screen_capture_verdict(summary), "red_screen_capture_failed")
+        self.assertEqual(harness.startup_proof_classification(ok=True, screen_summary=summary)["status"], "red")
 
     def test_terminal_step_text_uses_only_its_run_bound_transcript(self):
         with tempfile.TemporaryDirectory() as tmp:

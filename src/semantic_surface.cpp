@@ -196,6 +196,7 @@ bool semantic_surface_manager::poll_request_transport()
     if( !stream ) {
         return false;
     }
+    const std::size_t offset_before = request_transport_offset_;
     stream.seekg( 0, std::ios::end );
     const std::streamoff end = stream.tellg();
     if( end < 0 ) {
@@ -238,11 +239,20 @@ bool semantic_surface_manager::poll_request_transport()
             // loop so a curses getch() cannot hide that receipt behind a
             // second blocking read.
             received = true;
-            submit_request( std::move( request ) );
+            const std::string request_id = request.request_id;
+            const bool queued = submit_request( std::move( request ) );
+            observe_transport( { "jsonl_record", request_id, offset_before,
+                                 request_transport_offset_, static_cast<std::size_t>( end ), queued,
+                                 transport_wake_pending_ } );
         } catch( const std::exception & ) {
             // A malformed transport record is inert.  It cannot be repaired
             // into a request or produce a gameplay state change.
         }
+    }
+    if( received ) {
+        observe_transport( { "poll_finished", "", offset_before, request_transport_offset_,
+                             static_cast<std::size_t>( end ), !pending_requests_.empty(),
+                             transport_wake_pending_ } );
     }
     return received;
 }
@@ -327,6 +337,9 @@ bool semantic_surface_manager::consume_top_request()
         }
     }
     completed_requests_.emplace( receipt.request_id, receipt );
+    observe_transport( { "request_consumed", receipt.request_id, request_transport_offset_,
+                         request_transport_offset_, request_transport_offset_, false,
+                         transport_wake_pending_ } );
     if( receipt_observer_ && !receipt_deferred ) {
         receipt_observer_( receipt );
     }
@@ -343,6 +356,8 @@ bool semantic_surface_manager::take_transport_wake()
 void semantic_surface_manager::mark_transport_wake()
 {
     transport_wake_pending_ = true;
+    observe_transport( { "wake_marked", "", request_transport_offset_, request_transport_offset_,
+                         request_transport_offset_, !pending_requests_.empty(), true } );
 }
 
 semantic_action_receipt semantic_surface_manager::reject_request(
@@ -392,6 +407,19 @@ void semantic_surface_manager::set_receipt_observer(
     receipt_observer_ = std::move( observer );
 }
 
+void semantic_surface_manager::set_transport_observer(
+    std::function<void( const semantic_request_transport_event & )> observer )
+{
+    transport_observer_ = std::move( observer );
+}
+
+void semantic_surface_manager::observe_transport( semantic_request_transport_event event ) const
+{
+    if( transport_observer_ ) {
+        transport_observer_( event );
+    }
+}
+
 std::string semantic_surface_manager::new_surface_id()
 {
     return run_id_ + ":surface:" + std::to_string( ++next_surface_id_ );
@@ -406,6 +434,18 @@ void semantic_surface_manager::republish_top()
 {
     if( stack_.empty() ) {
         top_.reset();
+        // A deferred receipt normally belongs to the native successor frame.
+        // A terminal native action has no successor, however: its owning
+        // scope is simply popped as the UI exits.  Do not strand that accepted
+        // request merely because there is no frame to attach to.
+        if( pending_accepted_receipt_ && !pending_receipt_child_source_surface_id_ ) {
+            completed_requests_[pending_accepted_receipt_->request_id] = *pending_accepted_receipt_;
+            if( receipt_observer_ ) {
+                receipt_observer_( *pending_accepted_receipt_ );
+            }
+            pending_accepted_receipt_.reset();
+            pending_receipt_child_source_surface_id_.reset();
+        }
         return;
     }
     stack_.back().descriptor.frame_id = new_frame_id();
@@ -449,7 +489,13 @@ bool poll_active_semantic_surface_request()
     if( active_manager == nullptr ) {
         return false;
     }
-    if( !active_manager->poll_request_transport() ) {
+    const bool received_transport = active_manager->poll_request_transport();
+    // A backend can drain the FIFO byte in an inner input context just as a
+    // JSONL record becomes visible.  The request is then queued, but its
+    // owning outer context has no wake left to return from its blocking read.
+    // Pending work is itself sufficient reason to wake that owner; this is
+    // idempotent and leaves receipt dispatch at the native consumer boundary.
+    if( !received_transport && !active_manager->has_pending_request() ) {
         return false;
     }
     // A duplicate is already completed and therefore has no pending request,

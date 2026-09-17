@@ -1338,6 +1338,8 @@ mtype_special_attack MonsterGenerator::create_actor( const JsonObject &obj,
         new_attack = std::make_unique<melee_actor>();
     } else if( attack_type == "bite" ) {
         new_attack = std::make_unique<bite_actor>();
+    } else if( attack_type == "zombie_rider_impact" ) {
+        new_attack = std::make_unique<zombie_rider_impact_actor>();
     } else if( attack_type == "gun" ) {
         new_attack = std::make_unique<gun_actor>();
     } else if( attack_type == "spell" ) {

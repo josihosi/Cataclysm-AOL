@@ -615,13 +615,12 @@ const std::string &input_context::handle_input( const int timeout )
         // context can inspect another physical event.
         if( take_active_semantic_surface_wake() ) {
             if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
-                const bool request_pending = manager->has_pending_request();
-                if( !manager->consume_top_request() && !request_pending ) {
-                    // A child may consume its request before the outer loop
-                    // wakes again.  That stale transport notification is not
-                    // native input for the newly restored owner.
-                    continue;
-                }
+                // The renderer-neutral request is consumed at this input
+                // boundary when it is still queued.  Whether a child already
+                // consumed it or the wake is stale, the notification is not a
+                // physical event for the restored owner: return to the native
+                // caller instead of blocking on another input read.
+                manager->consume_top_request();
             }
             result = &CATA_ERROR;
             break;

@@ -499,7 +499,7 @@
     "id": "mon_writhing_stalker",
     "type": "MONSTER",
     "name": { "str": "writhing stalker" },
-    "description": "A slim, shaking figure.  Grey arms wrap around its twitching, writhing body, clutching its own chest.  Its eyes make the hairs on your neck stand up: half crazed, half panicked, steering around in prehensile madness.  It's the eyes that do it for you, not the dripping teeth.",
+    "description": "A gaunt, trembling figure keeps to the edges of cover, its long arms clutched around a body that never stops writhing.  Its frantic eyes follow each struggle, and its wet teeth show whenever someone falters.",
     "copy-from": "mon_zombie_hunter",
     "species": [ "ZOMBIE", "HUMAN" ],
     "hp": 90,
@@ -803,10 +803,7 @@
     "id": "mon_zombie_rider",
     "type": "MONSTER",
     "name": { "str": "zombie rider" },
-    "description": {
-      "str": "Up on a six-legged horse — or is it a spider? — a towering figure with eyes the color of blood holds a gory bow of wet bones and sinews.\nIt moves ferociously, tumbling feet hastening across the terrain.\nRunning is out of the question.",
-      "//NOLINT(cata-text-style)": true
-    },
+    "description": "A towering corpse rides a six-legged, horse-sized tangle of muscle and chitin.  Blood-red eyes peer over a bow of wet bone and sinew as the mount's feet hammer across the ground.",
     "copy-from": "mon_zombie_predator",
     "//": "Release 0.3 endpoint cavalry footing.  The rider is a rare predator evolution after eight configured seasons, not a direct new-area spawn.",
     "species": [ "ZOMBIE" ],
@@ -844,6 +841,16 @@
         "description": "The zombie rider shoots an arrow!"
       },
       {
+        "id": "zombie_rider_impact",
+        "type": "zombie_rider_impact",
+        "cooldown": 12,
+        "move_cost": 110,
+        "damage_max_instance": [ { "damage_type": "bash", "amount": 22 }, { "damage_type": "cut", "amount": 8 } ],
+        "miss_msg_u": "%s charges into you, but you dodge!",
+        "no_dmg_msg_u": "%s slams into you, but your armor holds!",
+        "hit_dmg_u": "%s tramples you!"
+      },
+      {
         "type": "bite",
         "cooldown": 10,
         "damage_max_instance": [ { "damage_type": "stab", "amount": 10, "armor_multiplier": 0.2 } ]
@@ -851,18 +858,7 @@
     ],
     "upgrades": false,
     "armor": { "bash": 6, "cut": 6, "bullet": 5, "electric": 1 },
-    "extend": {
-      "flags": [
-        "SMELLS",
-        "KEENNOSE",
-        "GOODHEARING",
-        "PATH_AVOID_DANGER",
-        "HARDTOSHOOT",
-        "HIT_AND_RUN",
-        "RANGED_ATTACKER",
-        "PUSH_VEH"
-      ]
-    },
+    "extend": { "flags": [ "SMELLS", "KEENNOSE", "GOODHEARING", "PATH_AVOID_DANGER", "HARDTOSHOOT", "RANGED_ATTACKER", "PUSH_VEH" ] },
     "delete": { "flags": [ "STUMBLES", "GRABS", "BASHES", "GROUP_BASH", "UNBREAKABLE_MORALE" ] }
   },
   {

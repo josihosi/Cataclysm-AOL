@@ -41,6 +41,7 @@ class memorized_tile;
 class mission;
 class monster;
 class npc;
+class scenario;
 class talker;
 struct bionic;
 struct mtype;
@@ -114,7 +115,8 @@ class avatar : public Character
         void clear_map_memory();
 
         // newcharacter.cpp
-        bool create( character_type type, const std::string &tempname = "" );
+        bool create( character_type type, const std::string &tempname = "",
+                     const scenario *initial_scenario = nullptr );
         // initialize avatar and avatar mocks
         void initialize( character_type type );
         bool load_template( const std::string &template_name, pool_type & );

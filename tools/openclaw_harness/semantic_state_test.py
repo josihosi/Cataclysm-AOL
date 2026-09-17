@@ -176,6 +176,21 @@ class SemanticStateTest(unittest.TestCase):
             self.assertEqual(events[0]["valid_actions"], [])
             self.assertFalse(events[1]["accepted"])
 
+    def test_request_transport_diagnostic_stays_parseable_without_becoming_an_action_owner(self):
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            transport = {
+                "event": "request_transport", "run_id": "run-1", "stage": "jsonl_record",
+                "request_id": "request-1", "offset_before": 128, "offset_after": 256,
+                "transport_end": 256, "queued": True, "wake_pending": False,
+            }
+            trace.write_text(SEMANTIC_STEP_PREFIX + json.dumps(transport) + "\n", encoding="utf-8")
+            events, status = read_semantic_step_trace(trace, root, "run-1")
+            self.assertEqual(status, "ok")
+            self.assertEqual(events[0]["event"], "request_transport")
+            self.assertEqual(events[0]["offset_after"], 256)
+
     def test_native_travel_boundary_fails_active_stale_wrong_run_blocked_and_interrupted(self):
         active = {
             "event": "travel", "run_id": "run-1", "travel_id": "travel-1",

@@ -2,8 +2,10 @@
 
 ## Scope and credit boundary
 
-This is the current launch and evidence map for `R-026-S001`; it does not assert package
-completion. Native semantic cockpit actions and observations are the operation footing. Fixture
+This is the current launch and evidence map for `R-026-S001`; `R-026` is ready for final
+coordinator acceptance but is not accepted by this guide. The guide binds independent component
+verdicts and their stated limits; it does not turn negative or inconclusive component results into
+passes. Native semantic cockpit actions and observations are the operation footing. Fixture
 installation, save transforms, debug placement, startup, screenshots, OCR, terminal/rendered text,
 accepted input, and combined prose receive no gameplay credit. Keep writhing stalkers and zombie
 riders out of every R-026 witness.
@@ -33,6 +35,7 @@ The completed native run is bound by run `551928a81cb4a71317603e528a0d30dd9dbfe9
 | Bandit/cannibal integration | **Bindable from durably accepted R-029** | Activation, branch/control, persistence, Pay, night-departure/through-dawn, Fight/aftermath and sound-information results are bindable at their separate ceilings. The package still must not infer later natural discovery, returned reports, authorization, rally, arrival, hostile contact, or subjective feel beyond the cited observations. |
 | Flesh-raptor integration | **Bindable from accepted R-035** | Orbit, blocked-route fallback, swoop/melee pressure, encounter-feel ceiling, exclusions and cleanup are accepted at their stated limits. |
 | Matched performance | **Bindable from accepted R-036** | The finite matched workload, mechanical correctness and measurement results are accepted; subjective feel, universal thresholds and broader statistics remain non-claims. |
+| NPC LLM command coverage | **R-037 durably accepted #2 at bounded coverage ceiling** | Durable acceptance #2 is recorded via `R-037-closure-wait-hold-release-matrix-001`. The frozen 20-row manifest (`8244671b08f61f371a29efe6768836a71f47de718e92650fff4fe9439d527f1c`) and classification receipt (`0f016d314481f3468ceed75a922c7e1695cf115861b9a64a5197ed0ccca23441`) bind every row at its exact ceiling. Pickup (`b164eb4384a4628e6ecbebe345e9c6e417b860e3abe96ef66ec2e803fd4be5dc`, `81a18b9e628b0f610f720aa1342ceeb338baa069f8956406457abdfd8d131722`), follow-far (`d83fd49d3bdee3059fdd1be15bb69f7ca3e92b76063aa11d9764f8c051c61531`), and wait/hold (`23a6fb587c7b5916705d622ec20b32e0d346a6a86292763770a30668f0de3f7e`) close their finite evidence gaps. Negative/inconclusive E4B rows—`panic_off`, inventory wear, inventory wield, inventory activate, and idle—are accepted assessed coverage with separate API verdicts; they are not open gaps and are not relabeled as passes. Josef’s bow clarification remains in force. |
 
 The current focused witness is receipt `7075048efc3baa0bec27c4a79cfdc46140fed55fa2618868e9c5e30b070b9ce3` and is backed by:
 
@@ -60,6 +63,7 @@ ledger/SQLite ceiling; acceptance of a component does not by itself close R-026:
 - **R-036 matched performance:** Receipt `f820c12cbf8a7af88b26c93e89975fee41b7d33978c3784bcb3b6354fabf843b` binds the finite matched comparison and mechanical correctness; subjective feel and universal performance claims remain excluded.
 - **R-029 hostile route and sound information:** The accepted activation/aftermath audit binds canonical active ownership, native Fight, casualty, survivor return, save/reload and cleanup through activation receipts `d7d55782706720d8c98bcb92c32a3c5fb400946acc3240de4272908e06111a08`, `dd6683cec9819497b6970907f7291f307716ac0230a34a9775dd0a5b9230af00`, and `632168355fe0566c76f079b179a4130f99a0ef1838ea7ed4713640ef956e9c98`; activation run `48a1686d3b2e275566421b551df783c205bcdf3d4e23379f0a8a6d26a7b0b4f7` and fresh no-fixture reload run `5ca63e3fd9f698eb164d565d2c81e262e3d995888136147b379b3b95fab36bda` bind members 18/19, current `src/do_turn.cpp`/`src/bandit_live_world.cpp` ownership guards, and the minute-8383 reload ceiling. The independent audit records 79 focused tests and no owned processes remaining. Pay is receipt `ab383ab50726156a5948882c5c74fefc0853945cd7c06f7cc44a963c380a34ee`; rolling branch/control and operation persistence are receipts `1be44f0b860d4e6b59a5fbc7e55fe052867295cbac428d0875b07e929013815c`, `bd8510b80e2039fdb8914efee986b17a587093a5ee05374c103f693d0005af4f`, and `e49d5efd7b0e386a31bc6e63569b2769e4ef117d90bde5c8005a6c823b4dde23`; night departure, dawn continuation and bounded feel are receipt `0892479ce584418db6ef41fc3ef4d594d82b16ca97d6dac9fb423f2c3687185f`.
 - **R-029 sound-information closure:** Receipts `64bc0ae133e0921129cefb1732f960889ed90db8c4d230052c0b5239ab054870`, `7cccd502298ef40b11887b2f9bc5fab070c39540ba98bd4108f4f05dd3968d51`, `9a647676c4e9266845a792783e36bdf77f338eb0fe0f3e87a155ab95373e9853`, and final receipt `c8d0ede5a40e26132e072df71bc783d3c6017f04a0bf08f01b81003ad996c7db` bind emitted-time memory, deduplication, expiry/physical-check controls, bounded watch geography, retained-target eligibility and the first attributable abstract structural outing. The final sound run is scenario `bandit.r029_sound_lead_continuation_058_mcw`, run `f0d0bad39f408e98352dd63855ce4f77108014ad4f4ddf4ddca20b8f6cfa3d5b`, binding `cafba9fa21ec3808351e3ac897ab61c329b983230527a9c683739c6c685132b8`, runtime source `02796effa3347ebbb5bd0552c4bb2b8bde940ebc556d0f7805797b6ec5ee86b9`, executable `c416df32eab33d507b4d15b269212ecd49372f01a808a371392ddbbf734ee600`, and exact cleanup. Its ceiling stops at the generation-1 outbound structural outing at minute 8291 with members 18 and 19; no later scout/report/authorization/rally/arrival/contact is claimed.
+- **R-037 NPC command coverage (durably accepted #2):** Durable acceptance #2 is recorded at `1789151466.851968` via `R-037-closure-wait-hold-release-matrix-001`; SQLite is authoritative. The 20-row manifest `8244671b08f61f371a29efe6768836a71f47de718e92650fff4fe9439d527f1c` and classification receipt `0f016d314481f3468ceed75a922c7e1695cf115861b9a64a5197ed0ccca23441` bind every catalog row at its exact ceiling. The pickup pair `b164eb4384a4628e6ecbebe345e9c6e417b860e3abe96ef66ec2e803fd4be5dc` / `81a18b9e628b0f610f720aa1342ceeb338baa069f8956406457abdfd8d131722` proves only the exact restricted static `NO_NPC_PICKUP` target and allowed-zone foreign-owned control. Follow-far receipt `d83fd49d3bdee3059fdd1be15bb69f7ca3e92b76063aa11d9764f8c051c61531` binds native E4B convergence to configured radius 6 with stale shared journal quarantined. Wait/hold receipt `23a6fb587c7b5916705d622ec20b32e0d346a6a86292763770a30668f0de3f7e` binds command-level `wait_here`, `hold_position`, native `GUARD_ALLY`/`guard_post`, and `follow_close` release at its focused ceiling. Inventory `bebbc8ae96665d23837a79d2788a3049b08cfed91bedc493345b1695cdaf521d`, panic `7c135856f634950dd5afa0a931cadf44d618d951ceb0a68a758cce702e42acfa`, and bow `f71f69f3ba06cb9468efa0cb2c441db32181de96f6cc106cc5dfc52299eab595` remain bound at their separate ceilings. The five `panic_off`/wear/wield/activate/idle rows are accepted assessed E4B negatives or inconclusives with separate same-case API verdicts; they are not open gaps and are not passes. Josef’s bow clarification retires the former F018 owner wait. No source or executable was changed and all cited owned processes exited.
 
 R-029 is durably accepted at these independent ceilings. Preserve the original diagnostic and
 zero-credit setup artifacts, OCR prohibition, no-replay limits, and native-exit distinctions; do
@@ -81,6 +85,15 @@ not collapse the separate receipts into a broader complete hostile-ecology claim
 
 ## First remaining package boundary
 
-The R-029 composition boundary is closed by the accepted activation and sound-information receipts
-above; no R-029 owner decision or replay remains for this package component. The R-031 provenance
-composition boundary is likewise closed by acceptance receipt `e263e29eb238704de3345c8babad9ff9a6b821166bfe3144c9c0f30bc83f9305`: established camp-craft gameplay is accepted, while the historical source-binding bytes remain unavailable as an explicit ceiling. R-037 command coverage is the downstream blocker to whole-package acceptance, not evidence for this composition. The focused R-026 run’s `blocked_terminal_save_quit_receipt_missing` remains only that run’s evidence ceiling. R-026 remains open.
+The R-029 and R-031 composition boundaries are closed at the receipt ceilings above, and R-037 is
+durably accepted #2 at its manifest and component ceilings. The five `panic_off`/wear/wield/activate/
+idle rows are assessed provider-specific outcomes, not missing successes. No material gameplay or
+component-evidence gap remains for the package map. R-026 is ready for the smallest finite closure
+contract: coordinator records durable R-026 acceptance against this guide and the preserved
+R-029/R-031–R-037 component receipts, without broadening any ceiling. R-026 is not accepted by
+this guide. The focused R-026 run’s
+`blocked_terminal_save_quit_receipt_missing` remains only that run’s evidence ceiling because R-034
+independently supplies package persistence. Broad fixture failures, stale archive/SDL linking,
+excluded creatures, OCR prohibition, setup limits, stale-journal quarantine, and all
+negative/no-consequence outcomes remain explicit. No replay/build/runtime is authorized by this
+package-assessment boundary.

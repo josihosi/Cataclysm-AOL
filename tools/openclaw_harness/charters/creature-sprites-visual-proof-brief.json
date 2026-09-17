@@ -1,0 +1,7 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-CREATURE-SPRITES-integration-001",
+  "outcome": "C-AOL exact writhing stalker and zombie rider IDs render their separate mod atlas cells at normal gameplay scale in bright and dark context.",
+  "scenario": "creature_sprites.visual_proof_ultica",
+  "query": { "requirements": [ { "key": "capabilities.creature_sprites.visual_render", "op": "eq", "value": "exact_id_normal_scale_bright_dark_rendering", "minimum_evidence": "declared" } ], "preferences": [ { "key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared" } ] }
+}

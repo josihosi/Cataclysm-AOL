@@ -196,6 +196,9 @@ struct overmap_global_state {
     std::map<tripoint_abs_omt, zombie_rider_overmap_ai::rider_light_memory>
     zombie_rider_light_memory;
     time_point zombie_rider_light_memory_last_turn = calendar::turn_zero;
+    // Authoritative durable membership for zombie-rider bands.  Light memory
+    // may select investigators but never creates membership in this registry.
+    zombie_rider_overmap_ai::rider_band_registry zombie_rider_bands;
     // placed regions by overmap
     std::unordered_map<tripoint_abs_om, region_settings_id> placed_regions;
 
@@ -231,6 +234,9 @@ class overmapbuffer
         void reset();
         void clear();
         void create_custom_overmap( const point_abs_om &, overmap_special_batch &specials );
+        // The single advancing-turn owner for local and abstract rider
+        // encounters, membership union, and encounter-bounded sharing.
+        void reconcile_rider_band_encounters();
 
         /**
          * Returns the overmap terrain at the given OMT coordinates.
@@ -535,6 +541,13 @@ class overmapbuffer
          * @param sig_power The signal strength, higher values means it visible farther away.
          */
         void signal_hordes( const tripoint_abs_sm &center, int sig_power );
+        /** Route a light source only to existing overmaps in its own finite
+         * candidate envelope.  Unlike signal_hordes this never touches
+         * mongroups or creates an overmap. */
+        int attract_hordes_to_light( const tripoint_abs_ms &source, int intensity,
+                                     int observer_radius_sm, int brightness_range_omt,
+                                     bool source_exposed, const std::string &sample_id,
+                                     const time_point &observed, int *candidate_count = nullptr );
         /**
          * Directly alert one horde entity at the target location to head toward the destination.
          * Intensity is essentially how many turns to keep going.
@@ -598,7 +611,9 @@ class overmapbuffer
          * Despawn the monster back onto the overmap. The monsters position
          * (monster::pos()) is interpreted as relative to the main map.
          */
-        void despawn_monster( const monster &critter );
+        // False means the abstract bucket rejected the handoff; the caller
+        // retains the local owner rather than deleting it.
+        bool despawn_monster( monster &critter );
         void spawn_mongroup( const tripoint_abs_sm &p, const mongroup_id &type, int count );
         horde_entity *entity_at( const tripoint_abs_ms &p );
         std::vector<std::unordered_map<tripoint_abs_ms, horde_entity>*> hordes_at(
@@ -767,6 +782,9 @@ class overmapbuffer
          */
         std::vector<overmap *> get_overmaps_near( const point_abs_sm &p, int radius );
         std::vector<overmap *> get_overmaps_near( const tripoint_abs_sm &location, int radius );
+        // Unlike get_overmaps_near this only inspects resident overmap
+        // buckets; it never reads or constructs one from disk.
+        std::vector<overmap *> get_loaded_overmaps_near( const point_abs_sm &p, int radius );
 };
 
 extern overmapbuffer overmap_buffer;

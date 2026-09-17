@@ -2999,8 +2999,8 @@ void options_manager::add_options_llm()
     const std::string default_summary_backend = "ollama";
     const std::string default_summary_ollama_model = "mistral";
 
-    add( "DEBUG_LLM_INTENT_LOG", "llm", to_translation( "Log LLM shouts" ),
-         to_translation( "When enabled, log LLM prompts and responses to config/llm_intent.log." ),
+    add( "DEBUG_LLM_INTENT_LOG", "llm", to_translation( "LLM runner debug logging" ),
+         to_translation( "Enable diagnostic prompt, response, dispatch and action-event logs for LLM interactions. Disabled by default; enable for a diagnostic run and turn off afterward." ),
          false
        );
 

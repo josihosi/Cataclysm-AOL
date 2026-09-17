@@ -1,0 +1,14 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-RIDER-BAND-native-sight-pressure-001",
+  "outcome": "R-ZL-RIDER-BAND remaining boundary: two tagged zombie riders form a reciprocal route-connected encounter; after one directly observes the avatar and the other is screen-blocked, the encounter relays only the original observation location, turn, expiry, and source.  Following real sight loss, neither rider receives unseen current coordinates and both later make native closing or pressure progress.",
+  "scenario": "zombie_rider.live_native_band_sight_pressure_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r_zl_rider.native_band_sight_pressure", "op": "eq", "value": "native_direct_to_relayed_old_location_then_cooperative_pressure", "minimum_evidence": "declared"}
+    ],
+    "preferences": [
+      {"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}
+    ]
+  }
+}

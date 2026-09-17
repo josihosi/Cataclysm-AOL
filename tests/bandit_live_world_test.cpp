@@ -15705,6 +15705,135 @@ TEST_CASE( "staffed camp sound memory uses emitted time and preserves investigat
     CHECK( reloaded_lead->last_scouted_minutes == 410 );
 }
 
+TEST_CASE( "staffed camp light preserves the original real-turn observation time",
+           "[bandit][live_world][camp_signal][light][continuity][save]" )
+{
+    bandit_live_world::world_state world = make_structural_signal_test_world( false, 16135 );
+    bandit_live_world::site_record &site = world.sites.front();
+    site.active_outing.clear();
+    for( bandit_live_world::member_record &member : site.members ) {
+        member.state = bandit_live_world::member_state::at_home;
+        member.wounded_or_unready = false;
+    }
+    const tripoint_abs_omt source( site.anchor.x() + 3, site.anchor.y(), site.anchor.z() );
+    int observed_minutes = 100;
+    const auto observe = [&observed_minutes, source]( const bandit_live_world::site_record &,
+    const bandit_live_world::camp_signal_observer_request & ) {
+        bandit_live_world::structural_signal_read read = make_structural_signal_read(
+                    bandit_live_world::sortie_observation_sense::light, source, 6, 75, 2 );
+        read.observed_minutes = observed_minutes;
+        return std::vector<bandit_live_world::structural_signal_read> { read };
+    };
+    REQUIRE( bandit_live_world::record_staffed_camp_signal_observations( world, 120, observe ).leads_created == 1 );
+    bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead(
+                site.intelligence_map.leads.front().lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->last_seen_minutes == 100 );
+    const int revision = lead->revision;
+    CHECK( bandit_live_world::record_staffed_camp_signal_observations( world, 121, observe ).unchanged_reads == 1 );
+    CHECK( lead->last_seen_minutes == 100 );
+    observed_minutes = 125;
+    CHECK( bandit_live_world::record_staffed_camp_signal_observations( world, 130, observe ).leads_refreshed == 1 );
+    lead = site.intelligence_map.find_lead( site.intelligence_map.leads.front().lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->last_seen_minutes == 125 );
+    CHECK( lead->revision == revision + 1 );
+    observed_minutes = 110;
+    CHECK( bandit_live_world::record_staffed_camp_signal_observations( world, 140,
+            observe ).unchanged_reads == 1 );
+    lead = site.intelligence_map.find_lead( site.intelligence_map.leads.front().lead_id );
+    REQUIRE( lead != nullptr );
+    CHECK( lead->last_seen_minutes == 125 );
+    CHECK( lead->revision == revision + 1 );
+    CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
+}
+
+TEST_CASE( "staffed physical light keeps sample identity and bounded uncertainty",
+           "[bandit][live_world][camp_signal][light][sample_identity][save]" )
+{
+    for( const bool cannibal : { false, true } ) {
+        bandit_live_world::world_state world = make_structural_signal_test_world(
+                    cannibal, cannibal ? 16143 : 16142 );
+        bandit_live_world::site_record &site = world.sites.front();
+        site.active_outing.clear();
+        site.intelligence_map.leads.clear();
+        for( bandit_live_world::member_record &member : site.members ) {
+            member.state = bandit_live_world::member_state::at_home;
+            member.wounded_or_unready = false;
+        }
+        const tripoint_abs_omt source( site.anchor.x() + 3, site.anchor.y(), site.anchor.z() );
+        int observed_minutes = 100;
+        std::string sample_id = "live_light@source#100";
+        const auto observe = [&source, &observed_minutes, &sample_id](
+        const bandit_live_world::site_record &,
+        const bandit_live_world::camp_signal_observer_request & ) {
+            bandit_live_world::structural_signal_read read = make_structural_signal_read(
+                        bandit_live_world::sortie_observation_sense::light, source, 6, 75, 2 );
+            read.observed_minutes = observed_minutes;
+            read.source_id = sample_id;
+            read.uncertainty_radius_omt = 3;
+            return std::vector<bandit_live_world::structural_signal_read> { read };
+        };
+
+        const auto first = bandit_live_world::record_staffed_camp_signal_observations(
+                               world, 120, observe );
+        REQUIRE( first.leads_created == 1 );
+        const auto lead_it = std::find_if( site.intelligence_map.leads.begin(),
+        site.intelligence_map.leads.end(), [&]( const bandit_live_world::camp_map_lead &candidate ) {
+            return candidate.source_sample_id == sample_id;
+        } );
+        REQUIRE( lead_it != site.intelligence_map.leads.end() );
+        const std::string lead_id = lead_it->lead_id;
+        const bandit_live_world::camp_map_lead *lead = site.intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( lead->last_seen_minutes == 100 );
+        CHECK( lead->source_sample_id == sample_id );
+        CHECK( lead->radius_omt == 3 );
+
+        const bandit_live_world::world_state reloaded = round_trip_world( world );
+        const bandit_live_world::camp_map_lead *reloaded_lead =
+            reloaded.sites.front().intelligence_map.find_lead( lead_id );
+        REQUIRE( reloaded_lead != nullptr );
+        CHECK( reloaded_lead->source_sample_id == sample_id );
+        CHECK( reloaded_lead->last_seen_minutes == 100 );
+        CHECK( reloaded_lead->radius_omt == 3 );
+
+        const auto repeated = bandit_live_world::record_staffed_camp_signal_observations(
+                                   world, 180, observe );
+        CHECK( repeated.unchanged_reads == 1 );
+        CHECK( repeated.leads_refreshed == 0 );
+        lead = site.intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( lead->last_seen_minutes == 100 );
+
+        observed_minutes = 90;
+        sample_id = "live_light@source#90";
+        const auto stale = bandit_live_world::record_staffed_camp_signal_observations(
+                               world, 190, observe );
+        CHECK( stale.unchanged_reads == 1 );
+        CHECK( stale.leads_refreshed == 0 );
+
+        observed_minutes = 130;
+        sample_id = "live_light@source#130";
+        const auto fresh = bandit_live_world::record_staffed_camp_signal_observations(
+                               world, 200, observe );
+        CHECK( fresh.leads_refreshed == 1 );
+        lead = site.intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( lead->last_seen_minutes == 130 );
+        CHECK( lead->source_sample_id == sample_id );
+
+        CHECK( bandit_live_world::advance_camp_intelligence_aging( site, 700 ).leads_aged == 1 );
+        lead = site.intelligence_map.find_lead( lead_id );
+        REQUIRE( lead != nullptr );
+        CHECK( lead->status == bandit_live_world::camp_lead_status::stale );
+        const auto expired = bandit_live_world::record_staffed_camp_signal_observations(
+                                 world, 701, observe );
+        CHECK( expired.unchanged_reads == 1 );
+        CHECK( expired.leads_refreshed == 0 );
+    }
+}
+
 TEST_CASE( "staffed camp signal reads emit actor-bound live transition receipts",
            "[bandit][live_world][camp_signal][transition_event][stream]" )
 {
@@ -19826,6 +19955,66 @@ TEST_CASE( "bandit_live_world_hold_off_goal_keeps_visible_standoff",
     CHECK( diagonal_goal == tripoint_abs_omt( 145, 46, 0 ) );
 
     CHECK( bandit_live_world::choose_hold_off_standoff_goal( player, player, 2 ) == player );
+}
+
+TEST_CASE( "bandit_live_world_elevated_signal_uses_ground_approach_waypoint",
+           "[bandit][live_world][multi_z][scheduler][light_signal]" )
+{
+    constexpr int now_minutes = 8640;
+    bandit_live_world::world_state world;
+    add_scheduler_test_site( world, 0, false, 880500 );
+    bandit_live_world::site_record &site = world.sites.front();
+    site.routine_activated_minutes = 0;
+    site.supply_units = 0;
+    site.supply_last_update_minutes = 0;
+    site.intelligence_map.frontier_last_resolved_minutes.assign( 8, now_minutes );
+
+    const tripoint_abs_omt elevated_source( site.anchor.x() + 4, site.anchor.y(), 1 );
+    bandit_live_world::camp_map_lead light_lead;
+    light_lead.lead_id = site.site_id + "#lead:light_signal:" + elevated_source.to_string();
+    light_lead.kind = bandit_live_world::camp_lead_kind::light_signal;
+    light_lead.origin = bandit_live_world::camp_lead_origin::signal;
+    light_lead.status = bandit_live_world::camp_lead_status::suspected;
+    light_lead.target_id = "camp-light@" + elevated_source.to_string();
+    light_lead.omt = elevated_source;
+    light_lead.radius_omt = 1;
+    light_lead.source_key = "camp-signal:" + light_lead.target_id;
+    light_lead.source_summary = "light exposure=exposed elevation_delta=1";
+    light_lead.first_seen_minutes = now_minutes - 60;
+    light_lead.last_seen_minutes = now_minutes - 60;
+    light_lead.last_checked_minutes = now_minutes - 60;
+    light_lead.confidence = 2;
+    light_lead.generated_by_this_camp_routine = true;
+    light_lead.last_outcome = "camp_observer_light";
+    site.intelligence_map.leads.push_back( light_lead );
+
+    const auto route_lookup = [elevated_source]( const bandit_live_world::site_record &route_site,
+    const bandit_live_world::structural_outing_plan &plan ) {
+        CHECK( route_site.anchor.z() == 0 );
+        CHECK( plan.target_omt == elevated_source );
+        REQUIRE( plan.shared_route.size() >= 3 );
+        const tripoint_abs_omt approach = plan.shared_route[plan.shared_route.size() - 2];
+        CHECK( approach == tripoint_abs_omt( elevated_source.x(), elevated_source.y(), 0 ) );
+        CHECK( approach.z() == route_site.anchor.z() );
+        return bandit_live_world::structural_route_read{
+            true, plan.full_route_cost, 0,
+            "focused vertical light approach route" };
+    };
+    const bandit_live_world::structural_bounty_maintenance_result result =
+        bandit_live_world::advance_structural_bounty_maintenance(
+            world, now_minutes, 0, 1, {}, {}, route_lookup );
+
+    REQUIRE( result.dispatches_applied == 1 );
+    const bandit_live_world::active_outing_state &outing = site.active_outing;
+    CHECK( outing.target_omt == elevated_source );
+    REQUIRE( outing.shared_route.size() >= 3 );
+    CHECK( outing.shared_route[outing.shared_route.size() - 2] ==
+           tripoint_abs_omt( elevated_source.x(), elevated_source.y(), 0 ) );
+    CHECK( outing.target_footprint == std::vector<tripoint_abs_omt> { elevated_source } );
+    CHECK( std::all_of( outing.shared_route.begin(), outing.shared_route.end(),
+                        []( const tripoint_abs_omt &waypoint ) {
+                            return waypoint.z() == 0;
+                        } ) );
 }
 
 TEST_CASE( "bandit_live_world_watch_distance_uses_nearest_same_z_footprint_cell",

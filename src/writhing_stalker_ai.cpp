@@ -1,15 +1,162 @@
 #include "writhing_stalker_ai.h"
 
+#include "creature.h"
+#include "json.h"
+
 #include <algorithm>
 #include <climits>
 #include <cstdlib>
+#include <cstdint>
+#include <unordered_set>
+#include <tuple>
 #include <utility>
 
 namespace writhing_stalker
 {
 
+void persistent_state::advance_to( const int now_turn )
+{
+    if( now_turn <= last_advanced_turn ) {
+        return;
+    }
+    last_advanced_turn = now_turn;
+    if( has_light_observed_position && light_expires_turn >= 0 && now_turn >= light_expires_turn ) {
+        has_light_observed_position = false;
+        light_observed_turn = -1;
+        light_expires_turn = -1;
+        light_sample_id.clear();
+    }
+    if( cooldown_until_turn >= 0 && now_turn >= cooldown_until_turn ) {
+        cooldown_until_turn = -1;
+        if( phase == lifecycle_phase::cooldown ) {
+            phase = lifecycle_phase::searching;
+            phase_entered_turn = now_turn;
+            search_until_turn = now_turn + 20;
+        }
+    }
+    if( phase == lifecycle_phase::searching && search_until_turn >= 0 &&
+        now_turn >= search_until_turn ) {
+        phase = lifecycle_phase::idle;
+        phase_entered_turn = now_turn;
+        has_committed_waypoint = false;
+        has_retreat_waypoint = false;
+        attempts_spent = 0;
+        remaining_route_progress = -1;
+    }
+}
+
+bool persistent_state::has_direct_evidence( const int now_turn ) const
+{
+    return evidence_target != 0 && has_last_observed_position && evidence_turn >= 0 &&
+           now_turn >= evidence_turn && now_turn - evidence_turn <= 200;
+}
+
+bool persistent_state::light_interest_active( const int now_turn ) const
+{
+    return has_light_observed_position && light_observed_turn >= 0 && light_expires_turn > now_turn;
+}
+
+bool persistent_state::observe_light_interest( const tripoint_abs_ms &position,
+        const std::string &sample_id, const int observed_turn, const int duration_turns )
+{
+    if( sample_id.empty() || observed_turn < 0 || duration_turns <= 0 ||
+        has_direct_evidence( observed_turn ) || sample_id == light_sample_id ||
+        observed_turn <= light_observed_turn || phase == lifecycle_phase::approaching ||
+        phase == lifecycle_phase::attacking || phase == lifecycle_phase::retreating ||
+        phase == lifecycle_phase::cooldown ) {
+        return false;
+    }
+    light_observed_position = position;
+    has_light_observed_position = true;
+    light_observed_turn = observed_turn;
+    light_expires_turn = observed_turn + duration_turns;
+    light_sample_id = sample_id;
+    if( phase == lifecycle_phase::idle ) {
+        phase = lifecycle_phase::shadowing;
+        phase_entered_turn = observed_turn;
+        committed_waypoint = position;
+        has_committed_waypoint = true;
+        remaining_route_progress = -1;
+    }
+    return true;
+}
+
+bool persistent_state::cooldown_active( const int now_turn ) const
+{
+    return cooldown_until_turn >= 0 && now_turn < cooldown_until_turn;
+}
+
+void persistent_state::serialize( JsonOut &json ) const
+{
+    json.start_object();
+    json.member( "phase", static_cast<int>( phase ) );
+    json.member( "evidence_target", evidence_target );
+    json.member( "evidence_turn", evidence_turn );
+    json.member( "has_last_observed_position", has_last_observed_position );
+    json.member( "last_observed_position", last_observed_position );
+    json.member( "has_light_observed_position", has_light_observed_position );
+    json.member( "light_observed_position", light_observed_position );
+    json.member( "light_observed_turn", light_observed_turn );
+    json.member( "light_expires_turn", light_expires_turn );
+    json.member( "light_sample_id", light_sample_id );
+    json.member( "has_committed_waypoint", has_committed_waypoint );
+    json.member( "committed_waypoint", committed_waypoint );
+    json.member( "has_retreat_waypoint", has_retreat_waypoint );
+    json.member( "retreat_waypoint", retreat_waypoint );
+    json.member( "attempts_spent", attempts_spent );
+    json.member( "attempt_sequence", attempt_sequence );
+    json.member( "phase_entered_turn", phase_entered_turn );
+    json.member( "cooldown_until_turn", cooldown_until_turn );
+    json.member( "last_progress_turn", last_progress_turn );
+    json.member( "last_advanced_turn", last_advanced_turn );
+    json.member( "remaining_route_progress", remaining_route_progress );
+    json.member( "search_until_turn", search_until_turn );
+    json.end_object();
+}
+
+void persistent_state::deserialize( const JsonObject &json )
+{
+    json.allow_omitted_members();
+    const int raw_phase = json.get_int( "phase", static_cast<int>( lifecycle_phase::idle ) );
+    phase = raw_phase >= static_cast<int>( lifecycle_phase::idle ) &&
+            raw_phase <= static_cast<int>( lifecycle_phase::cooldown ) ?
+            static_cast<lifecycle_phase>( raw_phase ) : lifecycle_phase::idle;
+    json.read( "evidence_target", evidence_target );
+    json.read( "evidence_turn", evidence_turn );
+    json.read( "has_last_observed_position", has_last_observed_position );
+    json.read( "last_observed_position", last_observed_position );
+    json.read( "has_light_observed_position", has_light_observed_position );
+    json.read( "light_observed_position", light_observed_position );
+    json.read( "light_observed_turn", light_observed_turn );
+    json.read( "light_expires_turn", light_expires_turn );
+    json.read( "light_sample_id", light_sample_id );
+    json.read( "has_committed_waypoint", has_committed_waypoint );
+    json.read( "committed_waypoint", committed_waypoint );
+    json.read( "has_retreat_waypoint", has_retreat_waypoint );
+    json.read( "retreat_waypoint", retreat_waypoint );
+    json.read( "attempts_spent", attempts_spent );
+    json.read( "attempt_sequence", attempt_sequence );
+    json.read( "phase_entered_turn", phase_entered_turn );
+    json.read( "cooldown_until_turn", cooldown_until_turn );
+    json.read( "last_progress_turn", last_progress_turn );
+    json.read( "last_advanced_turn", last_advanced_turn );
+    json.read( "remaining_route_progress", remaining_route_progress );
+    json.read( "search_until_turn", search_until_turn );
+}
+
 namespace
 {
+
+struct observed_attack {
+    actor_identity observer = 0;
+    actor_identity attacker = 0;
+    actor_identity target = 0;
+    resolution_id resolution = 0;
+    int turn = 0;
+};
+
+std::vector<observed_attack> observed_attacks;
+resolution_id next_resolution = 0;
 
 constexpr int fresh_human_evidence_minutes = 20;
 constexpr int stale_human_evidence_minutes = 45;
@@ -52,6 +199,9 @@ int caution_pressure( const opportunity_context &ctx )
         pressure += 1;
     }
     if( ctx.stalker_hurt ) {
+        pressure += 3;
+    }
+    if( ctx.counterpressure_recent ) {
         pressure += 3;
     }
     pressure += std::min( 2, std::max( 0, ctx.allied_support_nearby ) );
@@ -125,6 +275,75 @@ int retreat_distance_for( const opportunity_context &ctx )
 }
 
 } // namespace
+
+resolution_id next_resolution_id()
+{
+    return ++next_resolution;
+}
+
+void record_observed_attack( const Creature *observer, const Creature *attacker,
+                             const Creature *target, const int turn,
+                             const resolution_id resolution )
+{
+    if( observer == nullptr || attacker == nullptr || target == nullptr || resolution == 0 ) {
+        return;
+    }
+    const observed_attack event{ observer->get_identity(), attacker->get_identity(),
+                                 target->get_identity(), resolution, turn };
+    const auto duplicate = std::find_if( observed_attacks.begin(), observed_attacks.end(),
+    [&event]( const observed_attack &existing ) {
+        return existing.observer == event.observer && existing.attacker == event.attacker &&
+               existing.target == event.target && existing.resolution == event.resolution;
+    } );
+    if( duplicate != observed_attacks.end() ) {
+        return;
+    }
+    observed_attacks.push_back( event );
+    if( observed_attacks.size() > 512 ) {
+        observed_attacks.erase( observed_attacks.begin(), observed_attacks.begin() + 128 );
+    }
+}
+
+bool has_recent_observed_attack( const Creature *observer, const Creature *attacker,
+                                 const Creature *target, const int now_turn, const int max_age )
+{
+    if( observer == nullptr || attacker == nullptr || target == nullptr ) {
+        return false;
+    }
+    const actor_identity observer_id = observer->get_identity();
+    const actor_identity attacker_id = attacker->get_identity();
+    const actor_identity target_id = target->get_identity();
+    for( auto it = observed_attacks.rbegin(); it != observed_attacks.rend(); ++it ) {
+        if( it->observer == observer_id && it->attacker == attacker_id &&
+            it->target == target_id && it->turn <= now_turn &&
+            now_turn - it->turn <= max_age ) {
+            return true;
+        }
+    }
+    return false;
+}
+
+int observed_attack_count( const Creature *observer, const Creature *attacker,
+                           const Creature *target, const resolution_id resolution )
+{
+    if( observer == nullptr || attacker == nullptr || target == nullptr || resolution == 0 ) {
+        return 0;
+    }
+    const actor_identity observer_id = observer->get_identity();
+    const actor_identity attacker_id = attacker->get_identity();
+    const actor_identity target_id = target->get_identity();
+    return static_cast<int>( std::count_if( observed_attacks.begin(), observed_attacks.end(),
+    [&]( const observed_attack &event ) {
+        return event.observer == observer_id && event.attacker == attacker_id &&
+               event.target == target_id && event.resolution == resolution;
+    } ) );
+}
+
+bool is_meaningful_pressure( const pressure_observation &observation )
+{
+    return observation.hostile && observation.visible_to_stalker && observation.same_target &&
+           ( observation.attacking || observation.closing );
+}
 
 interest_report evaluate_interest( const interest_context &ctx )
 {
@@ -433,7 +652,9 @@ opportunity_report evaluate_opportunity( const opportunity_context &ctx )
     report.zombie_distraction = std::min( 28, ctx.zombie_pressure * 7 );
 
     if( ctx.bright_exposure ) {
-        report.exposure_penalty += 35;
+        // Brightness is a finite risk, not an absolute veto. Active same-target
+        // pressure is precisely the opening this predator exploits in daylight.
+        report.exposure_penalty += std::max( 0, 35 - std::min( 28, ctx.zombie_pressure * 7 ) );
     }
     if( ctx.player_focused ) {
         report.exposure_penalty += 25;
@@ -464,9 +685,13 @@ opportunity_report evaluate_opportunity( const opportunity_context &ctx )
     } else if( ctx.bright_exposure && ctx.allied_support_nearby >= 2 && ctx.burst_strikes > 0 ) {
         report.next = decision::withdraw;
         report.reason = "lit_allied_support_withdraw";
-    } else if( report.opportunity >= 70 ) {
+    } else if( report.opportunity >= 70 || ( ctx.zombie_pressure >= 4 &&
+                                              ctx.distance_to_target > 0 &&
+                                              ctx.distance_to_target <= 3 &&
+                                              ctx.allied_support_nearby < 3 ) ) {
         report.next = decision::strike;
-        report.reason = "vulnerability_window_strike";
+        report.reason = report.opportunity >= 70 ? "vulnerability_window_strike" :
+                        "heavy_zombie_pressure_strike";
     } else if( report.opportunity >= 36 ) {
         report.next = decision::shadow;
         report.reason = "opportunity_building_shadow";
@@ -683,9 +908,10 @@ handoff_memory writeback_handoff_memory( const handoff_memory &incoming,
     handoff_memory out = incoming;
     out.reason = response.reason;
 
-    out.strike_budget_spent = response.next == decision::strike ?
-                              std::min( response.burst_limit, incoming.strike_budget_spent + 1 ) :
-                              incoming.strike_budget_spent;
+    // A response is a plan/handoff, not proof that attack resolution ran.
+    // The monster-local attack seam owns this counter, so walking or a blocked
+    // route cannot consume the burst through writeback.
+    out.strike_budget_spent = incoming.strike_budget_spent;
     out.cooldown_minutes = std::max( incoming.cooldown_minutes, response.writeback_cooldown_minutes );
     out.threat_memory = std::max( incoming.threat_memory, response.writeback_threat_memory );
     out.stalk_distance_omt = std::max( incoming.stalk_distance_omt,
@@ -742,6 +968,7 @@ live_response evaluate_live_response( const live_context &ctx )
     opportunity_ctx.bright_exposure = ctx.stalker_in_bright_exposure || ctx.target_in_bright_exposure;
     opportunity_ctx.player_focused = ctx.target_has_focus;
     opportunity_ctx.stalker_hurt = ctx.stalker_hurt;
+    opportunity_ctx.counterpressure_recent = ctx.counterpressure_recent;
     opportunity_ctx.distance_to_target = ctx.distance_to_target;
     opportunity_ctx.burst_strikes = ctx.burst_strikes;
     opportunity_report opportunity = evaluate_opportunity( opportunity_ctx );
@@ -845,6 +1072,20 @@ live_response evaluate_live_response( const live_context &ctx )
         }
         response.persistent_state_required = true;
         response.reason = "live_" + opportunity.reason;
+        return response;
+    }
+
+    // Once same-target pressure is strong enough, daylight changes the route
+    // cost but must not cancel the approach. Keep the commitment alive until
+    // contact range, where evaluate_opportunity can authorize the strike.
+    if( ctx.zombie_pressure >= 4 && ctx.distance_to_target > 3 &&
+        !ctx.stalker_hurt && ctx.allied_support_nearby < 3 ) {
+        response.next = decision::shadow;
+        response.route = ctx.cover_route_available ? approach_class::cover_shadow :
+                         approach_class::direct_forced;
+        response.writeback_intent = handoff_intent::committed_ambush;
+        response.persistent_state_required = true;
+        response.reason = "live_heavy_zombie_pressure_approach";
         return response;
     }
 

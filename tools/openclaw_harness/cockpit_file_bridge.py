@@ -9,6 +9,7 @@ This keeps a large native observation out of an execution tool's stdout pipe.
 from __future__ import annotations
 
 from cockpit_archive import ArchiveSequence, is_sequence, json_chunks, resolve_wire
+from cockpit_memory_profile import snapshot as memory_snapshot, released as memory_released
 
 import argparse
 import hashlib
@@ -16,6 +17,8 @@ import json
 import os
 from pathlib import Path
 import select
+import shlex
+import shutil
 import signal
 import subprocess
 import sys
@@ -37,10 +40,51 @@ def _digest(value: bytes) -> str:
     return hashlib.sha256(value).hexdigest()
 
 
+def _tree_digest(root: Path) -> str:
+    """Return a deterministic content digest for a saved-world directory."""
+    digest = hashlib.sha256()
+    for path in sorted(root.rglob("*")):
+        relative = path.relative_to(root).as_posix().encode("utf-8")
+        if path.is_dir():
+            digest.update(b"D\\0" + relative + b"\\0")
+        elif path.is_file():
+            digest.update(b"F\\0" + relative + b"\\0")
+            with path.open("rb") as stream:
+                for block in iter(lambda: stream.read(1024 * 1024), b""):
+                    digest.update(block)
+        else:
+            raise ValueError("saved_world_contains_unsupported_entry")
+    return digest.hexdigest()
+
+
 def _atomic_json(path: Path, value: Mapping[str, Any]) -> None:
     temporary = path.with_suffix(path.suffix + ".tmp")
     temporary.write_text(json.dumps(value, ensure_ascii=False, sort_keys=True) + "\n", encoding="utf-8")
     os.replace(temporary, path)
+
+
+def _json_request_shape(value: Any) -> Any:
+    """Materialize a request Mapping into the exact JSON object on the wire.
+
+    Bridge callers commonly construct requests from Mapping subclasses (and
+    nested mappings for witness payloads).  ``dict(request)`` only normalizes
+    the outer object; leaving nested Mapping instances to the file writer
+    makes the dict-to-JSON boundary fail or silently differ from the accepted
+    request shape.  Recursively materialize only JSON-shaped values and fail
+    closed for unsupported input.
+    """
+    if isinstance(value, Mapping):
+        normalized = {}
+        for key, item in value.items():
+            if not isinstance(key, str):
+                raise TypeError("cockpit request object keys must be strings")
+            normalized[key] = _json_request_shape(item)
+        return normalized
+    if isinstance(value, (list, tuple)):
+        return [_json_request_shape(item) for item in value]
+    if value is None or isinstance(value, (bool, int, float, str)):
+        return value
+    raise TypeError(f"unsupported cockpit request value: {type(value).__name__}")
 
 
 def _request_identity(request_bytes: bytes) -> dict[str, str]:
@@ -62,6 +106,27 @@ def _request_identity(request_bytes: bytes) -> dict[str, str]:
         for key in ("action", "observation_id", "action_id")
         if str(request.get(key, "")).strip()
     }
+
+
+def _decode_bridge_response(value: Any) -> tuple[Mapping[str, Any], bytes]:
+    """Accept either raw JSON text or an already-decoded response object.
+
+    Registry/archive adapters may hand the bridge the post-initial frame as a
+    decoded dict.  Passing that value to ``json.loads`` raises at the exact
+    dict-to-JSON boundary and loses the request receipt.  Re-encode decoded
+    objects once so persistence and hashing still use the same wire bytes.
+    """
+    if isinstance(value, Mapping):
+        response = _json_request_shape(value)
+        encoded = (json.dumps(response, ensure_ascii=False, separators=(",", ":")) + "\n").encode("utf-8")
+        return response, encoded
+    if isinstance(value, (str, bytes, bytearray)):
+        encoded = value.encode("utf-8") if isinstance(value, str) else bytes(value)
+        response = json.loads(encoded)
+        if not isinstance(response, Mapping):
+            raise TypeError("cockpit response must be a JSON object")
+        return response, encoded
+    raise TypeError("cockpit response must be JSON text or an object")
 
 
 class FileBackedCockpitBridge:
@@ -292,6 +357,50 @@ class FileBackedCockpitBridge:
             self._child.wait(timeout=2)
         self._close_child_streams()
 
+    def _freeze_saved_world_for_reentry(self) -> None:
+        """Freeze the native post-save world before starting a replacement child.
+
+        Interactive live sessions cross the process boundary in this bridge,
+        rather than in ``run_probe_post_relaunch``.  The continuation launch
+        still requires the same immutable handoff, so derive its exact
+        userdir/world from the registered owned-game command only after that
+        game has exited, then publish the session-local pointer consumed by
+        ``--post-relaunch-continuation``.
+        """
+        ownership_path = self.session_dir / "game-process.json"
+        try:
+            owner = json.loads(ownership_path.read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError) as exc:
+            raise ValueError("reentry_saved_world_owner_missing") from exc
+        command = str(owner.get("command", "") or "") if isinstance(owner, Mapping) else ""
+        try:
+            arguments = shlex.split(command)
+            userdir = arguments[arguments.index("--userdir") + 1]
+            world = arguments[arguments.index("--world") + 1]
+        except (ValueError, IndexError) as exc:
+            raise ValueError("reentry_saved_world_command_incomplete") from exc
+        if not world or Path(world).name != world:
+            raise ValueError("reentry_saved_world_name_invalid")
+        source = (Path(userdir) / "save" / world).resolve()
+        if not source.is_dir():
+            raise ValueError("reentry_saved_world_missing")
+        source_hash = _tree_digest(source)
+        snapshot = self.session_dir / "replacement_saved_world" / world
+        if snapshot.exists():
+            shutil.rmtree(snapshot)
+        snapshot.parent.mkdir(parents=True, exist_ok=True)
+        shutil.copytree(source, snapshot)
+        snapshot_hash = _tree_digest(snapshot)
+        if snapshot_hash != source_hash:
+            raise ValueError("reentry_saved_world_copy_mismatch")
+        _atomic_json(self.session_dir / "replacement_saved_world.snapshot.json", {
+            "schema": "caol-replacement-saved-world-snapshot-v1",
+            "source": str(source),
+            "snapshot": str(snapshot.resolve()),
+            "sha256": source_hash,
+            "immutable_source": True,
+        })
+
     def prepare(self) -> None:
         if self.session_dir.exists():
             raise ValueError("bridge session directory already exists")
@@ -359,7 +468,7 @@ class FileBackedCockpitBridge:
         _atomic_json(self.responses_dir / (request_id + ".receipt.json"), receipt)
         return receipt
 
-    def _read_complete_response(self) -> str:
+    def _read_complete_response(self) -> Any:
         """Read one complete JSON value, including a pretty-printed startup descriptor."""
         assert self._child is not None and self._child.stdout is not None
         parts: list[str] = []
@@ -389,12 +498,62 @@ class FileBackedCockpitBridge:
             if not response.endswith("\n"):
                 sink.write("\n")
 
-    def _session_descriptor(self, ready: str) -> Mapping[str, Any]:
+    def _consume_initial_frame(self, response: Mapping[str, Any], response_bytes: bytes) -> bool:
+        """Drain a startup frame that preceded the first public request.
+
+        Detached cockpit children can publish their descriptor and first
+        semantic frame before reading stdin.  That frame is startup evidence,
+        not the response to the first request; retaining it here prevents the
+        bridge from consuming the frame and then waiting forever for a child
+        response that was never requested.
+        """
+        if response.get("event") != "frame" and "surface_descriptor" not in response:
+            return False
+        self._record_startup_output(response_bytes.decode("utf-8"))
+        return True
+
+    def _durable_session_descriptor(self) -> Mapping[str, Any] | None:
+        """Recover a bound descriptor when child stdout handoff stalls.
+
+        The startup producer writes the full descriptor atomically before
+        publishing its compact stdout envelope.  On macOS the pipe can remain
+        unreadable even though that durable artifact exists, so use the
+        artifact only as a transport-recovery path and require an exact bridge
+        binding match.
+        """
+        userdata_root = self.session_dir.parent.parent.parent.parent / ".userdata"
+        if not userdata_root.is_dir():
+            return None
+        candidates = sorted(
+            userdata_root.glob("*/harness_runs/*/*.cockpit_live_session.json"),
+            key=lambda path: path.stat().st_mtime_ns if path.exists() else 0,
+            reverse=True,
+        )[:32]
+        for path in candidates:
+            try:
+                descriptor = json.loads(path.read_text(encoding="utf-8"))
+            except (OSError, UnicodeDecodeError, json.JSONDecodeError):
+                continue
+            if not isinstance(descriptor, Mapping):
+                continue
+            if descriptor.get("schema") != "caol-cockpit-live-session-v1":
+                continue
+            if descriptor.get("entry_mode") != "cockpit_live_session":
+                continue
+            if descriptor.get("bridge_binding_id") != self.binding_id:
+                continue
+            return descriptor
+        return None
+
+    def _session_descriptor(self, ready: str | Mapping[str, Any]) -> Mapping[str, Any]:
         """Accept exactly one bound live-session descriptor before public input."""
-        try:
-            envelope = json.loads(ready)
-        except json.JSONDecodeError as exc:
-            raise ValueError("malformed_cockpit_session_descriptor") from exc
+        if isinstance(ready, Mapping):
+            envelope = ready
+        else:
+            try:
+                envelope = json.loads(ready)
+            except (TypeError, json.JSONDecodeError) as exc:
+                raise ValueError("malformed_cockpit_session_descriptor") from exc
         descriptor = envelope.get("cockpit_live_session") if isinstance(envelope, Mapping) else None
         if not isinstance(descriptor, Mapping):
             raise ValueError("missing_cockpit_session_descriptor")
@@ -448,6 +607,26 @@ class FileBackedCockpitBridge:
         """Run only the declared zero-credit prefix before admitting public input."""
         prefix_index = 0
         while True:
+            assert self._child is not None and self._child.stdout is not None
+            # The child may have already persisted the exact bound descriptor
+            # while stdout still contains a partial startup record.  Prefer
+            # that durable handoff before calling blocking readline(); this
+            # keeps a buffered/pretty startup envelope from deadlocking the
+            # bridge before native input ownership is admitted.
+            durable = self._durable_session_descriptor()
+            if durable is not None:
+                return durable
+            # Avoid blocking forever in readline() when startup has already
+            # persisted its descriptor but macOS has not delivered the pipe
+            # edge.  Poll briefly, then recover from the exact bound artifact.
+            readable, _, _ = select.select([self._child.stdout], [], [], 0.25)
+            if not readable:
+                durable = self._durable_session_descriptor()
+                if durable is not None:
+                    return durable
+                if self._child.poll() is not None:
+                    raise ValueError("pre_descriptor_no_progress")
+                continue
             ready = self._read_complete_response()
             if not ready:
                 raise ValueError("pre_descriptor_no_progress")
@@ -556,18 +735,39 @@ class FileBackedCockpitBridge:
             })
             self._child.stdin.write(request_bytes.decode("utf-8"))
             self._child.stdin.flush()
-            response_line = self._read_complete_response()
-            if not response_line:
-                self._write_status("process_dead", failed_request_id=request_id,
-                                   child_exit_code=self._child.poll())
-                return False
-            response = json.loads(response_line)
+            memory_snapshot("file_bridge", "before_child_response_read",
+                            response_bytes=len(request_bytes))
+            # A durable-descriptor fallback can race the child's buffered
+            # startup progress/descriptor envelopes.  Drain those envelopes
+            # before associating stdout with the in-flight public request.
+            while True:
+                response_line = self._read_complete_response()
+                if not response_line:
+                    self._write_status("process_dead", failed_request_id=request_id,
+                                       child_exit_code=self._child.poll())
+                    return False
+                response, response_bytes = _decode_bridge_response(response_line)
+                memory_snapshot("file_bridge", "after_child_stdout_delivery",
+                                response_bytes=len(response_bytes))
+                if isinstance(response, Mapping) and self._consume_startup_progress(response):
+                    continue
+                if isinstance(response, Mapping) and "cockpit_live_session" in response:
+                    descriptor = self._session_descriptor(response)
+                    self._active_session_descriptor = dict(descriptor)
+                    continue
+                if isinstance(response, Mapping) and self._consume_initial_frame(response, response_bytes):
+                    continue
+                break
+            memory_snapshot("file_bridge", "after_response_decode",
+                            response_bytes=len(response_bytes))
             if isinstance(response, Mapping) and "cockpit_live_session" in response:
                 response = {"ok": False, "error": "duplicate_cockpit_session_descriptor",
                             "action_outcome": "unknown", "next_action": "game.observe"}
                 response_line = json.dumps(response)
 
-            self._persist_response(request_id, request_bytes, response_line.encode("utf-8"))
+            self._persist_response(request_id, request_bytes, response_bytes)
+            memory_snapshot("file_bridge", "after_response_persist",
+                            response_bytes=len(response_line.encode("utf-8")))
             self.active_request_path.unlink(missing_ok=True)
             terminal = response.get("result") if isinstance(response, Mapping) else None
             # Only a successful explicit player finish/quit can terminalize
@@ -586,6 +786,8 @@ class FileBackedCockpitBridge:
                     )
                     try:
                         if self.reentry_command:
+                            if "--post-relaunch-continuation" in self.reentry_command:
+                                self._freeze_saved_world_for_reentry()
                             self._retire_exited_game_wrapper_for_reentry()
                             self._start_child(self.reentry_command, append_stderr=True)
                         descriptor = self._await_session_descriptor(
@@ -631,6 +833,8 @@ class FileBackedCockpitBridge:
                                    child_pid=self._child.pid if self._child else 0,
                                    cleanup={"status": "deferred_to_scenario_terminalization"})
                 return True
+            del response, response_line
+            memory_released("file_bridge", "after_response_reference_release")
         except (BrokenPipeError, OSError):
             self.active_request_path.unlink(missing_ok=True)
             exit_code = self._child.poll() if self._child is not None else None
@@ -839,7 +1043,8 @@ class FileBackedCockpitBridge:
             request_path = session_dir / "requests" / (
                 request_id + ".duplicate-" + str(time.time_ns()) + ".json"
             )
-        envelope = {"request_id": request_id, "binding_id": binding_id, "request": dict(request)}
+        envelope = {"request_id": request_id, "binding_id": binding_id,
+                    "request": _json_request_shape(request)}
         _atomic_json(request_path, envelope)
         return {"ok": True, "request_id": request_id}
 
@@ -1248,18 +1453,31 @@ class FreshObservationSequence:
             return ""
         artifact = self.session_dir / str(response["receipt"]["response_artifact"])
         result = json.loads(artifact.read_text(encoding="utf-8"))
+        # ``game.observe`` returns its observation under ``result`` while a
+        # successful ``game.act`` returns the successor under ``observation``.
+        # Keep one handoff path so the next advertised action always receives
+        # the newest nonempty authoritative frame id; never retain an empty
+        # id or fall back to the consumed frame.
+        observation = result.get("observation")
         observation_id = str(result.get("result", {}).get("observation_id", "")).strip()
+        if not observation_id and isinstance(observation, Mapping):
+            observation_id = str(observation.get("observation_id", "")).strip()
         if not observation_id:
             raise ValueError("fresh_observation_id_is_required")
         self._latest_observation_id = observation_id
         return observation_id
 
-    def act(self, action_id: str) -> str:
+    def act(self, action_id: str, stable_id: str | None = None) -> str:
         observation_id = self._latest_observation_id
         if not observation_id or observation_id in self._consumed_observation_ids:
             raise ValueError("fresh_unconsumed_observation_is_required")
+        request: dict[str, Any] = {
+            "action": "game.act", "observation_id": observation_id, "action_id": action_id,
+        }
+        if stable_id is not None:
+            request["stable_id"] = stable_id
         request_id = self._submit(
-            "act", {"action": "game.act", "observation_id": observation_id, "action_id": action_id},
+            "act", request,
         )
         self._consumed_observation_ids.add(observation_id)
         return request_id

@@ -1,4 +1,5 @@
 {
+  "manifest_version": 1,
   "name": "writhing_stalker.live_hit_fade_retreat_mcw",
   "description": "Live hit-fade-retreat row: vulnerable midnight scene records a bounded strike burst followed by withdraw/cooling-off retreat with about 8+ tile retreat intent visible in current-build live-plan logs.",
   "profile": "dev-harness",
@@ -8,6 +9,52 @@
   "fixture": "mcwilliams_live_debug_hit_fade_retreat_stalker_2026-05-02",
   "fixture_profile": "live-debug",
   "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_stalker.native_attack_retreat": "native_attack_attempt_then_retained_retreat_state"
+  },
+  "runtime_contract": {
+    "permitted_input": [
+      "cockpit:game.act",
+      "cockpit:game.wait",
+      "cockpit:run.quit",
+      "cockpit:run.witness",
+      "cockpit:run.finish"
+    ],
+    "forbidden_input": [
+      "debug:inject_attack",
+      "debug:inject_target_knowledge",
+      "debug:inject_retreat",
+      "direct-state-mutation",
+      "raw-save-rewrite-after-install",
+      "guessed-key"
+    ],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "mcwilliams_live_debug_hit_fade_retreat_stalker_2026-05-02",
+    "requirements": {
+      "os": "macos",
+      "source": "current-worktree",
+      "executable": "cataclysm-tiles",
+      "profile": "dev-harness",
+      "fixture": "mcwilliams_live_debug_hit_fade_retreat_stalker_2026-05-02",
+      "helper": "native file bridge",
+      "peekaboo": false,
+      "ocr": false,
+      "input": ["advertised native cockpit actions"],
+      "cleanup": true
+    },
+    "grants_gameplay_proof": true
+  },
+  "source_binding": {
+    "fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/mcwilliams_live_debug_hit_fade_retreat_stalker_2026-05-02/manifest.json",
+    "native_source": "src/monmove.cpp",
+    "native_executable": "cataclysm-tiles"
+  },
   "artifact_source": "debug.log",
   "artifact_patterns": [
     "writhing_stalker live_plan:",
@@ -46,8 +93,8 @@
         {
           "typeid": "mon_writhing_stalker",
           "offset_ms": [
+            4,
             0,
-            8,
             0
           ]
         }
@@ -55,7 +102,7 @@
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_writhing_stalker_active_monster_setup_missing",
       "abort_reason": "saved active_monsters metadata did not contain required live hit-fade scenario footing",
-      "expected_visible_fact": "one hostile stalker starts eight tiles south on a clean lane with cover-route opportunity before current-build live turns advance"
+      "expected_visible_fact": "one hostile stalker starts four tiles east on a passable lane with cover-route opportunity before current-build live turns advance"
     },
     {
       "kind": "press",
@@ -67,6 +114,35 @@
       "settle_seconds": 0.4,
       "capture_after": true,
       "expected_visible_fact": "safe mode is toggled off so the bounded live turn window is not consumed by warnings"
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_native_stalker_attack_retreat_window",
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "objective": "Use only the current native World owner and advertised wait/movement actions. Preserve the actual stalker attack-resolution attempt, its changing position and game time, and the retained retreat phase/waypoint; keep planner text separate from the causal attack evidence.",
+      "proof_targets": [
+        "native attack-resolution receipt or exact native attack-attempt evidence",
+        "before/after stalker and player positions with game-time delta",
+        "persisted attempts_spent, lifecycle phase, and retreat waypoint",
+        "matched daylight pressure and darkness controls, loss-of-sight behavior, and save/reload continuity when advertised",
+        "source, executable, actor, receipt, witness, and cleanup binding"
+      ],
+      "authority": [
+        "advertised native actions and worker-chosen bounded waits",
+        "run.quit",
+        "run.witness",
+        "run.finish"
+      ],
+      "invariants": [
+        "fixture setup is zero-credit",
+        "planner decisions do not count as attack attempts",
+        "no direct state mutation, target injection, or hidden-coordinate use",
+        "preserve the first native divergence and unaffected observations"
+      ],
+      "live_operations": ["game.act", "game.wait", "game.raw_wait", "game.move_relative", "game.raw_move_relative"],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
     },
     {
       "kind": "advance_turns",
@@ -133,12 +209,92 @@
       "abort_verdict": "blocked_audit_writhing_stalker_hit_fade_retreat_live_plan_missing",
       "abort_reason": "same-run artifact lacked the current-build strike/burst/cooling-off retreat-distance live-plan sequence",
       "expected_visible_fact": "same-run debug artifact proves two-strike burst accounting and about-eight-tile withdraw/retreat intent after the burst limit"
+    },
+    {
+      "kind": "semantic_terminal_action_chain",
+      "label": "confirm_native_process_replacement_after_stalker_save",
+      "objective": "Use the advertised native save-and-quit path, then the native Main-menu Quit action and its confirmation, to make the saved stalker state the replacement-process boundary.",
+      "observation_timeout_seconds": 30.0,
+      "observation_interval_seconds": 0.1,
+      "required_action_chain": ["world.save_quit", "prompt.yes", "main_menu.quit", "prompt.yes"],
+      "expected_visible_fact": "the native saved world reaches Main menu and the native Quit confirmation terminates the original process before replacement"
     }
   ],
+  "post_relaunch": {
+    "terminal_save_step_label": "confirm_native_process_replacement_after_stalker_save",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "native_semantic_bootstrap",
+        "label": "bind_relaunched_stalker_world",
+        "native_semantic_checkpoint": {
+          "required_actions": ["world.wait"],
+          "required_state": "world",
+          "require_initial_hud_world_ready_frame": false
+        }
+      },
+      {
+        "kind": "audit_saved_active_monsters",
+        "label": "audit_relaunched_persisted_writhing_stalker_state",
+        "required_monsters": [
+          {
+            "typeid": "mon_writhing_stalker",
+            "writhing_stalker_state": {
+              "phase": 1,
+              "evidence_target": 1,
+              "evidence_turn": 5270458,
+              "has_last_observed_position": true,
+              "last_observed_position": [3369, 994, 0],
+              "has_committed_waypoint": true,
+              "committed_waypoint": [3369, 994, 0],
+              "has_retreat_waypoint": false,
+              "retreat_waypoint": [0, 0, 0],
+              "attempts_spent": 0,
+              "attempt_sequence": 0,
+              "phase_entered_turn": 5270406,
+              "cooldown_until_turn": -1,
+              "last_progress_turn": -1,
+              "last_advanced_turn": 5270458,
+              "remaining_route_progress": -1,
+              "search_until_turn": -1
+            }
+          }
+        ],
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_relaunched_persisted_writhing_stalker_state_missing",
+        "abort_reason": "the replacement process did not expose the exact native stalker lifecycle state serialized at the save boundary",
+        "expected_visible_fact": "replacement-generation saved active_monsters metadata contains the same typed stalker lifecycle state observed at the fresh save boundary"
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "observe_relaunched_persisted_writhing_stalker",
+        "cleanup_on_finish": true,
+        "stop_after_live_session": true,
+        "objective": "Observe the replacement native world after the typed saved-state audit, without advancing gameplay or recreating the fixture.",
+        "proof_targets": ["replacement process generation", "typed saved active-monster audit", "exact cleanup"],
+        "authority": ["advertised native observations", "run.witness", "run.finish"],
+        "invariants": ["fixture is not reinstalled", "no gameplay input", "saved metadata is not replaced by planner text"],
+        "live_operations": [],
+        "transition_timeout_seconds": 15.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_hit_fade_retreat_mcw",
   "evidence_contract": {
     "claim": "current-build writhing stalker uses its live monster::plan seam for bounded hit-fade rhythm: at least two close strikes in a vulnerable dark scene, burst counter reaches its limit, then cooldown/retreat intent targets about eight tiles instead of A/B hovering or endless melee spam",
     "load_only_verdict": "load proof only / inconclusive for writhing-stalker hit-fade retreat behavior",
-    "writeback_note": "No save/writeback gate: this row proves bounded current-run live-plan behavior from logs plus saved start-state footing; persistent map mutation is not part of the product claim."
+    "writeback_note": "The live-plan claim remains current-run native behavior. Separately, the declared native save/Main-menu Quit boundary and replacement-generation audit must prove the exact typed stalker lifecycle state was serialized and reloaded; fixture installation is not persistence evidence."
+  },
+  "proof_route": {
+    "precondition": [
+      "post_load_hit_fade_retreat_settle",
+      "audit_saved_midnight_before_hit_fade_retreat",
+      "audit_saved_writhing_stalker_before_hit_fade_retreat"
+    ],
+    "production_behavior": ["advance_hit_fade_retreat_window"],
+    "terminal_persistence": ["confirm_native_process_replacement_after_stalker_save", "audit_relaunched_persisted_writhing_stalker_state"],
+    "artifact_verdict": ["audit_writhing_stalker_hit_fade_retreat_live_plan", "audit_relaunched_persisted_writhing_stalker_state"],
+    "disallowed_shortcuts": ["toggle_safe_mode_off_before_hit_fade_retreat"]
   }
 }

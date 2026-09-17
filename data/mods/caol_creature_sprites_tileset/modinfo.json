@@ -1,0 +1,11 @@
+[
+  {
+    "type": "MOD_INFO",
+    "id": "caol_creature_sprites_tileset",
+    "name": "C-AOL Creature Sprites",
+    "authors": [ "C-AOL contributors" ],
+    "description": "UltimateCataclysm sprite overrides for the writhing stalker and zombie rider.",
+    "category": "graphical",
+    "dependencies": [ "dda" ]
+  }
+]

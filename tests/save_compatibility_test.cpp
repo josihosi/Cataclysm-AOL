@@ -59,6 +59,9 @@ overmap_global_state populated_global_state()
     rider_memory.turns_remaining = 40;
     rider_memory.max_riders_drawn = 2;
     rider_memory.decay_turn_remainder = 17;
+    rider_memory.observed_at_turn = 81;
+    rider_memory.expires_at_turn = 121;
+    rider_memory.sample_id = "save-light-sample#81";
     rider_memory.reason = "save compatibility test";
     state.zombie_rider_light_memory.emplace( tripoint_abs_omt( 4, 5, 0 ), rider_memory );
     state.zombie_rider_light_memory_last_turn = calendar::turn_zero + 123_turns;
@@ -225,6 +228,9 @@ TEST_CASE( "overmap_global_save_fields_coexist_across_a_round_trip",
     CHECK( rider->second.turns_remaining == 40 );
     CHECK( rider->second.max_riders_drawn == 2 );
     CHECK( rider->second.decay_turn_remainder == 17 );
+    CHECK( rider->second.observed_at_turn == 81 );
+    CHECK( rider->second.expires_at_turn == 121 );
+    CHECK( rider->second.sample_id == "save-light-sample#81" );
     CHECK( rider->second.reason == "save compatibility test" );
     CHECK( loaded.zombie_rider_light_memory_last_turn == calendar::turn_zero + 123_turns );
 

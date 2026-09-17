@@ -1,0 +1,14 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-PLAYTEST-integrated-free-play-001",
+  "outcome": "R-ZL-PLAYTEST integrated free play, separate ordinary tactical-rider account: assess player-legible rider approach, chosen counterplay, recovery, and intermittence without crediting the artificial setup.",
+  "scenario": "r_zl_freeplay_city042_tactical_rider_mcw",
+  "query": {
+    "requirements": [
+      {"key":"capabilities.r_zl_playtest.integrated_account","op":"eq","value":"ordinary_tactical_rider","minimum_evidence":"declared"},
+      {"key":"capabilities.r_zl_playtest.account_generation","op":"eq","value":"separate_ordinary_tactical_rider_account","minimum_evidence":"declared"}
+    ],
+    "preferences": [{"key":"runtime.entry_mode","op":"eq","value":"cockpit_live_session","minimum_evidence":"declared"}]
+  },
+  "charter": "tools/openclaw_harness/charters/r-zl-playtest-city042-tactical-rider-001.json"
+}

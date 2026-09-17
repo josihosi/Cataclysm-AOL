@@ -203,6 +203,23 @@ def _validate_proof_route(value: Any, manifest: Mapping[str, Any], *, path: Path
         unknown = [label for label in references if label not in labels]
         if unknown:
             raise _error(path, f"proof_route.{role} references unknown step label(s): {', '.join(unknown)}")
+    # Rider light-memory continuity is a save/reload claim, not a single-run
+    # observation.  Make the replacement phase part of static authority so a
+    # missing post-relaunch contract cannot be ingested as complete.
+    if any("rider_memory" in str(key) for key in (manifest.get("capabilities") or {})):
+        post_relaunch = manifest.get("post_relaunch")
+        if not isinstance(post_relaunch, dict):
+            raise _error(path, "rider_memory continuity requires a post_relaunch contract")
+        terminal_label = str(post_relaunch.get("terminal_save_step_label", "") or "").strip()
+        if not terminal_label or terminal_label not in labels:
+            raise _error(path, "rider_memory post_relaunch must bind terminal_save_step_label")
+        post_steps = post_relaunch.get("steps")
+        if not isinstance(post_steps, list) or not post_steps:
+            raise _error(path, "rider_memory post_relaunch.steps must be non-empty")
+        post_kinds = {str(step.get("kind", "")).strip() for step in post_steps if isinstance(step, dict)}
+        if "native_semantic_bootstrap" not in post_kinds or \
+                "audit_native_zombie_rider_light_memory" not in post_kinds:
+            raise _error(path, "rider_memory post_relaunch must bind replacement bootstrap and first observation")
     capability_gates = value.get("capability_gates")
     if capability_gates is None:
         return
@@ -360,6 +377,18 @@ def _validate_checkpoint_chain_fields(manifest: Mapping[str, Any], *, path: Path
             "r018.raw_wait_acceptance_mcw", "r019.keep_watch_acceptance_mcw",
             "r019.primitive_safe_popup_comparison_mcw",
             "r026.living_npc_package_v001_mcw",
+            "writhing_stalker.live_hit_fade_retreat_mcw",
+            "writhing_stalker.live_campfire_counterplay_mcw",
+            "writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw",
+            "writhing_stalker.live_wounded_predator_mcw",
+            "writhing_stalker.live_zombie_distraction_mcw",
+            "writhing_stalker.live_no_omniscient_beeline_mcw",
+            "writhing_stalker.live_daylight_modest_zombie_pressure_mcw",
+            "writhing_stalker.live_daylight_heavy_zombie_pressure_mcw",
+            "horde.predator_lifecycle_abstract_to_physical_mcw",
+            "zombie_rider.live_native_hunt_continuity_mcw",
+            "zombie_rider.live_native_band_continuity_mcw",
+            "zombie_rider.live_native_band_sight_pressure_mcw",
             "cannibal.night_raid_natural_transition_validation_mcw",
             "cannibal.r029_natural_route_roof_mcw",
             "cannibal.r029_ground_positive_route_mcw",
@@ -455,6 +484,18 @@ def _validate_versioned_fields(manifest: Mapping[str, Any], *, path: Path) -> No
             "r018.raw_wait_acceptance_mcw", "r019.keep_watch_acceptance_mcw",
             "r019.primitive_safe_popup_comparison_mcw",
             "r026.living_npc_package_v001_mcw",
+            "writhing_stalker.live_hit_fade_retreat_mcw",
+            "writhing_stalker.live_campfire_counterplay_mcw",
+            "writhing_stalker.live_high_threat_allied_light_retreat_stalk_mcw",
+            "writhing_stalker.live_wounded_predator_mcw",
+            "writhing_stalker.live_zombie_distraction_mcw",
+            "writhing_stalker.live_no_omniscient_beeline_mcw",
+            "writhing_stalker.live_daylight_modest_zombie_pressure_mcw",
+            "writhing_stalker.live_daylight_heavy_zombie_pressure_mcw",
+            "horde.predator_lifecycle_abstract_to_physical_mcw",
+            "zombie_rider.live_native_hunt_continuity_mcw",
+            "zombie_rider.live_native_band_continuity_mcw",
+            "zombie_rider.live_native_band_sight_pressure_mcw",
             "cannibal.night_raid_natural_transition_validation_mcw",
             "r031.ambient_neutral_npc_authority_v002_mcw",
             "r037.npc_llm_command_coverage_v001_mcw",

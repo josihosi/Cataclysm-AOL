@@ -1,0 +1,41 @@
+{
+  "manifest_version": 1,
+  "name": "zombie_rider.live_native_multi_recovery_controls_mcw",
+  "description": "Native multi-rider impact control with identified empty-bow and stocked-bow riders, a standing susceptible player, clear legal recovery lanes and no injected attack/effect state.",
+  "profile": "rider-impact-multirider-closure-001",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_zombie_rider_impact_multi_recovery_controls_2026-09-12",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_rider.native_multi_recovery_controls": "identified_empty_and_stocked_bow_riders_native_downing_recovery_action"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_attack", "debug:inject_target_knowledge", "debug:inject_player_effect", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "rider-impact-multirider-closure-001",
+    "fixture": "mcwilliams_live_debug_zombie_rider_impact_multi_recovery_controls_2026-09-12",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"rider-impact-multirider-closure-001","fixture":"mcwilliams_live_debug_zombie_rider_impact_multi_recovery_controls_2026-09-12","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "grants_gameplay_proof": false
+  },
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["zombie_rider impact_", "zombie rider"],
+  "steps": [
+    {"kind":"wait","label":"native_multi_recovery_fixture_settle","seconds":1.0,"capture_after":true,"expected_visible_fact":"two identified hostile riders and a standing full-health player load to the native World"},
+    {"kind":"audit_saved_game_turn","label":"audit_saved_multi_recovery_time","required_time_of_day_seconds":43200,"required_time_tolerance_seconds":60,"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_multi_recovery_time_setup_missing","abort_reason":"installed save did not prove expected noon footing"},
+    {"kind":"audit_saved_map_tile_near_player","label":"audit_saved_multi_recovery_escape_lanes","offsets":[[1,0,0],[2,0,0],[3,0,0],[4,0,0],[5,0,0],[0,1,0],[0,2,0],[0,3,0],[0,4,0],[0,5,0],[-1,0,0],[-2,0,0],[0,-1,0],[0,-2,0]],"required_terrain":["t_floor"],"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_multi_recovery_escape_lanes_missing","abort_reason":"the native fixture lacks the terrain required for a real recovery/separation action"},
+    {"kind":"audit_saved_active_monsters","label":"audit_saved_identified_empty_and_stocked_rider_footing","required_monsters":[{"typeid":"mon_zombie_rider","offset_ms":[3,0,0],"friendly":0,"hallucination":false,"dead":false,"faction":"zombie","aggro_character":true,"values":{"caol_fixture_actor_id":{"str":"rider-empty-east"}},"ammo_exact":{"zombie_rider_tainted_bone_arrow":0}},{"typeid":"mon_zombie_rider","offset_ms":[0,3,0],"friendly":0,"hallucination":false,"dead":false,"faction":"zombie","aggro_character":true,"values":{"caol_fixture_actor_id":{"str":"rider-stocked-south"}},"ammo_exact":{"zombie_rider_tainted_bone_arrow":18}}],"abort_on_metadata_failure":true,"abort_verdict":"blocked_native_multi_recovery_rider_footing_missing","abort_reason":"saved active_monsters did not prove the identified empty-bow and stocked-bow hostile riders"},
+    {"kind":"cockpit_live_session","label":"operate_native_multi_rider_recovery_controls","cleanup_on_finish":false,"stop_after_live_session":true,"objective":"Use only advertised World actions. Establish each rider's native position/identity and arrow premise, then allow actual contact/closing. When a named impact downs the initially standing susceptible player, use the first advertised legal action opportunity to recover or separate along the audited open terrain. Preserve contact/path/HP/effect/timestamp evidence for the empty-bow rider and stocked-bow rider, and check the named impact's same-invocation messages for no ordinary bite or second strike. A setup label, injected effect, stationary adjacency or mere elapsed time earns no gameplay credit.","proof_targets":["identified exact empty/stocked bow setup audit","native physical close/contact","named impact plus HP/effect result","downed player native advertised action and accepted recovery/separation","bounded multi-rider recovery with subsequent legal actions","no same-invocation ordinary bite or second strike","source/executable/process/run binding"],"authority":["advertised native actions","run.witness","run.finish"],"invariants":["fixture setup is zero-credit","no debug attack or player-effect injection","no stationary adjacency credited as closing","no bite-only contact credited as impact","an empty-bow actor must remain empty in native observation","the post-downing player action must be advertised and accepted","no same-turn extra strike after a named impact"],"live_operations":["game.act","game.wait","game.move_relative"],"transition_timeout_seconds":15.0,"observe_interval_seconds":0.1}
+  ],
+  "recommended_test_command":"python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_native_multi_recovery_controls_mcw",
+  "evidence_contract":{"claim":"identified empty-bow and stocked-bow riders independently pressure a player through native contact impact without multi-rider lock; after native downing, an advertised player action is accepted on real terrain","load_only_verdict":"load proof only / inconclusive","writeback_note":"fixture setup earns no behavior credit; native contact, message, HP/effect and player-action receipts are required"},
+  "proof_route":{"precondition":["native_multi_recovery_fixture_settle","audit_saved_multi_recovery_time","audit_saved_identified_empty_and_stocked_rider_footing"],"production_behavior":["operate_native_multi_rider_recovery_controls"],"terminal_persistence":["operate_native_multi_rider_recovery_controls"],"artifact_verdict":["operate_native_multi_rider_recovery_controls"],"disallowed_shortcuts":["operate_native_multi_rider_recovery_controls"]}
+}

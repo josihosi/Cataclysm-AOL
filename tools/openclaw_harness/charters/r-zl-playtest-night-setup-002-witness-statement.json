@@ -1,0 +1,91 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "proved",
+  "smallest_supported_claim": "The isolated, zero-credit night-setup run used the bound native clock and smartphone menus, then completed the native Save and Quit confirmation, reached the main menu, and completed the native application-quit confirmation. The resulting profile is a durable disposable nighttime setup copy; no ordinary gameplay credit is claimed.",
+  "causal_account": "The advertised numeric prompt submission was accepted, the clock selector returned to World through its native cancellation route, and the carried smartphone was selected and its advertised menu command accepted. Before evidence sealing, the World owner advertised and accepted Save and Quit; its YES confirmation reached Main menu. Main-menu Quit and its YES confirmation then produced exit code 0. Read-only filesystem inspection after the save showed the world save, character save, map, and last-world files updated at the native quit time. This establishes a saved setup boundary, while the charter limits it to zero credit.",
+  "citations": [
+    {
+      "citation_id": "J0001",
+      "meaning": "identifies the isolated night-setup scenario and bound source/executable identities",
+      "checks": {
+        "scenario_id": "r_zl_freeplay_city042_night_setup_mcw",
+        "source_identity": "50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280",
+        "executable_identity": "e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"
+      }
+    },
+    {
+      "citation_id": "J0015",
+      "meaning": "the advertised numeric prompt submission was accepted natively",
+      "checks": {
+        "action_id": "prompt.submit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0021",
+      "meaning": "the carried smartphone was selected through the native inventory owner",
+      "checks": {
+        "action_id": "inventory.select",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0026",
+      "meaning": "the advertised smartphone menu command was accepted natively",
+      "checks": {
+        "action_id": "menu.choose",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0029",
+      "meaning": "the native World Save and Quit command was accepted before the journal was sealed",
+      "checks": {
+        "action_id": "world.save_quit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0031",
+      "meaning": "the native Save and Quit YES confirmation was accepted",
+      "checks": {
+        "action_id": "prompt.choose",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0033",
+      "meaning": "the native main-menu Quit command was accepted",
+      "checks": {
+        "action_id": "main_menu.quit",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0035",
+      "meaning": "the native application-quit confirmation was accepted",
+      "checks": {
+        "action_id": "prompt.choose",
+        "native_receipt.accepted": true
+      }
+    },
+    {
+      "citation_id": "J0036",
+      "meaning": "the sealed run released unused authority and requested scenario terminalization",
+      "checks": {
+        "unused_authority": "released"
+      }
+    }
+  ],
+  "material_deviations": [
+    "The preparation uses debug clock adjustment and a smartphone flashlight menu only under the dedicated zero-credit setup charter.",
+    "A prior setup witness remains intentionally inconclusive and is not superseded as a gameplay claim."
+  ],
+  "contradictions": [],
+  "remaining_unknowns": [
+    "The distinct ordinary-night account has not yet been selected or launched.",
+    "No gameplay, lit-base, or late-rider conclusion follows from this setup run."
+  ],
+  "recommended_disposition": "continue",
+  "evidence_ceiling": "zero-credit"
+}

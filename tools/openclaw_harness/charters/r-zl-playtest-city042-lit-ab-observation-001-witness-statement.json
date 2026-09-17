@@ -1,0 +1,29 @@
+{
+  "schema":"caol-playtest-witness-statement-v1",
+  "verdict":"proved",
+  "smallest_supported_claim":"In this separate ordinary account and only within the explicitly artificial local A/B fixture, the player's native smartphone choice turned the flashlight on and made the harness advertise its setup-bound writhing-stalker action; the later native choice turned it off and the next World observation did not advertise that action.  This is a bounded player-legible visibility contrast, not a claim about natural-city behavior, hostile attention, movement, or causation.",
+  "causal_account":"The account was fresh and source/executable-bound to the labeled artificial fixture.  It used no debug action: the player selected the currently advertised smartphone inventory owner, chose its advertised Turn on flashlight option, then independently selected the active smartphone and chose its advertised Turn off flashlight option.  The on World observation records the Lit Up effect and the setup-bound debug-kill-creature action; the off World observation records no named effect and omits that action.  No movement, wait, contact, or attack was used to promote this display contrast into a hostile-behavior conclusion.  Native Save and Quit, confirmation, main-menu Quit, and confirmation completed before process exit 0.",
+  "citations":[
+    {"citation_id":"J0001","meaning":"identifies the separate source-bound ordinary A/B observation account","checks":{"scenario_id":"r_zl_freeplay_city042_lit_ab_observation_mcw","source_identity":"50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280","executable_identity":"e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"}},
+    {"citation_id":"J0010","meaning":"shows the player-visible smartphone menu advertising Turn on flashlight","checks":{"value.surface.kind":"menu"}},
+    {"citation_id":"J0012","meaning":"records acceptance of the native Turn on flashlight menu choice","checks":{"action_id":"menu.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0013","meaning":"records the resulting World observation with Lit Up and the setup-bound debug-kill-creature action advertised"},
+    {"citation_id":"J0021","meaning":"shows the player-visible active-smartphone menu advertising Turn off flashlight","checks":{"value.surface.kind":"menu"}},
+    {"citation_id":"J0023","meaning":"records acceptance of the native Turn off flashlight menu choice","checks":{"action_id":"menu.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0025","meaning":"records the subsequent World observation without the prior debug-kill-creature action"},
+    {"citation_id":"J0027","meaning":"records acceptance of native World Save and Quit","checks":{"action_id":"world.save_quit","native_receipt.accepted":true}},
+    {"citation_id":"J0030","meaning":"records acceptance of native save confirmation","checks":{"action_id":"prompt.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0032","meaning":"records acceptance of native main-menu Quit","checks":{"action_id":"main_menu.quit","native_receipt.accepted":true}},
+    {"citation_id":"J0035","meaning":"records acceptance of native application-quit confirmation","checks":{"action_id":"prompt.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0034","meaning":"records process exit 0 after the native quit sequence","checks":{"value.surface.kind":"process_exited","value.surface.facts.exit_code":0}},
+    {"citation_id":"J0036","meaning":"records the sealed evidence boundary and released unused authority","checks":{"unused_authority":"released"}}
+  ],
+  "material_deviations":[],
+  "contradictions":[],
+  "remaining_unknowns":[
+    "Whether the controlled display contrast corresponds to any natural-city hostile attention, approach, or attack behavior.",
+    "Whether a non-artificial ordinary footing would expose the same player-legible contrast."
+  ],
+  "recommended_disposition":"continue",
+  "evidence_ceiling":"focused"
+}

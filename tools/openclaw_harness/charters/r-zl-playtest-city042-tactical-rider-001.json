@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-PLAYTEST integrated free play, separate ordinary tactical-rider account: assess player-legible rider approach, chosen counterplay, recovery, and intermittence without crediting the artificial setup.",
+  "material_proof": "A current source/executable-bound fresh account; player-visible native light, movement, pause, cover, retreat, or recovery choices; rider consequences or a bounded absence; native save/quit lifecycle; and exact owned-process cleanup.",
+  "current_uncertainty": "Whether the saved artificial candidate actually yields a player-legible rider, and if it does whether ordinary player choices demonstrate a threatening but recoverable and nonconstant encounter.",
+  "material_contradiction": ["reusing zero-credit setup as ordinary play", "manufacturing rider attention or contact", "injected knowledge, actor, or route", "scripted player decisions", "planner text without native receipts", "missing source/process binding", "unclean owned process"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["debug setup after account launch", "direct save mutation", "synthetic observer/contact/knowledge", "crediting the rider selection as ordinary gameplay"],
+  "honest_stop_conditions": ["a bounded ordinary rider route with lifecycle evidence is preserved", "the player-visible route does not support an approach/counterplay/recovery/intermittence conclusion and that limit is recorded", "the first concrete native divergence is recorded and cleaned up"],
+  "requested_evidence_ceiling": "focused"
+}

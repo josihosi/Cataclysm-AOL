@@ -1,0 +1,8 @@
+{
+  "schema":"caol-coordinator-brief-v1",
+  "task_id":"R-ZL-PLAYTEST-integrated-free-play-001",
+  "outcome":"R-ZL separate ordinary account: observe a player-selected flashlight on/off contrast inside the explicitly artificial local A/B fixture, without natural-city credit.",
+  "scenario":"r_zl_freeplay_city042_lit_ab_observation_mcw",
+  "query":{"requirements":[{"key":"capabilities.r_zl_playtest.integrated_account","op":"eq","value":"ordinary_lit_ab_observation","minimum_evidence":"declared"},{"key":"capabilities.r_zl_playtest.account_generation","op":"eq","value":"separate_ordinary_artificial_lit_ab_observation","minimum_evidence":"declared"}],"preferences":[{"key":"runtime.entry_mode","op":"eq","value":"cockpit_live_session","minimum_evidence":"declared"}]},
+  "charter":"tools/openclaw_harness/charters/r-zl-playtest-city042-lit-ab-observation-001.json"
+}

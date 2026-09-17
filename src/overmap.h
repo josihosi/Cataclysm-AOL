@@ -541,6 +541,9 @@ class overmap
         // Spawn monsters from a mongroup on a specified submap.
         void spawn_mongroup( const tripoint_om_sm &p, const mongroup_id &type, int count );
         horde_entity *entity_at( const tripoint_om_ms &p );
+        // Snapshot handles for global, cross-overmap encounter policy.  The
+        // horde container continues to own each entity and its position.
+        std::vector<std::pair<tripoint_abs_ms, horde_entity *>> horde_entities();
         std::vector<std::unordered_map<tripoint_abs_ms, horde_entity>*> hordes_at(
             const tripoint_om_omt &p, int filter );
 
@@ -762,6 +765,11 @@ class overmap
         const city &get_invalid_city() const;
 
         void signal_hordes( const tripoint_abs_ms &p, int sig_power );
+        int attract_hordes_to_light( const tripoint_abs_ms &source, int intensity,
+                                     int observer_radius_sm, const std::string &sample_id,
+                                     const time_point &observed, const std::function<bool(
+                                                 const tripoint_abs_ms &)> &visible,
+                                     int *candidate_count = nullptr );
         void alert_entity( const tripoint_om_ms &location, const tripoint_abs_ms &destination,
                            int intensity );
         void process_mongroups();

@@ -1,0 +1,40 @@
+{
+  "manifest_version": 1,
+  "name": "writhing_stalker.live_light_continuity_mcw",
+  "description": "Native light-continuity spoke: a night lamp is visible to a saved stalker while the player uses only advertised movement/wait owners, allowing same-run light sample, expiry and waypoint evidence.",
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_light_continuity.stalker_memory": "physical_light_sample_persists_and_expires_from_native_turns"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_target_knowledge", "debug:inject_light_memory", "debug:inject_attack", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "r033_bandit_light_continuity_stalker_v1",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "r033_bandit_light_continuity_stalker_v1", "helper": "native file bridge", "peekaboo": false, "ocr": false, "input": ["advertised native cockpit actions"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "r033_bandit_light_continuity_stalker_v1",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["writhing_stalker light_interest:", "source=light", "light_sample_id=", "light_expires_turn=", "committed_waypoint="],
+  "steps": [
+    {"kind": "wait", "label": "post_load_light_continuity_settle", "seconds": 1.0, "capture_after": true, "expected_visible_fact": "night lamp and one hostile stalker load in the disposable current-source world"},
+    {"kind": "audit_saved_game_turn", "label": "audit_saved_night_before_light_continuity", "required_time_of_day_seconds": 5266800, "required_time_tolerance_seconds": 60, "abort_on_metadata_failure": true, "abort_verdict": "blocked_light_continuity_night_setup_missing", "abort_reason": "saved turn does not prove the physical lamp is active at night", "expected_visible_fact": "saved turn proves night footing"},
+    {"kind": "audit_saved_active_monsters", "label": "audit_saved_stalker_before_light_continuity", "required_monsters": [{"typeid": "mon_writhing_stalker", "offset_ms": [9, 0, 0], "friendly": 0, "dead": false, "aggro_character": false, "writhing_stalker_state": {"evidence_target": 0, "evidence_turn": -1, "has_last_observed_position": false, "has_light_observed_position": false, "light_observed_turn": -1, "light_expires_turn": -1, "light_sample_id": "", "has_committed_waypoint": false}}], "abort_on_metadata_failure": true, "abort_verdict": "blocked_light_continuity_stalker_setup_missing", "abort_reason": "saved active_monsters metadata lacks the required isolated stalker state", "expected_visible_fact": "one hostile same-roof stalker starts adjacent to the lamp, behind an opaque player-LOS break, with no retained direct or light memory"},
+    {"kind": "cockpit_live_session", "label": "operate_native_light_continuity_window", "cleanup_on_finish": true, "stop_after_live_session": true, "objective": "Use only advertised native movement and wait actions; perform explicit pre/post native audits of direct-target absence, light sample/source/observed/expires/waypoint fields, then stop refreshing the lamp and inspect the owner after the declared expiry.", "proof_targets": ["pre/post native direct-target absence", "same-run light sample id/source/observed turn/expiry turn/waypoint", "post-expiry light-memory and waypoint clear or contract-defined stop", "before/after game turns and positions", "source, receipt, witness and cleanup binding"], "authority": ["advertised native actions", "run.witness", "run.finish"], "invariants": ["fixture setup is zero-credit", "no player identity, direct target, scent or noise knowledge explains the waypoint", "no debug or save mutation"], "live_operations": ["game.act", "game.wait", "game.raw_wait", "game.move_relative"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_light_continuity_mcw",
+  "proof_route": {"precondition": ["post_load_light_continuity_settle", "audit_saved_night_before_light_continuity", "audit_saved_stalker_before_light_continuity"], "production_behavior": ["operate_native_light_continuity_window"], "terminal_persistence": ["operate_native_light_continuity_window"], "artifact_verdict": ["operate_native_light_continuity_window"], "disallowed_shortcuts": ["post_load_light_continuity_settle"]},
+  "evidence_contract": {"claim": "a physically visible lamp produces stalker light memory that persists across native turns, commits a waypoint and expires at its bounded turn", "load_only_verdict": "load proof only / inconclusive for stalker light continuity", "writeback_note": "No save/writeback gate: the claim is same-run native continuity and bounded expiry."}
+}

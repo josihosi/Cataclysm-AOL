@@ -154,6 +154,9 @@ void append_openclaw_harness_semantic_llm_event( const std::string &message )
         stream << "{\"schema\":\"openclaw-harness-llm-event-v1\",\"event\":"
                << openclaw_harness_json_quote( action_status ? "llm_action_status" : "llm_intent_event" )
                << ",\"run_id\":" << openclaw_harness_json_quote( run_id )
+               << ",\"wall_time_ms\":"
+               << std::chrono::duration_cast<std::chrono::milliseconds>(
+                      std::chrono::system_clock::now().time_since_epoch() ).count()
                << ",\"game_minutes\":"
                << to_minutes<int>( calendar::turn - calendar::start_of_cataclysm )
                << ",\"game_turn\":" << to_turns<int>( calendar::turn - calendar::turn_zero )
@@ -210,6 +213,9 @@ std::string prepare_llm_log_payload( const std::string &payload,
 void append_llm_log( const char *filename, const std::string &payload,
                      const bool normalize_punctuation )
 {
+    if( !get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+        return;
+    }
     const std::string final_payload = prepare_llm_log_payload( payload, normalize_punctuation );
     if( final_payload.empty() ) {
         return;
@@ -297,6 +303,7 @@ struct runner_config {
     int max_tokens = 0;
     int max_prompt_len = 0;
     bool force_npu = false;
+    bool debug_logging = false;
 
     bool operator==( const runner_config &other ) const {
         return python_path == other.python_path &&
@@ -312,7 +319,8 @@ struct runner_config {
                ollama_model == other.ollama_model &&
                max_tokens == other.max_tokens &&
                max_prompt_len == other.max_prompt_len &&
-               force_npu == other.force_npu;
+               force_npu == other.force_npu &&
+               debug_logging == other.debug_logging;
     }
 
     bool operator!=( const runner_config &other ) const {
@@ -410,6 +418,62 @@ std::string lower_copy( const std::string &text )
         return static_cast<char>( std::tolower( c ) );
     } );
     return out;
+}
+
+std::string classify_runner_error( const std::string &error )
+{
+    const std::string lowered = lower_copy( error );
+    if( lowered.find( "failed to write" ) != std::string::npos ) {
+        return "runner_stdin_write";
+    }
+    if( lowered.find( "stdout read" ) != std::string::npos ) {
+        return "runner_stdout_read";
+    }
+    if( lowered.find( "stdout closed" ) != std::string::npos ) {
+        return "runner_stdout_eof";
+    }
+    if( lowered.find( "response timed out" ) != std::string::npos ) {
+        return "runner_response_timeout";
+    }
+    if( lowered.find( "process exited" ) != std::string::npos ) {
+        return "runner_process_exit";
+    }
+    if( lowered.find( "invalid json" ) != std::string::npos ) {
+        return "runner_invalid_json";
+    }
+    if( lowered.find( "exception" ) != std::string::npos ) {
+        return "worker_exception";
+    }
+    if( lowered.find( "configuration" ) != std::string::npos ) {
+        return "runner_configuration";
+    }
+    return "runner_error";
+}
+
+std::string sanitize_runner_error_for_event( const std::string &error )
+{
+    // Error strings can contain an appended runner-log tail.  Keep only the
+    // first line so semantic diagnostics never mirror prompts or credentials.
+    std::string safe = error.substr( 0, error.find_first_of( "\r\n" ) );
+    for( char &character : safe ) {
+        if( static_cast<unsigned char>( character ) < 0x20 ) {
+            character = ' ';
+        }
+    }
+    static constexpr size_t max_error_length = 160;
+    if( safe.size() > max_error_length ) {
+        safe.resize( max_error_length );
+        safe += "...";
+    }
+    return safe;
+}
+
+bool should_retry_runner_request( const std::string &error )
+{
+    // A retry is safe only after stdout EOF: the matching response cannot be
+    // buffered because read_response_for_request drains complete lines before
+    // observing EOF.  Timeouts and parse failures may have an in-flight result.
+    return classify_runner_error( error ) == "runner_stdout_eof";
 }
 
 std::string join_action_tokens( const std::vector<std::string> &actions )
@@ -2670,6 +2734,7 @@ bool should_attempt_parse( const std::string &line )
 {
     static constexpr int default_max_prompt_len = 4096;
     runner_config cfg;
+    cfg.debug_logging = get_option<bool>( "DEBUG_LLM_INTENT_LOG" );
     cfg.backend = get_option<std::string>( "LLM_INTENT_BACKEND" );
     cfg.runner_path = "tools/llm_runner/runner.py";
     cfg.model_dir = get_option<std::string>( "LLM_INTENT_MODEL_DIR" );
@@ -2754,6 +2819,11 @@ class llm_intent_runner_process
             return start( config, error );
         }
 
+        bool restart( const runner_config &config, std::string &error ) {
+            terminate();
+            return start( config, error );
+        }
+
         bool send_request( const llm_intent_request &request, std::string &response_line,
                            std::string &error,
                            std::chrono::milliseconds timeout ) {
@@ -2795,6 +2865,7 @@ class llm_intent_runner_process
         HANDLE stdin_write = nullptr;
         HANDLE stdout_read = nullptr;
         std::string stdout_buffer;
+        std::string last_runner_output_line;
         std::filesystem::path runner_log_path;
 
         bool start( const runner_config &config, std::string &error ) {
@@ -2858,8 +2929,10 @@ class llm_intent_runner_process
                     args.push_back( "--force-npu" );
                 }
             }
-            args.push_back( "--log-file" );
-            args.push_back( log_path.string() );
+            if( config.debug_logging ) {
+                args.push_back( "--log-file" );
+                args.push_back( log_path.string() );
+            }
 
             std::string cmdline;
             for( const std::string &arg : args ) {
@@ -3009,6 +3082,10 @@ class llm_intent_runner_process
                         out_line = trimmed;
                         return true;
                     }
+                    if( trimmed.size() > 512 ) {
+                        trimmed.resize( 512 );
+                    }
+                    last_runner_output_line = trimmed;
                     continue;
                 }
 
@@ -3071,6 +3148,11 @@ class posix_runner_process
             return start( config, error );
         }
 
+        bool restart( const runner_config &config, std::string &error ) {
+            terminate();
+            return start( config, error );
+        }
+
         bool send_request( const llm_intent_request &request, std::string &response_line,
                            std::string &error,
                            std::chrono::milliseconds timeout ) {
@@ -3111,6 +3193,7 @@ class posix_runner_process
         int stdin_write = -1;
         int stdout_read = -1;
         std::string stdout_buffer;
+        std::string last_runner_output_line;
         std::filesystem::path runner_log_path;
 
         bool start( const runner_config &config, std::string &error ) {
@@ -3174,8 +3257,10 @@ class posix_runner_process
                     args.push_back( "--force-npu" );
                 }
             }
-            args.push_back( "--log-file" );
-            args.push_back( log_path.string() );
+            if( config.debug_logging ) {
+                args.push_back( "--log-file" );
+                args.push_back( log_path.string() );
+            }
 
             int stdout_pipe[2];
             if( pipe( stdout_pipe ) < 0 ) {
@@ -3270,6 +3355,7 @@ class posix_runner_process
             warm = false;
             runner_log_path.clear();
             stdout_buffer.clear();
+            last_runner_output_line.clear();
         }
 
         bool write_all( const std::string &payload, std::string &error ) {
@@ -3281,7 +3367,7 @@ class posix_runner_process
                     if( errno == EINTR ) {
                         continue;
                     }
-                    error = "Failed to write to runner stdin.";
+                    error = string_format( "Failed to write to runner stdin (%s).", std::strerror( errno ) );
                     return false;
                 }
                 if( written == 0 ) {
@@ -3294,6 +3380,34 @@ class posix_runner_process
                 return false;
             }
             return true;
+        }
+
+        std::string format_exit_status( const int status ) const {
+            if( WIFEXITED( status ) ) {
+                return string_format( "exit_code=%d", WEXITSTATUS( status ) );
+            }
+            if( WIFSIGNALED( status ) ) {
+                return string_format( "signal=%d", WTERMSIG( status ) );
+            }
+            return string_format( "status=%d", status );
+        }
+
+        std::string child_exit_status() {
+            if( child_pid <= 0 ) {
+                return "pid_unavailable";
+            }
+            for( int attempt = 0; attempt < 20; ++attempt ) {
+                int status = 0;
+                const pid_t ret = waitpid( child_pid, &status, WNOHANG );
+                if( ret > 0 ) {
+                    return format_exit_status( status );
+                }
+                if( ret < 0 ) {
+                    return string_format( "waitpid_errno=%d", errno );
+                }
+                std::this_thread::sleep_for( std::chrono::milliseconds( 5 ) );
+            }
+            return "still_running";
         }
 
         bool read_response_for_request( const llm_intent_request &request, std::string &out_line,
@@ -3312,6 +3426,10 @@ class posix_runner_process
                         out_line = trimmed;
                         return true;
                     }
+                    if( trimmed.size() > 512 ) {
+                        trimmed.resize( 512 );
+                    }
+                    last_runner_output_line = trimmed;
                     continue;
                 }
 
@@ -3362,7 +3480,9 @@ class posix_runner_process
                         return false;
                     }
                     if( bytes_read == 0 ) {
-                        error = "Runner process exited.";
+                        error = string_format( "Runner stdout closed (%s)%s.", child_exit_status(),
+                                               last_runner_output_line.empty() ? "" :
+                                               string_format( "; last_output= %s", last_runner_output_line ) );
                         return false;
                     }
                     stdout_buffer.append( buffer, buffer + bytes_read );
@@ -3373,7 +3493,7 @@ class posix_runner_process
                     int status = 0;
                     pid_t ret = waitpid( child_pid, &status, WNOHANG );
                     if( ret > 0 ) {
-                        error = "Runner process exited.";
+                        error = string_format( "Runner process exited (%s).", format_exit_status( status ) );
                         return false;
                     }
                 }
@@ -3733,12 +3853,16 @@ class llm_intent_manager
             target->set_llm_intent_item_targets( targets, resp.request_id );
         }
 
-        void enqueue_look_inventory_request( npc &listener, const std::string &player_utterance ) {
+        void enqueue_look_inventory_request( npc &listener, const std::string &player_utterance,
+                const std::string &primary_request_id ) {
             static constexpr int look_max_tokens = 256;
             static constexpr size_t max_inventory_entries = 80;
             std::vector<inventory_item_entry> inventory = collect_inventory_entries( listener,
                     max_inventory_entries );
             if( inventory.empty() ) {
+                llm_intent::log_event( string_format(
+                    "inventory request skipped npc=\"%s\" id=%d primary=%s reason=empty_inventory",
+                    listener.get_name(), listener.getID().get_value(), primary_request_id ) );
                 return;
             }
             llm_intent_request req;
@@ -3763,6 +3887,9 @@ class llm_intent_manager
                                                   request_to_json( req ) ) );
             {
                 std::lock_guard<std::mutex> lock( mutex );
+                llm_intent::log_event( string_format(
+                    "inventory request queued npc=\"%s\" id=%d primary=%s secondary=%s offered=%d",
+                    listener.get_name(), listener.getID().get_value(), primary_request_id, req.request_id, inventory.size() ) );
                 look_inventory_requests.emplace( req.request_id, std::move( context ) );
                 request_queue.push( std::move( req ) );
             }
@@ -3997,6 +4124,16 @@ class llm_intent_manager
                                    actions.end() );
                 }
 
+                if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                    npc *const target = g->find_npc( resp.npc_id );
+                    llm_intent::log_event( string_format(
+                        "primary parsed npc=\"%s\" id=%d request=%s ok=%s parse_error=\"%s\" action_count=%d inventory=%s look_around=%s npc_present=%s ally=%s",
+                        resp.npc_name, resp.npc_id.get_value(), resp.request_id,
+                        resp.ok ? "true" : "false", parse_error, actions.size(),
+                        wants_look_inventory ? "true" : "false", wants_look_around ? "true" : "false",
+                        target != nullptr ? "true" : "false",
+                        target != nullptr && target->is_player_ally() ? "true" : "false" ) );
+                }
                 if( resp.ok && parse_error.empty() ) {
                     std::vector<llm_intent_action> intent_actions;
                     intent_actions.reserve( actions.size() );
@@ -4109,7 +4246,7 @@ class llm_intent_manager
                     }
                     if( npc *target = g->find_npc( resp.npc_id ) ) {
                         if( target->is_player_ally() ) {
-                            enqueue_look_inventory_request( *target, player_utterance );
+                            enqueue_look_inventory_request( *target, player_utterance, resp.request_id );
                         }
                     }
                 }
@@ -4220,10 +4357,46 @@ class llm_intent_manager
                     req = std::move( request_queue.front() );
                     request_queue.pop();
                 }
-                llm_intent_response response = handle_request( req );
+                if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                    llm_intent::log_event( string_format( "request dequeued id=%s npc=\"%s\"",
+                                                           req.request_id, req.npc_name ) );
+                }
+                llm_intent_response response;
+                try {
+                    response = handle_request( req );
+                } catch( const std::exception &error ) {
+                    response.request_id = req.request_id;
+                    response.npc_id = req.npc_id;
+                    response.npc_name = req.npc_name;
+                    response.ok = false;
+                    response.error = string_format( "LLM worker exception: %s", error.what() );
+                    llm_intent::log_event( string_format( "request failed id=%s error=\"%s\"",
+                                                           req.request_id, response.error ) );
+                } catch( ... ) {
+                    response.request_id = req.request_id;
+                    response.npc_id = req.npc_id;
+                    response.npc_name = req.npc_name;
+                    response.ok = false;
+                    response.error = "LLM worker exception: unknown exception.";
+                    llm_intent::log_event( string_format( "request failed id=%s error=unknown_exception",
+                                                           req.request_id ) );
+                }
+                const bool response_ok = response.ok;
+                const std::string response_category = response_ok ? "" : classify_runner_error( response.error );
+                const std::string response_error = response_ok ? "" : sanitize_runner_error_for_event( response.error );
                 {
                     std::lock_guard<std::mutex> lock( mutex );
                     response_queue.push( std::move( response ) );
+                }
+                if( get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+                    if( response_ok ) {
+                        llm_intent::log_event( string_format( "response queued id=%s ok=true",
+                                                               req.request_id ) );
+                    } else {
+                        llm_intent::log_event( string_format(
+                            "response queued id=%s ok=false category=%s error=\"%s\"",
+                            req.request_id, response_category, response_error ) );
+                    }
                 }
             }
         }
@@ -4238,20 +4411,58 @@ class llm_intent_manager
             if( !config.use_api && config.force_npu && config.device != "NPU" ) {
                 response.ok = false;
                 response.error = "LLM_INTENT_FORCE_NPU requires device NPU.";
+                llm_intent::log_event( string_format( "request failed id=%s category=%s error=\"%s\"",
+                                                       req.request_id, classify_runner_error( response.error ),
+                                                       sanitize_runner_error_for_event( response.error ) ) );
                 return response;
             }
             if( !runner.ensure_running( config, error ) ) {
                 response.ok = false;
                 response.error = error;
+                llm_intent::log_event( string_format( "request failed id=%s category=%s error=\"%s\"",
+                                                       req.request_id, classify_runner_error( response.error ),
+                                                       sanitize_runner_error_for_event( response.error ) ) );
                 return response;
             }
             std::string line;
             const int timeout_ms = get_option<int>( "LLM_INTENT_TIMEOUT_MS" );
             if( !runner.send_request( req, line, error,
                                       std::chrono::milliseconds( timeout_ms ) ) ) {
+                const std::string first_error = error;
+                if( should_retry_runner_request( first_error ) ) {
+                    std::string restart_error;
+                    llm_intent::log_event( string_format(
+                        "runner recovery requested id=%s category=runner_stdout_eof", req.request_id ) );
+                    if( runner.restart( config, restart_error ) ) {
+                        line.clear();
+                        error.clear();
+                        if( runner.send_request( req, line, error,
+                                                  std::chrono::milliseconds( timeout_ms ) ) ) {
+                            if( auto recovered = response_from_json( line, req ) ) {
+                                llm_intent::log_event( string_format(
+                                    "runner recovery succeeded id=%s request_id_preserved=true",
+                                    req.request_id ) );
+                                return *recovered;
+                            }
+                            error = "Runner recovery returned invalid JSON.";
+                        }
+                    } else {
+                        error = string_format( "Runner recovery restart failed: %s", restart_error );
+                    }
+                    if( error.empty() ) {
+                        error = "Runner recovery resend failed.";
+                    }
+                    llm_intent::log_event( string_format(
+                        "runner recovery failed id=%s category=%s error=\"%s\"",
+                        req.request_id, classify_runner_error( error ),
+                        sanitize_runner_error_for_event( error ) ) );
+                }
                 runner.terminate();
                 response.ok = false;
                 response.error = error;
+                llm_intent::log_event( string_format( "request failed id=%s category=%s error=\"%s\"",
+                                                       req.request_id, classify_runner_error( response.error ),
+                                                       sanitize_runner_error_for_event( response.error ) ) );
                 return response;
             }
             if( auto parsed = response_from_json( line, req ) ) {
@@ -4259,6 +4470,9 @@ class llm_intent_manager
             }
             response.ok = false;
             response.error = "Runner returned invalid JSON.";
+            llm_intent::log_event( string_format( "request failed id=%s category=%s error=\"%s\"",
+                                                   req.request_id, classify_runner_error( response.error ),
+                                                   sanitize_runner_error_for_event( response.error ) ) );
             return response;
         }
 };
@@ -4351,6 +4565,9 @@ void enqueue_random_requests()
 
 void log_event( const std::string &message )
 {
+    if( !get_option<bool>( "DEBUG_LLM_INTENT_LOG" ) ) {
+        return;
+    }
     append_llm_intent_log( message + "\n" );
     std::string framed_message;
     framed_message.reserve( message.size() );
@@ -4368,6 +4585,21 @@ void log_event( const std::string &message )
     // pickup/attack disposition belongs to a live cockpit run.  Mirror only
     // when both launch-bound IDs agree, into the run-owned semantic stream.
     append_openclaw_harness_semantic_llm_event( message );
+}
+
+std::string classify_response_error_for_test( const std::string &error )
+{
+    return classify_runner_error( error );
+}
+
+std::string sanitize_response_error_for_test( const std::string &error )
+{
+    return sanitize_runner_error_for_event( error );
+}
+
+bool should_retry_response_for_test( const std::string &error )
+{
+    return should_retry_runner_request( error );
 }
 
 std::string build_snapshot_for_test( npc &listener, const std::string &player_utterance,

@@ -1,0 +1,64 @@
+{
+  "name": "mcwilliams_live_debug_zombie_rider_band_continuity_sight_loss_2026-09-14",
+  "source_fixture": "mcwilliams_live_debug_zombie_rider_impact_multi_recovery_controls_2026-09-12",
+  "source_profile": "live-debug",
+  "description": "Two tagged hostile riders begin on clear reciprocal east lanes.  The east rider directly sees the avatar; a two-by-two southeast wall screen blocks the other rider's line while retaining rider-to-rider sight and a route.  A native southward avatar path crosses behind the screen, creating a real loss-of-sight premise without injecting knowledge or attacks.",
+  "save_transforms": [
+    {
+      "kind": "map_terrain_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "terrain": [
+        { "id": "t_floor", "offset_ms": [1, 0, 0] },
+        { "id": "t_floor", "offset_ms": [2, 0, 0] },
+        { "id": "t_floor", "offset_ms": [3, 0, 0] },
+        { "id": "t_floor", "offset_ms": [4, 0, 0] },
+        { "id": "t_floor", "offset_ms": [5, 0, 0] },
+        { "id": "t_floor", "offset_ms": [6, 0, 0] },
+        { "id": "t_floor", "offset_ms": [6, 1, 0] },
+        { "id": "t_floor", "offset_ms": [6, 2, 0] },
+        { "id": "t_floor", "offset_ms": [6, 3, 0] },
+        { "id": "t_floor", "offset_ms": [0, 1, 0] },
+        { "id": "t_floor", "offset_ms": [0, 2, 0] },
+        { "id": "t_wall", "offset_ms": [1, 1, 0] },
+        { "id": "t_wall", "offset_ms": [2, 1, 0] },
+        { "id": "t_wall", "offset_ms": [1, 2, 0] },
+        { "id": "t_wall", "offset_ms": [2, 2, 0] }
+      ]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": [
+        {
+          "fixture_actor_id": "rider-direct-east",
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [6, 0, 0],
+          "qualification_offset_ms": [6, 0, 0],
+          "hp": 220,
+          "moves": 0,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100,
+          "aggro_character": true,
+          "ammo": {}
+        },
+        {
+          "fixture_actor_id": "rider-relay-southeast",
+          "typeid": "mon_zombie_rider",
+          "offset_ms": [6, 3, 0],
+          "qualification_offset_ms": [6, 3, 0],
+          "hp": 220,
+          "moves": 0,
+          "friendly": 0,
+          "faction": "zombie",
+          "anger": 100,
+          "morale": 100,
+          "aggro_character": true,
+          "ammo": { "zombie_rider_tainted_bone_arrow": 18 }
+        }
+      ]
+    }
+  ]
+}

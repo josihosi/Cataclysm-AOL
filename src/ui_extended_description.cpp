@@ -2,6 +2,9 @@
 
 #include <imgui/imgui.h>
 
+#include <map>
+#include <optional>
+
 #include "cata_utility.h"
 #include "character.h"
 #include "color.h"
@@ -10,6 +13,7 @@
 #include "map.h"
 #include "mapdata.h"
 #include "point.h"
+#include "semantic_surface.h"
 #include "string_formatter.h"
 #include "text.h"
 #include "translations.h"
@@ -132,10 +136,13 @@ extended_description_window::extended_description_window( tripoint_bub_ms &p ) :
 
     if( critter ) {
         switch_target = description_target::creature;
+        cur_target = description_target::creature;
     } else if( here.has_furn( p ) ) {
         switch_target = description_target::furniture;
+        cur_target = description_target::furniture;
     } else if( here.veh_at( p ) ) {
         switch_target = description_target::vehicle;
+        cur_target = description_target::vehicle;
     }
 
 
@@ -237,9 +244,65 @@ cataimgui::bounds extended_description_window::get_bounds()
 
 void extended_description_window::show()
 {
+    std::optional<std::string> semantic_input;
+    std::optional<semantic_surface_scope> semantic_scope;
+    const auto description_text = []( const std::vector<std::string> &lines ) {
+        std::string text;
+        for( const std::string &line : lines ) {
+            if( !text.empty() ) {
+                text += '\n';
+            }
+            text += line;
+        }
+        return text;
+    };
+    const auto semantic_payload = [&]() {
+        const std::vector<std::string> *displayed = &terrain_description;
+        std::string target = "terrain";
+        if( cur_target == description_target::creature ) {
+            displayed = &creature_description;
+            target = "creature";
+        } else if( cur_target == description_target::furniture ) {
+            displayed = &furniture_description;
+            target = "furniture";
+        } else if( cur_target == description_target::vehicle ) {
+            displayed = &veh_app_description;
+            target = "vehicle";
+        }
+        return std::map<std::string, std::string>{
+            { "selected_target", target },
+            { "displayed_description", description_text( *displayed ) },
+            { "displayed_description_source", "Creature::extended_description()" }
+        };
+    };
+    if( semantic_surface_manager *manager = active_semantic_surface_manager() ) {
+        semantic_scope.emplace( *manager, "extended_description", _( "Extended description" ),
+        semantic_payload(), std::vector<semantic_action_descriptor>{
+            { "extended_description.close", "", _( "Close" ), true }
+        }, [&semantic_input]( const semantic_action_request &request ) {
+            if( request.action_id != "extended_description.close" ||
+                request.stable_id.value_or( "" ) != "" || !request.parameters.empty() ) {
+                return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+            }
+            semantic_input = "QUIT";
+            return semantic_action_dispatch_result{ true, "", "" };
+        } );
+    }
     while( true ) {
         ui_manager::redraw_invalidated();
-        std::string action = ctxt.handle_input();
+        if( semantic_scope ) {
+            semantic_scope->publish( semantic_payload(), std::vector<semantic_action_descriptor>{
+                { "extended_description.close", "", _( "Close" ), true }
+            } );
+            semantic_scope->consume_request();
+        }
+        std::string action;
+        if( semantic_input ) {
+            action = *semantic_input;
+            semantic_input.reset();
+        } else {
+            action = ctxt.handle_input();
+        }
         if( action == "NEXT_TAB" ) {
             switch_target = cur_target;
             ++switch_target;

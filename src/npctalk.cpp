@@ -3685,7 +3685,11 @@ talk_topic dialogue::opt( dialogue_window &d_win, const talk_topic &topic )
             // loop returns (for example, follower rules).  Its exact receipt
             // therefore belongs to this dialogue frame and must not wait for
             // a successor that cannot be published until that modal closes.
-            return semantic_action_dispatch_result{ true, "", "", true, false };
+            // Dialogue effects may open an input-owning native modal immediately
+            // (for example, follower pickup rules).  The dialogue receipt must
+            // be published before that modal returns control; waiting for a
+            // successor here deadlocks on the modal's own input loop.
+            return semantic_action_dispatch_result{ true, "", "", false, false };
         } );
     }
 

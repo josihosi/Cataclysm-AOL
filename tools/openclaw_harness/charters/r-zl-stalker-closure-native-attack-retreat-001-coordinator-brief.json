@@ -1,0 +1,14 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-STALKER-closure-native-attack-retreat-001",
+  "outcome": "R-ZL-STALKER: under matched darkness and daylight pressure conditions, a source-bound writhing stalker reaches a real native attack attempt and then retains a retreat waypoint after its bounded burst; loss of sight and save/reload controls must not fabricate contact or erase the lifecycle state.",
+  "scenario": "writhing_stalker.live_hit_fade_retreat_mcw",
+  "query": {
+    "requirements": [
+      {"key": "capabilities.r_zl_stalker.native_attack_retreat", "op": "eq", "value": "native_attack_attempt_then_retained_retreat_state", "minimum_evidence": "declared"}
+    ],
+    "preferences": [
+      {"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}
+    ]
+  }
+}

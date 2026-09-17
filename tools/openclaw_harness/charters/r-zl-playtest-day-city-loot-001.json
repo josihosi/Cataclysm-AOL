@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-PLAYTEST integrated free play, daytime city looting: assess whether a stalker chose a horrible moment during ordinary player-selected play.",
+  "material_proof": "Current source/executable-bound native account, player-selected city route, timestamps/positions/actor identity, native movement and combat or absence evidence, native save/quit lifecycle, and exact process cleanup.",
+  "current_uncertainty": "Whether the ordinary route creates a valid stalker opportunity and, if so, whether the timing feels opportunistic rather than staged.",
+  "material_contradiction": ["focused fixture replay credited as integrated play", "debug-selected player decisions", "planner text without physical receipts", "missing source/process binding", "unclean owned process"],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["debug attack, contact, dispatch, or knowledge injection", "direct save mutation", "staging every player decision", "crediting setup actors or time as natural play"],
+  "honest_stop_conditions": ["a valid ordinary-play assessment is bounded with lifecycle evidence, or the first concrete executable divergence is preserved and cleaned up"],
+  "requested_evidence_ceiling": "focused"
+}

@@ -1,0 +1,44 @@
+{
+  "manifest_version": 1,
+  "name": "zombie_rider.live_natural_evolution_mcw",
+  "description": "Native natural evolution: a substantially old-world hostile predator is allowed to follow the configured GROUP_ZOMBIE_PREDATOR_UPGRADE path until rider generation while sealed inside an audited impassable concrete ring, with no rider or ammo setup injection.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_zombie_rider_natural_evolution_2026-09-14",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "semantic_only_startup": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_evolution.natural_hunter_to_rider": "mature_native_hunter_predator_rider_upgrade"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:spawn_monster mon_zombie_rider", "debug:poly mon_zombie_rider", "debug:inject_ammo", "direct-state-mutation", "raw-save-rewrite-after-install"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "mcwilliams_live_debug_zombie_rider_natural_evolution_2026-09-14",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "mcwilliams_live_debug_zombie_rider_natural_evolution_2026-09-14", "helper": "native file bridge", "peekaboo": false, "ocr": false, "input": ["advertised native cockpit actions"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["mon_zombie_rider", "ammo_initialization_version"],
+  "steps": [
+    {"kind": "wait", "label": "settle_natural_predator_footing", "seconds": 1.0, "capture_after": true, "expected_visible_fact": "tagged hostile predator loads in the substantially old world"},
+    {"kind": "audit_saved_game_turn", "label": "audit_old_world_age_and_season_length", "required_time_of_day_seconds": 0, "required_time_tolerance_seconds": 60, "abort_on_metadata_failure": true, "abort_verdict": "blocked_natural_evolution_old_world_setup_missing", "abort_reason": "fixture did not prove the substantially old world footing", "expected_visible_fact": "saved turn proves the substantially old world setup; season length is retained in the source-bound fixture and native diagnostic evidence"},
+    {"kind": "audit_saved_map_tile_near_player", "label": "audit_sealed_hunter_ring", "offsets": [[9,3,0],[10,3,0],[11,3,0],[9,4,0],[11,4,0],[9,5,0],[10,5,0],[11,5,0]], "required_terrain": ["t_concrete_wall"], "abort_on_metadata_failure": true, "abort_verdict": "blocked_natural_evolution_sealed_ring_missing", "abort_reason": "saved map did not prove every tile of the impassable hunter ring", "expected_visible_fact": "all eight ring tiles around the hunter are t_concrete_wall"},
+    {"kind": "audit_saved_active_monsters", "label": "audit_single_natural_predator_actor", "required_monsters": [{"typeid": "mon_zombie_predator", "fixture_actor_id": "predator_natural_evolution_1", "offset_ms": [10, 4, 0], "friendly": 0, "dead": false}], "abort_on_metadata_failure": true, "abort_verdict": "blocked_natural_evolution_predator_missing", "abort_reason": "saved active_monsters did not prove the tagged predator"},
+    {"kind": "cockpit_live_session", "label": "operate_native_natural_predator_evolution", "cleanup_on_finish": false, "objective": "Use only advertised native wait and movement actions. Let the substantially old predator perform ordinary overdue on-load half-life rolls through GROUP_ZOMBIE_PREDATOR_UPGRADE until the production path generates the rider. Record actor identity, group choice, world age, exactly-once rider ammo initialization, and the first divergence.", "proof_targets": ["predator identity continuity", "substantially old world age", "upgrade group choice", "natural rider generation", "exactly-once starting ammo", "save/load continuity"], "authority": ["advertised native actions", "run.witness", "run.finish"], "invariants": ["no rider debug spawn or poly", "no ammo mutation", "no duplicate actor", "setup earns zero behavior credit"], "live_operations": ["game.act", "game.wait", "game.raw_wait"], "transition_timeout_seconds": 30.0, "observe_interval_seconds": 0.1},
+    {"kind": "semantic_terminal_action_chain", "label": "save_and_close_natural_evolution_run", "objective": "Use the advertised native save-and-quit path and finish the owned run with cleanup.", "required_action_chain": ["world.save_quit", "prompt.yes", "main_menu.quit", "prompt.yes"], "observation_timeout_seconds": 30.0, "observation_interval_seconds": 0.1},
+    {"kind": "audit_native_natural_evolution", "label": "audit_natural_rider_generation", "required_actor_id": "predator_natural_evolution_1", "required_scheduled_group": "GROUP_ZOMBIE_PREDATOR_UPGRADE", "required_rider_type": "mon_zombie_rider", "required_ammo_initialization_version": 1, "required_exactly_once": true, "abort_on_metadata_failure": true, "abort_verdict": "blocked_natural_evolution_rider_not_generated", "abort_reason": "native production path did not generate exactly one rider with the configured group and ammo initialization"}
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe zombie_rider.live_natural_evolution_mcw",
+  "evidence_contract": {"claim": "one current-worktree native mature hunter naturally upgrades through the configured predator group into one rider with exactly-once ammo initialization", "setup_guard": "fixture hunter placement earns no behavior credit", "load_only_verdict": "load proof only / inconclusive", "writeback_note": "native save/load is required if the rider is generated before the terminal boundary"},
+  "proof_route": {"precondition": ["settle_natural_predator_footing", "audit_old_world_age_and_season_length", "audit_single_natural_predator_actor"], "production_behavior": ["operate_native_natural_predator_evolution", "audit_natural_rider_generation"], "terminal_persistence": ["save_and_close_natural_evolution_run"], "artifact_verdict": ["audit_natural_rider_generation"], "disallowed_shortcuts": ["operate_native_natural_predator_evolution", "audit_natural_rider_generation"]}
+}

@@ -1,0 +1,8 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-PLAYTEST-closure-natural-stalker-opportunism-006",
+  "outcome": "R-ZL-PLAYTEST natural stalker opportunism: in one fresh ordinary current-source account, a naturally present writhing stalker chooses a player-legible committed approach or native attack while an independently arising vulnerability or zombie-pressure condition exists.",
+  "scenario": "r_zl_stalker_natural_opportunity_006_mcw",
+  "query": {"requirements": [{"key": "capabilities.r_zl_playtest.natural_stalker_opportunism", "op": "eq", "value": "fresh_ordinary_native_account", "minimum_evidence": "declared"}], "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]},
+  "charter": "tools/openclaw_harness/charters/r-zl-stalker-natural-opportunity-001.json"
+}

@@ -3789,8 +3789,8 @@ float Character::active_light() const
     float lumination = 0.0f;
 
     int maxlum = 0;
-    cache_visit_items_with( "is_emissive", &item::is_emissive, [&maxlum]( const item_location & it ) {
-        const int lumit = it->getlight_emit();
+    cache_visit_items_with( "is_emissive", &item::is_emissive, [this, &maxlum]( const item_location & it ) {
+        const int lumit = it->getlight_emit( this );
         if( maxlum < lumit ) {
             maxlum = lumit;
         }

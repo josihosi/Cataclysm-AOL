@@ -1,0 +1,35 @@
+{
+  "manifest_version": 1,
+  "name": "r_zl_freeplay_city042_night_setup_mcw",
+  "description": "Zero-credit native preparation of one disposable night copy from the ordinary seed-042 city save. It may alter only clock and player-carried flashlight setup through advertised native debug/inventory owners; it must not add observers, knowledge, contact, or a scripted route.",
+  "profile": "r-zl-freeplay-city042-night-setup",
+  "world": "zl-natural-stalker-city-042-missed",
+  "fixture": "r_zl_freeplay_city042_setup_20260916",
+  "fixture_profile": "zl-natural-stalker-city-042",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_playtest.integrated_account": "none",
+    "capabilities.r_zl_playtest.repair_diagnostic": "nighttime_flashlight_account_setup_only"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["direct-state-mutation", "raw-save-rewrite-after-install", "debug:inject_observer", "debug:inject_attention", "debug:inject_knowledge", "debug:inject_contact", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-zl-freeplay-city042-night-setup",
+    "fixture": "r_zl_freeplay_city042_setup_20260916",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"r-zl-freeplay-city042-night-setup","fixture":"r_zl_freeplay_city042_setup_20260916","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {"kind":"wait","label":"settle_night_setup","seconds":1.0,"capture_after":true,"expected_visible_fact":"the ordinary seed-042 city save loads before zero-credit setup"},
+    {"kind":"cockpit_live_session","label":"prepare_disposable_night_copy","cleanup_on_finish":false,"stop_after_live_session":true,"objective":"Use only advertised native setup owners to establish a real nighttime clock and verify or add one ordinary handheld flashlight. Do not spawn or direct any actor, attention, knowledge, contact, or route.","proof_targets":["native nighttime footing","native flashlight inventory state","bound disposable setup lifecycle"],"authority":["advertised native actions","run.witness","run.finish"],"invariants":["zero integrated-play credit","no observer or contact injection","no direct save mutation"],"live_operations":["game.act"],"transition_timeout_seconds":20.0,"observe_interval_seconds":0.1}
+  ],
+  "recommended_test_command":"python3 tools/openclaw_harness/startup_harness.py probe r_zl_freeplay_city042_night_setup_mcw",
+  "evidence_contract":{"claim":"setup-only native creation of a distinct nighttime flashlight-ready copy","load_only_verdict":"zero-credit setup only / not integrated play"},
+  "proof_route":{"precondition":["settle_night_setup"],"production_behavior":["prepare_disposable_night_copy"],"terminal_persistence":["prepare_disposable_night_copy"],"artifact_verdict":["prepare_disposable_night_copy"],"disallowed_shortcuts":["prepare_disposable_night_copy"]}
+}

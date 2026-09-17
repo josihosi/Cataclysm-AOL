@@ -1,0 +1,27 @@
+{
+  "manifest_version": 1,
+  "name": "r_zl_freeplay_city042_tactical_rider_setup_mcw",
+  "description": "Zero-credit native preparation of a disposable nighttime open-terrain rider footing. The setup may remove immediate terrain blockers and use native debug placement solely to give one rider a player-legible tactical starting distance; it must native-save before an ordinary account exists.",
+  "profile": "r-zl-freeplay-city042-tactical-rider-setup",
+  "world": "zl-natural-stalker-city-042-missed",
+  "fixture": "r_zl_freeplay_city042_night_setup_20260916",
+  "fixture_profile": "r-zl-freeplay-city042-night-setup",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "capabilities": {"runtime.entry_mode":"cockpit_live_session","capabilities.r_zl_playtest.integrated_account":"none","capabilities.r_zl_playtest.repair_diagnostic":"tactical_rider_setup_only"},
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["direct-state-mutation", "raw-save-rewrite-after-install", "debug:inject_observer", "debug:inject_attention", "debug:inject_knowledge", "debug:inject_contact", "debug:inject_attack", "debug:inject_target_knowledge", "guessed-key"],
+    "setup_only_debug": true, "disposable_copy": true, "helpers": ["native file bridge"], "permissions": [], "platform": ["macos"],
+    "profile": "r-zl-freeplay-city042-tactical-rider-setup", "fixture": "r_zl_freeplay_city042_night_setup_20260916",
+    "requirements": {"os":"macos","source":"current-worktree","executable":"cataclysm-tiles","profile":"r-zl-freeplay-city042-tactical-rider-setup","fixture":"r_zl_freeplay_city042_night_setup_20260916","helper":"native file bridge","peekaboo":false,"ocr":false,"input":["advertised native cockpit actions"],"cleanup":true},
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {"kind":"wait","label":"settle_tactical_rider_setup","seconds":1.0,"capture_after":true,"expected_visible_fact":"the native-saved nighttime city copy loads before zero-credit setup"},
+    {"kind":"cockpit_live_session","label":"prepare_tactical_rider_open_terrain","cleanup_on_finish":false,"stop_after_live_session":true,"objective":"Use only currently advertised native debug setup owners to obtain open local terrain, remove only immediate blockers if necessary, and place exactly one hostile Zombie rider at a practical visible tactical distance. Do not inject observation, attention, knowledge, contact, attack, route, or player decisions. Return to World and native-save before any ordinary account exists.","proof_targets":["native open-terrain setup and one rider placement receipt","player-visible practical initial rider distance","bound zero-credit native-save lifecycle"],"authority":["advertised native actions","run.witness","run.finish"],"invariants":["zero integrated-play credit","all debug manipulation remains setup-only","no observer, attention, knowledge, contact, or attack injection","no direct save mutation"],"live_operations":["game.act"],"transition_timeout_seconds":20.0,"observe_interval_seconds":0.1}
+  ],
+  "recommended_test_command":"python3 tools/openclaw_harness/startup_harness.py probe r_zl_freeplay_city042_tactical_rider_setup_mcw",
+  "evidence_contract":{"claim":"zero-credit native-saved artificial tactical rider footing","load_only_verdict":"setup-only footing / not ordinary play"},
+  "proof_route":{"precondition":["settle_tactical_rider_setup"],"production_behavior":["prepare_tactical_rider_open_terrain"],"terminal_persistence":["prepare_tactical_rider_open_terrain"],"artifact_verdict":["prepare_tactical_rider_open_terrain"],"disallowed_shortcuts":["prepare_tactical_rider_open_terrain"]}
+}

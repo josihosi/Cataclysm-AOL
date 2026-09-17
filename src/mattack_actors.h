@@ -234,6 +234,18 @@ class bite_actor : public melee_actor
         std::unique_ptr<mattack_actor> clone() const override;
 };
 
+class zombie_rider_impact_actor : public melee_actor
+{
+    public:
+        zombie_rider_impact_actor() = default;
+        ~zombie_rider_impact_actor() override = default;
+
+        bool call( monster & ) const override;
+        void on_damage( monster &, Creature &, dealt_damage_instance & ) const override;
+        void load_internal( const JsonObject &, const std::string & ) override;
+        std::unique_ptr<mattack_actor> clone() const override;
+};
+
 class gun_actor : public mattack_actor
 {
     public:

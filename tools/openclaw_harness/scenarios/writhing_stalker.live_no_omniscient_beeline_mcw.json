@@ -1,6 +1,15 @@
 {
+  "manifest_version": 1,
   "name": "writhing_stalker.live_no_omniscient_beeline_mcw",
   "description": "Live writhing-stalker no-omniscience negative control: install a harness-only noon/no-human-target fixture with one saved active writhing stalker behind a thick opaque wall, guard saved noon/NPC/stalker/wall footing, advance a live turn window, require target_probe no-target/no-sight lines, require no target=yes/no live_plan latch lines, then save/audit same-run active-monster distance.",
+  "capabilities": {"runtime.entry_mode": "cockpit_live_session", "capabilities.r_zl_stalker.daylight_pressure": "matched_daylight_no_observed_pressure_loss_of_sight_non_attack"},
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_attack", "debug:inject_target_knowledge", "debug:inject_retreat", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true, "disposable_copy": true, "helpers": ["native file bridge"], "permissions": [], "platform": ["macos"], "profile": "dev-harness", "fixture": "mcwilliams_live_debug_no_evidence_clean_2026-04-30",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "mcwilliams_live_debug_no_evidence_clean_2026-04-30", "helper": "native file bridge", "peekaboo": false, "ocr": false, "input": ["advertised native cockpit actions"], "cleanup": true},
+    "grants_gameplay_proof": true
+  },
   "profile": "dev-harness",
   "world": "McWilliams",
   "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
@@ -132,6 +141,19 @@
       "expected_visible_fact": "safe mode is toggled off before the no-evidence turn window so any turn advancement is not consumed by a safe-mode warning prompt"
     },
     {
+      "kind": "cockpit_live_session",
+      "label": "operate_native_daylight_no_observed_pressure_los_control",
+      "cleanup_on_finish": true,
+      "stop_after_live_session": true,
+      "objective": "Observe the matched noon no-human/no-sight control through only advertised native actions; preserve actual game-time, positions, messages, and any attack-attempt state, without counting planner text as an attack.",
+      "proof_targets": ["native non-attack evidence", "loss-of-sight and no-target observation", "before/after positions and game time", "source, receipt, witness, and cleanup binding"],
+      "authority": ["advertised native actions", "run.witness", "run.finish"],
+      "invariants": ["fixture setup is zero-credit", "planner decisions do not count as attack attempts", "no direct state mutation or hidden-coordinate use"],
+      "live_operations": ["game.act", "game.wait", "game.raw_wait", "game.move_relative"],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    },
+    {
       "kind": "advance_turns",
       "label": "advance_clean_no_evidence_negative_window",
       "count": 80,
@@ -261,6 +283,13 @@
     }
   ],
   "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe writhing_stalker.live_no_omniscient_beeline_mcw",
+  "proof_route": {
+    "precondition": ["post_load_clean_no_evidence_settle", "audit_saved_noon_before_no_evidence_window", "audit_saved_no_human_npcs_before_no_evidence_window", "audit_saved_writhing_stalker_before_no_evidence_window", "audit_saved_opaque_wall_before_no_evidence_window"],
+    "production_behavior": ["operate_native_daylight_no_observed_pressure_los_control"],
+    "terminal_persistence": ["operate_native_daylight_no_observed_pressure_los_control"],
+    "artifact_verdict": ["operate_native_daylight_no_observed_pressure_los_control"],
+    "disallowed_shortcuts": ["toggle_safe_mode_off_before_no_evidence_window"]
+  },
   "evidence_contract": {
     "claim": "a writhing stalker can exist nearby in a plausible cluttered/noon setup with no direct sight, no night-light lure, no NPC/human target, and no player-produced clue without creating an instant omniscient target, latch, beeline, strike, or cooldown refresh",
     "setup_guard": "the run uses harness-only game_turn, remove-overmap-NPC, active_monsters, and opaque furniture save transforms plus saved-turn/NPC/stalker/map-tile audits before live turns; it does not synthesize stalker AI state, player vulnerability, night light, fields, lamps, or human evidence",

@@ -1,0 +1,8 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-PLAYTEST-integrated-free-play-001",
+  "outcome": "R-ZL-PLAYTEST integrated free play, separate ordinary late-rider account: assess player-visible, threatening but recoverable and nonconstant rider pressure through ordinary nighttime choices.",
+  "scenario":"r_zl_freeplay_city042_late_rider_mcw",
+  "query":{"requirements":[{"key":"capabilities.r_zl_playtest.integrated_account","op":"eq","value":"ordinary_late_rider","minimum_evidence":"declared"},{"key":"capabilities.r_zl_playtest.account_generation","op":"eq","value":"separate_ordinary_late_rider_account","minimum_evidence":"declared"}],"preferences":[{"key":"runtime.entry_mode","op":"eq","value":"cockpit_live_session","minimum_evidence":"declared"}]},
+  "charter":"tools/openclaw_harness/charters/r-zl-playtest-city042-late-rider-001.json"
+}

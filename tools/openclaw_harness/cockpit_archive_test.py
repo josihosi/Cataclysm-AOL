@@ -1,5 +1,6 @@
 import gc
 import io
+import os
 from unittest.mock import patch
 import startup_harness
 import cockpit
@@ -8,12 +9,15 @@ import hashlib
 import json
 from pathlib import Path
 import tempfile
+import tracemalloc
 import unittest
+from unittest import mock
 
 from cockpit_archive import (Archive, ArchiveMap, ArchiveSequence, json_chunks, resolve_wire,
                              value_digest, write_json_stream)
 from cockpit import CockpitRunChannel, CockpitService
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge
+from cockpit_memory_profile import PROFILE_PATH_ENV, snapshot as memory_snapshot, released as memory_released
 from cockpit_witness_test import CHARTER, frame
 from playtest_witness import WitnessError, build_evidence_journal, validate_witness_statement
 
@@ -166,6 +170,148 @@ class ArchiveTest(unittest.TestCase):
         Path(original["artifact_reference_envelope"]["exported_response"]["path"]).write_text("{}", encoding="utf-8")
         with self.assertRaisesRegex(ValueError, "export_identity"):
             resolve_wire(original, directory=self.directory, binding_id="binding-a")
+
+    def test_live_wire_export_is_bounded_while_archive_sequence_remains_lazy(self):
+        sequence = self.archive.sequence()
+        for index in range(5000):
+            sequence.append({"kind": "observation", "frame_id": f"frame:{index}",
+                             "payload": "repeated-native-fact" * 8})
+        response = {"ok": True, "result": {
+            "schema": "caol-cockpit-live-final-v1",
+            "action_observation_sequence": sequence,
+        }}
+        wire = self.archive.wire(response)
+        envelope = wire["artifact_reference_envelope"]
+        self.assertEqual(envelope["schema"], "caol-live-artifact-reference-v2")
+        exported = Path(envelope["exported_response"]["path"])
+        self.assertLess(exported.stat().st_size, 10000)
+        recovered = resolve_wire(wire, directory=self.directory, binding_id="binding-a")
+        restored = recovered["result"]["action_observation_sequence"]
+        self.addCleanup(restored.archive.close)
+        self.assertEqual(len(restored), 5000)
+        self.assertEqual(restored[4999]["frame_id"], "frame:4999")
+
+    def test_terminal_export_streams_indexed_sidecar_without_full_sequence_decode(self):
+        """A terminal export must scale with one record, not its full history."""
+        sequence = self.archive.sequence()
+        payload = "terminal-native-observation" * 4096
+        for index in range(80):
+            sequence.append({"kind": "observation", "frame_id": f"frame:{index}",
+                             "payload": payload + str(index)})
+        output = self.directory / "terminal-export.json"
+        tracemalloc.start()
+        try:
+            tracemalloc.reset_peak()
+            exported = write_json_stream(output, sequence)
+            reference = sequence.reference()
+            _, peak = tracemalloc.get_traced_memory()
+        finally:
+            tracemalloc.stop()
+        self.assertEqual(exported["bytes"], output.stat().st_size)
+        self.assertEqual(reference["count"], 80)
+        # Eighty records total more than 8 MiB.  The terminal path must not
+        # decode that sequence merely to export or calculate its reference.
+        self.assertGreater(output.stat().st_size, 8_000_000)
+        self.assertLess(peak, 2_000_000)
+
+    def test_consumed_observation_releases_duplicate_authority_payload(self):
+        records = ArchiveMap(self.archive, "observations")
+        payload = "native-frame-payload" * 8192
+        records["frame:1"] = {
+            "run_id": "run-a", "used": False, "actions": {"world.wait"},
+            "action_stable_ids": {}, "handles": set(), "native_interruption": False,
+            "public_state": {"payload": payload}, "issuing_frame": {"payload": payload},
+        }
+        records["frame:1"]["used"] = True
+        stored = records["frame:1"]
+        self.assertTrue(stored["used"])
+        self.assertNotIn("public_state", stored)
+        self.assertNotIn("issuing_frame", stored)
+        size = self.archive.connection.execute(
+            "SELECT length(value) FROM objects WHERE namespace=? AND id=?", ("observations", "frame:1")
+        ).fetchone()[0]
+        self.assertLess(size, len(payload) // 8)
+
+    def test_action_receipt_excludes_private_successor_frame(self):
+        self.assertEqual(
+            CockpitRunChannel._public_action_receipt({
+                "accepted": True, "native_receipt": {"accepted": True},
+                "next_frame": {"payload": "private"}, "_next_frame": {"payload": "private"},
+            }),
+            {"accepted": True, "native_receipt": {"accepted": True}},
+        )
+
+    def test_large_repeated_action_delivery_releases_consumed_authority_payloads(self):
+        """Exercise construct → wire → client decode → release for large frames."""
+        count, payload = 160, "native-observation-payload" * 2048
+        frames = []
+        for index in range(count + 1):
+            value = frame()
+            value["frame_id"] = f"run-a:{index}"
+            value["observed_turn"] = index
+            value["game_minutes"] = 100 + index
+            value["observation"]["large_payload"] = payload + str(index)
+            frames.append(value)
+        index = [0]
+
+        def dispatch(issuing, action_id):
+            index[0] += 1
+            return {
+                "accepted": True,
+                "native_receipt": {"accepted": True, "run_id": "live-proof",
+                                   "frame_id": issuing["frame_id"], "action_id": action_id},
+                "next_frame": frames[index[0]], "_next_frame": frames[index[0]],
+            }
+
+        channel = CockpitRunChannel(lambda: frames[index[0]], dispatch, binding_id="binding-a",
+                                    archive=self.archive)
+        observed = channel.observe()
+        samples = []
+        tracemalloc.start()
+        try:
+            for _ in range(count):
+                result = channel.act(observation_id=observed["observation_id"], action_id="world.wait")
+                self.assertTrue(result["ok"], result)
+                self.assertNotIn("next_frame", result["receipt"])
+                # The bridge persists bytes, and a later client decodes only
+                # that one response.  Neither operation may retain it.
+                delivered = "".join(json_chunks(self.archive.wire(result)))
+                collected = json.loads(delivered)
+                self.assertTrue(collected["ok"])
+                observed = result["observation"]
+                del collected, delivered, result
+                gc.collect()
+                samples.append(tracemalloc.get_traced_memory()[0])
+        finally:
+            tracemalloc.stop()
+        authority_bytes = self.archive.connection.execute(
+            "SELECT coalesce(sum(length(value)),0) FROM objects WHERE namespace='observations'"
+        ).fetchone()[0]
+        # Only the one current frame can retain a complete authority payload;
+        # completed frames are indexed tombstones.  Transcript growth remains
+        # linear and is the deliberately retained final-export history.
+        self.assertLess(authority_bytes, len(payload) * 4)
+        self.assertLess(max(samples) - min(samples), len(payload) * 8)
+
+    def test_profiled_large_delivery_distinguishes_release_from_archive_growth(self):
+        """The profiler must describe scalars, not retain the delivered payload."""
+        profile = self.directory / "memory.jsonl"
+        payload = "native-delivery" * 131072
+        with mock.patch.dict(os.environ, {PROFILE_PATH_ENV: str(profile)}):
+            memory_snapshot("test", "before_construction", archive=self.archive)
+            response = {"ok": True, "result": {"payload": payload}}
+            memory_snapshot("test", "after_construction", archive=self.archive)
+            delivered = "".join(json_chunks(response))
+            collected = json.loads(delivered)
+            memory_snapshot("test", "after_collection", archive=self.archive,
+                            response_bytes=len(delivered.encode("utf-8")))
+            del response, delivered, collected
+            memory_released("test", "after_reference_release", archive=self.archive)
+        rows = [json.loads(line) for line in profile.with_name("memory.test.jsonl").read_text().splitlines()]
+        released_row = rows[-1]
+        self.assertEqual(released_row["stage"], "after_reference_release_post_gc")
+        self.assertLess(released_row["tracemalloc_current_bytes"], len(payload) // 4)
+        self.assertLess(released_row["archive_bytes"], len(payload) // 4)
 
 
 class ArchivedMacroInterruptionTest(MacroInterruptionTest):

@@ -1,0 +1,38 @@
+{
+  "manifest_version": 1,
+  "name": "r_zl_freeplay_day_city_loot_mcw",
+  "description": "Current-source integrated free-play account: begin from the released evacuation-shelter world and make ordinary daytime city-looting choices. The staged world supplies no encounter conclusion; a naturally chosen city route must expose any stalker opportunity through native movement, attacks, and player consequences.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "release_candidate_roaming_v0_2026-08-01",
+  "fixture_profile": "live-debug",
+  "profile_snapshot": "bandit_basecamp_playtest_kit_v0_2026-04-22",
+  "profile_snapshot_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_playtest.integrated_account": "daytime_city_looting"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_attack", "debug:inject_target_knowledge", "debug:inject_dispatch", "debug:inject_local_contact", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "release_candidate_roaming_v0_2026-08-01",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "release_candidate_roaming_v0_2026-08-01", "helper": "native file bridge", "peekaboo": false, "ocr": false, "input": ["advertised native cockpit actions"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {"kind": "wait", "label": "settle_day_city_freeplay", "seconds": 1.0, "capture_after": true, "expected_visible_fact": "the disposable released world loads before free play"},
+    {"kind": "audit_saved_game_turn", "label": "audit_day_city_start_time", "required_time_of_day_seconds": 36000, "required_time_tolerance_seconds": 90, "abort_on_metadata_failure": true, "abort_verdict": "blocked_day_city_start_time", "abort_reason": "the account did not begin from its declared daytime footing"},
+    {"kind": "cockpit_live_session", "label": "operate_day_city_freeplay", "cleanup_on_finish": false, "stop_after_live_session": true, "objective": "Choose and complete an ordinary daytime city-looting route with only currently advertised native actions. Make tactical choices from what the player can see: take cover, retreat, fight, or keep moving as conditions warrant. Do not seek a scripted stalker trigger or use diagnostics to choose the route. Preserve actual movement, time, entities, attacks, player effects, and the first surprising or absent predator consequence.", "proof_targets": ["ordinary player-selected city movement and time", "any stalker identity and physical opportunity", "native movement/attack/player-consequence receipts", "stalker timing feel assessed from the player-visible situation", "source/executable/process/run binding"], "authority": ["advertised native actions", "run.witness", "run.finish"], "invariants": ["fixture and time footing are zero-credit setup", "no debug actor/knowledge/attack injection", "planner strings do not replace native physical behavior", "the player route is not a scenario-scripted decision sequence"], "live_operations": ["game.act", "game.wait", "game.raw_wait", "game.move_relative"], "transition_timeout_seconds": 20.0, "observe_interval_seconds": 0.1},
+    {"kind": "semantic_terminal_action_chain", "label": "save_and_exit_day_city_account", "objective": "Use the native save-and-quit path, then native Main-menu Quit and confirmation, preserving the account's lifecycle boundary before cleanup.", "observation_timeout_seconds": 30.0, "observation_interval_seconds": 0.1, "required_action_chain": ["world.save_quit", "prompt.yes", "main_menu.quit", "prompt.yes"], "expected_visible_fact": "the ordinary-play account saves, reaches Main menu, and its owned process exits"}
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/startup_harness.py probe r_zl_freeplay_day_city_loot_mcw",
+  "evidence_contract": {"claim": "one separate current-source ordinary daytime city-looting account supplies an honest integrated assessment of stalker timing, including a preserved inconclusive result if no valid opportunity emerges", "load_only_verdict": "setup footing only / inconclusive", "writeback_note": "the released-world fixture starts an account but grants neither natural encounter credit nor an outcome; only the player-selected native route does"}
+  ,"proof_route": {"precondition": ["settle_day_city_freeplay", "audit_day_city_start_time"], "production_behavior": ["operate_day_city_freeplay"], "terminal_persistence": ["save_and_exit_day_city_account"], "artifact_verdict": ["operate_day_city_freeplay"], "disallowed_shortcuts": ["operate_day_city_freeplay"]}
+}

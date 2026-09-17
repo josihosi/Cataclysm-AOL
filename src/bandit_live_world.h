@@ -310,6 +310,9 @@ struct camp_map_lead {
     tripoint_abs_omt omt;
     int radius_omt = 0;
     std::string source_key;
+    // Identity of the immutable physical sample that produced this lead.
+    // Empty is retained for legacy/non-physical leads.
+    std::string source_sample_id;
     std::string source_summary;
     int first_seen_minutes = -1;
     int last_seen_minutes = -1;
@@ -1463,6 +1466,13 @@ struct structural_signal_read {
     sortie_observation_sense sense = sortie_observation_sense::smoke;
     structural_sound_kind sound_kind = structural_sound_kind::none;
     tripoint_abs_omt source_omt;
+    // Producer-local source token used only to keep separately evaluated
+    // emitters distinct during scoring.  It is not a player/camp identity and
+    // the public observation remains the uncertain source_omt.
+    std::string source_id;
+    // Optical samples carry their original detection time.  The scheduler may
+    // consume one later, but may not relabel it as a current observation.
+    int observed_minutes = -1;
     int emitted_minutes = -1;
     int range_cap_omt = 0;
     int strength = 0;

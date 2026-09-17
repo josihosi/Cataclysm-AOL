@@ -1,0 +1,39 @@
+{
+  "manifest_version": 2,
+  "name": "r037.npc_llm_command_allowed_foreign_pickup_v001_mcw",
+  "description": "R-037 source-bound ownership-only pickup control: one foreign-owned bandage on an allowed tile.",
+  "profile": "harness-npc-llm-coverage",
+  "config_profile": "dev-harness",
+  "world": "McWilliams",
+  "fixture": "r037_npc_llm_command_allowed_foreign_pickup_v001",
+  "fixture_profile": "live-debug",
+  "installed_save_player": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+  "replace_existing_worlds": true,
+  "suppress_profile_startup_input": true,
+  "run_class": "non_combat",
+  "observer_character": true,
+  "capabilities": {"runtime.entry_mode": "cockpit_live_session", "capabilities.r037.command_coverage": "e4b_allowed_foreign_pickup_native"},
+  "runtime_contract": {
+    "permitted_input": ["frame-bound semantic requests", "cockpit:game.act", "cockpit:game.wait", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["guessed-key", "physical-key", "keyboard", "mouse", "focus", "ocr", "screen-coordinate", "synthetic-response", "direct-state-mutation"],
+    "setup_only_debug": false,
+    "disposable_copy": true,
+    "helpers": [],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "harness-npc-llm-coverage",
+    "config_profile": "dev-harness",
+    "fixture": "r037_npc_llm_command_allowed_foreign_pickup_v001",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "harness-npc-llm-coverage", "fixture": "r037_npc_llm_command_allowed_foreign_pickup_v001", "helper": "none", "peekaboo": false, "input": ["frame-bound semantic requests"], "ocr": false, "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "source_binding": {"fixture_manifest": "tools/openclaw_harness/fixtures/saves/live-debug/r037_npc_llm_command_allowed_foreign_pickup_v001/manifest.json", "profile": "tools/openclaw_harness/profiles/dev-harness.json"},
+  "steps": [
+    {"kind": "native_semantic_bootstrap", "label": "bind_r037_allowed_foreign_pickup_world", "native_semantic_checkpoint": {"required_actions": ["world.wait"], "required_state": "world", "require_initial_hud_world_ready_frame": false}},
+    {"kind": "cockpit_live_session", "label": "operate_r037_allowed_foreign_pickup", "cleanup_on_finish": true, "objective": "Use one natural E4B look-around request naming the only offered bandages. Retain exact target identity, foreign ownership, native consumer result and post-state.", "proof_targets": ["E4B item selection", "named item and foreign owner premise", "native ownership-only disposition", "NPC inventory transfer or no transfer", "exact cleanup"], "authority": ["currently advertised native semantic actions", "game.act", "game.wait", "run.witness", "run.finish"], "invariants": ["fixture setup earns zero command credit", "do not inject a response or directly mutate state", "do not infer ownership denial from model output"], "live_operations": ["game.act", "game.wait"], "transition_timeout_seconds": 20.0, "observe_interval_seconds": 0.1}
+  ],
+  "proof_gates": [{"id": "r037_allowed_foreign_pickup_session", "label": "Bound R-037 allowed foreign-owner pickup E4B session", "boundary_step": "operate_r037_allowed_foreign_pickup", "predecessors": [], "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "worker_controlled_live_cockpit_session", "gameplay_credit": true}}], "checkpoint_safe_ui": {"screen_text_contains": ["Move:"]}}],
+  "proof_route": {"gates": ["r037_allowed_foreign_pickup_session"], "terminal": ["r037_allowed_foreign_pickup_session"]},
+  "semantic_only_startup": true,
+  "profile_option_overrides": {"LLM_INTENT_ENABLE": "true", "LLM_INTENT_BACKEND": "ollama", "LLM_INTENT_OLLAMA_URL": "http://127.0.0.1:11434", "LLM_INTENT_OLLAMA_MODEL": "hf.co/google/gemma-4-E4B-it-qat-q4_0-gguf:latest", "LLM_INTENT_PYTHON": "/opt/homebrew/bin/python3", "LLM_INTENT_RANDOM_CALL": "0", "DEBUG_LLM_INTENT": "true", "DEBUG_LLM_INTENT_UI": "true", "DEBUG_LLM_INTENT_LOG": "true"}
+}

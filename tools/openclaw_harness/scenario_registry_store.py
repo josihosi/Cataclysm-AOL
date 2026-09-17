@@ -886,6 +886,60 @@ def _current_bootstrap_revalidation(
     return current_release
 
 
+def _current_manifest_certification_retry(
+    connection: sqlite3.Connection,
+    *,
+    manifest: sqlite3.Row,
+    route_evidence: Sequence[Mapping[str, Any]],
+) -> bool:
+    """Allow a changed, valid manifest to replace only stale route history.
+
+    This is deliberately generic: retry eligibility follows source identity and
+    route freshness, rather than a hand-maintained scenario-name allowlist.
+    """
+    if not bool(manifest["present"]):
+        return False
+    validation = _json_object(str(manifest["validation_json"]), "manifest validation")
+    if validation.get("status") != "valid" or bool(validation.get("review_required")):
+        return False
+    if not route_evidence:
+        return False
+    for route in route_evidence:
+        if not isinstance(route, Mapping):
+            return False
+        details = route.get("details")
+        if isinstance(details, Mapping) and details.get("unresolved_contradiction_ids"):
+            return False
+        state = str(route.get("evidence_state", ""))
+        if state in {"stale", "unknown"}:
+            continue
+        if state == "contradicted":
+            bindings = route.get("bindings")
+            if not bindings or any(
+                    not isinstance(binding, Mapping)
+                    or str(binding.get("resolution", "")) != "stale"
+                    for binding in bindings):
+                return False
+            continue
+        return False
+    current_sha256 = str(manifest["current_sha256"] or "")
+    if not current_sha256:
+        return False
+    # Verification history is append-only; recorded_at is the chronology used
+    # by the projection and remains stable even when IDs are content hashes.
+    latest = connection.execute(
+        "SELECT details_json FROM verification_history WHERE manifest_id = ? "
+        "ORDER BY recorded_at DESC, rowid DESC LIMIT 1",
+        (str(manifest["manifest_id"]),),
+    ).fetchone()
+    if latest is None:
+        return False
+    details = _json_object(str(latest["details_json"]), "verification details")
+    prior_manifest = details.get("manifest")
+    return isinstance(prior_manifest, Mapping) and bool(prior_manifest.get("source_sha256")) \
+        and str(prior_manifest.get("source_sha256")) != current_sha256
+
+
 def _current_lifecycle_state(
     connection: sqlite3.Connection,
     *,
@@ -1097,6 +1151,7 @@ def build_registry_query_candidate_snapshot(
     *,
     include_lifecycle_states: Sequence[str] = (),
     manifest_ids: Sequence[str] = (),
+    allow_current_manifest_retry: bool = True,
 ) -> Tuple[RegistryQueryCandidateSnapshot, ...]:
     """Read current projection/history into fixed, explained, non-executing candidates."""
     requested_states = set(include_lifecycle_states)
@@ -1166,6 +1221,10 @@ def build_registry_query_candidate_snapshot(
                 or lifecycle_reason in {"route_contradicted", "route_stale", "quarantine_history"}
             )
         )
+        if allow_current_manifest_retry:
+            certification_retry = certification_retry or _current_manifest_certification_retry(
+                connection, manifest=manifest, route_evidence=route_evidence,
+            )
         if certification_retry:
             # Preserve stale startup-only history, but keep the current valid
             # declaration selectable for a corrected certification attempt.
@@ -1262,11 +1321,13 @@ def evaluate_registry_query_from_store(
     request: RegistryQueryRequest,
     *,
     include_lifecycle_states: Sequence[str] = (),
+    allow_current_manifest_retry: bool = True,
 ) -> RegistryStoredQueryEvaluation:
     """Evaluate fixed current-authority snapshots; this owner never launches or mints tokens."""
     candidates = build_registry_query_candidate_snapshot(
         connection,
         include_lifecycle_states=include_lifecycle_states,
+        allow_current_manifest_retry=allow_current_manifest_retry,
     )
     evaluation = evaluate_registry_query(
         request,
@@ -1600,7 +1661,13 @@ def _select_registry_bootstrap_candidate(
 ) -> Optional[RegistryQueryCandidateSnapshot]:
     """Select normal authority first, then one current manifest quarantined only by stale evidence."""
     if scenario_id:
-        candidates = build_registry_query_candidate_snapshot(connection)
+        # A token is already pinned to one manifest.  Revalidating it must not
+        # rebuild every registry candidate (and their route histories) merely
+        # to find that exact row; on a long-lived registry that turns a
+        # constant-scope launch check into a large external-volume scan.
+        candidates = build_registry_query_candidate_snapshot(
+            connection, manifest_ids=(scenario_id,), allow_current_manifest_retry=False,
+        )
         selected = next((candidate for candidate in candidates if candidate.scenario_id == scenario_id), None)
         # A prior failed first-run bootstrap can quarantine the exact manifest
         # solely because its old route evidence is stale.  Preserve exact
@@ -1608,7 +1675,8 @@ def _select_registry_bootstrap_candidate(
         # no contradicted or otherwise ineligible manifest is admitted.
         if selected is None:
             stale_candidates = build_registry_query_candidate_snapshot(
-                connection, include_lifecycle_states=("quarantined",)
+                connection, include_lifecycle_states=("quarantined",), manifest_ids=(scenario_id,),
+                allow_current_manifest_retry=False,
             )
             selected = next((candidate for candidate in stale_candidates if candidate.scenario_id == scenario_id), None)
             if selected is not None and not _current_stale_bootstrap_candidate(selected):
@@ -1636,7 +1704,9 @@ def _select_registry_bootstrap_candidate(
         if selected.scenario_id not in named_evaluation.ranked_scenario_ids:
             return None
         return selected
-    ordinary = evaluate_registry_query_from_store(connection, request)
+    ordinary = evaluate_registry_query_from_store(
+        connection, request, allow_current_manifest_retry=False,
+    )
     selected_id = ordinary.evaluation.ranked_scenario_ids[0] if ordinary.evaluation.ranked_scenario_ids else None
     selected = next((candidate for candidate in ordinary.candidates if candidate.scenario_id == selected_id), None)
     if selected is not None and selected.token_eligible and _current_valid_bootstrap_manifest(selected):
@@ -1645,7 +1715,7 @@ def _select_registry_bootstrap_candidate(
     stale_candidates = tuple(
         candidate
         for candidate in build_registry_query_candidate_snapshot(
-            connection, include_lifecycle_states=("quarantined",)
+            connection, include_lifecycle_states=("quarantined",), allow_current_manifest_retry=False
         )
         if _current_stale_bootstrap_candidate(candidate)
     )
@@ -3003,7 +3073,7 @@ def reload_selection_token_for_launch(
                 return reject("coordinator_route_mismatch")
 
         manifest = connection.execute(
-            "SELECT source_path, present, revision, current_sha256, declaration_json FROM manifest_current "
+            "SELECT manifest_id, source_path, present, revision, current_sha256, validation_json, declaration_json FROM manifest_current "
             "WHERE manifest_id = ?",
             (expected_manifest_id,),
         ).fetchone()
@@ -3038,9 +3108,13 @@ def reload_selection_token_for_launch(
                 connection, manifest_id=expected_manifest_id, present=bool(manifest["present"]),
                 route_evidence=current_routes,
             )
-            if declaration.get("name") == "cannibal.r029_natural_route_roof_mcw" and current_routes and (\
+            if current_routes and (_current_manifest_certification_retry(
+                    connection,
+                    manifest=manifest,
+                    route_evidence=current_routes,
+                ) or (declaration.get("name") == "cannibal.r029_natural_route_roof_mcw" and (\
                     all(str(route.get("evidence_state", "")) == "stale" for route in current_routes) or
-                    lifecycle_reason in {"route_contradicted", "route_stale", "quarantine_history"}):
+                    lifecycle_reason in {"route_contradicted", "route_stale", "quarantine_history"}))):
                 # The charter is authorizing this current manifest revision;
                 # stale or contradicted prior runs remain audit history rather
                 # than preventing its first fresh lifecycle witness from

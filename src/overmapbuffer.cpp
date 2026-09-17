@@ -47,6 +47,7 @@
 #include "overmap_types.h"
 #include "path_info.h"
 #include "point.h"
+#include "physical_light.h"
 #include "rng.h"
 #include "simple_pathfinding.h"
 #include "string_formatter.h"
@@ -59,6 +60,19 @@ static const oter_type_str_id oter_type_bridgehead_ground( "bridgehead_ground" )
 static const oter_type_str_id oter_type_bridgehead_ramp( "bridgehead_ramp" );
 
 static const int default_search_range = OMAPX * 5;
+
+static bool loaded_predator_owns( const std::string &actor_id )
+{
+    if( actor_id.empty() ) {
+        return false;
+    }
+    for( const monster &existing : g->all_monsters() ) {
+        if( existing.is_caol_predator() && existing.predator_state().actor_id == actor_id ) {
+            return true;
+        }
+    }
+    return false;
+}
 
 // Moved from obsolete coordinate_conversions.h to its only remaining user.
 static int omt_to_sm_copy( int a )
@@ -276,9 +290,127 @@ void overmap_global_state::clear()
     bandit_live_world.clear();
     zombie_rider_light_memory.clear();
     zombie_rider_light_memory_last_turn = calendar::turn_zero;
+    zombie_rider_bands.clear();
     placed_regions.clear();
     overmap_count = 0;
     major_river_count = 0;
+}
+
+void overmapbuffer::reconcile_rider_band_encounters()
+{
+    struct rider_snapshot {
+        std::string actor_id;
+        monster *rider = nullptr;
+        tripoint_abs_ms position = tripoint_abs_ms::zero;
+        bool local = false;
+    };
+    std::vector<rider_snapshot> riders;
+    std::set<std::string> seen_actor_ids;
+    const auto add_rider = [&riders, &seen_actor_ids, this]( monster & rider,
+    const tripoint_abs_ms & position, const bool local ) {
+        if( rider.type->id.str() != "mon_zombie_rider" || rider.is_dead() ) {
+            return;
+        }
+        // Older saves and fixture-created local riders can legitimately lack
+        // the lifecycle payload that constructors give new predators.  This
+        // is the ownership boundary, so restore the durable identity before
+        // considering an encounter; never use a process-local creature ID.
+        rider.ensure_predator_state();
+        const std::string actor_id = rider.predator_state().actor_id;
+        if( actor_id.empty() || !seen_actor_ids.insert( actor_id ).second ) {
+            return;
+        }
+        global_state.zombie_rider_bands.reconcile_cache( actor_id, rider.predator_state() );
+        riders.push_back( { actor_id, &rider, position, local } );
+    };
+
+    for( monster &rider : g->all_monsters() ) {
+        add_rider( rider, rider.pos_abs(), true );
+    }
+    // Abstract riders retain their heavy payload (and therefore stable actor
+    // ID) in the horde container; this never materializes a local body.
+    for( const std::pair<const point_abs_om, std::unique_ptr<overmap>> &entry : overmaps ) {
+        for( const std::pair<tripoint_abs_ms, horde_entity *> &entity : entry.second->horde_entities() ) {
+            if( entity.second->get_type()->id.str() != "mon_zombie_rider" ) {
+                continue;
+            }
+            entity.second->ensure_predator_payload( entity.first );
+            if( entity.second->monster_data ) {
+                add_rider( *entity.second->monster_data, entity.first, false );
+            }
+        }
+    }
+
+    const int now = to_turns<int>( calendar::turn - calendar::turn_zero );
+    map &here = get_map();
+    const auto copy_direct_evidence = [this, now]( const rider_snapshot & snapshot ) {
+        const zombie_rider_overmap_ai::rider_pursuit_state &state =
+            snapshot.rider->zombie_rider_pursuit_state();
+        if( !state.evidence_valid( now ) ) {
+            return;
+        }
+        zombie_rider_overmap_ai::rider_band_observation observation;
+        observation.target_identity = state.target_identity;
+        observation.position = state.last_observed_position;
+        observation.observed_turn = state.last_observed_turn;
+        observation.expires_at_turn = state.last_observed_turn + 200;
+        observation.source_actor_id = snapshot.actor_id;
+        observation.provenance = "direct_rider_sight";
+        observation.uncertainty = 0;
+        global_state.zombie_rider_bands.observe( snapshot.actor_id, observation );
+    };
+    for( auto first = riders.begin(); first != riders.end(); ++first ) {
+        for( auto second = std::next( first ); second != riders.end(); ++second ) {
+            const bool same_z = first->position.z() == second->position.z();
+            bool reciprocal = false;
+            bool reachable = false;
+            if( same_z && first->local && second->local ) {
+                reciprocal = first->rider->sees( here, *second->rider ) &&
+                             second->rider->sees( here, *first->rider );
+                reachable = reciprocal && !here.route( *first->rider,
+                            pathfinding_target::point( second->rider->pos_bub() ) ).empty();
+            } else if( same_z ) {
+                // An abstract horde position has neither a creature LOS test
+                // nor a size-aware native route.  Coarse distance and two
+                // passable endpoints do not prove reciprocal perception or a
+                // traversable intervening route (they may span a sealed or
+                // unloaded screen), so this branch deliberately fails closed.
+                // The local/local branch above is the sole authority that may
+                // establish a new encounter until equivalent route evidence
+                // exists for abstract riders.
+                reciprocal = false;
+                reachable = false;
+            }
+            if( !global_state.zombie_rider_bands.register_encounter( {
+                first->actor_id, second->actor_id, now, reciprocal, reachable } ) ) {
+                continue;
+            }
+            // The registry is the sole membership owner.  These are only
+            // immediately refreshed projections for the two live payloads.
+            global_state.zombie_rider_bands.reconcile_cache( first->actor_id,
+                    first->rider->predator_state() );
+            global_state.zombie_rider_bands.reconcile_cache( second->actor_id,
+                    second->rider->predator_state() );
+            copy_direct_evidence( *first );
+            copy_direct_evidence( *second );
+            if( global_state.zombie_rider_bands.share_observation( first->actor_id,
+                    second->actor_id, now ) ) {
+                const auto relayed = global_state.zombie_rider_bands.observation_for(
+                                         second->actor_id, now );
+                if( relayed ) {
+                    second->rider->zombie_rider_pursuit_state().relay( *relayed );
+                }
+            }
+            if( global_state.zombie_rider_bands.share_observation( second->actor_id,
+                    first->actor_id, now ) ) {
+                const auto relayed = global_state.zombie_rider_bands.observation_for(
+                                         first->actor_id, now );
+                if( relayed ) {
+                    first->rider->zombie_rider_pursuit_state().relay( *relayed );
+                }
+            }
+        }
+    }
 }
 
 const region_settings &overmapbuffer::get_settings( const tripoint_abs_omt &p )
@@ -674,6 +806,45 @@ void overmapbuffer::signal_hordes( const tripoint_abs_sm &center, const int sig_
     for( overmap *&om : get_overmaps_near( center, sig_power ) ) {
         om->signal_hordes( project_to<coords::ms>( center ), sig_power );
     }
+}
+
+int overmapbuffer::attract_hordes_to_light( const tripoint_abs_ms &source, const int intensity,
+        const int observer_radius_sm, const int brightness_range_omt, const bool source_exposed,
+        const std::string &sample_id, const time_point &observed, int *candidate_count )
+{
+    int attracted = 0;
+    int candidates = 0;
+    const tripoint_abs_omt source_omt = project_to<coords::omt>( source );
+    const auto visible = [this, &source_omt, brightness_range_omt, source_exposed](
+    const tripoint_abs_ms &observer ) {
+        const tripoint_abs_omt observer_omt = project_to<coords::omt>( observer );
+        physical_light::route route;
+        route.distance_omt = rl_dist( source_omt, observer_omt );
+        route.vertical_offset = observer_omt.z() - source_omt.z();
+        route.source_exposed = source_exposed;
+        route.vertical_sightline = route.vertical_offset == 0 || source_exposed;
+        route.brightness_range_omt = brightness_range_omt;
+        for( const tripoint_abs_omt &omt : line_to( source_omt, observer_omt ) ) {
+            const oter_id &terrain = ter_existing( omt );
+            if( !terrain.is_valid() ) {
+                return false;
+            }
+            route.terrain_see_costs.push_back( static_cast<int>( terrain->get_see_cost() ) );
+        }
+        return physical_light::detect( route ).visible;
+    };
+    // The envelope is centred on the source, not on the avatar or a
+    // destination scan.  It remains in memory-only spatial buckets.
+    for( overmap *om : get_loaded_overmaps_near( project_to<coords::sm>( source ).xy(), observer_radius_sm ) ) {
+        int om_candidates = 0;
+        attracted += om->attract_hordes_to_light( source, intensity, observer_radius_sm, sample_id,
+                     observed, visible, &om_candidates );
+        candidates += om_candidates;
+    }
+    if( candidate_count != nullptr ) {
+        *candidate_count = candidates;
+    }
+    return attracted;
 }
 
 void overmapbuffer:: alert_entity( const tripoint_abs_ms &location,
@@ -1714,6 +1885,26 @@ std::vector<overmap *> overmapbuffer::get_overmaps_near( const tripoint_abs_sm &
     return get_overmaps_near( location.xy(), radius );
 }
 
+std::vector<overmap *> overmapbuffer::get_loaded_overmaps_near( const point_abs_sm &p,
+        const int radius )
+{
+    const point_abs_om start = project_to<coords::om>( p + point( -radius, -radius ) );
+    const point_abs_om end = project_to<coords::om>( p + point( radius, radius ) );
+    std::vector<overmap *> result;
+    for( const std::pair<const point_abs_om, std::unique_ptr<overmap>> &entry : overmaps ) {
+        const point_abs_om &position = entry.first;
+        if( position.x() >= start.x() && position.x() <= end.x() && position.y() >= start.y() &&
+            position.y() <= end.y() ) {
+            result.push_back( entry.second.get() );
+        }
+    }
+    const point_abs_om center = project_to<coords::om>( p );
+    std::sort( result.begin(), result.end(), [&center]( const overmap *lhs, const overmap *rhs ) {
+        return trig_dist( center, lhs->pos() ) < trig_dist( center, rhs->pos() );
+    } );
+    return result;
+}
+
 std::vector<overmap *> overmapbuffer::get_overmaps_near( const point_abs_sm &p,
         const int radius )
 {
@@ -2255,15 +2446,46 @@ void overmapbuffer::spawn_monster( const tripoint_abs_sm &p, bool spawn_nonlocal
             cata_assert( here.inbounds( local ) );
         }
         monster *placed = nullptr;
-        if( entry.node.mapped().monster_data ) {
-            placed = g->place_critter_around( make_shared_fast<monster>(
-                                                  *entry.node.mapped().monster_data ),
-                                              local, 1, true );
+        const std::string &type_id = entry.node.mapped().get_type()->id.str();
+        const bool predator_transfer = type_id == "mon_writhing_stalker" ||
+                                       type_id == "mon_zombie_rider";
+        // Placement failure must reinsert the exact extracted owner.  Prepare
+        // a predator's lazy payload/position only in this disposable handoff
+        // copy; ordinary hordes retain their long-standing path below.
+        std::optional<horde_entity> prepared_predator;
+        horde_entity *handoff = &entry.node.mapped();
+        if( predator_transfer ) {
+            prepared_predator.emplace( entry.node.mapped() );
+            handoff = &*prepared_predator;
+        }
+        handoff->ensure_predator_payload( entry.pos );
+        if( handoff->monster_data ) {
+            handoff->synchronize_payload( entry.pos );
+            if( handoff->monster_data->is_caol_predator() ) {
+                ++handoff->monster_data->predator_state().handoff_epoch;
+            }
+            // A predator handoff is deliberately exact.  The generic
+            // place-around fallback may cross a sealed or too-narrow route;
+            // failure instead leaves this same abstract node in place.
+            if( handoff->monster_data->is_caol_predator() &&
+                loaded_predator_owns( handoff->monster_data->predator_state().actor_id ) ) {
+                DebugLog( D_WARNING, D_GAME ) << "Refused duplicate local predator ownership.";
+            } else {
+                placed = handoff->monster_data->is_caol_predator() ?
+                         g->place_critter_at( make_shared_fast<monster>( *handoff->monster_data ),
+                                               local ) :
+                         g->place_critter_around( make_shared_fast<monster>( *handoff->monster_data ),
+                                                  local, 1, true );
+            }
             // TODO: make sure entity data such as destination is synched
         } else {
-            placed = g->place_critter_around( entry.node.mapped().type_id->id, local, 1 );
+            placed = g->place_critter_around( handoff->type_id->id, local, 1 );
         }
         if( placed ) {
+            if( placed->is_caol_predator() ) {
+                predator_lifecycle_state &state = placed->predator_state();
+                state.last_advanced_turn = to_turn<int>( calendar::turn );
+            }
             placed->on_load();
         } else {
             om.hordes.insert( std::move( entry.node ) );
@@ -2280,7 +2502,7 @@ void overmapbuffer::spawn_mongroup( const tripoint_abs_sm &p, const mongroup_id 
     om.spawn_mongroup( submap_loc, type, count );
 }
 
-void overmapbuffer::despawn_monster( const monster &critter )
+bool overmapbuffer::despawn_monster( monster &critter )
 {
     tripoint_abs_om omp = project_to<coords::om>( critter.pos_abs() );
     overmap &om = get( omp.xy() );
@@ -2289,8 +2511,20 @@ void overmapbuffer::despawn_monster( const monster &critter )
     if( critter.is_nemesis() ) {
         //if the monster is the 'hunted' trait's nemesis, it becomes an overmap horde
         om.place_nemesis( critter.pos_abs_omt() );
+        return true;
     } else {
-        om.hordes.spawn_entity( critter.pos_abs(), critter );
+        // Prepare a handoff copy first.  The local owner is untouched until
+        // the abstract bucket accepts that exact snapshot.
+        monster snapshot( critter );
+        snapshot.on_unload();
+        const std::optional<std::unordered_map<tripoint_abs_ms, horde_entity>::iterator> inserted =
+            om.hordes.spawn_entity( critter.pos_abs(), snapshot );
+        if( inserted && ( *inserted )->second.monster_data->is_caol_predator() ) {
+            predator_lifecycle_state &state = ( *inserted )->second.monster_data->predator_state();
+            ++state.handoff_epoch;
+            state.last_advanced_turn = to_turn<int>( calendar::turn );
+        }
+        return inserted.has_value();
     }
 }
 

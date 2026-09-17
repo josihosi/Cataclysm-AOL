@@ -747,13 +747,14 @@ void Character::add_random_hobby( std::vector<profession_id> &choices )
     }
 }
 
-bool avatar::create( character_type type, const std::string &tempname )
+bool avatar::create( character_type type, const std::string &tempname,
+                     const scenario *const initial_scenario )
 {
     loading_ui::done();
     set_wielded_item( item() );
 
     prof = profession::generic();
-    set_scenario( scenario::generic() );
+    set_scenario( initial_scenario != nullptr ? initial_scenario : scenario::generic() );
 
     const bool interactive = type != character_type::NOW &&
                              type != character_type::FULL_RANDOM;
@@ -777,6 +778,11 @@ bool avatar::create( character_type type, const std::string &tempname )
         case character_type::NOW:
             //default world, fixed scenario, random name
             randomize( false, true );
+            // randomize resets an avatar to its default scenario.  Harness
+            // startup may supply an already validated ordinary scenario.
+            if( initial_scenario != nullptr ) {
+                reset_scenario( *this, initial_scenario );
+            }
             break;
         case character_type::FULL_RANDOM:
             //default world, random scenario, random name
@@ -797,7 +803,7 @@ bool avatar::create( character_type type, const std::string &tempname )
             break;
     }
     // Don't apply the default backgrounds on a template or scenario with SKIP_DEFAULT_BACKGROUND
-    if( type != character_type::TEMPLATE &&
+    if( type != character_type::TEMPLATE && initial_scenario == nullptr &&
         !get_scenario()->has_flag( flag_SKIP_DEFAULT_BACKGROUND ) ) {
         add_default_background();
     }

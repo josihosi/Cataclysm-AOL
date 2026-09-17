@@ -27,6 +27,9 @@
 #include "units_fwd.h"
 #include "value_ptr.h"
 #include "weakpoint.h"
+#include "writhing_stalker_ai.h"
+#include "zombie_rider_overmap_ai.h"
+#include "predator_state.h"
 
 class Character;
 class JsonObject;
@@ -202,6 +205,26 @@ class monster : public Creature
         bool is_pet() const;
         bool is_pet_follow() const;
         bool has_intelligence() const;
+
+        writhing_stalker::persistent_state &writhing_stalker_state() {
+            return stalker_state;
+        }
+        const writhing_stalker::persistent_state &writhing_stalker_state() const {
+            return stalker_state;
+        }
+        zombie_rider_overmap_ai::rider_pursuit_state &zombie_rider_pursuit_state() {
+            return rider_pursuit_state;
+        }
+        const zombie_rider_overmap_ai::rider_pursuit_state &zombie_rider_pursuit_state() const {
+            return rider_pursuit_state;
+        }
+        // Only stalkers and riders acquire this state.  Ordinary type-only
+        // horde entries therefore remain lazy and compact.
+        bool is_caol_predator() const;
+        void ensure_predator_state();
+        void initialize_predator_ammo_once();
+        predator_lifecycle_state &predator_state();
+        const predator_lifecycle_state &predator_state() const;
 
         bool avoid_trap( const tripoint_bub_ms &pos, const trap &tr ) const override;
 
@@ -645,6 +668,12 @@ class monster : public Creature
         monster_horde_attraction horde_attraction = MHA_NULL;
         /** Found path. Note: Not used by monsters that don't pathfind! **/
         std::vector<tripoint_bub_ms> path;
+
+        writhing_stalker::persistent_state stalker_state;
+        zombie_rider_overmap_ai::rider_pursuit_state rider_pursuit_state;
+        predator_lifecycle_state lifecycle_state;
+        // Set only around a successful non-forced physical move_to step.
+        bool physical_move_to_step = false;
 
         // Exponential backoff for stuck monsters. Massively reduces pathfinding CPU.
         time_point pathfinding_cd = calendar::turn;

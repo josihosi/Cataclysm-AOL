@@ -1,0 +1,29 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "inconclusive",
+  "smallest_supported_claim": "The separately prepared tactical-rider ordinary account cannot judge rider approach, counterplay, recovery, or intermittence: a bounded native wait ended at an actual-death terminal state before any player-visible rider encounter or player-selected recovery action.",
+  "causal_account": "The fresh ordinary account used no debug action.  The player disabled safe mode and chose one bounded native wait.  The harness reported no game-minute progress for that request, yet the returned terminal observation recorded actual avatar death at a later turn.  No player-visible rider was observed and no rider causation is claimed.  The death flow was completed through native prompts and the native main-menu quit confirmation; a native save is not available after death.",
+  "citations": [
+    {"citation_id":"J0001","meaning":"identifies this separate source-bound ordinary tactical-rider account","checks":{"scenario_id":"r_zl_freeplay_city042_tactical_rider_mcw","source_identity":"50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280","executable_identity":"e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"}},
+    {"citation_id":"J0165","meaning":"records acceptance of the player-selected bounded native wait","checks":{"native_receipt.accepted":true}},
+    {"citation_id":"J0166","meaning":"records the wait request's proved-no-progress result"},
+    {"citation_id":"J0167","meaning":"records the terminal surface's actual-death and avatar-dead facts","checks":{"value.surface.kind":"terminal","value.surface.facts.actual_death":"true","value.surface.facts.avatar_dead":"true"}},
+    {"citation_id":"J0169","meaning":"records the accepted native terminal confirmation","checks":{"native_receipt.accepted":true}},
+    {"citation_id":"J0182","meaning":"records acceptance of native main-menu Quit","checks":{"action_id":"main_menu.quit","native_receipt.accepted":true}},
+    {"citation_id":"J0184","meaning":"records process exit 0 after the native quit sequence","checks":{"value.surface.facts.exit_code":0}},
+    {"citation_id":"J0186","meaning":"records the sealed terminal boundary and released unused authority","checks":{"unused_authority":"released"}}
+  ],
+  "material_deviations": [
+    "The labeled tactical setup did not yield a player-visible rider encounter in the fresh ordinary account.",
+    "The bounded wait reached a terminal death state before an ordinary player-selected counterplay or recovery could be observed."
+  ],
+  "contradictions": [
+    {"citation_id":"J0167","meaning":"An actual-death terminal state contradicts a claim that this account demonstrated recoverable rider pressure."}
+  ],
+  "remaining_unknowns": [
+    "What caused the terminal death; this witness does not attribute it to a rider.",
+    "Whether a safely prepared local rider fixture can expose an approach and leave room for ordinary player counterplay, recovery, and a later nonconstant interval."
+  ],
+  "recommended_disposition":"change-strategy",
+  "evidence_ceiling":"focused"
+}

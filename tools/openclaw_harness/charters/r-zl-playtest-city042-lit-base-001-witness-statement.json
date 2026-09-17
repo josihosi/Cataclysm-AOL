@@ -1,0 +1,23 @@
+{
+  "schema": "caol-playtest-witness-statement-v1",
+  "verdict": "proved",
+  "smallest_supported_claim": "The distinct source- and executable-bound lit-base account completed player-selected native smartphone light changes and a bounded stationary nighttime interval, then natively saved, returned to the main menu, and quit. It does not establish that the nearby hostile's presence or behavior was caused by light, nor a manageable-attention conclusion.",
+  "causal_account": "The fresh account used only current advertised inventory and menu owners to turn the smartphone flashlight off and then select Turn on flashlight. A nearby writhing stalker became visible after those native light-change turns, but this was not a focused-light fixture and the run contains no native causal attribution from the player light to hostile attention; that outcome is expressly not promoted. The account then followed native Save and Quit, native confirmation, native main-menu Quit, and native confirmation.",
+  "citations": [
+    {"citation_id":"J0001","meaning":"identifies this distinct account and exact runtime binding","checks":{"scenario_id":"r_zl_freeplay_city042_lit_base_mcw","source_identity":"50e9dfe0079b2e40aa9e065d0f30790a729cda9bfe60929c5964b8acd170e280","executable_identity":"e96675ac5843bc327d70c6da85d474d5717f4c33d7d7d9f9d2bbd3a99692b41a"}},
+    {"citation_id":"J0004","meaning":"the player-selected native inventory entry was accepted","checks":{"action_id":"world.inventory","native_receipt.accepted":true}},
+    {"citation_id":"J0011","meaning":"the native menu choice that turned off the active flashlight was accepted","checks":{"action_id":"menu.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0025","meaning":"the later native smartphone menu choice was accepted after its advertised Turn on flashlight option","checks":{"action_id":"menu.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0027","meaning":"records the later player-visible world observation, including the nearby hostile, without a causal attribution claim","checks":{"value.surface.kind":"world"}},
+    {"citation_id":"J0030","meaning":"the native World Save and Quit action was accepted","checks":{"action_id":"world.save_quit","native_receipt.accepted":true}},
+    {"citation_id":"J0033","meaning":"the native save confirmation was accepted","checks":{"action_id":"prompt.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0035","meaning":"the native main-menu Quit command was accepted","checks":{"action_id":"main_menu.quit","native_receipt.accepted":true}},
+    {"citation_id":"J0037","meaning":"the native application-quit confirmation was accepted","checks":{"action_id":"prompt.choose","native_receipt.accepted":true}},
+    {"citation_id":"J0038","meaning":"records the honest boundary and released unused authority","checks":{"unused_authority":"released"}}
+  ],
+  "material_deviations": ["The attempted north move was blocked, so no travel or withdrawal conclusion is claimed."],
+  "contradictions": [{"citation_id":"J0027","meaning":"A visible writhing stalker appeared after light-change turns, but no native evidence attributes its attention or behavior to the light; no focused-light claim is made."}],
+  "remaining_unknowns": ["Whether a routine stationary player light produces noticeable manageable hostile attention in a non-focused ordinary route.","Whether light changes materially alter that attention in ordinary play."],
+  "recommended_disposition":"continue",
+  "evidence_ceiling":"focused"
+}

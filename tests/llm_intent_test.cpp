@@ -1,4 +1,7 @@
 #include <array>
+#include <chrono>
+#include <filesystem>
+#include <fstream>
 #include <map>
 #include <sstream>
 #include <string>
@@ -6,6 +9,8 @@
 #include "avatar.h"
 #include "cata_catch.h"
 #include "character_id.h"
+#include "cata_path.h"
+#include "path_info.h"
 #include "coordinates.h"
 #include "creature.h"
 #include "faction.h"
@@ -556,4 +561,82 @@ TEST_CASE( "llm_intent_snapshot_does_not_reuse_target_handles_after_z", "[llm_in
     CHECK( creature_legend.find( "? ... zombie" ) == std::string::npos );
 
     clear_creatures();
+}
+
+TEST_CASE( "llm_debug_logging_is_opt_in", "[llm_intent][logging]" )
+{
+    const std::filesystem::path previous = PATH_INFO::base_path().get_unrelative_path();
+    const std::filesystem::path temporary = std::filesystem::temp_directory_path() /
+            ( "caol-llm-log-test-" + std::to_string(
+                  std::chrono::steady_clock::now().time_since_epoch().count() ) );
+    struct restore_paths {
+        std::filesystem::path previous;
+        std::filesystem::path temporary;
+        ~restore_paths() {
+            PATH_INFO::init_base_path( previous.string() );
+            std::error_code ignored;
+            std::filesystem::remove_all( temporary, ignored );
+        }
+    } cleanup{ previous, temporary };
+    PATH_INFO::init_base_path( temporary.string() );
+    const std::filesystem::path events = temporary / "config" / "llm_intent_events.log";
+    {
+        override_option disabled( "DEBUG_LLM_INTENT_LOG", "false" );
+        llm_intent::log_event( "disabled diagnostic" );
+        CHECK_FALSE( std::filesystem::exists( temporary / "config" ) );
+    }
+    {
+        override_option enabled( "DEBUG_LLM_INTENT_LOG", "true" );
+        llm_intent::log_event( "enabled diagnostic" );
+        REQUIRE( std::filesystem::exists( events ) );
+        std::ifstream input( events );
+        const std::string contents( ( std::istreambuf_iterator<char>( input ) ),
+                                    std::istreambuf_iterator<char>() );
+        CHECK( contents.find( "enabled diagnostic" ) != std::string::npos );
+        CHECK( contents.find( "disabled diagnostic" ) == std::string::npos );
+    }
+    const auto size = std::filesystem::file_size( events );
+    {
+        override_option disabled( "DEBUG_LLM_INTENT_LOG", "false" );
+        llm_intent::log_event( "disabled again" );
+        CHECK( std::filesystem::file_size( events ) == size );
+    }
+}
+
+TEST_CASE( "recorded_panic_reply_preserves_action_through_lenient_parse", "[llm_intent]" )
+{
+    // Retained E4B reply, runner log line 646. This isolates parser behavior;
+    // it does not turn the old native run into a successful flee test.
+    const std::string reply = "Panic! I'm boltin' for the hills!|panic_on|move=0,-50 panic_on";
+    std::vector<std::string> actions;
+    std::string target;
+    std::optional<point> delta;
+    std::string terminal;
+    std::string error;
+    CHECK_FALSE( llm_intent::parse_action_csv_for_test( reply, actions, target, delta,
+                 terminal, error ) );
+    override_option enabled( "LLM_INTENT_ENABLE", "true" );
+    setup_snapshot_test_scene();
+    npc &listener = spawn_test_npc_at( point_bub_ms( 50, 50 ), "Listener NPC" );
+    listener.set_fac( faction_your_followers );
+    llm_intent::process_response_for_test( listener, "recorded-panic", "panic and flee", reply );
+    CHECK( listener.get_llm_intent_actions_for_test() ==
+           std::vector<llm_intent_action>{ llm_intent_action::panic_on } );
+}
+
+TEST_CASE( "llm_response_error_diagnostics_are_categorized_and_sanitized", "[llm_intent][logging]" )
+{
+    const std::string error =
+        "Runner process exited (signal=13).\nRunner log tail: private prompt=do not emit this";
+    CHECK( llm_intent::classify_response_error_for_test( error ) == "runner_process_exit" );
+    const std::string sanitized = llm_intent::sanitize_response_error_for_test( error );
+    CHECK( sanitized == "Runner process exited (signal=13)." );
+    CHECK( sanitized.find( "private prompt" ) == std::string::npos );
+    CHECK( llm_intent::classify_response_error_for_test( "Failed to write to runner stdin (Broken pipe)." ) ==
+           "runner_stdin_write" );
+    CHECK( llm_intent::classify_response_error_for_test( "Runner stdout closed (still_running)." ) ==
+           "runner_stdout_eof" );
+    CHECK( llm_intent::should_retry_response_for_test( "Runner stdout closed (still_running)." ) );
+    CHECK_FALSE( llm_intent::should_retry_response_for_test( "Runner response timed out." ) );
+    CHECK_FALSE( llm_intent::should_retry_response_for_test( "Runner process exited (signal=13)." ) );
 }

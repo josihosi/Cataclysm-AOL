@@ -1,0 +1,23 @@
+{
+  "manifest_version": 1,
+  "name": "creature_sprites.dark_visual_proof_ultica",
+  "description": "Disposable night-copy companion to the accepted bright C-AOL creature-sprite frame. Exact-ID debug placement is setup only; this route proves only the dark rendering counterpart.",
+  "capabilities": {"runtime.entry_mode": "cockpit_live_session", "capabilities.creature_sprites.visual_render": "exact_id_normal_scale_dark_rendering"},
+  "runtime_contract": {
+    "permitted_input": ["debug:spawn", "cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["direct-state-mutation", "raw-save-rewrite-after-install", "physical-or-foreground-input", "game.wait"],
+    "setup_only_debug": true, "disposable_copy": true, "helpers": ["native file bridge"], "permissions": [], "platform": ["macos"],
+    "profile": "creature-sprites-visual-night", "fixture": "creature_sprites_visual_night_20260914",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "creature-sprites-visual-night", "fixture": "creature_sprites_visual_night_20260914", "helper": "native file bridge", "peekaboo": false, "ocr": false, "input": ["advertised native cockpit actions"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "profile": "creature-sprites-visual-night", "config_profile": "creature-sprites-visual", "world": "VisualSpriteTest",
+  "fixture": "creature_sprites_visual_night_20260914", "fixture_profile": "creature-sprites-visual", "replace_existing_worlds": true, "artifact_source": "debug.log",
+  "steps": [{"kind": "cockpit_live_session", "label": "render_exact_creature_sprite_ids_at_night", "cleanup_on_finish": true, "stop_after_live_session": true,
+    "objective": "Use advertised native debug placement to place exactly mon_writhing_stalker and mon_zombie_rider in the pre-set night copy, capture one normal-scale dark native frame, and bind it to the copied fixture, source, process, and session.",
+    "proof_targets": ["fixture turn setup receipt", "exact ID setup receipts", "normal-scale dark frame", "session/process cleanup"],
+    "invariants": ["fixture calendar transform and debug placement are zero-credit setup", "no waiting through hostile turns", "no creature behavior claim", "native rendering observation is required"],
+    "live_operations": ["game.act"], "transition_timeout_seconds": 15.0, "observe_interval_seconds": 0.1}],
+  "proof_route": {"precondition": ["render_exact_creature_sprite_ids_at_night"], "production_behavior": ["render_exact_creature_sprite_ids_at_night"], "terminal_persistence": ["render_exact_creature_sprite_ids_at_night"], "artifact_verdict": ["render_exact_creature_sprite_ids_at_night"], "disallowed_shortcuts": ["render_exact_creature_sprite_ids_at_night"]},
+  "evidence_contract": {"claim": "the two exact monster IDs render their separate C-AOL sprite cells at normal gameplay scale under the pre-set native night condition", "load_only_verdict": "load proof is insufficient; a native rendered night frame is required"}
+}

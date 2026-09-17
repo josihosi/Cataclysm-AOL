@@ -1,0 +1,7 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-LIGHT-CONTINUITY-closure-rider-memory-native-001",
+  "outcome": "R-ZL-LIGHT-CONTINUITY rider consumer: one source-bound native zombie rider samples a current exposed physical lamp, acts through the production source-keyed finite light memory after source loss, then stops refreshing and ages that memory to expiry.",
+  "scenario": "zombie_rider.live_light_memory_continuity_mcw",
+  "query": {"requirements": [{"key": "capabilities.r_zl_light_continuity.rider_memory", "op": "eq", "value": "physical_light_sample_persists_and_expires_from_native_turns", "minimum_evidence": "declared"}], "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]}
+}

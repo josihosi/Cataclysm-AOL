@@ -40,9 +40,12 @@ class ScenarioRegistryIntegrationTest(unittest.TestCase):
             {"manifest": {"present": True, "validation": {"status": "valid", "review_required": False}}},
         )
         decoy = registry_store.RegistryQueryCandidateSnapshot("decoy", {}, "active", True, selected.explanation)
-        with mock.patch.object(registry_store, "build_registry_query_candidate_snapshot", return_value=(decoy, selected)), \
+        with mock.patch.object(registry_store, "build_registry_query_candidate_snapshot", return_value=(decoy, selected)) as snapshot, \
                 mock.patch.object(registry_store, "evaluate_registry_query", side_effect=lambda req, xs: registry_store.RegistryQueryEvaluation((), ("named",))):
             self.assertIs(registry_store._select_registry_bootstrap_candidate(mock.sentinel.db, request, scenario_id="named"), selected)
+        snapshot.assert_called_once_with(
+            mock.sentinel.db, manifest_ids=("named",), allow_current_manifest_retry=False,
+        )
 
     def test_exact_bootstrap_selector_named_typed_mismatch_rejects_without_fallback(self) -> None:
         request = registry_store.parse_registry_query_request({"requirements": [{"key": "capabilities.x", "op": "eq", "value": "wanted"}], "preferences": []})

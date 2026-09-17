@@ -1,0 +1,37 @@
+{
+  "name": "r037_npc_llm_command_allowed_foreign_pickup_v001",
+  "source_fixture": "harness_basecamp_no_giuseppe_2026-09-05",
+  "source_profile": "live-debug",
+  "description": "Disposable R-037 ownership-only pickup control. It offers one foreign-owned bandage on the player's tile with no NO_NPC_PICKUP zone.",
+  "save_transforms": [
+    {
+      "kind": "basecamp_assigned_npc_items",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_id": 2,
+      "offset_ms": [1, 0, 0],
+      "moves": 100,
+      "assigned_camp_omt": [140, 41, 0],
+      "ensure_follower": true,
+      "rules": {"allow_pick_up": true},
+      "items": [{"typeid": "machete", "count": 1, "slot": "weapon"}]
+    },
+    {
+      "kind": "npc_llm_panic_state",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "npc_id": 2,
+      "active": false,
+      "duration_turns": 0
+    },
+    {
+      "kind": "map_items_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "items": [{"typeid": "bandages", "count": 1, "owner": "hells_raiders", "offset_ms": [0, 0, 0]}]
+    },
+    {
+      "kind": "active_monsters_near_player",
+      "player_save": "#Wm9yYWlkYSBWaWNr.sav.zzip",
+      "clear_existing": true,
+      "monsters": []
+    }
+  ]
+}

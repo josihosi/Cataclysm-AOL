@@ -336,6 +336,15 @@ void game::unserialize_impl( const JsonObject &data )
     inp_mngr.pump_events();
     Messages::deserialize( data );
 
+    // Monsters restored directly from the player save do not pass through
+    // map::load and therefore miss the on_load hook used by submap monsters.
+    // Run it after the complete game payload is available so opted-in upgrade
+    // schedules, reproduction, and elapsed-time state use the same production
+    // load semantics.  Explicitly disabled monster upgrades remain disabled.
+    for( monster &critter : all_monsters() ) {
+        critter.on_load();
+    }
+
 }
 
 void scent_map::deserialize( const std::string &data, bool is_type )
@@ -703,6 +712,14 @@ void overmap::unserialize( const JsonObject &jsobj )
                     ( *result )->second.tracking_intensity = monster_map_json.next_int();
                     ( *result )->second.last_processed.deserialize( monster_map_json.next_value() );
                     ( *result )->second.moves = monster_map_json.next_int();
+                    if( monster_map_json.test_object() ) {
+                        JsonObject light_memory = monster_map_json.next_object();
+                        light_memory.read( "source", ( *result )->second.light_source );
+                        light_memory.read( "sample_id", ( *result )->second.light_sample_id );
+                        light_memory.read( "observed", ( *result )->second.light_observed );
+                        light_memory.read( "expires", ( *result )->second.light_expires );
+                        light_memory.read( "strength", ( *result )->second.light_interest_strength );
+                    }
                 } else {
                     // We deserialized something nasty, skip the rest of the stored values
                     monster_map_json.next_value();
@@ -1495,6 +1512,13 @@ void overmap::serialize( std::ostream &fout ) const
         json.write( monster_entry.second.tracking_intensity );
         monster_entry.second.last_processed.serialize( json );
         json.write( monster_entry.second.moves );
+        json.start_object();
+        json.member( "source", monster_entry.second.light_source );
+        json.member( "sample_id", monster_entry.second.light_sample_id );
+        json.member( "observed", monster_entry.second.light_observed );
+        json.member( "expires", monster_entry.second.light_expires );
+        json.member( "strength", monster_entry.second.light_interest_strength );
+        json.end_object();
     }
     json.end_array();
     fout << std::endl;
@@ -2143,11 +2167,15 @@ void overmap_global_state::serialize( JsonOut &json ) const
         json.member( "turns_remaining", entry.second.turns_remaining );
         json.member( "max_riders_drawn", entry.second.max_riders_drawn );
         json.member( "decay_turn_remainder", entry.second.decay_turn_remainder );
+        json.member( "observed_at_turn", entry.second.observed_at_turn );
+        json.member( "expires_at_turn", entry.second.expires_at_turn );
+        json.member( "sample_id", entry.second.sample_id );
         json.member( "reason", entry.second.reason );
         json.end_object();
     }
     json.end_array();
     json.member( "zombie_rider_light_memory_last_turn", zombie_rider_light_memory_last_turn );
+    json.member( "zombie_rider_bands", zombie_rider_bands );
     json.member( "placed_regions", placed_regions );
 
     json.end_object();
@@ -2196,6 +2224,9 @@ void overmap_global_state::deserialize( const JsonObject &json )
             memory_json.read( "turns_remaining", memory.turns_remaining );
             memory_json.read( "max_riders_drawn", memory.max_riders_drawn );
             memory_json.read( "decay_turn_remainder", memory.decay_turn_remainder );
+            memory_json.read( "observed_at_turn", memory.observed_at_turn );
+            memory_json.read( "expires_at_turn", memory.expires_at_turn );
+            memory_json.read( "sample_id", memory.sample_id );
             memory.decay_turn_remainder = std::clamp( memory.decay_turn_remainder, 0,
                                           zombie_rider_overmap_ai::rider_light_memory_decay_interval_turns - 1 );
             memory_json.read( "reason", memory.reason );
@@ -2206,6 +2237,11 @@ void overmap_global_state::deserialize( const JsonObject &json )
     }
     if( !json.read( "zombie_rider_light_memory_last_turn", zombie_rider_light_memory_last_turn ) ) {
         zombie_rider_light_memory_last_turn = calendar::turn;
+    }
+    if( json.has_member( "zombie_rider_bands" ) ) {
+        json.read( "zombie_rider_bands", zombie_rider_bands );
+    } else {
+        zombie_rider_bands.clear();
     }
     placed_regions.clear();
     json.read( "placed_regions", placed_regions );

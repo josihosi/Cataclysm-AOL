@@ -90,25 +90,25 @@ enum class main_menu_opts : int {
 std::string main_menu::queued_world_to_load;
 std::string main_menu::queued_save_id_to_load;
 
-bool main_menu::create_harness_world( const std::string &world_name, const std::uint32_t raw_seed )
+bool main_menu::create_harness_world( const harness_world_options &options )
 {
     world_generator->init();
-    if( !world_generator->valid_worldname( world_name, true ) ) {
+    if( !world_generator->valid_worldname( options.world_name, true ) ) {
         return false;
     }
 
-    const cata_path world_path = PATH_INFO::savedir_path() / world_name;
+    const cata_path world_path = PATH_INFO::savedir_path() / options.world_name;
     if( std::filesystem::exists( world_path.get_unrelative_path() ) ) {
         return false;
     }
 
     const std::vector<mod_id> mods = world_generator->get_mod_manager().get_default_mods();
-    WORLD *world = world_generator->make_new_world( world_name, mods );
+    WORLD *world = world_generator->make_new_world( options.world_name, mods );
     if( world == nullptr ) {
         return false;
     }
     const auto discard_world = [&]() {
-        world_generator->delete_world( world_name, true );
+        world_generator->delete_world( options.world_name, true );
     };
     const char *const harness_run_dir = std::getenv( "OPENCLAW_HARNESS_RUN_DIR" );
     if( harness_run_dir == nullptr || harness_run_dir[0] == '\0' ) {
@@ -128,15 +128,21 @@ bool main_menu::create_harness_world( const std::string &world_name, const std::
 
     try {
         avatar &pc = get_avatar();
-        // The interactive main menu loads core definitions before constructing its avatar.
-        // This hidden route bypasses that menu, so preserve the same owner ordering here.
-        g->load_core_data();
-        pc = avatar();
         g->gamemode = nullptr;
         world_generator->set_active_world( world );
         g->setup();
-        g->prepare_harness_overmap_seed( raw_seed );
-        if( !pc.create( character_type::NOW ) || !g->start_game() ||
+        // setup() loads and finalizes the selected world's data.  Scenario ids
+        // are not valid before that lifecycle point.
+        const string_id<scenario> scenario_type( options.scenario_id );
+        if( !options.scenario_id.empty() && ( !scenario_type.is_valid() ||
+                                             !scenario_type->can_pick().success() ) ) {
+            discard_world();
+            return false;
+        }
+        g->prepare_harness_overmap_seed( options.raw_seed );
+        const scenario *const requested_scenario = options.scenario_id.empty() ? nullptr :
+                &scenario_type.obj();
+        if( !pc.create( character_type::NOW, "", requested_scenario ) || !g->start_game() ||
             !write_harness_new_world_feasibility_artifact() || !g->save() ) {
             discard_world();
             return false;
@@ -757,18 +763,9 @@ bool main_menu::opening_screen()
             std::map<std::string, std::string>{},
             std::vector<semantic_action_descriptor>{
                 { "main_menu.quit", "", _( "Quit" ), true }
-            }, [semantic_manager, &semantic_action]( const semantic_action_request &request ) {
+            }, [ &semantic_action]( const semantic_action_request &request ) {
                 if( request.action_id != "main_menu.quit" || request.stable_id.has_value() ) {
                     return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
-                }
-                // A confirmed quit has no successor main-menu frame: query_yn
-                // returns into this owner and the process exits.  Withhold the
-                // parent while its confirmation child is active so releasing
-                // that child cannot publish a stale main-menu receipt that a
-                // relay may mistake for a live replacement process.
-                if( !semantic_manager->withhold_parent_authority_until_recreated(
-                        request.surface_id ) ) {
-                    return semantic_action_dispatch_result{ false, "native_parent_withhold_failed", "" };
                 }
                 // Keep the semantic choice in the same main-menu iteration.
                 // A queued second intent can otherwise outlive its bound
@@ -780,7 +777,10 @@ bool main_menu::opening_screen()
                             << " event=main_menu_quit_callback";
                 }
                 // The actual child owner is query_yn( "Really quit?" ).
-                return semantic_action_dispatch_result{ true, "", "", true };
+                // This is terminal intent, not gameplay completion.  Receipt
+                // it immediately: the confirmation owner may not publish a
+                // successor if the process exits or a host closes the window.
+                return semantic_action_dispatch_result{ true, "", "", false, false };
             } );
             semantic_scope->consume_request();
         }

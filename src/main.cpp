@@ -288,6 +288,7 @@ struct cli_opts {
     bool disable_ascii_art = false;
     std::string harness_world_name;
     std::string harness_raw_seed;
+    std::string harness_scenario_id;
 };
 
 cli_opts parse_commandline( int argc, const char **argv )
@@ -373,6 +374,17 @@ cli_opts parse_commandline( int argc, const char **argv )
                 1,
                 [&result]( int, const char **params ) -> int {
                     result.harness_raw_seed = params[0];
+                    return 1;
+                },
+                true
+            },
+            {
+                "--harness-new-world-scenario", "<scenario-id>",
+                "(Harness automation) Select an ordinary scenario for the fresh named world",
+                section_default,
+                1,
+                [&result]( int, const char **params ) -> int {
+                    result.harness_scenario_id = params[0];
                     return 1;
                 },
                 true
@@ -580,14 +592,16 @@ cli_opts parse_commandline( int argc, const char **argv )
     process_args( argv, argc, first_pass_arguments );
     process_args( argv, argc, second_pass_arguments );
 
-    if( result.harness_world_name.empty() != result.harness_raw_seed.empty() ) {
+    if( result.harness_world_name.empty() != result.harness_raw_seed.empty() ||
+        ( !result.harness_scenario_id.empty() && result.harness_world_name.empty() ) ) {
         std::cerr << "Harness new-world mode requires both --harness-new-world and "
                   << "--harness-raw-seed.\n";
         std::exit( 1 );
     }
     if( !result.harness_world_name.empty() ) {
         std::string error;
-        if( !parse_harness_world_options( result.harness_world_name, result.harness_raw_seed, &error ) ) {
+        if( !parse_harness_world_options( result.harness_world_name, result.harness_raw_seed, &error,
+                                          result.harness_scenario_id ) ) {
             std::cerr << "Invalid harness new-world request: " << error << "\n";
             std::exit( 1 );
         }
@@ -912,8 +926,8 @@ int main( int argc, const char *argv[] )
     if( !cli.harness_world_name.empty() ) {
         std::string error;
         const std::optional<harness_world_options> harness = parse_harness_world_options(
-                    cli.harness_world_name, cli.harness_raw_seed, &error );
-        if( !harness || !main_menu::create_harness_world( harness->world_name, harness->raw_seed ) ) {
+                    cli.harness_world_name, cli.harness_raw_seed, &error, cli.harness_scenario_id );
+        if( !harness || !main_menu::create_harness_world( *harness ) ) {
             DebugLog( D_ERROR, DC_ALL ) << "harness_new_world failed: "
                                         << ( error.empty() ? "world creation or save failed" : error )
                                         << std::endl;

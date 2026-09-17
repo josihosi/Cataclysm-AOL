@@ -1,0 +1,8 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-PLAYTEST-integrated-free-play-001",
+  "outcome": "R-ZL-PLAYTEST zero-credit preparation: native-save a distinct nighttime city footing with a broad-distance regular hostile rider before a fresh ordinary account.",
+  "scenario": "r_zl_freeplay_city042_late_rider_setup_mcw",
+  "query": {"requirements":[{"key":"capabilities.r_zl_playtest.repair_diagnostic","op":"eq","value":"late_rider_ordinary_account_setup_only","minimum_evidence":"declared"}],"preferences":[{"key":"runtime.entry_mode","op":"eq","value":"cockpit_live_session","minimum_evidence":"declared"}]},
+  "charter":"tools/openclaw_harness/charters/r-zl-playtest-city042-late-rider-setup-001.json"
+}

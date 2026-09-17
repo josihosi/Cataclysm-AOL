@@ -1,0 +1,23 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-ENCOUNTERS: the current source-bound native extended-description modal presents the translated frozen zombie rider description for a visible staged rider.",
+  "material_proof": "A disposable source-bound cockpit launches a fixture containing a visible mon_zombie_rider, opens the ordinary World Look owner, selects the visible creature, and records the child native extended-description surface's exact displayed text before graceful cleanup.",
+  "current_uncertainty": "Whether the semantic cockpit can reach and retain the existing native extended-description modal without raw keyboard input or synthesized text.",
+  "material_contradiction": [
+    "the actor is not a visible mon_zombie_rider at the native description boundary",
+    "the description text is derived outside the native extended-description modal",
+    "the source/executable/run or owned-process binding is unavailable"
+  ],
+  "already_accepted_evidence": [
+    "the natural rider origin and exactly-once ammunition result from attempt 33; this staged description check does not replay or alter that result"
+  ],
+  "forbidden_shortcuts": [
+    "crediting fixture placement as natural rider origin, prevalence, ammunition, or gameplay proof",
+    "raw keyboard input, screenshots, OCR, or direct JSON text as presentation proof"
+  ],
+  "honest_stop_conditions": [
+    "the native modal presents the frozen rider description and the run is journaled and cleaned up",
+    "the first source-bound semantic dispatch or presentation divergence is retained"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

@@ -144,6 +144,11 @@ class ScenarioRegistryCliTest(unittest.TestCase):
     def test_brief_requested_playtest_uses_validated_charter_and_bound_token_without_human_gate(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
+            source_path = root / "scenario.json"
+            source_path.write_text(json.dumps({
+                "steps": [{"kind": "press"}],
+                "post_relaunch": {"steps": [{"kind": "cockpit_live_session"}]},
+            }), encoding="utf-8")
             args = argparse.Namespace(
                 command="registry-detached-launch",
                 selection_token="selected-token",
@@ -151,7 +156,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 witness_charter=str(HARNESS_DIR / "charters" / "r009-macos-witness-rev2.json"),
             )
             selection = scenario_registry_cli.RegistryLaunchToken(
-                "selected-token", True, "current", "r009-m095", "scenario.json",
+                "selected-token", True, "current", "r009-m095", str(source_path),
             )
             bridge_result = subprocess.CompletedProcess(
                 args=[], returncode=0,
@@ -181,6 +186,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertIn("registry-launch", command)
             self.assertIn("selected-token", command)
             self.assertIn("--cockpit-live-session", command)
+            self.assertNotIn("--post-relaunch-continuation", command)
             self.assertNotIn("Josef", command)
             registry_index = command.index("--registry")
             charter_index = command.index("--witness-charter")
@@ -208,6 +214,22 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         )
 
         self.assertTrue(namespace.cockpit_live_session)
+
+    def test_selected_continuation_forwards_immutable_saved_world_snapshot(self) -> None:
+        scenario = "horde.predator_lifecycle_abstract_to_physical_mcw"
+        selection = scenario_registry_cli.RegistryLaunchToken(
+            "token", True, "current", scenario,
+            str(startup_harness.scenario_path(scenario)),
+        )
+        snapshot = "/exact/preserved/McWilliams"
+
+        namespace = scenario_registry_cli._registry_launch_probe_namespace(
+            selection, cockpit_live_session=True,
+            post_relaunch_continuation=True, saved_world_snapshot=snapshot,
+        )
+
+        self.assertTrue(namespace.post_relaunch_continuation)
+        self.assertEqual(namespace.saved_world_snapshot, snapshot)
 
     def test_detached_launch_refuses_stale_product_binary_without_starting_bridge(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -251,8 +273,19 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         repaired = scenario_registry_cli._registry_repair_probe_namespace(
             repair, cockpit_live_session=True,
         )
+        continuation = scenario_registry_cli._registry_repair_probe_namespace(
+            repair, cockpit_live_session=True, post_relaunch_continuation=True,
+        )
+        snapshot = "/exact/preserved/McWilliams"
+        continuation_with_snapshot = scenario_registry_cli._registry_repair_probe_namespace(
+            repair, cockpit_live_session=True, post_relaunch_continuation=True,
+            saved_world_snapshot=snapshot,
+        )
         self.assertTrue(bootstrap.compact_stdout)
         self.assertTrue(repaired.compact_stdout)
+        self.assertTrue(continuation.post_relaunch_continuation)
+        self.assertEqual(continuation.fixture, "")
+        self.assertEqual(continuation_with_snapshot.saved_world_snapshot, snapshot)
 
     def strict_manifest(self) -> dict:
         return {
@@ -700,6 +733,32 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 ]), 1)
             reused_probe.assert_not_called()
 
+    def test_bootstrap_reentry_flag_is_accepted_and_forwarded_to_the_probe(self) -> None:
+        scenario = "bandit.r008_natural_return_validation_mcw"
+        selection = scenario_registry_cli.RegistryBootstrapToken(
+            "token", True, "current", scenario,
+            str(startup_harness.scenario_path(scenario)), {},
+        )
+
+        outer_args = scenario_registry_cli.build_parser().parse_args([
+            "registry-bootstrap-launch", "token", "--post-relaunch-continuation",
+        ])
+        probe_args = scenario_registry_cli._registry_bootstrap_probe_namespace(
+            selection, post_relaunch_continuation=True,
+        )
+
+        self.assertTrue(outer_args.post_relaunch_continuation)
+        self.assertTrue(probe_args.post_relaunch_continuation)
+        self.assertEqual(probe_args.fixture, "")
+
+    def test_detached_bootstrap_reentry_flag_is_accepted(self) -> None:
+        args = scenario_registry_cli.build_parser().parse_args([
+            "registry-bootstrap-detached-launch", "token",
+            "--session-dir", "/tmp/cockpit-session",
+            "--post-relaunch-continuation",
+        ])
+        self.assertTrue(args.post_relaunch_continuation)
+
     def test_bootstrap_cli_rejects_a_changed_runtime_before_probe_claim(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -1116,6 +1175,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                     mock.patch.object(scenario_registry_cli, "reload_repair_token_for_launch", return_value=selection), \
                     mock.patch.object(startup_harness, "compare_runtime_binding", return_value={"status": "matched"}), \
                     mock.patch.object(scenario_registry_cli, "_declared_pre_descriptor_prefix", return_value=[]), \
+                    mock.patch.object(scenario_registry_cli, "_declared_live_session_reentries", return_value=1), \
                     mock.patch.object(scenario_registry_cli.subprocess, "run", return_value=bridge_result) as run, \
                     mock.patch.object(scenario_registry_cli, "_write_result") as write_result:
                 result = scenario_registry_cli._launch_repair_file_bridge(args, root / "registry.sqlite3")
@@ -1127,12 +1187,59 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertIn("--cockpit-live-session", command)
             self.assertIn("--adaptive-semantic-autodrive", command)
             self.assertIn("repair-token", command)
+            self.assertIn("--session-reentries", command)
+            self.assertEqual(command[command.index("--session-reentries") + 1], "1")
+            reentry_command = json.loads(command[command.index("--reentry-command-json") + 1])
+            self.assertIn("--post-relaunch-continuation", reentry_command)
+            self.assertIn("registry-repair-reentry-launch", reentry_command)
             receipt = write_result.call_args.args[0]
             self.assertTrue(receipt["ok"])
             self.assertEqual(receipt["repair_provenance"]["red_verification_id"], "5bb0e5f8")
             self.assertEqual(receipt["authority"],
                              "repair token remains unclaimed until the canonical child launch")
             connection.close.assert_called_once()
+
+    def test_repair_reentry_mints_distinct_successor_only_from_claimed_predecessor(self) -> None:
+        predecessor = "repair-predecessor"
+        issued = {
+            "manifest_id": "manifest",
+            "verification_id": "verification",
+            "route_key": "route",
+            "details_json": json.dumps({"query_json": self.bootstrap_request()}),
+        }
+        connection = mock.Mock()
+        connection.execute.side_effect = [
+            mock.Mock(fetchone=mock.Mock(return_value=issued)),
+            mock.Mock(fetchone=mock.Mock(return_value={"claimed": 1})),
+            mock.Mock(fetchone=mock.Mock(return_value={"declaration_json": "{}"})),
+        ]
+        successor = RegistryRepairToken(
+            "repair-successor", True, "issued", "repair", "/tmp/repair.json", {},
+        )
+        with mock.patch.object(scenario_registry_cli, "open_registry", return_value=connection), \
+                mock.patch.object(scenario_registry_cli, "_current_repair_binding", return_value={"runtime": {}}), \
+                mock.patch.object(scenario_registry_cli, "issue_registry_repair_token", return_value=successor) as issue:
+            token = scenario_registry_cli._mint_repair_reentry_token(Path("registry.sqlite3"), predecessor)
+
+        self.assertEqual(token, "repair-successor")
+        self.assertNotEqual(token, predecessor)
+        self.assertEqual(issue.call_args.kwargs["manifest_id"], "manifest")
+        self.assertEqual(issue.call_args.kwargs["route_key"], "route")
+        connection.close.assert_called_once()
+
+    def test_repair_reentry_rejects_unclaimed_predecessor(self) -> None:
+        connection = mock.Mock()
+        connection.execute.side_effect = [
+            mock.Mock(fetchone=mock.Mock(return_value={
+                "manifest_id": "manifest", "verification_id": "verification", "route_key": "route",
+                "details_json": json.dumps({"query_json": self.bootstrap_request()}),
+            })),
+            mock.Mock(fetchone=mock.Mock(return_value=None)),
+        ]
+        with mock.patch.object(scenario_registry_cli, "open_registry", return_value=connection), \
+                self.assertRaisesRegex(ScenarioRegistryStoreError, "claimed predecessor"):
+            scenario_registry_cli._mint_repair_reentry_token(Path("registry.sqlite3"), "unclaimed")
+        connection.close.assert_called_once()
 
     def test_bound_token_launch_revalidates_runtime_without_a_human_permission_parameter(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -1648,6 +1755,102 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             finally:
                 connection.close()
 
+    def test_registry_migrate_all_imports_live_cockpit_without_unbound_runner(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            live = self.strict_manifest()
+            live["steps"].append({"kind": "cockpit_live_session", "label": "operator-owned"})
+            self.write_json(scenarios / "live.json", live)
+            registry_path = root / "registry.sqlite3"
+
+            with mock.patch.object(startup_harness, "scenarios_root", return_value=scenarios), \
+                    mock.patch.object(startup_harness, "run_probe_mode") as run_probe, \
+                    redirect_stdout(io.StringIO()):
+                result = scenario_registry_cli.main([
+                    "--registry", str(registry_path), "registry-migrate-all",
+                    "--scenarios-root", str(scenarios),
+                ])
+
+            self.assertEqual(result, 0)
+            run_probe.assert_not_called()
+            connection = sqlite3.connect(registry_path)
+            try:
+                self.assertEqual(connection.execute(
+                    "SELECT disposition, reason FROM migration_item WHERE event_kind = 'terminal'"
+                ).fetchone(), ("imported", "live_cockpit_requires_bound_operator"))
+            finally:
+                connection.close()
+
+    def test_claimed_unbound_live_cockpit_refuses_alive_child_then_recovers_exit(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            scenarios = root / "scenarios"
+            scenarios.mkdir()
+            live_path = scenarios / "live.json"
+            live = self.strict_manifest()
+            live["steps"].append({"kind": "cockpit_live_session", "label": "operator-owned"})
+            self.write_json(live_path, live)
+            registry_path = root / "registry.sqlite3"
+            profile_root = root / "profiles"
+            connection = open_registry(str(registry_path))
+            try:
+                migration = scenario_registry_cli.snapshot_migration_run(
+                    connection, scenarios, launcher_identity="test.live-claim-recovery",
+                )
+                item = migration.items[0]
+                scenario_registry_cli.record_migration_attempt(
+                    connection, migration_run_id=migration.migration_run_id,
+                    source_path=live_path, source_sha256=item.source_sha256,
+                )
+                scenario_registry_cli.claim_migration_item_launch(
+                    connection, migration_run_id=migration.migration_run_id,
+                    source_path=live_path, source_sha256=item.source_sha256,
+                    launch_identity="test-unbound-live-claim",
+                )
+                profile = scenario_registry_cli._migration_profile(
+                    migration.migration_run_id, item.attempt_identity,
+                )
+                run_dir = profile_root / profile / "harness_runs" / "claimed"
+                run_dir.mkdir(parents=True)
+                self.write_json(run_dir / "process.json", {
+                    "process_generation": {"pid": 77, "birth_identity": "birth", "command": "game"},
+                })
+                receipt = scenario_registry_cli._migration_receipt(
+                    registry_path=registry_path, migration_run_id=migration.migration_run_id,
+                    attempt_identity=item.attempt_identity, source_path=str(live_path.resolve()),
+                    source_sha256=item.source_sha256, profile=profile,
+                )
+                with mock.patch.object(startup_harness, "userdir_for_profile", return_value=profile_root / profile), \
+                        mock.patch.object(startup_harness, "current_owned_process_generation", return_value={
+                            "status": "alive", "pid": 77,
+                        }):
+                    alive = scenario_registry_cli._reconcile_unbound_live_cockpit_claim(connection, receipt)
+                self.assertEqual(alive, {
+                    "status": "awaiting_bound_live_process_exit", "process_status": "alive",
+                })
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM migration_item WHERE event_kind = 'terminal'"
+                ).fetchone()[0], 0)
+                with mock.patch.object(startup_harness, "userdir_for_profile", return_value=profile_root / profile), \
+                        mock.patch.object(startup_harness, "current_owned_process_generation", return_value={
+                            "status": "exited", "pid": 77,
+                        }):
+                    exited = scenario_registry_cli._reconcile_unbound_live_cockpit_claim(connection, receipt)
+                self.assertEqual(exited["terminal_disposition"], "imported")
+                self.assertTrue(exited["recovered"])
+                self.assertEqual(tuple(connection.execute(
+                    "SELECT disposition, reason FROM migration_item WHERE event_kind = 'terminal'"
+                ).fetchone()), (
+                    "imported", "live_cockpit_unbound_claim_recovered_after_process_exit",
+                ))
+                self.assertEqual(connection.execute(
+                    "SELECT COUNT(*) FROM migration_item WHERE event_kind = 'launch_claimed'"
+                ).fetchone()[0], 1)
+            finally:
+                connection.close()
+
     def test_retirement_cli_inspects_candidates_and_prepares_without_removal(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             root = Path(temp_dir)
@@ -2080,7 +2283,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             }), encoding="utf-8")
             selection = argparse.Namespace(source_path=str(source))
             self.assertEqual(
-                scenario_registry_cli._declared_live_session_reentries(selection), 1
+                scenario_registry_cli._declared_live_session_reentries(selection), 0
             )
             self.assertEqual(
                 scenario_registry_cli._declared_live_session_reentries(
@@ -2101,6 +2304,28 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 ), 1
             )
 
+    def test_query_launch_action_uses_detached_bridge_for_post_relaunch_live_session(self):
+        with tempfile.TemporaryDirectory() as temporary:
+            source = Path(temporary) / "scenario.json"
+            source.write_text(json.dumps({
+                "steps": [{"kind": "audit_saved_horde_state"}],
+                "post_relaunch": {"steps": [{"kind": "cockpit_live_session"}]},
+            }), encoding="utf-8")
+            registry_path = Path(temporary) / "registry.sqlite3"
+            result = {
+                "token_id": "token-1",
+                "evaluation": {
+                    "evaluation": {"ranked_scenario_ids": ["scenario-1"]},
+                    "candidates": [{"scenario_id": "scenario-1", "explanation": {
+                        "manifest": {"source_path": str(source)},
+                    }}],
+                },
+                "source_executable_readiness": {"status": "ready"},
+            }
+            args = argparse.Namespace(witness_charter="charter.json")
+            action = scenario_registry_cli._query_launch_action(result, args, registry_path)
+            self.assertEqual(action["command"]["argv"][4], "registry-detached-launch")
+            self.assertIn("--session-dir", action["command"]["argv"])
 
 if __name__ == "__main__":
     unittest.main()

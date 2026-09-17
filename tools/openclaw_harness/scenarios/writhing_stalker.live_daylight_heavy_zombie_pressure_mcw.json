@@ -1,0 +1,110 @@
+{
+  "manifest_version": 1,
+  "name": "writhing_stalker.live_daylight_heavy_zombie_pressure_mcw",
+  "description": "Native daylight heavy-pressure row: a full-HP player faces four saved alive non-hallucinatory hostile zombies that must be perceptible to the stalker and aimed at the same player target before a real stalker bite/attack is credited. The full-HP restage is the sole survivability aid; the hostile roster and native stalker AI remain unchanged.",
+  "profile": "dev-harness",
+  "world": "McWilliams",
+  "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
+  "profile_snapshot_profile": "live-debug",
+  "fixture": "mcwilliams_live_debug_noon_heavy_zombie_stalker_2026-09-12",
+  "fixture_profile": "live-debug",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_stalker.daylight_pressure": "matched_daylight_heavy_hostile_zombie_pressure_native_attack"
+  },
+  "runtime_contract": {
+    "permitted_input": ["cockpit:game.act", "cockpit:game.wait", "cockpit:game.raw_wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:inject_attack", "debug:inject_target_knowledge", "debug:inject_retreat", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "dev-harness",
+    "fixture": "mcwilliams_live_debug_noon_heavy_zombie_stalker_2026-09-12",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "dev-harness", "fixture": "mcwilliams_live_debug_noon_heavy_zombie_stalker_2026-09-12", "helper": "native file bridge", "peekaboo": false, "ocr": false, "input": ["advertised native cockpit actions"], "cleanup": true},
+    "grants_gameplay_proof": true
+  },
+  "artifact_source": "debug.log",
+  "artifact_patterns": ["writhing_stalker live_plan:", "zombie_pressure=", "decision=strike", "reason=heavy_zombie_pressure_strike", "eval_us="],
+  "steps": [
+    {"kind": "wait", "label": "post_load_daylight_heavy_zombie_settle", "seconds": 1.0, "capture_after": true, "expected_visible_fact": "local-noon vulnerable player, stalker, and four hostile zombies load to the live map"},
+    {"kind": "audit_saved_game_turn", "label": "audit_saved_noon_before_daylight_heavy_zombie_pressure", "required_time_of_day_seconds": 43200, "required_time_tolerance_seconds": 60, "abort_on_metadata_failure": true, "abort_verdict": "blocked_daylight_heavy_zombie_noon_setup_missing", "abort_reason": "saved turn did not prove the local-noon heavy-pressure footing"},
+    {
+      "kind": "audit_saved_active_monsters",
+      "label": "audit_saved_daylight_heavy_hostile_zombie_predicate",
+      "required_monsters": [
+        {"typeid": "mon_writhing_stalker", "offset_ms": [3, 0, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "aggro_character": true},
+        {"typeid": "mon_zombie", "offset_ms": [4, 0, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "aggro_character": true},
+        {"typeid": "mon_zombie", "offset_ms": [4, 1, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "aggro_character": true},
+        {"typeid": "mon_zombie", "offset_ms": [4, -1, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "aggro_character": true},
+        {"typeid": "mon_zombie", "offset_ms": [5, 0, 0], "friendly": 0, "hallucination": false, "dead": false, "faction": "zombie", "aggro_character": true}
+      ],
+      "abort_on_metadata_failure": true,
+      "abort_verdict": "blocked_daylight_heavy_hostile_zombie_footing_missing",
+      "abort_reason": "saved active_monsters did not prove four alive non-hallucinatory hostile zombie contributors distinct from the stalker"
+    },
+    {
+      "kind": "cockpit_live_session",
+      "label": "operate_native_daylight_heavy_zombie_pressure_attack",
+      "cleanup_on_finish": false,
+      "objective": "Use only advertised native World actions. With the fixture's full-HP player condition, observe the same player target, stalker, and four hostile zombies; wait for timestamp-distinct visible closing movement and a native stalker attack-resolution/bite receipt. Current zombie_pressure and heavy_zombie_pressure_strike fields are corroboration only and cannot substitute for the native event.",
+      "proof_targets": ["native actor identities and positions", "same-target hostile zombie visibility", "timestamp-distinct native movement", "native stalker attack-resolution/bite receipt", "source, executable, witness, and cleanup binding"],
+      "authority": ["advertised native actions", "run.witness", "run.finish"],
+      "invariants": ["fixture setup is zero-credit", "allied_support is not zombie_pressure", "planner text is corroboration only", "no direct state mutation, target injection, or hidden-coordinate use"],
+      "live_operations": ["game.act", "game.wait", "game.raw_wait", "game.move_relative"],
+      "transition_timeout_seconds": 15.0,
+      "observe_interval_seconds": 0.1
+    }
+  ],
+  "post_relaunch": {
+    "terminal_save_step_label": "operate_native_daylight_heavy_zombie_pressure_attack",
+    "terminal_exit_timeout_seconds": 30.0,
+    "steps": [
+      {
+        "kind": "native_semantic_bootstrap",
+        "label": "bind_relaunched_daylight_heavy_world",
+        "native_semantic_checkpoint": {
+          "required_actions": ["world.wait"],
+          "required_state": "world",
+          "require_initial_hud_world_ready_frame": false
+        }
+      },
+      {
+        "kind": "audit_saved_active_monsters",
+        "label": "audit_relaunched_persisted_stalker_lifecycle",
+        "required_monsters": [
+          {"typeid": "mon_writhing_stalker"}
+        ],
+        "abort_on_metadata_failure": true,
+        "abort_verdict": "blocked_relaunched_persisted_stalker_state_missing",
+        "abort_reason": "the replacement process save did not expose the native persisted stalker lifecycle object"
+      },
+      {
+        "kind": "cockpit_live_session",
+        "label": "observe_relaunched_daylight_heavy_world",
+        "cleanup_on_finish": true,
+        "stop_after_live_session": true,
+        "objective": "After the native save-and-quit process boundary, observe the same saved McWilliams world, use the bounded native wait to extend the loss-of-sight window, and inspect the native visible stalker lifecycle object before ending. Do not reinstall the fixture or credit relaunch alone as an attack result.",
+        "proof_targets": ["replacement process identity", "same saved world native owner", "post-relaunch persisted lifecycle audit", "bounded native wait", "loss-of-sight then re-observation", "exact cleanup"],
+        "authority": ["advertised native actions", "run.witness", "run.finish"],
+        "invariants": ["fixture is not reinstalled", "relaunch is lifecycle evidence only", "native input ownership remains authoritative", "planner text and saved metadata do not substitute for current native observation"],
+        "live_operations": ["game.act", "game.wait"],
+        "post_relaunch_control": {
+          "purpose": "loss_of_sight_search_with_native_persisted_lifecycle_observation",
+          "wait": {
+            "target_delta_game_minutes": 2,
+            "bound": {"basis": "scheduler_boundary", "source": "two game minutes after the replacement process first yields its native World frame", "unit": "game_minutes", "maximum": 2, "progress_required": true},
+            "danger_handling": "handle_classified_non_dangerous"
+          },
+          "loss_of_sight_observation": {"required": true, "source": "native visible_entities", "stop_on_reappearance": true}
+        },
+        "transition_timeout_seconds": 15.0,
+        "observe_interval_seconds": 0.1
+      }
+    ]
+  },
+  "proof_route": {"precondition": ["post_load_daylight_heavy_zombie_settle", "audit_saved_noon_before_daylight_heavy_zombie_pressure", "audit_saved_daylight_heavy_hostile_zombie_predicate"], "production_behavior": ["operate_native_daylight_heavy_zombie_pressure_attack"], "terminal_persistence": ["operate_native_daylight_heavy_zombie_pressure_attack", "audit_relaunched_persisted_stalker_lifecycle", "observe_relaunched_daylight_heavy_world"], "artifact_verdict": ["operate_native_daylight_heavy_zombie_pressure_attack", "audit_relaunched_persisted_stalker_lifecycle", "observe_relaunched_daylight_heavy_world"], "disallowed_shortcuts": ["operate_native_daylight_heavy_zombie_pressure_attack", "observe_relaunched_daylight_heavy_world"]},
+  "evidence_contract": {"claim": "four actual hostile zombie contributors open a daylight heavy-pressure opportunity that reaches a native stalker attack; planner text cannot substitute for the native bite/attack event", "load_only_verdict": "load proof only / inconclusive", "writeback_note": "native attack-resolution evidence is required; saved fixture transforms earn no feature credit"}
+}

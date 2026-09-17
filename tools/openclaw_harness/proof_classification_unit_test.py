@@ -243,8 +243,8 @@ class AdvanceTurnInputContractTest(unittest.TestCase):
         run_mock.assert_called_once()
         self.assertNotIn("focus_pid", run_mock.call_args.kwargs)
 
-    def test_debug_menu_brace_uses_physical_hotkey(self):
-        self.assertEqual(peekaboo_physical_hotkey_for_key("}"), "shift,]")
+    def test_debug_menu_brace_uses_text_input_route(self):
+        self.assertEqual(peekaboo_physical_hotkey_for_key("}"), "")
 
     def test_native_wait_pipe_uses_character_input_not_unsupported_hotkey(self):
         self.assertEqual(peekaboo_physical_hotkey_for_key("|"), "")
@@ -255,6 +255,53 @@ class AdvanceTurnInputContractTest(unittest.TestCase):
         peekaboo_press_sequence(17, ["|"])
         type_mock.assert_called_once_with(17, "|", delay_ms=200)
         hotkey_mock.assert_not_called()
+
+    @patch("startup_harness.peekaboo_hotkey")
+    @patch("startup_harness.peekaboo_type_text")
+    def test_debug_menu_brace_delivers_the_bound_character(self, type_mock, hotkey_mock):
+        peekaboo_press_sequence(17, ["}"])
+        type_mock.assert_called_once_with(17, "}", delay_ms=200)
+        hotkey_mock.assert_not_called()
+
+    @patch("startup_harness.execute_semantic_act")
+    def test_semantic_menu_selection_binds_exact_advertised_label(self, act_mock):
+        successor = {"frame_id": "frame-2", "kind": "menu"}
+        act_mock.return_value = {
+            "accepted": True,
+            "native_receipt": {"accepted": True, "request_id": "native-1"},
+            "next_frame": successor,
+        }
+        frame = {
+            "frame_id": "frame-1",
+            "valid_actions": [
+                {"id": "menu.choose", "stable_id": "entry-stalker",
+                 "label": "Writhing stalker — 5 OMT north", "enabled": True},
+                {"id": "menu.choose", "stable_id": "entry-other",
+                 "label": "Zombie rider — 5 OMT north", "enabled": True},
+            ],
+        }
+
+        result, receipt = harness.semantic_menu_choose_label(
+            profile="profile", run_dir=Path("/tmp/run"), run_id="run-1",
+            trace_start_offset=17, pid=42, session_id="session-1", frame=frame,
+            label="Writhing stalker — 5 OMT north", proof_step_label="stage",
+            proof_step_index=2,
+        )
+
+        self.assertEqual(result, successor)
+        self.assertEqual(receipt["stable_id"], "entry-stalker")
+        self.assertEqual(act_mock.call_args.kwargs["action_id"], "menu.choose")
+        self.assertEqual(act_mock.call_args.kwargs["stable_id"], "entry-stalker")
+
+    def test_semantic_menu_selection_rejects_ambiguous_or_missing_label(self):
+        frame = {"frame_id": "frame-1", "valid_actions": []}
+        with self.assertRaisesRegex(SystemExit, "exactly one choice"):
+            harness.semantic_menu_choose_label(
+                profile="profile", run_dir=Path("/tmp/run"), run_id="run-1",
+                trace_start_offset=17, pid=42, session_id="session-1", frame=frame,
+                label="Writhing stalker — 5 OMT north", proof_step_label="stage",
+                proof_step_index=2,
+            )
 
     def test_semantic_requests_have_no_focus_or_text_dispatcher(self):
         import startup_harness
@@ -557,13 +604,13 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
         self.assertEqual(preflight.call_args_list[0].args, ("input", ["Accessibility"]))
         self.assertEqual(preflight.call_args_list[1].args, ("capture", ["Screen Recording"]))
 
-    def test_input_is_local_while_capture_remains_bridge_aware(self) -> None:
+    def test_input_and_capture_default_to_the_verified_bridge(self) -> None:
         saved_env = dict(os.environ)
         try:
+            os.environ.pop("CAOL_PEEKABOO_INPUT_TRANSPORT", None)
+            os.environ.pop("CAOL_PEEKABOO_CAPTURE_TRANSPORT", None)
             os.environ.update({
                 "CAOL_PEEKABOO_BIN": "/test/peekaboo",
-                "CAOL_PEEKABOO_INPUT_TRANSPORT": "local",
-                "CAOL_PEEKABOO_CAPTURE_TRANSPORT": "bridge",
                 "CAOL_PEEKABOO_BRIDGE_SOCKET": "/tmp/peekaboo-bridge.sock",
             })
             input_cmd = peekaboo_command(["press", "return", "--pid", "42"], channel="input")
@@ -573,8 +620,9 @@ class PeekabooTransportAndCaptureReportTest(unittest.TestCase):
             os.environ.update(saved_env)
 
         self.assertEqual(input_cmd[0], "/test/peekaboo")
-        self.assertIn("--no-remote", input_cmd)
+        self.assertNotIn("--no-remote", input_cmd)
         self.assertNotIn("--no-remote", capture_cmd)
+        self.assertEqual(input_cmd[-2:], ["--bridge-socket", "/tmp/peekaboo-bridge.sock"])
         self.assertEqual(capture_cmd[-2:], ["--bridge-socket", "/tmp/peekaboo-bridge.sock"])
 
     def test_capture_summary_preserves_actual_bridge_warning_and_stderr_shape(self) -> None:
@@ -1789,6 +1837,74 @@ class BlockingInterruptionTest(unittest.TestCase):
                 "pid": 42, "keys": [".", "."],
             }), 0)
 
+    @patch("startup_harness.peekaboo_press_sequence")
+    @patch("startup_harness.execute_semantic_act")
+    @patch("startup_harness.current_semantic_step_frame")
+    @patch("startup_harness.adaptive_semantic_session_identity", return_value=("semantic-test", "test"))
+    def test_declared_world_pause_uses_advertised_surface_and_requires_turn_delta(
+        self,
+        _identity_mock: Any,
+        frame_mock: Any,
+        semantic_act_mock: Any,
+        press_mock: Any,
+    ) -> None:
+        frame = {
+            "event": "surface_descriptor", "run_id": "run-42", "surface_id": "surface-1",
+            "frame_id": "frame-1", "game_turn": 10,
+            "valid_actions": [{"id": "world.pause", "enabled": True, "stable_id": ""}],
+        }
+        frame_mock.return_value = frame
+        semantic_act_mock.return_value = {
+            "accepted": True,
+            "native_receipt": {"accepted": True, "request_id": "pause-1"},
+            "transition_event": {"sequence": 1},
+            "next_frame": {"frame_id": "frame-2", "game_turn": 11},
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = advance_turns(
+                42, 1, run_dir=Path(temp_dir), auto_acknowledge_interruptions=False,
+                expected_native_semantic_action="world.pause", semantic_profile="dev-harness",
+                semantic_run_id="run-42", semantic_trace_start_offset=0,
+            )
+
+        self.assertEqual(result["status"], "completed")
+        self.assertEqual(result["accepted_pause_dispatch_count"], 1)
+        self.assertEqual(result["expected_native_semantic_owner"]["before_turn"], 10)
+        self.assertEqual(result["expected_native_semantic_owner"]["after_turn"], 11)
+        press_mock.assert_not_called()
+        self.assertEqual(semantic_act_mock.call_args.kwargs["action_id"], "world.pause")
+        self.assertEqual(semantic_act_mock.call_args.kwargs["declared_action_id"], "world.pause")
+
+    @patch("startup_harness.peekaboo_press_sequence")
+    @patch("startup_harness.execute_semantic_act")
+    @patch("startup_harness.current_semantic_step_frame")
+    @patch("startup_harness.adaptive_semantic_session_identity", return_value=("semantic-test", "test"))
+    def test_declared_world_pause_rejects_accepted_receipt_without_turn_delta(
+        self,
+        _identity_mock: Any,
+        frame_mock: Any,
+        semantic_act_mock: Any,
+        press_mock: Any,
+    ) -> None:
+        frame_mock.return_value = {
+            "event": "surface_descriptor", "run_id": "run-42", "surface_id": "surface-1",
+            "frame_id": "frame-1", "game_turn": 10,
+            "valid_actions": [{"id": "world.pause", "enabled": True, "stable_id": ""}],
+        }
+        semantic_act_mock.return_value = {
+            "accepted": True, "native_receipt": {"accepted": True},
+            "next_frame": {"frame_id": "frame-2", "game_turn": 10},
+        }
+        with tempfile.TemporaryDirectory() as temp_dir:
+            result = advance_turns(
+                42, 1, run_dir=Path(temp_dir), auto_acknowledge_interruptions=False,
+                expected_native_semantic_action="world.pause", semantic_profile="dev-harness",
+                semantic_run_id="run-42", semantic_trace_start_offset=0,
+            )
+
+        self.assertEqual(result["status"], "blocked_native_semantic_turn_delta_missing")
+        press_mock.assert_not_called()
+
     def test_runtime_portal_prompt_is_visible_to_top_level_weather_warning(self) -> None:
         reports = [{
             "label": "portal_interruption",
@@ -2344,6 +2460,25 @@ class StartupScreenGateTest(unittest.TestCase):
 
         self.assertEqual([entry["lines"] for entry in result], [["Your response:"], []])
         self.assertEqual(result[0]["artifact_path"], "/tmp/response.png")
+
+    def test_declared_live_artifact_requires_sealed_semantic_target(self) -> None:
+        with tempfile.TemporaryDirectory() as temp_dir:
+            run_dir = Path(temp_dir)
+            (run_dir / "live.final.json").write_text(json.dumps({
+                "state": "finished",
+                "stop_reason": "target_predicate_proved",
+                "stop_detail": {
+                    "target_receipt": {"run_id": "run", "step_label": "live", "observation_id": "frame"},
+                    "witness_validation": {"status": "mechanically_valid"},
+                },
+            }), encoding="utf-8")
+            result = declared_screen_artifact_matches(
+                [{"label": "live", "kind": "cockpit_live_session",
+                  "metadata": {"final_report_ref": "live.final.json"}}],
+                {"artifact_verdict": ["live"]}, run_dir=run_dir,
+            )
+        self.assertEqual(result[0]["pattern"], "live: sealed semantic target artifact")
+        self.assertTrue(result[0]["lines"])
 
     def test_mac_sidebar_ocr_activity_and_wield_fallback_counts_as_gameplay_hud(self) -> None:
         probe = startup_screen_probe_classification(

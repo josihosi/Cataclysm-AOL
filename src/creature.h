@@ -4,6 +4,7 @@
 
 #include <array>
 #include <climits>
+#include <cstdint>
 #include <functional>
 #include <list>
 #include <map>
@@ -252,6 +253,27 @@ using scheduled_effect = struct scheduled_effect_t {
 using terminating_effect = struct terminating_effect_t {
     efftype_id eff_id;
     bodypart_id bp;
+};
+
+class creature_identity
+{
+    public:
+        creature_identity();
+        creature_identity( const creature_identity & );
+        creature_identity( creature_identity && other ) noexcept : value_( other.value_ ) {}
+        creature_identity &operator=( const creature_identity & ) noexcept {
+            return *this;
+        }
+        creature_identity &operator=( creature_identity && ) noexcept {
+            return *this;
+        }
+
+        std::uint64_t value() const noexcept {
+            return value_;
+        }
+
+    private:
+        std::uint64_t value_ = 0;
 };
 
 class Creature : public viewer
@@ -812,6 +834,7 @@ class Creature : public viewer
         /** The creature's position in absolute coordinates */
         tripoint_abs_ms location;
         lazy<safe_reference_anchor> anchor;
+        creature_identity identity;
     protected:
         // Sets the creature's position without any side-effects.
         void set_pos_bub_only( const map &here, const tripoint_bub_ms &p );
@@ -820,6 +843,9 @@ class Creature : public viewer
         // Sets the creature's position without any side-effects.
         void set_pos_abs_only( const tripoint_abs_ms &loc );
         safe_reference<Creature> get_safe_reference();
+        std::uint64_t get_identity() const {
+            return identity.value();
+        }
     protected:
         // Invoked when the creature's position changes.
         virtual void on_move( const tripoint_abs_ms &old_pos );

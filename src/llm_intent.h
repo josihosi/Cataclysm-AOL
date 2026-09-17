@@ -24,6 +24,9 @@ void process_response_for_test( npc &listener, const std::string &request_id,
 bool has_request_state_for_test( const npc &listener, const std::string &request_id );
 void enqueue_random_requests();
 void log_event( const std::string &message );
+std::string classify_response_error_for_test( const std::string &error );
+std::string sanitize_response_error_for_test( const std::string &error );
+bool should_retry_response_for_test( const std::string &error );
 
 std::string build_snapshot_for_test( npc &listener, const std::string &player_utterance,
                                      const std::string &request_id );

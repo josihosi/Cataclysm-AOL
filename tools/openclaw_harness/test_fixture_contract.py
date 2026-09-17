@@ -90,6 +90,7 @@ from startup_harness import (  # noqa: E402
     encode_overmap_layer,
     extract_clock_or_turn_evidence,
     extract_overmap_payload,
+    iter_horde_map_entries,
     execute_long_wait_action,
     execute_probe_steps,
     ecology_incident_artifact_baseline,
@@ -4508,6 +4509,51 @@ class ScenarioStartupProfileContractTest(unittest.TestCase):
             "TILES=UltimateCataclysm",
         )
 
+    def test_cockpit_probe_uses_native_semantic_startup_without_manifest_opt_in(self) -> None:
+        args = SimpleNamespace(
+            scenario="test.cockpit_startup",
+            profile="",
+            world="",
+            fixture=None,
+            replace_existing_worlds=False,
+            advance_turns=None,
+            settle_seconds=None,
+            artifact_pattern="",
+            test_command="",
+            dry_run=True,
+            cockpit_live_session=True,
+        )
+        scenario = {
+            "name": "test.cockpit_startup",
+            "profile": "dev-harness",
+            "capabilities": {"runtime.entry_mode": "cockpit_live_session"},
+            "steps": [],
+        }
+        with (
+            mock.patch("startup_harness.load_scenario", return_value=scenario),
+            mock.patch("startup_harness.run_startup_in_process", return_value=(0, {}, "", "")) as run_command,
+            redirect_stdout(io.StringIO()),
+        ):
+            self.assertEqual(run_probe_mode(args), 0)
+
+        self.assertIn("--semantic-only-startup", run_command.call_args.args[0])
+
+    def test_probe_forwards_declared_fresh_world_to_native_startup(self) -> None:
+        args = SimpleNamespace(scenario="test.fresh", profile="", world="", fixture=None,
+            replace_existing_worlds=False, advance_turns=None, settle_seconds=None,
+            artifact_pattern="", test_command="", dry_run=True, cockpit_live_session=True)
+        scenario = {"name": "test.fresh", "profile": "fresh-profile",
+                    "capabilities": {"runtime.entry_mode": "cockpit_live_session"},
+                    "harness_new_world": "fresh-world", "harness_raw_seed": "2026091611",
+                    "steps": []}
+        with (mock.patch("startup_harness.load_scenario", return_value=scenario),
+              mock.patch("startup_harness.run_startup_in_process", return_value=(0, {}, "", "")) as run_command,
+              redirect_stdout(io.StringIO())):
+            self.assertEqual(run_probe_mode(args), 0)
+        command = run_command.call_args.args[0]
+        self.assertEqual(command[command.index("--harness-new-world") + 1], "fresh-world")
+        self.assertEqual(command[command.index("--harness-raw-seed") + 1], "2026091611")
+
     def test_launch_only_dry_run_records_both_profile_identities(self) -> None:
         args = SimpleNamespace(
             scenario="test.launch_only",
@@ -6657,8 +6703,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             if transform["kind"] == "source_firewood_zone_near_player"
             and transform["zone_type"] == "NO_NPC_PICKUP"
         )
-        self.assertEqual(pickup_zone["start_offset_ms"], [2, 0, 0])
-        self.assertEqual(pickup_zone["end_offset_ms"], [2, 0, 0])
+        self.assertEqual(pickup_zone["start_offset_ms"], [0, 0, 0])
+        self.assertEqual(pickup_zone["end_offset_ms"], [0, 0, 0])
 
     def test_r037_combat_fixture_clears_panic_for_ranged_control(self) -> None:
         resolved = resolve_fixture_payload(
@@ -6687,7 +6733,7 @@ class ScenarioFixtureContractTest(unittest.TestCase):
             for item in transform["items"]
         ]
         self.assertEqual(pickup_items, [{
-            "typeid": "bandages", "offset_ms": [2, 0, 0], "count": 1,
+            "typeid": "bandages", "offset_ms": [0, 0, 0], "count": 1,
             "owner": "hells_raiders",
         }])
         npc_transform = next(
@@ -6702,8 +6748,8 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         ]
         self.assertEqual(len(zones), 1)
         self.assertEqual(zones[0]["zone_type"], "NO_NPC_PICKUP")
-        self.assertEqual(zones[0]["start_offset_ms"], [2, 0, 0])
-        self.assertEqual(zones[0]["end_offset_ms"], [2, 0, 0])
+        self.assertEqual(zones[0]["start_offset_ms"], [0, 0, 0])
+        self.assertEqual(zones[0]["end_offset_ms"], [0, 0, 0])
 
     def test_r037_stale_target_fixture_has_one_nonambient_fragile_native_target(self) -> None:
         resolved = resolve_fixture_payload(
@@ -11186,6 +11232,83 @@ class ScenarioFixtureContractTest(unittest.TestCase):
                 steps[label]["proof_deferred_to_label"],
                 "audit_choose_destination_route_confirmation",
             )
+
+    def test_all_light_adapter_uses_a_native_five_minute_semantic_window(self) -> None:
+        scenario = load_scenario("bandit.all_light_source_live_adapter_mcw")
+        self.assertTrue(scenario["adaptive_semantic_autodrive"])
+        self.assertEqual(
+            scenario["capabilities"]["runtime.entry_mode"],
+            "cockpit_live_session",
+        )
+        steps = {
+            str(step.get("label", "")).strip(): step
+            for step in scenario["steps"]
+        }
+        wait = steps["advance_five_minutes_for_current_light_sample"]
+        saved_turn = steps["audit_saved_turn_after_all_light_wait"]
+
+        self.assertEqual(wait["kind"], "adaptive_semantic_window")
+        self.assertEqual(wait["minimum_elapsed_minutes"], 5)
+        self.assertEqual(wait["required_action_chain"], [
+            "world.wait", "wait.duration_menu", "wait.5m",
+        ])
+        self.assertEqual(wait["adaptive_interrupt_actions"], [])
+        self.assertEqual(wait["required_interrupt_action_chain"], [])
+        self.assertEqual(wait["recovery_contract"], {
+            "issuer_action": "wait.duration_menu",
+            "modal_state": "wait_duration_choice",
+            "modal_owner": "native_semantic_step_trace",
+            "actions": ["wait.5m"],
+        })
+        self.assertEqual(saved_turn["required_min_delta_turns"], 300)
+        self.assertIn("light_interest=", scenario["artifact_patterns"])
+        self.assertNotIn("horde_signal_power=", scenario["artifact_patterns"])
+        live = steps["operate_all_light_source_live_adapter"]
+        self.assertEqual(live["kind"], "cockpit_live_session")
+        self.assertEqual(live["live_operations"], ["game.act", "game.wait"])
+
+    def test_horde_audit_reads_optional_light_memory_field(self) -> None:
+        raw = [
+            [10, 20, 0], "mon_zombie", [11, 20, 0], 24, 100, 0,
+            {"source": [9, 20, 0], "sample_id": "light:100", "observed": 100,
+             "expires": 160, "strength": 24},
+        ]
+        entries = iter_horde_map_entries(raw)
+        self.assertEqual(len(entries), 1)
+        self.assertEqual(entries[0]["monster_id"], "mon_zombie")
+        self.assertEqual(entries[0]["light_memory"]["sample_id"], "light:100")
+
+    def test_horde_audit_accepts_mixed_legacy_and_current_entries(self) -> None:
+        """A transformed current entry may follow legacy six-field entries."""
+        raw = [
+            [1, 2, 0], "mon_zombie", [1, 2, 0], 0, 100, 0,
+            [10, 20, 0], "mon_zombie", [10, 20, 0], 0, 100, 0,
+            {"source": [9, 20, 0], "sample_id": "light:101", "observed": 101,
+             "expires": 161, "strength": 12},
+        ]
+        entries = iter_horde_map_entries(raw)
+        self.assertEqual([entry["location_ms"] for entry in entries], [[1, 2, 0], [10, 20, 0]])
+        self.assertNotIn("light_memory", entries[0])
+        self.assertEqual(entries[1]["light_memory"]["strength"], 12)
+
+    def test_all_light_horde_slice_requires_delivery_and_persisted_memory(self) -> None:
+        scenario = load_scenario("bandit.all_light_source_live_adapter_mcw")
+        fixture = resolve_fixture_payload(scenario["fixture"], scenario["fixture_profile"])
+        horde = next(item for item in fixture["manifest"]["save_transforms"]
+                     if item["kind"] == "horde_entity_near_player")
+        self.assertEqual(horde["offset_ms"], [-276, 0, 0])
+        after = next(item for item in scenario["steps"]
+                     if item.get("label") == "audit_saved_horde_after_all_light_signal_wait")
+        requirement = after["required_hordes"][0]
+        self.assertEqual(requirement["required_light_memory_fields"],
+                         ["sample_id", "source", "observed", "expires", "strength"])
+        self.assertEqual(requirement["min_light_memory_strength"], 1)
+        signal = next(item for item in scenario["steps"]
+                      if item.get("label") == "audit_all_light_source_signal_artifacts")
+        self.assertEqual(signal["required_numeric_line_patterns"][0]["fields"], {
+            "candidate_entities": {"min": 1},
+            "attracted_entities": {"min": 1},
+        })
 
     def test_staged_worlds_have_tracked_player_save(self) -> None:
         repo = HARNESS_DIR.parents[1]

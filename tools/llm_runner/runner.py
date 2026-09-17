@@ -279,7 +279,10 @@ def request_event(log_fp, event: str, payload: Dict[str, Any]) -> None:
         return
     global EVENT_SEQUENCE
     EVENT_SEQUENCE += 1
-    record = {"event": event, "timestamp": time.time(), "runner_pid": os.getpid(),
+    active_run = os.environ.get("OPENCLAW_HARNESS_RUN_ID", "")
+    bound_run = os.environ.get("OPENCLAW_HARNESS_SEMANTIC_RUN_ID", "")
+    run_id = active_run if active_run and active_run == bound_run else None
+    record = {"event": event, "run_id": run_id, "timestamp": time.time(), "runner_pid": os.getpid(),
               "process_instance": PROCESS_INSTANCE, "sequence": EVENT_SEQUENCE, "payload": payload,
               "request_id": payload.get("request_id", "unknown")}
     if event == "llm_request_started":

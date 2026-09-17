@@ -1101,5 +1101,25 @@
     "light_color": [ 255, 0, 255 ],
     "max_volume": "1000 L",
     "flags": [ "CONTAINER", "PLACE_ITEM", "NO_SIGHT", "HIDE_PLACE", "BLOCKSDOOR", "MOUNTABLE", "SMALL_HIDE" ]
+  },
+  {
+    "type": "furniture",
+    "id": "f_caol_powered_exposed_lamp",
+    "name": "powered exposed utility lamp",
+    "description": "A self-powered exposed utility lamp.  Its housing is weatherproof and the bright beam carries across open ground.",
+    "symbol": "T",
+    "color": "light_gray",
+    "move_cost_mod": 3,
+    "coverage": 30,
+    "required_str": 6,
+    "light_emitted": 240,
+    "light_color": [ 220, 255, 200 ],
+    "flags": [ "TRANSPARENT", "NOITEM", "BLOCKSDOOR", "EASY_DECONSTRUCT" ],
+    "bash": {
+      "str_min": 20,
+      "str_max": 150,
+      "sound": "clang!",
+      "items": [ { "item": "scrap", "count": [ 2, 6 ] }, { "item": "scrap_copper", "count": [ 1, 4 ] } ]
+    }
   }
 ]
