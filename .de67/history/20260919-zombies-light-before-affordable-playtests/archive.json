@@ -1,0 +1,9 @@
+{
+  "source_head": "c2ad7514a37a76e547f9ba44d1ff9a43cc79f17e",
+  "purpose": "Owner-authorized verbatim pre-refreeze preservation, 2026-09-19",
+  "sha256": {
+    "WEC.md": "9ed2507bbd45af15993fd3110536d56b8807827cc981c20de96bc47b99bef8f0",
+    "FS.md": "85174defb1f037b09e648b9fad8c4c6fe77f1476dbac3d86947cea6d28d2b4a3",
+    "DFS.md": "ae502bf95a83f9a3af58815c46806693bee36ac6b45929c4ad3262d8f8cb4d5e"
+  }
+}

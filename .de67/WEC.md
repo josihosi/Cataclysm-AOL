@@ -1,178 +1,533 @@
-# WEC — Zombies and light
-
-*User intent and action plan; accepted discussion brief for de67 2.*
-
-## Owner addendum authorising phase 2
-
-Josef's latest request: "alright! de67 2. one addendum: we are working on mac mini caol dev worktree, make the de67 2 agent native in codex over there. there is already an FS, it is worked off, so the agent can archive that first and create a new one. make sur ethe FS is specific, like the word says, it should really read descibe the main functions in a very mechanistic way that a lesser luna agent can hardly mess up."
-
-The native phase owner works directly in `/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev` on the Mac mini, branch `dev`. At handoff, HEAD was `77ef2445bf30a274dd13cef60847eb08d7cd9005`; recheck current state. Existing unrelated product, runner, harness and documentation edits are user-owned and must remain intact.
-
-Josef explicitly authorises archiving the completed prior FS before creating the new one. Preserve the exact current FS, its DFS compatibility entrypoint if present, and its associated old WEC as a recoverable, clearly labelled historical specification set before importing this new WEC. Archive only the superseded specification material needed for this replacement, not the whole `.de67` tree, product files, live state, or evidence history. Verify the archive and retain traceability before replacing active files. Existing acceptance/history is historical evidence, not credit for new requirements. Do not silently overwrite a different WEC: this addendum is the explicit owner resolution to preserve the old brief with its old FS and then import this new brief. If another live owner is still writing the old specification, do not race it or kill unrelated work; report the concrete conflict.
-
-Write the FS for a Luna implementer: describe the affected main functions mechanistically, with actual file/symbol anchors, inputs and outputs, coordinate spaces and units, preconditions, branch/transition precedence, authoritative state owner, caller/callee handoffs, side effects, failure/blocked-path behavior, time advancement, persistence/migration and exact tests. Explain why the chosen mechanism works and which tempting incorrect implementation it rules out. Label proposed new symbols as proposed. Resolve technical design details from code; do not leave core behavior as "handle appropriately" or an unchosen menu of alternatives. Preserve owner-level open choices instead of quietly changing intent. Use pseudocode where it genuinely removes ambiguity, without turning the document into brittle implementation ceremony. Quality and clarity matter more than filling template fields.
-
-This is phase 2 only. Do not implement gameplay changes, edit product tests, launch new game playtests, or start de67 3. Prepare the mechanistic specification and future playtests. Phase-2-native setup/probes/checkpointing follow the selected phase skill and must preserve unrelated dirty changes and existing history. Use the installed FS/DFS canonical naming contract consistently, rather than creating competing full specifications.
-
-## Intended outcome
-
-C-AOL should deliver three connected experiences:
-
-1. **Writhing stalker:** an early-game, relatively common, weak but opportunistic predator. It follows a developing situation and attacks when the player becomes vulnerable—including in daylight when enough zombies are pressuring the target.
-2. **Zombie rider:** a deliberately powerful late-game pursuer. It hunts, shoots, closes and runs the victim down. Riders that meet can form persistent bands.
-3. **Light:** a useful survival tool with believable consequences. Flashlights count; exposed elevated lights can attract attention from farther away; walls, curtains, terrain, weather and distance affect what actually escapes and who can perceive it.
-
-The central playtesting questions are: **Did the stalker choose a horrible moment? Did the rider genuinely hunt me? Could I understand and manage the attention caused by my lights?**
-
-## Settled intent and boundaries
-
-- Daylight is **not an absolute prohibition** on stalker attacks.
-- Sufficient nearby zombie pressure can outweigh its caution about exposure.
-- Darkness creates another opportunity: an isolated person can be attacked without other zombies.
-- Stalkers should operate over a couple of OMTs, using credible observations and remembered locations—not the player's unseen current coordinates.
-- Riders should be aggressive individually and more dangerous together. Sharing a destination does not mean they have already met.
-- Both creatures must participate beyond their locally spawned representation.
-- Light attraction should share physical perception principles across hordes, bandits, cannibals, stalkers and riders. Their reactions remain different.
-- Creature work remains separate from humanoid camps, dossiers, bounty, reporting and raids.
-- Preserve existing worlds, actor identity and unrelated accepted work. Polish both creature descriptions.
-- This brief does not authorise a phase-3 launch.
-
-## 1. Light: make exposure and detection believable
-
-### What needs changing
-
-The current source scanner omits carried lights, approximates indoor escape with a three-tile exterior sightline, and combines sources within an OMT before fully separating their exposure. The observer path can then reject elevated sources. Hordes use a different, sound-style signalling route. These are interacting problems; adding a flashlight entry alone would leave inconsistent results.
-
-Source anchors at the inspected baseline: `src/do_turn.cpp:6845` (`live_bandit_light_side_leakage_near`), `:6919` (`observe_live_bandit_field_signals_near_player`), `:7779` (`live_bandit_overmap_los_from`), `:7821` (`live_bandit_structural_observer_sight`), `:8635` (`live_bandit_staffed_camp_signal_reads`). The LOS helper rejects a different z-level outright. The observer's ordinary ambient-light sight also constrains the signal. Reverify symbols/lines before specifying.
-
-### Desired behaviour
-
-An exposed rooftop lamp, upper-storey window or hilltop fire should be observable from below. Raising a source should extend its practical visibility where it clears obstructions. Height must not make an enclosed upstairs room visible through solid walls or floors.
-
-Distinguish:
-
-- **Light emission:** whether the source is powered and producing light.
-- **Escaping light:** what reaches a window, doorway or exterior surface.
-- **Detection:** whether a particular observer can perceive that light.
-- **Recognition:** whether it can identify a person or infer anything beyond "light over there."
-
-A distant glow should not grant exact player position or camp knowledge.
-
-### Proposed work
-
-- Bring held, worn and weapon-mounted lights into the same physical-light path as ground lights and vehicle lamps.
-- Respect power, dimming, containers and source movement.
-- Resolve exposure per source before combining nearby signals.
-- Replace the same-level restriction with meaningful vertical visibility and obstruction.
-- Separate bright-source detection from ordinary dark-terrain recognition.
-- Make source escape depend on actual geometry and attenuation. Large halls are not automatically exposed or automatically safe.
-- Distinguish open windows, clear glass, curtains and shutters. Clear glass transmits light; opaque coverings provide concealment.
-- Ensure short flashlight use can be noticed under suitable conditions, without every flick creating a long-lived tracking beacon.
-- Support off-screen responses without scanning or generating the whole world. Turning off or leaving a source must stop refreshing it.
-
-Research basis: NOAA distinguishes brightness/weather-limited visibility from height-limited geographic visibility. That supports treating height, source strength and obstruction separately, rather than adding an unconditional elevation bonus. Source: https://nauticalcharts.noaa.gov/publications/coast-pilot/files/cp5/CPB5_C01_WEB.pdf
-
-CDDA already has cross-level visibility machinery that accounts for floors, and its lightmap handles transparency. Those are relevant foundations to investigate before inventing another incompatible visibility model. Source: https://github.com/CleverRaven/Cataclysm-DDA/blob/master/src/lightmap.cpp (`map::build_seen_cache`, `cast_zlight`, transparency/floor caches).
-
-The rendering literature separates emitted light from obstruction and atmospheric attenuation. Borrow that distinction, not a full physical renderer. Source: https://www.pbr-book.org/4ed/Light_Sources/Light_Interface ; corresponding implementation https://github.com/mmp/pbrt-v4/blob/master/src/pbrt/lights.h .
-
-## 2. Writhing stalker: patience followed by commitment
-
-### What needs changing
-
-The current planner has useful cover and quiet-side behaviour, but visibility is treated as attention, bright exposure can veto a fight opportunity, and the attack budget advances during approach decisions. Its specialised off-screen stalking lifecycle is incomplete.
-
-### Desired behaviour
-
-A typical encounter should unfold like this:
-
-**Notice → follow or search → recognise an opening → commit an approach → attack → break contact or continue according to danger.**
-
-During a daytime city walk, it should linger and seek concealment. When zombies surround or converge on the player, it can exploit that pressure—even if the area is bright and the player can see it.
-
-The current proposal interprets "enough zombies" as **perceptible, meaningful pressure**: zombies attacking or visibly closing on the same target. Zombies behind sealed walls, friendly zombies or an unrelated fight should not create imaginary opportunities.
-
-### Proposed work
-
-- Separate "visible to the target" from "being actively threatened."
-- Let zombie pressure overcome daylight caution.
-- Preserve a chosen approach long enough to reach actual contact.
-- Count attack attempts at the attack stage, not while walking.
-- Detect ineffective circling and resolve it into commitment, searching or genuine disengagement.
-- Make "behind" mean the quieter side of the fight or a plausible interception route—not a fictional player-facing cone.
-- Retain a credible retreat waypoint when driven away; prevent immediate reversal and reacquisition.
-- Carry last-observed location, elapsed memory and identity across local/overmap transitions.
-- Keep it weak. Improve timing before increasing damage or durability.
-
-Existing-enemy basis: flesh raptors preserve a committed swoop rather than restarting their orbit every decision. Source: `src/monmove.cpp:582`, `apply_flesh_raptor_plan`.
-
-Zombie hunters use a terrain-checked leap. If a literal pounce improves the feel, adapt that mechanism with appropriate opportunity gating; do not inherit the stronger relatives' entire behaviour. A leap is movement, not automatically a landed attack. Sources: `data/json/monsters/zed_misc.json:464`, `src/mattack_actors.cpp:162`, `leap_actor::call`.
-
-## 3. Zombie rider: sustained pursuit and physical bands
-
-### What needs changing
-
-The present rider repeatedly skirmishes away, can withdraw when distant repositioning fails, and has no player-trampling attack. Its banding represents common light selection rather than encounters. The inspected saved-predator evolution route preserves empty ammunition, unlike direct spawning.
-
-### Desired behaviour
-
-**Investigate → acquire prey → pursue → shoot while closing → run down/contact → search the last credible location if contact breaks.**
-
-The rider should remain oppressive through bow cooldowns and movement. It should not wait to exhaust every arrow before exploiting a close-range opportunity.
-
-### Proposed work
-
-- Establish natural-evolution/debug-spawn parity, including ammunition initialised once—not replenished by reloading.
-- Repair pursuit beyond bow range and during cooldown.
-- Replace routine post-shot flight with sustained pressure.
-- Add a real physical run-down/contact attack, respecting terrain, occupancy and mount-sized passages.
-- Remove routine half-health retreat as the default behaviour; reconsider it only if playtesting identifies a compelling reason.
-- Form and merge rider bands through credible encounters. Preserve membership through separation, casualties and loading transitions.
-- Share observed target evidence within a band without providing live coordinates of an unseen victim.
-- Keep rider and mount composite initially; separate dismount identities are not required for this experience.
-
-Existing-enemy basis: feral humans combine finite-ammunition ranged specials with ordinary pursuit and melee. The gun system does not inherently require retreat after firing. Source: `data/json/monsters/feral_humans.json:31`; rider post-shot flight is `HIT_AND_RUN` in `gun_actor::shoot` (`src/mattack_actors.cpp:1555`).
-
-Existing melee actors support damage, knockdown and throwing. Those provide building blocks for impact, but copying a hulk's knockback would not itself produce cavalry behaviour—and could throw prey away from the pursuing rider. Sources: `data/json/monster_special_attacks/monster_attacks.json:983` (`hulk_wide_swing`), `:825` (`bio_op_takedown`), `:566` (`stag_smash`), `src/mattack_actors.cpp` (`melee_actor::call`, `on_damage`).
-
-Dog/coyote social behaviour provides a perception-based grouping precedent, **not** a ready-made persistent rider squad. Blindly adding a swarm flag would be insufficient. Sources: `data/json/monsters/mammal.json` dog/coyote definitions; `src/monmove.cpp:1894` same-faction social scan and `rate_target` sight checks.
-
-## Action plan and playtesting
-
-| Work package | Discriminating playtests | Required result |
-|---|---|---|
-| Establish the baseline | Reproduce elevated-light rejection, stalker approach/burst issue and rider distant pursuit/evolution-ammo discrepancy | Record actual behaviour; distinguish source findings from observed failures |
-| Light end to end | Same lamp at ground level, exposed above, behind a parapet and inside a sealed upper room; repeat with observer above/below | Cross-level detection works where exposed; height improves suitable sightlines; genuine obstruction still conceals |
-| Flashlights and interiors | Held/worn/dropped; on/off/depleted; near window/deep hall; glass/curtains/door/corner; multiple differently exposed sources in one OMT | Local illumination and overmap consequences agree; no borrowed exposure or phantom source |
-| Stalker commitment | Matched daytime encounters with no, modest and heavy zombie pressure; repeat in darkness; add hidden/unrelated zombies | Daylight assisted attacks occur, solitary-dark opportunities resolve, and false pressure does not trigger attacks |
-| Rider pursuit and impact | Natural evolution; prey inside/outside bow range; cooldown, corner, doorway, vehicle, downed prey and empty bow | Actual pursuit, shots and contact; no retreat cliff, free ammunition, wall penetration or accidental permanent stun-lock |
-| Off-screen continuity | Creatures initially abstract; moving light; target leaves; band encounter/separation; unload/reload and save/load | Same actors and intent continue without duplicates, teleport knowledge or simultaneous local/abstract movement |
-| Integrated free-play | Ordinary daytime city looting, nighttime flashlight travel, lit-base exposure and late-game rider travel | The three intended experiences emerge without staging every decision |
-
-For each package, use focused unit tests for rules, native multi-turn harness tests for consequences, and free-play for feel. Decision strings and successful setup are not substitutes for movement, attacks or attraction.
-
-Measure detection delay, pursuit progress, actual attack attempts, lost-contact behaviour, turn cost and save growth against matched baselines. Let results establish sensible tuning; do not invent performance limits or zombie-count thresholds beforehand. Distinguish configurable, justified starting proposals from settled acceptance thresholds.
-
-## Open choices to settle through prototypes
-
-- Does the stalker feel better with a committed rush or a short physical leap?
-- How much zombie pressure should overcome bright-light caution?
-- Should rider "trampling" be a forceful contact attack, or a run-through manoeuvre that continues beyond the victim? Start with contact impact, then judge whether it delivers the intended experience.
-- What flashlight exposure duration and distance produce understandable risk without making ordinary night travel unreasonably punishing?
-
-## Handoff and evidence cautions
-
-Target the existing Mac dev worktree, preserving its dirty work. Treat these as three explicit goals, not inherit the old creature exclusions.
-
-Preserve the earlier light experiment as historical evidence of what code did. **Do not preserve cross-level rejection as desired behaviour.** Likewise, reconcile stale tests with this intent rather than letting old expectations dictate the design.
-
-The retained light run `.userdata/dev-harness/harness_runs/20260907_152331_c3938384751f47dfa1e1049b7e3236b5` had isolated light source observations at game minutes 8580 and 8585, but eligible observers on another elevation returned `blocked_line_of_sight`; no light lead or approach was shown. This is historical source-positive/observer-rejection evidence, not successful light-only attraction or window/hall/free-play proof. A closure index also mislabeled a smoke callback artifact as light/optical evidence; verify actual channel fields when using old evidence.
-
-The recommended first vertical slice is **an exposed elevated or carried light causing a legitimate off-screen observer response and physical approach**. Then develop stalker commitment and rider pursuit independently, before combining them in free-play passes.
-
-Further code-audit risks to cover in the specification, not assume resolved: stalker cooldown names versus actual game-time advancement; fake pressure from unobserved zombies; identity and waypoint persistence; rider light response currently using local `g->all_monsters()` and positional pseudo-IDs; generic horde and creature-specific control competing over one entity; rider evolution gating at eight configured seasons (728 days with 91-day seasons, not fixed 730), catch-up through intermediate types, already-generated/old-save predators with explicit `upgrades:false`, and exactly-once ammunition initialization without reload refill. Distinguish existing source mechanics from proposed fixes and unproved live outcomes.
-
-
-## Owner decision and delivery authorization — 2026-09-11
-
-Josef explicitly chooses to skip backward-compatibility migration for old predators. Preserve `upgrades:false`; normal new-world evolution and save/load remain in scope. This supersedes any earlier unresolved legacy-predator migration choice. He authorizes implementation and playtesting of the frozen zombies/light FS, not unrelated project work, through the native de67 phase-3 supervisor with Sol low ordinary coordination and its workers.
+# WEC — Affordable playtests and safer subsystem changes
+
+*User intent and language brief — Phase 1 draft, 2026-09-19*
+
+## Owner authorization for Phase-2 import and reconciliation
+
+Josef invoked `de67 2`, confirmed this exact Mac C-AOL dev worktree, and explicitly
+approved preserving the previous input by archive or merge, whichever is practical.
+Use the archive route: preserve the existing imported WEC and pre-refreeze
+specification/pointer verbatim together in the existing history convention, verify
+that preservation, then move this local WEC into `.de67/WEC.md`. This explicitly
+resolves the differing-WEC import gate. Carry still-binding prior gameplay intent
+and accepted evidence into the revised specification; do not discard acceptance
+history or grant old proof credit for new obligations. Archive only the superseded
+brief/specification material, preserving unrelated files, live state and evidence.
+Complete Phase 2. Latest owner instruction: "when done start de67 3, so remove blockers for de67 2 yourself pls, and dont waste too many tokens on short waitcalls, its no hurry, i just wanna afk". Resolve routine reversible technical and setup blockers autonomously while preserving the product intent and existing evidence. After the frozen, prepared and checkpointed Phase-2 handoff, the invocation owner is authorized to start Phase 3. Earlier statements withholding Phase-3 launch below and in archived input are superseded by this instruction; optional paid experiments still require their explicit configuration and prerequisites.
+
+## User outcome
+
+Continue C-AOL zombies-and-light work while reducing the time and tokens spent on
+playtests that are unnecessarily difficult to set up or depend on rare chance events.
+Josef wants a short explanation of each remaining test: what we need to see and the
+simplest credible way to see it. Discuss the setup before commissioning more play.
+
+This is an addendum to the accepted zombies-and-light intent in `.de67/WEC.md`, not
+a replacement for its gameplay goals or existing accepted evidence.
+
+## Settled decisions — six efficiency improvements
+
+Josef promotes all six items from the human maintenance queue into this WEC for
+subsequent specification and Phase-3 delivery:
+
+1. **Wait without repeated reasoning turns.** Keep pending-response waiting within
+   one tool execution until useful progress, failure or the task deadline. Preserve
+   responsiveness and never replay an already submitted action.
+2. **Use the observation already returned.** Avoid a fresh look when the last action
+   supplied the current valid frame and needed facts. Retain refresh/recovery when
+   the frame is missing, stale or no longer belongs to the current input state.
+3. **Read the relevant evidence fields first.** Filter by known run, actor, request
+   or event and return only fields needed for the question. Preserve original
+   evidence and recoverable handles; omitted fields are not absent evidence.
+4. **Use Jev for semantic judgment where useful.** Exact IDs, failure flags and known
+   fields use deterministic retrieval. Telescope should help distinguish competing
+   explanations, not add a model call to routine moves or known-field lookups.
+5. **Give Telescope a useful candidate pool.** Narrow and deduplicate equivalent
+   evidence before selection, while retaining distinct observations, late relevant
+   records and contradictions. Report truncation and missing coverage honestly.
+6. **Resume without reconstructing everything.** Carry a small continuation note
+   with session/binding, pending request, relevant evidence handles, unresolved
+   question and next decision. Reuse static controls guidance while rechecking
+   current action authority and freshness.
+
+Success means lower total agent/provider effort for comparable completed outcomes
+with equally trustworthy evidence. Count Jev usage and follow-up retrievals as well
+as fresh agent tokens; smaller output or slower work alone does not prove savings.
+The earlier live Jev trial consumed 16,317 provider tokens and did not establish a
+net saving. Prefer existing working mechanisms over duplicate retrieval layers.
+
+## Settled playtest scope — stalker follows into a city
+
+Current ledger lookup: `R-ZL-PLAYTEST` is the only unchecked zombies-and-light item.
+Its previously specified remaining gap is natural stalker opportunism: a naturally
+present stalker chooses a visibly bad moment during ordinary play and acts on it. Focused
+light, stalker, rider, lifecycle, evolution, band, encounter and sprite claims are
+already accepted. The broader integrated requirement names four accounts, but this
+ledger does not individually enumerate their acceptance; do not reopen all four
+merely from that list. Latest recorded continuation also needs a valid ordinary
+scenario/charter/profile route; the activity-resume repair is already accepted.
+
+Josef's decision on 2026-09-19 replaces the requirement to find a naturally spawned
+stalker for this remaining behavioral playtest. Use this sequence:
+
+1. Spawn only the stalker through the debug menu.
+2. Move the player around through ordinary gameplay and observe whether the stalker
+   follows. Establish actual stalking movement, not merely successful spawning.
+3. Walk into a city and encounter its naturally present zombies; do not debug-spawn
+   an accompanying zombie group.
+4. As those zombies pressure or distract the player, observe whether the same
+   stalker exploits the opening and attacks. Let its AI choose the approach and
+   attack; do not inject attention, contact or an attack outcome.
+
+This preserves the connected stalking-to-opportunistic-attack experience while
+removing the expensive search for a rare stalker. Record the debug spawn honestly:
+the run proves behavior after setup, not natural stalker occurrence or prevalence.
+Existing accepted encounter and focused-mechanism evidence remains accepted.
+
+Preparing or repairing the harness route needed for this test is useful and in
+scope for subsequent delivery. Carry this owner decision into the scenario and
+acceptance wording so the old natural-stalker setup restriction does not block it.
+No new run quota, zombie-count threshold or wider replay campaign is chosen here.
+
+## Additional settled workstream — C-AOL regressions and cleanup
+
+Josef's attached brief requests completed implementation slices on
+`josihosi/Cataclysm-AOL`, branch `dev`: protect the boundaries between zombies,
+predators, riders, bandits, physical light and reality-bubble simulation, then use
+those tests to support small behavior-preserving refactors. Fix confirmed defects
+with targeted regressions. This is future delivery work, not merely another review;
+the current Phase-1 conversation records its intent without starting implementation.
+
+The named symbols and suspected defects below are investigation leads from an older
+static review, not verified present defects. Phase 2 must inspect current code,
+existing equivalent tests, repository instructions and build/test routes. Record the
+actual starting commit at implementation time. Preserve unrelated changes; do not
+reset, force-checkout, destructively clean, recreate removed code or duplicate tests.
+
+This C-AOL workstream must not modify de67 or implement Jev Telescope. The previously
+promoted six efficiency improvements remain a separate workstream with their own
+ownership; they are not incidental cleanup within these product changes.
+
+### Delivery order and protected behavior
+
+1. **Player-tile light regression and reliable fixture cleanup first.** Investigate
+   `collect_stationary_emitters()` and `index_loaded_z_sources()`: ground-item
+   deduplication may also skip stationary emitters beneath the player. Through the
+   actual loaded-source indexing path, use a walkable emitter fixture and move the
+   player beside it, onto it and beside it again. Check the same absolute emitter
+   location remains indexed; add a ground lamp and verify exactly one occurrence.
+   Confirm any failure before changing production behavior. Inspect
+   `physical_light_stationary_records_are_source_bound` and other touched tests;
+   use existing scope cleanup or a small guard for temporarily changed terrain,
+   furniture and global definitions, including assertion-abort paths.
+2. **Repeated real handoffs with save/load.** Reuse authoritative transition APIs
+   and fixtures for ordinary zombies, durable predators/riders and bandit groups
+   where ownership differs. Begin without combat or unrelated resource changes;
+   cross the reality-bubble boundary both ways repeatedly and insert save/load.
+   After each transition check one authoritative owner per surviving actor, no loss,
+   duplicates or stale resurrection, durable identity, required state and correct
+   inventory/resource accounting. Repeating a completed handoff must not transfer or
+   charge twice. Cover health, ammunition, group membership and operation state
+   where required, allowing legitimate time-driven abstract changes.
+   Exercise a blocked member of a departing bandit pair, destination invalidation
+   before commit, death during pending departure, failed-transfer retry, and
+   overlapping light/sound/boundary events. Verify the existing partial-transfer or
+   rollback policy; do not invent one. Event order may change tactics, but not
+   ownership/accounting coherence. Constructing a desired final state is not proof
+   that the real handoff works.
+3. **Turn-driven light lifecycle.** Expose a real source, advance turns and observe
+   eligible recipients receiving clues and reacting through existing rules. Hide or
+   extinguish it and advance through retention/expiry. Protect sampling/delivery
+   cadence, cessation of fresh observations, legitimate memory persistence and
+   expiry, and occlusion/eligibility boundaries. Inspection/redraw without elapsed
+   game time must not create exposure or refresh memory. Include a bubble or
+   save/load variation where practical; distinguish history from fresh knowledge.
+4. **History and coordinate lifetimes.** Investigate stalker pressure memory,
+   `writhing_stalker_pressure_memories` samples and rider relationship maintenance.
+   Replace actors at roughly constant population, shift the bubble origin while
+   absolute positions stay fixed, save/reload, and start a separate world in one
+   process if supported. Check identity, absolute position, observation age,
+   ownership and relationships rather than identical AI decisions. Old identities
+   must not affect replacements and transient state must not leak between worlds.
+   Clarify memory ownership/expiry, eviction and historical coordinate semantics
+   before changing retention policy; a policy change needs its own regression.
+
+### Cleanup supported by those tests
+
+- Share genuinely duplicated physical-light discovery rules while keeping ground
+  item deduplication distinct from stationary emitters and preserving provenance.
+- Move cohesive implementation out of `do_turn.cpp` while leaving turn ordering and
+  cadence clear. Investigate rider reconciliation inside
+  `sample_and_deliver_live_light_for_advancing_turn()` without changing its order or
+  frequency accidentally.
+- Investigate moving `openclaw_harness_r022_item_spawn_bridge()` setup out of ordinary
+  turn code. Give one-shot state the proper scenario/run lifetime; preserve setup
+  receipts and the distinction between interventions and gameplay evidence.
+- Consolidate only identical bandit eligibility rules into narrow named queries.
+  Preserve operation-specific checks and ownership, preflight, commit and rollback;
+  avoid a generic helper controlled by many Boolean switches.
+- Separate lengthy diagnostics from movement decisions where useful. Preserve
+  evidence fields and disabled-logging behavior; label timing according to the work
+  actually measured, not the entire planner when only destination selection is timed.
+- Fix confirmed memory-lifetime issues with the smallest suitable change. No general
+  memory framework or unrelated state-management layer. Keep mechanical extractions
+  separate from intentional behavior changes so each is reviewable.
+
+### Mandatory evidence for every cleanup
+
+Josef explicitly requires all delivered cleanups to be tested, including mechanical
+extraction and test-fixture cleanup. Each must map to named, executed tests of the
+affected behavior. Compilation alone, unchanged signatures or a claim that code
+was merely moved is insufficient. Reuse adequate existing tests; add or extend
+coverage where a real gap remains, not one new test per helper by ritual.
+
+| Cleanup | Required observable evidence |
+|---|---|
+| Fixture restoration | Temporary definition changes are restored on normal exit and assertion-abort/unwinding. Subsequent tests see the original definitions; repeat/shuffle the affected tests where supported. Exercise failure cleanup safely without leaving a deliberately failing test in the normal suite. |
+| Shared light discovery | The real loaded index retains the stationary emitter as the player moves beside/onto/away from its tile, indexes the ground lamp exactly once and preserves source identity/location. Exercise the formerly separate discovery routes being consolidated with the same relevant fixtures. |
+| Extraction from `do_turn.cpp`, including rider reconciliation | Through the actual turn route, the affected sampling, delivery and reconciliation retain their intended order and cadence. Advancing turns produce the expected observations/state transitions; non-time-advancing inspection/redraw does not produce extra sampling or refresh. Test an order-sensitive consequence wherever the extracted responsibilities depend on one another. |
+| Harness setup relocation and run lifetime | Repeated calls within one scenario do not duplicate setup; a subsequent scenario/run in the same process gets its own correct setup lifecycle. Cover supported failure/retry/termination paths, preserve setup receipts and distinguish intervention from native gameplay evidence. Phase 2 must establish the actual lifecycle/retry contract before defining expected outcomes. |
+| Shared bandit eligibility queries | Exercise each affected operation through its real caller with eligible and ineligible cases. Preserve operation-specific safety checks and cover blocked pair members, failed preflight, retry and the established partial-transfer/rollback outcome, with no duplicate ownership or resource charge. |
+| Diagnostic formatting extraction and timing labels | With equivalent controlled inputs, logging enabled/disabled preserves gameplay decisions and state. Required evidence fields retain their meaning; disabled logging avoids diagnostic-only work/side effects. Timing labels identify the instrumented interval accurately; do not assert exact prose or machine-dependent duration. |
+| Memory-lifetime cleanup | Actor replacement, absolute-position-preserving origin shifts, save/load and supported same-process world changes preserve required identity, position, age and relationships without stale-identity effects or cross-world leakage. Intentional retention/expiry changes have a separate behavioral regression. |
+
+Mechanical refactors should have relevant behavior tests passing before and after
+the change. A confirmed defect instead needs the targeted regression to fail against
+the previous behavior and pass after its fix. Keep those evidence types distinct;
+do not demand an artificial failing test for a behavior-preserving extraction.
+
+## Deferred experiment — Pit Crew coordination notices
+
+**Sequence chosen under Josef's delegated discretion:** finish the agreed production
+development, efficiency, cleanup and stalker-playtest acceptance first; then evaluate
+Pit Crew, followed by Reflex Pilot. Pit Crew can begin with recorded events and its
+funding guard may be reusable by other Jev integrations. This is an experiment, not
+a prerequisite for completing production work. A negative usefulness result does
+not block Reflex Pilot or require an indefinite Pit Crew improvement campaign.
+
+### Goal and packaging
+
+Telescope answers “Where should I look?” Pit Crew answers “Has something happened
+that should change what I am doing?” Reduce wasted work when new evidence,
+overlapping investigations or changed assumptions matter to active work. Pit Crew
+assists existing coordination; it is not a supervisor or autonomous project manager.
+
+Inspect current de67 packaging, orchestration contracts and optional integrations
+before choosing integration points. Deliver a working, tested slice inside the
+normally installable/copied de67 skill, including implementation, configuration and
+activation instructions. A standalone service merely linked from SKILL.md is not
+the requested package. Keep dependencies isolated and the plugin off by default;
+base installation/use requires no Jev credentials, external calls or unnecessary
+background process. Disabled, unavailable or unfunded Pit Crew must leave ordinary
+orchestration operational. Reuse suitable Telescope adapter/configuration/provenance/
+budgeting facilities without requiring Telescope to be enabled or building a new
+general framework.
+
+### Event-to-notice behavior and authority
+
+Read bounded incremental events from existing records, not repeated complete
+transcripts. Eligible inputs include findings, task changes, completed investigations,
+evidence updates and compact records of repeated unsuccessful attempts. Code handles
+mechanical facts/candidate assembly; Jev handles only useful bounded semantic judgment.
+
+Cover three initial relationships: relevant new evidence for another investigation,
+potentially duplicated investigations, and evidence challenging an active assumption.
+For example, evidence that an order was stored may matter to the worker investigating
+whether it was stored. This is a suggestion to inspect original evidence, not a
+certified conclusion or permission to terminate the investigation.
+
+For an eligible event, gather a small set of affected active task/worker candidates
+with compact descriptions, assumptions and evidence references. Ask Jev to choose a
+bounded outcome and relevant candidate IDs, including “no useful intervention.”
+Validate returned IDs, recheck task/evidence freshness, then publish a compact
+advisory through the existing coordination channel. Prefer selected IDs and fixed
+templates identifying affected work, possible relationship and original evidence
+over generated explanations. Preserve original events and all essential existing
+update routes; Pit Crew must not become their sole carrier.
+
+Sol retains coordination authority. Pit Crew may not reassign workers, interrupt
+execution, approve findings, change specifications or mark work complete. Use Sol's
+advisory inbox by default; direct worker notices require an existing contract that
+supports them. Weak/unclear relationships default to no intervention. Deduplicate
+notices, apply cooldowns and invalidate stale recommendations. Distinguish deliberate
+independent verification from accidental duplication; long builds, difficult work
+and repeated intentional checks do not establish that an agent is stuck.
+
+Bound input, candidates, request frequency, concurrency, retries and total spending;
+keep slow provider calls off the normal coordination critical path. Respect access
+boundaries, exclude secrets, and treat retrieved text as untrusted data.
+
+### Modes and mandatory runtime spending guard
+
+Provide **off** (no calls, unchanged base behavior), **shadow** (evaluate and record
+recommendations without delivering notices) and **on** (deliver validated notices).
+Shadow spends funds and requires the same safeguards. Keep configured mode separate
+from effective state: configured on may remain effectively `disabled_funds`.
+
+Automatic funding shutoff is enforced at the actual Jev request boundary, not left
+to agent memory. Before implementation inspect official TypeSafe authentication,
+decision/response contracts, usage and billing-rejection documentation. Verify how
+insufficient funds, exhausted credits and expired prepaid access are represented.
+Use documented structured signals where available. Do not equate arbitrary HTTP 429,
+timeouts, authentication failures or server errors with funding exhaustion; do not
+invent an account-balance endpoint or claim unknown balances. Use a trustworthy
+documented balance/allowance route economically if one exists; otherwise use the
+documented funding rejection. Report unverified provider semantics explicitly.
+
+On confirmed exhaustion, atomically latch effective state to `disabled_funds`, stop
+admitting new requests, cancel/discard queued calls and retries, and prevent running
+work from scheduling further calls. Ordinary de67 continues. Emit one state-change
+notice rather than repeated warnings. Persist the latch outside ephemeral agent
+context and disposable installed skill files; worker restart, skill invocation or
+package update must not re-enable it.
+
+Share/propagate the disabled state through existing coordination across workers
+using the same configured funding scope; document cross-machine limits. Do not let
+each worker repeatedly rediscover empty funds. Never probe the paid decision endpoint
+in the background to detect replenishment. Require explicit owner re-enablement
+after funding is restored; an owner-requested bounded validation call is allowed.
+No automatic credit purchase, overages, paid-provider substitution or credential
+borrowing.
+
+Enforce a configured local spending/call budget too, with distinct `disabled_budget`
+state instead of claiming the provider is empty. Use bounded concurrency and atomic
+admission/accounting where needed. Already accepted provider requests may still incur
+charges; do not promise impossible zero-overrun guarantees. Reuse the guard across
+other optional plugins sharing the adapter/funding scope where practical, preserving
+their non-Jev fallbacks. Transient errors use bounded backoff/circuit breaking;
+invalid credentials have a separate configuration/authentication state with no futile
+request loop. Discard malformed outputs, unknown IDs and stale recommendations;
+base orchestration is the fallback, never an invented finding or another paid model.
+
+### Tests, evaluation and delivery
+
+Ordinary tests use provider stubs with no credentials/network. Cover all three notice
+cases and no-intervention; unknown IDs; stale tasks/changed evidence; deduplication
+and cooldown; legitimate long work; off/shadow/on isolation; funding exhaustion;
+persistence across restart/update; queued/concurrent callers and shared shutdown;
+no automatic re-enable/background funding probes; explicit owner re-enable; distinct
+rate-limit/authentication/timeout handling; and accurate local budget exhaustion.
+Verify normal de67 operation after every plugin failure and installation through the
+normal skill packaging path. At the actual API boundary, request counters must prove
+that no new calls dispatch after the funding latch is observed; testing a label
+helper alone is insufficient.
+
+Start with shadow evaluation on recorded/controlled orchestration events. Measure
+useful notices, irrelevant interruptions, missed relationships, request volume,
+latency and total provider usage. Only with explicit configuration and funds run a
+bounded enabled experiment. Compare overall work and outcome quality, including
+extra agent effort induced by bad notices; fewer worker tokens alone is not a win.
+Stub success does not prove live usefulness.
+
+Deliver focused code/tests, packaged documentation, activation/deactivation and budget
+instructions, and the exact recovery procedure after topping up Jev. Report changed
+files, executed commands/results, provider uncertainties and experimental limits.
+The first milestone is a normally packaged optional plugin producing a small number
+of useful evidence notices, failing harmlessly, and reliably stopping requests when
+provider funds or its local budget are exhausted.
+
+## Deferred experiment — Jev Reflex Pilot
+
+**Status: deferred follow-on; its prerequisites have not been verified complete.**
+Before implementation, confirm acceptance of the currently agreed six efficiency
+improvements, revised stalker playtest, and C-AOL development/regression/cleanup
+slices. “Everything done” means that agreed scope, not every repository TODO.
+Phase 2 must name those prerequisite slices and the acceptance evidence needed to
+release this experiment. Keep it separate from unfinished production work; current
+work does not depend on the experiment succeeding.
+
+After that gate is met, implement the smallest useful optional integration on an
+isolated branch/worktree following repository conventions and preserving unrelated
+changes. Keep it disabled by default. Do not automatically merge it, replace the
+default playtester or promote a successful demo into default behavior.
+
+### Goal, roles and scope
+
+Test whether Jev can perform routine native playtest decisions with less total
+reasoning-agent work while preserving meaningful coverage and trustworthy findings.
+The reasoning agent defines objectives, constraints and checkpoints. Jev selects
+one valid next action or abstains. The existing harness executes and observes;
+independent assertions or review decide whether the feature worked. Jev is the
+**Reflex Pilot**, not the test designer, bug adjudicator or source of gameplay truth.
+
+This experiment is confined to the C-AOL harness on `dev`. It is separate from the
+Telescope evidence selector and must not implement NPC intelligence, the de67
+Telescope or a general agent framework. Inspect the actual current harness/player
+interfaces, pending requests, setup, evidence and checks before designing the slice.
+Reuse those interfaces. Consult current official Jev/TypeSafe documentation for
+authentication, supported decision formats, response semantics, limits and usage;
+do not assume generic chat or unrestricted generated JSON.
+
+### First slice and execution contract
+
+Choose one already-qualified scenario with a clear objective, small native action
+surface, repeatable setup and existing evidence/assertions for meaningful progress.
+Do not add game features merely to demonstrate the integration.
+
+The loop obtains the current player-visible observation/actions, builds a bounded
+request with objective, relevant recent outcomes and valid candidates, asks Jev to
+select or abstain, validates against current state, executes through the native
+interface, waits for the result, records the actual outcome, and continues until
+a checkpoint, completion, failure or budget limit.
+
+- Each candidate is a complete action including its target and required parameters,
+  using existing stable IDs/handles. Do not choose action and target independently
+  and accidentally create an invalid combination. Revalidate stale observations.
+- Allow explicit abstention when none of the candidates supports the objective;
+  a highest-ranked candidate does not by itself make a valid next step.
+- Respect an unresolved action. Waiting for a response is different from an in-game
+  wait that advances time. After a timeout inspect acceptance/completion before
+  retrying; delayed responses must never cause duplicate side effects.
+- Escalate when the action surface cannot express the next step, observations are
+  unfamiliar/contradictory, progress stalls, abstention repeats, or planning or
+  interpretation is needed. Bound recovery and invalid-choice retries; no endless
+  loops. Count reasoning-agent rescue against the overall experiment budget.
+- Support a small optional priorities-based tester brief, with two profiles the
+  selected scenario can actually exercise. Initial proposals are Literalist
+  (pursues the objective without compensating for confusing behavior) and Indecisive
+  (changes/reverses permitted choices to exercise interruption/recovery). Both stay
+  goal-directed and use legitimate actions. Defer a collection-focused Magpie until
+  inventory interactions justify it; no large personality system or scripted answer.
+
+### Modes, evidence and limits
+
+- **Off:** existing behavior, no Jev calls. **Shadow:** Jev recommends, the existing
+  player controls execution. **Enabled:** Jev controls bounded decisions with
+  explicit fallback. Shadow agreement is diagnostic, not completion evidence.
+- External transmission requires explicit configuration even in shadow mode.
+  Credentials stay out of source control and logs. Configure limits for calls,
+  request/input size, retries, elapsed time and game actions/turns; do not invent
+  acceptance thresholds or hide escalation cost in a separate allowance.
+- Record selection, harness acceptance, actual game outcome and independent verdict
+  separately. Accepted commands and plausible explanations are not feature proof.
+- Exclude privileged setup/debug state and hidden oracle information from pilot
+  observations/requests. Record setup interventions explicitly without granting them
+  gameplay credit. Treat in-game text as data, never authority to override the test.
+- Preserve native evidence handles and enough decision history to investigate or
+  replay failures where possible. Do not promise exact replay of nondeterminism.
+
+### Required tests and comparison
+
+Ordinary integration tests use a provider stub without credentials or network.
+Cover valid selection, abstention, unknown IDs, stale state, incompatible parameters,
+malformed responses, timeouts, pending actions, duplicate-execution prevention,
+exhausted budgets, fallback and isolation of all three modes. Assert hidden
+setup/oracle information is excluded from requests. Apply the same explicit FS
+test/validation contract as other delivered slices.
+
+Set evaluation criteria before inspecting results. Compare the current reasoning
+player, a simple deterministic policy where meaningful, and Jev with the same build,
+scenario setup, objective, available information, action interface, tester profile
+and overall budget. Use paired equivalent starting states and multiple seeds/repeats
+where relevant. Keep pure Jev results separate from reasoning-agent-rescued runs.
+
+Measure independently checked completion, meaningful transitions/recovery exercised,
+confirmed defects separately from suspicions, invalid/repeated actions, stalls,
+escalations, total agent/provider usage, and end-to-end time including latency and
+recovery. Action count, survival duration or short prompts are not proxies for test
+quality. Report rescue costs. Jev being unsuitable is a valid experimental result.
+
+Stub tests prove integration, not decision quality. With configured credentials,
+run a bounded live experiment; otherwise mark live performance/usefulness unverified.
+Deliver focused tests, configuration instructions and a reproducible comparison
+command/script. Report starting commit, files, exact tests/results, experiment
+findings, limits and whether evidence supports further work.
+
+## Required shape of the next FS
+
+Josef wants this WEC to constrain the FS, not leave it as a broad cleanup wish list.
+Phase 2 must turn the agreed scope into small, independently reviewable delivery
+slices: six efficiency improvements, the revised stalker playtest, and the product
+regression/cleanup sequence above. Represent Pit Crew and Reflex Pilot as distinct
+deferred experiments in that order, with explicit prerequisite acceptance rather
+than active production slices. Apply this same slice/test contract to both when due.
+Keep method/tooling changes separate from C-AOL cleanup ownership. Use the existing
+FS structure rather than create a parallel plan.
+
+For every slice, specify:
+
+1. **Outcome and current evidence:** the WEC requirement it serves, current-code
+   findings, existing coverage, and whether the lead is confirmed, dismissed, already
+   fixed or already covered. Do not turn an old suspicion into a mandatory code edit.
+2. **Concrete change boundary:** verified files/symbols and responsible state owner;
+   existing versus proposed functions; inputs/outputs, coordinate spaces/units,
+   callers and real integration entrypoints. Resolve technical choices from the
+   current code instead of handing the worker an unchosen list of designs.
+3. **Mechanism and invariants:** before/after flow, turn ordering/cadence, ownership,
+   persistence and lifetime, applicable failure/retry/rollback behavior, and what
+   must remain unchanged. Explicitly label any intentional behavior change.
+4. **Executable proof:** named existing or proposed tests, fixture/setup, action or
+   transition sequence, independent observable assertions and failure cases. Map
+   every delivered cleanup to its evidence row above. State which real production
+   route the test exercises; do not substitute manually constructed final state.
+5. **Validation and completion:** exact build/test commands and selectors verified
+   against the repository, relevant platform coverage, how execution is confirmed,
+   and the evidence required to close the slice. Separate narrow regression tests,
+   integration proof, the agreed gameplay account and optional performance work.
+6. **Order and exclusions:** prerequisite tests/fixtures, shared-file conflicts and
+   the smallest complete delivery boundary. Preserve the requested priority order
+   and accepted evidence. Name deferrals and unresolved owner choices explicitly.
+
+A worker should not have to invent what “refactor safely,” “test the lifecycle” or
+“preserve behavior” means. Mechanistic detail must make the real behavior and proof
+clear without forcing tests to mirror private implementation. A cleanup with no
+adequate executable coverage remains unverified, not complete. Do not expand this
+into a full redesign or replay accepted playtests merely to fill specification rows.
+
+### Performance, validation and delivery evidence
+
+Where existing instrumentation makes this inexpensive, establish reproducible
+baselines/work counters for blocked returning bandit pairs, rider reconciliation as
+population grows, light discovery with much loot, predator ownership checks against
+stored populations, and repeated handoffs/long-lived memory. Separate candidate
+scans, pathfinding, discovery and delivery where possible. Prefer deterministic work
+counts in ordinary tests and optimized timing in an explicit benchmark target; no
+machine-specific timing assertions, invented limits or speculative algorithm rewrite.
+
+Use existing conventions/dependencies, deterministic fixtures and bounded sequences.
+Randomized tests must report seed and failing sequence; expensive soak tests remain
+opt-in. Assert independent outcomes, not a copy of the algorithm, private helper
+names or exact diagnostic strings. For confirmed bugs, safely demonstrate failure
+against previous behavior and success after the fix without disturbing the tree.
+
+Build affected targets; run focused and related suites plus an appropriate integration
+subset. Verify that filters actually execute tests. Repeat affected tests and shuffle
+order where supported to catch shared-state contamination. Preserve assertions and
+expected behavior; distinguish pre-existing failures and exact environmental limits
+from regressions, and never claim unexecuted tests passed.
+
+Delivery reports must name starting commit/files, disposition of each investigated
+lead (confirmed, dismissed, already fixed or covered), protected behaviors, mechanical
+versus behavioral changes, exact commands/results and deferred or unverified gaps.
+Prefer a finished tested slice over a broad unfinished redesign. The aim is fewer
+duplicated rules, explicit ownership/lifetimes and reliable subsystem boundaries,
+not a larger test count or smaller files for their own sake.
+
+## Handoff to DE-67-2
+
+- Product: `/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev`
+  on the Mac mini; branch `dev`, observed HEAD `c2ad7514a3`. Recheck before delivery.
+- Method source: `/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab`;
+  installed skill: `/Users/josefhorvath/.codex/skills/de67`.
+- Current acceptance: `.de67/work-ledger.md`; canonical specification `.de67/FS.md`
+  through `.de67/DFS.md`; prior intent `.de67/WEC.md`.
+- Specific maintenance details and evidence: de67 source
+  `de-67-3/agents_ignore_todo.md`, section “Playtest token consumption”; audit
+  `docs/token-audit-2026-09-16.md`; adapter `integrations/jev_telescope/`.
+  Josef explicitly requested carrying these six items forward; this does not import
+  the unrelated human backlog into delivery.
+- Phase 2 should reconcile this addendum with the existing FS and encode the six
+  improvements, agreed stalker-only debug setup, and separate regression/cleanup
+  workstream as actionable Phase-3 work. Preserve the requested regression order.
+  Include Pit Crew and Reflex Pilot separately as gated follow-on experiments in
+  that order, with the optionality and acceptance boundaries specified above.
+  Sol/workers receive the resulting specification and relevant task context; do not
+  restore routine full-WEC injection into Phase 3.
+- Full owner regression/cleanup brief:
+  `/Users/josefhorvath/.codex/attachments/84f1fab6-9abe-41d9-a696-5f96048efedf/Pasted text.txt`.
+- Full owner Reflex Pilot brief:
+  `/Users/josefhorvath/.codex/attachments/4a15031b-2618-4787-aab2-68d3eadb35b6/Pasted text.txt`.
+- Full owner Pit Crew brief:
+  `/Users/josefhorvath/.codex/attachments/ef1dff1d-1f60-46a6-9c2a-90b1e5e30d76/Pasted text.txt`.
+- This discussion and saved draft do not launch Phase 2/3, rewrite current acceptance,
+  restart workers, change live tests, or authorize unrelated gameplay work.

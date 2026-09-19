@@ -1,3 +1,78 @@
+# Affordable playtests and safer subsystem changes — phase-2 refreeze (2026-09-19)
+
+## Current authority and frontier
+
+The current owner outcome is `.de67/WEC.md`, imported with explicit archive authorization. `.de67/FS.md` is the refrozen canonical specification and `.de67/DFS.md` is its hash-bound pointer. The previous WEC/FS/pointer are preserved verbatim in `.de67/history/20260919-zombies-light-before-affordable-playtests/` with SHA-256 manifest. The 12 current accepted claims and every original receipt below remain accepted at their existing evidence ceilings. New obligations receive no inherited credit.
+
+The only remaining old claim is R-ZL-PLAYTEST. Its current proof starts with one debug-spawned stalker, follows through ordinary movement into naturally present city zombies, and lets the same stalker's AI choose its opportunity and attack. Debug setup is disclosed and has no natural-encounter credit. No zombie, attention, contact or attack injection; no repeat of already accepted integrated accounts. The refrozen R-ZL-PLAYTEST-S001 supersedes earlier assignment wording demanding a naturally present stalker. Preserve outstanding task identity/history, but rebind its brief/charter/scenario to this authorized outcome before continuation; do not execute an obsolete natural-stalker restriction.
+
+Production order follows the FS: regression guards and confirmed defects before dependent cleanup, six bounded efficiency improvements, and the revised remaining native outcome. Optional Pit Crew then Reflex Pilot remain behind G-PRODUCTION and their explicit configuration/funding gates. Pit Crew belongs to de67 source/packaging; Reflex Pilot belongs to the C-AOL harness on its later isolated branch.
+
+Josef explicitly authorized autonomous resolution of routine Phase-2 blockers and Phase 3 after the frozen, prepared, checkpointed handoff. The invocation owner performs that launch. Older statements withholding launch or requiring another ordinary setup permission are historical. No Phase-3 coordinator was launched by this Phase-2 owner.
+
+## Current source and context audit
+
+- Product: dev at c2ad7514a37a76e547f9ba44d1ff9a43cc79f17e. Tracked tree was clean before this phase; existing untracked evidence/binaries were preserved. Product code/tests remain unchanged.
+- Method: de67-lab at a6125b4a70adf641e185b34dbd33118e48d884e3; unrelated dirty dashboard files preserved. No method implementation in this phase.
+- Exact target root AGENTS.md contributes bounded commands and truthful evidence habits. COMMIT_POLICY.md and README.md were read and retained. This checkout has no Plan.md/SUCCESS.md/TODO.md/TESTING.md; sibling-workspace roadmap references do not create those files here.
+- Host global /Users/josefhorvath/.codex/AGENTS.md contributes Mac ownership, MSW and implementation/evidence rules; phase owner read it. The existing audited shared-guidance binding is retained, not replaced by a new claim that every context was observed. The two read-only source helpers received repository AGENTS and their bounded briefs, not an explicit global-guidance injection. Fresh probe contexts performed nonce-only work. No new reviewer context was launched or audited.
+- Existing compiled phase3-policy.d67, phase3-policy.json and phase3-contracts.json own runtime policy; test-and-task-guidelines.md explicitly identifies itself as a legacy differential fixture. Runtime owners, mutation suggestions, exact FS resolver and setup were inspected as context/compatibility surfaces, not executed as another phase's procedure. Existing policy is preserved. The installed setup helper prepares those compiled surfaces plus test/task guidelines and ledgers, not an obsolete orchestrator-guidelines.md.
+- Historical specification/ledger instructions are evidence only where superseded by this current WEC/FS. No active contributing/licence/design/product guidance was removed, and no no-go-zone was inventoried or read.
+- Source review reused authoritative existing persistence, transfer, pending request, returned frame, filtered evidence and mailbox owners. The FS records confirmed gaps separately from unproved regression coverage and mechanical cleanup. Public TypeSafe API/Choice/error documentation was reviewed; no documented exhaustion code or balance endpoint was found. That uncertainty limits optional paid activation, not production work. No provider call or credential access occurred.
+
+## Native preparation evidence
+
+Project .codex/config.toml already declares agents.default_subagent_model = "gpt-5.6-luna" with no pinned effort. Fresh Codex CLI 0.153.2 coordinator 01a0b903-5846-7ac3-9203-f33030558b64 returned all unique nonce replies with fork_turns=none: default Luna/low CAOL-P2-LUNA-LOW-a01f9e; default Luna/medium CAOL-P2-LUNA-MED-a70b8c; explicit Terra/medium CAOL-P2-TERRA-MED-f6210d; explicit Astra/low CAOL-P2-ASTRA-LOW-0458bc (preserving the accepted optional capability). The Luna requests omitted model as required and used the trusted project's default. Tool replies expose no resolved-model metadata; configuration plus successful native requests is the evidence ceiling, not an independent backend attestation. Detailed local evidence: .de67/state/phase2-native-probe-{result.json,events.jsonl,stderr.log}. No gameplay occurred.
+
+Installed Catch --help/list-only and harness registry --help verified executable command/selector shapes only; no current-source behavioral pass is claimed. Source/pointer/claim/archive checks and disposable durable-projection results are recorded with the setup outcome below. Product documentation-only preparation needs no compile.
+
+## New red obligations
+
+- [ ] R-CAOL-LIGHT-FIXTURE — The real loaded-source index retains stationary light beneath the player and touched fixtures restore global definitions on every exit.
+  - DFS slices: `R-CAOL-LIGHT-FIXTURE-S001`
+- [ ] R-CAOL-HANDOFF — Repeated local/abstract crossings and save/load preserve one owner, identity and resource accounting, including rejected and interleaved transfers.
+  - DFS slices: `R-CAOL-HANDOFF-S001`
+- [ ] R-CAOL-LIGHT-TURNS — Real advancing turns detect eligible brief exposure, retain finite memory after source-off and expire it without redraw/query refresh.
+  - DFS slices: `R-CAOL-LIGHT-TURNS-S001`
+- [ ] R-CAOL-HISTORY — Actor replacement, bubble shifts and world/load boundaries cannot turn obsolete perception into current pressure or rider knowledge.
+  - DFS slices: `R-CAOL-HISTORY-S001`
+- [ ] R-CAOL-LIGHT-EXTRACT — Duplicated light discovery and cohesive turn implementation are simplified with executed behavior preserved.
+  - DFS slices: `R-CAOL-LIGHT-EXTRACT-S001`
+- [ ] R-CAOL-SETUP-LIFETIME — R022 item setup is removed from ordinary turn implementation without suppressing later runs or duplicating intervention effects.
+  - DFS slices: `R-CAOL-SETUP-LIFETIME-S001`
+- [ ] R-CAOL-BANDIT-QUERIES — Identical eligibility checks share named queries without changing operation-specific transfer behavior.
+  - DFS slices: `R-CAOL-BANDIT-QUERIES-S001`
+- [ ] R-CAOL-DIAGNOSTICS — Lengthy movement diagnostics can be separated and timing labels describe the measured interval without affecting play.
+  - DFS slices: `R-CAOL-DIAGNOSTICS-S001`
+- [ ] R-EFF-WAIT — Waiting for an already-submitted native request stays within one tool execution until useful progress, terminal failure or the actual task deadline.
+  - DFS slices: `R-EFF-WAIT-S001`
+- [ ] R-EFF-FRAME — The next legitimate action reuses a valid action-result frame without a redundant look.
+  - DFS slices: `R-EFF-FRAME-S001`
+- [ ] R-EFF-EVIDENCE — Known run/request/actor/event questions use existing exact filters and selected fields before bulk retrieval.
+  - DFS slices: `R-EFF-EVIDENCE-S001`
+- [ ] R-EFF-SEMANTIC — Telescope helps distinguish competing explanations without model calls for exact identifiers or known flags.
+  - DFS slices: `R-EFF-SEMANTIC-S001`
+- [ ] R-EFF-CANDIDATES — Telescope's harness pool removes equivalent rows before submission and retains relevant late observations and contradictions within honest scan limits.
+  - DFS slices: `R-EFF-CANDIDATES-S001`
+- [ ] R-EFF-CONTINUATION — A context reset resumes the unfinished question without reconstructing static guidance or replaying pending input.
+  - DFS slices: `R-EFF-CONTINUATION-S001`
+- [ ] R-EXP-PIT-FUNDS — Optional Jev integrations stop admitting paid requests after confirmed provider exhaustion or the configured local budget, across worker restart and package update.
+  - DFS slices: `R-EXP-PIT-FUNDS-S001`
+- [ ] R-EXP-PIT-NOTICES — A normally packaged optional Pit Crew produces useful, bounded evidence advisories while ordinary coordination remains authoritative and operational.
+  - DFS slices: `R-EXP-PIT-NOTICES-S001`
+- [ ] R-EXP-REFLEX — A small optional native-action pilot is compared honestly with the current reasoning player and a meaningful deterministic baseline.
+  - DFS slices: `R-EXP-REFLEX-S001`
+
+## Setup and checkpoint result
+
+Idempotent workspace setup succeeded. It preserved all six existing compiled-policy/guideline/ledger runtime files, the semantic-surface-cockpit lineage and acceptance database, the valid prior shared-guidance audit and the guarded post-commit hook. Disposable durable acceptance projection passed; no history was discarded or new claim credited. All four successful native capability pairs are recorded in machine-only workspace configuration. The already-committed baseline pushed successfully to origin/dev, the sole automatic target. Detailed local result: .de67/state/phase2-workspace-setup.json.
+
+Final document checks passed: canonical pointer hash, 30 unique matched slice pairs, all 13 prior stable IDs, 12 accepted claims and 18 red claims; three archived documents equal their original HEAD bytes; the entire prior ledger is a verbatim suffix. git diff --check passed. The scoped checkpoint contains only the WEC, canonical FS/pointer, this ledger update and the authorized exact archive/manifest. The hook owns its upstream push; no second routine push is scheduled.
+
+## Prior ledger — preserved evidence and acceptance projection
+
+The full prior body below is retained. Its dated “current” instructions do not override the current authority/frontier above.
+
 # Zombies and light — phase-2 checkpoint (2026-09-11)
 
 ## Current owner outcome
