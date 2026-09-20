@@ -9,8 +9,8 @@ python3 tools/openclaw_harness/play_cli.py --session SESSION look
 python3 tools/openclaw_harness/play_cli.py --session SESSION act ACTION [--target STABLE_ID]
 python3 tools/openclaw_harness/play_cli.py --session SESSION controls
 python3 tools/openclaw_harness/play_cli.py --session SESSION messages --contains TEXT
-python3 tools/openclaw_harness/play_cli.py --session SESSION call --request REQUEST.json
-python3 tools/openclaw_harness/play_cli.py --session SESSION collect
+python3 tools/openclaw_harness/play_cli.py --session SESSION --wait-seconds REMAINING_SECONDS call --request REQUEST.json
+python3 tools/openclaw_harness/play_cli.py --session SESSION --wait-seconds REMAINING_SECONDS collect
 python3 tools/openclaw_harness/play_cli.py --session SESSION cancel --reason "stop this pending request"
 python3 tools/openclaw_harness/play_cli.py --session SESSION inspect SELECTOR
 python3 tools/openclaw_harness/play_cli.py --session SESSION journal --reason "What this run established"
@@ -39,7 +39,20 @@ and skips that continuation. Saving alone does not establish new-process persist
 For an existing structured `game.*` macro, put its complete request object (including `action`
 and its recipe) in `REQUEST.json` and use `call --request`. The client preserves the request;
 the cockpit checks the operation and recipe against the session. It supplies no recipe defaults.
-Collect the response once and continue from its terminal observation, or use `look` to reassess.
+Give the command the finite task-time budget that remains. Submission and bounded collection then
+occur in one tool execution, waking on the response, cooperative cancellation, owner/bridge death,
+or the deadline. Continue from its terminal observation, or use `look` to reassess. If an external
+tool timeout interrupts the command, run `collect --wait-seconds REMAINING_SECONDS` for the same
+pending request before doing anything else; never resubmit the action or advance game time.
+
+When a successful action response contains a complete current World/menu surface, the client
+retains that result frame and the next legitimate `act` reuses its observation ID directly; no
+redundant `look` is needed. Reuse is bound to the response receipt, binding and current session
+generation and requires a native surface owner with advertised actions. A prompt transition,
+rejected response without a successor, missing surface facts, stale generation, reentry, process
+exit, cancellation, or invalid authority clears the reusable frame: follow the returned
+`look`/`collect`/journal recovery route. Controls and static examples never grant live authority,
+and movement must not be blindly batched.
 
 The client owns request IDs, binding, pending responses and the last displayed frame. A pending
 action needs `collect`, never resubmission. Use `cancel` to stop a pending request cooperatively; it remains available while another CLI is waiting. Then collect the original request and look again. Cancellation leaves the game running. Input already emitted can have an unknown outcome, and a native receipt already written remains evidence. Choose from the current surface's actions; supply

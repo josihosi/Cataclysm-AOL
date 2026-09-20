@@ -153,6 +153,11 @@ class R019OffInterruptionBootstrapTest(unittest.TestCase):
             target_keys=["right"] * 6, group_radius=0, friendly=False,
             hallucination=False, run_id="run-1", registry_authority=authority,
             run_dir=Path("/tmp/r019"),
+            actor_observation={
+                "identity": {"kind": "monster", "id": "process:dog"},
+                "typeid": "mon_zombie_dog", "debug_setup_run_id": "run-1",
+                "absolute_ms": [6, 0, 0],
+            },
         )
         interruption = {
             "artifact_kind": "native_cockpit_transaction", "run_id": "run-1",

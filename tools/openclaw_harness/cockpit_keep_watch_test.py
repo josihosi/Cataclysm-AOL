@@ -1492,6 +1492,46 @@ class KeepWatchTest(unittest.TestCase):
 
         self.assertTrue(result["ok"], result)
 
+    def test_player_api_accepts_exact_auto_move_cancel_yes_without_successor(self) -> None:
+        issuing = self.menu_frame(1, stable_id="prompt-option:15", label="YES")
+        issuing.update({
+            "state": "prompt", "kind": "prompt", "surface_id": "surface-prompt",
+            "payload": {"text": "tough zombie spotted! Cancel auto move?"},
+            "valid_actions": [
+                {"id": "prompt.choose", "stable_id": "prompt-option:15",
+                 "label": "YES", "enabled": True},
+                {"id": "prompt.choose", "stable_id": "prompt-option:16",
+                 "label": "NO", "enabled": True},
+            ],
+        })
+
+        def dispatch(_issuing: dict[str, object], action_id: str,
+                     _stable_id: str | None = None) -> dict[str, object]:
+            return {
+                "accepted": True, "reason": "native_surface_transition_accepted",
+                "native_receipt": {
+                    "run_id": "keep-watch-proof", "requested_run_id": "keep-watch-proof",
+                    "requested_surface_id": issuing["surface_id"],
+                    "requested_frame_id": issuing["frame_id"],
+                    "consuming_surface_id": issuing["surface_id"],
+                    "consuming_frame_id": issuing["frame_id"], "frame_id": issuing["frame_id"],
+                    "action_id": action_id, "accepted": True,
+                },
+                "next_frame": dict(issuing),
+            }
+
+        channel = cockpit.CockpitRunChannel(
+            lambda: issuing, dispatch, binding_id="binding-a", read_binding_id=lambda: "binding-a",
+        )
+        service = cockpit.CockpitService(run_channel=channel)
+        observed = service.call({"action": "game.observe"})["result"]
+        result = service.call({
+            "action": "game.act", "observation_id": observed["observation_id"],
+            "action_id": "prompt.choose", "stable_id": "prompt-option:15",
+        })
+
+        self.assertTrue(result["ok"], result)
+
 
 if __name__ == "__main__":
     unittest.main()

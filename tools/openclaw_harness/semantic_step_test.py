@@ -955,6 +955,44 @@ class SemanticStepChannelTest(unittest.TestCase):
         self.assertEqual(current["event"], "surface_descriptor")
         self.assertEqual(current["frame_id"], "surface-frame")
 
+    def test_current_world_frame_pairs_across_its_surface_receipt(self) -> None:
+        descriptor = {
+            "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
+            "surface_id": "surface-world", "frame_id": "surface-frame", "kind": "world",
+            "breadcrumbs": ["World"], "payload": {}, "valid_actions": [],
+        }
+        receipt = {
+            "event": "surface_receipt", "run_id": self.run_id,
+            "requested_run_id": self.run_id,
+            "requested_surface_id": "surface-world", "requested_frame_id": "surface-frame",
+            "consuming_surface_id": "surface-world", "consuming_frame_id": "surface-frame",
+            "request_id": "request-1", "action_id": "world.move.north", "accepted": True,
+            "rejection_reason": "", "resulting_frame_id": "surface-next",
+        }
+        raw_world = self.frame("raw-world", "world", {}, 101) | {
+            "observation": {"avatar": {"absolute_ms": [3367, 993, 0]},
+                            "visible_local": [], "visible_entities": []},
+            "keep_watch_safety": {
+                "classification": "clear", "monster": False, "danger": False, "damage": False,
+            },
+        }
+        with tempfile.TemporaryDirectory() as temp:
+            root = Path(temp)
+            trace = root / "semantic.native.log"
+            trace.write_text("".join(
+                "openclaw_harness_semantic_step: " + json.dumps(event) + "\n"
+                for event in (descriptor, receipt, raw_world)
+            ), encoding="utf-8")
+            with patch.object(startup_harness, "refresh_semantic_step_trace", return_value=(trace, trace)), \
+                    patch.object(startup_harness, "semantic_step_source_trace", return_value=trace):
+                current = current_semantic_step_frame(
+                    profile="ignored", run_dir=root, run_id=self.run_id, start_offset=0,
+                )
+        self.assertEqual(current["event"], "surface_descriptor")
+        self.assertEqual(current["frame_id"], "surface-frame")
+        self.assertEqual(current["paired_raw_frame_id"], "raw-world")
+        self.assertEqual(current["keep_watch_safety"]["classification"], "clear")
+
     def test_refresh_trace_bounds_parsed_events_while_preserving_recent_semantics(self) -> None:
         with tempfile.TemporaryDirectory() as temp:
             root = Path(temp)
@@ -1223,12 +1261,12 @@ class SemanticStepChannelTest(unittest.TestCase):
                     action_id="overmap.choose_destination", transition_timeout_seconds=0.1,
                     observe_interval_seconds=0.01, observed_frame=descriptor,
                 )
-        self.assertTrue(result["accepted"])
+        self.assertTrue(result["accepted"], result)
         self.assertEqual(result["next_frame"]["frame_id"], "overmap-frame")
         self.assertEqual(result["native_receipt"]["request_id"], request_id)
 
-    def test_auto_move_cancel_yes_requires_its_native_successor(self) -> None:
-        """Cancelling a spotted-monster interruption cannot retain the prompt."""
+    def test_auto_move_cancel_yes_accepts_its_unchanged_native_owner(self) -> None:
+        """The exact hostile-cancel YES receipt completes without a descriptor."""
         descriptor = {
             "event": "surface_descriptor", "schema_version": 1, "run_id": self.run_id,
             "surface_id": "surface-prompt", "frame_id": "prompt-frame", "kind": "prompt",
@@ -1270,8 +1308,8 @@ class SemanticStepChannelTest(unittest.TestCase):
                     transition_timeout_seconds=0.1, observe_interval_seconds=0.01,
                     observed_frame=descriptor,
                 )
-        self.assertFalse(result["accepted"])
-        self.assertEqual(result["reason"], "native_surface_successor_timeout")
+        self.assertTrue(result["accepted"], result)
+        self.assertEqual(result["next_frame"]["frame_id"], "prompt-frame")
 
     def test_auto_move_cancel_yes_binds_to_native_successor(self) -> None:
         descriptor = {

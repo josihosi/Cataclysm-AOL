@@ -78,7 +78,9 @@ class PlayerClient:
                 and status.get("state") == "ready" and isinstance(generation, int)
                 and generation > self.state.get("finished_generation", 0)):
             for key in ("finished", "finished_generation", "sealed_terminal", "process_exited",
-                        "observation_id", "observation_request_id", "operation_availability"):
+                        "observation_id", "observation_request_id", "observation_generation",
+                        "observation_binding_id", "observation_owner", "terminal_observation_id",
+                        "operation_availability"):
                 self.state.pop(key, None)
             self.state["session_generation"] = generation
             self.reentered = True
@@ -270,20 +272,51 @@ class PlayerClient:
             return {"ok": False, "error": "no_pending_request", "next": "look"}
         request_id = pending["request_id"]
         deadline = time.monotonic() + max(0, wait_seconds)
+        terminal_states = {"process_dead", "bridge_failed", "terminalization_failed",
+                           "reentry_failed", "safe_to_cleanup"}
+
+        def terminal_failure(status: dict[str, Any]) -> dict[str, Any]:
+            return {"ok": False, "state": "session_ended_without_response",
+                    "error": "bridge_ended_before_response", "request_id": request_id,
+                    "bridge_state": status.get("state"),
+                    "reason": status.get("reason", status.get("error", "cockpit child exited")),
+                    "child_exit_code": status.get("child_exit_code"),
+                    "log_path": str(self.session / "child.stderr.log"),
+                    "next": "Inspect the failure and retained evidence; this request will not be replayed."}
+
+        def cancellation_requested() -> bool:
+            controls = self.session / "controls"
+            if not controls.is_dir():
+                return False
+            for marker in controls.glob("cancel-*.json"):
+                try:
+                    value = json.loads(marker.read_text(encoding="utf-8"))
+                except (OSError, json.JSONDecodeError):
+                    continue
+                if value.get("request_id") == request_id and value.get("binding_id") == self.binding:
+                    return True
+            return False
+
         while True:
             result = Bridge.response_status(self.session, request_id)
             if result.get("ok") or result.get("error") != "response_not_available_or_stale":
                 break
+            # Wake on owner death rather than sleeping until the requested
+            # deadline. The pending request remains owned and is never replayed.
+            try:
+                status = json.loads((self.session / "status.json").read_text(encoding="utf-8"))
+            except (OSError, json.JSONDecodeError):
+                status = {}
+            if status.get("state") in terminal_states or status.get("child_exit_code") is not None:
+                return terminal_failure(status)
+            # Cancellation is an out-of-band cooperative wake. The bridge may
+            # still be producing the original response, so retain pending state
+            # and let the next collect retrieve its exact receipt.
+            if cancellation_requested():
+                return {"ok": True, "state": "cancellation_requested", "request_id": request_id,
+                        "bridge_state": status.get("state"), "next": "collect",
+                        "note": "Cancellation was requested for this submission; collect the original request for its terminal receipt."}
             if time.monotonic() >= deadline:
-                status = json.loads((self.session / "status.json").read_text())
-                if status.get("state") in {"process_dead", "bridge_failed", "terminalization_failed", "reentry_failed", "safe_to_cleanup"} or status.get("child_exit_code") is not None:
-                    return {"ok": False, "state": "session_ended_without_response",
-                            "error": "bridge_ended_before_response", "request_id": request_id,
-                            "bridge_state": status.get("state"),
-                            "reason": status.get("reason", status.get("error", "cockpit child exited")),
-                            "child_exit_code": status.get("child_exit_code"),
-                            "log_path": str(self.session / "child.stderr.log"),
-                            "next": "Inspect the failure and retained evidence; this request will not be replayed."}
                 return {"ok": True, "state": "pending", "request_id": request_id,
                         "bridge_state": status.get("state"), "next": "collect",
                         "note": "The request was submitted once. Collect its response; do not repeat the action."}
@@ -296,12 +329,23 @@ class PlayerClient:
         if not full.get("ok"):
             return full
         response = full["response"]
+        receipt_generation = result["receipt"].get("session_generation", 0)
+        try:
+            current_status = json.loads((self.session / "status.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            current_status = {}
+        current_generation = current_status.get("session_generation", 0)
+        generation_matches = receipt_generation == current_generation
+        binding_matches = current_status.get("binding_id") == self.binding
         if isinstance(response.get("failure"), dict) and response["failure"].get("unused_authority") == "revoked" or \
                 response.get("error") == "player_cancelled" or response.get("reason") == "player_cancelled":
             # Cancellation revokes the displayed frame. Require a fresh look
             # before the player can choose another action.
             self.state.pop("observation_id", None)
             self.state.pop("observation_request_id", None)
+            self.state.pop("observation_generation", None)
+            self.state.pop("observation_binding_id", None)
+            self.state.pop("observation_owner", None)
             self.state["cancellation"] = {
                 "request_id": request_id,
                 "reason": response.get("reason", response.get("error")),
@@ -313,11 +357,31 @@ class PlayerClient:
         observation = response.get("observation", response.get("result", {}))
         if isinstance(observation, dict) and not observation.get("observation_id"):
             observation = observation.get("terminal_observation", observation)
-        if isinstance(observation, dict) and observation.get("observation_id"):
+        surface = observation.get("surface") if isinstance(observation, dict) else None
+        reusable = (response.get("ok") is True and generation_matches and binding_matches and
+                    isinstance(observation, dict) and bool(observation.get("observation_id")) and
+                    isinstance(surface, dict) and bool(str(surface.get("kind", "")).strip()) and
+                    isinstance(surface.get("actions"), list) and
+                    surface.get("kind") != "process_exited")
+        if reusable:
             self.state["observation_id"] = observation["observation_id"]
             self.state["observation_request_id"] = request_id
-            if observation.get("surface", {}).get("kind") == "process_exited":
+            self.state["observation_generation"] = receipt_generation
+            self.state["observation_binding_id"] = self.binding
+            self.state["observation_owner"] = surface["kind"]
+        else:
+            # A rejected, factless, stale-generation, or terminal result never
+            # grants authority for a successor action. The caller must look or
+            # follow the supported terminal/recovery route.
+            self.state.pop("observation_id", None)
+            self.state.pop("observation_request_id", None)
+            self.state.pop("observation_generation", None)
+            self.state.pop("observation_binding_id", None)
+            self.state.pop("observation_owner", None)
+            if isinstance(observation, dict) and observation.get("surface", {}).get("kind") == "process_exited":
                 self.state["process_exited"] = True
+                if observation.get("observation_id"):
+                    self.state["terminal_observation_id"] = observation["observation_id"]
         if response.get("ok") and pending["request"]["action"] == "run.witness":
             self.state["sealed_terminal"] = {
                 key: pending["request"][key]
@@ -337,7 +401,7 @@ class PlayerClient:
         except (OSError, ValueError):
             previous = None  # A lost presentation cache never strands native grants.
         view, display_state = display(response, previous, refresh=pending["request"]["action"] == "game.observe" or self.reentered or self.state.get("display_generation") != result["receipt"].get("session_generation", 0))
-        self.state["display_generation"] = result["receipt"].get("session_generation", 0)
+        self.state["display_generation"] = receipt_generation
         if display_state is not None:
             self.state["display_sha256"] = retain(display_state)["sha256"]
         result = {**result, "response": view}
@@ -384,6 +448,11 @@ class PlayerClient:
         self.state["pending"] = {"request_id": request_id, "request": request}
         # Persist ownership before submission: even a crash cannot cause replay.
         previous_frame = self.state.pop("observation_id", None)
+        previous_frame_metadata = {
+            key: self.state.pop(key, None)
+            for key in ("observation_request_id", "observation_generation",
+                        "observation_binding_id", "observation_owner")
+        }
         self.save()
         result = Bridge.send_request(self.session, request_id=request_id,
                                      binding_id=self.binding, request=request)
@@ -391,19 +460,45 @@ class PlayerClient:
             self.state.pop("pending", None)
             if previous_frame:
                 self.state["observation_id"] = previous_frame
+                self.state.update({key: value for key, value in previous_frame_metadata.items()
+                                   if value is not None})
             self.save()
             return result
         return self.collect(wait_seconds)
 
-    def frame(self) -> str:
+    def frame(self, *, terminal: bool = False) -> str:
         if self.state.get("pending"):
             raise ValueError("request_in_flight: use collect")
         if self.state.get("sealed_terminal"):
             raise ValueError("journal_is_sealed: submit finish --witness FILE")
-        frame = self.state.get("observation_id")
+        frame = self.state.get("terminal_observation_id") if terminal else self.state.get("observation_id")
+        if terminal:
+            if not frame or not self.state.get("process_exited"):
+                raise ValueError("no_terminal_observation: look or collect")
+            return str(frame)
         if not frame:
             raise ValueError("look_required: no current unconsumed observation")
+        if (self.state.get("observation_binding_id") != self.binding or
+                self._current_binding() != self.binding or
+                self.state.get("observation_generation") != self._current_generation() or
+                not self.state.get("observation_owner")):
+            raise ValueError("look_required: current observation authority is stale")
         return str(frame)
+
+    def _current_generation(self) -> int:
+        try:
+            status = json.loads((self.session / "status.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return -1
+        generation = status.get("session_generation", 0)
+        return generation if isinstance(generation, int) and not isinstance(generation, bool) else -1
+
+    def _current_binding(self) -> str:
+        try:
+            status = json.loads((self.session / "status.json").read_text(encoding="utf-8"))
+        except (OSError, json.JSONDecodeError):
+            return ""
+        return str(status.get("binding_id", "")).strip()
 
     def act(self, action: str, target: str | None, parameters: dict[str, str], wait_seconds: float):
         if self.state.get("process_exited"):
@@ -430,7 +525,7 @@ class PlayerClient:
         return self.submit(request, wait_seconds)
 
     def journal(self, reason: str, unused: str, wait_seconds: float):
-        return self.submit({"action": "run.witness", "observation_id": self.frame(),
+        return self.submit({"action": "run.witness", "observation_id": self.frame(terminal=self.state.get("process_exited", False)),
                             "stop_reason": reason, "unused_authority": unused}, wait_seconds)
 
     def finish(self, witness: dict[str, Any], wait_seconds: float):

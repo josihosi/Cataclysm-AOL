@@ -166,6 +166,21 @@ class ProductionCaptureTest(unittest.TestCase):
         with self.assertRaisesRegex(production_capture.ProductionCaptureError, "non-feature"):
             production_capture.prepare_setup_only_capture(report_path=self.report, runtime_binding=self.runtime)
 
+    def test_declared_registry_setup_contract_can_capture_without_promotion(self) -> None:
+        self.report.write_text(json.dumps({
+            "feature_proof": True,
+            "wec_authority": {"evidence_class": "setup support"},
+            "scenario_manifest": {"normalized": {"runtime_contract": {"value": {
+                "setup_only_debug": True, "grants_gameplay_proof": False,
+            }}}},
+            "cleanup": {"status": "accepted"},
+        }), encoding="utf-8")
+        provenance = production_capture.prepare_setup_only_capture(
+            report_path=self.report, runtime_binding=self.runtime,
+        )
+        self.assertTrue(provenance["declared_setup_only"])
+        self.assertEqual(provenance["credit"], "setup_only_non_feature")
+
     def test_malformed_report_fails_closed(self) -> None:
         self.report.write_text("{", encoding="utf-8")
         with self.assertRaisesRegex(production_capture.ProductionCaptureError, "unreadable"):

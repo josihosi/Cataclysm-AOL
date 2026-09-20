@@ -281,6 +281,33 @@ class CockpitEvidenceTest(unittest.TestCase):
         tampered = self.cli("log-query", "--session-dir", self.session, success=False)
         self.assertEqual(tampered["error"], "response_artifact_identity_or_hash_mismatch")
 
+    def test_exact_rejection_query_filters_identity_and_preserves_contradiction(self):
+        path = self.root / "runner.log"
+        records = [
+            {"event": "rejection", "run_id": "run-a", "process_instance": "proc-a",
+             "request_id": "req-7", "actor_id": "npc-4", "actor_name": "Mira",
+             "accepted": False, "rejection_reason": "frame_mismatch", "outcome": "rejected",
+             "payload": {"large": "not rendered"}},
+            {"event": "rejection", "run_id": "run-a", "process_instance": "proc-b",
+             "request_id": "req-7", "actor_id": "npc-4", "actor_name": "Mira",
+             "accepted": True, "outcome": "accepted"},
+        ]
+        path.write_bytes(b"".join(json.dumps(record).encode() + b"\n" for record in records))
+        result = self.cli("log-query", "--path", path, "--run-id", "run-a",
+                          "--process-instance", "proc-a", "--request-id", "req-7",
+                          "--actor-id", "npc-4", "--actor-name", "Mira", "--event", "rejection",
+                          "--select", "actor_id", "--select", "actor_name", "--select", "run_id",
+                          "--select", "process_instance", "--select", "request_id", "--select", "accepted",
+                          "--select", "rejection_reason", "--select", "outcome", "--select", "missing_field")
+        self.assertEqual(result["matched"], 1)
+        row = result["rows"][0]
+        self.assertEqual(row["record"], {"actor_id": "npc-4", "actor_name": "Mira", "run_id": "run-a",
+                                          "process_instance": "proc-a", "request_id": "req-7",
+                                          "accepted": False, "rejection_reason": "frame_mismatch",
+                                          "outcome": "rejected", "missing_field": {"error": "field_unavailable"}})
+        self.assertIn("artifact", row)
+        self.assertEqual(len(result["snapshot"]), 64)
+
 
 if __name__ == "__main__":
     unittest.main()

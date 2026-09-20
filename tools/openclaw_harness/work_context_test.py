@@ -4,7 +4,7 @@ import tempfile
 import unittest
 from work_context_provider import (session_context, select_current_results,
                                     export_current_results, prepare_current_results,
-                                    CurrentResultsError)
+                                    continuation_note, CurrentResultsError)
 import hashlib
 
 class SessionContextTests(unittest.TestCase):
@@ -23,6 +23,8 @@ class SessionContextTests(unittest.TestCase):
             self.assertEqual(next['recorded_status']['session_generation'],1)
             self.assertEqual(next['recorded_status']['pending_request']['request_id'],'pending-7')
             self.assertNotEqual(first['files']['status.json']['sha256'],next['files']['status.json']['sha256'])
+            self.assertEqual(next['current_continuation']['session_generation'], 1)
+            self.assertEqual(next['current_continuation']['pending_request_id'], 'pending-7')
             self.assertIn('liveness',next['evidence_limit'])
             self.assertEqual(len(session_context(root,evidence)['sessions']),1)
             status.write_text('corrupt')
@@ -69,5 +71,41 @@ class SessionContextTests(unittest.TestCase):
             assembled = library.selected_context(root, 'worker')
             self.assertIn('new conclusion', assembled)
             self.assertNotIn('old conclusion', assembled)
+
+    def test_current_continuation_note_is_replaceable_and_explicit(self):
+        with tempfile.TemporaryDirectory() as d:
+            root = Path(d); output = root / 'current-results.md'
+            note = continuation_note(
+                session_generation=3, process_generation=7, binding='bound-a',
+                pending_request_id='play-pending-1',
+                retained_frame_handles=['frame:old'],
+                retained_evidence_handles=['receipt:old'],
+                unresolved_question='Did the resumed owner accept the wait?',
+                next_decision='Collect play-pending-1 before any new action.')
+            evidence = {'receipts': [{'receipt_id': 'accepted-old', 'status': 'accepted'}]}
+            selected = select_current_results(
+                evidence, ['accepted-old'],
+                ['Old accepted receipt remains at its original scope.'],
+                ['Current generation must be validated before reuse.'],
+                continuation=note)
+            exported = export_current_results(selected, output)
+            text = output.read_text()
+            self.assertEqual(exported['receipt_ids'], ['accepted-old'])
+            for value in ('session_generation', 'process_generation', 'bound-a',
+                          'play-pending-1', 'frame:old', 'receipt:old',
+                          'Collect play-pending-1 before any new action.'):
+                self.assertIn(value, text)
+            replacement = select_current_results(
+                evidence, ['accepted-old'], ['Resumed current result.'],
+                ['Refresh required.'], continuation=continuation_note(
+                    session_generation=4, process_generation=8, binding='bound-a',
+                    pending_request_id=None, retained_frame_handles=['frame:new'],
+                    retained_evidence_handles=['receipt:old'],
+                    unresolved_question='None', next_decision='Use fresh look.'))
+            export_current_results(replacement, output)
+            replaced = output.read_text()
+            self.assertNotIn('play-pending-1', replaced)
+            self.assertIn('frame:new', replaced)
+            self.assertIn('receipt:old', replaced)
 
 if __name__=='__main__':unittest.main()

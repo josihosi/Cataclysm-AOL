@@ -66,8 +66,45 @@ original indices (for example, search decoded messages for save failures among r
 `response-artifact` with the receipt SHA-256
 recovers the full response. Both routes verify the retained artifact.
 
+For the published cross-source route, start with a narrow `play_cli evidence` projection:
+
+```sh
+python3 tools/openclaw_harness/play_cli.py --session <session> evidence \
+  --run-id <run> --process-instance <process> --request-id <request> \
+  --actor-id <actor> --actor-name <name> \
+  --select event,run_id,process_instance,request_id,actor_id,actor_name,\
+payload.payload.accepted,payload.payload.rejection_reason,payload.payload.outcome
+```
+
+The response keeps `accepted`, rejection and outcome rows under the same exact tuple while
+preserving unavailable fields explicitly. Recover the response's `presentation.full_evidence`
+handle for the complete query result, then resolve each returned `source` handle (`path`,
+`offset`, `length`, `sha256`) through `record-artifact` or its retained `retained_raw` handle.
+If a source changes, the path citation fails hash verification; the retained raw handle remains
+the original bytes. For an honest S-EFF comparison, report projection subprocess invocation and
+stdout bytes, necessary operational follow-up count and returned bytes, and their combined total
+against the bulk subprocess invocation and stdout bytes. Keep citation-integrity reads separate
+when they only verify provenance rather than resolve the decision; include them in a second
+combined targeted total. `scanned_records`/`scanned_bytes` describe source work, not CLI output
+cost. Unavailable sources remain reported as unavailable rather than being treated as no matches.
+
 For legacy exact log queries, use `cockpit_file_bridge.py log-query --path PATH` with
-`--where FIELD=JSON`, `--select FIELD`, and the returned snapshot for stable continuation.
+`--run-id`, `--process-instance`, `--request-id`, `--actor-id`, `--actor-name`, and `--event`
+for exact identities/events, then `--where FIELD=JSON` and `--select FIELD` for a narrow
+projection. For example, to inspect one rejected request while keeping a contradictory
+acceptance field visible:
+
+```sh
+python3 tools/openclaw_harness/cockpit_file_bridge.py log-query --path <log> \
+  --run-id <run> --process-instance <process> --request-id <request> \
+  --actor-id <actor> --event rejection \
+  --select actor_id --select actor_name --select run_id --select process_instance \
+  --select request_id --select accepted --select rejection_reason --select outcome
+```
+
+The returned snapshot supports stable continuation; each row retains an exact byte-range
+handle for `record-artifact` recovery. Missing projected fields are reported as unavailable,
+not silently omitted.
 Session queries verify retained response receipts. Every original record has an offset, length and
 SHA-256 for `record-artifact`; replaced bytes fail verification. Full responses and selected values
 use the same byte-bounded presentation and immutable export route as the player CLI.

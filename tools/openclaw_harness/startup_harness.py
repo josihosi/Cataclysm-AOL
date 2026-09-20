@@ -5257,9 +5257,18 @@ def current_semantic_step_frame(
                 if str(candidate.get("event", "")) != "frame" or \
                         str(candidate.get("frame_id", "")).strip() != raw_frame_id:
                     continue
-                if index == 0:
+                descriptor_index = index - 1
+                # A completed native surface action records its receipt before
+                # the same-cycle compatibility World frame.  The receipt is
+                # transport metadata, not a new owner, so it must not sever
+                # this exact descriptor-to-raw-frame pairing.
+                while descriptor_index >= 0 and \
+                        str( complete_events[descriptor_index].get( "event", "" ) ) == "surface_receipt" and \
+                        str( complete_events[descriptor_index].get( "run_id", "" ) ).strip() == run_id:
+                    descriptor_index -= 1
+                if descriptor_index < 0:
                     break
-                descriptor = complete_events[index - 1]
+                descriptor = complete_events[descriptor_index]
                 if str(descriptor.get("event", "")) != "surface_descriptor" or \
                         str(descriptor.get("run_id", "")).strip() != run_id or \
                         descriptor.get("kind") != "world":
@@ -6752,6 +6761,16 @@ def execute_semantic_act(
                                          before.get("valid_actions", [])
                                          if isinstance(action, Mapping) and
                                          str(action.get("stable_id", "")) == str(stable_id or "")), "")
+                    # Native auto-move cancellation removes the interrupted
+                    # route but does not publish an intermediate prompt or
+                    # World descriptor.  The accepted YES receipt therefore
+                    # completes against the current prompt owner.  Keep this
+                    # narrowly tied to the advertised hostile interruption;
+                    # notably, NO must still prove resumed travel below.
+                    same_owner_auto_move_cancel = action_id == "prompt.choose" and \
+                        chosen_label == "YES" and isinstance(prompt_payload, Mapping) and \
+                        "spotted! Cancel auto move?" in str(prompt_payload.get("text", "")) and \
+                        not resulting_frame_id
                     auto_move_resume_event = None
                     # NO reinstates native travel rather than returning a World
                     # owner.  Its accepted selection receipt alone is not
@@ -6789,7 +6808,8 @@ def execute_semantic_act(
                                 "native_travel_receipt": resumed,
                                 "valid_actions": [],
                             }
-                    if next_frame is None and same_owner_overmap_continuation:
+                    if next_frame is None and (same_owner_overmap_continuation or
+                                               same_owner_auto_move_cancel):
                         next_frame = dict(before)
                     if next_frame is None and not (
                             resulting_frame_id and action_id == "menu.choose" and
@@ -16279,35 +16299,39 @@ def debug_spawn_monster(
     prompt_settle_seconds: float = 0.25,
     initial_settle_seconds: float = 5.0,
     exit_menu: bool = True,
+    menu_already_open: bool = False,
+    monster_already_selected: bool = False,
 ) -> None:
     if group_radius < 0:
         raise SystemExit("Monster group radius cannot be negative")
     if initial_settle_seconds > 0:
         time.sleep(initial_settle_seconds)
-    run_debug_menu_shortcut_path(
-        pid,
-        ["s", "m"],
-        delay_ms=delay_ms,
-        menu_settle_seconds=menu_settle_seconds,
-    )
-    apply_uilist_filter(
-        pid,
-        monster_query,
-        delay_ms=delay_ms,
-        type_delay_ms=type_delay_ms,
-        settle_seconds=prompt_settle_seconds,
-    )
-    if friendly:
-        peekaboo_press_sequence(pid, ["f"], delay_ms=delay_ms)
+    if not menu_already_open:
+        run_debug_menu_shortcut_path(
+            pid,
+            ["s", "m"],
+            delay_ms=delay_ms,
+            menu_settle_seconds=menu_settle_seconds,
+        )
+    if not monster_already_selected:
+        apply_uilist_filter(
+            pid,
+            monster_query,
+            delay_ms=delay_ms,
+            type_delay_ms=type_delay_ms,
+            settle_seconds=prompt_settle_seconds,
+        )
+        if friendly:
+            peekaboo_press_sequence(pid, ["f"], delay_ms=delay_ms)
+            time.sleep(prompt_settle_seconds)
+        if hallucination:
+            peekaboo_press_sequence(pid, ["h"], delay_ms=delay_ms)
+            time.sleep(prompt_settle_seconds)
+        if group_radius > 0:
+            peekaboo_press_sequence(pid, ["i"] * group_radius, delay_ms=delay_ms)
+            time.sleep(prompt_settle_seconds)
+        peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
         time.sleep(prompt_settle_seconds)
-    if hallucination:
-        peekaboo_press_sequence(pid, ["h"], delay_ms=delay_ms)
-        time.sleep(prompt_settle_seconds)
-    if group_radius > 0:
-        peekaboo_press_sequence(pid, ["i"] * group_radius, delay_ms=delay_ms)
-        time.sleep(prompt_settle_seconds)
-    peekaboo_press_sequence(pid, ["enter"], delay_ms=delay_ms)
-    time.sleep(prompt_settle_seconds)
     if target_keys:
         peekaboo_press_sequence(pid, target_keys, delay_ms=delay_ms)
         time.sleep(prompt_settle_seconds)
@@ -16322,6 +16346,7 @@ def debug_spawn_monster_intervention_receipt(
     *, creature_id: str, target_offset: Sequence[int], target_keys: Sequence[str],
     group_radius: int, friendly: bool, hallucination: bool, run_id: str,
     registry_authority: Mapping[str, Any], run_dir: Path,
+    actor_observation: Optional[Mapping[str, Any]] = None,
 ) -> Dict[str, Any]:
     """Seal one zero-credit native debug-spawn setup intervention.
 
@@ -16339,6 +16364,16 @@ def debug_spawn_monster_intervention_receipt(
         raise SystemExit("debug_spawn_monster setup receipt requires registry transaction authority")
     if not run_id:
         raise SystemExit("debug_spawn_monster setup receipt requires the current semantic run id")
+    observed = dict(actor_observation) if isinstance(actor_observation, Mapping) else None
+    identity = observed.get("identity") if observed is not None else None
+    absolute = observed.get("absolute_ms") if observed is not None else None
+    if observed is not None and (observed.get("typeid") != creature_id or
+                                 observed.get("debug_setup_run_id") != run_id or
+                                 not isinstance(identity, Mapping) or
+                                 not str(identity.get("id", "")).strip() or
+                                 not isinstance(absolute, list) or len(absolute) != 3 or
+                                 any(not isinstance(value, int) for value in absolute)):
+        raise SystemExit("debug_spawn_monster setup receipt requires a matching native tagged actor observation")
     return {
         "artifact_kind": "native_debug_setup_intervention",
         "schema": "caol-native-debug-spawn-monster-receipt-v1",
@@ -16348,6 +16383,20 @@ def debug_spawn_monster_intervention_receipt(
         "creature_id": creature_id,
         "target_offset": offset,
         "spawn_count": 1,
+        "actor_correlation": {
+            "kind": "native_monster_value_tag",
+            "marker": "caol_debug_setup_stalker_run_id",
+            "run_id": run_id,
+            "typeid": creature_id,
+            "gameplay_credit": False,
+        },
+        **({"actor_observation": {
+            "identity": dict(identity),
+            "typeid": creature_id,
+            "debug_setup_run_id": run_id,
+            "absolute_ms": list(absolute),
+            "provenance": "native_active_monster_state",
+        }} if observed is not None else {}),
         "native_receipt": {
             "accepted": True,
             "menu_path": ["}", "s", "m"],
@@ -16368,6 +16417,62 @@ def debug_spawn_monster_intervention_receipt(
             "required": True,
         },
     }
+
+
+def native_debug_spawn_actor_observation(
+    frame: Mapping[str, Any], *, creature_id: str, run_id: str,
+) -> Dict[str, Any]:
+    """Return the exact native diagnostic record for this setup actor.
+
+    A successful debug-menu receipt says only that input reached a menu.  The
+    setup record is admissible only after the World descriptor itself exposes
+    the run-tagged monster created by that menu path.
+    """
+    payload = frame.get("payload") if isinstance(frame.get("payload"), Mapping) else {}
+    raw = payload.get("diagnostic_active_monsters")
+    if isinstance(raw, str):
+        try:
+            raw = json.loads(raw)
+        except json.JSONDecodeError:
+            raw = []
+    if not isinstance(raw, list):
+        raise SystemExit("debug_spawn_monster setup has no native active-monster diagnostic")
+    matches = [item for item in raw if isinstance(item, Mapping) and
+               item.get("typeid") == creature_id and item.get("debug_setup_run_id") == run_id]
+    if len(matches) != 1:
+        raise SystemExit(
+            "debug_spawn_monster setup requires exactly one matching native tagged actor"
+        )
+    return dict(matches[0])
+
+
+def normalize_pre_spawn_world_actions( value: Any ) -> List[str]:
+    """Validate the tiny, declared ordinary movement prefix before setup.
+
+    A city fixture can begin inside a lit building while its natural zombie
+    crowd is outside.  A tagged stalker must not be installed until the
+    declared native path has put the player on that existing exterior route.
+    This deliberately accepts only the ordinary safe-mode toggle followed by
+    advertised World movement actions; it is neither pathfinding nor a second
+    setup intervention.
+    """
+    if value is None:
+        return []
+    if not isinstance( value, list ) or not value:
+        raise SystemExit( "pre_spawn_world_actions must be a non-empty action list" )
+    movement_actions = {
+        "world.move.north", "world.move.south", "world.move.west", "world.move.east",
+        "world.move.northwest", "world.move.northeast", "world.move.southwest",
+        "world.move.southeast",
+    }
+    actions = [str( action ).strip() for action in value]
+    if actions[0] == "world.toggle_safemode":
+        actions = actions[1:]
+    if not actions or any( action not in movement_actions for action in actions ):
+        raise SystemExit(
+            "pre_spawn_world_actions permits one leading safe-mode toggle and only World movement actions"
+        )
+    return [str( action ).strip() for action in value]
 
 
 def debug_spawn_follower_npc(
@@ -27332,6 +27437,14 @@ def iter_horde_map_entries(raw_horde_map: Any) -> List[Dict[str, Any]]:
             "last_processed": raw_horde_map[base + 4],
             "moves": int(raw_horde_map[base + 5] or 0),
         }
+        if isinstance(monster_raw, dict):
+            predator = monster_raw.get("caol_predator")
+            if isinstance(predator, dict):
+                entry["predator"] = {
+                    "actor_id": str(predator.get("actor_id", "") or ""),
+                    "handoff_epoch": int(predator.get("handoff_epoch", 0) or 0),
+                    "last_advanced_turn": int(predator.get("last_advanced_turn", -1) or -1),
+                }
         next_base = base + 6
         # Current saves append one object after the six legacy fields.  Keep
         # this decision per entry: fixture transforms can legitimately append
@@ -28449,6 +28562,11 @@ def audit_saved_hordes_near_player(
             requirement["required_light_memory_fields"] = [str(field).strip() for field in fields]
         if "min_light_memory_strength" in raw:
             requirement["min_light_memory_strength"] = int(raw.get("min_light_memory_strength") or 0)
+        if "required_predator_fields" in raw:
+            fields = raw.get("required_predator_fields")
+            if not isinstance(fields, list) or any(not str(field).strip() for field in fields):
+                raise SystemExit("required_predator_fields must be a non-empty list of names")
+            requirement["required_predator_fields"] = [str(field).strip() for field in fields]
         for raw_key, normalized_key in (
             ("min_count", "min_count"),
             ("min_distance_chebyshev_ms", "min_distance_chebyshev_ms"),
@@ -28514,6 +28632,12 @@ def audit_saved_hordes_near_player(
         if "min_light_memory_strength" in requirement:
             memory = entry.get("light_memory")
             if not isinstance(memory, dict) or int(memory.get("strength") or 0) < int(requirement["min_light_memory_strength"] or 0):
+                return False
+        if "required_predator_fields" in requirement:
+            predator = entry.get("predator")
+            if not isinstance(predator, dict) or any(
+                    field not in predator or (field == "actor_id" and not str(predator[field]))
+                    for field in requirement["required_predator_fields"]):
                 return False
         if "min_distance_chebyshev_ms" in requirement and int(entry.get("distance_chebyshev_ms") or 0) < int(requirement.get("min_distance_chebyshev_ms") or 0):
             return False
@@ -34081,19 +34205,216 @@ def execute_probe_steps(
             menu_settle_seconds = float(step.get("menu_settle_seconds", 0.35) or 0.35)
             prompt_settle_seconds = float(step.get("prompt_settle_seconds", 0.25) or 0.25)
             initial_settle_seconds = float(step.get("initial_settle_seconds", 5.0) or 0.0)
-            debug_spawn_monster(
-                pid,
-                monster_query=monster_query,
-                target_keys=target_keys,
-                group_radius=group_radius,
-                friendly=friendly,
-                hallucination=hallucination,
-                delay_ms=delay_ms,
-                type_delay_ms=type_delay_ms,
-                menu_settle_seconds=menu_settle_seconds,
-                prompt_settle_seconds=prompt_settle_seconds,
-                initial_settle_seconds=initial_settle_seconds,
+            semantic_open_debug_menu = step.get("semantic_open_debug_menu") is True
+            semantic_setup_receipts: List[Dict[str, Any]] = []
+            pre_spawn_actions = normalize_pre_spawn_world_actions(
+                step.get( "pre_spawn_world_actions" )
             )
+            if semantic_open_debug_menu:
+                if not semantic_run_id:
+                    raise SystemExit(f"Scenario step '{label}' needs a run-bound semantic trace")
+                session_id, session_identity_source = adaptive_semantic_session_identity()
+                frame = current_semantic_step_frame(
+                    profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                    start_offset=semantic_trace_start,
+                )
+                for action_index, action_id in enumerate( pre_spawn_actions ):
+                    moved = execute_semantic_act(
+                        run_dir=run_dir, profile=profile, run_id=semantic_run_id,
+                        trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                        frame_id=str(frame.get("frame_id", "")), action_id=action_id,
+                        transition_timeout_seconds=10.0, observe_interval_seconds=0.1,
+                        observed_frame=frame, proof_step_label=label, proof_step_index=index,
+                        declared_action_id=action_id,
+                    )
+                    native_receipt = moved.get("native_receipt")
+                    frame = moved.get("next_frame")
+                    # The first of the declared southwest pair opens the
+                    # exterior door without moving.  Identify the pair by
+                    # its declared successor rather than by its former
+                    # penultimate position: the final southeast step is what
+                    # lets the natural crowd acquire the player before the
+                    # sole setup spawn.
+                    declared_door_open = action_id == "world.move.southwest" and \
+                                         action_index + 1 < len( pre_spawn_actions ) and \
+                                         pre_spawn_actions[action_index + 1] == "world.move.southwest"
+                    surface_receipt = native_receipt.get("surface_receipt") if isinstance(
+                        native_receipt, Mapping ) else None
+                    opened_declared_door = declared_door_open and isinstance( native_receipt, Mapping ) and \
+                        native_receipt.get("outcome") == "no_progress" and \
+                        isinstance( surface_receipt, Mapping ) and surface_receipt.get("accepted") is True
+                    # The final exterior step deliberately meets the existing
+                    # city crowd.  A fresh World surface with a native
+                    # ``blocked`` receipt is a valid natural-pressure
+                    # boundary; it is not a failed input or another setup
+                    # intervention.
+                    terminal_pressure_block = action_index + 1 == len( pre_spawn_actions ) and \
+                                              action_id == "world.move.southeast" and \
+                                              isinstance( native_receipt, Mapping ) and \
+                                              native_receipt.get("outcome") == "blocked" and \
+                                              isinstance( surface_receipt, Mapping ) and \
+                                              surface_receipt.get("accepted") is True
+                    if moved.get("accepted") is not True or not isinstance(native_receipt, Mapping) or \
+                            (native_receipt.get("accepted") is not True and not opened_declared_door and
+                             not terminal_pressure_block) or \
+                            not isinstance(frame, Mapping) or \
+                            str(frame.get("kind", frame.get("state", ""))) != "world":
+                        raise SystemExit(
+                            f"Scenario step '{label}' could not complete declared pre-spawn World movement"
+                        )
+                    semantic_setup_receipts.append({
+                        "action_id": action_id, "native_receipt": dict(native_receipt),
+                        "resulting_frame_id": str(frame.get("frame_id", "")),
+                        "setup_role": "ordinary_pre_spawn_movement",
+                    })
+                opened = execute_semantic_act(
+                    run_dir=run_dir, profile=profile, run_id=semantic_run_id,
+                    trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                    frame_id=str(frame.get("frame_id", "")), action_id="world.debug_menu",
+                    transition_timeout_seconds=10.0, observe_interval_seconds=0.1,
+                    observed_frame=frame, proof_step_label=label, proof_step_index=index,
+                    declared_action_id="world.debug_menu",
+                )
+                native_receipt = opened.get("native_receipt")
+                frame = opened.get("next_frame")
+                if opened.get("accepted") is not True or not isinstance(native_receipt, Mapping) or \
+                        native_receipt.get("accepted") is not True or not isinstance(frame, Mapping):
+                    raise SystemExit(f"Scenario step '{label}' could not open advertised world.debug_menu")
+                semantic_setup_receipts.append({
+                    "action_id": "world.debug_menu", "native_receipt": dict(native_receipt),
+                    "resulting_frame_id": str(frame.get("frame_id", "")),
+                })
+                for menu_label in ("Spawning…", "Spawn monster"):
+                    frame, selection_receipt = semantic_menu_choose_label(
+                        profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                        trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                        frame=frame, label=menu_label, proof_step_label=label,
+                        proof_step_index=index,
+                    )
+                    semantic_setup_receipts.append(selection_receipt)
+                filtered = execute_semantic_act(
+                    run_dir=run_dir, profile=profile, run_id=semantic_run_id,
+                    trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                    frame_id=str(frame.get("frame_id", "")), action_id="menu.filter",
+                    parameters={"text": monster_query}, transition_timeout_seconds=10.0,
+                    observe_interval_seconds=0.1, observed_frame=frame,
+                    proof_step_label=label, proof_step_index=index,
+                    declared_action_id="menu.filter",
+                )
+                native_receipt = filtered.get("native_receipt")
+                frame = filtered.get("next_frame")
+                if filtered.get("accepted") is not True or not isinstance(native_receipt, Mapping) or \
+                        native_receipt.get("accepted") is not True or not isinstance(frame, Mapping):
+                    raise SystemExit(f"Scenario step '{label}' could not filter the advertised monster selector")
+                semantic_setup_receipts.append({
+                    "action_id": "menu.filter", "native_receipt": dict(native_receipt),
+                    "resulting_frame_id": str(frame.get("frame_id", "")),
+                })
+                frame, selection_receipt = semantic_menu_choose_label(
+                    profile=profile, run_dir=run_dir, run_id=semantic_run_id,
+                    trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                    frame=frame, label=monster_query, proof_step_label=label,
+                    proof_step_index=index,
+                )
+                semantic_setup_receipts.append(selection_receipt)
+                if group_radius or friendly or hallucination:
+                    raise SystemExit(
+                        f"Scenario step '{label}' semantic spawn supports only one hostile non-hallucinated monster"
+                    )
+                cursor_actions = {"right": "cursor.east", "left": "cursor.west",
+                                  "up": "cursor.north", "down": "cursor.south",
+                                  "upright": "cursor.northeast", "upleft": "cursor.northwest",
+                                  "downright": "cursor.southeast", "downleft": "cursor.southwest"}
+                for key in target_keys:
+                    action_id = cursor_actions.get(key)
+                    if not action_id:
+                        raise SystemExit(f"Scenario step '{label}' has unsupported semantic cursor key {key!r}")
+                    moved = execute_semantic_act(
+                        run_dir=run_dir, profile=profile, run_id=semantic_run_id,
+                        trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                        frame_id=str(frame.get("frame_id", "")), action_id=action_id,
+                        transition_timeout_seconds=10.0, observe_interval_seconds=0.1,
+                        observed_frame=frame, proof_step_label=label, proof_step_index=index,
+                        declared_action_id=action_id,
+                    )
+                    native_receipt = moved.get("native_receipt")
+                    frame = moved.get("next_frame")
+                    if moved.get("accepted") is not True or not isinstance(native_receipt, Mapping) or \
+                            native_receipt.get("accepted") is not True or not isinstance(frame, Mapping):
+                        raise SystemExit(f"Scenario step '{label}' could not move the native spawn cursor")
+                    semantic_setup_receipts.append({
+                        "action_id": action_id, "native_receipt": dict(native_receipt),
+                        "resulting_frame_id": str(frame.get("frame_id", "")),
+                    })
+                confirmed = execute_semantic_act(
+                    run_dir=run_dir, profile=profile, run_id=semantic_run_id,
+                    trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                    frame_id=str(frame.get("frame_id", "")), action_id="cursor.confirm",
+                    transition_timeout_seconds=10.0, observe_interval_seconds=0.1,
+                    observed_frame=frame, proof_step_label=label, proof_step_index=index,
+                    declared_action_id="cursor.confirm",
+                )
+                native_receipt = confirmed.get("native_receipt")
+                frame = confirmed.get("next_frame")
+                if confirmed.get("accepted") is not True or not isinstance(native_receipt, Mapping) or \
+                        native_receipt.get("accepted") is not True or not isinstance(frame, Mapping):
+                    raise SystemExit(f"Scenario step '{label}' could not confirm the native spawn cursor")
+                semantic_setup_receipts.append({
+                    "action_id": "cursor.confirm", "native_receipt": dict(native_receipt),
+                    "resulting_frame_id": str(frame.get("frame_id", "")),
+                })
+                # The native wish selector stays open after a successful
+                # placement.  Close only the currently advertised selector
+                # owners, then require the World descriptor to expose the
+                # run-tagged actor before minting a setup receipt.
+                for _ in range(3):
+                    surface_kind = str(frame.get("kind", frame.get("state", "")))
+                    if surface_kind == "world":
+                        break
+                    close_action = (
+                        "cursor.cancel" if surface_kind == "look_cursor" else
+                        "menu.cancel" if surface_kind == "menu" else ""
+                    )
+                    if not close_action:
+                        raise SystemExit(
+                            f"Scenario step '{label}' did not return from the native spawn selector"
+                        )
+                    closed = execute_semantic_act(
+                        run_dir=run_dir, profile=profile, run_id=semantic_run_id,
+                        trace_start_offset=semantic_trace_start, pid=pid, session_id=session_id,
+                        frame_id=str(frame.get("frame_id", "")), action_id=close_action,
+                        transition_timeout_seconds=10.0, observe_interval_seconds=0.1,
+                        observed_frame=frame, proof_step_label=label, proof_step_index=index,
+                        declared_action_id=close_action,
+                    )
+                    close_receipt = closed.get("native_receipt")
+                    frame = closed.get("next_frame")
+                    if closed.get("accepted") is not True or not isinstance(close_receipt, Mapping) or \
+                            close_receipt.get("accepted") is not True or not isinstance(frame, Mapping):
+                        raise SystemExit(f"Scenario step '{label}' could not close the native spawn selector")
+                    semantic_setup_receipts.append({
+                        "action_id": close_action, "native_receipt": dict(close_receipt),
+                        "resulting_frame_id": str(frame.get("frame_id", "")),
+                    })
+                if str(frame.get("kind", frame.get("state", ""))) != "world":
+                    raise SystemExit(f"Scenario step '{label}' did not restore the World owner after spawn")
+                actor_observation = native_debug_spawn_actor_observation(
+                    frame, creature_id=creature_id, run_id=semantic_run_id,
+                )
+            else:
+                debug_spawn_monster(
+                    pid,
+                    monster_query=monster_query,
+                    target_keys=target_keys,
+                    group_radius=group_radius,
+                    friendly=friendly,
+                    hallucination=hallucination,
+                    delay_ms=delay_ms,
+                    type_delay_ms=type_delay_ms,
+                    menu_settle_seconds=menu_settle_seconds,
+                    prompt_settle_seconds=prompt_settle_seconds,
+                    initial_settle_seconds=initial_settle_seconds,
+                )
             report.update({
                 "monster_query": monster_query,
                 "target_keys": target_keys,
@@ -34105,8 +34426,15 @@ def execute_probe_steps(
                 "menu_settle_seconds": menu_settle_seconds,
                 "prompt_settle_seconds": prompt_settle_seconds,
                 "initial_settle_seconds": initial_settle_seconds,
+                "pre_spawn_world_actions": pre_spawn_actions,
                 "debug_menu_path": ["}", "s", "m"],
                 "spawn_target": "look_around_confirm",
+                **({"semantic_setup_session": {
+                    "run_id": semantic_run_id, "session_id": session_id,
+                    "session_identity_source": session_identity_source,
+                    "native_actions": semantic_setup_receipts,
+                    "terminal_frame_id": str(frame.get("frame_id", "")),
+                }} if semantic_open_debug_menu else {}),
             })
             if creature_id or target_offset is not None:
                 if not isinstance(target_offset, list):
@@ -34121,6 +34449,7 @@ def execute_probe_steps(
                     run_id=semantic_run_id,
                     registry_authority=registry_authority if isinstance(registry_authority, Mapping) else {},
                     run_dir=run_dir,
+                    actor_observation=actor_observation if semantic_open_debug_menu else None,
                 )
         elif kind == "debug_spawn_follower_npc":
             count = int(step.get("count", 1) or 1)

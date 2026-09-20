@@ -13,6 +13,64 @@ class CurrentResultsError(ValueError):
     """The coordinator's selected result set is not safely reusable."""
 
 
+_CONTINUATION_FIELDS = (
+    'session_generation', 'process_generation', 'binding',
+    'pending_request_id', 'retained_frame_handles',
+    'retained_evidence_handles', 'unresolved_question', 'next_decision',
+)
+
+
+def continuation_note(*, session_generation: int | None,
+                      process_generation: int | None,
+                      binding: str | None,
+                      pending_request_id: str | None,
+                      retained_frame_handles: Sequence[str] = (),
+                      retained_evidence_handles: Sequence[str] = (),
+                      unresolved_question: str = '',
+                      next_decision: str = '') -> dict:
+    """Build a replaceable current-work note without inferring state.
+
+    Generations, binding and handles are caller-supplied exact values.  A
+    missing pending request is represented explicitly by ``None``.
+    """
+    if session_generation is not None and (
+            not isinstance(session_generation, int) or isinstance(session_generation, bool)):
+        raise CurrentResultsError('session_generation must be an integer or null')
+    if process_generation is not None and (
+            not isinstance(process_generation, int) or isinstance(process_generation, bool)):
+        raise CurrentResultsError('process_generation must be an integer or null')
+    return {
+        'session_generation': session_generation,
+        'process_generation': process_generation,
+        'binding': None if binding is None else str(binding),
+        'pending_request_id': None if pending_request_id is None else str(pending_request_id),
+        'retained_frame_handles': [str(item) for item in retained_frame_handles],
+        'retained_evidence_handles': [str(item) for item in retained_evidence_handles],
+        'unresolved_question': str(unresolved_question),
+        'next_decision': str(next_decision),
+    }
+
+
+def _continuation_value(value: Mapping[str, Any] | None) -> dict | None:
+    if value is None:
+        return None
+    if not isinstance(value, Mapping):
+        raise CurrentResultsError('continuation_note must be an object')
+    missing = [field for field in _CONTINUATION_FIELDS if field not in value]
+    if missing:
+        raise CurrentResultsError('continuation_note is missing: ' + ', '.join(missing))
+    return continuation_note(
+        session_generation=value['session_generation'],
+        process_generation=value['process_generation'],
+        binding=value['binding'],
+        pending_request_id=value['pending_request_id'],
+        retained_frame_handles=value['retained_frame_handles'],
+        retained_evidence_handles=value['retained_evidence_handles'],
+        unresolved_question=value['unresolved_question'],
+        next_decision=value['next_decision'],
+    )
+
+
 def _receipt_id(receipt: Mapping[str, Any]) -> str:
     """Return an explicitly durable receipt identity; never invent one."""
     identity = receipt.get('receipt_id', receipt.get('id'))
@@ -27,7 +85,8 @@ def _receipt_id(receipt: Mapping[str, Any]) -> str:
 def select_current_results(evidence: Mapping[str, Any], receipt_ids: Sequence[str],
                            conclusions: Sequence[str] = (),
                            boundaries: Sequence[str] = (),
-                           dependencies: Mapping[str, str] | None = None) -> dict:
+                           dependencies: Mapping[str, str] | None = None,
+                           continuation: Mapping[str, Any] | None = None) -> dict:
     """Select coordinator-named receipts and conclusions without judging them.
 
     Receipt objects are copied verbatim and retain their exact identity.  This
@@ -56,13 +115,17 @@ def select_current_results(evidence: Mapping[str, Any], receipt_ids: Sequence[st
         actual = hashlib.sha256(source.read_bytes()).hexdigest()
         if actual != expected:
             raise CurrentResultsError('stale source dependency: ' + path)
-    return {
+    selected = {
         'schema': 'caol-current-results-v1',
         'selected_receipts': [by_id[rid] for rid in ids],
         'current_conclusions': [str(item) for item in conclusions],
         'remaining_boundaries': [str(item) for item in boundaries],
         'source_dependencies': deps,
     }
+    note = _continuation_value(continuation)
+    if note is not None:
+        selected['continuation_note'] = note
+    return selected
 
 
 def export_current_results(selection: Mapping[str, Any], destination: Path) -> dict:
@@ -79,6 +142,7 @@ def export_current_results(selection: Mapping[str, Any], destination: Path) -> d
     ids = [_receipt_id(item) for item in receipts if isinstance(item, Mapping)]
     if len(ids) != len(receipts) or len(ids) != len(set(ids)):
         raise CurrentResultsError('selected receipts must retain distinct explicit identities')
+    note = _continuation_value(selection.get('continuation_note'))
     lines = ['# Current results', '', '## Current conclusions']
     lines += ['- ' + str(item) for item in selection.get('current_conclusions', [])]
     lines += ['', '## Remaining boundaries']
@@ -89,6 +153,10 @@ def export_current_results(selection: Mapping[str, Any], destination: Path) -> d
         lines.append('```json')
         lines.append(json.dumps(receipt, ensure_ascii=False, sort_keys=True, indent=2))
         lines.append('```')
+    if note is not None:
+        lines += ['', '## Current continuation note', '```json',
+                  json.dumps(note, ensure_ascii=False, sort_keys=True, indent=2),
+                  '```']
     lines += ['', '## Source dependencies', '```json',
               json.dumps(selection.get('source_dependencies', {}), ensure_ascii=False, sort_keys=True, indent=2),
               '```', '']
@@ -154,7 +222,16 @@ def session_context(workspace: Path, evidence: dict) -> dict:
                 elif name=='active-request.json':status['pending_request']=value
             except FileNotFoundError:files[name]={'path':str(path),'available':False,'reason':'missing'}
             except (OSError,ValueError) as e:files[name]={'path':str(path),'available':False,'reason':str(e)}
+        pending = status.get('pending_request')
+        current_note = continuation_note(
+            session_generation=status.get('session_generation'),
+            process_generation=status.get('process_generation'),
+            binding=status.get('binding_id'),
+            pending_request_id=(pending.get('request_id')
+                                if isinstance(pending, Mapping) else None),
+            unresolved_question='', next_decision='')
         result.append({'session':str(session),'files':files,'recorded_status':status,
+            'current_continuation': current_note,
             'refresh_argv':[sys.executable,'tools/openclaw_harness/play_cli.py','--session',str(session),'look'],
             'controls_argv':[sys.executable,'tools/openclaw_harness/play_cli.py','--session',str(session),'controls'],
             'log_query_argv':[sys.executable,'tools/openclaw_harness/cockpit_file_bridge.py','log-query',

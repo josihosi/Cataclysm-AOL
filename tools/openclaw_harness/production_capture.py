@@ -76,10 +76,24 @@ def prepare_setup_only_capture(*, report_path: Path, runtime_binding: Mapping[st
         report = json.loads(report_bytes.decode("utf-8"))
     except (OSError, UnicodeDecodeError, json.JSONDecodeError) as error:
         raise ProductionCaptureError(f"setup source report is unreadable: {error}") from error
-    if not isinstance(report, Mapping) or report.get("feature_proof") is True:
+    if not isinstance(report, Mapping):
+        raise ProductionCaptureError("setup fixture requires a sealed non-feature report")
+    manifest = report.get("scenario_manifest")
+    normalized = manifest.get("normalized") if isinstance(manifest, Mapping) else {}
+    contract_record = normalized.get("runtime_contract") if isinstance(normalized, Mapping) else {}
+    contract = contract_record.get("value") if isinstance(contract_record, Mapping) else {}
+    declared_setup_only = isinstance(contract, Mapping) and \
+        contract.get("setup_only_debug") is True and contract.get("grants_gameplay_proof") is False
+    authority = report.get("wec_authority")
+    setup_authority = isinstance(authority, Mapping) and authority.get("evidence_class") == "setup support"
+    if report.get("feature_proof") is True and not (declared_setup_only and setup_authority):
         raise ProductionCaptureError("setup fixture requires a sealed non-feature report")
     cleanup = report.get("cleanup")
-    if not isinstance(cleanup, Mapping) or cleanup.get("status") not in {"already_exited", "accepted"}:
+    terminated_owned_child = isinstance(cleanup, Mapping) and cleanup.get("status") == "terminated" and \
+        cleanup.get("native_exit_credit") is False and isinstance(cleanup.get("final_process_generation"), Mapping) and \
+        cleanup["final_process_generation"].get("alive") is False
+    if not isinstance(cleanup, Mapping) or (
+            cleanup.get("status") not in {"already_exited", "accepted"} and not terminated_owned_child):
         raise ProductionCaptureError("setup fixture requires accepted isolated cleanup")
     if runtime_binding.get("ok") is not True:
         raise ProductionCaptureError("setup fixture runtime binding is unavailable")
@@ -94,6 +108,7 @@ def prepare_setup_only_capture(*, report_path: Path, runtime_binding: Mapping[st
         },
         "runtime": dict(runtime_binding),
         "cleanup": dict(cleanup),
+        "declared_setup_only": declared_setup_only,
     }
 
 

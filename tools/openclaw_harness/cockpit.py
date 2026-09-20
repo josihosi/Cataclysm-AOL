@@ -2737,9 +2737,18 @@ class CockpitRunChannel:
                     "action_id": action_id, "observation_id": str(observation_id),
                     "native_receipt": dict(native), "unused_authority": "revoked",
                 }), "receipt": dict(receipt)}
-        same_frame_selection = str( action_id ) in {"menu.select", "overmap.choose_destination"} and \
-                               isinstance( next_frame, Mapping ) and \
-                               str( next_frame.get( "frame_id", "" ) ) == str( observation_id )
+        issuing_prompt_payload = issuing_raw.get("payload", {})
+        selected_prompt_label = next((str(candidate.get("label", "")) for candidate in
+                                      issuing_raw.get("valid_actions", [])
+                                      if isinstance(candidate, Mapping) and
+                                      str(candidate.get("stable_id", "")) == str(stable_id or "")), "")
+        same_frame_selection = (
+            str(action_id) in {"menu.select", "overmap.choose_destination"} or
+            (str(action_id) == "prompt.choose" and selected_prompt_label == "YES" and
+             issuing_raw.get("kind") == "prompt" and isinstance(issuing_prompt_payload, Mapping) and
+             "spotted! Cancel auto move?" in str(issuing_prompt_payload.get("text", "")))
+        ) and isinstance(next_frame, Mapping) and \
+            str(next_frame.get("frame_id", "")) == str(observation_id)
         native_auto_move_resumed = (
             is_surface_action and str(action_id) == "prompt.choose" and
             issuing_raw.get("kind") == "prompt" and

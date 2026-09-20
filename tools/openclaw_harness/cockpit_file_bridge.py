@@ -1237,7 +1237,7 @@ class FileBackedCockpitBridge:
                 "fields": "response-slice --session-dir SESSION --request-id REQUEST --selector FIELD [--contains TEXT] [--offset N --limit N]",
                 "full": ["response-artifact", "--session-dir", str(session_dir),
                          "--request-id", request_id, "--sha256", receipt["response_sha256"]],
-                "logs": "log-query (--path EXACT_LOG | --session-dir SESSION) [--run-id RUN] [--request-id REQUEST] [--event EVENT] [--where FIELD=JSON] [--select FIELD]",
+                "logs": "log-query (--path EXACT_LOG | --session-dir SESSION) [--run-id RUN] [--process-instance PROCESS] [--request-id REQUEST] [--actor-id ACTOR] [--actor-name NAME] [--event EVENT] [--where FIELD=JSON] [--select FIELD]",
                 "omissions": "Omitted values carry selectors, types and sizes. Explicit fields/full retrieval preserve exact values; transport ok is separate from response ok and native acceptance.",
             }
         return result
@@ -1541,7 +1541,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     log_source = logs.add_mutually_exclusive_group(required=True)
     log_source.add_argument("--path", action="append")
     log_source.add_argument("--session-dir", help="Query retained response artifacts in this exact bridge session")
-    for field in ("run-id", "request-id", "frame-id", "event"):
+    for field in ("run-id", "process-instance", "request-id", "actor-id", "actor-name", "frame-id", "event"):
         logs.add_argument("--" + field)
     logs.add_argument("--where", action="append", default=[], metavar="FIELD=JSON")
     logs.add_argument("--select", action="append", default=[], metavar="FIELD")
@@ -1562,7 +1562,7 @@ def main(argv: Sequence[str] | None = None) -> int:
     if args.command == "log-query":
         if args.offset < 0 or args.limit <= 0:
             parser.error("offset must be nonnegative and limit positive")
-        filters = {k: getattr(args, k) for k in ("run_id", "request_id", "frame_id", "event")
+        filters = {k: getattr(args, k) for k in ("run_id", "process_instance", "request_id", "actor_id", "actor_name", "frame_id", "event")
                    if getattr(args, k) is not None}
         try:
             for expression in args.where:

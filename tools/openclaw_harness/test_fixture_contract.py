@@ -11278,6 +11278,17 @@ class ScenarioFixtureContractTest(unittest.TestCase):
         self.assertEqual(entries[0]["monster_id"], "mon_zombie")
         self.assertEqual(entries[0]["light_memory"]["sample_id"], "light:100")
 
+    def test_horde_audit_surfaces_persisted_predator_identity(self) -> None:
+        raw = [
+            [10, 20, 0], {"typeid": "mon_writhing_stalker", "caol_predator": {
+                "actor_id": "durable-stalker", "handoff_epoch": 4, "last_advanced_turn": 99,
+            }}, [10, 21, 0], 1000, 99, 0,
+        ]
+        entries = iter_horde_map_entries(raw)
+        self.assertEqual(entries[0]["predator"], {
+            "actor_id": "durable-stalker", "handoff_epoch": 4, "last_advanced_turn": 99,
+        })
+
     def test_horde_audit_accepts_mixed_legacy_and_current_entries(self) -> None:
         """A transformed current entry may follow legacy six-field entries."""
         raw = [

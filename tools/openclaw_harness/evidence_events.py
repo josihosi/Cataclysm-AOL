@@ -52,7 +52,7 @@ def envelopes(record, source):
                            "turn": record.get("game_turn", observed.get("game_turn", observed.get("turn")))},
             "wall_time": {"unix_ms": record.get("wall_time"), "unix_seconds": record.get("timestamp"), "iso8601": record.get("created_at")},
             "actor_id": record.get("actor_id", record.get("npc_id")),
-            "actor_name": record.get("npc", record.get("npc_name")),
+            "actor_name": record.get("actor_name", record.get("npc", record.get("npc_name"))),
             "request_id": record.get("request_id", receipt.get("request_id", native.get("request_id", record.get("request")))),
             "action": record.get("action", record.get("kind")),
             "causal_ref": record.get("causal_ref", record.get("prompt_sha256")),
@@ -113,6 +113,8 @@ def _request_result_links(events):
         writers = set()
         for event in matching:
             payload = event.get("payload", {})
+            if isinstance(payload, dict) and isinstance(payload.get("payload"), dict):
+                payload = payload["payload"]
             accepted = payload.get("accepted") if isinstance(payload, dict) else None
             rejection = payload.get("rejection_reason") if isinstance(payload, dict) else None
             kind = str(event.get("event", "")).casefold()
@@ -140,6 +142,7 @@ def _request_result_links(events):
 def query(sources, filters, contains=None, selectors=(), limit=20):
     rows, events, unavailable = [], [], []
     scanned = 0
+    scanned_bytes = 0
     for metadata in sources:
         path = Path(metadata["path"])
         try:
@@ -148,6 +151,7 @@ def query(sources, filters, contains=None, selectors=(), limit=20):
         except OSError as error:
             unavailable.append({"path": str(path), "error": str(error)})
             continue
+        scanned_bytes += len(raw)
         if metadata.get("response"):
             from cockpit_file_bridge import FileBackedCockpitBridge as Bridge
             session = path.parent.parent
@@ -194,10 +198,11 @@ def query(sources, filters, contains=None, selectors=(), limit=20):
                     rows.append(event)
     links = _request_result_links(events)
     snapshot = {"rows": rows, "links": links, "unavailable_sources": unavailable, "filters": filters,
-                "contains": contains, "scanned_records": scanned,
+                "contains": contains, "scanned_records": scanned, "scanned_bytes": scanned_bytes,
                 "correlation": "Null means unavailable. Shared request IDs or actor names alone do not establish cross-process identity. Observations are not inferred changes."}
     artifact = retain(snapshot)
     return {"ok": True, "status": "partial" if unavailable else "matched" if rows else "no_match",
             "matched": len(rows), "rows": rows[:limit], "links": links, "unavailable_sources": unavailable,
+            "scanned_records": scanned, "scanned_bytes": scanned_bytes,
             "snapshot": artifact, "next": {"sha256": artifact["sha256"], "selector": "rows",
             "offset": limit} if len(rows) > limit else None, "correlation": snapshot["correlation"]}
