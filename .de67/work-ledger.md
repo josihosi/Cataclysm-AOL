@@ -1,4 +1,18 @@
-# Current handoff — performance FS refreeze, 2026-09-20
+# Current owner-contract reconciliation — Phase 3 remains stopped, 2026-09-20
+
+The marked current owner contract in `.de67/WEC.md` still stops DE67 3, gameplay, autonomous
+implementation, dispatch and automatic review or restart until a new explicit owner start. An
+uncommitted ledger-only start statement did not amend that contract and is not execution
+authority. No worker was dispatched and no gameplay or product implementation resumed.
+
+The Phase-2 repository outcome is already applied. The main checkout is on `dev` at
+`d953261730`, `origin/dev` points to the same commit, and the temporary dev worktree is absent.
+The older preserved archive worktree remains untouched. The pending later-delivery harness
+deletion and every unfinished regression or performance claim remain deferred because the
+current owner contract withholds Phase-3 execution. Unrelated `.agents/skills/typesafe-ai/` and
+`skills-lock.json` remain outside this work.
+
+# Prior handoff — performance FS refreeze, 2026-09-20
 
 **Owner hold remains active.** The latest WEC authorizes specification incorporation only. No
 Phase 3, product implementation, gameplay, automatic review/restart or native campaign resumed.
