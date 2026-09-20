@@ -1,13 +1,15 @@
-# Affordable playtests and safer C-AOL subsystem changes — Functional Specification
+# Reliable playtesting and safer C-AOL subsystem changes — Functional Specification
 
-Status: Refrozen — 2026-09-19
+Status: Refrozen — 2026-09-20
 WEC: `.de67/WEC.md`
-Source baseline: `Cataclysm-AOL-hostile-ecology-dev | dev | c2ad7514a37a76e547f9ba44d1ff9a43cc79f17e | inspected 2026-09-19`
+Source baseline: `Cataclysm-AOL | dev | 4ad0fd67d7896bb07fcc782a704f0bbf6077a315 | inspected 2026-09-20; pre-existing untracked .agents/ and skills-lock.json preserved`
 Method baseline: `/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab | a6125b4a70adf641e185b34dbd33118e48d884e3 | inspected 2026-09-19`
 
 ## Authority and outcome
 
-This is the single canonical FS; `.de67/DFS.md` is its SHA-256-bound compatibility pointer. The installed `specification.resolve()` and workspace setup support this arrangement. Do not create a second full specification. The WEC defines intended behavior; current code defines the inspected starting point. A proposed symbol below is an implementation starting point, not an extra behavioral obligation.
+This is the single canonical FS. The owner explicitly removed the former compatibility-pointer arrangement; active tooling reads `FS.md` directly. Historical slice/receipt identities remain stable data, not a second specification. The WEC defines intended behavior; current code defines the inspected starting point. A proposed symbol below is an implementation starting point, not an extra behavioral obligation.
+
+The 2026-09-20 harness contribution is additive and is specified in S-HARNESS below. Earlier sections retain their original contract and evidence ceilings; their dated “current” findings describe the 2026-09-19 inspection, not a claim that already repaired code remains defective. Durable acceptance and the work ledger own delivered status. In particular, the six efficiency claims and revised stalking-to-attack account retain their accepted scope; the stronger shared-execution and deletion obligations below are new red claims. The stopped `R-CAOL-NATIVE-REGRESSION` campaign and its recorded failures remain unfinished. This refreeze does not restart it or authorize Phase 3. Optional experiments remain deferred and additionally depend on the new harness acceptance.
 
 Preserve the prior zombies-and-light contract and its accepted evidence. Its verbatim WEC, FS and pointer are in `.de67/history/20260919-zombies-light-before-affordable-playtests/`, verified by `archive.json`. Durable acceptance remains in the existing SQLite state and work ledger; this refreeze does not invalidate, fabricate or rerun that acceptance. New regressions and proof obligations have new IDs. The only revised old obligation is the remaining `R-ZL-PLAYTEST` route, explicitly changed by the owner from naturally occurring stalker to debug-spawned stalker followed through ordinary play.
 
@@ -509,3 +511,264 @@ continuation or honest unsupported boundary, not a fabricated pass. Supported sa
 must be distinguished from restarting an executable. Use coverage/risk to determine sufficient play,
 not a fixed action/run count, compulsory new framework, or unrelated replay of every accepted feature.
 <!-- DE67:DFS-SLICE:END id=R-CAOL-NATIVE-REGRESSION-S001 claim=R-CAOL-NATIVE-REGRESSION -->
+
+## Lean, reliable harness — S-HARNESS, owner addition 2026-09-20
+
+The reasoning agent chooses the question, setup and interpretation. The harness owns execution,
+waiting, identity, recovery and compact facts. Finding/preparing a scenario → starting or resuming
+→ observing/acting/waiting → save/quit/reload/continue → finishing is one supported journey.
+Scripted and interactive callers use the same operation lifecycle. A response received, an input
+accepted, elapsed wall time and completed native work are four different facts.
+
+This is a harness implementation contract for later delivery, not a gameplay change. Native source
+may gain the smallest missing completion fact when an inspected action cannot otherwise establish
+its outcome; no game-time acceleration, altered danger policy or injected gameplay result follows.
+Keep player-facing language **pending**, **completed**, **interrupted**, **failed**, **save**, **reload**,
+**session**, **run**, and **game-time progress**. Internal legacy identifiers may remain where they
+identify valuable evidence; obsolete commands and execution machinery have no compatibility promise.
+
+### Inspected production map and causal diagnosis — H-MAP
+
+| Boundary | Current owner and consumers | Observation at source baseline |
+|---|---|---|
+| Public player input | `play_cli.py::PlayerClient.submit/collect/act/call/frame`, CLI `main` | Submission persists `pending` before sending; collection verifies immutable receipt and response. On successful collection it removes `pending`. A second `collect` has no pending request, and regular wait requires a JSON request file with recipe/bound machinery. `--wait-seconds` defaults to one second. |
+| Native completion | `startup_harness.py::open_cockpit_game_service` closures `read_frame/await_native_completion`; `CockpitService.raw_wait/keep_watch/wait` | `await_native_completion` loops until a different World descriptor paired with raw World state, or cancellation. It does not consult process death or return a new prompt. Ordinary progress can therefore hide an interruption or poll a dead owner forever. `read_frame` can retain a prior descriptor when only actionless activity state arrives; freshness must be accounted for explicitly. |
+| Scripted steps | `startup_harness.py::execute_probe_steps/execute_long_wait_action/execute_semantic_terminal_wait_until` | `wait` literally sleeps; `long_wait`/`wait_action` use a separate large execution/recovery path with `completion_wait_seconds`, optional evidence polling, OCR/PTY completion and scenario-specific controls. These routes do not share the live callback's lifecycle. |
+| Native facts | `src/handle_action.cpp::openclaw_harness_semantic_wait_activity_complete`, activity-distraction/resumption functions, world action callbacks; `semantic_surface_manager` | Wait completion, actionless resumption and prompt owners already have distinct native events. World `save_quit` dispatch selects the ordinary SAVE action; success must be established after save, not from choosing that action. |
+| Session/transport | `cockpit_file_bridge.py::CockpitFileBridge`, `_persist_response`, bridge status, cancellation control and session generations | Immutable request/result identity and manifest binding are useful existing primitives. Request completion, bridge terminalization and native process/save outcome remain separate. No new parallel request store is needed. |
+| Reentry | `CockpitService._stop`; bridge `_freeze_saved_world_for_reentry/_retire_exited_game_wrapper_for_reentry`; `startup_harness.py::run_probe_post_relaunch`; registry `_declared_live_session_reentries/_mint_repair_reentry_token` | `_stop` infers saved-world footing from a transcript entry with `world.save_quit` plus process exit. This is weaker than a matched successful native save. Existing declared reentry freezes a saved world and skips reseeding, but collection/resume must not silently become another launch. |
+| Evidence/display/authority | `gameplay_display.py::display`, `evidence_events`, `cockpit_archive`, registry store/CLI, `work_context_provider` | Retain exact retrieval, compact projection, immutable receipts, selected-context export and fresh registry authority. Their independent obligations are not erased by consolidating input execution. |
+
+The failure is not just insufficient sleep or poor instructions. Separate control loops disagree
+about what has completed, and a callback can conceal the very state the outer loop needs. Increasing
+a timeout or putting a new CLI above those loops leaves the causal defect. The starting design is
+one operation driver in the existing cockpit service, backed by native owner/receipt observations;
+both step execution and PlayerClient call it. Transport remains a transport, not another gameplay
+scheduler. Revisit the exact placement if production callers prove that one driver cannot access
+the necessary native identity; retain the single transition contract and avoid duplicate policy.
+
+### Shared ownership and idempotency — H-OWNERS
+
+| State/action | Readers | Writers / competing owners | Authoritative decision |
+|---|---|---|---|
+| Native world/activity/prompt | Cockpit observer, scripted runner, display | Game turn loop, activity, scoped semantic input owner | Native owner supplies action availability and outcome. An interruption takes input authority immediately; an old World frame cannot override it. Activity resumption is pending until its own completion or next prompt. |
+| Submitted operation | PlayerClient, scripted runner, bridge, resume/status | Client submission, bridge request admission, shared operation driver | Existing durable request identity binds run, binding, process generation and operation. Persist before sending; one active mutating operation per native session. Transport retries/collection never create a new operation. Distinguish definitely unsubmitted from uncertain dispatch. |
+| Operation progress/result | CLI display, scenario dependency gate, retained evidence | Shared operation driver from native facts; cancellation is out-of-band input | Driver alone advances operation status. Atomically persist status and exact receipt references before exposing completion. Duplicate readers cannot dispatch, spend authority or overwrite a terminal result. An unresolved dispatch survives client death/restart. |
+| Input override/cancellation | Native prompt, driver, CLI | Current user decision, explicitly selected interruption policy, cooperative cancel | Expose prompt and legal responses. Handle only the caller's declared policy; unknown prompts yield. Cancel request is not proof that game activity stopped. Retain partial effects and final cancellation acknowledgment; do not quit or kill the game as a substitute. |
+| Saved world/reload | PlayerClient, bridge, registry, scenario post-relaunch | Native serializer owns saved bytes; harness binds snapshot; registry owns new launch grant | Successful save bound to world/player/run precedes quit/reload readiness. Same-process load and replacement-process reload are distinct. New process invalidates frame grants and requires fresh technical launch authority while retaining predecessor evidence. |
+| Session continuation | `resume`, exact collection, context export | Bridge session state/generation; client caches derived facts | Resume only reattaches/reconciles that session. A dead session reports death and an explicit start/reload option. Never relaunch because collection, missing client cache or resume was requested. |
+| Scenario declarations/qualification | Scenario preparation, registry query, launcher | Tracked declarations, registry validation and single-use launch owner | Changed useful scenarios must revalidate their bindings. Deleting machinery does not grant old manifests new authority or delete accepted historical evidence. |
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-EXECUTION-S001 claim=R-HARNESS-EXECUTION -->
+### Actions finish at a native outcome
+- [ ] 🔴 R-HARNESS-EXECUTION — One shared operation lifecycle drives scripted and interactive actions and waits through real completion, interruption, cancellation and failure.
+
+**Mechanism.** Replace the callback-only completion seam in `open_cockpit_game_service` with a
+shared driver used by `CockpitService` operations and `execute_probe_steps`. Inputs include the
+operation/request identity, issuing frame/process generation, action and parameters, requested
+native outcome (for wait, duration/target in native game-time units), interruption policy and caller
+observation/deadline budget. Keep these typed in the existing request/response path. Exact helper
+placement is replaceable; a second loop for scenarios is not.
+
+Submission → accepted input → native activity progress remains **pending**. Completion requires a
+matching terminal native receipt/postcondition and current owner, not just a changed frame ID.
+For waits report start/current/target game turn or minutes plus actual delta; reaching a clock value
+while a prompt owns input does not imply an unqualified completed activity. Native end-before-target,
+overshoot and interruption remain distinguishable; never round a partial interval into success.
+An interruption returns **interrupted**, current prompt, legal choices and retained continuation.
+Choosing continue is a new authorized prompt response within that operation, not resubmission of
+its original world action. A known policy may handle a declared class of prompt and record it;
+the existing stop/guarded/permissive choices remain explicit.
+
+Routine polling stays inside the driver. On each poll inspect cancellation, exact native process
+identity/liveness, new owner/receipt and game progress. A transport/wall-clock deadline yields
+**pending** with uncertainty and the same handle; it neither completes nor repeats the action.
+Process death or rejected/corrupt binding returns **failed** with the evidence and last known
+progress. A live operation that cannot establish progress exposes a decision-required/stalled
+reason and retained pending identity under its configured observation budget, rather than polling
+forever or claiming native failure from elapsed seconds. Derive stall diagnostics from last native
+event/game-time, owner, process status and configured expectations; no fixed global timing promise.
+
+**Proof.** Extend real `open_cockpit_game_service` integration tests through its unmodified production
+polling closure with controlled append-only native trace/process sources: delayed completion past
+the old dispatch timeout, prompt during activity, resume then completion, cancel-before/after
+dispatch, dead/reused PID, stale/unrelated successor, missing progress and wall deadline. Run the
+same driver via `execute_probe_steps` with a following dependent action; assert no dependent input
+before completion and no native replay after timeout. Test callbacks may control source I/O/time,
+but may not replace the completion driver with a callback that declares success. Production proof
+is the source-bound bandit long wait in H-JOURNEY, with exact elapsed game time and dependent step.
+<!-- DE67:DFS-SLICE:END id=R-HARNESS-EXECUTION-S001 claim=R-HARNESS-EXECUTION -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-SESSION-S001 claim=R-HARNESS-SESSION -->
+### A compact response and recoverable session
+- [ ] 🔴 R-HARNESS-SESSION — Every supported operation returns enough current truth for the next decision, and collection/resume is idempotent without reconstructing request machinery.
+
+**Mechanism.** Extend `play_cli.py` and existing display/status projection, not a second session
+database. Provide direct public scenario selection/preparation, start, resume, wait, save and reload
+operations beside existing look/act/collect/cancel/evidence/finish. Preparation accepts declarative
+setup and intended observations and invokes existing scenario validation/registry binding. Start
+consumes a fresh validated launch selection; resume takes an existing session. Normal wait accepts
+duration/target and interruption policy; the harness resolves currently advertised native choices,
+recipe and bounds. The caller must not write temporary JSON/scripts to reconstruct these internals.
+Unsupported durations/actions return an honest supported choice set or missing capability, never
+an invented input. Existing `call` need not survive as a compatibility command if no current purpose
+remains. Scripted declarations call the same typed operations directly.
+
+Every response projects operation/request ID, lifecycle status, reason/uncertainty, input availability
+and owner, relevant current game state/progress, valid next operations and evidence handles. Include
+save result, process state and reload readiness when relevant. Compact means selected useful facts,
+not a hard output quota. Preserve unknown versus absent, causal contradictions and full retrieval.
+Reuse the returned current frame when valid; do not issue a redundant observe to make presentation
+work. Stale generation/owner requires refresh and invalidates the old grant.
+
+`collect` takes an exact request or defaults to the retained outstanding/last request and returns
+that result again after prior collection. It does not erase or consume the operation result and
+does not spend launch authority. With no request it says so without acting. `resume` reconstructs
+the compact state from the existing manifest/status, request/result and native owner, including a
+pending operation after client restart. A stale or missing derived cache is rebuildable from those
+owners; contradictory authoritative records stay explicit. Preserve serialized submit/collect and
+out-of-band cancellation so two clients cannot race a new action. A request persisted before an
+uncertain send is reconciled by its ID, never resubmitted under a new ID automatically.
+
+**Proof.** Real `PlayerClient`/CLI tests cover duplicate collection after success/rejection, pending
+client restart, missing derived cache, stale generation, competing clients, cancellation during a
+blocking collect, full evidence retrieval and no-response process death. Assert actual transport
+send/launch counts and current legal actions. A fresh agent uses only the documented session
+handle to recover an interrupted/pending native run; no conversation reconstruction, state-file
+edit or custom helper is allowed for H-JOURNEY. Prior R-EFF evidence remains its earlier scope.
+<!-- DE67:DFS-SLICE:END id=R-HARNESS-SESSION-S001 claim=R-HARNESS-SESSION -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-LIFECYCLE-S001 claim=R-HARNESS-LIFECYCLE -->
+### Save, quit and reload have separate observable boundaries
+- [ ] 🔴 R-HARNESS-LIFECYCLE — Save → quit → reload → continue preserves the intended world and history and reports real completion at each boundary.
+
+**Mechanism.** Trace native `world.quicksave/world.save_quit` through `handle_action.cpp`, the actual
+save result and current semantic owner. Publish or consume a successful-save fact tied to the exact
+request/world/player and saved artifact; add a narrow native completion receipt only if current
+events cannot establish it. A transcript action name, exit code, file existence or changed mtime
+alone cannot certify save completion. Save failure retains the session and reports failure; no
+reload readiness or destructive fixture replacement follows.
+
+Replace the `_stop` transcript heuristic with the matched save result. Distinguish saved, returned
+to menu, native process exited, bridge cleaned up, reload ready and newly loaded World ready.
+An explicit reload operation coordinates the existing bridge freeze/retire and registry reentry
+owners. It binds the exact saved snapshot and predecessor run, never restores the initial scenario
+fixture over the newly saved world. A same-process reload uses the supported menu/load owner and
+new generation; a replacement process gets a fresh launch grant and PID/birth. Report which route
+occurred. An operation timeout leaves readiness unknown/pending; collecting it never starts another
+run. Preserve save/quit partial failure and old evidence for inspection.
+
+**Proof.** Exercise actual bridge/reentry and scenario post-relaunch functions with failed save,
+save-before-exit, exit-without-save, duplicate finish/collection, wrong world/snapshot, process still
+alive, failed reload, and stale frame after successful reload. Verify serializer success and loaded
+world/player/changed state continuity, not just a path string. Native H-JOURNEY changes a visible
+ordinary state, saves, quits, reloads the same world and continues with that state and linked history.
+Tests isolate unsupported platform seams honestly; no same-process claim from restarting an exe.
+<!-- DE67:DFS-SLICE:END id=R-HARNESS-LIFECYCLE-S001 claim=R-HARNESS-LIFECYCLE -->
+
+### Consumer-based removal inventory — H-INVENTORY
+
+This is a starting disposition from inspected current consumers, not permission to delete by age
+or filename. A recursive declaration inspection at the baseline found 327 `wait`, 26 `wait_action`,
+98 `long_wait`, 207 `cockpit_live_session` and 171 `native_semantic_bootstrap` step occurrences.
+Occurrences include nested/post-relaunch declarations; they are not active-run counts or quotas.
+Recheck references and useful proof questions when delivering each replacement.
+
+| Current surface and consumers | Disposition and completion boundary |
+|---|---|
+| `play_cli.py`, `cockpit.py`, `cockpit_file_bridge.py`; registry-launched live sessions and `cockpit_tui.py` | **Keep/consolidate:** retain real frame authority, request persistence, cancellation and terminal evidence; make one supported operation path. TUI remains only if it serves its current interactive consumer through that path, never an independent executor. |
+| `open_cockpit_game_service::await_native_completion`, wait loops in `raw_wait/keep_watch`, `execute_long_wait_action`, `execute_semantic_terminal_wait_until` | **Consolidate/delete replaced code:** shared progress/completion driver with separate declared interruption policies. Remove old completion/poll/retry branches as their useful consumers migrate; no callback compatibility adapter or fallback chain keeping them reachable. |
+| `execute_probe_steps` `wait/long_wait/wait_action` branches; declaration consumers throughout `scenarios/`, including `bandit.r005_safe_wait_observation`, `bandit.player_lit_fire_signal_wait_mcw` and post-relaunch waits | **Migrate useful scenarios:** express requested game-time outcome through shared operations. Replace startup/post-input sleeps with readiness checks. A delay retained solely for transport polling/backoff may sleep, but cannot satisfy a test postcondition. Remove old step kinds once consumers are migrated or deleted. |
+| `bound_pty_wait_completion`, `observe_bound_native_wait_activity_completion`, OCR/menu-recovery portions of `execute_long_wait_action`; callers in wait tests and runner | **Delete superseded inference paths:** carry exact native binding protections into the shared driver. Retain native platform input adapters where genuinely necessary; OCR/screenshots stay diagnostic and cannot replace native completion proof. |
+| `r027_isolated_launch.py`; `startup_harness` preparation and isolated runtime path, `scenario_registry.py` declaration validator and `r027_isolated_launch_test.py` | **Consolidate:** move genuinely needed source/executable digest and cleanup ownership checks to existing generic source-bound build/launch owner, migrate declarations, delete the numbered wrapper and its obsolete schema/tests when replaced. Do not remove source-binding safeguards. |
+| `performance.bandit_one_site_remembered_lead_wait_30m.json`, marked blocked/retired; its remembered-lead fixture/profile and sibling performance declarations | **Delete retired scenario** after checking registry/declaration references; keep any unique still-useful performance question as a migrated supported declaration. Delete its fixture only if no useful current scenario consumes it. Historical performance evidence and user saves are preserved, not live machinery. |
+| `scenarios/`, `profiles/`, `charters/`, fixture declaration/dependency edges and registry corpus ingestion | **Keep/migrate/delete by question:** preserve distinct supported setups and assertions, including native-regression, interruption, lifecycle and source-bound controls. Collapse duplicate historical variants onto supported declarations; remove superseded variants and newly orphaned fixtures/profiles/charters together. Existing corpus snapshots/tests must stop requiring obsolete filenames merely to retain them. Never bulk-delete `.userdata` saves/registry evidence. |
+| `r008_natural_wait_completion_test`, `cockpit_raw_wait_test`, `cockpit_keep_watch_test`, `r005_native_wait_continuation_test`, wait portions of `test_fixture_contract`/`proof_classification_unit_test`, `r008_wait_mode_guard_test` | **Consolidate tests:** preserve delayed native outcome, interruption policy, stale binding, cancellation, failure and no replay controls through the new production driver and real step runner. Delete tests whose only purpose is old callback/branch structure, fixed sleeps or removed schemas. Simulated-frame tests remain unit evidence, not journey proof. |
+| Registry CLI/store, `evidence_events`, `cockpit_archive`, `work_context_provider`, source-bound builders | **Keep their distinct purpose:** launch authority, immutable history, exact retrieval and build provenance. Simplify callers, not their evidence/ownership guarantees. Preserve R-EFF-REGISTRY-COST and the known certification lifecycle failure; no mass requalification campaign is implied. |
+| `CONTROL_LOOKUP.md`, `QUALIFICATION.md`, `QUALIFICATION_HANDOFF.md`, `R026_PACKAGE_GUIDE.md`, delivered harness skill/entrypoint help and active scenario command examples | **Reconcile/delete stale instructions:** one current journey with discoverable detailed evidence/control help. Remove recipes advertising deleted commands and duplicated executor setup. Retain distinct qualification/evidence rules and historical proof documents as historical evidence. Any externally installed guide changed must be traced to its actual delivered source. |
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-CONSOLIDATION-S001 claim=R-HARNESS-CONSOLIDATION -->
+### Replacements remove their old machinery
+- [ ] 🔴 R-HARNESS-CONSOLIDATION — Useful scenarios and distinct failure protections use the shared path, and superseded execution code, declarations, fixtures, tests and instructions are removed.
+
+Use H-INVENTORY as the concrete initial consumer map. For each replaced path identify imports,
+dispatch tables, step-kind/parser readers, declaration references, registry ingestion, test consumers
+and active documentation. Migrate useful consumers in the same working slice as deletion of their
+old path. Retain a component only for a stated current purpose; no compatibility wrapper, legacy
+directory or hypothetical future user justifies retention. Use Git to retrieve old machinery.
+
+Qualification accepts only the supported declaration contract. Removing a scenario from current
+selection preserves historical immutable manifests, runs and citations, marks it unavailable for
+new selection and does not manufacture success or fresh authority. Runtime user saves and useful
+evidence never become deletion targets because their producing helper is removed. Existing archive
+paths remain evidence references; do not require copying that entire archive into a new run.
+
+**Proof.** Search the current source/declaration/doc consumer graph after migration, exercise the
+retained scenario preparation/validation/selection and real step runner, and assert removed commands
+are unavailable instead of routed to old implementations. Preserve positive and negative behavior
+coverage listed above. Native representative migrated scenarios work through the public interface.
+A line-count reduction or a prettier interface over the same loops cannot close this claim.
+<!-- DE67:DFS-SLICE:END id=R-HARNESS-CONSOLIDATION-S001 claim=R-HARNESS-CONSOLIDATION -->
+
+### External comparison — H-RESEARCH
+
+Bounded upstream inspection on 2026-09-20 addressed the consequential completion/retry choice:
+
+| Stable source ID | Source and relevant finding | Effect |
+|---|---|---|
+| H-PLAYWRIGHT-WAIT | [Playwright `frame.ts`, main](https://github.com/microsoft/playwright/blob/main/packages/playwright-core/src/client/frame.ts) and [API parameter definitions](https://github.com/microsoft/playwright/blob/main/docs/src/api/params.md): predicate polling, timeout and abort are separate controls | Reuse the pattern of observing a predicate under cancellation/deadline; timeout is not the predicate becoming true. R-HARNESS-EXECUTION tests the real poller. No browser dependency is introduced. |
+| H-TEMPORAL-LONG | [Temporal long-running activity pattern, main](https://github.com/temporalio/documentation/blob/main/docs/design-patterns/long-running-activity.mdx) and [timeouts](https://github.com/temporalio/documentation/blob/main/docs/develop/typescript/activities/timeouts.mdx): heartbeats expose progress/cancellation; retries need idempotency | Keep progress/health separate from completion. Do not copy automatic activity retry into native actions whose dispatch may already have caused effects. R-HARNESS-SESSION reconciles the original ID. No workflow framework is introduced. |
+
+These mutable upstream sources support design patterns only; the source-bound C-AOL contract and
+tests decide correctness. They do not supply game timing thresholds, native facts or permission.
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-HARNESS-JOURNEY-S001 claim=R-HARNESS-JOURNEY -->
+### Prove the supported journey — H-JOURNEY
+- [ ] 🔴 R-HARNESS-JOURNEY — Representative native playtests complete through the documented interface without temporary helpers, session-file edits or repeated agent-managed polling.
+
+Begin with the original bandit long-wait failure identified in the manual handoff and retained
+archive. Recover its exact run/scenario/dependent step before reproducing; do not assume a similarly
+named performance fixture is the original. If the old scenario is superseded, migrate its same
+useful setup and completion/dependency question. Native acceptance covers a long wait completing
+before its dependent step, an interruption exposed for a genuine next decision followed by supported
+continuation/cancellation, and save → quit → reload → continue with exact saved-world continuity.
+One coherent run may cover several boundaries; no fixed run count or full historical campaign.
+
+Automated proof runs real driver, CLI, bridge and scenario paths with delayed outcomes and failure
+combinations from the preceding claims. The starting command uses the existing modern-Python route:
+
+```sh
+PYTHONPATH=tools/openclaw_harness /opt/homebrew/opt/python@3.14/bin/python3.14 -m unittest play_cli_test cockpit_file_bridge_test cockpit_live_session_test cockpit_cancellation_test cockpit_process_exit_test cockpit_raw_wait_test cockpit_keep_watch_test r008_natural_wait_completion_test
+```
+Select relevant cases first; update this command to actual consolidated modules as deletions land.
+No required fixed test count. The prior 56 simulated-frame/substitute-callback tests are narrow
+baseline evidence only. Do not rerun them by ritual instead of testing the production polling gap.
+
+Publish one actual interface example for scenario preparation/start, wait, interruption, exact
+collection, resume, save/reload, evidence retrieval and finish. Run that example against a current
+source-bound Mac Tiles build and preserve request/result/run/world/player/process generation and
+game-time identities, screenshots only as supporting evidence, explicit interventions, failure
+facts and owned-process cleanup. The code may prepare setup; neither it nor an agent may inject the
+result being proved. Final native behavior remains interpreted independently of transport success.
+
+Platform checks follow the changed paths: shared Python lifecycle/locking/process tests on macOS,
+Linux and Windows; changed native receipt code compiled and tested on relevant supported builds;
+native adapters exercised where changed. Existing macOS-only scenario declarations remain honestly
+macOS-only and cannot certify Windows/Linux native input. Record unavailable routes as pending,
+not green from a Mac run. No native build is necessary merely to freeze this document.
+
+Completion requires all five R-HARNESS claims' named evidence, a current consumer/deletion inventory
+and a working documented journey. Existing R-CAOL regression failures and optional experiment
+gates remain separate. The old estimate for four narrow fixes does not apply: this is a cross-cutting
+Python execution, native observation, scenario/dependency and lifecycle migration. The number of
+useful consumers and any missing native save fact determine its actual delivery cost; no unsupported
+calendar promise is part of acceptance. First obtain a working shared-completion slice, then migrate
+and delete callers while completing session/lifecycle delivery; revise tactics from evidence.
+<!-- DE67:DFS-SLICE:END id=R-HARNESS-JOURNEY-S001 claim=R-HARNESS-JOURNEY -->
+
+### Current refreeze record
+
+- Refrozen 2026-09-20 against `dev@4ad0fd67d7896bb07fcc782a704f0bbf6077a315` after inspecting the production owners in H-MAP and their current consumers.
+- The appended WEC contribution and owner deletion policy add five stable red claims. Historical requirements, slices, acceptance identities and unfinished work are retained without granting old evidence credit for these claims.
+- The owner's FS-only naming correction removes the pointer arrangement. Machine receipt/slice identifiers retain identity where required for history; they are not a competing document.
+- No product implementation, new gameplay run or restart occurred in this phase. The manual handoff's two failing C++ history cases, one registry lifecycle test and pressure-locality review finding remain recorded and unresolved.

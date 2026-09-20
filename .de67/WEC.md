@@ -1,4 +1,23 @@
-# WEC — Affordable playtests and safer subsystem changes
+# WEC — Affordable playtests, reliable harness and safer subsystem changes
+
+## Current owner reconciliation — 2026-09-20
+
+Josef invoked “ok de67 2 please. merge with existing FS”. The contribution appended
+below is additive. Prior gameplay intent, accepted evidence and unfinished regression
+work remain binding at their original scope. This invocation authorizes specification
+and necessary workspace/tooling preparation only; the stopped gameplay campaign and
+Phase 3 stay stopped. Earlier launch authorization below is historical and superseded.
+
+Josef further instructed “no do not preserve that arrangement but clean it up”, “its
+FS not DFS”, and “yes get rid of DFS.md and replace with FS.md please in the de67
+tooling too”. `.de67/FS.md` is the single functional specification. Remove the pointer
+arrangement and reconcile current tooling and references; preserve historical receipt
+identities and prior requirements without retaining an obsolete file wrapper.
+
+Josef instructed “get rid of that dev worktree too. everything in the worktree should
+be on dev please”. Final workspace is the main C-AOL checkout on `dev`; transfer this
+phase's work and relevant local state there, then remove its temporary dev worktree
+without losing unrelated files or changing the preserved old archive.
 
 *User intent and language brief — Phase 1 draft, 2026-09-19*
 
@@ -509,8 +528,8 @@ not a larger test count or smaller files for their own sake.
   on the Mac mini; branch `dev`, observed HEAD `c2ad7514a3`. Recheck before delivery.
 - Method source: `/Volumes/CodexBulk/Schanigarten/workspaces/de67-lab`;
   installed skill: `/Users/josefhorvath/.codex/skills/de67`.
-- Current acceptance: `.de67/work-ledger.md`; canonical specification `.de67/FS.md`
-  through `.de67/DFS.md`; prior intent `.de67/WEC.md`.
+- Current acceptance: `.de67/work-ledger.md`; canonical specification `.de67/FS.md`;
+  prior intent `.de67/WEC.md`. The current owner correction above replaces the old pointer route.
 - Specific maintenance details and evidence: de67 source
   `de-67-3/agents_ignore_todo.md`, section “Playtest token consumption”; audit
   `docs/token-audit-2026-09-16.md`; adapter `integrations/jev_telescope/`.
@@ -533,8 +552,46 @@ not a larger test count or smaller files for their own sake.
   restart workers, change live tests, or authorize unrelated gameplay work.
 
 <!-- DE67:OWNER-CONTRACT:BEGIN -->
-Josef stopped DE67 3 on 2026-09-20 and switched to manual mode. Do not resume autonomous
-coordination, dispatch or automatic review/restart without a new explicit owner start. Preserve
-unfinished post-cleanup regression work and existing accepted evidence. The current instruction
-is to checkpoint and push product work to dev, then close/archive this worktree.
+Josef invoked DE67 2 on 2026-09-20 to merge the lean/reliable harness contribution into the
+existing FS. Preserve prior product intent, accepted evidence and unfinished regression work.
+Remove obsolete harness machinery in later delivery as specified; Git is its archive. Use FS.md
+as the single specification in project and tooling, with no DFS.md pointer. Finish this phase on
+dev in the main C-AOL checkout, remove the temporary dev worktree after safe transfer, checkpoint
+the authorized changes and push dev to origin/dev. The older preserved archive remains untouched.
+DE67 3 and gameplay remain stopped. Do not resume autonomous implementation, dispatch, automatic
+review/restart or the prior native campaign without a new explicit owner start.
 <!-- DE67:OWNER-CONTRACT:END -->
+
+# WEC
+
+*User intent and language brief — lean and reliable C-AOL playtesting*
+
+## User outcome
+
+Lean, reliable C-AOL playtesting: the LLM decides what to test and interprets what happens; the harness handles execution, waiting, bookkeeping and recovery. Routine playtesting must not require reconstructing request machinery or writing temporary helper scripts. Josef describes the current harness as “like a car that keeps falling apart” and wants it in top shape, including removal of old machinery.
+
+## Intended experience
+
+1. One coherent playtesting experience. An agent can find or prepare a suitable scenario, start or resume it, inspect the game, act, wait, save/reload, and finish. Scripted scenarios and interactive play obey the same execution rules. Preparing a new test mostly means describing its setup and intended observations.
+2. Actions report what actually happened. Distinguish pending, completed, interrupted and failed. Starting a wait, receiving an input acknowledgment, or exhausting a wall-clock timeout cannot establish completion. Report actual game-time progress separately. If the outcome is uncertain, retain the request and explain the uncertainty without automatically repeating the action.
+3. The harness owns routine waiting. It continues polling through ordinary progress and returns control when the requested outcome occurs, a decision is needed, cancellation arrives, or a concrete failure occurs. Interruptions expose the current prompt and available responses. A dead process or stuck operation produces a useful explanation rather than endless polling.
+4. Every response supports the next decision. Return a compact account of the action outcome, current input availability, relevant game state and valid next actions. Include save completion and reload readiness when relevant. Keep detailed evidence retrievable separately. After interruption or a fresh agent handoff, recover the current situation without reconstructing a conversation or scanning huge logs.
+5. Retries and lifecycle become ordinary operations. Collecting a request retrieves that request. Resuming a session recovers that session. Starting another run is a distinct action with fresh launch authority. Save, quit and reload have observable completion conditions and preserve the intended saved world and run history.
+6. Remove the accumulated scaffolding. Candidates include duplicate wait/poll/retry implementations, sleeps used as completion conditions, superseded launch wrappers, scenario-specific helpers that duplicate general operations, obsolete scenarios and fixtures, and stale instructions. Consolidate overlapping tests while preserving their distinct failure cases. Exact deletions require checking current consumers; age or filename alone is insufficient.
+7. Prove the experience and the internals. Representative playtests work through the documented interface without inventing helper scripts, manually editing session files, or repeatedly asking whether a wait finished. Tests exercise actual polling and scenario execution paths, including delayed completion, interruptions, cancellation, process failure, duplicate collection and save/reload.
+
+## Settled deletion policy
+
+Breaking obsolete harness commands and scripts is acceptable. Migrate scenarios that still serve a useful playtesting need; delete superseded scenarios, helpers, fixtures, tests and documentation. Remove replaced execution paths as part of delivering their replacement. Do not retain compatibility wrappers, fallback chains, or legacy directories merely to keep old code alive. Git is the code archive. Preserve user saves and valuable runtime evidence; that does not require preserving the machinery that produced them. Retention requires a clear current purpose rather than hypothetical future usefulness. Tests protecting obsolete implementation details may be deleted; distinct behavioral protections follow the supported path. A prettier interface layered over the same accumulated machinery does not satisfy this brief.
+
+## Proposed sequencing and validation intent
+
+Establish reliable action completion through the existing failing route; migrate useful callers onto that behavior and delete their replaced machinery; complete the compact state/resume experience; validate the complete journey and remove stale guidance. Each slice leaves a working harness. This sequence is a hypothesis, not a constraint on a better code-grounded design.
+
+Native acceptance examples include the original bandit long wait, an interrupted wait requiring judgment, and save → quit → reload → continue. Automated tests cover failure combinations; platform checks follow changed paths. A preceding read-only assessment ran cockpit_raw_wait_test, cockpit_keep_watch_test and r008_natural_wait_completion_test: 56 tests passed, but largely with simulated frames and a substitute completion callback. This is existing narrow evidence, not native end-to-end proof or a required fixed test count.
+
+## Boundaries and handoff
+
+Target the C-AOL dev harness. Merge this contribution with the existing FS/DFS and retain unrelated product requirements and their evidence ceilings. Produce a concrete keep / consolidate / migrate / delete inventory tied to current consumers and these outcomes, rather than an isolated patch list. This is specification authorization, not phase-3 implementation or automatic restart of the stopped gameplay campaign. Shared state ownership, existing registry/evidence obligations, and the supported platform routes must remain honest while obsolete implementations are removed. No arbitrary deletion quotas, scenario-count caps, timing promises, or ritual replay of the full historical gameplay campaign.
+
+Relevant baseline: dev 4ad0fd67d7896bb07fcc782a704f0bbf6077a315 and its .de67/manual-handoff.md. Existing active .de67/FS.md, .de67/DFS.md, .de67/WEC.md and durable state must be reconciled with this additive user request. The earlier 1–3-day estimate concerned four narrow fixes; this broader consolidation/removal scope needs its own code-grounded assessment.

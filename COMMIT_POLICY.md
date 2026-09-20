@@ -39,7 +39,7 @@ Avoid bundling broad roadmap rewrites into this commit unless the behavior genui
 
 ### 2. Ledger/doc alignment commit
 Contains only:
-- `.de67/DFS.md`
+- `.de67/FS.md`
 - `.de67/work-ledger.md`
 - `.de67/test-and-task-guidelines.md`
 - `.de67/mutation-suggestions.md`
@@ -62,7 +62,7 @@ Do not hide this kind of change inside an unrelated behavior diff.
 
 - Do not keep appending docs and code to the same uncommitted tree across many cron runs.
 - Do not mix unrelated movement/Basecamp/locker work in one checkpoint commit.
-- Do not rewrite `.de67/DFS.md` or `.de67/work-ledger.md` after every tiny rerun if the accepted
+- Do not rewrite `.de67/FS.md` or `.de67/work-ledger.md` after every tiny rerun if the accepted
   frontier or active claim did not materially change.
 - Do not use Josef handoff timing as an excuse to keep everything uncommitted.
 - Do not let formatting churn dominate a behavior diff.
@@ -96,7 +96,7 @@ Do not write “tested” when the relevant CI-shaped gate is merely hoped for. 
 
 ## Interaction with DE-67 project state
 
-- `.de67/DFS.md` defines the contract, proof, and stable red claims.
+- `.de67/FS.md` defines the contract, proof, and stable red claims.
 - `.de67/work-ledger.md` names the current active projection.
 - `.de67/test-and-task-guidelines.md` governs execution and evidence review.
 - `.de67/mutation-suggestions.md` records incident diagnoses, manual suggestions, and dispositions.

@@ -1,4 +1,70 @@
-# Affordable playtests and safer subsystem changes — phase-2 refreeze (2026-09-19)
+# Reliable harness — phase-2 refreeze (2026-09-20)
+
+## Current handoff
+
+Josef invoked Phase 2 to merge the lean/reliable harness WEC into the existing FS, explicitly
+authorized deletion of obsolete machinery, made `FS.md` the sole specification in project and
+tooling, and requested all current work on `dev` in the main checkout. Phase 3, gameplay and the
+stopped native regression campaign remain stopped. Prior launch instructions below are history.
+
+- Workspace: `/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL`, `dev`, source baseline
+  `4ad0fd67d7896bb07fcc782a704f0bbf6077a315`. The temporary dev-harness worktree was removed normally
+  after transferring this phase's WEC/state. Existing `.agents/` and `skills-lock.json` are unrelated
+  untracked files and remain untouched. The old preserved archive and unrelated r008 worktree remain.
+- Contract: `.de67/FS.md` is canonical; the pointer file is removed. Existing stable slice and receipt
+  identifiers remain unchanged. New work is R-HARNESS-EXECUTION, SESSION, LIFECYCLE, CONSOLIDATION and
+  JOURNEY. None has acceptance credit. H-INVENTORY gives actual keep/consolidate/migrate/delete
+  consumers. The WEC's full previous text and exact new chat contribution remain present.
+- Prior accepted claims retain their evidence ceilings. The stopped manual handoff's two C++ history
+  failures, one registry lifecycle failure and pressure-locality review finding remain unresolved.
+  R-CAOL-NATIVE-REGRESSION is still unfinished. Optional experiments remain deferred behind that
+  obligation and the new harness work. No product source/test edit or gameplay run occurred here.
+- Durable history: copied `deadlines.sqlite3` from the archived checkout using SQLite's read-only
+  backup route, plus its existing status baselines; 63 acceptance rows preserved. The archive is
+  unchanged. Existing absolute evidence paths resolve through `.de67/manual-handoff.md`'s archive
+  mapping, not fabricated replacement evidence. Workspace preparation must use this copied history.
+- Fresh native capability proof: Luna medium/high and Terra medium/high, four unique nonce returns
+  with `fork_turns=none`; Luna omitted model and resolved the configured default. The runner's
+  effective configuration had no default effort. Actual child turn contexts verified each pair.
+  `.de67/state/worker-capability-proof-20260920.json` retains arguments, identities and rollout paths.
+  The owned probe runner exited and was reaped; this was availability proof, not phase-3 launch.
+
+Specification checks: all 32 pre-existing stable FS slices compare byte-for-byte with `4ad0fd67d7`;
+the five appended slices are the only new claims. The copied database retains all 63 acceptance
+rows, including 61 currently valid rows and two historical invalidations. `git diff --check`
+passes. Product `src/`, `tests/` and `tools/openclaw_harness/` have no changes; no compile/native
+playtest is claimed for this specification-only phase.
+
+FS-only workspace setup passed on the final main checkout with target `origin dev`, the four
+proved Luna/Terra pairs and explicit host guidance source. It exercised acceptance projection on a
+disposable state copy, preserved all six existing runtime policy/ledger files, retained lineage
+`semantic-surface-cockpit`, installed the guarded post-commit upstream hook and pushed the already
+committed baseline successfully. The clock/state path now names the main checkout. No secondary
+remote is configured and no coordinator was launched. Fresh final-workspace `config/read` confirms
+its project layer is active, effective Luna default and no pinned effort; that probe runner exited.
+
+## Current context audit
+
+The exact `dev` checkout has no `Plan.md`, `SUCCESS.md`, `TODO.md` or `TESTING.md`; the initial
+production-checkout roadmap was inspected before selecting dev and does not authorize a competing
+development campaign. Root AGENTS/Agents supply command/evidence facts; COMMIT_POLICY's three
+active spec links now name FS. README was read and retained. No contributing/licence/design file
+was moved, and no no-go-zone was inventoried or read.
+
+The host `/Users/josefhorvath/.codex/AGENTS.md` was read by this phase owner and supplied in the
+invocation context. Its Mac ownership, MSW and evidence rules remain useful. The probe coordinator
+received only its bounded capability brief; nonce workers received unique prompts without inherited
+conversation. No reviewer context is claimed. Shared-guidance binding is audited only for the
+explicit source passed to setup; capability success is not proof of universal guidance delivery.
+
+Existing compiled phase3 policy/contracts, test/task guidance, mutation queue and work ledger were
+inspected as active context surfaces and preserved. Their phase-3 dispatch language is dormant
+under the explicit owner stop. Historical directions in WEC/FS/ledger have a current precedence
+note, not silent authority removal. Shared FS-only tooling cleanup is separately owned and tested;
+it does not authorize C-AOL harness implementation. The public harness references/CLI, request,
+native owner, polling, scenario/reentry and registry consumers ground the new specification.
+
+## Prior phase-2 record (2026-09-19)
 
 ## Current authority and frontier
 
@@ -6,7 +72,7 @@ Owner stop (2026-09-20): DE67 3 is stopped; manual mode is in force. Checkpoint/
 
 Owner priority (2026-09-20): R-CAOL-NATIVE-REGRESSION is the next product obligation. Fresh post-cleanup native verification precedes further optional experiments; preserve their staged results.
 
-The current owner outcome is `.de67/WEC.md`, imported with explicit archive authorization. `.de67/FS.md` is the refrozen canonical specification and `.de67/DFS.md` is its hash-bound pointer. The previous WEC/FS/pointer are preserved verbatim in `.de67/history/20260919-zombies-light-before-affordable-playtests/` with SHA-256 manifest. The 12 current accepted claims and every original receipt below remain accepted at their existing evidence ceilings. New obligations receive no inherited credit.
+The owner outcome was `.de67/WEC.md`, imported with explicit archive authorization. The previous WEC/FS/pointer are preserved verbatim in `.de67/history/20260919-zombies-light-before-affordable-playtests/` with SHA-256 manifest. The then-current accepted claims and every original receipt below remain accepted at their existing evidence ceilings. New obligations receive no inherited credit.
 
 The remaining stalker account, registry-cost repair and semantic-routing claim are accepted at their recorded evidence ceilings. The stalker followed and attacked through normal AI after disclosed debug setup. The registry repair preserves query authority and sealed-manifest retrieval while reducing repeated SQL and future duplicate storage. Semantic routing now keeps exact identifier and flag lookup provider-free while reserving bounded typed selection for genuine ambiguity. Receipt `9c8ec6d2fbbc6d154293d2ca9845abc2dc0048d7e151ae9fef022a5c89694f79` and acceptance #1 retain the exact proof and limits.
 
@@ -599,7 +665,7 @@ The old missing-DFS-status obstruction for `R-MAINT-COMPACT-IO` and `R-MAINT-RES
 
 ## Current contract and evidence
 
-The FS is the code's Functional Specification, stored at `.de67/FS.md` with a hash-bound `.de67/DFS.md` compatibility pointer. Before settling consequential new code, Sol reviews its data flow, interfaces,
+The FS is the code's Functional Specification, stored only at `.de67/FS.md`. Before settling consequential new code, Sol reviews its data flow, interfaces,
 state ownership, maintainability and tests against that contract, using bounded independent
 engineering review when useful. Passing tests and a receipt do not by themselves cover the whole
 contract. Briefs name the data identities, functions, transitions and errors that matter; source
