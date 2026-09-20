@@ -14038,11 +14038,18 @@ bool returned_structural_signal_lead_has_support( const site_record &site,
     return std::any_of( site.active_outing.observations.begin(),
     site.active_outing.observations.end(), [&site, &lead, now_minutes](
     const sortie_observation & observation ) {
+        // The camp and its scouts use different producer prefixes for the
+        // same coarse source.  Correlate that source without rewriting either
+        // record's provenance; the suffix still distinguishes sound classes.
+        const bool same_source = observation.source_id == lead.target_id ||
+                                 ( lead.origin == camp_lead_origin::signal &&
+                                   lead.target_id.rfind( "camp-", 0 ) == 0 &&
+                                   observation.source_id == "structural-" + lead.target_id.substr( 5 ) );
         return returned_structural_signal_observation_is_eligible(
                    site, observation, now_minutes ) &&
                signal_kind_to_camp_lead_kind(
                    structural_signal_sense_name( observation.sense ) ) == lead.kind &&
-               observation.source_id == lead.target_id && observation.source_omt == lead.omt;
+               same_source && observation.source_omt == lead.omt;
     } );
 }
 

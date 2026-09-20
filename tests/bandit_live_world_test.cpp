@@ -15541,6 +15541,16 @@ TEST_CASE( "staffed idle camp remembers a bounded structural signal without an o
 TEST_CASE( "staffed signal lead is dispatched and returned through the same scout identity",
            "[bandit][live_world][camp_signal][candidate][scout][report][travel][save]" )
 {
+    const auto sense = GENERATE( bandit_live_world::sortie_observation_sense::smoke,
+                                 bandit_live_world::sortie_observation_sense::light,
+                                 bandit_live_world::sortie_observation_sense::sound );
+    const bool matching_source = GENERATE( true, false );
+    CAPTURE( sense, matching_source );
+    const auto kind = sense == bandit_live_world::sortie_observation_sense::smoke ?
+                      bandit_live_world::camp_lead_kind::smoke_signal :
+                      sense == bandit_live_world::sortie_observation_sense::light ?
+                      bandit_live_world::camp_lead_kind::light_signal :
+                      bandit_live_world::camp_lead_kind::sound_signal;
     bandit_live_world::world_state world = make_structural_signal_test_world( false, 16141 );
     bandit_live_world::site_record &site = world.sites.front();
     site.active_outing.clear();
@@ -15551,21 +15561,25 @@ TEST_CASE( "staffed signal lead is dispatched and returned through the same scou
     REQUIRE( site.roster().valid );
 
     const tripoint_abs_omt source( site.anchor.x() + 3, site.anchor.y(), site.anchor.z() );
+    const auto signal_read = [source, sense]( const int observed_minutes ) {
+        return sense == bandit_live_world::sortie_observation_sense::sound ?
+               make_structural_sound_read( bandit_live_world::structural_sound_kind::gunfire,
+                                           source, observed_minutes ) :
+               make_structural_signal_read( sense, source, 5, 75, 2 );
+    };
     const auto staffed = bandit_live_world::record_staffed_camp_signal_observations(
                               world, 220,
-    [source]( const bandit_live_world::site_record &,
-              const bandit_live_world::camp_signal_observer_request & ) {
+                             [&signal_read]( const bandit_live_world::site_record &,
+    const bandit_live_world::camp_signal_observer_request & ) {
         return std::vector<bandit_live_world::structural_signal_read> {
-            make_structural_signal_read(
-                bandit_live_world::sortie_observation_sense::smoke,
-                source, 5, 75, 2 )
+            signal_read( 220 )
         };
     } );
     REQUIRE( staffed.leads_created == 1 );
 
     bandit_live_world::camp_map_lead *signal_lead = nullptr;
     for( bandit_live_world::camp_map_lead &lead : site.intelligence_map.leads ) {
-        if( lead.omt == source && lead.kind == bandit_live_world::camp_lead_kind::smoke_signal ) {
+        if( lead.omt == source && lead.kind == kind ) {
             signal_lead = &lead;
             break;
         }
@@ -15596,25 +15610,37 @@ TEST_CASE( "staffed signal lead is dispatched and returned through the same scou
     CHECK( site.active_outing.target_id == lead_id );
     CHECK( site.active_outing.target_lead_id == lead_id );
     CHECK( site.active_outing.target_omt == source );
-    CHECK( site.active_outing.target_lead_revision == lead_revision );
+    const auto *dispatched_lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( dispatched_lead != nullptr );
+    CHECK( dispatched_lead->revision > lead_revision );
+    CHECK( site.active_outing.target_lead_revision == dispatched_lead->revision );
     CHECK( site.active_outing.phase == bandit_live_world::scout_phase::outbound );
+    const auto member_ids = site.active_outing.member_ids;
 
     const auto quiet = []( const bandit_live_world::site_record &,
                            const bandit_live_world::camp_map_lead & ) {
         return bandit_live_world::structural_threat_read{ 0, true,
                                                            "same signal route is quiet" };
     };
-    const auto physical_signal = [source]( const bandit_live_world::site_record &,
-            const bandit_live_world::active_outing_state &,
-            const bandit_live_world::structural_threat_observer_request &request ) {
-        CHECK( std::find( request.visible_forward_omts.begin(),
-                          request.visible_forward_omts.end(), source ) !=
-               request.visible_forward_omts.end() );
-        return std::vector<bandit_live_world::structural_signal_read> {
-            make_structural_signal_read(
-                bandit_live_world::sortie_observation_sense::smoke,
-                source, 5, 75, 2 )
-        };
+    const auto physical_signal = [source, &signal_read, matching_source, sense](
+                                     const bandit_live_world::site_record &,
+                                     const bandit_live_world::active_outing_state &,
+    const bandit_live_world::structural_threat_observer_request & request ) {
+        CHECK( ( request.current_omt == source ||
+                 std::find( request.visible_forward_omts.begin(),
+                            request.visible_forward_omts.end(), source ) !=
+                 request.visible_forward_omts.end() ) );
+        auto read = signal_read( request.observation_window_start_minutes );
+        if( !matching_source ) {
+            if( sense == bandit_live_world::sortie_observation_sense::sound ) {
+                read.sound_kind = bandit_live_world::structural_sound_kind::alarm;
+            } else {
+                read.sense = sense == bandit_live_world::sortie_observation_sense::smoke ?
+                             bandit_live_world::sortie_observation_sense::light :
+                             bandit_live_world::sortie_observation_sense::smoke;
+            }
+        }
+        return std::vector<bandit_live_world::structural_signal_read> { read };
     };
 
     const int stalking_minutes = candidate->expected_stalking_minutes;
@@ -15627,7 +15653,10 @@ TEST_CASE( "staffed signal lead is dispatched and returned through the same scou
             world, stalking_minutes, quiet, {}, physical_signal );
     CHECK( stalked.stalking_checks_processed == 1 );
     CHECK( site.active_outing.target_lead_id == lead_id );
-    CHECK( site.active_outing.target_lead_revision == lead_revision );
+    const auto *stalked_lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( stalked_lead != nullptr );
+    CHECK( site.active_outing.target_lead_revision == stalked_lead->revision );
+    CHECK( site.active_outing.member_ids == member_ids );
     CHECK( site.active_outing.phase == bandit_live_world::scout_phase::observing );
     CHECK( site.active_outing.observations.size() == 1 );
     CHECK( site.active_outing.observations.front().source_omt == source );
@@ -15640,6 +15669,25 @@ TEST_CASE( "staffed signal lead is dispatched and returned through the same scou
     CHECK( site.active_outing.phase == bandit_live_world::scout_phase::returning_home );
     CHECK( site.active_outing.waypoint_index ==
            static_cast<int>( site.active_outing.shared_route.size() ) - 2 );
+    const auto *checked_lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( checked_lead != nullptr );
+    if( !matching_source ) {
+        // A different visual sense, or an alarm heard while investigating a
+        // gunshot at the same OMT, cannot validate the assigned clue.
+        CHECK( checked_lead->times_checked_empty == 1 );
+        CHECK( checked_lead->confidence == 0 );
+        CHECK( checked_lead->status == bandit_live_world::camp_lead_status::stale );
+        return;
+    }
+    CHECK( checked_lead->times_checked_empty == 0 );
+    CHECK( checked_lead->confidence > 0 );
+    CHECK( checked_lead->status != bandit_live_world::camp_lead_status::stale );
+
+    // Continue the same outing from its saved state.  Lead revisions may
+    // advance with state transitions; party and target identity must survive.
+    site = round_trip_world( world ).sites.front();
+    CHECK( site.active_outing.target_lead_id == lead_id );
+    CHECK( site.active_outing.member_ids == member_ids );
 
     const int generation = site.active_outing.generation;
     const bandit_live_world::structural_outing_result returned =
@@ -15654,15 +15702,20 @@ TEST_CASE( "staffed signal lead is dispatched and returned through the same scou
     CHECK( site.current_scout_report.target_omt == source );
     CHECK_FALSE( site.current_scout_report.provisional );
 
-    const bandit_live_world::camp_map_lead *returned_lead =
-        site.intelligence_map.find_lead( lead_id );
-    REQUIRE( returned_lead != nullptr );
-    CHECK( returned_lead->origin == bandit_live_world::camp_lead_origin::returned_report );
-    CHECK( returned_lead->kind == bandit_live_world::camp_lead_kind::smoke_signal );
-    CHECK( returned_lead->omt == source );
-    CHECK( returned_lead->revision >= lead_revision );
+    const auto *original_lead = site.intelligence_map.find_lead( lead_id );
+    REQUIRE( original_lead != nullptr );
+    CHECK( original_lead->origin == bandit_live_world::camp_lead_origin::signal );
+    CHECK( original_lead->times_checked_empty == 0 );
+    // The staffed observation and the physically returned report retain
+    // distinct provenance; the report does not rewrite the original origin.
+    const auto returned_lead = std::find_if( site.intelligence_map.leads.begin(),
+    site.intelligence_map.leads.end(), [kind, source]( const bandit_live_world::camp_map_lead & lead ) {
+        return lead.origin == bandit_live_world::camp_lead_origin::returned_report &&
+               lead.kind == kind && lead.omt == source;
+    } );
+    REQUIRE( returned_lead != site.intelligence_map.leads.end() );
+    CHECK( returned_lead->lead_id != lead_id );
     CHECK( returned_lead->last_scouted_minutes == arrival_minutes );
-    CHECK( returned_lead->last_checked_minutes == arrival_minutes );
 }
 
 TEST_CASE( "staffed camp signal dedup compares bounded durable summaries",
@@ -16143,7 +16196,9 @@ TEST_CASE( "staffed camp blocked signal reads preserve leads and emit bounded re
         CHECK( actor_ids.next_int() == observer.get_value() );
         const JsonObject receipt = event.get_object( "staffed_camp_signal_read" );
         receipt.allow_omitted_members();
-        CHECK( receipt.get_object( "source" ).get_string( "omt" ) == source.to_string() );
+        const JsonObject source_receipt = receipt.get_object( "source" );
+        CHECK( source_receipt.get_string( "omt" ) == source.to_string() );
+        CHECK( source_receipt.get_int( "intensity" ) == 6 );
         CHECK( receipt.get_object( "channel" ).get_string( "kind" ) == "smoke" );
         CHECK_FALSE( receipt.get_object( "line_of_sight" ).get_bool( "result" ) );
         CHECK( receipt.get_object( "outcome" ).get_string( "kind" ) == "no_new_lead" );
@@ -16216,6 +16271,7 @@ TEST_CASE( "staffed camp out of range signal reads preserve leads and emit bound
         read.line_of_sight = true;
         read.rejected = true;
         read.rejection_reason = "out_of_range";
+        read.range_cap_omt = 3;
         return std::vector<bandit_live_world::structural_signal_read> { read };
     } );
     restore_environment();
@@ -16243,10 +16299,13 @@ TEST_CASE( "staffed camp out of range signal reads preserve leads and emit bound
         CHECK( actor_ids.next_int() == observer.get_value() );
         const JsonObject receipt = event.get_object( "staffed_camp_signal_read" );
         receipt.allow_omitted_members();
-        CHECK( receipt.get_object( "source" ).get_string( "omt" ) == source.to_string() );
+        const JsonObject source_receipt = receipt.get_object( "source" );
+        CHECK( source_receipt.get_string( "omt" ) == source.to_string() );
+        CHECK( source_receipt.get_int( "intensity" ) == 3 );
         CHECK( receipt.get_object( "channel" ).get_string( "kind" ) == "smoke" );
-        CHECK( receipt.get_object( "range" ).get_int( "actual" ) == 7 );
-        CHECK( receipt.get_object( "range" ).get_int( "cap" ) == 3 );
+        const JsonObject range = receipt.get_object( "range" );
+        CHECK( range.get_int( "actual" ) == 7 );
+        CHECK( range.get_int( "cap" ) == 3 );
         CHECK( receipt.get_object( "line_of_sight" ).get_bool( "result" ) );
         CHECK( receipt.get_object( "outcome" ).get_string( "kind" ) == "no_new_lead" );
         const JsonObject persistence = receipt.get_object( "persistence" );
@@ -16508,6 +16567,24 @@ TEST_CASE( "hostile_camp_returned_signal_investigations_can_resolve_empty",
             CHECK( serialize_world( round_trip_world( world ) ) == serialize_world( world ) );
 
             const int supported_dispatch_minutes = ( return_minutes / 60 + 1 ) * 60;
+            // The empty investigation returned a report.  Complete its decision
+            // lifecycle before staging the next investigation's support control.
+            REQUIRE( site->camp_decision.state ==
+                     bandit_live_world::camp_decision_state::report_awaiting_assessment );
+            const int report_revision = site->camp_decision.source_report_revision;
+            const int report_generation = site->camp_decision.source_report_generation;
+            REQUIRE( bandit_live_world::transition_camp_decision_state(
+                         *site, bandit_live_world::camp_decision_state::report_awaiting_assessment,
+                         bandit_live_world::camp_decision_state::cooldown,
+                         report_revision, report_generation, return_minutes, supported_dispatch_minutes,
+                         "support control previous report assessed" ) ==
+                     bandit_live_world::camp_decision_transition_result::applied );
+            REQUIRE( bandit_live_world::transition_camp_decision_state(
+                         *site, bandit_live_world::camp_decision_state::cooldown,
+                         bandit_live_world::camp_decision_state::idle,
+                         report_revision, report_generation, supported_dispatch_minutes, -1,
+                         "support control previous cooldown elapsed" ) ==
+                     bandit_live_world::camp_decision_transition_result::applied );
             signal.status = bandit_live_world::camp_lead_status::suspected;
             signal.first_seen_minutes = supported_dispatch_minutes;
             signal.last_seen_minutes = supported_dispatch_minutes;
