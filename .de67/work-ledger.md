@@ -1,4 +1,72 @@
-# Reliable harness — phase-2 refreeze (2026-09-20)
+# Direct performance checkpoint; Phase 3 on owner hold (2026-09-20)
+
+**Current owner hold:** Josef asked to pause before starting playtesting rounds so he can ask
+questions. He subsequently authorized investigating and fixing the two camp-test failures, then
+returning for discussion. This bounded repair does not resume Phase 3, harness work or native
+playtesting. The direct performance checkpoint was already committing when the hold arrived;
+no supervisor or native playtest was launched.
+
+Josef authorized direct performance code work followed by `de67 3`: repair the harness first,
+including a bad-performance alarm system, then perform the light/smoke/sound playtests before his
+manual play. This explicitly supersedes the historical stop below. The owner-authorized trigger
+in `mutation-suggestions.md` supplies the changed scope for the exclusive reviewer to reconcile
+before ordinary dispatch. The sequence is harness reliability/consolidation and alarms, then
+native behavior/performance proof; unrelated optional experiments remain deferred. No gameplay
+pass or alarm implementation is claimed by this direct checkpoint.
+
+## Direct code and evidence
+
+- `physical_light::loaded_source_sampler` directly selects an absolute-coordinate portion of the
+  loaded map each turn, covering every continuously loaded square within 900 one-second turns.
+  Light/fire/smoke share this traversal. Known source coordinates and compact moving-owner lists
+  are re-read each turn; power, field state, geometry and projections are not stale cached truth.
+  Reset/load/rewind and bubble movement are covered. This preserves existing short pursuit clocks;
+  it does not yet budget every known emitter or every AI recipient.
+- Significant sounds enter the existing durable structural/staffed-camp observation owners
+  without waking broad overmap NPC maintenance between its ordinary ticks. Local hearing and
+  sound-to-horde behavior are unchanged. The new real-adapter test covers a heard one-shot cue,
+  no dispatch/outing advance, no replay, and serialization roundtrip.
+- Mac Tiles baseline built from `261d8a73dc` before source edits. Preserved binary:
+  `build_logs/staggered-signals/cataclysm-tiles-baseline`; baseline and optimized build result JSONs
+  retain exact executable/source hashes and receipt paths. The current source-bound Mac Tiles
+  build passed. Refresh source binding after any later source or HEAD change before launch.
+- Final focused C++ run: **34 cases / 2496 assertions passed**, seed `20260920`, selector
+  `[physical_light],[staggered_signals],[phase4_sound_queue],[phase4_sound_observation]`.
+  `build_logs/staggered-signals/slice-tests.log` holds the result and opt-in collector benchmark:
+  full scan mean **22721 us**, max **23552 us** (20 calls); staggered mean **77 us**, max **121 us**
+  (900 calls). Empty-map collection only; this is not populated-game turn latency or native proof.
+  Complete coverage and per-call tile-work bounds are deterministic assertions, not timing gates.
+- The broader `[camp_signal]` failures were investigated and repaired under Josef's subsequent
+  bounded authorization. Staffed `camp-<class>@OMT` and scout `structural-<class>@OMT` source IDs
+  now correlate without changing their distinct provenance. Before the fix, the revised
+  smoke/light/gunfire regression reproduced 12 failures: matching observations incorrectly left
+  the original clue empty/stale. It now checks matching and mismatched sources, current revision
+  consistency, party/target identity, save/reload and a separate returned-report lead. The range
+  fixture now explicitly sets its expected cap of 3; nested receipt readers inspect all fields.
+  The adjacent decoy/support test also needed its previous report/cooldown lifecycle completed
+  before staging a second dispatch. No scheduling guard or report-assessment policy changed.
+- Camp repair checkpoint `54e60ce3ac`: Mac C++ test build succeeded; **23 cases / 2002 assertions passed**,
+  seed `20260920`, selector `[camp_signal],[phase4_signal_observation],
+  [phase4_sound_observation],[phase4_decoy_signal_control],[camp_map][origin]`. Evidence is in
+  `build_logs/camp-signal-fixes/`: `red-tests.log`, `redispatch-isolated.log`, `build-final.log`
+  and `tests-final.log`. No unread-JSON errors remain in the final run. Changed classes are C++
+  source/tests; Windows/Linux/native play and GitHub Actions are not claimed by this local gate.
+  Final structured review (`review-final.json`) found no actionable defects; `git diff --check`
+  passed. No harness implementation, supervisor launch or native play occurred during this fix.
+  The prior manual handoff's history/registry/pressure-locality findings remain separate and
+  unresolved. Refresh the Tiles executable/source receipt before eventual native play.
+- Astyle **3.1** applied to changed code; pre-existing unrelated formatting retained.
+  `git diff --check` passed. Structured autoreview `--mode local --prompt-file
+  build_logs/staggered-signals/review-context.md` returned clean with no actionable findings;
+  result and full log are retained beside the tests. Changed classes: C++ source/tests and docs.
+  Windows/Linux build/native checks and new GitHub Actions results are not claimed here.
+
+Phase-3 supervisor launch remains on owner hold. After an explicit resume, the installed service's supported
+start/status route owns that lifecycle; a running service is not acceptance. The pending owner
+trigger must be processed before ordinary harness/gameplay workers. Preserve the baseline save,
+binary and timing context while improving the harness and performing comparable native waits.
+
+## Historical phase-2 handoff
 
 ## Current handoff
 
