@@ -1,3 +1,77 @@
+# Current handoff — performance FS refreeze, 2026-09-20
+
+**Owner hold remains active.** The latest WEC authorizes specification incorporation only. No
+Phase 3, product implementation, gameplay, automatic review/restart or native campaign resumed.
+The earlier broad performance trigger is consumed as a specification request by this refreeze;
+its implementation/playtest work remains open in the FS, not silently accepted or launched.
+
+- Source inspected: main `Cataclysm-AOL`, `dev@a46200ef7884ae62a8aedd58e27d3f08a5f2d5bb`.
+  Product source/tests and unrelated `.agents/skills/typesafe-ai/`/`skills-lock.json` remain untouched.
+- `.de67/FS.md` adds R-HARNESS-PERFORMANCE, R-CAOL-SIGNAL-PROOF, R-CAOL-TRAVELLING-COST and
+  R-CAOL-EXIT-COST. All are open. The shared driver and alarms precede native proof acceptance;
+  optional experiments remain deferred. Earlier accepted identities/receipts retain their ceilings.
+- Reconciled the superseded mandatory every-turn distant discovery wording with the owner-approved
+  fifteen-minute notice scale and permissible missed brief visual exposures. Nearby perception,
+  combat and movement stay responsive. Current composed sampler/staffed-observer delay needs
+  measurement; sampler coverage alone does not prove recipient notice.
+- Direct fixes `463b1a810d`/`54e60ce3ac` retain their focused test evidence below. New native
+  signal/camp before/after work uses representative source-bound journeys, real wait completion,
+  populated/active-source workloads, original sound age and separate camp/report provenance.
+  The empty-map benchmark is not whole-game acceptance.
+- Travelling reproduction means the group follows the player while travelling and enters the
+  loaded bubble. Duplicate pre/post movement authority and unchanged failed-query work are concrete
+  source leads; their historical slowdown contribution remains unproved. The separate exit selector
+  has confirmed area/cross-product work. Factorio, Cogmind and pinned CDDA primary-source findings
+  narrow repair to existing owners and finite relevant-change reuse; no imported balance/framework.
+- All 37 prior stable FS slice identities are preserved; four new identities add obligations.
+  Existing durable acceptance starts at 63 rows; preservation and workspace projection are checked
+  below. No new claim receives old acceptance. Prior history/registry/pressure-locality findings
+  and R-CAOL-NATIVE-REGRESSION remain at their existing unresolved scope.
+
+- [ ] R-HARNESS-PERFORMANCE — Real-turn performance alarms through the shared driver; no implementation/native acceptance yet.
+  - DFS slices: `R-HARNESS-PERFORMANCE-S001`
+- [ ] R-CAOL-SIGNAL-PROOF — Native signal/camp before/after behavior and populated performance remain unproved.
+  - DFS slices: `R-CAOL-SIGNAL-PROOF-S001`
+- [ ] R-CAOL-TRAVELLING-COST — Existing-owner contact repair and measured travelling encounter remain open.
+  - DFS slices: `R-CAOL-TRAVELLING-COST-S001`
+- [ ] R-CAOL-EXIT-COST — Separate perimeter/local-neighbor exit optimization and return proof remain open.
+  - DFS slices: `R-CAOL-EXIT-COST-S001`
+
+## Current context audit and preparation
+
+Host `/Users/josefhorvath/.codex/AGENTS.md`, root AGENTS/Agents, COMMIT_POLICY, README, current
+ledger/mutation/test guidance, phase3 policy JSON/contracts and witness contract were inspected for
+scope. Useful command/evidence/ownership facts are retained. Phase-3 dispatch rules are dormant
+under the explicit owner hold; no conflicting active procedure requires moving a surface. The
+compiled `.d67` is machine policy paired with its JSON source, not a second owner instruction.
+No no-go-zone was inventoried/read and no contributing/licence/design surface was moved.
+The phase skill's older four-file wording differs from the installed setup helper, which prepares
+six current policy/runtime files; follow the helper's existing compatibility route and preserve
+those files rather than recreate an obsolete orchestrator guide.
+
+The phase owner received and read the host guidance. The fresh probe coordinator received only its
+bounded brief; nonce workers received isolated prompts without inherited conversation. No reviewer
+context is claimed. Audited guidance binding uses the actual host source, not inferred equivalence.
+Fresh app-server config/read confirmed the trusted project Luna default with no default effort.
+Coordinator `01a0bf19-bf6b-72d1-ba5d-9cbafed92ec6` successfully spawned sequential Luna medium/high
+(model omitted) and Terra medium/high (explicit model), all `fork_turns=none`; child turn_contexts
+independently verify effective models/efforts and exact nonce replies. The runner was reaped after
+its buffered notification adapter timed out; all child/coordinator completions had already persisted.
+Evidence: `.de67/state/worker-capability-proof-performance-20260920.json`. No game/coordinator for
+Phase 3 was launched. Detailed source/test/setup checks live in `build_logs/performance-fs-20260920/`.
+
+Workspace setup succeeded with `origin dev`, the four freshly proved pairs and audited host guidance.
+It retained lineage `semantic-surface-cockpit`, preserved all six existing runtime policy files,
+proved delivery projection on a disposable state copy, retained the guarded upstream hook and pushed
+the already committed backlog. All 63 acceptance rows are byte-equivalent by ordered content hash
+`71a33dd5e55475b9bcd971279db6f859d86abbcc3d8e53a35c0856cb746a2c2d` before/after.
+The FS has 41 unique balanced slice blocks (37 retained + 4 new); prior checkbox statuses remain
+unchanged. The four touched prior blocks only reconcile cadence or add the alarm dependency.
+`git diff --check` passes; no product source, tests or harness code changed. This is docs-only
+validation, not a new compile, native gameplay pass or GitHub Actions claim.
+
+## Prior direct checkpoint and evidence (historical authority)
+
 # Direct performance checkpoint; Phase 3 on owner hold (2026-09-20)
 
 **Current owner hold:** Josef asked to pause before starting playtesting rounds so he can ask

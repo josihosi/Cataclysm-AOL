@@ -1,5 +1,73 @@
 # WEC — Affordable playtests, reliable harness and safer subsystem changes
 
+## Current owner addition — performance and travelling hostiles, 2026-09-20
+
+Josef now requests a combined discussion/specification pass directly into the existing `.de67/FS.md`.
+Use the Phase-2 authoring surface, resolving routine design choices within this brief; do not create
+a parallel plan or start Phase 3. Preserve earlier useful requirements and accepted evidence at
+their actual ceilings. This addition supersedes conflicting current cadence or scope wording below.
+Keep the final changes on `dev` in the main workspace, checkpoint and push through its existing
+upstream hook. The user previously authorized deletion of superseded machinery: Git is its archive.
+
+Exact current request:
+> ok lets do a combination of de67 1 and 2 ok? lets go right into the current FS.md ok? we got the performance alarm in the playtest harness not yet in the FS. we got the additional playtests for the changes you just made, not yet in FS. we got the stuff about bandits you just found not yet in the FS. for that last one, can you do online research? if theres a game that has similiar gameplay, we could steal the mechanics and ensure that you dont overengineer stuff thats never gonna happen.
+
+The three additions belong in one coherent current FS:
+
+1. **Harness performance alarms.** Deliver the earlier request for a bad-performance alarm system
+   alongside the reliable shared operation driver. Distinguish slow real game turns, spikes,
+   sustained regression and stalled game-time progress from expected input waits, pauses, loading,
+   saving and transport delays. Return actionable measured evidence with current operation state.
+   Use comparable observed baselines and explicit scenario expectations; do not invent universal
+   milliseconds, fake success from a timeout, or automatically resubmit a native action. Integrate
+   into the existing performance/evidence owners, not a second monitoring service. Preserve the
+   deletion/consolidation requirement when existing diagnostics are superseded.
+2. **Proof for the direct performance and camp fixes.** Commits `463b1a810d` and `54e60ce3ac`
+   changed stationary light/fire/smoke discovery, sound observation ownership, and matching staffed
+   camp clues to scout confirmations. Current local evidence is in `.de67/work-ledger.md` and
+   `build_logs/staggered-signals/`, `build_logs/camp-signal-fixes/`; inspect the actual source.
+   Existing test passes and an empty-map collector benchmark are not native gameplay/performance
+   acceptance. Add the smallest sufficient source-bound before/after native cases: moving or
+   extinguished emitters, brief versus sustained signals, discovery-phase/sector boundaries,
+   one-shot sound retention without replay, camp/scout confirmation with distinct report origin,
+   save/reload/bubble changes and real wait completion. Reuse representative journeys and current
+   coverage rather than generating a Cartesian product of scenarios. Reliable harness execution
+   and alarms precede acceptance of these playtests.
+3. **Affordable loaded bandit/cannibal behaviour.** Josef recalls groups following him while
+   travelling, entering the reality bubble and tanking performance. His answer was exactly
+   "Following me while travelling", not a basecamp watch account. Investigate/fix duplicated
+   movement work, repeated unchanged failed routes and the separate scout exit-selection hotspot
+   where confirmed; prove the travelling encounter rather than treating a basecamp test as its
+   reproduction. Preserve responsive nearby attacks, survival, pursuit, actor ownership, pair
+   cohesion and return/save semantics. Prefer the smallest existing-owner repair. Avoid a new AI
+   framework, speculative sector/job machinery, permanent path registry or a blanket slow tactical
+   cadence. A successful investigation may dismiss a suspected edit when code/proof shows it is
+   unnecessary. External game examples are mechanism evidence, not permission to copy their balance
+   or introduce unrelated gameplay. The invocation agent is researching external comparisons in
+   parallel; the specification owner grounds the design in the current code and incorporates the
+   bounded primary-source findings when provided.
+
+Settled distant-signal product choices remain: a turn is one game second; up to fifteen game minutes
+to notice distant light/smoke/sound is acceptable, and Josef explicitly permits missing brief visual
+exposures between scheduled checks. Nearby ordinary perception and tactical movement remain
+responsive. One-shot sounds must survive to later relevant decisions without duplication or stale
+renewal. The current first implementation does not budget every known emitter or recipient; do not
+declare the whole performance problem solved from discovery-only measurements.
+
+Investigation evidence to verify, not an instruction to implement every suspicion:
+`build_logs/stalking-investigation/findings.md` records current source call paths and the passing
+real-adapter exit test (1 case / 587 assertions). Eligible ordinary local-contact groups can execute
+movement before and after normal NPC processing; `npc::update_path` caches a usable route but not a
+failed query. A separate homeward exit check performs a full loaded-z scan and candidate cross
+product; its blocked control solved 25 local routes in one invocation. This has not reproduced the
+owner's travelling slowdown. Previous retained game profiles primarily implicated light discovery.
+
+The pending performance mutation request is now authorized for specification incorporation here;
+reconcile its disposition and the current ledger once the frozen FS contains it. The old native
+campaign, implementation and de67 3 remain paused until a later explicit start. Do not reopen
+unrelated optional experiments, historical failures or accepted claims merely because this refreeze
+touches shared documentation. No product source/tests are to be changed during this pass.
+
 ## Current owner reconciliation — 2026-09-20
 
 Josef invoked “ok de67 2 please. merge with existing FS”. The contribution appended
