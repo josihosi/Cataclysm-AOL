@@ -620,14 +620,18 @@ not a larger test count or smaller files for their own sake.
   restart workers, change live tests, or authorize unrelated gameplay work.
 
 <!-- DE67:OWNER-CONTRACT:BEGIN -->
-Josef invoked DE67 2 on 2026-09-20 to merge the lean/reliable harness contribution into the
-existing FS. Preserve prior product intent, accepted evidence and unfinished regression work.
-Remove obsolete harness machinery in later delivery as specified; Git is its archive. Use FS.md
-as the single specification in project and tooling, with no DFS.md pointer. Finish this phase on
-dev in the main C-AOL checkout, remove the temporary dev worktree after safe transfer, checkpoint
-the authorized changes and push dev to origin/dev. The older preserved archive remains untouched.
-DE67 3 and gameplay remain stopped. Do not resume autonomous implementation, dispatch, automatic
-review/restart or the prior native campaign without a new explicit owner start.
+Josef explicitly instructed on 2026-09-20: “ok then start de67 3”. The prior Phase-2 work is
+complete at dev@d953261730. This is the new explicit owner start required by every earlier hold:
+implementation, worker dispatch, policy-governed review/restart and native gameplay testing may
+proceed under the current refrozen .de67/FS.md. Earlier phase-only and playtesting holds are
+historical and no longer stop that authorized delivery.
+Repair shared harness execution and add performance alarms before accepting the native signal,
+camp and travelling-hostile proof. Deliver the frozen FS, preserving prior accepted evidence at
+its original scope and unfinished regression obligations; optional experiments retain their FS
+dependencies. Remove obsolete harness machinery as specified; Git is its archive. Use FS.md as
+the single specification, with no DFS.md pointer. Work on dev in the main C-AOL checkout and
+checkpoint to origin/dev through the existing guarded hook. The temporary dev worktree is already
+removed; preserve the older archive and unrelated .agents/skills/typesafe-ai/ and skills-lock.json.
 <!-- DE67:OWNER-CONTRACT:END -->
 
 # WEC

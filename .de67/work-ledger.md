@@ -1,16 +1,18 @@
-# Current owner-contract reconciliation — Phase 3 remains stopped, 2026-09-20
+# Current execution authorization — Phase 3 start, 2026-09-20
 
-The marked current owner contract in `.de67/WEC.md` still stops DE67 3, gameplay, autonomous
-implementation, dispatch and automatic review or restart until a new explicit owner start. An
-uncommitted ledger-only start statement did not amend that contract and is not execution
-authority. No worker was dispatched and no gameplay or product implementation resumed.
+Josef explicitly instructed: “ok then start de67 3”. The marked current owner contract in
+`.de67/WEC.md` now carries that instruction and supersedes every earlier hold. Deliver the current
+refrozen `.de67/FS.md` from `dev@d953261730` in the main Mac workspace. Reliable shared harness
+execution and performance alarms precede native proof acceptance; proceed with the specified
+signal/camp and travelling-hostile work. Existing acceptance retains its evidence ceilings, and
+optional experiments retain their FS dependencies. No new implementation or gameplay acceptance
+is claimed by this restart. Unrelated `.agents/skills/typesafe-ai/` and `skills-lock.json` remain
+outside this work; the older archive is preserved and the temporary dev worktree is already gone.
 
-The Phase-2 repository outcome is already applied. The main checkout is on `dev` at
-`d953261730`, `origin/dev` points to the same commit, and the temporary dev worktree is absent.
-The older preserved archive worktree remains untouched. The pending later-delivery harness
-deletion and every unfinished regression or performance claim remain deferred because the
-current owner contract withholds Phase-3 execution. Unrelated `.agents/skills/typesafe-ai/` and
-`skills-lock.json` remain outside this work.
+Startup recovery: the first coordinator received an obsolete marked Phase-2 hold despite the
+new ledger authorization and dispatched no workers. The launcher stopped that supervisor and
+updated the existing marked owner-contract input with Josef's actual start instruction before
+restarting. No policy rule, frozen product requirement or durable acceptance was changed.
 
 # Prior handoff — performance FS refreeze, 2026-09-20
 
