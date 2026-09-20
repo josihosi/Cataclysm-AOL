@@ -1,0 +1,24 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-PLAYTEST-closure-natural-stalker-opportunism-003-fixture-cleanup",
+  "outcome": "The City-042 preparation copy removes only its player-visible pre-existing writhing stalker by native exact identity and preserves natural city zombies for later separate playtest use.",
+  "scenario": "r_zl_stalker_city042_baseline_cleanup_setup_mcw",
+  "query": {
+    "requirements": [
+      {
+        "key": "capabilities.r_zl_playtest.city_fixture_cleanup",
+        "op": "eq",
+        "value": "zero_credit_exact_native_baseline_stalker_removal",
+        "minimum_evidence": "declared"
+      }
+    ],
+    "preferences": [
+      {
+        "key": "runtime.entry_mode",
+        "op": "eq",
+        "value": "cockpit_live_session",
+        "minimum_evidence": "declared"
+      }
+    ]
+  }
+}

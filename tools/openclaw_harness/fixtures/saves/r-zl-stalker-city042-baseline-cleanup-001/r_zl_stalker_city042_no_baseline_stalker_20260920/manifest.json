@@ -1,0 +1,114 @@
+{
+  "name": "r_zl_stalker_city042_no_baseline_stalker_20260920",
+  "production_origin": {
+    "anti_promotion": true,
+    "cleanup": {
+      "cleanup_finished_at": "2026-09-19T23:43:37.852+00:00",
+      "cleanup_started_at": "2026-09-19T23:43:37.395+00:00",
+      "cleanup_started_epoch_seconds": 1789861417.395426,
+      "command": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/cataclysm-tiles --userdir .userdata/r-zl-stalker-city042-baseline-cleanup-001/ --world zl-natural-stalker-city-042-missed",
+      "expected_process_generation": {
+        "alive": true,
+        "birth_identity": "posix-lstart:Sun Sep 20 01:41:55 2026",
+        "command": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/cataclysm-tiles --userdir .userdata/r-zl-stalker-city042-baseline-cleanup-001/ --world zl-natural-stalker-city-042-missed",
+        "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/cataclysm-tiles",
+        "pid": 72591,
+        "schema": "caol-owned-process-generation-v1"
+      },
+      "final_process_generation": {
+        "alive": false,
+        "birth_identity": "",
+        "command": "",
+        "executable_path": "",
+        "pid": 72591,
+        "schema": "caol-owned-process-generation-v1"
+      },
+      "grace_seconds": 2.0,
+      "native_exit_credit": false,
+      "observed_process_generation": {
+        "alive": true,
+        "birth_identity": "posix-lstart:Sun Sep 20 01:41:55 2026",
+        "command": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/cataclysm-tiles --userdir .userdata/r-zl-stalker-city042-baseline-cleanup-001/ --world zl-natural-stalker-city-042-missed",
+        "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/cataclysm-tiles",
+        "pid": 72591,
+        "schema": "caol-owned-process-generation-v1"
+      },
+      "pid": 72591,
+      "signal": "SIGTERM",
+      "status": "terminated"
+    },
+    "credit": "setup_only_non_feature",
+    "declared_setup_only": true,
+    "runtime": {
+      "captured_head": "82eba6863c",
+      "executable_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/cataclysm-tiles",
+      "executable_sha256": "167731cd465f7f26b29a7ed99132a8bd40c429529b5dfa2eeec5593f7481db84",
+      "ok": true,
+      "runtime_relevant_paths": [
+        "src",
+        "data",
+        "lang",
+        "gfx",
+        "lua",
+        "mods",
+        "build-data",
+        "cmake",
+        "CMakeLists.txt",
+        "Makefile",
+        "make.sh",
+        "tools/llm_runner",
+        "tools/openclaw_harness/startup_harness.py",
+        "tools/openclaw_harness/semantic_broker.py",
+        "tools/openclaw_harness/semantic_state.py",
+        "tools/openclaw_harness/cockpit.py",
+        "tools/openclaw_harness/cockpit_file_bridge.py",
+        "tools/openclaw_harness/r009_technical_witness.py",
+        "tools/openclaw_harness/r021_direct_hp_setter_adapter.py",
+        "tools/openclaw_harness/r021_direct_hp_transaction.py",
+        "tools/openclaw_harness/r022_item_spawn_adapter.py",
+        "tools/openclaw_harness/r027_camp_signal_receipt.py",
+        "tools/openclaw_harness/scenario_registry_cli.py",
+        "tools/openclaw_harness/scenario_registry_store.py"
+      ],
+      "runtime_relevant_worktree_diff": [
+        "src/debug.cpp",
+        "src/debug.h",
+        "src/debug_menu.h",
+        "src/do_turn.cpp",
+        "src/do_turn.h",
+        "src/game.cpp",
+        "src/handle_action.cpp",
+        "src/live_light.cpp",
+        "src/live_light.h",
+        "src/monmove.cpp",
+        "src/physical_light.cpp",
+        "src/wish.cpp",
+        "src/writhing_stalker_ai.h",
+        "src/zombie_rider_overmap_ai.cpp",
+        "tools/openclaw_harness/cockpit.py",
+        "tools/openclaw_harness/cockpit_file_bridge.py",
+        "tools/openclaw_harness/scenario_registry_cli.py",
+        "tools/openclaw_harness/scenario_registry_store.py",
+        "tools/openclaw_harness/startup_harness.py"
+      ],
+      "runtime_source_sha256": "3ce3d3eacd981fb724a350708bb8a94831596555bbf36a3c01ac9ffed8512ccc",
+      "schema": 1,
+      "untracked_runtime_paths": [
+        "src/live_light.cpp",
+        "src/live_light.h"
+      ]
+    },
+    "saved_world": {
+      "fixture_tree_sha256": "1f1a8ba8e1b5aa4499647f15fd796ae78eb32edea1807d02747efc99512a87fd",
+      "source_path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r-zl-stalker-city042-baseline-cleanup-001/save/zl-natural-stalker-city-042-missed",
+      "source_tree_sha256": "1f1a8ba8e1b5aa4499647f15fd796ae78eb32edea1807d02747efc99512a87fd"
+    },
+    "schema": "setup-origin-capture-v1",
+    "source_report": {
+      "path": "/Volumes/CodexBulk/Schanigarten/workspaces/Cataclysm-AOL-hostile-ecology-dev/.userdata/r-zl-stalker-city042-baseline-cleanup-001/harness_runs/20260920_014155_2a05169538ea49498658d729bfef327a/probe.report.json",
+      "run_id": "3d41dc265cfd20d9fbe7a5e8dc1fa5bd06b9374090b5b4b13829baf00cfbadab",
+      "sha256": "4187fc7da50a2de04b7c98a5b9b24377f99a88dfb699ce1ad5b1b72b980eadef"
+    }
+  },
+  "save_transforms": []
+}

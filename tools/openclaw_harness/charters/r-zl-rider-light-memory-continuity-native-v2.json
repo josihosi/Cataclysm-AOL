@@ -1,0 +1,28 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "R-ZL-LIGHT-CONTINUITY rider consumer: one current-source loaded zombie rider samples the exposed powered lamp, keeps a finite source-keyed investigation memory after native source loss, preserves that active memory across native save/reload, and lets it expire without redraw or query refresh.",
+  "material_proof": "The disposable source-bound cockpit run records the exact fixture source, rider identity, native turn and sample before source-off; a native source-off observation with memory active and investigation intent; native save/reload receipts with the same memory still active and the source absent; and native waits beyond expiry showing inactive memory and no investigation/convergence reaction without a new sample.",
+  "current_uncertainty": "Whether the loaded rider fixture exposes a stable native source-off owner and retains the source-keyed memory through the declared save/reload continuation.",
+  "material_contradiction": [
+    "the lamp, rider, source sample, or turn cannot be bound to the current fixture",
+    "source-off is performed by debug mutation, guessed input, or an unadvertised owner",
+    "memory refreshes without a new physical sample, disappears before save/reload, or remains active beyond native expiry",
+    "save/reload uses a different run, binding, world, rider, or source identity",
+    "cleanup leaves any owned process or bridge live"
+  ],
+  "already_accepted_evidence": [
+    "Current-source rider and horde tests establish the finite-memory and recipient semantics but do not replace this native chain."
+  ],
+  "forbidden_shortcuts": [
+    "debug light-memory injection",
+    "direct state or save mutation",
+    "raw keyboard or guessed-key dispatch",
+    "fixture setup as feature proof",
+    "refreshing the source or querying a state that itself redraws the sample"
+  ],
+  "honest_stop_conditions": [
+    "stop at the first missing source-off owner, binding drift, save/reload divergence, expiry contradiction, or cleanup failure",
+    "seal only after active-before-off, active-after-off, active-after-reload, and inactive-after-expiry are independently journaled"
+  ],
+  "requested_evidence_ceiling": "focused"
+}

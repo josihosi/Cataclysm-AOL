@@ -1,0 +1,11 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "The City-042 preparation copy removes only its player-visible pre-existing writhing stalker by native exact identity and preserves natural city zombies for later separate playtest use.",
+  "material_proof": "The sealed journal must cite the initial visible identity, native removal receipt, post-removal absence, retained natural zombies, and native quicksave in the same fixture-preparation run.",
+  "current_uncertainty": "This preparation run establishes no following, pressure, combat, or attack behavior.",
+  "material_contradiction": [],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": ["Spawning any creature.", "Injecting zombie, player, attention, contact, destination, attack, hit, or outcome state.", "Editing raw saves."],
+  "honest_stop_conditions": ["The exact baseline stalker is removed, zombies remain, and a native quicksave is observed.", "The fixture lacks a unique player-visible baseline stalker identity."],
+  "requested_evidence_ceiling": "focused"
+}

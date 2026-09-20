@@ -1,0 +1,34 @@
+{
+  "manifest_version": 1,
+  "name": "r_zl_stalker_city042_baseline_cleanup_setup_mcw",
+  "description": "Zero-credit fixture preparation only: remove the one pre-existing writhing stalker from the City-042 fixture by exact native identity, retain naturally generated city zombies, and quicksave for a fresh later playtest copy.",
+  "profile": "r-zl-stalker-city042-baseline-cleanup-001",
+  "world": "zl-natural-stalker-city-042-missed",
+  "fixture": "r_zl_freeplay_city042_setup_20260916",
+  "fixture_profile": "zl-natural-stalker-city-042",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_playtest.city_fixture_cleanup": "zero_credit_exact_native_baseline_stalker_removal"
+  },
+  "runtime_contract": {
+    "permitted_input": ["debug:kill_exact_preexisting_writhing_stalker", "cockpit:game.act", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:spawn_monster", "debug:spawn_zombie", "debug:inject_attention", "debug:inject_contact", "debug:inject_opportunity", "debug:inject_destination", "debug:inject_attack", "debug:inject_hit", "debug:teleport", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-zl-stalker-city042-baseline-cleanup-001",
+    "fixture": "r_zl_freeplay_city042_setup_20260916",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r-zl-stalker-city042-baseline-cleanup-001", "fixture": "r_zl_freeplay_city042_setup_20260916", "helper": "native file bridge", "peekaboo": true, "ocr": false, "input": ["advertised native exact-identity cleanup and quicksave"], "cleanup": true},
+    "grants_gameplay_proof": false
+  },
+  "steps": [
+    {"kind": "wait", "label": "load_city_fixture_baseline", "seconds": 1.0, "capture_after": true},
+    {"kind": "native_semantic_bootstrap", "label": "bind_city_fixture_baseline", "native_semantic_checkpoint": {"required_actions": ["world.debug_kill_creature", "world.quicksave"], "required_state": "world", "require_initial_hud_world_ready_frame": false}},
+    {"kind": "cockpit_live_session", "label": "native_cleanup_and_quicksave", "bootstrap_only": false, "cleanup_on_finish": false, "objective": "Use exactly one advertised native world.debug_kill_creature action against the player-visible pre-existing mon_writhing_stalker identity, verify it is absent while natural city zombies remain, then world.quicksave. This run is fixture preparation and earns no gameplay credit.", "proof_targets": ["exact pre-existing stalker identity", "native zero-credit removal receipt", "stalker absent after removal", "natural city zombies retained", "native quicksave"], "authority": ["advertised native actions", "run.witness", "run.finish"], "invariants": ["no spawning", "no zombie or AI-state injection", "no raw save edits", "no player movement or behavior credit"], "live_operations": ["game.act"], "transition_timeout_seconds": 20.0, "observe_interval_seconds": 0.1}
+  ],
+  "evidence_contract": {"claim": "A clean City-042 fixture copy has no pre-existing writhing stalker while retaining its natural city population.", "load_only_verdict": "fixture setup only", "failure_rule": "No later gameplay credit is earned by this preparation run."},
+  "proof_route": {"precondition": ["load_city_fixture_baseline", "bind_city_fixture_baseline"], "production_behavior": ["native_cleanup_and_quicksave"], "terminal_persistence": ["native_cleanup_and_quicksave"], "artifact_verdict": ["native_cleanup_and_quicksave"], "disallowed_shortcuts": ["load_city_fixture_baseline"]}
+}

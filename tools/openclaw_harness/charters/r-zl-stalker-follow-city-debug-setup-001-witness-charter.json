@@ -1,0 +1,18 @@
+{
+  "schema": "caol-playtest-witness-charter-v1",
+  "claim": "After the one explicitly zero-credit native debug spawn of mon_writhing_stalker, the same actor follows the player through ordinary movement into naturally generated city-zombie pressure and normal AI enters an attack-resolution attempt.",
+  "material_proof": "The sealed journal must connect the exact one-stalker setup receipt, source/executable binding, run/world/player/stalker identities, player displacement and game time, native ancestry, natural zombie footing, and a native attack-resolution entry.",
+  "current_uncertainty": "The setup receipt alone proves no following, city pressure, or attack; each must be observed in the still-live same-world run.",
+  "material_contradiction": [],
+  "already_accepted_evidence": [],
+  "forbidden_shortcuts": [
+    "Debug-spawning any zombie or injecting attention, contact, opportunity, destination, attack, hit, or outcome.",
+    "Treating approach, intent, setup, or a fixture declaration as attack-resolution evidence.",
+    "Reusing a city save that already contains a prior setup stalker."
+  ],
+  "honest_stop_conditions": [
+    "A player-visible native attack-resolution entry is reached and journaled.",
+    "A new causally located source, harness, or native-world boundary prevents the connected evidence route."
+  ],
+  "requested_evidence_ceiling": "focused"
+}

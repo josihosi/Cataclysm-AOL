@@ -1,0 +1,7 @@
+{
+  "schema": "caol-coordinator-brief-v1",
+  "task_id": "R-ZL-PLAYTEST-closure-debug-stalker-city-001",
+  "outcome": "After the one explicitly zero-credit native debug spawn of mon_writhing_stalker, the same actor follows the player through ordinary movement into naturally generated city-zombie pressure and normal AI enters an attack-resolution attempt.",
+  "scenario": "r_zl_stalker_follow_city_debug_setup_mcw",
+  "query": {"requirements": [{"key": "capabilities.r_zl_playtest.stalker_follow_city", "op": "eq", "value": "one_zero_credit_debug_stalker_then_native_city_follow_pressure_and_attack", "minimum_evidence": "declared"}, {"key": "capabilities.r_zl_playtest.city_zombies", "op": "eq", "value": "natural_seed042_city_population_only", "minimum_evidence": "declared"}], "preferences": [{"key": "runtime.entry_mode", "op": "eq", "value": "cockpit_live_session", "minimum_evidence": "declared"}]}
+}

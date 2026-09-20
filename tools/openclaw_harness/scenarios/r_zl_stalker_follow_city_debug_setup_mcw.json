@@ -1,0 +1,44 @@
+{
+  "manifest_version": 1,
+  "name": "r_zl_stalker_follow_city_debug_setup_mcw",
+  "description": "Hybrid closure account: a single, explicitly zero-credit native debug spawn installs one writhing stalker into a fresh disposable copy of the natively-cleaned City-042 world. All following, city-zombie pressure, and any attack attempt must then arise through same-world native play.",
+  "profile": "r-zl-stalker-follow-city-debug-setup-012",
+  "world": "zl-natural-stalker-city-042-missed",
+  "fixture": "r_zl_stalker_city042_no_baseline_stalker_20260920",
+  "fixture_profile": "r-zl-stalker-city042-baseline-cleanup-001",
+  "replace_existing_worlds": true,
+  "capabilities": {
+    "runtime.entry_mode": "cockpit_live_session",
+    "capabilities.r_zl_playtest.stalker_follow_city": "one_zero_credit_debug_stalker_then_native_city_follow_pressure_and_attack",
+    "capabilities.r_zl_playtest.city_zombies": "natural_seed042_city_population_only"
+  },
+  "runtime_contract": {
+    "permitted_input": ["debug:spawn_writhing_stalker_once", "cockpit:game.act", "cockpit:game.wait", "cockpit:game.move_relative", "cockpit:run.witness", "cockpit:run.finish"],
+    "forbidden_input": ["debug:spawn_zombie", "debug:inject_attention", "debug:inject_contact", "debug:inject_opportunity", "debug:inject_destination", "debug:inject_attack", "debug:inject_hit", "debug:teleport", "direct-state-mutation", "raw-save-rewrite-after-install", "guessed-key"],
+    "setup_only_debug": true,
+    "disposable_copy": true,
+    "helpers": ["native file bridge"],
+    "permissions": [],
+    "platform": ["macos"],
+    "profile": "r-zl-stalker-follow-city-debug-setup-012",
+    "fixture": "r_zl_stalker_city042_no_baseline_stalker_20260920",
+    "requirements": {"os": "macos", "source": "current-worktree", "executable": "cataclysm-tiles", "profile": "r-zl-stalker-follow-city-debug-setup-012", "fixture": "r_zl_stalker_city042_no_baseline_stalker_20260920", "helper": "native file bridge", "peekaboo": true, "ocr": false, "input": ["one native setup spawn then advertised cockpit actions"], "cleanup": true},
+    "grants_gameplay_proof": true
+  },
+  "proof_gates": [{
+    "id": "one_zero_credit_stalker_setup_bound_to_city_run",
+    "label": "one exact zero-credit stalker setup receipt is bound to the city run",
+    "boundary_step": "bootstrap_same_world_city_play",
+    "predecessors": [],
+    "expectations": [{"kind": "saved_artifact", "predicate": {"artifact_kind": "native_debug_setup_intervention", "schema": "caol-native-debug-spawn-monster-receipt-v1", "creature_id": "mon_writhing_stalker", "target_offset": [0, 5, 0], "spawn_count": 1, "gameplay_credit": false, "same_run": true}}]
+  }],
+  "steps": [
+    {"kind": "wait", "label": "settle_natural_city_before_setup", "seconds": 1.0, "capture_after": true, "expected_visible_fact": "the fresh ordinary Missed city world has loaded before the one setup intervention"},
+    {"kind": "native_semantic_bootstrap", "label": "bind_fresh_city_world_before_setup", "native_semantic_checkpoint": {"required_actions": ["world.debug_menu"], "required_state": "world", "require_initial_hud_world_ready_frame": false}},
+    {"kind": "debug_spawn_monster", "label": "ordinary_exterior_path_then_zero_credit_stalker_south", "semantic_open_debug_menu": true, "pre_spawn_world_actions": ["world.toggle_safemode", "world.move.west", "world.move.west", "world.move.west", "world.move.south", "world.move.south", "world.move.south", "world.move.south", "world.move.south", "world.move.southwest", "world.move.southwest", "world.move.southeast"], "monster_query": "writhing stalker", "creature_id": "mon_writhing_stalker", "target_offset": [0, 5, 0], "target_keys": ["down", "down", "down", "down", "down"], "friendly": false, "hallucination": false, "group_radius": 0, "capture_after": false, "auto_acknowledge_interruptions": false, "expected_visible_fact": "the player first turns off ordinary safe mode and takes the declared exterior route into the naturally pursuing city crowd, including its accepted terminal blocked pressure boundary; one hostile writhing stalker is then created five tiles south; this receipt has zero gameplay credit"},
+    {"kind": "cockpit_live_session", "label": "bootstrap_same_world_city_play", "bootstrap_only": false, "cleanup_on_finish": false, "objective": "Adopt this exact city world and player after the one setup-only stalker receipt. Subsequent live operation must establish actual following before entering naturally generated city-zombie pressure, then preserve native approach or attack resolution rather than selecting it.", "proof_targets": ["same run/world/player/stalker identity continuity", "ordinary player-selected native movement establishes following", "natural city-zombie pressure or distraction", "normal-AI stalker attack-resolution entry or honest inconclusive boundary"], "authority": ["advertised native actions", "run.witness", "run.finish"], "invariants": ["exactly one debug-spawned mon_writhing_stalker is setup only", "no debug zombies", "no debug lead, destination, attention, contact, opportunity, hit, or attack", "same-world actor continuity is required"], "live_operations": ["game.act", "game.wait", "game.move_relative"], "transition_timeout_seconds": 20.0, "observe_interval_seconds": 0.1}
+  ],
+  "recommended_test_command": "python3 tools/openclaw_harness/r_zl_stalker_follow_city_contract_test.py",
+  "evidence_contract": {"claim": "after one zero-credit native stalker setup, ordinary player movement in the same city world can prove actual following and a naturally generated zombie-pressure opportunity in which normal stalker AI attempts an attack", "load_only_verdict": "setup receipt only / inconclusive for following or attack", "failure_rule": "No behavior credit without one exact setup receipt, same run/world/player/stalker continuity, native player movement evidence, natural city-zombie footing, and a native attack-resolution entry. Approach or declared intent alone is insufficient."},
+  "proof_route": {"precondition": ["settle_natural_city_before_setup", "ordinary_exterior_path_then_zero_credit_stalker_south"], "production_behavior": ["bootstrap_same_world_city_play"], "terminal_persistence": ["bootstrap_same_world_city_play"], "artifact_verdict": ["bootstrap_same_world_city_play"], "disallowed_shortcuts": ["ordinary_exterior_path_then_zero_credit_stalker_south"]}
+}

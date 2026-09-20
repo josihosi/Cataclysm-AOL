@@ -1,7 +1,7 @@
 {
   "manifest_version": 1,
   "name": "horde.predator_lifecycle_abstract_to_physical_mcw",
-  "description": "Current-source native lifecycle route: stage exactly one abstract writhing-stalker horde at five OMT, preserve its saved abstract footing, then use only normal live movement/wait actions to bring that same threat into the loaded map and observe one physical consequence.",
+  "description": "Current-source native lifecycle route: stage exactly one identified, route-bearing abstract writhing-stalker horde at five OMT, preserve its saved abstract footing, then use only normal live movement/wait actions to bring that same threat into the loaded map and observe one physical consequence.",
   "profile": "dev-harness",
   "world": "McWilliams",
   "profile_snapshot": "mcwilliams_live_debug_2026-04-07",
@@ -58,13 +58,13 @@
       "settle_seconds": 0.5,
       "capture_after": true,
       "proof_deferred_to_label": "audit_one_abstract_stalker_stage_receipt",
-      "expected_visible_fact": "the debug overmap-threat submenu returns to the live map after staging one writhing stalker five OMT away"
+      "expected_visible_fact": "the debug overmap-threat submenu returns to the live map after staging one identified, route-bearing abstract writhing stalker five OMT away"
     },
     {
       "kind": "audit_log_contains",
       "label": "audit_one_abstract_stalker_stage_receipt",
       "since_label": "stage_one_abstract_writhing_stalker_five_omt",
-      "required_patterns": ["debug overmap_spawn: id=writhing_stalker_5_omt"],
+      "required_patterns": ["debug overmap_spawn: id=writhing_stalker_5_omt", "abstract_predator_route=bound"],
       "abort_on_metadata_failure": true,
       "abort_verdict": "blocked_predator_lifecycle_abstract_stage_unproved",
       "abort_reason": "the same-run native debug log did not identify the one permitted five-OMT writhing-stalker abstract spawn",
@@ -125,11 +125,11 @@
         "kind": "audit_saved_hordes_near_player",
         "label": "audit_exactly_one_abstract_stalker_before_live_transition",
         "radius_ms": 140,
-        "required_hordes": [{"monster_id": "mon_writhing_stalker", "min_count": 1, "min_distance_ms": 100, "max_distance_ms": 140}],
+        "required_hordes": [{"monster_id": "mon_writhing_stalker", "min_count": 1, "min_distance_ms": 100, "max_distance_ms": 140, "destination_offset_ms": [0, 0, 0], "min_tracking_intensity": 1, "required_predator_fields": ["actor_id", "handoff_epoch", "last_advanced_turn"]}],
         "abort_on_metadata_failure": true,
         "abort_verdict": "blocked_predator_lifecycle_abstract_footing_missing",
-        "abort_reason": "saved horde_map did not retain the staged writhing stalker in the five-OMT abstract distance band after the native save/reload boundary and before any normal live action",
-        "expected_visible_fact": "saved horde_map contains one abstract writhing-stalker entry in the five-OMT distance band after reload and before the live transition"
+        "abort_reason": "saved horde_map did not retain the staged identified writhing stalker with its player route in the five-OMT abstract distance band after the native save/reload boundary and before any normal live action",
+        "expected_visible_fact": "saved horde_map contains one identified, route-bearing abstract writhing-stalker entry in the five-OMT distance band after reload and before the live transition"
       },
       {
         "kind": "native_semantic_bootstrap",
