@@ -32,6 +32,7 @@ from identity_binding import (
     _plain,
     _validate_round_manifest,
     authoritative_identity_binding,
+    component_identity,
     ecology_actor_identity,
     seal_complete_round_manifest,
 )
@@ -730,15 +731,193 @@ def _public_evidence_state(state: str) -> str:
     return "unknown"
 
 
-def _current_route_evidence(connection: sqlite3.Connection, manifest_id: str) -> Tuple[Mapping[str, Any], ...]:
-    manifest = connection.execute(
+@dataclass(frozen=True)
+class _RegistryQueryReadContext:
+    """One query-scoped, read-only projection of retained registry history.
+
+    Selection still receives the same complete per-candidate snapshots.  The
+    context only changes *how* those snapshots are assembled: a report binding
+    or current route is decoded once for the fixed registry read instead of
+    once for every capability or route that happens to cite it.
+    """
+
+    manifests: Mapping[str, sqlite3.Row]
+    route_rows_by_manifest: Mapping[str, Tuple[sqlite3.Row, ...]]
+    resolutions_by_route: Mapping[Tuple[str, str], Tuple[sqlite3.Row, ...]]
+    latest_manifest_binding_by_report: Mapping[str, sqlite3.Row]
+    retirement_manifest_ids: frozenset[str]
+    quarantine_rows_by_manifest: Mapping[str, Tuple[sqlite3.Row, ...]]
+    latest_quarantine_by_route: Mapping[Tuple[str, str], sqlite3.Row]
+    capabilities_by_manifest: Mapping[str, Tuple[sqlite3.Row, ...]]
+    evidence_rows_by_capability: Mapping[Tuple[str, str], Tuple[sqlite3.Row, ...]]
+    verifications_by_manifest: Mapping[str, Tuple[sqlite3.Row, ...]]
+
+
+def _registry_query_batches(values: Sequence[str], *, size: int = 500) -> Iterator[Tuple[str, ...]]:
+    """Yield bounded placeholder batches for a registry-sized read projection."""
+    for offset in range(0, len(values), size):
+        yield tuple(values[offset:offset + size])
+
+
+def _registry_query_rows_for_manifest_ids(
+    connection: sqlite3.Connection,
+    query_template: str,
+    manifest_ids: Sequence[str],
+) -> List[sqlite3.Row]:
+    """Run a static query over safely-bound manifest ID batches."""
+    rows: List[sqlite3.Row] = []
+    for batch in _registry_query_batches(manifest_ids):
+        placeholders = ", ".join("?" for _ in batch)
+        rows.extend(connection.execute(query_template.format(placeholders=placeholders), batch).fetchall())
+    return rows
+
+
+def _build_registry_query_read_context(
+    connection: sqlite3.Connection,
+    manifests: Sequence[sqlite3.Row],
+) -> _RegistryQueryReadContext:
+    """Load current-query inputs once without weakening immutable authority.
+
+    Every SQL result below is the same history used by the former per-candidate
+    lookups.  It is grouped only after SQLite has returned it; no lifecycle,
+    freshness, contradiction, or token decision is inferred from a shortcut.
+    """
+    manifest_by_id = {str(row["manifest_id"]): row for row in manifests}
+    manifest_ids = tuple(sorted(manifest_by_id))
+    empty: Mapping[str, Tuple[sqlite3.Row, ...]] = {}
+    if not manifest_ids:
+        return _RegistryQueryReadContext(
+            manifests=manifest_by_id,
+            route_rows_by_manifest=empty,
+            resolutions_by_route={},
+            latest_manifest_binding_by_report={},
+            retirement_manifest_ids=frozenset(),
+            quarantine_rows_by_manifest=empty,
+            latest_quarantine_by_route={},
+            capabilities_by_manifest=empty,
+            evidence_rows_by_capability={},
+            verifications_by_manifest=empty,
+        )
+
+    route_rows = _registry_query_rows_for_manifest_ids(
+        connection,
+        "SELECT manifest_id, capability_evidence_id, evidence_state, details_json, value_json "
+        "FROM capability_evidence_history WHERE manifest_id IN ({placeholders}) "
+        "AND capability_key = '_registry.proof_route' AND evidence_kind = 'route_resolution' "
+        "ORDER BY manifest_id, capability_evidence_id",
+        manifest_ids,
+    )
+    verification_rows = _registry_query_rows_for_manifest_ids(
+        connection,
+        "SELECT verification_id, manifest_id, report_id, route_key, details_json, "
+        "supersedes_verification_id, recorded_at, rowid AS verification_rowid "
+        "FROM verification_history WHERE manifest_id IN ({placeholders}) "
+        "ORDER BY manifest_id, recorded_at, verification_rowid",
+        manifest_ids,
+    )
+    resolution_rows = _registry_query_rows_for_manifest_ids(
+        connection,
+        "SELECT verification.verification_id, verification.manifest_id, verification.route_key, "
+        "verification.report_id, verification.details_json AS verification_details_json, "
+        "resolution.resolution_kind, resolution.binding_fingerprint, resolution.details_json "
+        "FROM verification_history AS verification JOIN verification_resolution_history AS resolution "
+        "ON resolution.verification_id = verification.verification_id "
+        "JOIN ( SELECT verification_id, MAX( resolution_event_id ) AS latest_event_id "
+        "FROM verification_resolution_history GROUP BY verification_id ) AS latest "
+        "ON latest.verification_id = resolution.verification_id "
+        "AND latest.latest_event_id = resolution.resolution_event_id "
+        "WHERE verification.manifest_id IN ({placeholders}) "
+        "ORDER BY verification.manifest_id, verification.route_key, verification.verification_id",
+        manifest_ids,
+    )
+    capability_rows = _registry_query_rows_for_manifest_ids(
+        connection,
+        "SELECT manifest_id, capability_key, value_json, declared_state, review_required "
+        "FROM manifest_capability_current WHERE manifest_id IN ({placeholders}) "
+        "ORDER BY manifest_id, capability_key",
+        manifest_ids,
+    )
+    retirement_rows = _registry_query_rows_for_manifest_ids(
+        connection,
+        "SELECT DISTINCT manifest_id FROM retirement_history WHERE manifest_id IN ({placeholders})",
+        manifest_ids,
+    )
+    quarantine_rows = _registry_query_rows_for_manifest_ids(
+        connection,
+        "SELECT manifest_id, route_key, quarantine_event_id, quarantine_kind, details_json "
+        "FROM quarantine_history WHERE manifest_id IN ({placeholders}) "
+        "ORDER BY manifest_id, quarantine_event_id",
+        manifest_ids,
+    )
+
+    route_rows_by_manifest: Dict[str, List[sqlite3.Row]] = {}
+    for row in route_rows:
+        route_rows_by_manifest.setdefault(str(row["manifest_id"]), []).append(row)
+    resolutions_by_route: Dict[Tuple[str, str], List[sqlite3.Row]] = {}
+    for row in resolution_rows:
+        resolutions_by_route.setdefault(
+            (str(row["manifest_id"]), str(row["route_key"])), []
+        ).append(row)
+    capabilities_by_manifest: Dict[str, List[sqlite3.Row]] = {}
+    for row in capability_rows:
+        capabilities_by_manifest.setdefault(str(row["manifest_id"]), []).append(row)
+    verifications_by_manifest: Dict[str, List[sqlite3.Row]] = {}
+    for row in verification_rows:
+        verifications_by_manifest.setdefault(str(row["manifest_id"]), []).append(row)
+    quarantine_rows_by_manifest: Dict[str, List[sqlite3.Row]] = {}
+    latest_quarantine_by_route: Dict[Tuple[str, str], sqlite3.Row] = {}
+    for row in quarantine_rows:
+        manifest_id = str(row["manifest_id"])
+        route_key = str(row["route_key"])
+        quarantine_rows_by_manifest.setdefault(manifest_id, []).append(row)
+        latest_quarantine_by_route[(manifest_id, route_key)] = row
+
+    report_ids = tuple(sorted({
+        str(row["report_id"] or "") for row in resolution_rows if str(row["report_id"] or "")
+    }))
+    latest_manifest_binding_by_report: Dict[str, sqlite3.Row] = {}
+    for batch in _registry_query_batches(report_ids):
+        placeholders = ", ".join("?" for _ in batch)
+        for row in connection.execute(
+                "SELECT report_id, payload_json FROM binding_history WHERE report_id IN (" + placeholders + ") "
+                "AND binding_kind = 'manifest' ORDER BY report_id, binding_event_id DESC",
+                batch,
+        ):
+            latest_manifest_binding_by_report.setdefault(str(row["report_id"]), row)
+
+    return _RegistryQueryReadContext(
+        manifests=manifest_by_id,
+        route_rows_by_manifest={key: tuple(rows) for key, rows in route_rows_by_manifest.items()},
+        resolutions_by_route={key: tuple(rows) for key, rows in resolutions_by_route.items()},
+        latest_manifest_binding_by_report=latest_manifest_binding_by_report,
+        retirement_manifest_ids=frozenset(str(row["manifest_id"]) for row in retirement_rows),
+        quarantine_rows_by_manifest={key: tuple(rows) for key, rows in quarantine_rows_by_manifest.items()},
+        latest_quarantine_by_route=latest_quarantine_by_route,
+        capabilities_by_manifest={key: tuple(rows) for key, rows in capabilities_by_manifest.items()},
+        # Named capability facts are read on demand below.  Loading every
+        # source-binding validation ever recorded would itself materialize a
+        # large accumulated history for capabilities not in this snapshot.
+        # The route, verification, and binding histories above are the shared
+        # repeated work this context must collapse.
+        evidence_rows_by_capability={},
+        verifications_by_manifest={key: tuple(rows) for key, rows in verifications_by_manifest.items()},
+    )
+
+
+def _current_route_evidence(
+    connection: sqlite3.Connection,
+    manifest_id: str,
+    *,
+    query_context: Optional[_RegistryQueryReadContext] = None,
+) -> Tuple[Mapping[str, Any], ...]:
+    manifest = query_context.manifests.get(manifest_id) if query_context is not None else connection.execute(
         "SELECT present, current_sha256 FROM manifest_current WHERE manifest_id = ?",
         (manifest_id,),
     ).fetchone()
     if manifest is None:
         raise ScenarioRegistryStoreError("Route evidence references a missing manifest")
     current_manifest_sha256 = manifest["current_sha256"]
-    rows = connection.execute(
+    rows = query_context.route_rows_by_manifest.get(manifest_id, ()) if query_context is not None else connection.execute(
         "SELECT capability_evidence_id, evidence_state, details_json, value_json FROM capability_evidence_history "
         "WHERE manifest_id = ? AND capability_key = '_registry.proof_route' "
         "AND evidence_kind = 'route_resolution' ORDER BY capability_evidence_id",
@@ -765,7 +944,9 @@ def _current_route_evidence(connection: sqlite3.Connection, manifest_id: str) ->
         # binding.  Keep that persisted authority exact when later reports on
         # the same route are reconciled; otherwise selection rereads evidence
         # that it never issued.
-        resolutions = () if str(row["evidence_state"]) == "first_run" else connection.execute(
+        resolutions = () if str(row["evidence_state"]) == "first_run" else (
+            query_context.resolutions_by_route.get((manifest_id, route_key), ())
+            if query_context is not None else connection.execute(
             "SELECT verification.verification_id, verification.report_id, verification.details_json AS verification_details_json, "
             "resolution.resolution_kind, resolution.binding_fingerprint, resolution.details_json FROM verification_history AS verification "
             "JOIN verification_resolution_history AS resolution "
@@ -776,18 +957,23 @@ def _current_route_evidence(connection: sqlite3.Connection, manifest_id: str) ->
             "WHERE latest.verification_id = verification.verification_id ) "
             "ORDER BY verification.verification_id",
             (manifest_id, route_key),
-        ).fetchall()
+        ).fetchall())
         for resolution in resolutions:
             manifest_binding_current = False
             # Binding ownership is indexed by the immutable report identity.
             # Do not scan historical manifest payloads here: apart from making
             # reconciliation quadratic, that would decode legacy rows whose
             # ambiguous ownership was deliberately rejected by migration v11.
-            for binding_row in connection.execute(
+            binding_rows = (
+                (() if (binding_row := query_context.latest_manifest_binding_by_report.get(
+                    str(resolution["report_id"] or "")
+                )) is None else (binding_row,))
+                if query_context is not None else connection.execute(
                 "SELECT payload_json FROM binding_history WHERE report_id = ? AND binding_kind = 'manifest' "
                 "ORDER BY binding_event_id DESC LIMIT 1",
                 (str(resolution["report_id"] or ""),),
-            ):
+            ))
+            for binding_row in binding_rows:
                 payload = _json_object(str(binding_row["payload_json"]), "manifest binding payload")
                 if payload.get("verification_id") != str(resolution["verification_id"]):
                     continue
@@ -840,6 +1026,8 @@ def _current_bootstrap_revalidation(
     *,
     manifest_id: str,
     route_evidence: Sequence[Mapping[str, Any]],
+    manifest: Optional[sqlite3.Row] = None,
+    query_context: Optional[_RegistryQueryReadContext] = None,
 ) -> Optional[Mapping[str, Any]]:
     """Return the current release only when it still covers every stale route."""
     if not route_evidence or any(
@@ -854,7 +1042,8 @@ def _current_bootstrap_revalidation(
             )
             for route in route_evidence):
         return None
-    manifest = connection.execute(
+    if manifest is None:
+        manifest = query_context.manifests.get(manifest_id) if query_context is not None else connection.execute(
         "SELECT present, current_sha256 FROM manifest_current WHERE manifest_id = ?",
         (manifest_id,),
     ).fetchone()
@@ -864,7 +1053,9 @@ def _current_bootstrap_revalidation(
     release: Optional[Mapping[str, Any]] = None
     release_event_ids = []
     for route in route_evidence:
-        row = connection.execute(
+        row = query_context.latest_quarantine_by_route.get(
+            (manifest_id, str(route["route_key"]))
+        ) if query_context is not None else connection.execute(
             "SELECT quarantine_event_id, quarantine_kind, details_json FROM quarantine_history "
             "WHERE manifest_id = ? AND route_key = ? ORDER BY quarantine_event_id DESC LIMIT 1",
             (manifest_id, str(route["route_key"])),
@@ -891,6 +1082,7 @@ def _current_manifest_certification_retry(
     *,
     manifest: sqlite3.Row,
     route_evidence: Sequence[Mapping[str, Any]],
+    query_context: Optional[_RegistryQueryReadContext] = None,
 ) -> bool:
     """Allow a changed, valid manifest to replace only stale route history.
 
@@ -927,7 +1119,15 @@ def _current_manifest_certification_retry(
         return False
     # Verification history is append-only; recorded_at is the chronology used
     # by the projection and remains stable even when IDs are content hashes.
-    latest = connection.execute(
+    if query_context is not None:
+        verification_rows = query_context.verifications_by_manifest.get(str(manifest["manifest_id"]), ())
+        latest = max(
+            verification_rows,
+            key=lambda row: (str(row["recorded_at"]), int(row["verification_rowid"])),
+            default=None,
+        )
+    else:
+        latest = connection.execute(
         "SELECT details_json FROM verification_history WHERE manifest_id = ? "
         "ORDER BY recorded_at DESC, rowid DESC LIMIT 1",
         (str(manifest["manifest_id"]),),
@@ -946,32 +1146,43 @@ def _current_lifecycle_state(
     manifest_id: str,
     present: bool,
     route_evidence: Sequence[Mapping[str, Any]],
+    manifest: Optional[sqlite3.Row] = None,
+    bootstrap_authority: Optional[Mapping[str, Any]] = None,
+    bootstrap_checked: bool = False,
+    query_context: Optional[_RegistryQueryReadContext] = None,
 ) -> Tuple[str, str]:
-    if connection.execute(
+    retirement = (
+        manifest_id in query_context.retirement_manifest_ids
+        if query_context is not None else connection.execute(
         "SELECT retirement_event_id FROM retirement_history WHERE manifest_id = ? "
         "ORDER BY retirement_event_id DESC LIMIT 1",
         (manifest_id,),
-    ).fetchone() is not None:
+    ).fetchone() is not None
+    )
+    if retirement:
         return "retired", "retirement_history"
     if not present:
         return "absent", "source_absent"
     states = {str(item["evidence_state"]) for item in route_evidence}
     if "contradicted" in states:
-        if _current_bootstrap_revalidation(
-                connection, manifest_id=manifest_id, route_evidence=route_evidence) is not None:
+        if (bootstrap_authority if bootstrap_checked else _current_bootstrap_revalidation(
+                connection, manifest_id=manifest_id, route_evidence=route_evidence,
+                manifest=manifest, query_context=query_context)) is not None:
             return "active", "current_bootstrap_authority"
         return "quarantined", "route_contradicted"
     if "stale" in states:
-        if _current_bootstrap_revalidation(
-                connection, manifest_id=manifest_id, route_evidence=route_evidence) is not None:
+        if (bootstrap_authority if bootstrap_checked else _current_bootstrap_revalidation(
+                connection, manifest_id=manifest_id, route_evidence=route_evidence,
+                manifest=manifest, query_context=query_context)) is not None:
             return "active", "current_bootstrap_authority"
         return "quarantined", "route_stale"
     latest_quarantine: Dict[str, str] = {}
-    for row in connection.execute(
+    quarantine_rows = query_context.quarantine_rows_by_manifest.get(manifest_id, ()) if query_context is not None else connection.execute(
         "SELECT route_key, quarantine_kind FROM quarantine_history WHERE manifest_id = ? "
         "ORDER BY quarantine_event_id",
         (manifest_id,),
-    ):
+    )
+    for row in quarantine_rows:
         latest_quarantine[str(row["route_key"])] = str(row["quarantine_kind"])
     if any(not kind.startswith("released_") for kind in latest_quarantine.values()):
         return "quarantined", "quarantine_history"
@@ -985,13 +1196,18 @@ def _fact_evidence_from_current_authority(
     capability_key: str,
     declared_state: str,
     route_evidence: Sequence[Mapping[str, Any]],
+    query_context: Optional[_RegistryQueryReadContext] = None,
 ) -> Tuple[str, Optional[str]]:
     route_states = {str(item["evidence_state"]) for item in route_evidence}
     if "contradicted" in route_states:
         return "contradicted", None
     if "stale" in route_states:
         return "stale", None
-    rows = connection.execute(
+    cached_rows = (
+        query_context.evidence_rows_by_capability.get((manifest_id, capability_key))
+        if query_context is not None else None
+    )
+    rows = cached_rows if cached_rows is not None else connection.execute(
         "SELECT evidence_state, verification_id, details_json FROM capability_evidence_history WHERE manifest_id = ? "
         "AND capability_key = ? AND evidence_kind != 'declaration' ORDER BY capability_evidence_id",
         (manifest_id, capability_key),
@@ -1003,11 +1219,12 @@ def _fact_evidence_from_current_authority(
     }
     superseded = {
         str(row["supersedes_verification_id"])
-        for row in connection.execute(
+        for row in (query_context.verifications_by_manifest.get(manifest_id, ()) if query_context is not None else connection.execute(
             "SELECT verification_id, supersedes_verification_id FROM verification_history "
             "WHERE manifest_id = ? AND supersedes_verification_id IS NOT NULL",
             (manifest_id,),
-        )
+        ))
+        if row["supersedes_verification_id"] is not None
         if str(row["verification_id"]) in {
             str(evidence["verification_id"])
             for evidence in rows
@@ -1043,15 +1260,22 @@ def _current_source_binding_validation_state(
     manifest_id: str,
     capability_key: str,
     manifest_sha256: str,
+    query_context: Optional[_RegistryQueryReadContext] = None,
 ) -> Optional[str]:
     """Return only a source-fact check bound to this exact manifest revision."""
-    rows = connection.execute(
+    cached_rows = (
+        query_context.evidence_rows_by_capability.get((manifest_id, capability_key))
+        if query_context is not None else None
+    )
+    rows = cached_rows if cached_rows is not None else connection.execute(
         "SELECT evidence_state, details_json FROM capability_evidence_history WHERE manifest_id = ? "
         "AND capability_key = ? AND evidence_kind = 'source_binding_validation' "
         "ORDER BY capability_evidence_id DESC",
         (manifest_id, capability_key),
     ).fetchall()
-    for row in rows:
+    for row in (reversed(rows) if cached_rows is not None else rows):
+        if cached_rows is not None and str(row["evidence_kind"]) != "source_binding_validation":
+            continue
         details = _json_object(str(row["details_json"]), "source-binding evidence details")
         if details.get("manifest_sha256") == manifest_sha256:
             return _public_evidence_state(str(row["evidence_state"]))
@@ -1172,11 +1396,14 @@ def build_registry_query_candidate_snapshot(
         "FROM manifest_current" + manifest_filter + " ORDER BY manifest_id",
         parameters,
     ).fetchall()
+    query_context = _build_registry_query_read_context(connection, manifests)
     for manifest in manifests:
         manifest_id = str(manifest["manifest_id"])
         declaration = _json_object(str(manifest["declaration_json"]), "manifest declaration")
         validation = _json_object(str(manifest["validation_json"]), "manifest validation")
-        route_evidence = _current_route_evidence(connection, manifest_id)
+        route_evidence = _current_route_evidence(
+            connection, manifest_id, query_context=query_context,
+        )
         known_footing: Dict[str, Any] = {}
         for field in ("fixture", "fixture_profile", "profile", "profile_snapshot", "profile_snapshot_profile", "world", "required_helpers"):
             value = declaration.get(field)
@@ -1193,6 +1420,8 @@ def build_registry_query_candidate_snapshot(
             manifest_id=manifest_id,
             present=bool(manifest["present"]),
             route_evidence=route_evidence,
+            manifest=manifest,
+            query_context=query_context,
         )
         review = _exclusive_source_review_state(
             connection,
@@ -1223,7 +1452,10 @@ def build_registry_query_candidate_snapshot(
         )
         if allow_current_manifest_retry:
             certification_retry = certification_retry or _current_manifest_certification_retry(
-                connection, manifest=manifest, route_evidence=route_evidence,
+                connection,
+                manifest=manifest,
+                route_evidence=route_evidence,
+                query_context=query_context,
             )
         if certification_retry:
             # Preserve stale startup-only history, but keep the current valid
@@ -1234,9 +1466,13 @@ def build_registry_query_candidate_snapshot(
         facts: Dict[str, Mapping[str, Any]] = {}
         fact_explanations: Dict[str, Mapping[str, Any]] = {}
         current_bootstrap_authority = _current_bootstrap_revalidation(
-            connection, manifest_id=manifest_id, route_evidence=route_evidence,
+            connection,
+            manifest_id=manifest_id,
+            route_evidence=route_evidence,
+            manifest=manifest,
+            query_context=query_context,
         )
-        capabilities = connection.execute(
+        capabilities = query_context.capabilities_by_manifest.get(manifest_id, ()) if query_context is not None else connection.execute(
             "SELECT capability_key, value_json, declared_state, review_required "
             "FROM manifest_capability_current WHERE manifest_id = ? ORDER BY capability_key",
             (manifest_id,),
@@ -1252,6 +1488,7 @@ def build_registry_query_candidate_snapshot(
                 manifest_id=manifest_id,
                 capability_key=key,
                 manifest_sha256=str(manifest["current_sha256"] or ""),
+                query_context=query_context,
             ) if validation_required else None
             if validation_required:
                 evidence_state, proof_depth = (
@@ -1269,6 +1506,7 @@ def build_registry_query_candidate_snapshot(
                     capability_key=key,
                     declared_state=str(capability["declared_state"]),
                     route_evidence=() if certification_retry else route_evidence,
+                    query_context=query_context,
                 )
                 if certification_retry and key in {
                         "capabilities.bandit.r005",
@@ -5125,6 +5363,13 @@ _CERTIFICATION_COMPONENT_ORDER = (
     "fixture", "profile", "world_save", "player", "actors",
 )
 
+_CERTIFICATION_ROUND_COMPACT_STORAGE_SCHEMA = "caol-certification-round-storage-v2"
+_CERTIFICATION_ROUND_COMPACT_MANIFEST_FIELDS = (
+    "schema", "version", "round_id", "scenario_lineage_id", "authority_id",
+    "authority_kind", "event_stream_id", "event_stream_schema", "binding_id",
+    "manifest_sha256",
+)
+
 
 def _round_manifest_json(manifest: Mapping[str, Any]) -> str:
     """Canonicalize a sealed (possibly MappingProxyType) manifest."""
@@ -5135,6 +5380,112 @@ def _round_manifest_json(manifest: Mapping[str, Any]) -> str:
             return [plain(item) for item in value]
         return value
     return _json_text(plain(manifest))
+
+
+def _compact_round_manifest_json(manifest: Mapping[str, Any]) -> str:
+    """Store only the sealed envelope; component facts remain indexed rows.
+
+    The former row duplicated every authoritative component twice inside the
+    full manifest, in addition to the immutable component table.  This compact
+    envelope deliberately retains every field needed to reconstruct and verify
+    the exact original full manifest without rewriting legacy full rows.
+    """
+    binding = manifest["binding"]
+    assert isinstance(binding, Mapping)
+    return _json_text({
+        "storage_schema": _CERTIFICATION_ROUND_COMPACT_STORAGE_SCHEMA,
+        "round_manifest": {
+            field: _plain(manifest[field])
+            for field in _CERTIFICATION_ROUND_COMPACT_MANIFEST_FIELDS
+        },
+        "binding_schema": _plain(binding["schema"]),
+        "component_order": list(_CERTIFICATION_COMPONENT_ORDER),
+    })
+
+
+def _certification_round_manifest_from_row(
+    connection: sqlite3.Connection,
+    row: sqlite3.Row,
+) -> Mapping[str, Any]:
+    """Reconstruct and re-seal one full certification manifest from storage.
+
+    Legacy rows are already full manifests and remain untouched.  Compact rows
+    rehydrate authoritative facts from their indexed component records, check
+    each stored JSON digest, then run the normal complete-manifest validator.
+    """
+    stored = _json_object(str(row["manifest_json"]), "certification round manifest")
+    if stored.get("storage_schema") != _CERTIFICATION_ROUND_COMPACT_STORAGE_SCHEMA:
+        manifest: Mapping[str, Any] = stored
+    else:
+        if set(stored) != {
+                "storage_schema", "round_manifest", "binding_schema", "component_order"}:
+            raise ScenarioRegistryStoreError("compact certification manifest envelope has unsupported fields")
+        outer = stored.get("round_manifest")
+        if not isinstance(outer, Mapping) or set(outer) != set(_CERTIFICATION_ROUND_COMPACT_MANIFEST_FIELDS):
+            raise ScenarioRegistryStoreError("compact certification manifest envelope is incomplete")
+        if stored.get("component_order") != list(_CERTIFICATION_COMPONENT_ORDER):
+            raise ScenarioRegistryStoreError("compact certification manifest component order is unsupported")
+        component_rows = connection.execute(
+            "SELECT component_sequence, component_name, fact_sha256, fact_json "
+            "FROM certification_round_component WHERE round_id = ? ORDER BY component_sequence",
+            (str(outer["round_id"]),),
+        ).fetchall()
+        if len(component_rows) != len(_CERTIFICATION_COMPONENT_ORDER):
+            raise ScenarioRegistryStoreError("compact certification manifest has incomplete component evidence")
+        authoritative: Dict[str, Any] = {}
+        components: Dict[str, Mapping[str, Any]] = {}
+        for sequence, (name, component_row) in enumerate(
+                zip(_CERTIFICATION_COMPONENT_ORDER, component_rows), start=1):
+            if (int(component_row["component_sequence"]) != sequence or
+                    str(component_row["component_name"]) != name):
+                raise ScenarioRegistryStoreError("compact certification manifest component order drifted")
+            fact_json = str(component_row["fact_json"])
+            if hashlib.sha256(fact_json.encode("utf-8")).hexdigest() != str(component_row["fact_sha256"]):
+                raise ScenarioRegistryStoreError("compact certification manifest component digest mismatch")
+            try:
+                fact = json.loads(fact_json)
+            except json.JSONDecodeError as exc:
+                raise ScenarioRegistryStoreError("compact certification manifest component is not valid JSON") from exc
+            if _json_text(fact) != fact_json:
+                raise ScenarioRegistryStoreError("compact certification manifest component is not canonical JSON")
+            try:
+                components[name] = component_identity(name, fact)
+            except (TypeError, ValueError) as exc:
+                raise ScenarioRegistryStoreError("compact certification manifest component is invalid") from exc
+            authoritative[name] = fact
+        manifest = {
+            **{field: _plain(outer[field]) for field in _CERTIFICATION_ROUND_COMPACT_MANIFEST_FIELDS},
+            "binding": {
+                "schema": _plain(stored["binding_schema"]),
+                "components": components,
+                "authoritative_components": authoritative,
+                "sha256": str(outer["binding_id"]),
+            },
+        }
+    try:
+        _validate_round_manifest(manifest)
+    except (RoundManifestError, TypeError, ValueError) as exc:
+        raise ScenarioRegistryStoreError(f"stored certification manifest is invalid: {exc}") from exc
+    if (str(manifest["round_id"]) != str(row["round_id"]) or
+            str(manifest["binding_id"]) != str(row["binding_id"]) or
+            str(manifest["manifest_sha256"]) != str(row["manifest_sha256"])):
+        raise ScenarioRegistryStoreError("stored certification manifest identity does not match its registry row")
+    return manifest
+
+
+def certification_round_manifest(
+    connection: sqlite3.Connection,
+    round_id: str,
+) -> Mapping[str, Any]:
+    """Retrieve the verified, full sealed manifest for one immutable round."""
+    row = connection.execute(
+        "SELECT round_id, binding_id, manifest_sha256, manifest_json "
+        "FROM certification_round WHERE round_id = ?",
+        (str(round_id),),
+    ).fetchone()
+    if row is None:
+        raise ScenarioRegistryStoreError("certification round is not registered")
+    return _certification_round_manifest_from_row(connection, row)
 
 
 def register_certification_round(
@@ -5150,6 +5501,7 @@ def register_certification_round(
     # Registry facts are JSON records, so continue from the verified plain
     # serialization instead of handing ``mappingproxy`` values to sqlite.
     manifest = json.loads(manifest_json)
+    compact_manifest_json = _compact_round_manifest_json(manifest)
     binding = manifest["binding"]
     authoritative = binding["authoritative_components"]
     components = tuple(
@@ -5182,7 +5534,8 @@ def register_certification_round(
             "SELECT * FROM certification_round WHERE round_id = ?", (str(manifest["round_id"]),)
         ).fetchone()
         if existing is not None:
-            if str(existing["manifest_json"]) != manifest_json:
+            existing_manifest = _certification_round_manifest_from_row(connection, existing)
+            if _round_manifest_json(existing_manifest) != manifest_json:
                 raise ScenarioRegistryStoreError("certification round ID already has different immutable facts")
             return {"round_id": str(manifest["round_id"]), "binding_id": str(manifest["binding_id"]), "idempotent": True}
         try:
@@ -5191,7 +5544,7 @@ def register_certification_round(
                 "event_stream_id, binding_id, manifest_sha256, manifest_json) VALUES(?,?,?,?,?,?,?,?)",
                 (str(manifest["round_id"]), str(manifest["scenario_lineage_id"]), str(manifest["authority_id"]),
                  str(manifest["authority_kind"]), str(manifest["event_stream_id"]), str(manifest["binding_id"]),
-                 str(manifest["manifest_sha256"]), manifest_json),
+                 str(manifest["manifest_sha256"]), compact_manifest_json),
             )
             for sequence, (name, fact) in enumerate(components, 1):
                 fact_json = _json_text(fact)
@@ -5447,7 +5800,7 @@ def bind_certification_actors(
     ).fetchone()
     if round_row is None:
         raise ScenarioRegistryStoreError("certification round is not registered")
-    manifest = json.loads(str(round_row["manifest_json"]))
+    manifest = _certification_round_manifest_from_row(connection, round_row)
     sealed = manifest["binding"]["authoritative_components"]
     if sealed.get("actors"):
         raise ScenarioRegistryStoreError("certification round already has pre-bound actors")
@@ -7018,7 +7371,7 @@ def _certification_round_check(
         return {"eligible": False, "reason": "certification_round_lifecycle_mismatch", "round_id": round_id}
     if any(str(lifecycle[key]) != expected[key] for key in ("authority_id", "binding_id", "event_stream_id")):
         return {"eligible": False, "reason": "certification_round_event_identity_mismatch", "round_id": round_id}
-    manifest = json.loads(str(row["manifest_json"]))
+    manifest = _certification_round_manifest_from_row(connection, row)
     authoritative = manifest["binding"]["authoritative_components"]
     expected_source = str(authoritative["scenario"].get("content_sha256", ""))
     observed_source = str((report_facts.get("manifest") or {}).get("source_sha256", "") or "").strip()
@@ -8361,11 +8714,12 @@ def _capsule_binding_from_report(
     round_id = str(round_facts.get("round_id", "")).strip() if isinstance(round_facts, Mapping) else ""
     if round_id:
         row = connection.execute(
-            "SELECT binding_id, manifest_json FROM certification_round WHERE round_id = ?", (round_id,)
+            "SELECT round_id, binding_id, manifest_sha256, manifest_json FROM certification_round WHERE round_id = ?",
+            (round_id,),
         ).fetchone()
         if row is None:
             raise ScenarioRegistryStoreError("diagnostic capsule round binding is not registry-owned")
-        manifest = _json_object(str(row["manifest_json"]), "certification round manifest")
+        manifest = _certification_round_manifest_from_row(connection, row)
         binding = manifest.get("binding")
         if not isinstance(binding, Mapping) or str(binding.get("sha256", "")) != str(row["binding_id"]):
             raise ScenarioRegistryStoreError("diagnostic capsule round binding is stale")
@@ -9519,12 +9873,12 @@ def prepare_windows_feel_handoff(
     round_id = str(round_facts.get("round_id", "")).strip()
     if not binding_id or not round_id:
         raise ScenarioRegistryStoreError("certification verification round identity is incomplete")
-    certification_round = connection.execute(
-        "SELECT manifest_json FROM certification_round WHERE round_id = ?", (round_id,)
-    ).fetchone()
-    if certification_round is None:
-        raise ScenarioRegistryStoreError("certification verification round is unavailable")
-    manifest = _json_object(str(certification_round["manifest_json"]), "certification round manifest")
+    try:
+        manifest = certification_round_manifest(connection, round_id)
+    except ScenarioRegistryStoreError as exc:
+        if str(exc) == "certification round is not registered":
+            raise ScenarioRegistryStoreError("certification verification round is unavailable") from exc
+        raise
     binding = manifest.get("binding")
     authoritative = binding.get("authoritative_components") if isinstance(binding, Mapping) else None
     executable = authoritative.get("executable") if isinstance(authoritative, Mapping) else None

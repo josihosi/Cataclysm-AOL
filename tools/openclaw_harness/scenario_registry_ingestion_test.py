@@ -2137,6 +2137,110 @@ class ScenarioRegistryIngestionTest(unittest.TestCase):
             self.assertFalse(retired.token_eligible)
             connection.close()
 
+    def test_query_read_context_preserves_candidate_decisions_across_stale_rebound_and_contradiction(self) -> None:
+        """Batching retained reads cannot change query or launch authority."""
+        with tempfile.TemporaryDirectory() as temp_dir:
+            root = Path(temp_dir)
+            connection, scenarios, manifest_path = self.setup_phase4_terminal_gate_registry(root)
+            state = {"runtime": "compatible", "fixture": "compatible", "profile": "compatible"}
+            request = self.phase4_terminal_gate_request()
+
+            def compare(*, include_lifecycle_states=()):
+                baseline_statements = []
+                connection.set_trace_callback(baseline_statements.append)
+                try:
+                    with mock.patch.object(
+                            scenario_registry_store,
+                            "_build_registry_query_read_context",
+                            return_value=None,
+                    ):
+                        baseline = evaluate_registry_query_from_store(
+                            connection, request,
+                            include_lifecycle_states=include_lifecycle_states,
+                        )
+                finally:
+                    connection.set_trace_callback(None)
+                batched_statements = []
+                connection.set_trace_callback(batched_statements.append)
+                try:
+                    batched = evaluate_registry_query_from_store(
+                        connection, request,
+                        include_lifecycle_states=include_lifecycle_states,
+                    )
+                finally:
+                    connection.set_trace_callback(None)
+                self.assertEqual(batched.candidates, baseline.candidates)
+                self.assertEqual(batched.evaluation.candidates, baseline.evaluation.candidates)
+                self.assertEqual(batched.evaluation.ranked_scenario_ids, baseline.evaluation.ranked_scenario_ids)
+                self.assertLess(len(batched_statements), len(baseline_statements))
+                return batched
+
+            try:
+                def green_report():
+                    report = self.report_with_proof(manifest_path, status="green", feature_proof=True)
+                    report["step_ledger"] = [{"primitive_step": "terminal", "verdict": "green_terminal_audit_present"}]
+                    return report
+
+                first = self.ingest_named_report(
+                    connection, root, "first-green.probe.report.json", green_report(), state,
+                )
+                current = compare()
+                self.assertEqual(len(current.evaluation.ranked_scenario_ids), 1)
+                selected = execute_registry_query(connection, request, drafts_root=root / "drafts")
+                self.assertIsNotNone(selected.token_id)
+                self.assertTrue(reload_selection_token_for_launch(connection, str(selected.token_id)).accepted)
+
+                changed = self.phase4_terminal_gate_manifest()
+                changed["description"] = "changed source makes the former route stale"
+                self.write_json(manifest_path, changed)
+                rebuild_manifest_projection(connection, scenarios)
+                self.assertEqual(
+                    reconcile_report_bindings(connection, adapters=self.adapters(state)),
+                    {"reconciled": 1, "stale": 1},
+                )
+                stale = compare(include_lifecycle_states=("quarantined",))
+                self.assertEqual(stale.candidates[0].lifecycle_state, "active")
+                self.assertEqual(
+                    stale.candidates[0].explanation["route_evidence"][0]["evidence_state"], "stale",
+                )
+                self.assertFalse(reload_selection_token_for_launch(connection, str(selected.token_id)).accepted)
+
+                rebound = self.ingest_named_report(
+                    connection, root, "rebound-green.probe.report.json", green_report(), state,
+                )
+                self.assertEqual(rebound["eligibility"], "hard_proven")
+                current_again = compare()
+                self.assertEqual(len(current_again.evaluation.ranked_scenario_ids), 1)
+                rebound_selected = execute_registry_query(
+                    connection, request, drafts_root=root / "drafts",
+                )
+                self.assertIsNotNone(rebound_selected.token_id)
+                self.assertTrue(reload_selection_token_for_launch(
+                    connection, str(rebound_selected.token_id),
+                ).accepted)
+
+                red_report = self.report_with_proof(manifest_path, status="red", feature_proof=False)
+                red_report["step_ledger"] = [{"primitive_step": "terminal", "verdict": "red_terminal_audit_failed"}]
+                contradiction = self.ingest_named_report(
+                    connection, root, "current-red.probe.report.json", red_report, state,
+                )
+                self.assertEqual(contradiction["eligibility"], "contradicted")
+                contradicted = compare(include_lifecycle_states=("quarantined",))
+                self.assertEqual(contradicted.candidates[0].lifecycle_state, "quarantined")
+                self.assertEqual(
+                    contradicted.evaluation.candidates[0].hard_results[0].reason,
+                    "contradicted",
+                )
+                self.assertIsNone(execute_registry_query(
+                    connection, request, drafts_root=root / "drafts",
+                ).token_id)
+                self.assertFalse(reload_selection_token_for_launch(
+                    connection, str(rebound_selected.token_id),
+                ).accepted)
+                self.assertEqual(first["eligibility"], "hard_proven")
+            finally:
+                connection.close()
+
     def test_windows_feel_handoff_preserves_external_result_without_forging_a_machine_gate(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
             connection, _scenarios, manifest_path, report_path = self.setup_registry(Path(temp_dir))

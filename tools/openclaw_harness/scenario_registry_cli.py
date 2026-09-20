@@ -1225,7 +1225,8 @@ def _registry_launch_probe_namespace(selection: RegistryLaunchToken,
 
 def _registry_bootstrap_probe_namespace(
     selection: RegistryBootstrapToken, *, cockpit_live_session: bool = False,
-    post_relaunch_continuation: bool = False, profile_override: str = "",
+    post_relaunch_continuation: bool = False, saved_world_snapshot: str = "",
+    profile_override: str = "",
 ) -> argparse.Namespace:
     """Adapt a separately authorized bootstrap run into the same canonical probe route."""
     source_path = Path(selection.source_path).resolve()
@@ -1244,6 +1245,8 @@ def _registry_bootstrap_probe_namespace(
         command.extend(["--profile", profile_override])
     if post_relaunch_continuation:
         command.extend(["--fixture", "", "--post-relaunch-continuation"])
+        if saved_world_snapshot:
+            command.extend(["--saved-world-snapshot", saved_world_snapshot])
     if cockpit_live_session:
         command.append("--cockpit-live-session")
     return startup_harness.build_parser().parse_args(command)
@@ -1546,6 +1549,7 @@ def build_parser() -> argparse.ArgumentParser:
         action="store_true",
         help=argparse.SUPPRESS,
     )
+    bootstrap_launch.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
     bootstrap_launch.add_argument("--profile", default="", help=argparse.SUPPRESS)
     detached_bootstrap_launch = commands.add_parser(
         "registry-bootstrap-detached-launch",
@@ -1562,6 +1566,7 @@ def build_parser() -> argparse.ArgumentParser:
     detached_bootstrap_launch.add_argument(
         "--post-relaunch-continuation", action="store_true", help=argparse.SUPPRESS,
     )
+    detached_bootstrap_launch.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
     detached_bootstrap_launch.add_argument("--profile", default="", help=argparse.SUPPRESS)
     production_capture_command = commands.add_parser(
         "capture-production-fixture",
@@ -1573,6 +1578,15 @@ def build_parser() -> argparse.ArgumentParser:
     production_capture_command.add_argument("--profile", default="", help="profile containing the source world")
     production_capture_command.add_argument("--world", default="", help="explicit source world name")
     production_capture_command.add_argument("--overwrite", action="store_true", help="replace an existing fixture")
+    setup_capture_command = commands.add_parser(
+        "capture-setup-fixture",
+        help="capture one sealed zero-credit setup world for a later independent run",
+    )
+    setup_capture_command.add_argument("fixture", help="new immutable fixture name")
+    setup_capture_command.add_argument("--report", required=True, help="sealed setup-only scenario report")
+    setup_capture_command.add_argument("--profile", default="", help="profile containing the saved setup world")
+    setup_capture_command.add_argument("--world", default="", help="explicit source world name")
+    setup_capture_command.add_argument("--overwrite", action="store_true", help="replace an existing fixture")
     observation = commands.add_parser(
         "production-observe",
         help="run one transform-free ordinary probe and write uncredited source evidence",
@@ -1644,6 +1658,23 @@ def build_parser() -> argparse.ArgumentParser:
     detached_repair_launch.add_argument("--saved-world-snapshot", default="", help=argparse.SUPPRESS)
     detached_repair_launch.add_argument(
         "--post-relaunch-continuation", action="store_true", help=argparse.SUPPRESS,
+    )
+    detached_repair_reentry = commands.add_parser(
+        "registry-repair-reentry-detached-launch",
+        help="start one declared repair continuation on a fresh bound file bridge",
+    )
+    detached_repair_reentry.add_argument(
+        "repair_token", help="claimed predecessor repair token for the declared continuation",
+    )
+    detached_repair_reentry.add_argument(
+        "--session-dir", required=True,
+        help="new private file-backed bridge session directory",
+    )
+    detached_repair_reentry.add_argument("--witness-charter")
+    detached_repair_reentry.add_argument("--profile", default="", help=argparse.SUPPRESS)
+    detached_repair_reentry.add_argument(
+        "--saved-world-snapshot", required=True,
+        help="immutable saved-world directory produced by the predecessor segment",
     )
     repair_terminal = commands.add_parser(
         "registry-repair-finalize-no-report",
@@ -2065,6 +2096,9 @@ def _launch_bootstrap_file_bridge(args: argparse.Namespace, registry_path: Path)
         cockpit_command.extend(["--profile", str(args.profile)])
     if bool(getattr(args, "post_relaunch_continuation", False)):
         cockpit_command.append("--post-relaunch-continuation")
+        snapshot = str(getattr(args, "saved_world_snapshot", "") or "").strip()
+        if snapshot:
+            cockpit_command.extend(["--saved-world-snapshot", snapshot])
     reentry_command = [*cockpit_command, "--post-relaunch-continuation"] if session_reentries else []
     bridge_command = [
         sys.executable, str(Path(__file__).with_name("cockpit_file_bridge.py")), "start",
@@ -2355,6 +2389,17 @@ def main(argv: Sequence[str] | None = None) -> int:
         return _launch_selection_file_bridge(args, registry_path)
     if args.command == "registry-repair-detached-launch":
         return _launch_repair_file_bridge(args, registry_path)
+    if args.command == "registry-repair-reentry-detached-launch":
+        try:
+            predecessor_token = str(args.repair_token)
+            args.repair_token = _mint_repair_reentry_token(registry_path, predecessor_token)
+            args.continuation_run_id = predecessor_token
+            args.post_relaunch_continuation = True
+            args.command = "registry-repair-detached-launch"
+        except (OSError, sqlite3.Error, ScenarioRegistryStoreError, ValueError) as exc:
+            _write_result({"ok": False, "command": args.command, "error": str(exc)}, stream=sys.stderr)
+            return 1
+        return _launch_repair_file_bridge(args, registry_path)
     if args.command == "registry-bootstrap-detached-launch":
         return _launch_bootstrap_file_bridge(args, registry_path)
     if args.command == "registry-repair-reentry-launch":
@@ -2472,6 +2517,30 @@ def main(argv: Sequence[str] | None = None) -> int:
                     "world": world.name,
                     "manifest": manifest,
                     "credit": "none; canonical report ingestion is required before route authority exists",
+                }
+            elif args.command == "capture-setup-fixture":
+                report_path = Path(args.report).resolve()
+                runtime_binding = startup_harness.build_runtime_binding(
+                    startup_harness.detect_executable()
+                )
+                provenance = production_capture.prepare_setup_only_capture(
+                    report_path=report_path, runtime_binding=runtime_binding,
+                )
+                profile = startup_harness.resolve_profile_name(args.profile)
+                world = startup_harness.choose_world_for_fixture(profile, args.world)
+                manifest = production_capture.capture_production_fixture(
+                    source_world=world.path,
+                    fixture_dir=startup_harness.profile_fixture_root(profile) / args.fixture,
+                    production_origin=provenance,
+                    overwrite=bool(args.overwrite),
+                )
+                result = {
+                    "status": "captured",
+                    "fixture": args.fixture,
+                    "profile": profile,
+                    "world": world.name,
+                    "manifest": manifest,
+                    "credit": "setup_only_non_feature; no behavior or route authority is created",
                 }
             elif args.command == "registry-query":
                 request = parse_registry_query_request(_load_query_request(args))
@@ -2905,6 +2974,9 @@ def main(argv: Sequence[str] | None = None) -> int:
                                     cockpit_live_session=bool(args.cockpit_live_session),
                                     post_relaunch_continuation=bool(
                                         args.post_relaunch_continuation
+                                    ),
+                                    saved_world_snapshot=str(
+                                        getattr(args, "saved_world_snapshot", "") or ""
                                     ),
                                     profile_override=str(getattr(args, "profile", "") or ""),
                                 )

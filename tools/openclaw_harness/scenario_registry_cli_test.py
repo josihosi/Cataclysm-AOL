@@ -742,22 +742,28 @@ class ScenarioRegistryCliTest(unittest.TestCase):
 
         outer_args = scenario_registry_cli.build_parser().parse_args([
             "registry-bootstrap-launch", "token", "--post-relaunch-continuation",
+            "--saved-world-snapshot", "/tmp/immutable-world",
         ])
         probe_args = scenario_registry_cli._registry_bootstrap_probe_namespace(
             selection, post_relaunch_continuation=True,
+            saved_world_snapshot="/tmp/immutable-world",
         )
 
         self.assertTrue(outer_args.post_relaunch_continuation)
         self.assertTrue(probe_args.post_relaunch_continuation)
         self.assertEqual(probe_args.fixture, "")
+        self.assertEqual(outer_args.saved_world_snapshot, "/tmp/immutable-world")
+        self.assertEqual(probe_args.saved_world_snapshot, "/tmp/immutable-world")
 
     def test_detached_bootstrap_reentry_flag_is_accepted(self) -> None:
         args = scenario_registry_cli.build_parser().parse_args([
             "registry-bootstrap-detached-launch", "token",
             "--session-dir", "/tmp/cockpit-session",
             "--post-relaunch-continuation",
+            "--saved-world-snapshot", "/tmp/immutable-world",
         ])
         self.assertTrue(args.post_relaunch_continuation)
+        self.assertEqual(args.saved_world_snapshot, "/tmp/immutable-world")
 
     def test_bootstrap_cli_rejects_a_changed_runtime_before_probe_claim(self) -> None:
         with tempfile.TemporaryDirectory() as temp_dir:
@@ -858,6 +864,7 @@ class ScenarioRegistryCliTest(unittest.TestCase):
                 exit_code = scenario_registry_cli.main([
                     "--registry", str(registry_path), "registry-bootstrap-detached-launch",
                     bootstrap.token_id, "--session-dir", str(session_dir),
+                    "--post-relaunch-continuation", "--saved-world-snapshot", "/tmp/immutable-world",
                 ])
 
             self.assertEqual(exit_code, 0)
@@ -868,6 +875,9 @@ class ScenarioRegistryCliTest(unittest.TestCase):
             self.assertIn(bootstrap.token_id, command)
             self.assertIn("--cockpit-live-session", command)
             self.assertIn("--adaptive-semantic-autodrive", command)
+            self.assertIn("--post-relaunch-continuation", command)
+            self.assertIn("--saved-world-snapshot", command)
+            self.assertEqual(command[command.index("--saved-world-snapshot") + 1], "/tmp/immutable-world")
             self.assertIn("--session-reentries", command)
             result = write_result.call_args.args[0]
             self.assertTrue(result["ok"])
@@ -1226,6 +1236,27 @@ class ScenarioRegistryCliTest(unittest.TestCase):
         self.assertEqual(issue.call_args.kwargs["manifest_id"], "manifest")
         self.assertEqual(issue.call_args.kwargs["route_key"], "route")
         connection.close.assert_called_once()
+
+    def test_repair_reentry_detached_launch_mints_successor_before_binding_bridge(self) -> None:
+        """A saved-world continuation gets its own repair identity and bridge."""
+        with mock.patch.object(
+            scenario_registry_cli, "_mint_repair_reentry_token", return_value="repair-successor",
+        ) as mint, mock.patch.object(
+            scenario_registry_cli, "_launch_repair_file_bridge", return_value=0,
+        ) as launch:
+            result = scenario_registry_cli.main([
+                "registry-repair-reentry-detached-launch", "repair-predecessor",
+                "--session-dir", "/tmp/continuation-session",
+                "--saved-world-snapshot", "/tmp/immutable-world",
+            ])
+
+        self.assertEqual(result, 0)
+        mint.assert_called_once()
+        args = launch.call_args.args[0]
+        self.assertEqual(args.command, "registry-repair-detached-launch")
+        self.assertEqual(args.repair_token, "repair-successor")
+        self.assertEqual(args.continuation_run_id, "repair-predecessor")
+        self.assertTrue(args.post_relaunch_continuation)
 
     def test_repair_reentry_rejects_unclaimed_predecessor(self) -> None:
         connection = mock.Mock()
