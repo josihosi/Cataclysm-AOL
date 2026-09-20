@@ -531,3 +531,10 @@ not a larger test count or smaller files for their own sake.
   `/Users/josefhorvath/.codex/attachments/ef1dff1d-1f60-46a6-9c2a-90b1e5e30d76/Pasted text.txt`.
 - This discussion and saved draft do not launch Phase 2/3, rewrite current acceptance,
   restart workers, change live tests, or authorize unrelated gameplay work.
+
+<!-- DE67:OWNER-CONTRACT:BEGIN -->
+Josef stopped DE67 3 on 2026-09-20 and switched to manual mode. Do not resume autonomous
+coordination, dispatch or automatic review/restart without a new explicit owner start. Preserve
+unfinished post-cleanup regression work and existing accepted evidence. The current instruction
+is to checkpoint and push product work to dev, then close/archive this worktree.
+<!-- DE67:OWNER-CONTRACT:END -->

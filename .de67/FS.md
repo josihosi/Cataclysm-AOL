@@ -410,3 +410,102 @@ Where existing instrumentation makes it inexpensive, retain deterministic work c
 - External uncertainties: documented provider funding-exhaustion semantics remain unverified; optional paid modes require them before live admission. No credentials or paid endpoints were used in Phase 2.
 
 After freeze, only the selected phase skill's evidence-bound closure, nonmaterial clarification and uniquely implied same-contract append-only expansion routes apply. Preserve stable identities, accepted scope and proof strength. Product intent, vocabulary, permissions, balance and materially different designs remain owner decisions. Runtime coordination/model/clock policy belongs outside this FS.
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-EFF-REGISTRY-COST-S001 claim=R-EFF-REGISTRY-COST -->
+## Current registry queries without accumulated-history cost
+
+Implementation status:
+
+- [ ] 🔴 R-EFF-REGISTRY-COST — Routine scenario selection and exact evidence retrieval use compact current data without repeatedly rebuilding or returning the registry's accumulated history.
+
+**Owner outcome.** Josef requested immediate control of harness registry and token overhead on
+2026-09-19. Separate storage bytes, internal reads/latency, serialized artifacts and model-visible
+output. Keep complete historical evidence retrievable without injecting it into ordinary decisions.
+
+**Current evidence.** `.userdata/openclaw_harness/scenario_registry.sqlite3` is 709,316,608 bytes;
+606 current manifests contain about 4.76 MB of declaration/validation JSON. The selection path in
+`scenario_registry_store.py::build_registry_query_candidate_snapshot` calls `_current_route_evidence`
+for every candidate, with repeated historical decoding and resolution/binding lookups. A retained
+read-only evaluation exceeded 30 seconds. The page audit attributes 416,043,008 bytes to `certification_round` and 208,306,176 to
+`certification_round_component`: 73 rounds store repeated worktree/data/harness inventories. The
+latest 6.06 MB manifest repeats roughly 3.03 MB under both `binding.components` and
+`binding.authoritative_components`, then component facts are stored again. Inspect those producers
+and consumers when eliminating future duplicate persistence; preserve existing evidence. Actual
+agent-output contribution remains to be measured; disk size alone does not establish prompt size.
+
+**Repair.** Inspect the existing current projections, query predicates, indexes, history writers and
+compact-output routes. Remove repeated historical work and redundant stored/returned payloads where
+the source proves them unnecessary. Preserve every distinct route and contradiction needed for
+selection, lifecycle, current source/binding checks and token authority. Retain immutable history
+and full-retrieval handles; no live-history deletion, VACUUM workaround, evidence ceiling change,
+or arbitrary result cap. Exact known identities should avoid unrelated candidate/history work.
+Choose the smallest supported implementation; a new database or background service is not assumed.
+
+**Proof.** Reproduce on a frozen copy or disposable fixture with accumulated history. Compare the
+same selected/rejected candidates and authority, stale/rebound negative controls, full retrieval,
+query counts/latency, stored payload growth and actual returned bytes before/after. Include the
+normal CLI compact path and an exact saved-query/run retrieval. Distinguish measured local changes
+from unmeasured account-wide savings. No game replay or paid provider call is needed for this repair.
+<!-- DE67:DFS-SLICE:END id=R-EFF-REGISTRY-COST-S001 claim=R-EFF-REGISTRY-COST -->
+
+<!-- DE67:DFS-SLICE:BEGIN id=R-CAOL-NATIVE-REGRESSION-S001 claim=R-CAOL-NATIVE-REGRESSION -->
+## Post-cleanup native regression confidence — owner addition, 2026-09-20
+
+Implementation status:
+
+- [ ] 🔴 R-CAOL-NATIVE-REGRESSION — The combined cleanup build preserves the affected light, actor ownership/history, setup and diagnostic behavior through substantive native regression playtests using established routes.
+
+**Authority and priority.** Josef explicitly requests fresh regression playtesting of the completed
+cleanups. This is an additional verification obligation, not invalidation of the accepted
+R-CAOL implementation/test results or the successful R-ZL stalking-to-attack account. Relevant
+previously tested gameplay may and should be rerun where it establishes current post-cleanup
+confidence; earlier generic no-replay wording does not bar this work. G-PRODUCTION now additionally
+requires this claim's acceptance before further optional Pit Crew/Reflex implementation/evaluation.
+Preserve already returned optional candidates and results without replaying or discarding them.
+
+**Current gap.** LIGHT-FIXTURE, HANDOFF, HISTORY, LIGHT-EXTRACT, SETUP-LIFETIME and DIAGNOSTICS
+have substantial focused source/build/test evidence, but that evidence is not a complete native
+combined-build playtest. BANDIT-QUERIES found no useful equivalent predicate to extract, so do not
+invent a refactor there. LIGHT-TURNS includes native rider source-off/save/reload/expiry evidence;
+reuse that route and its controls, but bind new observations to the combined cleanup source/build.
+The accepted stalker attack alone does not exercise all these affected integration boundaries.
+
+**Behavioral coverage.** Use coherent existing scenarios and ordinary native actions to establish:
+
+- Light discovery and real-turn delivery: movement beside/onto/away from a stationary source,
+  independent ground/carried emitter provenance, brief eligible exposure, source-off or occlusion,
+  actual recipient behavior and finite memory/expiry. Cover affected horde, staffed and predator
+  recipients at their documented distinct cadences; do not demand an immediate staffed response
+  where its contract retains a slower cadence. Repeated read/redraw without elapsed time must not
+  refresh evidence. Include native save/reload or bubble travel and an order-sensitive rider/light
+  encounter. Existing focused tests protect exceptional/unobservable branches; they supplement,
+  not replace, the native integrated account.
+- Ownership and transient history: meaningful native local/abstract travel and save/reload of
+  identified predators and a bandit ownership/contact route, with source-bound actor/member and
+  resource observations. Preserve one owner, persistent identity/state, complete-pair forward
+  ingress and legitimate survivor homeward behavior; bubble/world changes must not turn old local
+  perception into fresh pressure. Cover actual reachable refusal/retry behavior and distinguish
+  deterministic failure-injection tests from naturally observed native outcomes.
+- Setup and diagnostics: run the existing R022 native item-setup route through its loaded-world
+  boundary and supported run/reentry lifecycle, observing exact tagged effects/cleanup and no
+  repeated side effects. Retain absent-configuration and failure/retry controls through existing
+  focused production-adapter tests. Exercise affected predator actions with diagnostics enabled and
+  disabled using an existing controlled comparison where meaningful; compare decisions, time,
+  resources and evidence semantics, not wall-clock microseconds or identical nondeterministic AI.
+  Share these observations with the other routes when it avoids duplicate launches.
+
+**Execution and proof.** The starting route map is `.de67/task-logs/review-cleanup-2c228bdd5843/coverage-map.md`; its named assets exist, but their old bindings are not current launch authority. Not every low-level assertion needs a separate game run: retain focused proof for controlled/internal states while establishing the affected integrated behavior natively.
+
+The workers choose suitable existing scenarios, charters, saves and test
+selectors after checking their actual declarations and current registry authority. Setup/debug
+interventions remain explicitly zero-credit; never inject the reaction or outcome being tested.
+Run a current source-bound executable, reuse the affected established test suites and record
+nonzero selections. Capture native request/result and event/state evidence plus a concise player-
+legible account of what happened, with source/build/run/actor/time bindings, contradictions and
+cleanup. Screenshots/OCR, launch success, green unit tests or this coverage plan alone cannot close
+the native obligation. Inspect selected original evidence at closure. Repair demonstrated in-scope
+product/harness regressions and rerun their affected proof; an inaccessible route needs a concrete
+continuation or honest unsupported boundary, not a fabricated pass. Supported same-process reentry
+must be distinguished from restarting an executable. Use coverage/risk to determine sufficient play,
+not a fixed action/run count, compulsory new framework, or unrelated replay of every accepted feature.
+<!-- DE67:DFS-SLICE:END id=R-CAOL-NATIVE-REGRESSION-S001 claim=R-CAOL-NATIVE-REGRESSION -->
