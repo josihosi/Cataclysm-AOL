@@ -14,6 +14,7 @@
 #include "veh_type.h"
 
 #include <algorithm>
+#include <cstdint>
 #include <functional>
 #include <map>
 
@@ -23,6 +24,8 @@ namespace
 {
 static const ter_str_id ter_t_flat_roof( "t_flat_roof" );
 static const ter_str_id ter_t_tile_flat_roof( "t_tile_flat_roof" );
+static const field_type_str_id field_fd_fire( "fd_fire" );
+static const field_type_str_id field_fd_smoke( "fd_smoke" );
 
 bool gun_root_forwards_to_light_mod( const item &it )
 {
@@ -33,7 +36,7 @@ bool gun_root_forwards_to_light_mod( const item &it )
     // traversal; begin() and end() from separate temporaries leave the first
     // iterator dangling and can crash the advancing-turn source pass.
     const std::vector<const item *> mods = it.gunmods();
-    return std::any_of( mods.begin(), mods.end(), []( const item *mod ) {
+    return std::any_of( mods.begin(), mods.end(), []( const item * mod ) {
         return mod != nullptr && mod->type->light_emission > 0;
     } );
 }
@@ -158,12 +161,46 @@ void append_stationary_monster_emitters( std::vector<emitter> &out, map &here,
             continue;
         }
         const int luminance = static_cast<int>( critter.calculate_by_enchantment(
-                                  critter.type->luminance, enchant_vals::mod::LUMINATION, true ) );
+                critter.type->luminance, enchant_vals::mod::LUMINATION, true ) );
         if( luminance > 0 ) {
             out.push_back( { here.get_abs( p ), source_kind::luminous_monster, luminance, false,
                              "monster:" + critter.type->id.str() } );
         }
     }
+}
+
+bool append_tile_sources( loaded_z_source_index &result, map &here,
+                          const tripoint_bub_ms &p, const tripoint_bub_ms &carrier_pos )
+{
+    ++result.tiles_examined;
+    const std::size_t item_count = result.item_emitters.size();
+    const std::size_t stationary_count = result.stationary_emitters.size();
+    if( p != carrier_pos ) {
+        for( const item &it : here.i_at( p ) ) {
+            append_container_tree( result.item_emitters, it, nullptr, here.get_abs( p ),
+                                   source_kind::ground_item, true );
+        }
+    }
+    append_stationary_tile_emitters( result.stationary_emitters, here, p );
+    const int fire = here.get_field_intensity( p, field_fd_fire );
+    const int smoke = here.get_field_intensity( p, field_fd_smoke );
+    if( fire > 0 || smoke > 0 ) {
+        result.field_sources.push_back( { here.get_abs( p ), fire, smoke } );
+    }
+    // Radius-zero collection already included ground items under the carrier.
+    const tripoint_abs_ms position = here.get_abs( p );
+    const bool ground_under_carrier = p == carrier_pos &&
+                                      std::any_of( result.item_emitters.begin(), result.item_emitters.end(),
+    [&position]( const emitter & source ) {
+        return source.kind == source_kind::ground_item && source.position == position;
+    } );
+    return result.item_emitters.size() != item_count || ground_under_carrier ||
+           result.stationary_emitters.size() != stationary_count || fire > 0 || smoke > 0;
+}
+
+int positive_remainder( const std::int64_t value, const int divisor )
+{
+    return static_cast<int>( ( value % divisor + divisor ) % divisor );
 }
 }
 
@@ -173,7 +210,7 @@ std::vector<emitter> collect_item_emitters( const Character &carrier, map &here,
     std::vector<emitter> result;
     const tripoint_bub_ms origin = carrier.pos_bub();
     std::map<const item *, bool> visible;
-    carrier.visit_items( [&result, &carrier, &here, &visible]( item *it, item *parent ) {
+    carrier.visit_items( [&result, &carrier, &here, &visible]( item * it, item * parent ) {
         if( it != nullptr ) {
             bool can_escape = parent == nullptr;
             if( parent != nullptr ) {
@@ -204,7 +241,7 @@ std::vector<emitter> collect_item_emitters( const Character &carrier, map &here,
     // Gun mods live in MOD pockets, which are intentionally excluded from the
     // generic container visitor.  Visit them explicitly so a mounted source
     // is retained while its forwarding gun root is not double-counted.
-    carrier.visit_items( [&result, &carrier, &here]( item *it, item *parent ) {
+    carrier.visit_items( [&result, &carrier, &here]( item * it, item * parent ) {
         if( it != nullptr && parent == nullptr && it->is_gun() ) {
             for( const item *mod : it->gunmods() ) {
                 if( mod != nullptr ) {
@@ -233,7 +270,7 @@ std::vector<emitter> collect_stationary_emitters( map &here, const tripoint_bub_
     for( const tripoint_bub_ms &p : here.points_in_radius( origin, radius ) ) {
         append_stationary_tile_emitters( result, here, p );
     }
-    const auto in_radius = [&origin, radius]( const tripoint_bub_ms &p ) {
+    const auto in_radius = [&origin, radius]( const tripoint_bub_ms & p ) {
         return rl_dist( origin, p ) <= radius;
     };
     append_stationary_vehicle_emitters( result, here, in_radius );
@@ -252,19 +289,62 @@ loaded_z_source_index index_loaded_z_sources( const Character &carrier, map &her
 
     for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
         for( const tripoint_bub_ms &p : here.points_on_zlevel( z ) ) {
-            // The radius-zero item pass already indexes a ground lamp on the
-            // carrier tile.  Only skip that duplicate item enumeration; the
-            // native terrain, furniture, and field owners on the same tile
-            // remain valid stationary sources and must still be indexed.
-            if( p != carrier_pos ) {
-                for( const item &it : here.i_at( p ) ) {
-                    append_container_tree( result.item_emitters, it, nullptr, here.get_abs( p ),
-                                           source_kind::ground_item, true );
-                }
-            }
-            append_stationary_tile_emitters( result.stationary_emitters, here, p );
+            append_tile_sources( result, here, p, carrier_pos );
         }
     }
+    const auto all_loaded = []( const tripoint_bub_ms & ) {
+        return true;
+    };
+    append_stationary_vehicle_emitters( result.stationary_emitters, here, all_loaded );
+    append_stationary_monster_emitters( result.stationary_emitters, here, all_loaded );
+    return result;
+}
+
+void loaded_source_sampler::reset()
+{
+    active_tiles.clear();
+    last_turn = -1;
+}
+
+loaded_z_source_index loaded_source_sampler::sample( const Character &carrier, map &here,
+        const int turn )
+{
+    if( turn < last_turn ) {
+        reset();
+    }
+    last_turn = turn;
+    loaded_z_source_index result;
+    result.item_emitters = collect_item_emitters( carrier, here, 0 );
+    const tripoint_bub_ms carrier_pos = carrier.pos_bub();
+    std::set<tripoint_abs_ms> selected;
+    selected.swap( active_tiles );
+    selected.insert( here.get_abs( carrier_pos ) );
+
+    // Select directly from absolute-coordinate phases, rather than walking
+    // every tile to decide whether it is due.  A bubble shift cannot restart
+    // a sweep or starve the edge, and negative map coordinates work too.
+    const int width = here.getmapsize() * SEEX;
+    const int height = here.getmapsize() * SEEY;
+    const int phase = positive_remainder( turn, discovery_interval_turns );
+    for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
+        for( int y = 0; y < height; ++y ) {
+            const tripoint_abs_ms row = here.get_abs( tripoint_bub_ms( 0, y, z ) );
+            const std::int64_t row_phase = row.x() + static_cast<std::int64_t>( width ) *
+                                           ( row.y() + static_cast<std::int64_t>( height ) * row.z() );
+            const int first_x = positive_remainder( phase - row_phase, discovery_interval_turns );
+            for( int x = first_x; x < width; x += discovery_interval_turns ) {
+                selected.insert( here.get_abs( tripoint_bub_ms( x, y, z ) ) );
+            }
+        }
+    }
+    for( const tripoint_abs_ms &pos : selected ) {
+        const tripoint_bub_ms p = here.get_bub( pos );
+        if( here.inbounds( p ) && append_tile_sources( result, here, p, carrier_pos ) ) {
+            active_tiles.insert( pos );
+        }
+    }
+    // Moving owners already have compact native collections.  Do not search
+    // the map for them or lose a carried/vehicle light at a sector boundary.
     const auto all_loaded = []( const tripoint_bub_ms & ) {
         return true;
     };

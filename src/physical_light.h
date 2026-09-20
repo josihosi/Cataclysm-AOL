@@ -2,6 +2,7 @@
 
 #include "coordinates.h"
 
+#include <set>
 #include <string>
 #include <vector>
 
@@ -28,6 +29,27 @@ struct emitter {
 struct loaded_z_source_index {
     std::vector<emitter> item_emitters;
     std::vector<emitter> stationary_emitters;
+    struct field_source {
+        tripoint_abs_ms position;
+        int fire_intensity = 0;
+        int smoke_intensity = 0;
+    };
+    std::vector<field_source> field_sources;
+    int tiles_examined = 0;
+};
+
+// Distant discovery may take fifteen in-game minutes.  Known sources are
+// checked afresh, so this cache never supplies stale power or optical facts.
+class loaded_source_sampler
+{
+    public:
+        static constexpr int discovery_interval_turns = 15 * 60;
+        loaded_z_source_index sample( const Character &carrier, map &here, int turn );
+        void reset();
+
+    private:
+        std::set<tripoint_abs_ms> active_tiles;
+        int last_turn = -1;
 };
 
 /**

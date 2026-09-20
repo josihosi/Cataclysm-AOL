@@ -28,6 +28,7 @@ void handle_key_blocking_activity();
 // active simulation.  Observations are never persisted in this cache.
 void reset_live_light_sample_cache();
 void run_live_light_delivery_for_test();
+int observe_live_bandit_sounds_for_test();
 void run_live_light_staffed_observer_for_test();
 bool live_light_sample_is_current_for_test();
 std::vector<live_light_delivery_stage> live_light_delivery_order_for_test();

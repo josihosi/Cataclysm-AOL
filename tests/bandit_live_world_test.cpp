@@ -17096,6 +17096,66 @@ TEST_CASE( "hostile_camp_structural_sound_recorder_preserves_coarse_event_class"
     }
 }
 
+TEST_CASE( "hostile_camp_native_sound_observation_does_not_run_overmap_maintenance",
+           "[bandit][live_world][staggered_signals][phase4_sound_observation]" )
+{
+    clear_avatar();
+    clear_npcs();
+    clear_map_without_vision();
+    sounds::reset_sounds();
+    const time_point saved_turn = calendar::turn;
+    bandit_live_world::world_state saved_world = overmap_buffer.global_state.bandit_live_world;
+    std::vector<character_id> generated;
+    on_out_of_scope cleanup( [&]() {
+        sounds::reset_sounds();
+        calendar::turn = saved_turn;
+        overmap_buffer.global_state.bandit_live_world = std::move( saved_world );
+        for( const character_id id : generated ) {
+            overmap_buffer.remove_npc( id );
+        }
+        clear_npcs();
+    } );
+    calendar::turn = calendar::start_of_cataclysm + 301_minutes;
+    auto &world = overmap_buffer.global_state.bandit_live_world;
+    world = make_structural_signal_test_world( false, 16190 );
+    auto &site = world.sites.front();
+    site.active_outing.clear();
+    const tripoint_abs_omt source = get_avatar().pos_abs_omt();
+    site.anchor = tripoint_abs_omt( source.x() + 1, source.y(), source.z() );
+    site.footprint = { site.anchor };
+    for( auto &member : site.members ) {
+        shared_ptr_fast<npc> observer = make_shared_fast<npc>();
+        observer->normalize();
+        observer->load_npc_template( npc_template_test_talker );
+        observer->spawn_at_precise( project_to<coords::ms>( site.anchor ) + point( 8, 8 ) );
+        overmap_buffer.insert_npc( observer );
+        generated.push_back( observer->getID() );
+        member.npc_id = observer->getID();
+        member.state = bandit_live_world::member_state::at_home;
+        member.wounded_or_unready = false;
+    }
+    REQUIRE( site.roster().valid );
+    const int last_advanced = site.active_outing.last_advanced_minutes;
+    sounds::sound( get_avatar().pos_bub(), 120, sounds::sound_t::combat, "gunfire", false,
+                   "", "default", sounds::significant_sound_t::gunfire );
+    CHECK( observe_live_bandit_sounds_for_test() == 1 );
+    CHECK_FALSE( sounds::has_significant_sounds() );
+    const auto lead = std::find_if( site.intelligence_map.leads.begin(),
+    site.intelligence_map.leads.end(), [&source]( const bandit_live_world::camp_map_lead & candidate ) {
+        return candidate.kind == bandit_live_world::camp_lead_kind::sound_signal &&
+               candidate.omt == source;
+    } );
+    REQUIRE( lead != site.intelligence_map.leads.end() );
+    CHECK( site.active_outing.kind == bandit_live_world::outing_kind::none );
+    CHECK( site.active_outing.last_advanced_minutes == last_advanced );
+    const std::string recorded = serialize_world( world );
+    CHECK( observe_live_bandit_sounds_for_test() == 0 );
+    CHECK( serialize_world( world ) == recorded );
+    bandit_live_world::world_state reloaded;
+    reloaded.deserialize( json_loader::from_string( recorded ).get_object() );
+    CHECK( serialize_world( reloaded ) == recorded );
+}
+
 TEST_CASE( "hostile_camp_significant_sound_queue_is_semantic_bounded_and_drained",
            "[bandit][live_world][phase4_sound_queue]" )
 {

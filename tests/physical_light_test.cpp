@@ -1,4 +1,6 @@
 #include <algorithm>
+#include <chrono>
+#include <iostream>
 #include <stdexcept>
 
 #include "avatar.h"
@@ -6,6 +8,7 @@
 #include "cata_catch.h"
 #include "cata_scope_helpers.h"
 #include "do_turn.h"
+#include "field_type.h"
 #include "game.h"
 #include "item.h"
 #include "map.h"
@@ -45,6 +48,147 @@ void rebuild_native_lightmap()
     here.invalidate_map_cache( 0 );
     here.build_map_cache( 0 );
 }
+}
+
+TEST_CASE( "physical_light_staggered_discovery_rechecks_sources_without_full_sweeps",
+           "[physical_light][staggered_signals]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    avatar &guy = get_avatar();
+    map &here = get_map();
+    const tripoint_bub_ms lamp( SEEX - 1, SEEY, 1 );
+    const tripoint_bub_ms smoke( SEEX, SEEY, 1 );
+    const tripoint_abs_ms lamp_abs = here.get_abs( lamp );
+    const tripoint_abs_ms smoke_abs = here.get_abs( smoke );
+    const field_type_id smoke_type = field_type_str_id( "fd_smoke" );
+    here.i_clear( lamp );
+    here.remove_field( smoke, smoke_type );
+    on_out_of_scope cleanup( [&]() {
+        here.i_clear( here.get_bub( lamp_abs ) );
+        here.remove_field( here.get_bub( smoke_abs ), smoke_type );
+    } );
+    here.add_item( lamp, powered_flashlight() );
+    here.add_field( smoke, smoke_type, 2 );
+    physical_light::loaded_source_sampler sampler;
+    const auto has_lamp = [&lamp_abs]( const physical_light::loaded_z_source_index & index ) {
+        return std::count_if( index.item_emitters.begin(), index.item_emitters.end(),
+        [&lamp_abs]( const physical_light::emitter & source ) {
+            return source.position == lamp_abs;
+        } );
+    };
+    const auto has_smoke = [&smoke_abs]( const physical_light::loaded_z_source_index & index ) {
+        return std::count_if( index.field_sources.begin(), index.field_sources.end(),
+        [&smoke_abs]( const physical_light::loaded_z_source_index::field_source & source ) {
+            return source.position == smoke_abs && source.smoke_intensity == 2;
+        } );
+    };
+    const auto full = physical_light::index_loaded_z_sources( guy, here );
+    REQUIRE( has_lamp( full ) == 1 );
+    REQUIRE( has_smoke( full ) == 1 );
+    const int period = physical_light::loaded_source_sampler::discovery_interval_turns;
+    // Actual source counts bound the recheck portion, rather than a timing
+    // assertion tied to the test machine's speed or a fake collector.
+    const int known_bound = full.item_emitters.size() + full.stationary_emitters.size() +
+                            full.field_sources.size();
+    const int tile_bound = ( full.tiles_examined + period - 1 ) / period + known_bound + 1;
+    bool lamp_seen = false;
+    bool smoke_seen = false;
+    for( int turn = 0; turn < period; ++turn ) {
+        const auto index = sampler.sample( guy, here, turn );
+        CAPTURE( turn, index.tiles_examined, tile_bound );
+        CHECK( index.tiles_examined <= tile_bound );
+        CHECK( has_lamp( index ) <= 1 );
+        lamp_seen = lamp_seen || has_lamp( index ) == 1;
+        smoke_seen = smoke_seen || has_smoke( index ) == 1;
+    }
+    REQUIRE( lamp_seen );
+    REQUIRE( smoke_seen );
+    CHECK( has_lamp( sampler.sample( guy, here, period ) ) == 1 );
+    CHECK( has_smoke( sampler.sample( guy, here, period + 1 ) ) == 1 );
+
+    // Crossing onto and away from a known ground source does not lose or
+    // duplicate it through the carried-item collection path.
+    const tripoint_bub_ms original = guy.pos_bub();
+    guy.setpos( here, lamp );
+    CHECK( has_lamp( sampler.sample( guy, here, period + 2 ) ) == 1 );
+    guy.setpos( here, original );
+    CHECK( has_lamp( sampler.sample( guy, here, period + 3 ) ) == 1 );
+    here.i_clear( lamp );
+    here.remove_field( smoke, smoke_type );
+    const auto extinguished = sampler.sample( guy, here, period + 4 );
+    CHECK( has_lamp( extinguished ) == 0 );
+    CHECK( has_smoke( extinguished ) == 0 );
+    sampler.reset();
+    const auto reset = sampler.sample( guy, here, 0 );
+    CHECK( has_lamp( reset ) == 0 );
+    CHECK( has_smoke( reset ) == 0 );
+}
+
+TEST_CASE( "physical_light_discovery_uses_absolute_positions_across_bubble_shifts",
+           "[physical_light][staggered_signals]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    avatar &guy = get_avatar();
+    map &here = get_map();
+    const tripoint_abs_ms source = here.get_abs( guy.pos_bub() + tripoint::east );
+    here.add_item( here.get_bub( source ), powered_flashlight() );
+    physical_light::loaded_source_sampler sampler;
+    const auto count = [&source]( const physical_light::loaded_z_source_index & index ) {
+        return std::count_if( index.item_emitters.begin(), index.item_emitters.end(),
+        [&source]( const physical_light::emitter & emitter ) {
+            return emitter.position == source;
+        } );
+    };
+    int turn = 0;
+    while( turn < physical_light::loaded_source_sampler::discovery_interval_turns &&
+           count( sampler.sample( guy, here, turn ) ) == 0 ) {
+        ++turn;
+    }
+    REQUIRE( turn < physical_light::loaded_source_sampler::discovery_interval_turns );
+    here.shift( point_rel_sm::east );
+    on_out_of_scope cleanup( [&]() {
+        here.i_clear( here.get_bub( source ) );
+        here.shift( point_rel_sm::west );
+    } );
+    CHECK( count( sampler.sample( guy, here, turn + 1 ) ) == 1 );
+    here.i_clear( here.get_bub( source ) );
+    CHECK( count( sampler.sample( guy, here, turn + 2 ) ) == 0 );
+}
+
+TEST_CASE( "physical_light_source_scan_benchmark", "[.][physical_light][signal_benchmark]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    avatar &guy = get_avatar();
+    map &here = get_map();
+    physical_light::loaded_source_sampler sampler;
+    const auto measure = []( const auto & scan, const int turns ) {
+        std::int64_t total_us = 0;
+        std::int64_t maximum_us = 0;
+        std::int64_t tiles = 0;
+        for( int turn = 0; turn < turns; ++turn ) {
+            const auto start = std::chrono::steady_clock::now();
+            const auto sources = scan( turn );
+            const auto elapsed = std::chrono::duration_cast<std::chrono::microseconds>(
+                                     std::chrono::steady_clock::now() - start ).count();
+            total_us += elapsed;
+            maximum_us = std::max<std::int64_t>( maximum_us, elapsed );
+            tiles += sources.tiles_examined;
+        }
+        std::cout << " turns=" << turns << " total_us=" << total_us
+                  << " mean_us=" << total_us / turns << " max_us=" << maximum_us
+                  << " tiles=" << tiles << '\n';
+    };
+    std::cout << "full_source_scan";
+    measure( [&]( int ) {
+        return physical_light::index_loaded_z_sources( guy, here );
+    }, 20 );
+    std::cout << "staggered_source_scan";
+    measure( [&]( int turn ) {
+        return sampler.sample( guy, here, turn );
+    }, physical_light::loaded_source_sampler::discovery_interval_turns );
 }
 
 TEST_CASE( "physical_light_collects_carried_and_stationary_sources_independently", "[physical_light]" )

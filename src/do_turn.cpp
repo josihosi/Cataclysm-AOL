@@ -6826,6 +6826,8 @@ void live_bandit_note_light_source( live_bandit_local_source_reading &reading,
     reading.light_intensity = std::max( reading.light_intensity, intensity );
 }
 
+physical_light::loaded_source_sampler live_source_sampler;
+
 std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
 {
     avatar &u = get_avatar();
@@ -6835,21 +6837,14 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
     // (or its representative position) to a sealed lamp in the same OMT.
     std::map<tripoint_abs_ms, live_bandit_local_source_reading> readings;
     const physical_light::loaded_z_source_index source_index =
-        physical_light::index_loaded_z_sources( u, here );
+        live_source_sampler.sample( u, here, to_turns<int>( calendar::turn - calendar::turn_zero ) );
 
-    for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
-        for( const tripoint_bub_ms &p : here.points_on_zlevel( z ) ) {
-        const int fire_intensity = here.get_field_intensity( p, fd_fire );
-        const int smoke_intensity = here.get_field_intensity( p, fd_smoke );
-        if( fire_intensity <= 0 && smoke_intensity <= 0 ) {
-            continue;
-        }
-        const tripoint_abs_ms source_pos = here.get_abs( p );
-        live_bandit_local_source_reading &reading = readings[source_pos];
-        reading.fire_intensity = std::max( reading.fire_intensity, fire_intensity );
-        reading.smoke_intensity = std::max( reading.smoke_intensity, smoke_intensity );
-        live_bandit_note_light_geometry( reading, here, p );
-        }
+    for( const physical_light::loaded_z_source_index::field_source &source :
+         source_index.field_sources ) {
+        live_bandit_local_source_reading &reading = readings[source.position];
+        reading.fire_intensity = source.fire_intensity;
+        reading.smoke_intensity = source.smoke_intensity;
+        live_bandit_note_light_geometry( reading, here, here.get_bub( source.position ) );
     }
 
     // Item emitters are collected as individual records so their power and
@@ -7000,6 +6995,7 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
     if( observations.empty() ) {
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal scan: signal_packet=no kind=smoke/fire/light"
                                    << " now_minutes=" << live_bandit_current_minutes()
+                                   << " tiles_examined=" << source_index.tiles_examined
                                    << " scan_radius_ms=" << live_bandit_local_source_scan_radius_ms
                                    << " weather=" << bandit_mark_generation::to_string( weather_band )
                                    << " light_time=" << bandit_mark_generation::to_string( light_time )
@@ -7011,6 +7007,7 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
     } else {
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world signal scan: signal_packet=yes kind=smoke/fire/light"
                                    << " now_minutes=" << live_bandit_current_minutes()
+                                   << " tiles_examined=" << source_index.tiles_examined
                                    << " packets=" << observations.size()
                                    << " smoke_packets=" << smoke_packets
                                    << " light_packets=" << light_packets
@@ -8902,6 +8899,37 @@ bandit_live_world::structural_signal_record_result record_live_bandit_structural
     } );
 }
 
+std::vector<live_bandit_sound_observation> take_live_bandit_sounds()
+{
+    std::vector<live_bandit_sound_observation> events;
+    sounds::consume_significant_sounds( [&events]( const tripoint_abs_omt & source_omt,
+    const int volume, const sounds::significant_sound_t kind, const int emitted_minutes ) {
+        events.push_back( { source_omt, volume, kind, emitted_minutes } );
+    } );
+    return events;
+}
+
+int observe_live_bandit_sounds()
+{
+    const std::vector<live_bandit_sound_observation> events = take_live_bandit_sounds();
+    if( events.empty() ) {
+        return 0;
+    }
+    const std::vector<live_bandit_signal_observation> no_visual_signals;
+    record_r008_production_channel_scan( no_visual_signals, events );
+    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
+    record_live_bandit_structural_sounds( state, events );
+    bandit_live_world::record_staffed_camp_signal_observations(
+        state, live_bandit_current_minutes(),
+        [&events, &no_visual_signals]( const bandit_live_world::site_record & site,
+    const bandit_live_world::camp_signal_observer_request & request ) {
+        return live_bandit_staffed_camp_signal_reads( no_visual_signals, events, site, request );
+    } );
+    // Store what was heard now; ordinary overmap maintenance owns the later
+    // decision to act.  A gunshot cannot advance every camp's travel/dispatch.
+    return static_cast<int>( events.size() );
+}
+
 int advance_live_bandit_local_scout_assessments()
 {
     bandit_live_world::world_state &state =
@@ -9095,11 +9123,17 @@ bandit_live_world::camp_signal_observation_result record_live_light_staffed_obse
 void reset_live_light_sample_cache()
 {
     live_light::reset();
+    live_source_sampler.reset();
 }
 
 void run_live_light_delivery_for_test()
 {
     sample_and_deliver_live_light_for_advancing_turn();
+}
+
+int observe_live_bandit_sounds_for_test()
+{
+    return observe_live_bandit_sounds();
 }
 
 void run_live_light_staffed_observer_for_test()
@@ -11581,12 +11615,7 @@ void overmap_npc_move()
     const bool signal_cadence_due = dispatch_cadence_due || calendar::once_every( 5_minutes );
     const bool structural_cadence_due = calendar::once_every( 60_minutes );
     std::vector<live_bandit_signal_observation> live_signals;
-    std::vector<live_bandit_sound_observation> live_sounds;
-    sounds::consume_significant_sounds( [&live_sounds]( const tripoint_abs_omt &source_omt,
-    const int volume, const sounds::significant_sound_t kind,
-    const int emitted_minutes ) {
-        live_sounds.push_back( { source_omt, volume, kind, emitted_minutes } );
-    } );
+    const std::vector<live_bandit_sound_observation> live_sounds = take_live_bandit_sounds();
     int bootstrapped_sites = 0;
     if( signal_cadence_due || structural_cadence_due ) {
         bootstrapped_sites = bootstrap_live_bandit_abstract_sites_near_player();
@@ -12894,12 +12923,12 @@ bool game::do_turn()
     // process monster and npc turn
     monmove();
     note_live_bandit_local_turn_sight_avoid();
-    // A player-created gunshot/alarm/explosion can happen after the regular
-    // overmap cadence in this turn.  Run the same authoritative live-world
-    // adapter immediately while its bounded sound receipt is still pending;
-    // the normal cadence remains the owner for ordinary maintenance.
-    if( calendar::once_every( time_between_npc_OM_moves ) || sounds::has_significant_sounds() ) {
+    // One-shot sounds are observed without waking the entire overmap update.
+    // Their durable coarse memories survive until ordinary AI considers them.
+    if( calendar::once_every( time_between_npc_OM_moves ) ) {
         overmap_npc_move();
+    } else if( sounds::has_significant_sounds() ) {
+        observe_live_bandit_sounds();
     }
     m.furniture_terrain_emit_fields();
     // required after monsters move and fields emit
