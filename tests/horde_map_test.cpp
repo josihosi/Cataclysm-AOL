@@ -299,6 +299,25 @@ TEST_CASE( "horde_map_insertion_and_retrieval", "[hordes]" )
     CHECK( count_entities( test_horde, horde_map_flavors::idle | horde_map_flavors::dormant ) == 3 );
 }
 
+TEST_CASE( "horde_map_refreshes_restored_route_into_active_bucket", "[hordes][persistence]" )
+{
+    horde_map test_horde;
+    test_horde.set_location( point_abs_om( 42, 42 ) );
+    const tripoint_abs_ms location = random_abs_location( test_horde );
+    REQUIRE( test_horde.spawn_entity( location, mon_writhing_stalker ) );
+    REQUIRE( count_entities( test_horde, horde_map_flavors::idle ) == 1 );
+    point_abs_om ignored_om;
+    tripoint_om_ms local;
+    std::tie( ignored_om, local ) = project_remain<coords::om>( location );
+    horde_entity *restored = test_horde.entity_at( local );
+    REQUIRE( restored != nullptr );
+    restored->destination = location + point_rel_ms( 12, 0 );
+    restored->tracking_intensity = 1000;
+    test_horde.refresh_entity_bucket( location );
+    CHECK( count_entities( test_horde, horde_map_flavors::active ) == 1 );
+    CHECK( count_entities( test_horde, horde_map_flavors::idle ) == 0 );
+}
+
 TEST_CASE( "horde_map_corner_cases", "[hordes]" )
 {
     // Make sure iterator handling is ok with empty container.

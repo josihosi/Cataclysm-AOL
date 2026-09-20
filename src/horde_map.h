@@ -88,6 +88,9 @@ class horde_map
         // scheduled as an active entity.
         void expire_light_interest( const time_point &now );
         void insert( node_type &&node );
+        // Reclassify an existing owner after restoring fields such as its
+        // destination and tracking intensity from persistent storage.
+        void refresh_entity_bucket( const tripoint_abs_ms &p );
         void clear();
         void clear_chunk( const tripoint_om_sm &p );
 

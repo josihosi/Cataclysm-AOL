@@ -720,6 +720,11 @@ void overmap::unserialize( const JsonObject &jsobj )
                         light_memory.read( "expires", ( *result )->second.light_expires );
                         light_memory.read( "strength", ( *result )->second.light_interest_strength );
                     }
+                    // spawn_entity chose a bucket before the persisted path
+                    // was restored.  Reclassify only after its complete
+                    // route is present, otherwise saved active hordes reload
+                    // inert and never reach the ordinary scheduler.
+                    hordes.refresh_entity_bucket( monster_location );
                 } else {
                     // We deserialized something nasty, skip the rest of the stored values
                     monster_map_json.next_value();

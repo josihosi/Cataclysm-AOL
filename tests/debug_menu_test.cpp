@@ -72,16 +72,21 @@ TEST_CASE( "debug_overmap_spawn_options_cover_requested_distances_and_threats",
     CHECK( by_id.at( "writhing_stalker_5_omt" ).group == GROUP_DEBUG_WRITHING_STALKER );
     CHECK( by_id.at( "writhing_stalker_5_omt" ).population == 1 );
     CHECK( by_id.at( "writhing_stalker_5_omt" ).distance_omt == 5 );
+    CHECK( by_id.at( "writhing_stalker_5_omt" ).preserve_abstract_predator_identity );
+    CHECK( by_id.at( "writhing_stalker_5_omt" ).fixture_actor_id == "debug-overmap-stalker-5-omt" );
 
     REQUIRE( by_id.count( "writhing_stalker_10_omt" ) == 1 );
     CHECK( by_id.at( "writhing_stalker_10_omt" ).group == GROUP_DEBUG_WRITHING_STALKER );
     CHECK( by_id.at( "writhing_stalker_10_omt" ).population == 1 );
     CHECK( by_id.at( "writhing_stalker_10_omt" ).distance_omt == 10 );
+    CHECK( by_id.at( "writhing_stalker_10_omt" ).preserve_abstract_predator_identity );
+    CHECK( by_id.at( "writhing_stalker_10_omt" ).fixture_actor_id == "debug-overmap-stalker-10-omt" );
 
     REQUIRE( by_id.count( "zombie_rider_5_omt" ) == 1 );
     CHECK( by_id.at( "zombie_rider_5_omt" ).group == GROUP_DEBUG_ZOMBIE_RIDER );
     CHECK( by_id.at( "zombie_rider_5_omt" ).population == 1 );
     CHECK( by_id.at( "zombie_rider_5_omt" ).distance_omt == 5 );
+    CHECK_FALSE( by_id.at( "zombie_rider_5_omt" ).preserve_abstract_predator_identity );
 
     REQUIRE( by_id.count( "zombie_rider_10_omt" ) == 1 );
     CHECK( by_id.at( "zombie_rider_10_omt" ).group == GROUP_DEBUG_ZOMBIE_RIDER );

@@ -48,6 +48,7 @@
 #include "test_statistics.h"
 #include "trap.h"
 #include "type_id.h"
+#include "worldfactory.h"
 
 using move_statistics = statistics<int>;
 
@@ -1330,6 +1331,202 @@ TEST_CASE( "predator local abstract local transfer retains its authoritative pay
         }
 
         g->remove_zombie( *restored );
+    }
+}
+
+TEST_CASE( "predator repeated production handoffs survive a save reload",
+           "[monster][hordes][predator][persistence]" )
+{
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    calendar::turn = calendar::turn_zero + 60_turns;
+
+    for( const mtype_id &type : { mtype_id( "mon_writhing_stalker" ),
+                                  mtype_id( "mon_zombie_rider" ) } ) {
+        clear_overmaps();
+        clear_map_and_put_player_underground();
+        map &here = get_map();
+        const tripoint_bub_ms local_position( 30, 66, 0 );
+        const tripoint_bub_ms ordinary_local_position( 31, 66, 0 );
+        const tripoint_abs_ms position = here.get_abs( local_position );
+        const tripoint_abs_ms destination = position + point_rel_ms( 5, 0 );
+        const tripoint_abs_ms observed = position + point_rel_ms( 2, 3 );
+        const tripoint_abs_sm submap = project_to<coords::sm>( position );
+
+        monster *live = g->place_critter_at( type, local_position );
+        REQUIRE( live != nullptr );
+        live->set_hp( 83 );
+        live->set_moves( 47 );
+        live->wander_to( destination, 9 );
+        live->add_item( item( itype_id( "rock" ) ) );
+        live->ammo[itype_id( "zombie_rider_tainted_bone_arrow" )] = 0;
+        predator_lifecycle_state &life = live->predator_state();
+        life.handoff_epoch = 30;
+        life.last_advanced_turn = to_turn<int>( calendar::turn ) - 1;
+        const std::string actor_id = life.actor_id;
+
+        if( type == mtype_id( "mon_writhing_stalker" ) ) {
+            writhing_stalker::persistent_state &state = live->writhing_stalker_state();
+            state.phase = writhing_stalker::lifecycle_phase::cooldown;
+            state.last_observed_position = observed;
+            state.has_last_observed_position = true;
+            state.committed_waypoint = destination;
+            state.has_committed_waypoint = true;
+            state.cooldown_until_turn = to_turn<int>( calendar::turn ) + 20;
+        } else {
+            zombie_rider_overmap_ai::rider_pursuit_state &state =
+                live->zombie_rider_pursuit_state();
+            state.observe( 42, observed, to_turn<int>( calendar::turn ) - 1 );
+            state.movement_waypoint = destination;
+            state.has_movement_waypoint = true;
+            life.band_reference = "repeated-handoff-band";
+            life.band_revision_cache = 12;
+        }
+
+        // The production caller commits the first local-to-abstract transfer.
+        g->despawn_monster( *live );
+        horde_entity *abstract = overmap_buffer.entity_at( position );
+        REQUIRE( abstract != nullptr );
+        REQUIRE( abstract->monster_data != nullptr );
+        CHECK( abstract->monster_data->predator_state().actor_id == actor_id );
+        CHECK( abstract->monster_data->predator_state().handoff_epoch == 31 );
+
+        // A failed exact materialization must preserve this same abstract owner
+        // for a later real caller, without consuming a handoff epoch.
+        monster *blocker = g->place_critter_at( mon_test_zombie, local_position );
+        REQUIRE( blocker != nullptr );
+        overmap_buffer.spawn_monster( submap, false );
+        abstract = overmap_buffer.entity_at( position );
+        REQUIRE( abstract != nullptr );
+        REQUIRE( abstract->monster_data != nullptr );
+        CHECK( abstract->monster_data->predator_state().actor_id == actor_id );
+        CHECK( abstract->monster_data->predator_state().handoff_epoch == 31 );
+        CHECK( abstract->monster_data->pos_abs() == position );
+        g->remove_zombie( *blocker );
+
+        // Persist the abstract owner through the normal game save/load route.
+        REQUIRE( world_generator != nullptr );
+        REQUIRE( world_generator->active_world != nullptr );
+        const std::string world_name = world_generator->active_world->world_name;
+        REQUIRE( g->save() );
+        REQUIRE( turn_handler::cleanup_at_end() );
+        world_generator->set_active_world( nullptr );
+        REQUIRE( g->load( world_name ) );
+
+        // Loading a save whose abstract predator is in the active bubble
+        // invokes the normal submap-load materializer.  It is a real
+        // abstract-to-local crossing, rather than a retained abstract node.
+        monster *restored = get_creature_tracker().creature_at<monster>( position );
+        REQUIRE( restored != nullptr );
+        CHECK( overmap_buffer.entity_at( position ) == nullptr );
+        CHECK( restored->predator_state().actor_id == actor_id );
+        CHECK( restored->predator_state().handoff_epoch == 32 );
+        CHECK( restored->predator_state().last_advanced_turn == to_turn<int>( calendar::turn ) );
+        CHECK( restored->pos_abs() == position );
+        CHECK( restored->get_hp() == 83 );
+        CHECK( restored->get_moves() == 47 );
+        CHECK( restored->wander_pos == destination );
+        CHECK( restored->wandf == 9 );
+        CHECK( restored->ammo[itype_id( "zombie_rider_tainted_bone_arrow" )] == 0 );
+        REQUIRE( restored->inv.size() == 1 );
+        CHECK( restored->inv.front().typeId() == itype_id( "rock" ) );
+
+        if( type == mtype_id( "mon_writhing_stalker" ) ) {
+            const writhing_stalker::persistent_state &state = restored->writhing_stalker_state();
+            CHECK( state.phase == writhing_stalker::lifecycle_phase::cooldown );
+            CHECK( state.has_last_observed_position );
+            CHECK( state.last_observed_position == observed );
+            CHECK( state.has_committed_waypoint );
+            CHECK( state.committed_waypoint == destination );
+        } else {
+            const zombie_rider_overmap_ai::rider_pursuit_state &state =
+                restored->zombie_rider_pursuit_state();
+            CHECK( state.target_identity == 42 );
+            CHECK( state.has_last_observed_position );
+            CHECK( state.last_observed_position == observed );
+            CHECK( state.has_movement_waypoint );
+            CHECK( state.movement_waypoint == destination );
+            CHECK( restored->predator_state().band_reference == "repeated-handoff-band" );
+            CHECK( restored->predator_state().band_revision_cache == 12 );
+        }
+
+        // Return the loaded owner to the abstract scheduler, let actual
+        // abstract time pass, then materialize it through the buffer caller.
+        g->despawn_monster( *restored );
+        abstract = overmap_buffer.entity_at( position );
+        REQUIRE( abstract != nullptr );
+        REQUIRE( abstract->monster_data != nullptr );
+        CHECK( abstract->monster_data->predator_state().actor_id == actor_id );
+        CHECK( abstract->monster_data->predator_state().handoff_epoch == 33 );
+        CHECK( abstract->monster_data->predator_state().last_advanced_turn ==
+               to_turn<int>( calendar::turn ) );
+        CHECK( abstract->monster_data->get_hp() == 83 );
+        CHECK( abstract->monster_data->get_moves() == 47 );
+        CHECK( abstract->destination == destination );
+        CHECK( abstract->tracking_intensity == 9 );
+        CHECK( abstract->monster_data->ammo[itype_id( "zombie_rider_tainted_bone_arrow" )] == 0 );
+
+        calendar::turn += 6_turns;
+        overmap_buffer.spawn_monster( submap, false );
+        restored = get_creature_tracker().creature_at<monster>( position );
+        REQUIRE( restored != nullptr );
+        CHECK( overmap_buffer.entity_at( position ) == nullptr );
+        CHECK( restored->predator_state().actor_id == actor_id );
+        CHECK( restored->predator_state().handoff_epoch == 34 );
+        CHECK( restored->predator_state().last_advanced_turn == to_turn<int>( calendar::turn ) );
+
+        // A duplicate caller after success must not manufacture another owner.
+        overmap_buffer.spawn_monster( submap, false );
+        CHECK( overmap_buffer.entity_at( position ) == nullptr );
+        monster *duplicate_check = get_creature_tracker().creature_at<monster>( position );
+        REQUIRE( duplicate_check != nullptr );
+        CHECK( duplicate_check->predator_state().actor_id == actor_id );
+
+        // Complete a second local-to-abstract-to-local cycle after elapsed
+        // abstract time, retaining the same durable identity and payload.
+        g->despawn_monster( *restored );
+        abstract = overmap_buffer.entity_at( position );
+        REQUIRE( abstract != nullptr );
+        REQUIRE( abstract->monster_data != nullptr );
+        CHECK( abstract->monster_data->predator_state().handoff_epoch == 35 );
+        calendar::turn += 4_turns;
+        overmap_buffer.spawn_monster( submap, false );
+        restored = get_creature_tracker().creature_at<monster>( position );
+        REQUIRE( restored != nullptr );
+        CHECK( restored->predator_state().actor_id == actor_id );
+        CHECK( restored->predator_state().handoff_epoch == 36 );
+        CHECK( restored->predator_state().last_advanced_turn == to_turn<int>( calendar::turn ) );
+        // Materializing after elapsed abstract time invokes monster::on_load().
+        // The exact owner/payload must survive, while ordinary regeneration is
+        // still allowed to restore HP during that elapsed interval.
+        CHECK( restored->get_hp() >= 83 );
+        CHECK( restored->get_hp() <= restored->get_hp_max() );
+        CHECK( restored->get_moves() == 47 );
+        g->remove_zombie( *restored );
+
+        // An ordinary local zombie retains its normal serialized monster
+        // snapshot through this route, without acquiring predator identity or
+        // lifecycle accounting.
+        monster *ordinary = g->place_critter_at( mon_test_zombie, ordinary_local_position );
+        REQUIRE( ordinary != nullptr );
+        ordinary->set_hp( 71 );
+        ordinary->set_moves( 29 );
+        const tripoint_abs_ms ordinary_position = ordinary->pos_abs();
+        const tripoint_abs_sm ordinary_submap = project_to<coords::sm>( ordinary_position );
+        g->despawn_monster( *ordinary );
+        horde_entity *ordinary_abstract = overmap_buffer.entity_at( ordinary_position );
+        REQUIRE( ordinary_abstract != nullptr );
+        REQUIRE( ordinary_abstract->monster_data != nullptr );
+        CHECK_FALSE( ordinary_abstract->monster_data->is_caol_predator() );
+        CHECK( ordinary_abstract->monster_data->get_hp() == 71 );
+        CHECK( ordinary_abstract->monster_data->get_moves() == 29 );
+        CHECK( ordinary_abstract->moves == 29 );
+        overmap_buffer.spawn_monster( ordinary_submap, false );
+        monster *ordinary_restored = get_creature_tracker().creature_at<monster>( ordinary_position );
+        REQUIRE( ordinary_restored != nullptr );
+        CHECK( ordinary_restored->type->id == mon_test_zombie );
+        CHECK( ordinary_restored->get_hp() == 71 );
+        CHECK( ordinary_restored->get_moves() == 29 );
+        g->remove_zombie( *ordinary_restored );
     }
 }
 

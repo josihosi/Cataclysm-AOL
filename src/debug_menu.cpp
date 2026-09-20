@@ -538,12 +538,12 @@ namespace debug_menu
 std::vector<overmap_spawn_option> overmap_spawn_options()
 {
     return {
-        { "medium_horde_5_omt", _( "Medium zombie horde — 5 OMT north" ), GROUP_DEBUG_MEDIUM_HORDE, 30, 5, '5' },
-        { "medium_horde_10_omt", _( "Medium zombie horde — 10 OMT north" ), GROUP_DEBUG_MEDIUM_HORDE, 30, 10, '0' },
-        { "writhing_stalker_5_omt", _( "Writhing stalker — 5 OMT north" ), GROUP_DEBUG_WRITHING_STALKER, 1, 5, 's' },
-        { "writhing_stalker_10_omt", _( "Writhing stalker — 10 OMT north" ), GROUP_DEBUG_WRITHING_STALKER, 1, 10, 'S' },
-        { "zombie_rider_5_omt", _( "Zombie rider — 5 OMT north" ), GROUP_DEBUG_ZOMBIE_RIDER, 1, 5, 'r' },
-        { "zombie_rider_10_omt", _( "Zombie rider — 10 OMT north" ), GROUP_DEBUG_ZOMBIE_RIDER, 1, 10, 'R' },
+        { "medium_horde_5_omt", _( "Medium zombie horde — 5 OMT north" ), GROUP_DEBUG_MEDIUM_HORDE, 30, 5, '5', false, "" },
+        { "medium_horde_10_omt", _( "Medium zombie horde — 10 OMT north" ), GROUP_DEBUG_MEDIUM_HORDE, 30, 10, '0', false, "" },
+        { "writhing_stalker_5_omt", _( "Writhing stalker — 5 OMT north" ), GROUP_DEBUG_WRITHING_STALKER, 1, 5, 's', true, "debug-overmap-stalker-5-omt" },
+        { "writhing_stalker_10_omt", _( "Writhing stalker — 10 OMT north" ), GROUP_DEBUG_WRITHING_STALKER, 1, 10, 'S', true, "debug-overmap-stalker-10-omt" },
+        { "zombie_rider_5_omt", _( "Zombie rider — 5 OMT north" ), GROUP_DEBUG_ZOMBIE_RIDER, 1, 5, 'r', false, "" },
+        { "zombie_rider_10_omt", _( "Zombie rider — 10 OMT north" ), GROUP_DEBUG_ZOMBIE_RIDER, 1, 10, 'R', false, "" },
     };
 }
 
@@ -555,15 +555,38 @@ tripoint_abs_sm overmap_spawn_destination( const tripoint_abs_ms &player_abs_ms,
 
 void spawn_overmap_threat( const overmap_spawn_option &option )
 {
-    const tripoint_abs_sm destination = overmap_spawn_destination( get_player_character().pos_abs(),
-                                         option.distance_omt );
-    overmap_buffer.spawn_mongroup( destination, option.group, option.population );
+    const tripoint_abs_ms player_position = get_player_character().pos_abs();
+    const tripoint_abs_sm destination = overmap_spawn_destination( player_position, option.distance_omt );
+    if( option.preserve_abstract_predator_identity ) {
+        // This remains an overmap owner: no local creature is placed here.
+        // Unlike a type-only idle horde, it has a durable identity and a
+        // genuine route, so normal abstract scheduling can eventually hand
+        // that same actor into the loaded map.
+        const tripoint_abs_ms horde_position = project_to<coords::ms>( destination );
+        horde_entity &horde = overmap_buffer.spawn_monster( horde_position,
+                              mtype_id( "mon_writhing_stalker" ) );
+        horde.ensure_predator_payload( horde_position );
+        if( horde.monster_data && !option.fixture_actor_id.empty() ) {
+            horde.monster_data->set_value( "caol_fixture_actor_id", option.fixture_actor_id );
+        }
+        horde.synchronize_payload( horde_position );
+        // spawn_monster initially places a type-only horde in its idle
+        // spatial bucket.  Route assignment must go through alert_entity,
+        // which transfers that exact node to the active scheduler bucket;
+        // mutating the fields in place would leave a route-bearing horde
+        // permanently unscheduled.
+        overmap_buffer.alert_entity( horde_position, player_position, 1000 );
+    } else {
+        overmap_buffer.spawn_mongroup( destination, option.group, option.population );
+    }
     add_msg( m_good, _( "Spawned %s." ), option.label );
     DebugLog( D_INFO, DC_ALL ) << "debug overmap_spawn: id=" << option.id
                                << " group=" << option.group.str()
                                << " population=" << option.population
                                << " distance_omt=" << option.distance_omt
-                               << " destination_sm=" << destination.to_string();
+                               << " destination_sm=" << destination.to_string()
+                               << " abstract_predator_route="
+                               << ( option.preserve_abstract_predator_identity ? "bound" : "none" );
 }
 
 class mission_debug

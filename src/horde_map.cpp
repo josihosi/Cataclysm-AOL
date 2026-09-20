@@ -391,6 +391,17 @@ void horde_map::insert( std::unordered_map<tripoint_abs_ms, horde_entity>::node_
     target_map[sm].insert( std::move( node ) );
 }
 
+void horde_map::refresh_entity_bucket( const tripoint_abs_ms &p )
+{
+    point_abs_om ignored_om;
+    tripoint_om_ms local;
+    std::tie( ignored_om, local ) = project_remain<coords::om>( p );
+    iterator existing = find( local );
+    if( existing != end() ) {
+        insert( extract( existing ) );
+    }
+}
+
 void horde_map::clear()
 {
     active_monster_map.clear();

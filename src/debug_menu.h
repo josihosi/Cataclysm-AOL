@@ -26,6 +26,14 @@ struct overmap_spawn_option {
     int population = 1;
     int distance_omt = 10;
     int hotkey = 0;
+    // The lifecycle probe must save an already-identified abstract predator
+    // with a real route.  Generic debug hordes deliberately remain light and
+    // idle instead.
+    bool preserve_abstract_predator_identity = false;
+    // A setup-only fixture tag travels with the already-identified abstract
+    // predator into its later physical owner.  It is read only by the native
+    // harness diagnostic; it does not provide targeting or alter behavior.
+    std::string fixture_actor_id;
 };
 
 struct debug_item_spawn_request {
@@ -67,6 +75,14 @@ struct debug_item_spawn_cleanup_receipt {
     int retained_untagged = 0;
 };
 
+// Harness-only setup state.  A returned receipt is retained for one run and
+// transaction identity so callers can make repeated boundary calls safely.
+struct debug_item_spawn_setup_receipt {
+    std::string run_id;
+    debug_item_spawn_receipt transaction;
+    debug_item_spawn_cleanup_receipt cleanup;
+};
+
 std::vector<overmap_spawn_option> overmap_spawn_options();
 tripoint_abs_sm overmap_spawn_destination( const tripoint_abs_ms &player_abs_ms, int distance_omt );
 void spawn_overmap_threat( const overmap_spawn_option &option );
@@ -77,6 +93,9 @@ void wishitem( Character *you, const tripoint_bub_ms & );
 debug_item_spawn_receipt debug_item_spawn_transaction( const debug_item_spawn_request &request );
 debug_item_spawn_cleanup_receipt debug_item_spawn_transaction_cleanup(
     const debug_item_spawn_request &request );
+std::optional<debug_item_spawn_setup_receipt> process_harness_item_setup(
+            const tripoint_bub_ms &player_pos );
+void reset_harness_item_setup();
 // Shows a menu to debug item groups. Spawns items if test is false, otherwise displays would be spawned items.
 void wishitemgroup( bool test );
 void wishmonster( const std::optional<tripoint_bub_ms> &p );

@@ -11889,6 +11889,36 @@ void overmap_npc_move()
     }
     std::vector<npc *> travelling_npcs;
     bool local_pair_needs_reload = false;
+    // Ingress ownership is transactional.  Do this check before assigning or
+    // repairing either member's forward route: otherwise the first member can
+    // be advanced while its partner is unavailable, even though the later
+    // travelling-npc pass correctly refuses a partial pair.
+    std::set<character_id> preflight_blocked_ingress_members;
+    for( const bandit_live_world::site_record &site : bandit_state.sites ) {
+        const bandit_live_world::active_outing_state &outing = site.active_outing;
+        if( outing.member_ids.size() != 2 ) {
+            continue;
+        }
+        const auto first_destination = local_pair_ingress_destinations.find(
+                                           outing.member_ids[0] );
+        const auto second_destination = local_pair_ingress_destinations.find(
+                                            outing.member_ids[1] );
+        if( first_destination == local_pair_ingress_destinations.end() ||
+            second_destination == local_pair_ingress_destinations.end() ||
+            first_destination->second != second_destination->second ) {
+            continue;
+        }
+        const auto member_can_enter = []( const character_id member_id ) {
+            const shared_ptr_fast<npc> member = overmap_buffer.find_npc( member_id );
+            return member && !member->is_dead() && !member->has_flag( json_flag_CANNOT_MOVE ) &&
+                   member->is_travelling();
+        };
+        if( !member_can_enter( outing.member_ids[0] ) ||
+            !member_can_enter( outing.member_ids[1] ) ) {
+            preflight_blocked_ingress_members.insert( outing.member_ids.begin(),
+                    outing.member_ids.end() );
+        }
+    }
     static constexpr int move_search_radius = 600;
     for( auto &elem : overmap_buffer.get_npcs_near_player( move_search_radius ) ) {
         if( !elem ) {
@@ -11908,6 +11938,9 @@ void overmap_npc_move()
             continue;
         }
         if( committed_local_hostile_member_ids.count( npc_to_add->getID() ) > 0 ) {
+            continue;
+        }
+        if( preflight_blocked_ingress_members.count( npc_to_add->getID() ) > 0 ) {
             continue;
         }
         const auto assembly_order = local_pair_assembly_orders.find( npc_to_add->getID() );
