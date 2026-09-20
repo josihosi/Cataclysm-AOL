@@ -6,6 +6,7 @@
 #include <tuple>
 
 #include "calendar.h"
+#include "debug.h"
 #include "json.h"
 #include "math_parser_diag_value.h"
 #include "monster.h"
@@ -405,10 +406,12 @@ void rider_pursuit_state::observe( const std::uint64_t identity,
     // a readiness token earned by the immediately preceding physical closing
     // step; only a newly acquired identity invalidates that token.
     const bool identity_changed = target_identity != identity;
-    DebugLog( D_INFO, DC_ALL ) << "zombie_rider impact_observe turn=" << now_turn
-                               << " old_target=" << target_identity << " new_target=" << identity
-                               << " ready_before=" << ( impact_ready ? "yes" : "no" )
-                               << " identity_changed=" << ( identity_changed ? "yes" : "no" ) << '\n';
+    if( debug_log_enabled( D_INFO, D_GAME ) ) {
+        DebugLog( D_INFO, D_GAME ) << "zombie_rider impact_observe turn=" << now_turn
+                                   << " old_target=" << target_identity << " new_target=" << identity
+                                   << " ready_before=" << ( impact_ready ? "yes" : "no" )
+                                   << " identity_changed=" << ( identity_changed ? "yes" : "no" ) << '\n';
+    }
     if( identity_changed ) {
         impact_ready = false;
         impact_ready_turn = -1;

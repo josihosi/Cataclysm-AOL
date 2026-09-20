@@ -3,6 +3,7 @@
 #define CATA_SRC_DO_TURN_H
 
 #include "coordinates.h"
+#include "live_light.h"
 
 #include <cstddef>
 #include <string>
@@ -23,6 +24,14 @@ struct response_member_power_read;
 } // namespace bandit_live_world
 
 void handle_key_blocking_activity();
+// Clear the transient physical-light packet when a world/save becomes the
+// active simulation.  Observations are never persisted in this cache.
+void reset_live_light_sample_cache();
+void run_live_light_delivery_for_test();
+void run_live_light_staffed_observer_for_test();
+bool live_light_sample_is_current_for_test();
+std::vector<live_light_delivery_stage> live_light_delivery_order_for_test();
+std::vector<live_light_delivery_stage> live_light_delivery_trace_for_test();
 bool process_live_bandit_aftermath_for_test();
 bool materialize_live_bandit_structural_handoffs_for_test();
 int materialize_live_bandit_response_members_for_test( const std::string &site_id );

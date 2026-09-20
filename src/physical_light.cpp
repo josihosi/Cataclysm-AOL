@@ -14,6 +14,7 @@
 #include "veh_type.h"
 
 #include <algorithm>
+#include <functional>
 #include <map>
 
 namespace physical_light
@@ -93,6 +94,77 @@ void append_container_tree( std::vector<emitter> &out, const item &root,
                                pocket != nullptr && pocket->transparent() );
     }
 }
+
+void append_stationary_tile_emitters( std::vector<emitter> &out, map &here,
+                                      const tripoint_bub_ms &p )
+{
+    const tripoint_abs_ms pos = here.get_abs( p );
+    const auto add = [&out, &pos]( const source_kind kind, const int luminance,
+    const bool directional, std::string provenance ) {
+        if( luminance > 0 ) {
+            out.push_back( { pos, kind, luminance, directional, std::move( provenance ) } );
+        }
+    };
+    if( here.ter( p )->light_emitted > 0 ) {
+        add( source_kind::terrain, here.ter( p )->light_emitted, false,
+             "terrain:" + here.ter( p )->id.str() );
+    }
+    if( here.furn( p )->light_emitted > 0 ) {
+        add( source_kind::furniture, here.furn( p )->light_emitted, false,
+             "furniture:" + here.furn( p )->id.str() );
+    }
+    for( const auto &entry : here.field_at( p ) ) {
+        add( source_kind::field, static_cast<int>( entry.second.get_intensity_level().light_emitted ),
+             false, "field:" + entry.first.obj().id.str() );
+    }
+}
+
+void append_stationary_vehicle_emitters( std::vector<emitter> &out, map &here,
+        const std::function<bool( const tripoint_bub_ms & )> &selected )
+{
+    for( wrapped_vehicle &wrapped : here.get_vehicles() ) {
+        vehicle *veh = wrapped.v;
+        if( veh == nullptr ) {
+            continue;
+        }
+        for( vehicle_part *part : veh->lights() ) {
+            if( part == nullptr ) {
+                continue;
+            }
+            const tripoint_bub_ms p = veh->bub_part_pos( here, *part );
+            if( !here.inbounds( p ) || !selected( p ) ) {
+                continue;
+            }
+            const vpart_info &info = part->info();
+            if( info.bonus > 0 ) {
+                out.push_back( { here.get_abs( p ), source_kind::vehicle_part, info.bonus,
+                                 info.has_flag( VPFLAG_CONE_LIGHT ) ||
+                                 info.has_flag( VPFLAG_WIDE_CONE_LIGHT ),
+                                 "vehicle:" + info.id.str() } );
+            }
+        }
+    }
+}
+
+void append_stationary_monster_emitters( std::vector<emitter> &out, map &here,
+        const std::function<bool( const tripoint_bub_ms & )> &selected )
+{
+    if( g == nullptr ) {
+        return;
+    }
+    for( monster &critter : g->all_monsters() ) {
+        const tripoint_bub_ms p = critter.pos_bub();
+        if( critter.is_hallucination() || !here.inbounds( p ) || !selected( p ) ) {
+            continue;
+        }
+        const int luminance = static_cast<int>( critter.calculate_by_enchantment(
+                                  critter.type->luminance, enchant_vals::mod::LUMINATION, true ) );
+        if( luminance > 0 ) {
+            out.push_back( { here.get_abs( p ), source_kind::luminous_monster, luminance, false,
+                             "monster:" + critter.type->id.str() } );
+        }
+    }
+}
 }
 
 std::vector<emitter> collect_item_emitters( const Character &carrier, map &here,
@@ -158,71 +230,14 @@ std::vector<emitter> collect_stationary_emitters( map &here, const tripoint_bub_
         const int radius )
 {
     std::vector<emitter> result;
-    const auto add = [&result]( const tripoint_abs_ms &pos, const source_kind kind,
-    const int luminance, const bool directional, std::string provenance ) {
-        if( luminance <= 0 ) {
-            return;
-        }
-        emitter source;
-        source.position = pos;
-        source.kind = kind;
-        source.luminance = luminance;
-        source.directional = directional;
-        source.provenance = std::move( provenance );
-        result.push_back( std::move( source ) );
-    };
-
     for( const tripoint_bub_ms &p : here.points_in_radius( origin, radius ) ) {
-        const tripoint_abs_ms abs_pos = here.get_abs( p );
-        if( here.ter( p )->light_emitted > 0 ) {
-            add( abs_pos, source_kind::terrain, here.ter( p )->light_emitted, false,
-                 "terrain:" + here.ter( p )->id.str() );
-        }
-        if( here.furn( p )->light_emitted > 0 ) {
-            add( abs_pos, source_kind::furniture, here.furn( p )->light_emitted, false,
-                 "furniture:" + here.furn( p )->id.str() );
-        }
-        for( const auto &entry : here.field_at( p ) ) {
-            const field_intensity_level &level = entry.second.get_intensity_level();
-            if( level.light_emitted > 0 ) {
-                add( abs_pos, source_kind::field, static_cast<int>( level.light_emitted ), false,
-                     "field:" + entry.first.obj().id.str() );
-            }
-        }
+        append_stationary_tile_emitters( result, here, p );
     }
-
-    for( wrapped_vehicle &wrapped : here.get_vehicles() ) {
-        vehicle *veh = wrapped.v;
-        if( veh == nullptr ) {
-            continue;
-        }
-        for( vehicle_part *part : veh->lights() ) {
-            if( part == nullptr ) {
-                continue;
-            }
-            const tripoint_bub_ms p = veh->bub_part_pos( here, *part );
-            if( !here.inbounds( p ) || rl_dist( origin, p ) > radius ) {
-                continue;
-            }
-            const vpart_info &info = part->info();
-            add( here.get_abs( p ), source_kind::vehicle_part, info.bonus,
-                 info.has_flag( VPFLAG_CONE_LIGHT ) || info.has_flag( VPFLAG_WIDE_CONE_LIGHT ),
-                 "vehicle:" + info.id.str() );
-        }
-    }
-
-    if( g != nullptr ) {
-        for( monster &critter : g->all_monsters() ) {
-            const tripoint_bub_ms p = critter.pos_bub();
-            if( critter.is_hallucination() || !here.inbounds( p ) || rl_dist( origin, p ) > radius ) {
-                continue;
-            }
-            const int luminance = static_cast<int>( critter.calculate_by_enchantment(
-                                      critter.type->luminance, enchant_vals::mod::LUMINATION, true ) );
-            add( here.get_abs( p ), source_kind::luminous_monster, luminance, false,
-                 "monster:" + critter.type->id.str() );
-        }
-    }
+    const auto in_radius = [&origin, radius]( const tripoint_bub_ms &p ) {
+        return rl_dist( origin, p ) <= radius;
+    };
+    append_stationary_vehicle_emitters( result, here, in_radius );
+    append_stationary_monster_emitters( result, here, in_radius );
     return result;
 }
 
@@ -237,70 +252,24 @@ loaded_z_source_index index_loaded_z_sources( const Character &carrier, map &her
 
     for( int z = -OVERMAP_DEPTH; z <= OVERMAP_HEIGHT; ++z ) {
         for( const tripoint_bub_ms &p : here.points_on_zlevel( z ) ) {
-            if( p == carrier_pos ) {
-                continue;
-            }
-            for( const item &it : here.i_at( p ) ) {
-                append_container_tree( result.item_emitters, it, nullptr, here.get_abs( p ),
-                                       source_kind::ground_item, true );
-            }
-            const tripoint_abs_ms abs_pos = here.get_abs( p );
-            const auto add_stationary = [&result, &abs_pos]( const source_kind kind,
-            const int luminance, const bool directional, std::string provenance ) {
-                if( luminance > 0 ) {
-                    result.stationary_emitters.push_back( { abs_pos, kind, luminance, directional,
-                                                            std::move( provenance ) } );
-                }
-            };
-            if( here.ter( p )->light_emitted > 0 ) {
-                add_stationary( source_kind::terrain, here.ter( p )->light_emitted, false,
-                                "terrain:" + here.ter( p )->id.str() );
-            }
-            if( here.furn( p )->light_emitted > 0 ) {
-                add_stationary( source_kind::furniture, here.furn( p )->light_emitted, false,
-                                "furniture:" + here.furn( p )->id.str() );
-            }
-            for( const auto &entry : here.field_at( p ) ) {
-                add_stationary( source_kind::field,
-                                static_cast<int>( entry.second.get_intensity_level().light_emitted ), false,
-                                "field:" + entry.first.obj().id.str() );
-            }
-        }
-    }
-    for( wrapped_vehicle &wrapped : here.get_vehicles() ) {
-        vehicle *veh = wrapped.v;
-        if( veh == nullptr ) {
-            continue;
-        }
-        for( vehicle_part *part : veh->lights() ) {
-            if( part != nullptr ) {
-                const tripoint_bub_ms p = veh->bub_part_pos( here, *part );
-                if( here.inbounds( p ) ) {
-                    const vpart_info &info = part->info();
-                    if( info.bonus > 0 ) {
-                        result.stationary_emitters.push_back( { here.get_abs( p ), source_kind::vehicle_part,
-                                info.bonus, info.has_flag( VPFLAG_CONE_LIGHT ) ||
-                                info.has_flag( VPFLAG_WIDE_CONE_LIGHT ), "vehicle:" + info.id.str() } );
-                    }
+            // The radius-zero item pass already indexes a ground lamp on the
+            // carrier tile.  Only skip that duplicate item enumeration; the
+            // native terrain, furniture, and field owners on the same tile
+            // remain valid stationary sources and must still be indexed.
+            if( p != carrier_pos ) {
+                for( const item &it : here.i_at( p ) ) {
+                    append_container_tree( result.item_emitters, it, nullptr, here.get_abs( p ),
+                                           source_kind::ground_item, true );
                 }
             }
+            append_stationary_tile_emitters( result.stationary_emitters, here, p );
         }
     }
-    if( g != nullptr ) {
-        for( monster &critter : g->all_monsters() ) {
-            const tripoint_bub_ms p = critter.pos_bub();
-            if( critter.is_hallucination() || !here.inbounds( p ) ) {
-                continue;
-            }
-            const int luminance = static_cast<int>( critter.calculate_by_enchantment(
-                                      critter.type->luminance, enchant_vals::mod::LUMINATION, true ) );
-            if( luminance > 0 ) {
-                result.stationary_emitters.push_back( { here.get_abs( p ), source_kind::luminous_monster,
-                                                        luminance, false,
-                                                        "monster:" + critter.type->id.str() } );
-            }
-        }
-    }
+    const auto all_loaded = []( const tripoint_bub_ms & ) {
+        return true;
+    };
+    append_stationary_vehicle_emitters( result.stationary_emitters, here, all_loaded );
+    append_stationary_monster_emitters( result.stationary_emitters, here, all_loaded );
     return result;
 }
 

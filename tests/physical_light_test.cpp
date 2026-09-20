@@ -1,8 +1,11 @@
 #include <algorithm>
+#include <stdexcept>
 
 #include "avatar.h"
 #include "calendar.h"
 #include "cata_catch.h"
+#include "cata_scope_helpers.h"
+#include "do_turn.h"
 #include "game.h"
 #include "item.h"
 #include "map.h"
@@ -77,12 +80,20 @@ TEST_CASE( "physical_light_loaded_z_index_finds_remote_loaded_level_and_excludes
     map &here = get_map();
     const tripoint_bub_ms remote_loaded_source = guy.pos_bub() + tripoint_rel_ms( 4, 0, 1 );
     REQUIRE( here.inbounds( remote_loaded_source ) );
+    const tripoint_bub_ms depleted_source = guy.pos_bub() + tripoint_rel_ms( 5, 0, 1 );
+    // clear_map_without_vision() intentionally clears only through z=0; this
+    // test owns z=1 items and must remove them for repeated Catch fuzz runs.
+    here.i_clear( remote_loaded_source );
+    here.i_clear( depleted_source );
+    on_out_of_scope source_cleanup( [&here, remote_loaded_source, depleted_source]() {
+        here.i_clear( remote_loaded_source );
+        here.i_clear( depleted_source );
+    } );
     here.add_item( remote_loaded_source, powered_flashlight() );
 
     item depleted( itype_id( "flashlight_on" ) );
     item empty_battery( itype_id( "medium_battery_cell" ) );
     depleted.put_in( empty_battery, pocket_type::MAGAZINE_WELL );
-    const tripoint_bub_ms depleted_source = guy.pos_bub() + tripoint_rel_ms( 5, 0, 1 );
     here.add_item( depleted_source, depleted );
 
     const physical_light::loaded_z_source_index index =
@@ -99,20 +110,221 @@ TEST_CASE( "physical_light_loaded_z_index_finds_remote_loaded_level_and_excludes
     } ) );
 }
 
-TEST_CASE( "physical_light_samples_only_on_admitted_advancing_turns",
+TEST_CASE( "physical_light_loaded_z_index_tracks_beside_onto_and_away_movement",
+           "[physical_light][continuity]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    avatar &guy = get_avatar();
+    map &here = get_map();
+    const tripoint_bub_ms origin = guy.pos_bub();
+    const tripoint_bub_ms beside = origin + tripoint::east;
+    const tripoint_bub_ms away = origin + tripoint::west;
+    const tripoint_abs_ms fixture_abs = here.get_abs( origin );
+    ter_t &terrain = const_cast<ter_t &>( here.ter( origin ).obj() );
+    restore_on_out_of_scope terrain_restore( terrain.light_emitted );
+    on_out_of_scope fixture_cleanup( [&here, &origin]() {
+        here.i_clear( origin );
+    } );
+    terrain.light_emitted = 31;
+    here.add_item( origin, powered_flashlight() );
+    guy.setpos( here, beside );
+
+    const auto beside_index = physical_light::index_loaded_z_sources( guy, here );
+    const auto check_fixture = [&fixture_abs]( const physical_light::loaded_z_source_index &index ) {
+        const auto terrain_source = std::find_if( index.stationary_emitters.begin(),
+        index.stationary_emitters.end(), [&fixture_abs]( const physical_light::emitter &emitter ) {
+            return emitter.kind == physical_light::source_kind::terrain &&
+                   emitter.position == fixture_abs;
+        } );
+        REQUIRE( terrain_source != index.stationary_emitters.end() );
+        CHECK( terrain_source->provenance.rfind( "terrain:", 0 ) == 0 );
+        CHECK( terrain_source->luminance == 31 );
+        return std::count_if( index.item_emitters.begin(), index.item_emitters.end(),
+        [&fixture_abs]( const physical_light::emitter &emitter ) {
+            return emitter.kind == physical_light::source_kind::ground_item &&
+                   emitter.position == fixture_abs && emitter.provenance == "flashlight_on";
+        } );
+    };
+    const auto check_both_discovery_routes = [&here, &origin, &fixture_abs,
+            &check_fixture]( const physical_light::loaded_z_source_index &index ) {
+        CHECK( check_fixture( index ) == 1 );
+        const auto selected = physical_light::collect_stationary_emitters( here, origin, 0 );
+        const auto terrain_source = std::find_if( selected.begin(), selected.end(),
+        [&fixture_abs]( const physical_light::emitter &emitter ) {
+            return emitter.kind == physical_light::source_kind::terrain &&
+                   emitter.position == fixture_abs;
+        } );
+        REQUIRE( terrain_source != selected.end() );
+        CHECK( terrain_source->provenance.rfind( "terrain:", 0 ) == 0 );
+        CHECK( terrain_source->luminance == 31 );
+    };
+    check_both_discovery_routes( beside_index );
+
+    // Stand directly on the shared fixture: the old carrier-tile continue
+    // dropped terrain and the lamp's map enumeration at exactly this point.
+    guy.setpos( here, origin );
+    const auto onto = physical_light::index_loaded_z_sources( guy, here );
+    check_both_discovery_routes( onto );
+
+    guy.setpos( here, away );
+    const auto away_index = physical_light::index_loaded_z_sources( guy, here );
+    check_both_discovery_routes( away_index );
+}
+
+TEST_CASE( "physical_light_loaded_z_index_keeps_player_tile_stationary_sources_and_restores_fixtures",
+           "[physical_light][continuity]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    avatar &guy = get_avatar();
+    map &here = get_map();
+    const tripoint_bub_ms origin = guy.pos_bub();
+    ter_t &terrain = const_cast<ter_t &>( here.ter( origin ).obj() );
+    furn_t &furniture = const_cast<furn_t &>( here.furn( origin ).obj() );
+    const int original_terrain_light = terrain.light_emitted;
+    const int original_furniture_light = furniture.light_emitted;
+    {
+        restore_on_out_of_scope terrain_restore( terrain.light_emitted );
+        restore_on_out_of_scope furniture_restore( furniture.light_emitted );
+        terrain.light_emitted = 31;
+        furniture.light_emitted = 37;
+        const auto index = physical_light::index_loaded_z_sources( guy, here );
+        CHECK( std::count_if( index.stationary_emitters.begin(), index.stationary_emitters.end(),
+        [&here, &origin]( const physical_light::emitter &emitter ) {
+            return emitter.position == here.get_abs( origin ) &&
+                   ( emitter.kind == physical_light::source_kind::terrain ||
+                     emitter.kind == physical_light::source_kind::furniture );
+        } ) == 2 );
+    }
+    CHECK( terrain.light_emitted == original_terrain_light );
+    CHECK( furniture.light_emitted == original_furniture_light );
+    const auto throw_with_fixture = [&terrain, &furniture]() {
+        restore_on_out_of_scope terrain_restore( terrain.light_emitted );
+        restore_on_out_of_scope furniture_restore( furniture.light_emitted );
+        terrain.light_emitted = 41;
+        furniture.light_emitted = 43;
+        throw std::runtime_error( "fixture restoration probe" );
+    };
+    try {
+        throw_with_fixture();
+    } catch( const std::runtime_error & ) {
+    }
+    CHECK( terrain.light_emitted == original_terrain_light );
+    CHECK( furniture.light_emitted == original_furniture_light );
+}
+
+TEST_CASE( "physical_light_samples_once_per_real_advancing_turn",
            "[physical_light][continuity]" )
 {
     physical_light::turn_sample_gate gate;
-    // A caller that is not at its admitted signal cadence must not turn a
-    // current state query into a physical observation.
+    // Non-advancing callers (render, inventory, debug, and scheduler probes)
+    // cannot turn a current state query into a physical observation.
     CHECK_FALSE( gate.begin_advancing_turn( 40, false ) );
     CHECK( gate.begin_advancing_turn( 40, true ) );
     CHECK_FALSE( gate.begin_advancing_turn( 40, true ) );
-    // Render, inventory, debug, and non-cadence callers pass false, so they
-    // cannot turn a momentary state query into an exposure interval.
+    // Every distinct real turn is admitted, including turns between the old
+    // five-minute maintenance boundaries.  Re-entry in that same turn is a
+    // no-op, and a timeline rewind starts a fresh sequence.
     CHECK_FALSE( gate.begin_advancing_turn( 41, false ) );
     CHECK( gate.begin_advancing_turn( 41, true ) );
+    CHECK( gate.begin_advancing_turn( 42, true ) );
+    CHECK_FALSE( gate.begin_advancing_turn( 42, true ) );
     CHECK( gate.begin_advancing_turn( 7, true ) );
+}
+
+TEST_CASE( "physical_light_production_facade_records_real_delivery_order",
+           "[physical_light][continuity][production_order]" )
+{
+    clear_avatar();
+    clear_map_without_vision();
+    reset_live_light_sample_cache();
+    run_live_light_delivery_for_test();
+    CHECK( live_light_sample_is_current_for_test() );
+    CHECK( live_light_delivery_trace_for_test() == std::vector<live_light_delivery_stage>{
+        live_light_delivery_stage::rider_reconciliation,
+        live_light_delivery_stage::rider_memory_aging,
+        live_light_delivery_stage::fresh_sampling,
+        live_light_delivery_stage::horde_delivery,
+        live_light_delivery_stage::stalker_delivery,
+        live_light_delivery_stage::rider_delivery,
+        live_light_delivery_stage::cannibal_delivery,
+    } );
+    // Re-entry in the same real turn does not resample.  The packet remains
+    // current for the later cadence owner, without a query/redraw refresh.
+    run_live_light_delivery_for_test();
+    CHECK( live_light_sample_is_current_for_test() );
+    CHECK( live_light_delivery_trace_for_test().empty() );
+    run_live_light_staffed_observer_for_test();
+    CHECK( live_light_sample_is_current_for_test() );
+    CHECK( live_light_delivery_trace_for_test().back() ==
+           live_light_delivery_stage::staffed_observer_recording );
+}
+
+TEST_CASE( "live_light_discovers_each_advancing_turn_without_same_turn_replay",
+           "[physical_light][continuity][production_order]" )
+{
+    live_light::reset();
+    int reconciliations = 0;
+    int memory_aging = 0;
+    int discoveries = 0;
+    int deliveries = 0;
+    live_light::callbacks callbacks;
+    callbacks.reconcile_riders = [&reconciliations]() {
+        ++reconciliations;
+    };
+    callbacks.age_rider_memory = [&memory_aging]() {
+        ++memory_aging;
+    };
+    callbacks.discover = [&discoveries]() {
+        ++discoveries;
+        live_bandit_signal_observation sample;
+        sample.has_light_projection = true;
+        sample.sample_id = "cadence-fixture";
+        return std::vector<live_bandit_signal_observation> { sample };
+    };
+    const auto count_delivery = [&deliveries]( const std::vector<live_bandit_signal_observation> & ) {
+        ++deliveries;
+    };
+    callbacks.deliver_hordes = count_delivery;
+    callbacks.deliver_stalkers = count_delivery;
+    callbacks.deliver_riders = count_delivery;
+    callbacks.deliver_cannibals = count_delivery;
+
+    const time_point first_turn = calendar::turn_zero + 100_turns;
+    live_light::run_advancing_turn( first_turn, callbacks );
+    CHECK( reconciliations == 1 );
+    CHECK( memory_aging == 1 );
+    CHECK( discoveries == 1 );
+    CHECK( deliveries == 4 );
+    REQUIRE( live_light::samples_for_turn( first_turn ).size() == 1 );
+
+    // A duplicate call in one real turn is a no-op, but the next advancing
+    // turn must discover and deliver independently; this is intentionally not
+    // the staffed observer's five-minute cadence.
+    live_light::run_advancing_turn( first_turn, callbacks );
+    CHECK( reconciliations == 1 );
+    CHECK( memory_aging == 1 );
+    CHECK( discoveries == 1 );
+    CHECK( deliveries == 4 );
+    CHECK( live_light::delivery_trace().empty() );
+
+    const time_point second_turn = first_turn + 1_turns;
+    live_light::run_advancing_turn( second_turn, callbacks );
+    CHECK( reconciliations == 2 );
+    CHECK( memory_aging == 2 );
+    CHECK( discoveries == 2 );
+    CHECK( deliveries == 8 );
+    CHECK( live_light::sample_is_current( second_turn ) );
+    CHECK( live_light::delivery_trace() == std::vector<live_light_delivery_stage> {
+        live_light_delivery_stage::rider_reconciliation,
+        live_light_delivery_stage::rider_memory_aging,
+        live_light_delivery_stage::fresh_sampling,
+        live_light_delivery_stage::horde_delivery,
+        live_light_delivery_stage::stalker_delivery,
+        live_light_delivery_stage::rider_delivery,
+        live_light_delivery_stage::cannibal_delivery,
+    } );
 }
 
 TEST_CASE( "physical_light_respects_depletion_and_movement", "[physical_light]" )
@@ -544,8 +756,8 @@ TEST_CASE( "physical_light_stationary_records_are_source_bound", "[physical_ligh
 
     ter_t &terrain = const_cast<ter_t &>( here.ter( terrain_pos ).obj() );
     furn_t &furniture = const_cast<furn_t &>( here.furn( furniture_pos ).obj() );
-    const int old_terrain_light = terrain.light_emitted;
-    const int old_furniture_light = furniture.light_emitted;
+    restore_on_out_of_scope terrain_light_restore( terrain.light_emitted );
+    restore_on_out_of_scope furniture_light_restore( furniture.light_emitted );
     terrain.light_emitted = 17;
     furniture.light_emitted = 23;
     here.add_field( field_a, field_type_id( "fd_bile_adv" ), 2 );
@@ -576,8 +788,6 @@ TEST_CASE( "physical_light_stationary_records_are_source_bound", "[physical_ligh
         return e.kind == physical_light::source_kind::field && e.position.x() != 0;
     } ) == 2 );
 
-    terrain.light_emitted = old_terrain_light;
-    furniture.light_emitted = old_furniture_light;
 }
 
 TEST_CASE( "physical_light_stationary_records_match_native_lightmap", "[physical_light][lightmap]" )

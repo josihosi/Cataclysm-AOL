@@ -13,6 +13,26 @@
 #include "debug.h"
 #include "debug_capture.h"
 
+TEST_CASE( "debug_log_enabled_matches_debug_stream_filtering", "[debug][logging]" )
+{
+    limitDebugLevel( DL_ALL );
+    limitDebugClass( DC_ALL );
+    CHECK( debug_log_enabled( D_INFO, D_GAME ) );
+
+    limitDebugLevel( 0 );
+    CHECK_FALSE( debug_log_enabled( D_INFO, D_GAME ) );
+    CHECK( debug_log_enabled( D_ERROR, D_GAME ) );
+
+    limitDebugLevel( DL_ALL );
+    limitDebugClass( 0 );
+    CHECK_FALSE( debug_log_enabled( D_INFO, D_GAME ) );
+    CHECK( debug_log_enabled( D_INFO, D_MAIN ) );
+
+    // Do not leak the test's filter state into the rest of the suite.
+    limitDebugLevel( DL_ALL );
+    limitDebugClass( DC_ALL );
+}
+
 TEST_CASE( "capture_json_escape_round_trip", "[debug_capture]" )
 {
     SECTION( "plain ASCII passes through" ) {

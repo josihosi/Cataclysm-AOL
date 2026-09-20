@@ -6,6 +6,7 @@
 #include "calendar.h"
 #include "cata_catch.h"
 #include "character.h"
+#include "debug.h"
 #include "effect.h"
 #include "flesh_raptor_ai.h"
 #include "game.h"
@@ -179,6 +180,55 @@ TEST_CASE( "flesh_raptor_live_plan_consumes_orbit_scorer_for_spawn_raptor", "[fl
     CHECK( rl_dist( dest, you.pos_bub() ) <= 6 );
     CHECK( std::abs( dest.y() - you.pos_bub().y() ) >= 4 );
     CHECK_FALSE( dest == you.pos_bub() );
+    clear_map_without_vision();
+}
+
+TEST_CASE( "flesh_raptor_live_plan_is_independent_of_diagnostic_filter", "[flesh_raptor][monster][map][debug]" )
+{
+    struct plan_state {
+        tripoint_abs_ms destination;
+        tripoint_abs_ms wander_destination;
+        int wander_range;
+        int moves;
+        int anger;
+        bool aggro_character;
+    };
+
+    const auto run_plan = []( bool diagnostics_enabled ) {
+        clear_map_without_vision();
+        clear_avatar();
+        map &here = get_map();
+        Character &you = get_player_character();
+        const tripoint_bub_ms center{ 65, 65, 0 };
+        restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+        set_time( daylight_time( calendar::turn ) + 2_hours );
+        prepare_flesh_raptor_arena( here, center );
+        you.setpos( here, center );
+
+        limitDebugLevel( diagnostics_enabled ? DL_ALL : 0 );
+        limitDebugClass( DC_ALL );
+        monster &raptor = spawn_test_monster( mon_spawn_raptor.str(), center + point::east * 5 );
+        raptor.anger = 100;
+        raptor.aggro_character = true;
+        raptor.add_effect( effect_run, 1_turns, true );
+        REQUIRE( raptor.sees( here, you ) );
+        raptor.plan();
+
+        return plan_state{ raptor.get_dest(), raptor.wander_pos, raptor.wandf, raptor.get_moves(),
+                            raptor.anger, raptor.aggro_character };
+    };
+
+    const plan_state enabled = run_plan( true );
+    const plan_state disabled = run_plan( false );
+    CHECK( enabled.destination == disabled.destination );
+    CHECK( enabled.wander_destination == disabled.wander_destination );
+    CHECK( enabled.wander_range == disabled.wander_range );
+    CHECK( enabled.moves == disabled.moves );
+    CHECK( enabled.anger == disabled.anger );
+    CHECK( enabled.aggro_character == disabled.aggro_character );
+
+    limitDebugLevel( DL_ALL );
+    limitDebugClass( DC_ALL );
     clear_map_without_vision();
 }
 

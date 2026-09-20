@@ -8,6 +8,7 @@
 #include "cata_catch.h"
 #include "cata_scope_helpers.h"
 #include "character.h"
+#include "debug.h"
 #include "effect.h"
 #include "game.h"
 #include "json.h"
@@ -1214,6 +1215,85 @@ TEST_CASE( "zombie_rider_camp_pressure_intent_drives_live_planning",
         CHECK_FALSE( zombie_rider_overmap_ai::get_camp_pressure_intent( loaded ).has_value() );
     }
 
+    clear_map_without_vision();
+}
+
+TEST_CASE( "zombie_rider_live_plan_is_independent_of_diagnostic_filter",
+           "[zombie_rider][monster][map][debug]" )
+{
+    struct plan_state {
+        tripoint_abs_ms destination;
+        tripoint_abs_ms wander_destination;
+        int wander_range;
+        int moves;
+        int anger;
+        bool aggro_character;
+        int ammo;
+        bool bow_ready;
+        time_point turn;
+        bool owns_camp_intent;
+        zombie_rider_overmap_ai::rider_camp_pressure_posture camp_posture;
+        tripoint_abs_ms camp_source;
+        int camp_slot;
+        int camp_turns_remaining;
+    };
+
+    const auto run_plan = []( bool diagnostics_enabled ) {
+        clear_map_without_vision();
+        map &here = get_map();
+        Character &you = get_player_character();
+        const tripoint_bub_ms center{ 65, 65, 0 };
+        const tripoint_bub_ms rider_start = center + point::east * 8;
+        restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+        set_time( daylight_time( calendar::turn ) + 2_hours );
+        prepare_zombie_rider_local_arena( here, center );
+        you.setpos( here, center );
+
+        limitDebugLevel( diagnostics_enabled ? DL_ALL : 0 );
+        limitDebugClass( D_GAME );
+        monster &rider = spawn_test_monster( mon_zombie_rider.str(), rider_start );
+        rider.anger = 100;
+        rider.aggro_character = true;
+        rider.set_moves( 100 );
+        rider.set_special( zombie_rider_bone_bow_shot, 10 );
+        const tripoint_abs_ms camp_source = here.get_abs( center );
+        zombie_rider_overmap_ai::set_camp_pressure_intent(
+            rider, zombie_rider_overmap_ai::rider_camp_pressure_posture::circle_harass,
+            camp_source, 30, 0 );
+        REQUIRE( rider.sees( here, you ) );
+        rider.plan();
+
+        const auto intent = zombie_rider_overmap_ai::get_camp_pressure_intent( rider );
+        return plan_state{ rider.get_dest(), rider.wander_pos, rider.wandf, rider.get_moves(),
+                           rider.anger, rider.aggro_character,
+                           rider.ammo[zombie_rider_tainted_bone_arrow],
+                           rider.special_available( zombie_rider_bone_bow_shot ), calendar::turn,
+                           intent.has_value(),
+                           intent ? intent->posture : zombie_rider_overmap_ai::rider_camp_pressure_posture::none,
+                           intent ? intent->source : tripoint_abs_ms::zero,
+                           intent ? intent->formation_slot : 0,
+                           intent ? intent->turns_remaining : 0 };
+    };
+
+    const plan_state enabled = run_plan( true );
+    const plan_state disabled = run_plan( false );
+    CHECK( enabled.destination == disabled.destination );
+    CHECK( enabled.wander_destination == disabled.wander_destination );
+    CHECK( enabled.wander_range == disabled.wander_range );
+    CHECK( enabled.moves == disabled.moves );
+    CHECK( enabled.anger == disabled.anger );
+    CHECK( enabled.aggro_character == disabled.aggro_character );
+    CHECK( enabled.ammo == disabled.ammo );
+    CHECK( enabled.bow_ready == disabled.bow_ready );
+    CHECK( enabled.turn == disabled.turn );
+    CHECK( enabled.owns_camp_intent == disabled.owns_camp_intent );
+    CHECK( enabled.camp_posture == disabled.camp_posture );
+    CHECK( enabled.camp_source == disabled.camp_source );
+    CHECK( enabled.camp_slot == disabled.camp_slot );
+    CHECK( enabled.camp_turns_remaining == disabled.camp_turns_remaining );
+
+    limitDebugLevel( DL_ALL );
+    limitDebugClass( DC_ALL );
     clear_map_without_vision();
 }
 

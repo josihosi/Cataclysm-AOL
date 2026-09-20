@@ -205,6 +205,13 @@ void limitDebugLevel( int );
 void limitDebugClass( int );
 
 /**
+ * Return whether a message at the supplied level/class would be emitted.
+ * Callers with expensive diagnostic arguments can use this to avoid building
+ * those arguments when the debug stream is disabled.
+ */
+bool debug_log_enabled( DebugLevel, DebugClass );
+
+/**
  * @return true if any error has been logged in this run.
  */
 bool debug_has_error_been_observed();

@@ -5,6 +5,7 @@
 #endif
 
 #include <algorithm>
+#include <array>
 #include <chrono>
 #include <climits>
 #include <cmath>
@@ -77,6 +78,7 @@
 #include "llm_intent.h"
 #include "line.h"
 #include "lightmap.h"
+#include "live_light.h"
 #include "mission.h"
 #include "monster.h"
 #include "mongroup.h"
@@ -4749,23 +4751,6 @@ bool note_live_bandit_aftermath()
     return changed;
 }
 
-struct live_bandit_signal_observation {
-    bandit_live_world::live_signal_mark mark;
-    bandit_mark_generation::signal_input signal;
-    tripoint_abs_omt source_omt;
-    std::optional<tripoint_abs_ms> source_ms;
-    int range_cap_omt = 0;
-    int horde_signal_power = 0;
-    std::string weather_summary;
-    bool has_light_projection = false;
-    bandit_mark_generation::light_projection light_projection;
-    // Identity belongs to this physical sample, not to the source.  It is
-    // carried to consumers so a cached delivery can never refresh memory.
-    std::string sample_id;
-    int observed_turn = -1;
-    int observed_minutes = -1;
-};
-
 struct live_bandit_sound_observation {
     tripoint_abs_omt source_omt;
     int volume = 0;
@@ -7095,33 +7080,6 @@ std::vector<live_bandit_signal_observation> observe_loaded_z_light_sources()
     return observations;
 }
 
-// The source sample is owned by the advancing-turn pipeline.  Other consumers
-// receive this immutable packet; they never rescan or manufacture a later
-// source timestamp merely because their own scheduler happens to run.
-std::vector<live_bandit_signal_observation> live_light_sample_cache;
-time_point live_light_sample_turn = calendar::turn_zero;
-bool live_light_sample_valid = false;
-physical_light::turn_sample_gate live_light_sample_gate;
-
-const std::vector<live_bandit_signal_observation> &live_light_samples_for_current_turn()
-{
-    const int turn = to_turns<int>( calendar::turn - calendar::turn_zero );
-    if( live_light_sample_gate.begin_advancing_turn( turn,
-            calendar::once_every( time_between_npc_OM_moves ) ) ) {
-        live_light_sample_cache = observe_loaded_z_light_sources();
-        live_light_sample_turn = calendar::turn;
-        live_light_sample_valid = true;
-    }
-    return live_light_sample_cache;
-}
-
-const std::vector<live_bandit_signal_observation> &live_light_samples_already_taken_this_turn()
-{
-    static const std::vector<live_bandit_signal_observation> empty;
-    return live_light_sample_valid && live_light_sample_turn == calendar::turn ?
-           live_light_sample_cache : empty;
-}
-
 int dispatch_live_cannibal_signal_contacts(
     const std::vector<live_bandit_signal_observation> &signals )
 {
@@ -8902,56 +8860,29 @@ std::vector<bandit_live_world::structural_signal_read> live_bandit_staffed_camp_
 
 void sample_and_deliver_live_light_for_advancing_turn()
 {
-    overmap_buffer.reconcile_rider_band_encounters();
-    // Memory ages even when every source is now switched off, depleted,
-    // moved out of the loaded bubble, or unloaded.  No old location is
-    // resampled and light never uses the sound/horde signalling path.
-    advance_zombie_rider_light_memories();
-
-    const std::vector<live_bandit_signal_observation> &samples =
-        live_light_samples_for_current_turn();
-    // Do not replay a cached light source on an intervening normal turn.  The
-    // cache exists only to hand the fresh cadence-bound packet to the later
-    // overmap owner; memory aging above remains an every-turn responsibility.
-    if( !live_light_sample_valid || live_light_sample_turn != calendar::turn ) {
-        return;
-    }
-    std::vector<live_bandit_signal_observation> light_samples;
-    light_samples.reserve( samples.size() );
-    for( const live_bandit_signal_observation &sample : samples ) {
-        if( sample.has_light_projection && !sample.sample_id.empty() ) {
-            light_samples.push_back( sample );
-        }
-    }
-    if( light_samples.empty() ) {
-        return;
-    }
-    attract_live_hordes_from_light_observations( light_samples );
-    signal_live_writhing_stalkers_from_light_observations( light_samples );
-    signal_live_zombie_riders_from_light_observations( light_samples );
-    // Cannibal camps consume the same real physical-light sample as the other
-    // recipients.  Keep this on the advancing-turn owner so a cached packet
-    // cannot manufacture a later observation or refresh a camp from sound.
-    const int cannibal_dispatches = dispatch_live_cannibal_signal_contacts( light_samples );
-
-    // This is a discovery handoff only.  The camp's normal dispatch cadence
-    // remains its policy owner, while a staffed observer gets the packet now
-    // rather than waiting for the former five-minute source scan.
-    bandit_live_world::world_state &state = overmap_buffer.global_state.bandit_live_world;
-    const bandit_live_world::camp_signal_observation_result observed =
-        bandit_live_world::record_staffed_camp_signal_observations(
-            state, live_bandit_current_minutes(),
-    [&light_samples]( const bandit_live_world::site_record &site,
-                      const bandit_live_world::camp_signal_observer_request &request ) {
-        return live_bandit_staffed_camp_signal_reads( light_samples, {}, site, request );
-    } );
-    DebugLog( D_INFO, DC_ALL ) << "bandit_live_world real_turn_light_delivery"
-                               << " samples=" << light_samples.size()
-                               << " eligible_camps=" << observed.eligible_camps
-                               << " callbacks=" << observed.callbacks_invoked
-                               << " created=" << observed.leads_created
-                               << " refreshed=" << observed.leads_refreshed
-                               << " cannibal_dispatches=" << cannibal_dispatches << '\n';
+    live_light::callbacks callbacks;
+    callbacks.reconcile_riders = []() {
+        overmap_buffer.reconcile_rider_band_encounters();
+    };
+    callbacks.age_rider_memory = []() {
+        advance_zombie_rider_light_memories();
+    };
+    callbacks.discover = []() {
+        return observe_loaded_z_light_sources();
+    };
+    callbacks.deliver_hordes = []( const std::vector<live_bandit_signal_observation> &samples ) {
+        attract_live_hordes_from_light_observations( samples );
+    };
+    callbacks.deliver_stalkers = []( const std::vector<live_bandit_signal_observation> &samples ) {
+        signal_live_writhing_stalkers_from_light_observations( samples );
+    };
+    callbacks.deliver_riders = []( const std::vector<live_bandit_signal_observation> &samples ) {
+        signal_live_zombie_riders_from_light_observations( samples );
+    };
+    callbacks.deliver_cannibals = []( const std::vector<live_bandit_signal_observation> &samples ) {
+        dispatch_live_cannibal_signal_contacts( samples );
+    };
+    live_light::run_advancing_turn( calendar::turn, callbacks );
 }
 
 bandit_live_world::structural_bounty_maintenance_result maintain_live_bandit_structural_bounty(
@@ -9205,6 +9136,48 @@ int advance_live_bandit_local_scout_assessments()
 }
 
 } // namespace
+
+namespace
+{
+bandit_live_world::camp_signal_observation_result record_live_light_staffed_observer_at_cadence(
+    bandit_live_world::world_state &bandit_state,
+    const std::vector<live_bandit_signal_observation> &,
+    const std::vector<live_bandit_sound_observation> &live_sounds,
+    bool signal_cadence_due );
+}
+
+void reset_live_light_sample_cache()
+{
+    live_light::reset();
+}
+
+void run_live_light_delivery_for_test()
+{
+    sample_and_deliver_live_light_for_advancing_turn();
+}
+
+void run_live_light_staffed_observer_for_test()
+{
+    const std::vector<live_bandit_sound_observation> no_sounds;
+    record_live_light_staffed_observer_at_cadence(
+        overmap_buffer.global_state.bandit_live_world,
+        live_light::samples_for_turn( calendar::turn ), no_sounds, true );
+}
+
+bool live_light_sample_is_current_for_test()
+{
+    return live_light::sample_is_current( calendar::turn );
+}
+
+std::vector<live_light_delivery_stage> live_light_delivery_order_for_test()
+{
+    return live_light::delivery_order();
+}
+
+std::vector<live_light_delivery_stage> live_light_delivery_trace_for_test()
+{
+    return live_light::delivery_trace();
+}
 
 bandit_live_world::structural_route_read live_bandit_structural_route_read_for_test(
     const bandit_live_world::site_record &site,
@@ -11553,6 +11526,28 @@ void monmove()
     record_live_bandit_structural_member_returns();
 }
 
+bandit_live_world::camp_signal_observation_result record_live_light_staffed_observer_at_cadence(
+    bandit_live_world::world_state &bandit_state,
+    const std::vector<live_bandit_signal_observation> &,
+    const std::vector<live_bandit_sound_observation> &live_sounds,
+    const bool signal_cadence_due )
+{
+    if( !signal_cadence_due ) {
+        return {};
+    }
+    bandit_live_world::camp_signal_observation_result result;
+    live_light::record_staffed_observer( calendar::turn,
+    [&result, &bandit_state, &live_sounds]( const std::vector<live_bandit_signal_observation> &samples ) {
+        result = bandit_live_world::record_staffed_camp_signal_observations(
+                     bandit_state, live_bandit_current_minutes(),
+        [&samples, &live_sounds]( const bandit_live_world::site_record &site,
+                                  const bandit_live_world::camp_signal_observer_request &request ) {
+            return live_bandit_staffed_camp_signal_reads( samples, live_sounds, site, request );
+        } );
+    } );
+    return result;
+}
+
 void overmap_npc_move()
 {
     const auto perf_started = std::chrono::steady_clock::now();
@@ -11609,7 +11604,7 @@ void overmap_npc_move()
         bootstrapped_sites = bootstrap_live_bandit_abstract_sites_near_player();
     }
     if( signal_cadence_due ) {
-        live_signals = live_light_samples_already_taken_this_turn();
+        live_signals = live_light::samples_for_turn( calendar::turn );
     }
     if( signal_cadence_due || !live_sounds.empty() ) {
         record_r008_production_channel_scan( live_signals, live_sounds );
@@ -11628,13 +11623,8 @@ void overmap_npc_move()
     // inside record_staffed_camp_signal_observations through their roster/observer checks.
     if( signal_cadence_due ) {
         const bandit_live_world::camp_signal_observation_result camp_signals =
-            bandit_live_world::record_staffed_camp_signal_observations(
-                bandit_state, live_bandit_current_minutes(),
-        [&live_signals, &live_sounds]( const bandit_live_world::site_record & site,
-        const bandit_live_world::camp_signal_observer_request & request ) {
-            return live_bandit_staffed_camp_signal_reads( live_signals, live_sounds,
-                    site, request );
-        } );
+            record_live_light_staffed_observer_at_cadence(
+                bandit_state, live_signals, live_sounds, signal_cadence_due );
         DebugLog( D_INFO, DC_ALL ) << "bandit_live_world staffed_camp_signal_observation"
                                    << " sites=" << camp_signals.sites_considered
                                    << " eligible=" << camp_signals.eligible_camps
@@ -12868,12 +12858,9 @@ bool game::do_turn()
     // consider a stripped down cache just for monsters.
     m.build_map_cache( levz, true );
 
-    // Loaded-source discovery walks every loaded z-level and the contained
-    // item hierarchy.  Its consumers make light decisions on the existing
-    // five-minute signal cadence below, so sampling it every six-second game
-    // turn only repeats that full traversal without creating an admissible
-    // new signal observation.  Keep the source sample on the cadence boundary
-    // so the later overmap pass receives one current-turn packet.
+    // Rider reconciliation, memory aging, loaded-z discovery, and immediate
+    // recipients run once per distinct advancing turn.  Staffed observation
+    // remains owned by its separate five-minute cadence.
     if( advancing_game_turn ) {
         sample_and_deliver_live_light_for_advancing_turn();
     }

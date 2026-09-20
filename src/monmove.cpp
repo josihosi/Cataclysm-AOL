@@ -14,6 +14,7 @@
 #include <optional>
 #include <string>
 #include <unordered_map>
+#include <unordered_set>
 #include <vector>
 
 #include "behavior.h"
@@ -128,6 +129,16 @@ static const ter_str_id ter_t_pit( "t_pit" );
 static const ter_str_id ter_t_pit_glass( "t_pit_glass" );
 static const ter_str_id ter_t_pit_spiked( "t_pit_spiked" );
 
+static bool hostile_ecology_diagnostic_logging_enabled()
+{
+    return debug_log_enabled( D_INFO, D_GAME );
+}
+
+// Keep stream arguments lazy: DebugLog itself cannot prevent their evaluation.
+#define hostile_ecology_debug_log() \
+    for( bool hostile_ecology_log_once = hostile_ecology_diagnostic_logging_enabled(); \
+         hostile_ecology_log_once; hostile_ecology_log_once = false ) DebugLog( D_INFO, D_GAME )
+
 bool monster::is_immune_field( const field_type_id &fid ) const
 {
     if( fid == fd_fungal_haze ) {
@@ -167,7 +178,6 @@ bool monster::is_immune_field( const field_type_id &fid ) const
     // No specific immunity was found, so fall upwards
     return Creature::is_immune_field( fid );
 }
-
 
 static bool z_is_valid( int z )
 {
@@ -597,10 +607,10 @@ static bool apply_flesh_raptor_plan( monster &raptor, map &here, Creature &targe
     const tripoint_abs_ms target_abs = target.pos_abs();
     if( !raptor.has_effect( effect_run ) && raptor.get_dest() == target_abs &&
         distance_to_target > 1 && distance_to_target <= 6 ) {
-        DebugLog( D_INFO, DC_ALL ) << "flesh_raptor live_plan: decision=swoop"
-                                   << " reason=committed_swoop_path"
-                                   << " distance=" << distance_to_target
-                                   << " candidates=0 score=0 run=no held=no eval_us=0" << '\n';
+        hostile_ecology_debug_log() << "flesh_raptor live_plan: decision=swoop"
+                                       << " reason=committed_swoop_path"
+                                       << " distance=" << distance_to_target
+                                       << " candidates=0 score=0 run=no held=no eval_us=0" << '\n';
         return true;
     }
     const bool has_held_destination = raptor.wandf > 0;
@@ -645,23 +655,23 @@ static bool apply_flesh_raptor_plan( monster &raptor, map &here, Creature &targe
     const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
                             perf_started ).count();
 
-    DebugLog( D_INFO, DC_ALL ) << "flesh_raptor live_plan: decision="
-                               << ( response.next == flesh_raptor::decision::orbit ? "orbit" :
-                                    response.next == flesh_raptor::decision::swoop ? "swoop" : "fallback" )
-                               << " reason=" << response.reason
-                               << " distance=" << distance_to_target
-                               << " candidates=" << candidates.size()
-                               << " score=" << response.score
-                               << " chosen_rel="
-                               << ( response.has_candidate ? response.chosen.rel_x : 0 ) << ','
-                               << ( response.has_candidate ? response.chosen.rel_y : 0 )
-                               << " chosen_distance="
-                               << ( response.has_candidate ? response.chosen.distance_to_target : 0 )
-                               << " chosen_crowding="
-                               << ( response.has_candidate ? response.chosen.crowding : 0 )
-                               << " run=" << ( raptor.has_effect( effect_run ) ? "yes" : "no" )
-                               << " held=" << ( has_held_destination ? "yes" : "no" )
-                               << " eval_us=" << elapsed_us << '\n';
+    hostile_ecology_debug_log() << "flesh_raptor live_plan: decision="
+                                   << ( response.next == flesh_raptor::decision::orbit ? "orbit" :
+                                        response.next == flesh_raptor::decision::swoop ? "swoop" : "fallback" )
+                                   << " reason=" << response.reason
+                                   << " distance=" << distance_to_target
+                                   << " candidates=" << candidates.size()
+                                   << " score=" << response.score
+                                   << " chosen_rel="
+                                   << ( response.has_candidate ? response.chosen.rel_x : 0 ) << ','
+                                   << ( response.has_candidate ? response.chosen.rel_y : 0 )
+                                   << " chosen_distance="
+                                   << ( response.has_candidate ? response.chosen.distance_to_target : 0 )
+                                   << " chosen_crowding="
+                                   << ( response.has_candidate ? response.chosen.crowding : 0 )
+                                   << " run=" << ( raptor.has_effect( effect_run ) ? "yes" : "no" )
+                                   << " held=" << ( has_held_destination ? "yes" : "no" )
+                                   << " eval_us=" << elapsed_us << '\n';
 
     if( response.next == flesh_raptor::decision::fallback ) {
         return false;
@@ -704,13 +714,13 @@ static bool writhing_stalker_has_cover_or_clutter( map &here, const tripoint_bub
 struct writhing_stalker_pressure_sample {
     writhing_stalker::actor_identity actor = 0;
     writhing_stalker::actor_identity target = 0;
-    tripoint_bub_ms position;
+    tripoint_abs_ms position;
     int turn = 0;
 };
 
 struct writhing_stalker_pressure_position {
     writhing_stalker::actor_identity actor = 0;
-    tripoint_bub_ms position;
+    tripoint_abs_ms position;
 };
 
 struct writhing_stalker_pressure_memory {
@@ -723,9 +733,35 @@ struct writhing_stalker_pressure_memory {
 static std::unordered_map<writhing_stalker::actor_identity, writhing_stalker_pressure_memory>
 writhing_stalker_pressure_memories;
 
+static void writhing_stalker_prune_pressure_memories( const int now_turn )
+{
+    std::unordered_set<writhing_stalker::actor_identity> live_monsters;
+    for( const monster &mon : g->all_monsters() ) {
+        if( !mon.is_dead() ) {
+            live_monsters.insert( mon.get_identity() );
+        }
+    }
+    for( auto memory_it = writhing_stalker_pressure_memories.begin();
+         memory_it != writhing_stalker_pressure_memories.end(); ) {
+        if( live_monsters.count( memory_it->first ) == 0 ) {
+            memory_it = writhing_stalker_pressure_memories.erase( memory_it );
+            continue;
+        }
+        std::vector<writhing_stalker_pressure_sample> &samples = memory_it->second.samples;
+        samples.erase( std::remove_if( samples.begin(), samples.end(),
+        [&live_monsters, now_turn]( const writhing_stalker_pressure_sample &sample ) {
+            return live_monsters.count( sample.actor ) == 0 || sample.turn > now_turn ||
+                   now_turn - sample.turn > 3;
+        } ), samples.end() );
+        ++memory_it;
+    }
+}
+
 static const std::vector<writhing_stalker_pressure_position> &writhing_stalker_observe_pressure( const monster &stalker,
         map &here, const Creature &target )
 {
+    const int now = to_turn<int>( calendar::turn );
+    writhing_stalker_prune_pressure_memories( now );
     if( writhing_stalker_pressure_memories.size() >= 512 &&
         writhing_stalker_pressure_memories.find( stalker.get_identity() ) ==
         writhing_stalker_pressure_memories.end() ) {
@@ -734,13 +770,16 @@ static const std::vector<writhing_stalker_pressure_position> &writhing_stalker_o
     const auto memory_it = writhing_stalker_pressure_memories.emplace(
         stalker.get_identity(), writhing_stalker_pressure_memory{} ).first;
     writhing_stalker_pressure_memory &memory = memory_it->second;
-    const int now = to_turn<int>( calendar::turn );
     if( memory.target == target.get_identity() && memory.turn == now ) {
         return memory.qualified;
     }
     memory.target = target.get_identity();
     memory.turn = now;
     memory.qualified.clear();
+    memory.samples.erase( std::remove_if( memory.samples.begin(), memory.samples.end(),
+    [&target]( const writhing_stalker_pressure_sample &sample ) {
+        return sample.target != target.get_identity();
+    } ), memory.samples.end() );
     for( const monster &other : g->all_monsters() ) {
         if( &other == &stalker || other.type->id == mon_writhing_stalker ||
             !other.type->in_species( species_ZOMBIE ) || other.is_dead() ||
@@ -757,7 +796,7 @@ static const std::vector<writhing_stalker_pressure_position> &writhing_stalker_o
         } );
         const bool distinct_recent_position = previous != memory.samples.end() &&
                                               now > previous->turn && now - previous->turn <= 3 &&
-                                              distance < rl_dist( previous->position, target.pos_bub() ) &&
+                                              distance < rl_dist( previous->position, target.pos_abs() ) &&
                                               distance > 1 && distance <= 8 &&
                                               here.clear_path( other.pos_bub(), target.pos_bub(),
                                                       std::max( 1, distance ), 1, 100 );
@@ -766,27 +805,44 @@ static const std::vector<writhing_stalker_pressure_position> &writhing_stalker_o
         const bool qualified = writhing_stalker::is_meaningful_pressure(
                                    writhing_stalker::pressure_observation{ true, visible, same_target,
                                            recent_attack, distinct_recent_position } );
+        if( !visible ) {
+            continue;
+        }
         if( previous == memory.samples.end() ) {
             memory.samples.push_back( writhing_stalker_pressure_sample{ other.get_identity(), target.get_identity(),
-                                      other.pos_bub(), now } );
+                                      other.pos_abs(), now } );
         } else {
-            previous->position = other.pos_bub();
+            previous->position = other.pos_abs();
             previous->turn = now;
         }
         if( qualified ) {
             memory.qualified.push_back( writhing_stalker_pressure_position{ other.get_identity(),
-                                      other.pos_bub() } );
+                                      other.pos_abs() } );
         }
     }
     return memory.qualified;
 }
 
-static int writhing_stalker_zombie_pressure( const monster &stalker, map &here,
+int writhing_stalker::observed_zombie_pressure( const monster &stalker, map &here,
         const Creature &target )
 {
     int pressure = 0;
     pressure = static_cast<int>( writhing_stalker_observe_pressure( stalker, here, target ).size() );
     return pressure;
+}
+
+void writhing_stalker::reset_transient_pressure_history()
+{
+    writhing_stalker_pressure_memories.clear();
+}
+
+std::size_t writhing_stalker::transient_pressure_sample_count()
+{
+    std::size_t total = 0;
+    for( const auto &entry : writhing_stalker_pressure_memories ) {
+        total += entry.second.samples.size();
+    }
+    return total;
 }
 
 static int writhing_stalker_allied_support_nearby( map &here, const Creature &target )
@@ -955,7 +1011,7 @@ static writhing_stalker::live_context writhing_stalker_live_context( monster &st
     ctx.forced_no_cover = ctx.direct_open_route_available && !ctx.cover_route_available &&
                           !ctx.edge_route_available;
     ctx.open_exposure = ctx.forced_no_cover;
-    ctx.zombie_pressure = writhing_stalker_zombie_pressure( stalker, here, target );
+    ctx.zombie_pressure = writhing_stalker::observed_zombie_pressure( stalker, here, target );
     ctx.allied_support_nearby = writhing_stalker_allied_support_nearby( here, target );
     ctx.quiet_side_cutoff_available = ctx.zombie_pressure > 0 &&
                                       ( ctx.cover_route_available || ctx.edge_route_available );
@@ -987,8 +1043,11 @@ static tripoint_abs_ms writhing_stalker_shadow_destination( monster &stalker, ma
     std::vector<writhing_stalker::relative_point> zombies;
     for( const writhing_stalker_pressure_position &other : writhing_stalker_observe_pressure( stalker,
             here, target ) ) {
-        zombies.push_back( writhing_stalker::relative_point{ other.position.x() - target_pos.x(),
-                           other.position.y() - target_pos.y(), 1 } );
+        const tripoint_bub_ms local_position = here.get_bub( other.position );
+        if( here.inbounds( local_position ) ) {
+            zombies.push_back( writhing_stalker::relative_point{ local_position.x() - target_pos.x(),
+                               local_position.y() - target_pos.y(), 1 } );
+        }
     }
 
     std::vector<writhing_stalker::quiet_candidate> candidates;
@@ -1012,21 +1071,21 @@ static tripoint_abs_ms writhing_stalker_shadow_destination( monster &stalker, ma
 
     const writhing_stalker::quiet_candidate_report cutoff =
         writhing_stalker::choose_quiet_side_cutoff( zombies, candidates );
-    DebugLog( D_INFO, DC_ALL ) << "writhing_stalker quiet_cutoff:"
-                               << " pressure_x=" << cutoff.pressure.pressure_x
-                               << " pressure_y=" << cutoff.pressure.pressure_y
-                               << " pressure_count=" << cutoff.pressure.pressure_count
-                               << " dominant=" << ( cutoff.pressure.has_dominant_pressure ? "yes" : "no" )
-                               << " ambiguous=" << ( cutoff.pressure.ambiguous_pressure ? "yes" : "no" )
-                               << " quiet_x=" << cutoff.pressure.quiet_x
-                               << " quiet_y=" << cutoff.pressure.quiet_y
-                               << " has_candidate=" << ( cutoff.has_candidate ? "yes" : "no" )
-                               << " chosen_rel_x=" << ( cutoff.has_candidate ? cutoff.chosen.rel_x : 0 )
-                               << " chosen_rel_y=" << ( cutoff.has_candidate ? cutoff.chosen.rel_y : 0 )
-                               << " score=" << cutoff.score
-                               << " quiet_alignment=" << cutoff.quiet_alignment
-                               << " crowding_penalty=" << cutoff.crowding_penalty
-                               << " reason=" << cutoff.reason << '\n';
+    hostile_ecology_debug_log() << "writhing_stalker quiet_cutoff:"
+                                   << " pressure_x=" << cutoff.pressure.pressure_x
+                                   << " pressure_y=" << cutoff.pressure.pressure_y
+                                   << " pressure_count=" << cutoff.pressure.pressure_count
+                                   << " dominant=" << ( cutoff.pressure.has_dominant_pressure ? "yes" : "no" )
+                                   << " ambiguous=" << ( cutoff.pressure.ambiguous_pressure ? "yes" : "no" )
+                                   << " quiet_x=" << cutoff.pressure.quiet_x
+                                   << " quiet_y=" << cutoff.pressure.quiet_y
+                                   << " has_candidate=" << ( cutoff.has_candidate ? "yes" : "no" )
+                                   << " chosen_rel_x=" << ( cutoff.has_candidate ? cutoff.chosen.rel_x : 0 )
+                                   << " chosen_rel_y=" << ( cutoff.has_candidate ? cutoff.chosen.rel_y : 0 )
+                                   << " score=" << cutoff.score
+                                   << " quiet_alignment=" << cutoff.quiet_alignment
+                                   << " crowding_penalty=" << cutoff.crowding_penalty
+                                   << " reason=" << cutoff.reason << '\n';
     if( cutoff.has_candidate ) {
         found = true;
         return here.get_abs( target_pos + point( cutoff.chosen.rel_x, cutoff.chosen.rel_y ) );
@@ -1244,7 +1303,7 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
     const auto perf_done = std::chrono::steady_clock::now();
     const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
                             perf_started ).count();
-    DebugLog( D_INFO, DC_ALL ) << "writhing_stalker live_plan: decision="
+    hostile_ecology_debug_log() << "writhing_stalker live_plan: decision="
                                << writhing_stalker_decision_name( response.next )
                                << " route=" << writhing_stalker_approach_name( response.route )
                                << " reason=" << response.reason
@@ -1267,7 +1326,7 @@ static bool apply_writhing_stalker_plan( monster &stalker, map &here, Creature &
                                << " stalker_bright=" << ( ctx.stalker_in_bright_exposure ? "yes" : "no" )
                                << " target_focus=" << ( ctx.target_has_focus ? "yes" : "no" )
                                << " cooldown=" << ( ctx.on_cooldown ? "yes" : "no" )
-                               << " eval_us=" << elapsed_us << '\n';
+                                   << " eval_us=" << elapsed_us << '\n';
 
     if( response.next == writhing_stalker::decision::hold && ctx.night_outside_reachable_target ) {
         writhing_stalker_set_bad_loiter_count( stalker, ctx.bad_position_loiter_turns + 1 );
@@ -1661,7 +1720,7 @@ static bool apply_zombie_rider_camp_intent_without_target( monster &rider, map &
     }
 
     rider.set_dest( destination );
-    DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision="
+    hostile_ecology_debug_log() << "zombie_rider live_plan: decision="
                                << zombie_rider_overmap_ai::to_string( posture )
                                << " reason=" << reason
                                << " camp_posture=" << zombie_rider_overmap_ai::to_string( intent.posture )
@@ -1763,7 +1822,7 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
         const auto perf_done = std::chrono::steady_clock::now();
         const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
                                 perf_started ).count();
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=ignore reason=no_visible_target distance=-1 line_of_fire=no hp="
+        hostile_ecology_debug_log() << "zombie_rider live_plan: decision=ignore reason=no_visible_target distance=-1 line_of_fire=no hp="
                                    << rider.hp_percentage()
                                    << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
                                    << " special_ready=" << ( rider.special_available( zombie_rider_bone_bow_shot ) ? "yes" : "no" )
@@ -1795,7 +1854,7 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
         const tripoint_abs_ms destination = zombie_rider_camp_withdraw_destination( rider,
                                             target.pos_abs(), camp_intent->formation_slot );
         rider.set_dest( destination );
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=withdraw"
+        hostile_ecology_debug_log() << "zombie_rider live_plan: decision=withdraw"
                                    << " reason=camp_pressure_withdraw"
                                    << " camp_posture=" << camp_posture
                                    << " destination=" << destination.to_string_writable()
@@ -1808,7 +1867,7 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
     if( line_of_fire && distance_to_target >= 4 && bow_action_ready ) {
         rider.aggro_character = true;
         rider.anger = std::max( rider.anger, 80 );
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=bow_pressure reason=line_of_fire distance="
+        hostile_ecology_debug_log() << "zombie_rider live_plan: decision=bow_pressure reason=line_of_fire distance="
                                    << distance_to_target
                                    << " line_of_fire=yes hp=" << rider.hp_percentage()
                                    << " run=" << ( rider.has_effect( effect_run ) ? "yes" : "no" )
@@ -1829,7 +1888,7 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
         rider.anger = std::max( rider.anger, 80 );
         rider.set_dest( target.pos_abs() );
         zombie_rider_set_waypoint( rider, target.pos_abs() );
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=direct_attack"
+        hostile_ecology_debug_log() << "zombie_rider live_plan: decision=direct_attack"
                                    << " reason=camp_pressure_opening"
                                    << " camp_posture=" << camp_posture
                                    << " intent_turns=" << camp_intent->turns_remaining
@@ -1850,7 +1909,7 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
         const tripoint_abs_ms destination = zombie_rider_camp_circle_destination( rider, here,
                                             *camp_intent );
         rider.set_dest( destination );
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=circle_harass"
+        hostile_ecology_debug_log() << "zombie_rider live_plan: decision=circle_harass"
                                    << " reason=camp_pressure_no_breach"
                                    << " camp_posture=" << camp_posture
                                    << " destination=" << destination.to_string_writable()
@@ -1865,7 +1924,7 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
     if( ammo_remaining <= 0 ) {
         rider.aggro_character = true;
         rider.anger = std::max( rider.anger, 80 );
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=melee_pressure reason=bow_empty_charge distance="
+        hostile_ecology_debug_log() << "zombie_rider live_plan: decision=melee_pressure reason=bow_empty_charge distance="
                                    << distance_to_target
                                    << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
                                    << " hp=" << rider.hp_percentage()
@@ -1889,7 +1948,7 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
         rider.anger = std::max( rider.anger, 80 );
         rider.set_dest( target.pos_abs() );
         zombie_rider_set_waypoint( rider, target.pos_abs() );
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=charge"
+        hostile_ecology_debug_log() << "zombie_rider live_plan: decision=charge"
                                    << " reason=contact_pressure distance=" << distance_to_target
                                    << " hp=" << rider.hp_percentage()
                                    << " special_ready=" << ( special_ready ? "yes" : "no" )
@@ -1903,7 +1962,7 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
         const char *reason = distance_to_target < 4 ? "too_close_bunny_hop" :
                              ( line_of_fire ? ( ammo_remaining <= 0 ? "bow_no_ammo_reposition" :
                                                "bow_cooldown_reposition" ) : "no_line_of_fire_reposition" );
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=reposition reason=" << reason
+        hostile_ecology_debug_log() << "zombie_rider live_plan: decision=reposition reason=" << reason
                                    << " distance=" << distance_to_target
                                    << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
                                    << " pressure_line_of_fire=" << ( pressure_line_of_fire ? "yes" : "no" )
@@ -1923,7 +1982,7 @@ static bool apply_zombie_rider_plan( monster &rider, map &here, Creature &target
     // A missing stand-off square is a pathing failure, not a reason to abandon
     // a visible target. Normal movement will route around obstacles while
     // retaining the rider's size and occupancy checks.
-    DebugLog( D_INFO, DC_ALL ) << "zombie_rider live_plan: decision=charge reason=no_pressure_tile"
+    hostile_ecology_debug_log() << "zombie_rider live_plan: decision=charge reason=no_pressure_tile"
                                << " distance=" << distance_to_target
                                << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
                                << " hp=" << rider.hp_percentage()
@@ -2167,7 +2226,7 @@ void monster::plan()
     if( type->id == mon_writhing_stalker ) {
         const Creature *target = mon_plan.target;
         const monster *target_mon = dynamic_cast<const monster *>( target );
-        DebugLog( D_INFO, DC_ALL ) << "writhing_stalker target_probe: stalker_pos="
+        hostile_ecology_debug_log() << "writhing_stalker target_probe: stalker_pos="
                                    << pos_abs().to_string_writable()
                                    << " target=" << ( target != nullptr ? "yes" : "no" )
                                    << " target_type=" << ( target_mon != nullptr ? target_mon->type->id.str() :
@@ -2262,7 +2321,7 @@ void monster::plan()
         const auto perf_done = std::chrono::steady_clock::now();
         const auto elapsed_us = std::chrono::duration_cast<std::chrono::microseconds>( perf_done -
                                 perf_started ).count();
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider target_probe: target=no sees_player="
+        hostile_ecology_debug_log() << "zombie_rider target_probe: target=no sees_player="
                                    << ( sees_player ? "yes" : "no" )
                                    << " distance=" << distance_to_player
                                    << " line_of_fire=" << ( line_of_fire ? "yes" : "no" )
@@ -2451,7 +2510,7 @@ void monster::move()
     goals.add( type->get_goals() );
     std::string action = goals.tick( &oracle );
     if( type->id == mon_zombie_rider ) {
-        DebugLog( D_INFO, DC_ALL ) << "zombie_rider impact_dispatch action=" << action
+        hostile_ecology_debug_log() << "zombie_rider impact_dispatch action=" << action
                                    << " ready=" << ( zombie_rider_pursuit_state().impact_ready ? "yes" : "no" )
                                    << " turn=" << to_turn<int>( calendar::turn ) << '\n';
     }
@@ -4352,7 +4411,7 @@ void monster::shove_vehicle( const tripoint_bub_ms &remote_destination,
                     if( shove_destination.z() != 0 ) {
                         veh.vertical_velocity = shove_destination.z() < 0 ? -shove_velocity : +shove_velocity;
                     }
-                    here.move_vehicle( veh, shove_destination, veh.face );
+                here.move_vehicle( veh, shove_destination, veh.face );
                 }
                 veh.move = tileray( destination_delta.xy() );
                 veh.smash( here, shove_damage_min, shove_damage_max, 0.10F );
@@ -4360,3 +4419,5 @@ void monster::shove_vehicle( const tripoint_bub_ms &remote_destination,
         }
     }
 }
+
+#undef hostile_ecology_debug_log

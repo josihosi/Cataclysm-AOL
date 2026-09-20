@@ -616,6 +616,11 @@ void limitDebugClass( int class_bitmask )
     debugClass = class_bitmask;
 }
 
+bool debug_log_enabled( DebugLevel lev, DebugClass cl )
+{
+    return ( lev & debugLevel && cl & debugClass ) || lev & D_ERROR || cl & D_MAIN;
+}
+
 // Debug only                                                       {{{1
 // ---------------------------------------------------------------------
 
@@ -1542,7 +1547,7 @@ std::ostream &DebugLog( DebugLevel lev, DebugClass cl )
 
     // Error are always logged, they are important,
     // Messages from D_MAIN come from debugmsg and are equally important.
-    if( ( lev & debugLevel && cl & debugClass ) || lev & D_ERROR || cl & D_MAIN ) {
+    if( debug_log_enabled( lev, cl ) ) {
         std::ostream &out = DebugFile::instance().get_file();
 
         output_repetitions( out );

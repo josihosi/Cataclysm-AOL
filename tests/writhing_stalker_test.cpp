@@ -8,6 +8,7 @@
 #include "cata_catch.h"
 #include "character.h"
 #include "damage.h"
+#include "debug.h"
 #include "game.h"
 #include "json.h"
 #include "json_loader.h"
@@ -17,6 +18,7 @@
 #include "monster.h"
 #include "mongroup.h"
 #include "mtype.h"
+#include "npc.h"
 #include "player_helpers.h"
 #include "projectile.h"
 #include "type_id.h"
@@ -354,6 +356,56 @@ TEST_CASE( "writhing_stalker_live_plan_consumes_quiet_side_cutoff_seam",
     clear_map_without_vision();
 }
 
+TEST_CASE( "writhing_stalker_live_plan_is_independent_of_diagnostic_filter",
+           "[writhing_stalker][monster][map][debug]" )
+{
+    struct plan_state {
+        tripoint_abs_ms destination;
+        tripoint_abs_ms wander_destination;
+        int wander_range;
+        int moves;
+        int anger;
+        bool aggro_character;
+        time_point turn;
+    };
+
+    const auto run_plan = []( bool diagnostics_enabled ) {
+        clear_map_without_vision();
+        map &here = get_map();
+        Character &you = get_player_character();
+        const tripoint_bub_ms center{ 65, 65, 0 };
+        restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+        set_time( calendar::turn_zero );
+        prepare_writhing_stalker_arena( here, center );
+        you.setpos( here, center );
+
+        limitDebugLevel( diagnostics_enabled ? DL_ALL : 0 );
+        limitDebugClass( D_GAME );
+        monster &stalker = spawn_test_monster( mon_writhing_stalker.str(), center + point::east * 5 );
+        stalker.anger = 100;
+        stalker.aggro_character = true;
+        REQUIRE( stalker.sees( here, you ) );
+        stalker.plan();
+
+        return plan_state{ stalker.get_dest(), stalker.wander_pos, stalker.wandf, stalker.get_moves(),
+                           stalker.anger, stalker.aggro_character, calendar::turn };
+    };
+
+    const plan_state enabled = run_plan( true );
+    const plan_state disabled = run_plan( false );
+    CHECK( enabled.destination == disabled.destination );
+    CHECK( enabled.wander_destination == disabled.wander_destination );
+    CHECK( enabled.wander_range == disabled.wander_range );
+    CHECK( enabled.moves == disabled.moves );
+    CHECK( enabled.anger == disabled.anger );
+    CHECK( enabled.aggro_character == disabled.aggro_character );
+    CHECK( enabled.turn == disabled.turn );
+
+    limitDebugLevel( DL_ALL );
+    limitDebugClass( DC_ALL );
+    clear_map_without_vision();
+}
+
 TEST_CASE( "writhing_stalker_interest_sources_are_ranked_without_bandit_economy",
            "[writhing_stalker][ai]" )
 {
@@ -538,7 +590,10 @@ TEST_CASE( "writhing_stalker_heavy_same_target_pressure_can_open_in_bright_expos
     approach.distance_to_target = 6;
     approach.zombie_pressure = 4;
     approach.stalker_in_bright_exposure = true;
+    approach.target_has_focus = true;
     approach.cover_route_available = true;
+    approach.has_overmap_interest_footing = true;
+    approach.overmap_intent = handoff_intent::committed_ambush;
     const live_response committed = evaluate_live_response( approach );
     CHECK( committed.next == decision::shadow );
     CHECK( committed.writeback_intent == handoff_intent::committed_ambush );
@@ -553,7 +608,9 @@ TEST_CASE( "writhing_stalker_pressure_requires_observable_target_directed_intent
 
     CHECK( is_meaningful_pressure( pressure_observation{ true, true, true, true, false } ) );
     CHECK( is_meaningful_pressure( pressure_observation{ true, true, true, false, true } ) );
-    CHECK_FALSE( is_meaningful_pressure( pressure_observation{ true, true, true, false, false } ) );
+    // Direct native target plus destination is already current pursuit; a
+    // newly spawned observer must not need a second frame of motion/damage.
+    CHECK( is_meaningful_pressure( pressure_observation{ true, true, true, false, false } ) );
     CHECK_FALSE( is_meaningful_pressure( pressure_observation{ true, true, false, true, false } ) );
     CHECK_FALSE( is_meaningful_pressure( pressure_observation{ true, false, true, false, true } ) );
     CHECK_FALSE( is_meaningful_pressure( pressure_observation{ false, true, true, true, false } ) );
@@ -988,6 +1045,17 @@ TEST_CASE( "writhing_stalker_withdrawal_and_cooldown_block_repeat_spam",
     const opportunity_report exposed = evaluate_opportunity( exposed_ctx );
     CHECK( exposed.next == decision::withdraw );
     CHECK( exposed.reason == "exposed_and_focused_withdraw" );
+
+    // Reciprocal daylight sight still gives the stalker a reason to withdraw
+    // in a quiet scene.  Four observed, target-directed zombies are a real
+    // local distraction, however, and preserve the close-range opportunity
+    // instead of consuming it before the heavy-pressure rule can evaluate.
+    opportunity_context pressured_exposed_ctx = exposed_ctx;
+    pressured_exposed_ctx.zombie_pressure = 4;
+    pressured_exposed_ctx.distance_to_target = 2;
+    const opportunity_report pressured_exposed = evaluate_opportunity( pressured_exposed_ctx );
+    CHECK( pressured_exposed.next == decision::strike );
+    CHECK( pressured_exposed.reason == "heavy_zombie_pressure_strike" );
 
     opportunity_context hurt_ctx;
     hurt_ctx.latch = latch;
@@ -1458,6 +1526,124 @@ TEST_CASE( "writhing_stalker_hidden_target_cannot_refresh_observation_or_route",
                 state.phase == writhing_stalker::lifecycle_phase::idle;
         CHECK( bounded_search_or_idle );
     }
+    clear_map_without_vision();
+}
+
+TEST_CASE( "writhing_stalker_pressure_history_is_visible_absolute_and_lifecycle_bounded",
+           "[writhing_stalker][monster][pressure][lifecycle]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    set_time( calendar::turn_zero );
+    prepare_writhing_stalker_arena( here, center );
+    you.setpos( here, center );
+    refresh_writhing_stalker_arena( here );
+
+    monster &stalker = spawn_test_monster( mon_writhing_stalker.str(), center + point::east * 6 );
+    monster &pressure = spawn_test_monster( mon_zombie.str(), center + point::east * 3 );
+    pressure.set_dest( you.pos_abs() );
+    pressure.aggro_character = true;
+    REQUIRE( stalker.sees( here, pressure ) );
+    REQUIRE( pressure.sees( here, you ) );
+
+    writhing_stalker::reset_transient_pressure_history();
+    CHECK( writhing_stalker::observed_zombie_pressure( stalker, here, you ) == 0 );
+    CHECK( writhing_stalker::transient_pressure_sample_count() == 1 );
+    // A repeated same-turn facade read must not duplicate a position sample.
+    CHECK( writhing_stalker::observed_zombie_pressure( stalker, here, you ) == 0 );
+    CHECK( writhing_stalker::transient_pressure_sample_count() == 1 );
+
+    // An actor moving while the stalker cannot see it must not seed closure.
+    writhing_stalker::reset_transient_pressure_history();
+    here.ter_set( center + point::east * 4, ter_id( "t_wall" ) );
+    refresh_writhing_stalker_arena( here );
+    REQUIRE_FALSE( stalker.sees( here, pressure ) );
+    CHECK( writhing_stalker::observed_zombie_pressure( stalker, here, you ) == 0 );
+    CHECK( writhing_stalker::transient_pressure_sample_count() == 0 );
+    here.ter_set( center + point::east * 4, ter_id( "t_floor" ) );
+    pressure.setpos( here, center + point::east * 2 );
+    pressure.set_dest( you.pos_abs() );
+    set_time( calendar::turn_zero + 1_turns );
+    refresh_writhing_stalker_arena( here );
+    REQUIRE( stalker.sees( here, pressure ) );
+    CHECK( writhing_stalker::observed_zombie_pressure( stalker, here, you ) == 0 );
+    CHECK( writhing_stalker::transient_pressure_sample_count() == 1 );
+
+    // Replacing a live actor must discard its old identity sample rather than
+    // accumulating a closing-history trail under the surviving stalker.
+    g->remove_zombie( pressure );
+    for( int replacement = 0; replacement < 5; ++replacement ) {
+        monster &new_pressure = spawn_test_monster( mon_zombie.str(), center + point::east * 3 );
+        new_pressure.set_dest( you.pos_abs() );
+        new_pressure.aggro_character = true;
+        set_time( calendar::turn_zero + time_duration::from_turns( 2 + replacement ) );
+        refresh_writhing_stalker_arena( here );
+        REQUIRE( stalker.sees( here, new_pressure ) );
+        CHECK( writhing_stalker::observed_zombie_pressure( stalker, here, you ) == 0 );
+        CHECK( writhing_stalker::transient_pressure_sample_count() == 1 );
+        g->remove_zombie( new_pressure );
+    }
+
+    // clear_map_without_vision clears the creature tracker through game::clear_zombies,
+    // the real reset owner for this transient cache in same-process test worlds.
+    clear_map_without_vision();
+    CHECK( writhing_stalker::transient_pressure_sample_count() == 0 );
+}
+
+TEST_CASE( "writhing_stalker_pressure_history_survives_a_real_bubble_shift",
+           "[writhing_stalker][monster][pressure][lifecycle]" )
+{
+    clear_map_without_vision();
+    map &here = get_map();
+    Character &you = get_player_character();
+    const tripoint_bub_ms center{ 65, 65, 0 };
+    restore_on_out_of_scope restore_calendar_turn( calendar::turn );
+    set_time( calendar::turn_zero );
+    prepare_writhing_stalker_arena( here, center );
+    // The player drives the bubble rebase; the NPC remains the observed target.
+    you.setpos( here, center + point::south * 30 );
+    npc &target = spawn_npc( point_bub_ms( center.xy() ), "test_talker" );
+    monster &stalker = spawn_test_monster( mon_writhing_stalker.str(), center + point::east * 6 );
+    monster &pressure = spawn_test_monster( mon_zombie.str(), center + point::east * 3 );
+    pressure.set_dest( target.pos_abs() );
+    pressure.aggro_character = true;
+    refresh_writhing_stalker_arena( here );
+    REQUIRE( stalker.sees( here, pressure ) );
+    REQUIRE( pressure.sees( here, target ) );
+    REQUIRE( pressure.attack_target() == &target );
+
+    writhing_stalker::reset_transient_pressure_history();
+    CHECK( writhing_stalker::observed_zombie_pressure( stalker, here, target ) == 0 );
+
+    // A real visible approach is still recognized as meaningful pressure.
+    pressure.setpos( here, center + point::east * 2 );
+    pressure.set_dest( target.pos_abs() );
+    set_time( calendar::turn_zero + 1_turns );
+    refresh_writhing_stalker_arena( here );
+    REQUIRE( pressure.attack_target() == &target );
+    CHECK( writhing_stalker::observed_zombie_pressure( stalker, here, target ) == 1 );
+
+    const tripoint_abs_ms target_before_shift = target.pos_abs();
+    const tripoint_abs_ms pressure_before_shift = pressure.pos_abs();
+    const tripoint_abs_ms stalker_before_shift = stalker.pos_abs();
+    // This crosses the production bubble boundary.  game::update_map shifts
+    // local coordinates for all active creatures while retaining their world
+    // positions, which is precisely the stale-bubble-coordinate failure mode.
+    g->place_player( tripoint_bub_ms( 120, you.pos_bub().y(), you.pos_bub().z() ) );
+    refresh_writhing_stalker_arena( here );
+    CHECK( target.pos_abs() == target_before_shift );
+    CHECK( pressure.pos_abs() == pressure_before_shift );
+    CHECK( stalker.pos_abs() == stalker_before_shift );
+    set_time( calendar::turn_zero + 2_turns );
+    REQUIRE( stalker.sees( here, pressure ) );
+    REQUIRE( pressure.sees( here, target ) );
+    REQUIRE( pressure.attack_target() == &target );
+    // No actor closed distance after the rebase.  A bubble-relative sample
+    // would incorrectly report a fresh approach here.
+    CHECK( writhing_stalker::observed_zombie_pressure( stalker, here, target ) == 0 );
     clear_map_without_vision();
 }
 

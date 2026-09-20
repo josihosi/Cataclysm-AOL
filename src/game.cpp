@@ -90,6 +90,7 @@
 #include "debug.h"
 #include "debug_capture.h"
 #include "debug_menu.h"
+#include "do_turn.h"
 #include "dependency_tree.h"
 #include "dialogue.h"
 #include "dialogue_chatbin.h"
@@ -229,6 +230,7 @@
 #include "weakpoint.h"
 #include "weather.h"
 #include "weather_type.h"
+#include "writhing_stalker_ai.h"
 #include "widget.h"
 #include "worldfactory.h"
 #include "zzip.h"
@@ -678,6 +680,8 @@ void game::reenter_fullscreen()
 void game::setup()
 {
     new_game = true;
+    reset_live_light_sample_cache();
+    writhing_stalker::reset_transient_pressure_history();
     {
         static_popup popup;
         popup.message( "%s", _( "Please wait while the world data loads…\nLoading core data" ) );
@@ -5010,6 +5014,7 @@ void game::remove_zombie( const monster &critter )
 void game::clear_zombies()
 {
     critter_tracker->clear();
+    writhing_stalker::reset_transient_pressure_history();
 }
 
 bool game::find_nearby_spawn_point( const tripoint_bub_ms &target, const mtype_id &mt,

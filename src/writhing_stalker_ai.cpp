@@ -341,8 +341,11 @@ int observed_attack_count( const Creature *observer, const Creature *attacker,
 
 bool is_meaningful_pressure( const pressure_observation &observation )
 {
-    return observation.hostile && observation.visible_to_stalker && observation.same_target &&
-           ( observation.attacking || observation.closing );
+    // A monster's native attack target and destination are direct evidence of
+    // current pursuit.  Do not make a newly arrived stalker wait for a second
+    // frame merely to rediscover the same pursuit through motion or damage:
+    // the bright-exposure latch is evaluated on that first frame too.
+    return observation.hostile && observation.visible_to_stalker && observation.same_target;
 }
 
 interest_report evaluate_interest( const interest_context &ctx )
@@ -674,7 +677,12 @@ opportunity_report evaluate_opportunity( const opportunity_context &ctx )
         report.opportunity += 12;
     }
 
-    if( ctx.stalker_hurt || ( ctx.bright_exposure && ctx.player_focused ) ) {
+    // Being seen in bright light normally breaks an ambush.  Do not turn that
+    // caution into immunity when several observed zombies are actively
+    // pressuring the same target: at close range that is the bounded opening
+    // handled by the heavy-pressure strike branch below.
+    if( ctx.stalker_hurt || ( ctx.bright_exposure && ctx.player_focused &&
+                              ctx.zombie_pressure < 4 ) ) {
         report.next = decision::withdraw;
         report.reason = ctx.stalker_hurt ? "stalker_hurt_withdraw" :
                         "exposed_and_focused_withdraw";
@@ -1012,8 +1020,13 @@ live_response evaluate_live_response( const live_context &ctx )
     live_latch.active = handoff_has_target_footing;
     live_latch.confidence = handoff_has_target_footing ? 3 : 0;
     live_latch.leash_tiles_remaining = handoff_has_target_footing ? default_latch_leash_tiles : 0;
+    // Bright reciprocal sight normally breaks the ambush latch.  It must not
+    // discard a witnessed, same-target crowd opening before the pressure
+    // approach/strike rules can consume it.
+    const bool exposed_or_focused_without_pressure = ctx.stalker_in_bright_exposure &&
+            ctx.target_has_focus && ctx.zombie_pressure < 4;
     latch_update latch = advance_latch( latch_context{ live_latch, evaluate_interest( interest_ctx ), 0,
-            ctx.distance_to_target, ctx.stalker_in_bright_exposure && ctx.target_has_focus } );
+            ctx.distance_to_target, exposed_or_focused_without_pressure } );
 
     if( !latch.state.active ) {
         response.next = latch.next;

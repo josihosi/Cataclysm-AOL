@@ -8,6 +8,7 @@
 
 class monster;
 class Creature;
+class map;
 class JsonObject;
 class JsonOut;
 
@@ -95,9 +96,15 @@ struct pressure_observation {
     bool closing = false;
 };
 
-// A nearby zombie contributes only when its observable local intent is aimed at
-// this target and it is either in attack range or moving toward that target.
+// A nearby zombie contributes when its observable local intent is directly
+// aimed at this target (native attack target and destination).
 bool is_meaningful_pressure( const pressure_observation &observation );
+
+// Ephemeral, perception-only pressure history.  It is deliberately separate
+// from persistent stalker state and observed attack resolution history.
+int observed_zombie_pressure( const monster &stalker, map &here, const Creature &target );
+void reset_transient_pressure_history();
+std::size_t transient_pressure_sample_count();
 
 enum class interest_source {
     none,
