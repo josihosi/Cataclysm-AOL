@@ -1,6 +1,8 @@
 #include <algorithm>
 #include <cstddef>
 #include <cstdint>
+#include <cstdlib>
+#include <cstring>
 #include <functional>
 #include <iterator>
 #include <map>
@@ -68,6 +70,25 @@
 static const efftype_id effect_pet( "pet" );
 
 static const mongroup_id GROUP_ZOMBIE( "GROUP_ZOMBIE" );
+
+// This marker is deliberately restricted to the one harness scenario that
+// authorizes a debug-created stalker.  It is identity evidence for the
+// zero-credit setup receipt, not an AI input or a gameplay effect.
+static constexpr std::string_view caol_debug_setup_stalker_run_id =
+    "caol_debug_setup_stalker_run_id";
+
+static std::string caol_debug_setup_stalker_marker()
+{
+    const char *const scenario = std::getenv( "OPENCLAW_HARNESS_SCENARIO" );
+    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const char *const semantic_run_id = std::getenv( "OPENCLAW_HARNESS_SEMANTIC_RUN_ID" );
+    if( scenario == nullptr || run_id == nullptr || semantic_run_id == nullptr ||
+        std::string( scenario ) != "r_zl_stalker_follow_city_debug_setup_mcw" ||
+        run_id[0] == '\0' || std::strcmp( run_id, semantic_run_id ) != 0 ) {
+        return {};
+    }
+    return run_id;
+}
 
 static float lines_for_msg( std::string_view msg )
 {
@@ -893,10 +914,14 @@ void debug_menu::wishmonster( const std::optional<tripoint_bub_ms> &p )
             const mtype_id &mon_type = mtypes[ wmenu.ret ]->id;
             if( std::optional<tripoint_bub_ms> spawn = p.has_value() ? p : g->look_around() ) {
                 int num_spawned = 0;
+                const std::string setup_marker = caol_debug_setup_stalker_marker();
                 for( const tripoint_bub_ms &destination : closest_points_first( *spawn, cb.group ) ) {
                     monster *const mon = g->place_critter_at( mon_type, destination );
                     if( !mon ) {
                         continue;
+                    }
+                    if( !setup_marker.empty() && mon_type.str() == "mon_writhing_stalker" ) {
+                        mon->set_value( std::string( caol_debug_setup_stalker_run_id ), setup_marker );
                     }
                     if( cb.friendly ) {
                         mon->friendly = -1;
@@ -948,6 +973,10 @@ constexpr std::string_view debug_item_spawn_transaction_var = "debug_item_spawn_
 constexpr std::string_view debug_item_spawn_ordinal_var = "debug_item_spawn_ordinal";
 constexpr std::string_view debug_item_spawn_provenance_var = "debug_item_spawn_provenance";
 
+using debug_item_spawn_setup_key = std::pair<std::string, std::string>;
+std::map<debug_item_spawn_setup_key, debug_menu::debug_item_spawn_setup_receipt>
+debug_item_spawn_setup_receipts;
+
 bool debug_item_spawn_matches( const item &candidate, const debug_menu::debug_item_spawn_request &request,
                                int ordinal )
 {
@@ -955,6 +984,46 @@ bool debug_item_spawn_matches( const item &candidate, const debug_menu::debug_it
            candidate.get_var( debug_item_spawn_ordinal_var, -1 ) == ordinal &&
            candidate.typeId() == request.type && candidate.charges == request.charges &&
            candidate.damage() == request.damage && candidate.get_owner() == request.owner;
+}
+
+void log_debug_item_spawn_setup_receipt( const debug_menu::debug_item_spawn_setup_receipt &receipt )
+{
+    const debug_menu::debug_item_spawn_receipt &transaction = receipt.transaction;
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_r022_item_spawn: event=transaction"
+            << " run_id=" << receipt.run_id
+            << " transaction_id=" << transaction.transaction_id
+            << " accepted=" << transaction.accepted
+            << " audit_passed=" << transaction.audit_passed
+            << " zero_credit=" << transaction.zero_credit
+            << " provenance=debug_item_spawn_transaction:_zero-credit_setup_mutation"
+            << " type=apple quantity=3 charges=0 damage=0 owner=your_followers"
+            << " destination_offset_ms=4,0,0"
+            << " identities=" << transaction.identities.size()
+            << " failure=" << transaction.failure;
+    for( const debug_menu::debug_item_spawn_identity &identity : transaction.identities ) {
+        DebugLog( D_INFO, DC_ALL )
+                << "openclaw_harness_r022_item_spawn: event=identity"
+                << " run_id=" << receipt.run_id
+                << " transaction_id=" << transaction.transaction_id
+                << " ordinal=" << identity.ordinal
+                << " type=" << identity.type.str()
+                << " charges=" << identity.charges
+                << " damage=" << identity.damage
+                << " owner=" << identity.owner.str();
+    }
+    const debug_menu::debug_item_spawn_cleanup_receipt &cleanup = receipt.cleanup;
+    DebugLog( D_INFO, DC_ALL )
+            << "openclaw_harness_r022_item_spawn: event=cleanup"
+            << " run_id=" << receipt.run_id
+            << " transaction_id=" << cleanup.transaction_id
+            << " accepted=" << cleanup.accepted
+            << " audit_passed=" << cleanup.audit_passed
+            << " zero_credit=" << cleanup.zero_credit
+            << " provenance=debug_item_spawn_transaction_cleanup:_zero-credit_setup_mutation"
+            << " removed=" << cleanup.removed
+            << " retained_untagged=" << cleanup.retained_untagged
+            << " failure=" << cleanup.failure;
 }
 } // namespace
 
@@ -1054,6 +1123,47 @@ debug_menu::debug_item_spawn_cleanup_receipt debug_menu::debug_item_spawn_transa
     receipt.accepted = true;
     receipt.audit_passed = true;
     return receipt;
+}
+
+std::optional<debug_menu::debug_item_spawn_setup_receipt>
+debug_menu::process_harness_item_setup( const tripoint_bub_ms &player_pos )
+{
+    const char *const transaction_id_env = std::getenv( "OPENCLAW_HARNESS_R022_TRANSACTION_ID" );
+    if( transaction_id_env == nullptr || transaction_id_env[0] == '\0' ) {
+        return std::nullopt;
+    }
+    const char *const run_id_env = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
+    const std::string transaction_id = transaction_id_env;
+    const std::string run_id = run_id_env == nullptr ? "" : run_id_env;
+    const debug_item_spawn_setup_key key( run_id, transaction_id );
+    const auto existing = debug_item_spawn_setup_receipts.find( key );
+    if( existing != debug_item_spawn_setup_receipts.end() ) {
+        return existing->second;
+    }
+
+    debug_item_spawn_setup_receipt receipt;
+    receipt.run_id = run_id;
+    const debug_item_spawn_request request {
+        itype_id( "apple" ), 3, 0, 0, faction_id( "your_followers" ),
+        player_pos + tripoint( 4, 0, 0 ), transaction_id
+    };
+    if( run_id.empty() ) {
+        receipt.transaction.transaction_id = transaction_id;
+        receipt.transaction.failure = "missing harness run identity";
+        receipt.cleanup.transaction_id = transaction_id;
+        receipt.cleanup.failure = "missing harness run identity";
+    } else {
+        receipt.transaction = debug_item_spawn_transaction( request );
+        receipt.cleanup = debug_item_spawn_transaction_cleanup( request );
+    }
+    const auto inserted = debug_item_spawn_setup_receipts.emplace( key, std::move( receipt ) );
+    log_debug_item_spawn_setup_receipt( inserted.first->second );
+    return inserted.first->second;
+}
+
+void debug_menu::reset_harness_item_setup()
+{
+    debug_item_spawn_setup_receipts.clear();
 }
 
 namespace

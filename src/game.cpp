@@ -680,6 +680,7 @@ void game::reenter_fullscreen()
 void game::setup()
 {
     new_game = true;
+    debug_menu::reset_harness_item_setup();
     reset_live_light_sample_cache();
     writhing_stalker::reset_transient_pressure_history();
     {

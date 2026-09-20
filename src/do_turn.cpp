@@ -168,60 +168,6 @@ static bool openclaw_harness_startup_boundary_trace_enabled()
            active_run_id != nullptr && active_run_id[0] != '\0';
 }
 
-static void openclaw_harness_r022_item_spawn_bridge( avatar &player )
-{
-    static bool dispatched = false;
-    if( dispatched ) {
-        return;
-    }
-    const char *const transaction_id = std::getenv( "OPENCLAW_HARNESS_R022_TRANSACTION_ID" );
-    const char *const run_id = std::getenv( "OPENCLAW_HARNESS_RUN_ID" );
-    if( transaction_id == nullptr || transaction_id[0] == '\0' ) {
-        return;
-    }
-    dispatched = true;
-    const debug_menu::debug_item_spawn_request request {
-        itype_id( "apple" ), 3, 0, 0, faction_id( "your_followers" ),
-        player.pos_bub() + tripoint( 4, 0, 0 ), transaction_id
-    };
-    const debug_menu::debug_item_spawn_receipt transaction =
-        debug_menu::debug_item_spawn_transaction( request );
-    DebugLog( D_INFO, DC_ALL )
-            << "openclaw_harness_r022_item_spawn: event=transaction"
-            << " run_id=" << ( run_id == nullptr ? "" : run_id )
-            << " transaction_id=" << transaction.transaction_id
-            << " accepted=" << transaction.accepted
-            << " audit_passed=" << transaction.audit_passed
-            << " zero_credit=" << transaction.zero_credit
-            << " provenance=debug_item_spawn_transaction:_zero-credit_setup_mutation"
-            << " type=apple quantity=3 charges=0 damage=0 owner=your_followers"
-            << " destination_offset_ms=4,0,0"
-            << " identities=" << transaction.identities.size();
-    for( const debug_menu::debug_item_spawn_identity &identity : transaction.identities ) {
-        DebugLog( D_INFO, DC_ALL )
-                << "openclaw_harness_r022_item_spawn: event=identity"
-                << " run_id=" << ( run_id == nullptr ? "" : run_id )
-                << " transaction_id=" << transaction.transaction_id
-                << " ordinal=" << identity.ordinal
-                << " type=" << identity.type.str()
-                << " charges=" << identity.charges
-                << " damage=" << identity.damage
-                << " owner=" << identity.owner.str();
-    }
-    const debug_menu::debug_item_spawn_cleanup_receipt cleanup =
-        debug_menu::debug_item_spawn_transaction_cleanup( request );
-    DebugLog( D_INFO, DC_ALL )
-            << "openclaw_harness_r022_item_spawn: event=cleanup"
-            << " run_id=" << ( run_id == nullptr ? "" : run_id )
-            << " transaction_id=" << cleanup.transaction_id
-            << " accepted=" << cleanup.accepted
-            << " audit_passed=" << cleanup.audit_passed
-            << " zero_credit=" << cleanup.zero_credit
-            << " provenance=debug_item_spawn_transaction_cleanup:_zero-credit_setup_mutation"
-            << " removed=" << cleanup.removed
-            << " retained_untagged=" << cleanup.retained_untagged;
-}
-
 static void openclaw_harness_trace_post_hud_pre_input_boundary( const avatar &player,
         bool watching_dead_avatar )
 {
@@ -9884,7 +9830,49 @@ void handle_key_blocking_activity()
             || u.activity.moves_left > 0 );
     if( has_unfinished_activity || u.has_destination() ) {
         input_context ctxt = get_default_mode_input_context();
-        const std::string action = ctxt.handle_input( 0 );
+        // A long-running activity owns the turn outside World::handle_action.
+        // Its native input loop still accepts the ordinary pause action, which
+        // opens the game's own activity-cancellation query.  Give that exact
+        // native owner a semantic surface instead of leaving an actionless
+        // activity-resumed marker until unrelated physical input arrives.
+        std::optional<semantic_surface_manager_session> semantic_session;
+        if( active_semantic_surface_manager() == nullptr && openclaw_harness_semantic_session_active() ) {
+            semantic_session.emplace( openclaw_harness_semantic_surface_manager() );
+        }
+        semantic_surface_manager *const semantic_manager = active_semantic_surface_manager();
+        std::optional<semantic_surface_scope> semantic_scope;
+        std::string semantic_action;
+        if( semantic_manager != nullptr ) {
+            semantic_scope.emplace( *semantic_manager, "activity_wait", "Activity in progress",
+                                    std::map<std::string, std::string>{
+                { "native_owner", "DEFAULTMODE" },
+                { "native_action", "pause" },
+            }, std::vector<semantic_action_descriptor>{
+                { "activity.pause", "", _( "Pause activity" ), true },
+            }, [ &semantic_action, semantic_manager ]( const semantic_action_request &request ) {
+                if( request.action_id != "activity.pause" ) {
+                    return semantic_action_dispatch_result{ false, "unadvertised_action", "" };
+                }
+                // The following native cancellation query owns any next
+                // player decision.  Do not republish this consumed activity
+                // owner while that child is active.
+                semantic_manager->withhold_parent_authority_until_recreated( request.surface_id );
+                semantic_action = "pause";
+                return semantic_action_dispatch_result{ true, "", "" };
+            } );
+            semantic_scope->consume_request();
+        }
+        std::string action = semantic_action;
+        if( action.empty() ) {
+            action = ctxt.handle_input( 0 );
+            // A transport wake is consumed inside input_context.  Its
+            // semantic consumer selected the real native pause action above,
+            // while input_context correctly returns CATA_ERROR rather than
+            // fabricating a physical key event.
+            if( !semantic_action.empty() ) {
+                action = semantic_action;
+            }
+        }
         bool refresh = true;
         if( action == "pause" ) {
             if( u.activity.is_interruptible_with_kb() ) {
@@ -12691,7 +12679,7 @@ bool game::do_turn()
     llm_intent::enqueue_random_requests();
     mission::process_all();
     avatar &u = get_avatar();
-    openclaw_harness_r022_item_spawn_bridge( u );
+    debug_menu::process_harness_item_setup( u.pos_bub() );
     map &m = get_map();
     // This audit hook is deliberately before the normal turn pipeline: it reads
     // the loaded save without allowing cadence, scheduler, or response work to

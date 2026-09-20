@@ -937,9 +937,15 @@ static std::string openclaw_harness_visible_entities( avatar &viewer )
         if( const monster *monster = creature->as_monster() ) {
             // The process address is only a run-local handle.  A fixture tag
             // binds this visible monster back to its applied save receipt.
+            const Creature *attack_target = const_cast<class monster *>( monster )->attack_target();
+            const bool attack_target_is_viewer = attack_target == &viewer;
+            const bool destination_is_viewer = monster->get_dest() == viewer.pos_abs();
             entities << ",\"fixture_actor_id\":"
                      << openclaw_harness_quote_action_value(
                             monster->get_value( "caol_fixture_actor_id" ).str() )
+                     << ",\"debug_setup_run_id\":"
+                     << openclaw_harness_quote_action_value(
+                            monster->get_value( "caol_debug_setup_stalker_run_id" ).str() )
                      << ",\"typeid\":"
                      << openclaw_harness_quote_action_value( monster->type->id.str() )
                      << ",\"faction\":"
@@ -947,11 +953,18 @@ static std::string openclaw_harness_visible_entities( avatar &viewer )
                      << ",\"friendly\":" << monster->friendly
                      << ",\"anger\":" << monster->anger
                      << ",\"morale\":" << monster->morale
-                     << ",\"aggro_character\":" << ( monster->aggro_character ? "true" : "false" );
+                     << ",\"aggro_character\":" << ( monster->aggro_character ? "true" : "false" )
+                     << ",\"attack_target_is_viewer\":"
+                     << ( attack_target_is_viewer ? "true" : "false" )
+                     << ",\"destination_is_viewer\":"
+                     << ( destination_is_viewer ? "true" : "false" )
+                     << ",\"provenance_attack_target\":\"native_monster_attack_target_and_dest\"";
             if( monster->type->id == mtype_id( "mon_writhing_stalker" ) ) {
                 const writhing_stalker::persistent_state &state = monster->writhing_stalker_state();
                 const int observed_turn = to_turns<int>( calendar::turn - calendar::turn_zero );
-                entities << ",\"writhing_stalker_state\":{\"provenance\":\"native_monster_persistent_state\""
+                entities << ",\"predator_actor_id\":"
+                         << openclaw_harness_quote_action_value( monster->predator_state().actor_id )
+                         << ",\"writhing_stalker_state\":{\"provenance\":\"native_monster_persistent_state\""
                          << ",\"phase\":" << static_cast<int>( state.phase )
                          << ",\"phase_name\":"
                          << openclaw_harness_quote_action_value( lifecycle_phase_name( state.phase ) )
@@ -1070,7 +1083,13 @@ static std::string openclaw_harness_diagnostic_active_monsters()
                 continue;
             }
             const std::string fixture_actor_id = critter.get_value( "caol_fixture_actor_id" ).str();
-            if( fixture_actor_id.empty() ) {
+            const std::string debug_setup_run_id =
+                critter.get_value( "caol_debug_setup_stalker_run_id" ).str();
+            const bool tagged_debug_setup = scenario != nullptr &&
+                                            std::string( scenario ) ==
+                                            "r_zl_stalker_follow_city_debug_setup_mcw" &&
+                                            debug_setup_run_id == openclaw_harness_bound_semantic_run_id();
+            if( fixture_actor_id.empty() && !tagged_debug_setup ) {
                 continue;
             }
             if( !first ) {
@@ -1079,11 +1098,15 @@ static std::string openclaw_harness_diagnostic_active_monsters()
             first = false;
             const writhing_stalker::persistent_state &state = critter.writhing_stalker_state();
             const tripoint_abs_ms absolute = critter.pos_abs();
-            entities << "{\"identity\":{\"kind\":\"monster\",\"fixture_actor_id\":"
-                      << openclaw_harness_quote_action_value( fixture_actor_id )
+            entities << "{\"identity\":{\"kind\":\"monster\",\"id\":"
+                      << openclaw_harness_quote_action_value( harness_creature_identity( critter ) )
                       << "},\"kind\":\"monster\",\"typeid\":\"mon_writhing_stalker\""
                       << ",\"fixture_actor_id\":"
                       << openclaw_harness_quote_action_value( fixture_actor_id )
+                      << ",\"predator_actor_id\":"
+                      << openclaw_harness_quote_action_value( critter.predator_state().actor_id )
+                      << ",\"debug_setup_run_id\":"
+                      << openclaw_harness_quote_action_value( debug_setup_run_id )
                       << ",\"absolute_ms\":[" << absolute.x() << ',' << absolute.y() << ','
                       << absolute.z() << "]"
                       << ",\"provenance\":\"native_active_monster_state\""
