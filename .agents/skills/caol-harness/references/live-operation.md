@@ -8,6 +8,13 @@ Short wait defaults to the existing ignore-danger-and-interruptions mode; add `s
 text. `look` observes the game; `collect` retrieves a pending result. No special launch mode
 or alternate transport is required. Existing long arguments remain accepted.
 
+A menu-opening action already returns the new menu and its controls. Read that reply before
+choosing the next action; a separate `look` is needed after stale/rejected input, not routinely
+after every successful action. Grouped controls show a shared command template and each target's
+available actions. Use the printed action names literally: for example Zone Manager closes with
+`play act zone.close`, while the look cursor closes with `play act cursor.cancel`. Neither is a
+World owner, so return through its advertised controls before issuing another World action.
+
 Native gameplay here means dispatch through the game's own semantic owners. Run the player CLI
 in the game worktree, locally or over SSH; it does not require a desktop-control connection.
 For a registry-launched file-backed session, use the persistent player client:
@@ -98,13 +105,11 @@ with that same read-only collection; `ready` with neither requires `look`; and
 be reported as ended/failed rather than prodded. These are state-dependent continuations, not
 interchangeable recovery suggestions.
 
-The default view names the current input owner, source selector and action selector, together with
-its available navigation. Large action catalogs
-show five distinct targets plus controls; use the supplied selector to search or page further targets.
-It includes player health, needs, stamina, named effects and weapon state, immediate neighbouring
-tiles, a terrain map, nearby entities and grouped recent messages. Omitted detail retains exact
-selectors and paging. Archived history remains retrievable; references are storage handles, not
-missing evidence.
+Ordinary replies show the current menu's facts and advertised controls in plain text. World
+actions show changes and messages; `play look` shows the grouped World overview and command menu.
+Native filtering still controls large selection lists: when filtering is required, use the
+advertised filter command before choosing a target. `--diagnostics` and `inspect` retain access
+to the underlying evidence; their output is not the ordinary gameplay menu.
 
 ## Process exit and cleanup
 

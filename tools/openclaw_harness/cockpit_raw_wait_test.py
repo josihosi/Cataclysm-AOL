@@ -139,9 +139,16 @@ class RawWaitTest(unittest.TestCase):
             "frame_id": "raw-wait-proof:4", "surface_id": "world:4", "kind": "world",
             "breadcrumbs": ["World"], "payload": {}, "game_minutes": 101,
             "valid_actions": [{"id": "world.wait", "stable_id": "", "label": "Wait",
-                               "enabled": True}],
+                               "enabled": True}, {"id": "world.chat", "stable_id": "",
+                                                  "label": "Chat", "enabled": True}],
         }
-        service, dispatched = self.service([start, mode, duration, complete])
+        chat = {**complete, "frame_id": "raw-wait-proof:5", "surface_id": "chat:5",
+                "kind": "menu", "breadcrumbs": ["What do you want to do?"],
+                "valid_actions": [{"id": "menu.cancel", "stable_id": "", "label": "Cancel",
+                                   "enabled": True}]}
+        activity = frame(30, 100, state="wait_activity")
+        activity["valid_actions"] = []
+        service, dispatched = self.service([start, mode, duration, activity, complete, chat], await_completion=True)
 
         result = service.call(self.request(target=101))
 
@@ -149,6 +156,10 @@ class RawWaitTest(unittest.TestCase):
         self.assertEqual(dispatched, ["world.wait", "menu.choose", "wait.1m"])
         self.assertEqual(result["result"]["partial_progress"], 1)
         self.assertEqual(service.call({"action": "run.status"})["result"]["operation"], None)
+        opened = service.call({"action": "game.act", "action_id": "world.chat",
+                               "observation_id": result["result"]["terminal_observation"]["observation_id"]})
+        self.assertTrue(opened["ok"], opened)
+        self.assertEqual(opened["observation"]["surface"]["kind"], "menu")
 
     def test_semantic_duration_menu_cannot_expand_the_declared_wait_recipe(self) -> None:
         """A current menu owner still cannot authorize an omitted duration."""

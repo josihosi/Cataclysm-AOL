@@ -66,6 +66,63 @@ class PlayerOutputTest(unittest.TestCase):
         self.assertIn("YOU", text)
         self.assertIn("Tell the coordinator", text)
 
+    def test_menu_reply_exposes_current_choices_without_an_extra_look(self):
+        snapshot = {"owner": "inventory", "current": {"facts": {"title": "Pickup"}, "actions": [
+            {"id": "inventory.select", "stable_id": "42", "label": "six-shooter — No room", "enabled": False},
+            {"id": "inventory.wield", "stable_id": "42", "label": "Wield", "enabled": True},
+            {"id": "inventory.filter", "label": "Filter", "enabled": True},
+            {"id": "inventory.cancel", "label": "Cancel", "enabled": True}]}}
+        result = {"ok": True, "state": "collected", "response": {"current_input": {
+            "owner": "inventory", "actions": {"omitted": True, "evidence": {"sha256": "a" * 64}},
+            "facts_removed": ["avatar", "minimap"]}}}
+        text = plain_player_output(result, snapshot=snapshot, full_look=False)
+        for expected in ("Pickup", "42", "six-shooter", "wield", "No room",
+                         "play act inventory.<action> --target <target>",
+                         "play act inventory.filter --param text=TEXT", "play act inventory.cancel"):
+            self.assertIn(expected, text)
+        for unwanted in ("sha256", "omitted", "facts removed", "minimap"):
+            self.assertNotIn(unwanted, text)
+
+    def test_world_action_keeps_changed_state_messages_and_failure_without_maps(self):
+        snapshot = self.world_snapshot()
+        result = {"ok": False, "state": "rejected", "response": {
+            "current_input": {"owner": "world"}, "outcome": {"error": "blocked_by_door"},
+            "facts_changed": {"avatar": {"absolute_ms": {"omitted": True}},
+                              "avatar_status": {"observed_turn": 12},
+                              "messages": [{"time": "12:00", "text": "You open the door."}],
+                              "minimap": {"cells": "unused"}, "structural_signal_dispatch": "unused"}}}
+        text = plain_player_output(result, snapshot=snapshot, full_look=False)
+        self.assertIn("You open the door.", text)
+        self.assertIn("blocked_by_door", text)
+        self.assertIn("avatar.absolute ms", text)
+        for unwanted in ("minimap", "structural", "omitted", "HP", "observed turn", "sha256"):
+            self.assertNotIn(unwanted, text)
+
+    def test_menu_close_does_not_repeat_world_catalog(self):
+        result = {"ok": True, "state": "collected", "response": {"current_input": {"owner": "world"}}}
+        self.assertEqual(plain_player_output(result, snapshot=self.world_snapshot(), full_look=False),
+                         "World. Controls: play look")
+
+    def test_changed_ammo_keeps_weapon_name_and_injury_keeps_maximum(self):
+        snapshot = self.world_snapshot()
+        result = {"ok": True, "state": "collected", "response": {
+            "current_input": {"owner": "world"}, "facts_changed": {"avatar_status": {
+                "weapon": {"ammo": "(0/6)"}, "health": {"body_parts": {"arm_l": {"current": 50}}}}}}}
+        text = plain_player_output(result, snapshot=snapshot, full_look=False)
+        self.assertIn("six-shooter (0/6)", text)
+        self.assertIn("left arm 50/80", text)
+        self.assertNotIn("None", text)
+
+    def test_nested_json_rules_are_text_and_unknown_menu_actions_survive(self):
+        snapshot = {"owner": "npc_inspection", "current": {"facts": {
+            "actor_name": "Alex", "diagnostic_rules": {"rules": '[{"label":"Will use guns","enabled":true}]'}},
+            "actions": [{"id": "npc_inspection.future_action", "label": "New choice", "enabled": True}]}}
+        result = {"ok": True, "state": "collected", "response": {"current_input": {"owner": "npc_inspection"}}}
+        text = plain_player_output(result, snapshot=snapshot)
+        self.assertIn("Rules: Will use guns", text)
+        self.assertIn("play act npc_inspection.future_action", text)
+        self.assertNotIn('{"', text)
+
     def test_gameplay_and_real_alarms_survive_without_receipts(self):
         full = {"ok": True, "state": "collected", "request_id": "play-1",
                 "receipt": {"response_sha256": "a" * 64, "binding_id": "b" * 64},

@@ -1459,6 +1459,9 @@ class CockpitRunChannel:
                     "unused_authority": "revoked",
                 })
             if current is not None and current >= float(target):
+                # The wait's progress obligation ends here. A subsequent menu
+                # action (for example chat) need not advance the game clock.
+                self._continuation = None
                 overshoot = current - float(target)
                 result = {
                     "stop_reason": "target_reached" if current == float(target) else "target_reached_within_bound",
@@ -2060,6 +2063,7 @@ class CockpitRunChannel:
                     })
                 return stop("raw_wait_progress_signal_missing", {})
             if current == float(target):
+                self._continuation = None
                 result = {
                     "stop_reason": "target_reached",
                     "terminal_observation": observed,
