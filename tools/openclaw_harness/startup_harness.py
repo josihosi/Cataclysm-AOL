@@ -5192,6 +5192,17 @@ def current_semantic_step_frame(
         native = latest_semantic_step_frame(events)
         if native is None:
             raise ValueError("the current run has not emitted a semantic frame")
+        raw = next((event for event in reversed(events) if event.get("event") == "frame"), None)
+        if (native.get("kind") == "world" and raw is not None and raw.get("run_id") == run_id
+                and raw.get("state") == "world"
+                and raw.get("_event_offset", -1) > native.get("_event_offset", -1)):
+            # The latest raw World follows this current owner. An older World
+            # must never make an active wait look completed.
+            native.update(paired_raw_frame_id=raw["frame_id"], paired_raw_state="world",
+                          paired_raw_event_offset=raw["_event_offset"],
+                          game_minutes=raw.get("game_minutes"), observed_turn=raw.get("observed_turn"),
+                          observation=dict(raw.get("observation", {})),
+                          keep_watch_safety=dict(raw.get("keep_watch_safety", {})))
         metrics_path = Path(str(source) + ".performance")
         if metrics_path.exists():
             metrics = json.loads(metrics_path.read_text(encoding="utf-8"))
