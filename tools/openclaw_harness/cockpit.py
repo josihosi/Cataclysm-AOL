@@ -246,7 +246,7 @@ class CockpitRunChannel:
         # makes the visible Pause control mandatory.
         running = str(raw.get("state", "")) in {
             "wait_activity", "activity_resumed", "wait_activity_complete",
-        } or str(surface.get("kind", "")) in {"activity_wait", "wait_activity"}
+        } or str(surface.get("kind", "")) in {"activity_wait", "wait_activity", "activity_resumed"}
         if running:
             operation["state"] = "running"
             operation["blocker"] = None

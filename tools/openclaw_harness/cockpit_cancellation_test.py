@@ -89,7 +89,7 @@ class CancellationTest(unittest.TestCase):
                     self.service.live_channel._await_native_completion("activity-1")
 
     def test_native_wait_does_not_mistake_activity_or_unpaired_world_for_completion(self):
-        for kind in ("activity_wait", "wait_activity", "world"):
+        for kind in ("activity_wait", "wait_activity", "activity_resumed", "world"):
             with self.subTest(kind=kind):
                 self.current = {**self.descriptor, "frame_id": "pending-" + kind, "kind": kind}
                 with patch.object(startup.time, "sleep", side_effect=RuntimeError("still waiting")):

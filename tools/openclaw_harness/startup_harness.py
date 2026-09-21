@@ -5666,7 +5666,8 @@ def open_cockpit_game_service(
                     and frame.get("run_id") == run_id
                     and frame.get("frame_id")
                     and frame.get("frame_id") != activity_frame_id
-                    and frame.get("kind") not in {None, "", "world", "activity_wait", "wait_activity"}):
+                    and frame.get("kind") not in {
+                        None, "", "world", "activity_wait", "wait_activity", "activity_resumed"}):
                 return
             time.sleep(observe_interval_seconds)
 

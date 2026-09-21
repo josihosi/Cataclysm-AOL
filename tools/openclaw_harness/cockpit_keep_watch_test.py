@@ -1454,6 +1454,31 @@ class KeepWatchTest(unittest.TestCase):
         self.assertEqual(operation["requested_duration_game_minutes"], 1.0)
         self.assertEqual(operation["completed_progress_game_minutes"], 1.0)
 
+    def test_ignore_collects_resumed_descriptor_without_another_worker_command(self) -> None:
+        clear = {"classification": "clear", "monster": False, "danger": False, "damage": False}
+        start = frame(1, 100, clear)
+        duration = frame(2, 100, clear)
+        duration.update({"state": "wait_duration_choice", "valid_actions": ["wait.1m"],
+                         "action_inputs": {"wait.1m": "1"}})
+        prompt = self.menu_frame(3)
+        prompt.update({"kind": "prompt",
+            "breadcrumbs": ["Activity distraction", "CANCEL_ACTIVITY_OR_IGNORE_QUERY"], "payload": {
+            "title": "CANCEL_ACTIVITY_OR_IGNORE_QUERY",
+            "text": "The zombie is dangerously close! Stop waiting?"},
+            "valid_actions": [{"id": "prompt.choose", "stable_id": "prompt-option:4",
+                               "label": "IGNORE", "enabled": True}]})
+        resumed = self.menu_frame(4)
+        resumed.update({"kind": "activity_resumed", "valid_actions": []})
+        complete = frame(5, 101, clear)
+        service, dispatched = self.service([start, duration, prompt, resumed, complete])
+        result = service.call({"action": "game.keep_watch", "keep_watch": {
+            "enabled": True, "target_game_minutes": 101, "bound": bound(),
+            "danger_handling": "ignore_danger_and_interruptions",
+            "recipe": ["world.wait", "wait.1m"],
+        }})
+        self.assertTrue(result["ok"], result)
+        self.assertEqual(dispatched, ["world.wait", "wait.1m", "prompt.choose"])
+
     def test_duration_owner_prefers_longest_declared_advertisement_inside_boundary(self) -> None:
         start = frame(1, 100, {
             "classification": "clear", "monster": False, "danger": False, "damage": False,
