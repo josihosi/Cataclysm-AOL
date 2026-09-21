@@ -186,6 +186,7 @@ class WaitingPlayer:
             text = facts.get("text", "")
             if isinstance(text, str) and text:
                 # Native wording preserves interruption causes; remove keyboard-only advice.
+                text = re.sub(r"</?color[^>]*>", "", text).strip()
                 lines.append(text.removeprefix("Confirm: ").replace(" (Case Sensitive)", ""))
             if kind in {"prompt", "activity_distraction", "menu"}:
                 choices = 0

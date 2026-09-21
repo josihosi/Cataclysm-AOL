@@ -59,6 +59,15 @@ class PlainWaitingTest(unittest.TestCase):
         self.assertIn("play look", text)
         self.assertNotIn("hidden", text)
 
+    def test_plain_performance_keeps_current_sample_without_history(self):
+        from process_performance import append_record
+        directory = self.fixture.session
+        (directory / "plain-waiting").touch()
+        for number in range(3):
+            append_record(directory, {"sample": number})
+        self.assertFalse((directory / "performance.jsonl").exists())
+        self.assertEqual(json.loads((directory / "performance.latest.json").read_text()), {"sample": 2})
+
     def test_native_notice_shows_exact_continuation_command(self):
         self.player.run("look")
         result = self.reply("prompt", [{"id": "prompt.acknowledge", "enabled": True}],

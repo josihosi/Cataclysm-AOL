@@ -13,6 +13,10 @@ the same supported interpreter used by the harness (on the Mac, put Homebrew fir
 
 Run `play look`, then `play wait 5m` (or an advertised duration such as `1h`). `play stop` asks
 the native activity to pause. Answer the displayed confirmation with `play yes` or `play no`.
+`play wait` calls the existing `game.wait` endpoint, defaulting to its dangerous-ignore mode.
+Append `safe` or `stop` to select the existing harmless-only or stop-on-interruption mode.
+Other prompt/menu choices are printed as `play choose NUMBER`; `play ignore` selects IGNORE.
+The short interface changes no interruption policy. Existing-handler failures remain visible.
 For a notice that advertises acknowledgement or continuation, use the displayed `play continue`.
 `play cancel` selects the current prompt's advertised Cancel action; it does not cancel a pending command.
 `play look` also collects an outstanding command without resending it. `play quit` requests

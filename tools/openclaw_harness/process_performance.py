@@ -590,6 +590,11 @@ def resource_record(owner: dict, before: dict, after: dict, context: dict,
 
 
 def append_record(directory: Path, record: dict):
+    if (directory / "plain-waiting").exists():
+        # The playtest conversation records alarms; resource samples need only
+        # current state for the existing performance observer.
+        write_json(directory / "performance.latest.json", record)
+        return
     # Each writer appends one complete short record with one O_APPEND write.
     # No in-memory history and no rewriting the growing journal.
     raw = (json.dumps(record, separators=(",", ":")) + "\n").encode()
