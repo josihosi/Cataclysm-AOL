@@ -115,6 +115,7 @@ def compact_response(response):
             if key in observed}
         result["observation"]["surface"] = {
             "kind": surface.get("kind"), "actions": surface.get("actions", []),
+            "breadcrumbs": surface.get("breadcrumbs", []),
             "facts": {key: value for key, value in surface.get("facts", {}).items()
                       if key in {"text", "title", "messages", "activity_type"}},
         }

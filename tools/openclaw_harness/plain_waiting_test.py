@@ -246,13 +246,15 @@ class PlainWaitingTest(unittest.TestCase):
             self.fixture.write("requests/" + request_id + ".json", {"request_id": request_id})
             raw = {"ok": True, "receipt": {"irrelevant": "x" * 10000}, "observation": {
                 "run_id": "run-a", "observation_id": request_id, "game_minutes": index,
-                "surface": {"kind": "prompt", "actions": [
+                "surface": {"kind": "prompt", "breadcrumbs": ["Activity in progress", "YESNO"], "actions": [
                     {"id": "prompt.choose", "label": "YES", "stable_id": "yes", "enabled": True}],
                     "facts": {"text": "Stop waiting?", "unrelated_world_dump": "x" * 10000}}}}
             receipt = bridge._persist_response(request_id, b'{"action":"game.observe"}', json.dumps(raw).encode())
             retrieved = bridge.response_artifact(session, request_id, receipt["response_sha256"])
             self.assertTrue(retrieved["ok"])
             self.assertEqual(retrieved["response"]["observation"]["observation_id"], request_id)
+            self.assertEqual(retrieved["response"]["observation"]["surface"]["breadcrumbs"],
+                             ["Activity in progress", "YESNO"])
             self.assertEqual(len(list((session / "responses").glob("*.json"))), 2)
             self.assertEqual(len(list((session / "requests").glob("*.json"))), 1)
             self.assertLess((session / "responses" / (request_id + ".json")).stat().st_size, 500)
