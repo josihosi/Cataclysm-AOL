@@ -4,6 +4,12 @@ Native gameplay here means dispatch through the game's own semantic owners. Run 
 in the game worktree, locally or over SSH; it does not require a desktop-control connection.
 For a registry-launched file-backed session, use the persistent player client:
 
+Ordinary play replies show game changes, input choices, outcomes and actual performance alarms.
+Receipts and routine telemetry stay in the session. Use `--diagnostics` before the command to
+display them, or `request-result --request-id ID` to retrieve an earlier request. Activity pause
+remains bound to the same running activity across input polls; a replacement activity or prompt
+requires its own current input choice.
+
 ```sh
 python3 tools/openclaw_harness/play_cli.py --session SESSION look
 python3 tools/openclaw_harness/play_cli.py --session SESSION act ACTION [--target STABLE_ID]

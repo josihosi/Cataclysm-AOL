@@ -20,7 +20,7 @@ import uuid
 
 from cockpit_archive import ArchiveSequence, json_chunks
 from evidence_display import emit, retain, recover, PresentationParser
-from gameplay_display import display
+from gameplay_display import display, player_output
 from cockpit import player_controls
 from cockpit_file_bridge import FileBackedCockpitBridge as Bridge, _atomic_json
 
@@ -810,6 +810,8 @@ class PlayerClient:
 
 def main(argv=None):
     parser = PresentationParser(description=__doc__)
+    parser.add_argument("--diagnostics", action="store_true",
+                        help="Show retained transport and performance diagnostics")
     parser.add_argument("--session", type=Path, required=True, help="Existing registry-launched session directory")
     parser.add_argument("--wait-seconds", type=float, default=1,
                         help="Wait for this response, then return pending; never resubmit")
@@ -969,7 +971,12 @@ def main(argv=None):
                     result = client.finish(json.loads(args.witness.read_text()), args.wait_seconds)
     except (OSError, ValueError, KeyError, TypeError) as error:
         result = {"ok": False, "error": str(error)}
-    emit(result)
+    if not args.diagnostics and args.command in {"look", "act", "wait", "move", "collect", "resume", "cancel", "call"}:
+        # Complete responses and receipts remain in the session; ordinary play
+        # should not spend its display budget on integrity bookkeeping.
+        print(json.dumps(player_output(result), ensure_ascii=False, separators=(",", ":")))
+    else:
+        emit(result)
     return 0 if result.get("ok") else 1
 
 

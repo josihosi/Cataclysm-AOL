@@ -152,6 +152,9 @@ class semantic_surface_manager
         std::size_t next_frame_id_ = 0;
         std::vector<surface_state> stack_;
         std::optional<semantic_surface_descriptor> top_;
+        // Consecutive polls of the same activity keep one input grant. A new
+        // activity, prompt, or other owner retires it; callbacks are never kept.
+        std::optional<semantic_surface_descriptor> activity_poll_;
         std::vector<semantic_action_request> pending_requests_;
         std::map<std::string, semantic_action_receipt> completed_requests_;
         std::optional<semantic_action_receipt> pending_accepted_receipt_;

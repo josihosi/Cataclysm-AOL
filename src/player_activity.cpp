@@ -58,6 +58,12 @@ static const trait_id trait_DEBUG_STAMINA( "DEBUG_STAMINA" );
 
 static const efftype_id effect_nausea( "nausea" );
 
+size_t player_activity::next_input_generation()
+{
+    static size_t generation = 0;
+    return ++generation;
+}
+
 player_activity::player_activity() : type( activity_id::NULL_ID() ) { }
 
 player_activity::player_activity( activity_id t, int turns, int Index, int pos,
@@ -188,6 +194,7 @@ std::optional<std::string> player_activity::get_progress_message( const avatar &
 
 void player_activity::start_or_resume( Character &who, bool resuming )
 {
+    input_generation_ = next_input_generation();
     if( actor && !resuming ) {
         actor->start( *this, who );
     }

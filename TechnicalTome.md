@@ -709,3 +709,10 @@ authenticate both archived sequences and reconstructed scalar metadata before va
 legacy reports hash and parse one byte snapshot. Journals composed from independently bound reports
 retain original evidence identities but own separate writable storage. Plain artifact rewrites remove
 their obsolete sidecars, and compact CLI views identify the current native input owner.
+# Harness activity input ownership
+
+An activity's runtime input generation changes when it starts or resumes and is not saved.
+Consecutive `activity_wait` polling scopes with the same generation, facts and actions reuse
+their native surface/frame grant. Only the current scope owns the callback; a prompt, another
+activity or changed actions retires the grant. This lets the player request pause while game
+time advances without admitting a stale request against a different activity.

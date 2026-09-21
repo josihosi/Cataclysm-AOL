@@ -202,6 +202,8 @@ def gameplay_fact(value: Any, path: str) -> Any:
     """Expose playable facts with pageable previews; full source stays retrievable."""
     decoded = decode(value)
     key = path.rsplit(".", 1)[-1]
+    if decoded == [] or decoded == {}:
+        return decoded
     if not isinstance(decoded, (dict, list)):
         return compact(value, path)
     result = describe(value, path)

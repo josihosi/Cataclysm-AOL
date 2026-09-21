@@ -22,6 +22,46 @@
 #include "ui_iteminfo.h"
 #include "uilist.h"
 
+TEST_CASE( "activity input survives polling but not a different owner",
+           "[semantic_surface][activity_poll]" )
+{
+    semantic_surface_manager manager( "activity-run" );
+    int pauses = 0;
+    const auto consumer = [&]( const semantic_action_request & ) {
+        ++pauses;
+        return semantic_action_dispatch_result{ true, "", "", false, false };
+    };
+    const auto poll = [&]( const std::string & generation ) {
+        return manager.push( "activity_wait", "Activity in progress",
+        { { "activity_generation", generation } },
+        { { "activity.pause", "", "Pause activity", true } }, consumer );
+    };
+    std::string surface = poll( "1" );
+    const semantic_surface_descriptor observed = *manager.top();
+    REQUIRE( manager.pop( surface ) );
+    surface = poll( "1" );
+    CHECK( manager.top()->frame_id == observed.frame_id );
+    REQUIRE( manager.submit_request( { observed.run_id, observed.surface_id, observed.frame_id,
+                                       "pause-1", "activity.pause", std::nullopt, {} } ) );
+    CHECK( manager.consume_top_request() );
+    CHECK( pauses == 1 );
+    REQUIRE( manager.pop( surface ) );
+
+    SECTION( "a replacement activity rejects the previous grant" ) {
+        poll( "2" );
+    }
+    SECTION( "a prompt retires the grant even if the activity resumes" ) {
+        const std::string prompt = manager.push( "yes_no", "Stop?" );
+        REQUIRE( manager.pop( prompt ) );
+        poll( "1" );
+    }
+    CHECK( manager.top()->frame_id != observed.frame_id );
+    REQUIRE( manager.submit_request( { observed.run_id, observed.surface_id, observed.frame_id,
+                                       "stale-pause", "activity.pause", std::nullopt, {} } ) );
+    CHECK_FALSE( manager.consume_top_request() );
+    CHECK( pauses == 1 );
+}
+
 namespace
 {
 

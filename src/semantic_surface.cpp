@@ -66,11 +66,28 @@ std::string semantic_surface_manager::push( const std::string &kind, const std::
         descriptor.breadcrumbs.push_back( parent.descriptor.breadcrumbs.back() );
     }
     descriptor.breadcrumbs.push_back( breadcrumb );
+    const bool continuing_activity = kind == "activity_wait" && activity_poll_ &&
+                                     descriptor.payload.count( "activity_generation" ) != 0 &&
+                                     descriptor.payload == activity_poll_->payload &&
+                                     descriptor.breadcrumbs == activity_poll_->breadcrumbs &&
+                                     same_actions( descriptor.valid_actions, activity_poll_->valid_actions );
+    if( continuing_activity ) {
+        descriptor.surface_id = activity_poll_->surface_id;
+        descriptor.frame_id = activity_poll_->frame_id;
+    }
+    activity_poll_.reset();
     stack_.push_back( { std::move( descriptor ), std::move( consumer ) } );
     if( recreating_withheld_owner ) {
         suppress_parent_republish_ = false;
     }
-    republish_top();
+    if( continuing_activity ) {
+        top_ = stack_.back().descriptor;
+        if( descriptor_observer_ ) {
+            descriptor_observer_( *top_ );
+        }
+    } else {
+        republish_top();
+    }
     return stack_.back().descriptor.surface_id;
 }
 
@@ -104,6 +121,13 @@ bool semantic_surface_manager::pop( const std::string &surface_id )
 {
     if( !is_top( surface_id ) ) {
         return false;
+    }
+    if( stack_.size() == 1 && top_->kind == "activity_wait" &&
+        top_->payload.count( "activity_generation" ) != 0 &&
+        withheld_parent_surface_ids_.count( surface_id ) == 0 ) {
+        activity_poll_ = *top_;
+    } else {
+        activity_poll_.reset();
     }
     const bool withheld_parent_is_next = stack_.size() > 1 &&
                                         withheld_parent_surface_ids_.count(

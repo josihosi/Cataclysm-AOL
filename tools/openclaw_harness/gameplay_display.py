@@ -5,6 +5,40 @@ import json
 from cockpit_evidence import action_catalog, compact, decode, gameplay_fact
 
 
+def player_output(result):
+    """Present decisions, keeping transport receipts in the retained request."""
+    def clean(value):
+        if isinstance(value, list):
+            return [clean(item) for item in value]
+        if not isinstance(value, dict):
+            return value
+        if value.get("omitted") is False and "preview" in value:
+            return clean(value["preview"])
+        return {key: clean(item) for key, item in value.items()
+                if key not in {"authority", "source_selector", "actions_selector",
+                               "identity_fields", "scope_note"}}
+
+    view = result.get("response", result)
+    output = {key: result[key] for key in ("ok", "state", "error", "reason") if key in result}
+    if isinstance(view, dict):
+        output.update({key: clean(value) for key, value in view.items()
+                       if key not in {"authority", "receipt", "turn_assessment",
+                                      "startup_diagnostics", "request_result", "retrieval"}})
+        outcome = output.get("outcome")
+        if isinstance(outcome, dict) and isinstance(outcome.get("native_receipt"), dict):
+            native = outcome.pop("native_receipt")
+            outcome.update({key: native[key] for key in
+                            ("accepted", "rejection_reason", "outcome") if key in native})
+    assessment = result.get("turn_assessment") or {}
+    alerts = {key: assessment[key] for key in ("alarms", "recoveries") if assessment.get(key)}
+    if alerts:
+        output["performance"] = alerts
+    for key in ("next", "request_id", "witness_fields"):
+        if key in result:
+            output[key] = result[key]
+    return output
+
+
 def observation_path(response, path=""):
     for key in ("observation", "terminal_observation", "result"):
         value = response.get(key)

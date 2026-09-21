@@ -10112,8 +10112,10 @@ void handle_key_blocking_activity()
                                     std::map<std::string, std::string>{
                 { "native_owner", "DEFAULTMODE" },
                 { "native_action", "pause" },
+                { "activity_generation", std::to_string( u.activity.input_generation() ) },
+                { "activity_type", u.activity.id().str() },
             }, std::vector<semantic_action_descriptor>{
-                { "activity.pause", "", _( "Pause activity" ), true },
+                { "activity.pause", "", _( "Pause activity" ), u.activity.is_interruptible_with_kb() },
             }, [ &semantic_action, semantic_manager ]( const semantic_action_request &request ) {
                 if( request.action_id != "activity.pause" ) {
                     return semantic_action_dispatch_result{ false, "unadvertised_action", "" };

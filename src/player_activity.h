@@ -33,6 +33,9 @@ class translation;
 class player_activity
 {
     private:
+        // Runtime input ownership, intentionally not persisted in saves.
+        static size_t next_input_generation();
+        size_t input_generation_ = next_input_generation(); // NOLINT(cata-serialize)
         activity_id type;
 
         std::set<distraction_type> ignored_distractions; // NOLINT(cata-serialize)
@@ -40,6 +43,9 @@ class player_activity
         bool ignoreQuery = false; // NOLINT(cata-serialize)
 
     public:
+        size_t input_generation() const {
+            return input_generation_;
+        }
         cata::clone_ptr<activity_actor> actor;
 
         /** Total number of moves (1/100th of a second) required to complete the activity */

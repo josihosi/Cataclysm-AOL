@@ -30,7 +30,7 @@ class PlayerCliTest(unittest.TestCase):
         (self.session / name).write_text(json.dumps(value))
 
     def cli(self, *arguments, ok=True, wait_seconds=0):
-        process = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
+        process = subprocess.run([sys.executable, str(CLI), "--diagnostics", "--session", str(self.session),
                                   "--wait-seconds", str(wait_seconds), *arguments], capture_output=True, text=True)
         self.assertEqual(process.returncode, 0 if ok else 1, process.stderr + process.stdout)
         from evidence_display import DEFAULT_BYTES, recover
@@ -41,7 +41,7 @@ class PlayerCliTest(unittest.TestCase):
         return recover(shown["presentation"]["full_evidence"]["sha256"])
 
     def cli_async(self, *arguments, wait_seconds):
-        return subprocess.Popen([sys.executable, str(CLI), "--session", str(self.session),
+        return subprocess.Popen([sys.executable, str(CLI), "--diagnostics", "--session", str(self.session),
                                  "--wait-seconds", str(wait_seconds), *arguments],
                                 stdout=subprocess.PIPE, stderr=subprocess.PIPE, text=True)
 

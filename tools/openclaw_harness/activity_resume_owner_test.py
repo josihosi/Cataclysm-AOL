@@ -20,7 +20,7 @@ class ActivityResumeOwnerTest( unittest.TestCase ):
 
         self.assertIn( "openclaw_harness_semantic_session_active()", body )
         self.assertIn( '"activity_wait", "Activity in progress"', body )
-        self.assertIn( '{ "activity.pause", "", _( "Pause activity" ), true }', body )
+        self.assertIn( '{ "activity.pause", "", _( "Pause activity" ), u.activity.is_interruptible_with_kb() }', body )
         self.assertIn( 'request.action_id != "activity.pause"', body )
         self.assertIn( 'semantic_action = "pause";', body )
         self.assertIn(
