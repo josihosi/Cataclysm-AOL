@@ -230,7 +230,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
             view = {**view, "facts_changed": selected}
         else:
             title = facts.get("title") or facts.get("actor_name") or owner.replace("_", " ").title()
-            if title != "YESNO":
+            if title != "YESNO" and not (title == "Menu" and facts.get("text")):
                 lines.append(_plain_text(title))
             view = {**view, "facts_changed": facts}
         view = {key: value for key, value in view.items() if key not in {"current_input", "facts_removed"}}
@@ -335,18 +335,34 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                            "pid", "alive", "exit_observed_at", "evidence_ref", "native_receipt_matched",
                            "failure", "session_state", "unused_authority", "selected_stable_id",
                            "identity", "gameplay_credit", "unit", "color", "speaker_id", "speaker_name",
-                           "artifact_reference_envelope", "released_continuation", "surface_request"} or key.endswith("sha256") or (key == "ok" and item is True):
+                           "artifact_reference_envelope", "released_continuation", "surface_request",
+                           "activity_generation", "native_action", "native_owner", "run_id", "binding_id",
+                           "surface_id", "frame_id", "observation_id", "authority", "evidence_handles"} or key.endswith("sha256") or (key == "ok" and item is True):
+                    continue
+                if key == "activity_type":
+                    lines.append("Activity: " + str(item).removeprefix("ACT_").lower().replace("_", " "))
                     continue
                 if key == "chain" and isinstance(item, dict):
                     start, end = item.get("start_game_minutes"), item.get("terminal_game_minutes")
                     if isinstance(start, (int, float)) and isinstance(end, (int, float)):
                         lines.append(f"Waited {end - start:g} game minutes. " +
                                      str(item.get("stop_reason", "")).replace("_", " ") + ".")
+                    elif "partial_progress" in item and "offset_ms" not in item:
+                        progress = item["partial_progress"]
+                        if isinstance(progress, (int, float)):
+                            lines.append(f"Waited {progress:g} game minutes.")
+                    if "offset_ms" in item:
+                        if "partial_progress" in item and "planned_steps" in item:
+                            lines.append(f"Moved {item['partial_progress']}/{item['planned_steps']} steps.")
+                        if item.get("terminal_absolute_ms") is not None:
+                            lines.append("Position: " + ", ".join(str(x) for x in item["terminal_absolute_ms"]))
                     item = {field: content for field, content in item.items() if field not in {
                         "start_game_minutes", "target_game_minutes", "terminal_game_minutes",
                         "stop_reason", "derived_bound", "native_action_count", "model_round_trips",
                         "tool_round_trips", "safety_frame_count", "danger_handling", "unused_authority",
-                        "session_state", "action_id", "step_index", "guarded_handling_count"}
+                        "session_state", "action_id", "step_index", "guarded_handling_count",
+                        "partial_progress", "planned_steps", "offset_ms", "origin_absolute_ms",
+                        "target_absolute_ms", "terminal_absolute_ms"}
                         and not (field == "target_overshoot_game_minutes" and content == 0)}
                 if key == "owner":
                     if item != "world":
@@ -368,6 +384,8 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                 if key == "next" and item == "act, look, inspect, or journal":
                     continue
                 if key == "title" and item in ("YESNO", ""):
+                    continue
+                if key == "filter_required" and item in (False, "false"):
                     continue
                 if fresh and key == "title":
                     continue

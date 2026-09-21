@@ -123,6 +123,32 @@ class PlayerOutputTest(unittest.TestCase):
         self.assertIn("play act npc_inspection.future_action", text)
         self.assertNotIn('{"', text)
 
+    def test_partial_movement_and_wait_keep_their_units(self):
+        movement = plain_player_output({"ok": False, "error": "blocked", "response": {"outcome": {
+            "chain": {"offset_ms": [3, -2], "partial_progress": 2, "planned_steps": 5,
+                      "terminal_absolute_ms": [10, 20, 0]}}}})
+        self.assertIn("Moved 2/5 steps.", movement)
+        self.assertIn("Position: 10, 20, 0", movement)
+        self.assertIn("blocked", movement)
+        self.assertNotIn("Waited", movement)
+        waiting = plain_player_output({"ok": True, "response": {"outcome": {
+            "chain": {"partial_progress": 1.0, "stop_reason": "target_reached"}}}})
+        self.assertIn("Waited 1 game minutes.", waiting)
+
+    def test_snapshot_debug_facts_do_not_restore_receipt_ids(self):
+        snapshot = self.world_snapshot()
+        snapshot["current"]["facts"]["last_debug_intervention"] = {
+            "run_id": "a" * 64, "operation": "native_debug_kill", "name": "zombie",
+            "before": {"hp": 80}, "after": {"hp": 0, "dead": True}}
+        result = {"ok": True, "state": "collected", "response": {
+            "current_input": {"owner": "world"}, "facts_changed": {
+                "last_debug_intervention": {"omitted": True}}}}
+        text = plain_player_output(result, snapshot=snapshot, full_look=False)
+        self.assertIn("zombie", text)
+        self.assertIn("after.dead: yes", text)
+        self.assertNotIn("a" * 64, text)
+        self.assertNotIn("run id", text)
+
     def test_gameplay_and_real_alarms_survive_without_receipts(self):
         full = {"ok": True, "state": "collected", "request_id": "play-1",
                 "receipt": {"response_sha256": "a" * 64, "binding_id": "b" * 64},
