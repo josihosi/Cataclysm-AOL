@@ -55,6 +55,15 @@ TEST_CASE( "activity input survives polling but not a different owner",
         REQUIRE( manager.pop( prompt ) );
         poll( "1" );
     }
+    SECTION( "a withheld activity unwinds after its cancellation prompt" ) {
+        const std::string activity = poll( "1" );
+        REQUIRE( manager.withhold_parent_authority_until_recreated( activity ) );
+        const std::string prompt = manager.push( "yes_no", "Stop?" );
+        REQUIRE( manager.pop( prompt ) );
+        REQUIRE_FALSE( manager.top() );
+        REQUIRE( manager.pop( activity ) );
+        poll( "1" );
+    }
     CHECK( manager.top()->frame_id != observed.frame_id );
     REQUIRE( manager.submit_request( { observed.run_id, observed.surface_id, observed.frame_id,
                                        "stale-pause", "activity.pause", std::nullopt, {} } ) );

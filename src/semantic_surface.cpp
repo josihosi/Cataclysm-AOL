@@ -122,7 +122,7 @@ bool semantic_surface_manager::pop( const std::string &surface_id )
     if( !is_top( surface_id ) ) {
         return false;
     }
-    if( stack_.size() == 1 && top_->kind == "activity_wait" &&
+    if( stack_.size() == 1 && top_ && top_->kind == "activity_wait" &&
         top_->payload.count( "activity_generation" ) != 0 &&
         withheld_parent_surface_ids_.count( surface_id ) == 0 ) {
         activity_poll_ = *top_;
