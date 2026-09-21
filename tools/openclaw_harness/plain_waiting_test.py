@@ -55,6 +55,12 @@ class PlainWaitingTest(unittest.TestCase):
             result = self.reply("world", [{"id": "world.wait", "enabled": True}], minute=5)
             self.assertTrue(self.player.render(result).startswith("Waited 5 minutes. Ready."))
 
+    def test_not_ready_reply_preserves_session_state(self):
+        text = self.player.render({"ok": False, "status": {"state": "starting", "binding_id": "hidden"}})
+        self.assertIn("Session is starting", text)
+        self.assertIn("play look", text)
+        self.assertNotIn("hidden", text)
+
     def test_wait_passes_advertised_alarm_clock_chooser(self):
         self.world()
         self.player.run("wait", "5m")

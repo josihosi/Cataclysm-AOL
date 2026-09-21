@@ -133,8 +133,12 @@ class WaitingPlayer:
         if result.get("state") == "pending":
             lines = ["Command pending. Check result → play look"]
         elif not result.get("ok"):
+            status = result.get("status", {})
+            state_reason = ("Session is " + str(status["state"]).replace("_", " ")
+                            if isinstance(status, dict) and status.get("state") else
+                            "The game did not confirm the command.")
             reason = result.get("error", result.get("response", {}).get("error",
-                                result.get("reason", "The game did not confirm the command.")))
+                                result.get("reason", state_reason)))
             lines = ["Command failed: " + str(reason).replace("_", " "), "Check the game → play look"]
         elif self.client.state.get("finished"):
             lines = ["Playtest ended."]
