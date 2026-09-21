@@ -455,6 +455,11 @@ class FileBackedCockpitBridge:
         self._write_status("starting")
 
     def _persist_response(self, request_id: str, request_bytes: bytes, response_bytes: bytes) -> dict[str, Any]:
+        plain_waiting = (self.session_dir / "plain-waiting").is_file()
+        if plain_waiting:
+            from waiting_transport import compact_response
+            response_bytes = json.dumps(compact_response(json.loads(response_bytes)),
+                                        ensure_ascii=False, separators=(",", ":")).encode("utf-8")
         self._sequence += 1
         artifact = self.responses_dir / (request_id + ".json")
         if artifact.exists():
@@ -498,6 +503,9 @@ class FileBackedCockpitBridge:
                if self._active_session_descriptor else {}),
         )
         _atomic_json(self.responses_dir / (request_id + ".receipt.json"), receipt)
+        if plain_waiting:
+            from waiting_transport import retire_collected_packets
+            retire_collected_packets(self.session_dir, request_id)
         return receipt
 
     def _read_complete_response(self) -> Any:

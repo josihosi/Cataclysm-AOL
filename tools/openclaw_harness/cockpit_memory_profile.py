@@ -10,7 +10,10 @@ import gc
 import json
 import os
 from pathlib import Path
-import resource
+try:
+    import resource
+except ImportError:  # Windows has no getrusage; optional telemetry stays unavailable.
+    resource = None
 import subprocess
 import sys
 import time

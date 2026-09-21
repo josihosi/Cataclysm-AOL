@@ -98,8 +98,9 @@ def session_lock(path: Path):
 
 
 class PlayerClient:
-    def __init__(self, session: Path):
+    def __init__(self, session: Path, *, plain_waiting: bool = False):
         self.session = session.resolve()
+        self.plain_waiting = plain_waiting
         manifest = json.loads((self.session / "bridge.manifest.json").read_text())
         self.binding = str(manifest.get("binding_id", ""))
         if not self.binding:
@@ -570,11 +571,26 @@ class PlayerClient:
             self.state["finished"] = True
             self.state["finished_generation"] = result["receipt"].get("session_generation", 0)
             self.state.pop("observation_id", None)
-        try:
-            previous = recover(self.state["display_sha256"]) if self.state.get("display_sha256") else None
-        except (OSError, ValueError):
-            previous = None  # A lost presentation cache never strands native grants.
-        view, display_state = display(response, previous, refresh=pending["request"]["action"] == "game.observe" or self._reentry_pending() or self.state.get("display_generation") != result["receipt"].get("session_generation", 0))
+        if self.plain_waiting:
+            # This is replaceable input state, not an archive of game frames.
+            self.state["plain_current"] = {
+                "game_minutes": observation.get("game_minutes"),
+                "game_turn": observation.get("game_turn"),
+                "surface": {"kind": surface.get("kind"), "actions": surface.get("actions", []),
+                            "facts": {key: value for key, value in surface.get("facts", {}).items()
+                                      if key in {"text", "title", "messages", "activity_type"}}},
+            } if reusable else {}
+            view, display_state = {"ok": response.get("ok", False)}, None
+            for key in ("error", "reason", "failure"):
+                if key in response:
+                    view[key] = response[key]
+            self.state.pop("display_sha256", None)
+        else:
+            try:
+                previous = recover(self.state["display_sha256"]) if self.state.get("display_sha256") else None
+            except (OSError, ValueError):
+                previous = None  # A lost presentation cache never strands native grants.
+            view, display_state = display(response, previous, refresh=pending["request"]["action"] == "game.observe" or self._reentry_pending() or self.state.get("display_generation") != result["receipt"].get("session_generation", 0))
         self.state["display_generation"] = receipt_generation
         if display_state is not None:
             self.state["display_sha256"] = retain(display_state)["sha256"]
@@ -615,6 +631,11 @@ class PlayerClient:
                           error="explicit_finish_or_quit_has_no_terminal_receipt",
                           next="quit --reason REASON or inspect retained evidence" if self.state.get("sealed_terminal") else "look",
                           note="The reply did not establish session termination. The client remains available and does not replay the request.")
+        if self.plain_waiting:
+            output = {key: value for key, value in output.items() if key in {
+                "ok", "state", "response", "error", "request_id"}}
+            output["turn_assessment"] = {key: assessment[key] for key in
+                                        ("status", "reason", "alarms", "recoveries") if key in assessment}
         self.state["last_collected_result"] = _persistent_result_cache(output)
         self.save()
         return output

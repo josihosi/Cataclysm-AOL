@@ -1,5 +1,25 @@
 # Operate an existing live session
 
+## Waiting redesign in progress
+
+The short waiting interface is `tools/openclaw_harness/play` (`play.cmd` on Windows).
+Bind `CAOL_PLAY_SESSION` to the exact launched session directory and add
+`tools/openclaw_harness` to that worker's PATH. Use an absolute directory for both; each worker
+keeps its own environment, with no shared current-session pointer. The selected Python must be
+the same supported interpreter used by the harness (on the Mac, put Homebrew first in PATH).
+
+Run `play look`, then `play wait 5m` (or an advertised duration such as `1h`). `play stop` asks
+the native activity to pause. Answer the displayed confirmation with `play yes` or `play no`.
+`play look` also collects an outstanding command without resending it. `play quit` requests
+session termination; it does not by itself establish native save/exit proof.
+
+Replies and `SESSION/playtest.txt` are plain text. The waiting client keeps current input state
+instead of archived display snapshots; the bridge retains only its latest compact response for
+recovery. Native/controller archive removal and fresh native validation are still pending, so
+this checkpoint must not be presented as the completed logging redesign.
+
+## Existing general player interface
+
 Native gameplay here means dispatch through the game's own semantic owners. Run the player CLI
 in the game worktree, locally or over SSH; it does not require a desktop-control connection.
 For a registry-launched file-backed session, use the persistent player client:
