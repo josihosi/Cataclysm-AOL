@@ -34,6 +34,16 @@ class PlayerOutputTest(unittest.TestCase):
                        {"ok": False, "error": "stale_observation", "next": "look"}):
             self.assertEqual(player_output({**status, "turn_assessment": {"alarms": []}}), status)
 
+    def test_wait_operation_does_not_reintroduce_nested_receipts(self):
+        shown = player_output({"ok": True, "response": {"outcome": {"operation": {
+            "kind": "wait", "state": "accepted", "run_id": "a" * 64,
+            "binding_id": "b" * 64, "requested_duration_game_minutes": 360,
+            "accepted_receipt": {"accepted": True, "requested_run_id": "a" * 64,
+                                 "requested_frame_id": "frame:1"}}}}})
+        self.assertEqual(shown["outcome"]["operation"], {
+            "kind": "wait", "state": "accepted", "requested_duration_game_minutes": 360,
+            "accepted": True})
+
 
 if __name__ == "__main__":
     unittest.main()

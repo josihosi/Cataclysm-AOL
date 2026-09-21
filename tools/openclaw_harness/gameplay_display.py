@@ -14,9 +14,19 @@ def player_output(result):
             return value
         if value.get("omitted") is False and "preview" in value:
             return clean(value["preview"])
-        return {key: clean(item) for key, item in value.items()
-                if key not in {"authority", "source_selector", "actions_selector",
-                               "identity_fields", "scope_note"}}
+        result = {}
+        for key, item in value.items():
+            if key in {"receipt", "native_receipt", "accepted_receipt"}:
+                if isinstance(item, dict):
+                    result.update({field: item[field] for field in
+                                   ("accepted", "rejection_reason", "outcome") if field in item})
+            elif key not in {"authority", "source_selector", "actions_selector",
+                             "identity_fields", "scope_note", "schema", "run_id", "binding_id",
+                             "surface_id", "frame_id", "observation_id", "request_identity",
+                             "evidence_handles", "expected_postcondition", "evidence_effect"} \
+                    and not key.endswith("sha256"):
+                result[key] = clean(item)
+        return result
 
     view = result.get("response", result)
     output = {key: result[key] for key in ("ok", "state", "error", "reason") if key in result}
@@ -24,11 +34,6 @@ def player_output(result):
         output.update({key: clean(value) for key, value in view.items()
                        if key not in {"authority", "receipt", "turn_assessment",
                                       "startup_diagnostics", "request_result", "retrieval"}})
-        outcome = output.get("outcome")
-        if isinstance(outcome, dict) and isinstance(outcome.get("native_receipt"), dict):
-            native = outcome.pop("native_receipt")
-            outcome.update({key: native[key] for key in
-                            ("accepted", "rejection_reason", "outcome") if key in native})
     assessment = result.get("turn_assessment") or {}
     alerts = {key: assessment[key] for key in ("alarms", "recoveries") if assessment.get(key)}
     if alerts:
