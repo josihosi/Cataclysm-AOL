@@ -249,6 +249,9 @@ def collect_turn_assessment(directory: Path, binding_id: str, *, pending: Mappin
     path = _trace_path(directory)
     if path is None:
         return {"status": "unavailable", "reason": "native_turn_trace_not_run_bound"}
+    if Path(str(path) + ".plain").exists():
+        from waiting_transport import collect_waiting_snapshot
+        return collect_waiting_snapshot(directory, path, owner)
     measurement_binding = {
         "source_binding": owner.get("source_binding"), "host": owner.get("host"),
         "machine": owner.get("machine"), "platform": owner.get("platform"),

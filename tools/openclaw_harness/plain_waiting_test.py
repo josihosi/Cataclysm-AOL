@@ -196,6 +196,43 @@ class PlainWaitingTest(unittest.TestCase):
         self.assertEqual(result["failure"]["unused_authority"], "revoked")
         self.assertLess(len(json.dumps(result)), 300)
 
+    def test_snapshot_alarm_is_once_and_does_not_report_obsolete_recovery(self):
+        from pathlib import Path
+        from waiting_transport import collect_waiting_snapshot
+        directory = self.fixture.session
+        trace = directory / "native"
+        path = Path(str(trace) + ".performance")
+        owner = {"run_id": "run-a"}
+        snapshot = {"run_id": "run-a", "sample_count": 100, "last_alarm_mean": .025,
+                    "mean_seconds": .025, "alarmed": True, "alarm_count": 2, "recovery_count": 1}
+        path.write_text(json.dumps(snapshot))
+        first = collect_waiting_snapshot(directory, trace, owner)
+        self.assertEqual(len(first["alarms"]), 1)
+        self.assertEqual(first["recoveries"], [])
+        self.assertIn("Tell the coordinator", "\n".join(performance_text(first)))
+        repeated = collect_waiting_snapshot(directory, trace, owner)
+        self.assertEqual(repeated["alarms"], [])
+        snapshot.update(alarmed=False, recovery_count=2, mean_seconds=.003)
+        path.write_text(json.dumps(snapshot))
+        recovered = collect_waiting_snapshot(directory, trace, owner)
+        self.assertEqual(recovered["recoveries"], [{"kind": "waiting_recovery"}])
+        self.assertEqual(collect_waiting_snapshot(directory, trace, owner)["recoveries"], [])
+
+    def test_snapshot_activation_keeps_only_latest_input_state(self):
+        from pathlib import Path
+        from waiting_transport import activate_native_snapshot, PREFIX
+        trace = self.fixture.session / "native"
+        events = [{"event": "surface_descriptor", "frame_id": 1},
+                  {"event": "turn", "seconds": 2},
+                  {"event": "frame", "frame_id": 3},
+                  {"event": "surface_descriptor", "frame_id": 4}]
+        trace.write_text("".join(PREFIX + json.dumps(event) + "\n" for event in events))
+        activate_native_snapshot(trace)
+        current = [json.loads(line[len(PREFIX):]) for line in trace.read_text().splitlines()]
+        self.assertEqual({event["frame_id"] for event in current}, {3, 4})
+        self.assertTrue(Path(str(trace) + ".plain").exists())
+        self.assertTrue(all(event["_source_offset"] == 0 for event in current))
+
 
 if __name__ == "__main__":
     unittest.main()

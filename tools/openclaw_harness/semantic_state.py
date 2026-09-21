@@ -99,9 +99,9 @@ def read_semantic_step_trace(
                          "native_save_completion"}:
             return [], "malformed_semantic_step"
         normalized = dict(value)
-        normalized["_event_offset"] = start_offset + byte_cursor + len(
-            line[:marker].encode("utf-8")
-        )
+        normalized["_event_offset"] = (value["_source_offset"]
+                                       if Path(str(path) + ".plain").exists() and "_source_offset" in value
+                                       else start_offset + byte_cursor + len(line[:marker].encode("utf-8")))
         if event == "frame":
             if not frame_id:
                 return [], "malformed_semantic_step"

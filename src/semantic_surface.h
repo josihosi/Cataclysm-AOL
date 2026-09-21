@@ -168,6 +168,7 @@ class semantic_surface_manager
         std::set<std::string> withheld_parent_surface_ids_;
         bool suppress_parent_republish_ = false;
         std::size_t request_transport_offset_ = 0;
+        std::string plain_transport_request_id_;
         bool transport_wake_pending_ = false;
         std::optional<std::pair<std::string, std::string>> native_intent_;
         std::function<void( const semantic_surface_descriptor & )> descriptor_observer_;

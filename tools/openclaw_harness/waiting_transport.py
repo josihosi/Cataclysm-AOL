@@ -1,5 +1,59 @@
 """Current waiting input state, without a history of full response packets."""
 from pathlib import Path
+import json
+import os
+
+
+PREFIX = "openclaw_harness_semantic_step: "
+
+
+def activate_native_snapshot(path: Path):
+    """Switch a paused, admitted World session from startup history to current state."""
+    if Path(str(path) + ".plain").exists():
+        return
+    current = {}
+    with path.open(encoding="utf-8") as stream:
+        for line in stream:
+            if line.startswith(PREFIX):
+                value = json.loads(line[len(PREFIX):])
+                if value.get("event") in {"frame", "surface_descriptor"}:
+                    current[value["event"]] = {**value, "_source_offset": 0, "_source_end": 1}
+    if "surface_descriptor" not in current:
+        raise ValueError("Plain waiting requires an admitted native input surface")
+    body = "".join(PREFIX + json.dumps(value, separators=(",", ":")) + "\n"
+                   for value in current.values())
+    Path(str(path) + ".seed").write_text(body, encoding="utf-8")
+    temporary = Path(str(path) + ".activate")
+    temporary.write_text(body, encoding="utf-8")
+    os.replace(temporary, path)
+    Path(str(path) + ".plain").touch()
+
+
+def collect_waiting_snapshot(directory, path, owner):
+    from process_performance import read_json, write_json
+    snapshot = read_json(Path(str(path) + ".performance"))
+    if not snapshot:
+        return {"status": "measuring", "alarms": [], "recoveries": []}
+    if snapshot.get("run_id") != owner["run_id"]:
+        return {"status": "unavailable", "reason": "waiting_measurement_run_mismatch"}
+    state_path = directory / "waiting-performance-state.json"
+    previous = read_json(state_path)
+    if previous.get("owner") != owner:
+        previous = {}
+    alarms, recoveries = [], []
+    if snapshot.get("alarm_count", 0) > previous.get("alarm_count", 0):
+        alarms.append({"kind": "waiting_slow", "mean_seconds": snapshot["last_alarm_mean"],
+                       "sample_count": 100, "limit_seconds": .010,
+                       "message": "Tell the coordinator: waiting performance needs attention."})
+    # A recovery followed by another slowdown can occur between collections.
+    # Never describe that currently slow game as recovered.
+    if (snapshot.get("recovery_count", 0) > previous.get("recovery_count", 0)
+            and not snapshot.get("alarmed")):
+        recoveries.append({"kind": "waiting_recovery"})
+    write_json(state_path, {"owner": owner, "alarm_count": snapshot.get("alarm_count", 0),
+                           "recovery_count": snapshot.get("recovery_count", 0)})
+    return {"status": "measured" if snapshot.get("sample_count") == 100 else "measuring",
+            "waiting": snapshot, "alarms": alarms, "recoveries": recoveries}
 
 
 def compact_response(response):
