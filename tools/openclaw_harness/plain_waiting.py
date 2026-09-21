@@ -101,11 +101,30 @@ class WaitingPlayer:
         return result
 
     def run(self, command, duration=None):
+        if self.state.get("finishing"):
+            status = json.loads((self.client.session / "status.json").read_text(encoding="utf-8"))
+            cleanup = status.get("cleanup", {})
+            if status.get("binding_id") != self.client.binding:
+                return {"ok": False, "error": "Session binding changed during cleanup."}
+            if status.get("state") == "safe_to_cleanup" or cleanup.get("game", {}).get("status") in {
+                    "terminated", "already_exited", "killed", "terminated_during_kill_escalation"}:
+                self.state.pop("finishing", None)
+                self.client.state.pop("pending", None)
+                self.client.state["finished"] = True
+                self.client.save()
+                return {"ok": True}
+            if status.get("state") in {"cleaned", "bridge_failed", "process_dead", "terminalization_failed"}:
+                return {"ok": False, "error": "Cleanup did not confirm that the game stopped."}
+            return {"ok": True, "state": "pending"}
         if command == "quit":
             status = json.loads((self.client.session / "status.json").read_text(encoding="utf-8"))
             if status.get("state") in {"process_dead", "bridge_failed", "terminalization_failed", "reentry_failed"}:
                 from cockpit_file_bridge import FileBackedCockpitBridge
                 result = FileBackedCockpitBridge.cleanup(self.client.session, self.client.binding)
+                if result.get("ok") and result.get("cleanup") == "requested":
+                    self.state["finishing"] = True
+                    self.client.save()
+                    return {"ok": True, "state": "pending"}
                 if result.get("ok"):
                     self.client.state.pop("pending", None)
                     self.client.state["finished"] = True
@@ -119,6 +138,8 @@ class WaitingPlayer:
             return self.client.submit({"action": "game.observe"}, 1)
         if command in {"yes", "no"}:
             return self.answer(command)
+        if command == "cancel":
+            return self.act("prompt.cancel")
         if command == "continue":
             offered = [a for a in self.actions() if a.get("id") in {
                 "prompt.acknowledge", "modal.acknowledge", "activity.continue"}]
@@ -188,6 +209,9 @@ class WaitingPlayer:
                 if any(a.get("id") in {"prompt.acknowledge", "modal.acknowledge"} for a in self.actions()):
                     lines.append("Continue → play continue")
                     choices += 1
+                if any(a.get("id") == "prompt.cancel" for a in self.actions()):
+                    lines.append("Cancel → play cancel")
+                    choices += 1
                 if not choices:
                     lines.append("This prompt needs a choice that the waiting interface does not yet support.")
             elif kind in {"activity_wait", "wait_activity"}:
@@ -230,7 +254,7 @@ def main(argv=None):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(prog="play", description="Operate your waiting playtest.")
-    parser.add_argument("command", choices=["look", "wait", "stop", "yes", "no", "continue", "quit"])
+    parser.add_argument("command", choices=["look", "wait", "stop", "yes", "no", "continue", "cancel", "quit"])
     parser.add_argument("duration", nargs="?")
     args = parser.parse_args(argv)
     if args.duration and args.command != "wait":

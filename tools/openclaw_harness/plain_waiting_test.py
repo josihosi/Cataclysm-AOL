@@ -75,6 +75,15 @@ class PlainWaitingTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not offer a single continuation"):
             self.player.run("continue")
 
+    def test_native_notice_cancel_is_an_explicit_advertised_command(self):
+        self.player.run("look")
+        result = self.reply("prompt", [{"id": "prompt.cancel", "enabled": True}],
+                            facts={"text": "A quiet moment passes."})
+        self.assertEqual(self.player.render({**result, "turn_assessment": {}}),
+                         "A quiet moment passes.\nCancel → play cancel")
+        self.player.run("cancel")
+        self.assertEqual(self.client.state["pending"]["request"]["action_id"], "prompt.cancel")
+
     def test_quit_uses_owned_cleanup_after_bridge_failure(self):
         status = self.fixture.session / "status.json"
         current = json.loads(status.read_text())
@@ -83,6 +92,23 @@ class PlainWaitingTest(unittest.TestCase):
             result = self.player.run("quit")
         cleanup.assert_called_once_with(self.client.session, self.client.binding)
         self.assertEqual(self.player.render(result), "Playtest ended.")
+
+    def test_async_cleanup_waits_for_verified_exit(self):
+        path = self.fixture.session / "status.json"
+        status = {**json.loads(path.read_text()), "state": "reentry_failed"}
+        path.write_text(json.dumps(status))
+        self.client.state["pending"] = {"request_id": "unfinished"}
+        with patch.object(FileBackedCockpitBridge, "cleanup", return_value={"ok": True, "cleanup": "requested"}):
+            self.assertEqual(self.player.run("quit")["state"], "pending")
+        self.assertFalse(self.client.state.get("finished"))
+        self.assertIn("pending", self.client.state)
+        self.assertEqual(self.player.run("look")["state"], "pending")
+        path.write_text(json.dumps({**status, "state": "cleaned", "cleanup": {"game": {"status": "retained"}}}))
+        self.assertFalse(self.player.run("look")["ok"])
+        self.assertFalse(self.client.state.get("finished"))
+        path.write_text(json.dumps({**status, "state": "cleaned", "cleanup": {"game": {"status": "terminated"}}}))
+        self.assertEqual(self.player.render(self.player.run("look")), "Playtest ended.")
+        self.assertNotIn("pending", self.client.state)
 
     def test_menu_does_not_reset_native_message_baseline(self):
         self.world()

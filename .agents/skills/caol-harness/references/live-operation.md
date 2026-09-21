@@ -14,6 +14,7 @@ the same supported interpreter used by the harness (on the Mac, put Homebrew fir
 Run `play look`, then `play wait 5m` (or an advertised duration such as `1h`). `play stop` asks
 the native activity to pause. Answer the displayed confirmation with `play yes` or `play no`.
 For a notice that advertises acknowledgement or continuation, use the displayed `play continue`.
+`play cancel` selects the current prompt's advertised Cancel action; it does not cancel a pending command.
 `play look` also collects an outstanding command without resending it. `play quit` requests
 session termination; it does not by itself establish native save/exit proof.
 
