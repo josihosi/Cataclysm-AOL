@@ -1454,7 +1454,7 @@ class KeepWatchTest(unittest.TestCase):
         self.assertEqual(operation["requested_duration_game_minutes"], 1.0)
         self.assertEqual(operation["completed_progress_game_minutes"], 1.0)
 
-    def test_duration_owner_prefers_longest_fresh_advertisement_inside_boundary(self) -> None:
+    def test_duration_owner_prefers_longest_declared_advertisement_inside_boundary(self) -> None:
         start = frame(1, 100, {
             "classification": "clear", "monster": False, "danger": False, "damage": False,
         })
@@ -1480,7 +1480,7 @@ class KeepWatchTest(unittest.TestCase):
 
         result = service.call({"action": "game.keep_watch", "keep_watch": {
             "enabled": True, "target_game_minutes": 130, "bound": long_bound,
-            "recipe": ["world.wait", "wait.1m"],
+            "recipe": ["world.wait", "wait.1m", "wait.30m"],
         }})
 
         self.assertTrue(result["ok"], result)
