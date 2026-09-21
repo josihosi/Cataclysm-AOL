@@ -29,6 +29,19 @@ copies receipt data to current status. Native summaries consume `semantic.steps.
 and useful observed transcript events; audit actual generated files in the native proof.
 The broader campaign remains held. The previous two-fix checkpoint below remains valid history.
 
+Waiting slice checkpoint: short commands and plain transcript are implemented on dev. Native
+Mac proof at `f5e0652e45a` completed a five-minute wait, stop/NO/resume, stop/YES and clean
+shutdown. A natural 100-turn window crossed the 10 ms threshold at 14.582 ms/turn, emitted the
+coordinator instruction, then recovered. This is real measurement, not injected latency.
+The complete latest worker transcript is `build_logs/waiting-redesign-transcript.txt` on Windows
+(10,508 characters / 10,527 UTF-8 bytes). Earlier observed old-message replay through menus and
+alarm-clock chooser failure were fixed and retested. Native changed objects compile on Mac;
+65 semantic tests passed, with focused plain-command tests and clean structured reviews.
+Remaining: game-triggered interruption proof and removal/consolidation of startup/terminal
+receipt archives. Current waiting protocol replaces history with current state, but the launch
+and shutdown layers still retain bulky diagnostic reports. Repeated new NPC activity messages
+remain visible for Josef's judgment; do not silently classify them as irrelevant game evidence.
+
 # Owner-guided harness repair checkpoint, 2026-09-21
 
 The owner paused the broader campaign and authorized two focused repairs plus one Luna Mac
