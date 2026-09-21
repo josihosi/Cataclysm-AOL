@@ -27,6 +27,10 @@ def activate_native_snapshot(path: Path):
     temporary.write_text(body, encoding="utf-8")
     os.replace(temporary, path)
     Path(str(path) + ".plain").touch()
+    # These startup projections are superseded by the current native state.
+    # No plain-mode reader uses them after activation.
+    for name in ("semantic.native.log", "semantic.native.full.log", "semantic.native.full.log.ref.json"):
+        (path.parent / name).unlink(missing_ok=True)
 
 
 def collect_waiting_snapshot(directory, path, owner):

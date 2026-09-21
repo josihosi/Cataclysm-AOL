@@ -61,6 +61,24 @@ class PlainWaitingTest(unittest.TestCase):
         self.assertIn("play look", text)
         self.assertNotIn("hidden", text)
 
+    def test_menu_does_not_reset_native_message_baseline(self):
+        self.world()
+        old = {"time": "8:00", "text": "Old saved game message"}
+        new = {"time": "8:05", "text": "You finish waiting."}
+        self.client.state["plain_current"]["surface"]["facts"] = {"messages": [old]}
+        self.player.render({"ok": True})
+        self.client.state["plain_current"]["surface"] = {"kind": "menu", "facts": {}}
+        self.player.render({"ok": True})
+        self.client.state["plain_current"]["surface"] = {"kind": "world", "facts": {"messages": [old, new]}}
+        text = self.player.render({"ok": True})
+        self.assertIn("You finish waiting.", text)
+        self.assertNotIn("Old saved game message", text)
+
+    def test_actionless_native_wait_reports_progress_not_failure(self):
+        self.client.state["plain_current"] = {"surface": {"kind": "wait_activity", "facts": {}}}
+        text = self.player.render({"ok": True})
+        self.assertEqual(text, "Activity in progress.\nCheck progress → play look")
+
     def test_wait_passes_advertised_alarm_clock_chooser(self):
         self.world()
         self.player.run("wait", "5m")
@@ -242,6 +260,8 @@ class PlainWaitingTest(unittest.TestCase):
         from pathlib import Path
         from waiting_transport import activate_native_snapshot, PREFIX
         trace = self.fixture.session / "native"
+        obsolete = self.fixture.session / "semantic.native.log"
+        obsolete.write_text("obsolete startup projection")
         events = [{"event": "surface_descriptor", "frame_id": 1},
                   {"event": "turn", "seconds": 2},
                   {"event": "frame", "frame_id": 3},
@@ -252,6 +272,7 @@ class PlainWaitingTest(unittest.TestCase):
         self.assertEqual({event["frame_id"] for event in current}, {3, 4})
         self.assertTrue(Path(str(trace) + ".plain").exists())
         self.assertTrue(all(event["_source_offset"] == 0 for event in current))
+        self.assertFalse(obsolete.exists())
 
 
 if __name__ == "__main__":

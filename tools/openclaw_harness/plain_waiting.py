@@ -148,7 +148,7 @@ class WaitingPlayer:
             kind = surface.get("kind")
             facts = surface.get("facts", {})
             messages = decode(facts.get("messages", []))
-            if isinstance(messages, list):
+            if "messages" in facts and isinstance(messages, list):
                 previous = self.state.get("messages")
                 if previous is not None:
                     overlap = min(len(previous), len(messages))
@@ -169,7 +169,7 @@ class WaitingPlayer:
                         lines.append(f"{label.upper()} → play {label.lower()}")
                 if len(lines) < 2:
                     lines.append("This prompt needs a choice that the waiting interface does not yet support.")
-            elif kind == "activity_wait":
+            elif kind in {"activity_wait", "wait_activity"}:
                 delta = self.elapsed_minutes(current)
                 if delta is not None:
                     lines.append(f"Waiting: {elapsed(delta)} elapsed of {elapsed(self.state['requested_minutes'])}.")
@@ -177,6 +177,8 @@ class WaitingPlayer:
                     lines.append("Activity in progress.")
                 if any(a.get("id") == "activity.pause" for a in self.actions()):
                     lines.append("Stop waiting → play stop")
+                else:
+                    lines.append("Check progress → play look")
             elif kind == "world":
                 delta = self.elapsed_minutes(current)
                 if self.state.get("waiting") and delta is not None:
