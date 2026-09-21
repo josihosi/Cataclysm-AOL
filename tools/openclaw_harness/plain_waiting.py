@@ -109,6 +109,12 @@ class WaitingPlayer:
             return self.client.submit({"action": "game.observe"}, 1)
         if command in {"yes", "no"}:
             return self.answer(command)
+        if command == "continue":
+            offered = [a for a in self.actions() if a.get("id") in {
+                "prompt.acknowledge", "modal.acknowledge", "activity.continue"}]
+            if len(offered) != 1:
+                raise ValueError("The game does not offer a single continuation. Run play look.")
+            return self.act(offered[0]["id"], offered[0].get("stable_id") or None)
         if command == "stop":
             return self.act("activity.pause")
         if command == "quit":
@@ -163,11 +169,16 @@ class WaitingPlayer:
                 # Native wording preserves interruption causes; remove keyboard-only advice.
                 lines.append(text.removeprefix("Confirm: ").replace(" (Case Sensitive)", ""))
             if kind == "prompt":
+                choices = 0
                 for choice in self.actions():
                     label = str(choice.get("label", "")).strip()
                     if choice.get("id") == "prompt.choose" and label.casefold() in {"yes", "no"}:
                         lines.append(f"{label.upper()} → play {label.lower()}")
-                if len(lines) < 2:
+                        choices += 1
+                if any(a.get("id") in {"prompt.acknowledge", "modal.acknowledge"} for a in self.actions()):
+                    lines.append("Continue → play continue")
+                    choices += 1
+                if not choices:
                     lines.append("This prompt needs a choice that the waiting interface does not yet support.")
             elif kind in {"activity_wait", "wait_activity"}:
                 delta = self.elapsed_minutes(current)
@@ -189,6 +200,8 @@ class WaitingPlayer:
                     self.state["waiting"] = False
                 else:
                     lines.append("Ready. Start waiting → play wait 5m")
+            elif any(a.get("id") in {"modal.acknowledge", "activity.continue"} for a in self.actions()):
+                lines.append("Continue → play continue")
             else:
                 lines.append("The game is not ready for waiting. Check again → play look")
         lines.extend(performance_text(result.get("turn_assessment", {})))
@@ -207,7 +220,7 @@ def main(argv=None):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(prog="play", description="Operate your waiting playtest.")
-    parser.add_argument("command", choices=["look", "wait", "stop", "yes", "no", "quit"])
+    parser.add_argument("command", choices=["look", "wait", "stop", "yes", "no", "continue", "quit"])
     parser.add_argument("duration", nargs="?")
     args = parser.parse_args(argv)
     if args.duration and args.command != "wait":

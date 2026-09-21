@@ -13,14 +13,17 @@ the same supported interpreter used by the harness (on the Mac, put Homebrew fir
 
 Run `play look`, then `play wait 5m` (or an advertised duration such as `1h`). `play stop` asks
 the native activity to pause. Answer the displayed confirmation with `play yes` or `play no`.
+For a notice that advertises acknowledgement or continuation, use the displayed `play continue`.
 `play look` also collects an outstanding command without resending it. `play quit` requests
 session termination; it does not by itself establish native save/exit proof.
 
 Replies and `SESSION/playtest.txt` are plain text. The waiting client keeps current input state
 instead of archived display snapshots; the bridge retains only its latest compact response for
 recovery. The plain controller skips the legacy evidence database and receipt-history exports.
-Native event-trace removal and fresh native validation are still pending, so
-this checkpoint must not be presented as the completed logging redesign.
+Native waiting events replace current protocol state rather than accumulating a trace. A plain
+session writes `playtest-summary.txt` at shutdown and does not ingest a formal registry feature
+certification from these reduced records. Native normal waiting, YES/NO and performance alarms
+have been exercised; game-triggered interruption and the final disk audit remain pending.
 
 ## Existing general player interface
 

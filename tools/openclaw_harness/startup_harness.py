@@ -3303,7 +3303,10 @@ def asdict_world(world: WorldInfo) -> Dict[str, Any]:
 
 def write_json(path: Path, data: Dict[str, Any]) -> None:
     if os.environ.get("CAOL_PLAIN_WAITING") == "1" and path.name.endswith(".cockpit_live_session.json"):
-        return
+        # macOS startup can recover this binding envelope before stdout becomes
+        # readable. Keep current ownership, without the full instruction packet.
+        data = {key: data[key] for key in ("schema", "entry_mode", "run_id", "binding_id",
+                                         "bridge_binding_id", "bootstrap_only") if key in data}
     ensure_dir(path.parent)
     if find_archive(data) is not None:
         write_json_stream(path, data, exclusive=False)

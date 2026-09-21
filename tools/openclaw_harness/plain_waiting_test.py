@@ -61,6 +61,20 @@ class PlainWaitingTest(unittest.TestCase):
         self.assertIn("play look", text)
         self.assertNotIn("hidden", text)
 
+    def test_native_notice_shows_exact_continuation_command(self):
+        self.player.run("look")
+        result = self.reply("prompt", [{"id": "prompt.acknowledge", "enabled": True}],
+                            facts={"text": "A scheduled notice interrupts your wait."})
+        self.assertEqual(self.player.render({**result, "turn_assessment": {}}),
+                         "A scheduled notice interrupts your wait.\nContinue → play continue")
+        self.player.run("continue")
+        self.assertEqual(self.client.state["pending"]["request"]["action_id"], "prompt.acknowledge")
+
+    def test_continue_does_not_answer_yes_no_or_guess(self):
+        self.world()
+        with self.assertRaisesRegex(ValueError, "does not offer a single continuation"):
+            self.player.run("continue")
+
     def test_menu_does_not_reset_native_message_baseline(self):
         self.world()
         old = {"time": "8:00", "text": "Old saved game message"}
@@ -245,6 +259,15 @@ class PlainWaitingTest(unittest.TestCase):
         signal = json.loads((directory / "cockpit.bridge.safe_to_cleanup.json").read_text())
         self.assertEqual(signal["state"], "safe_to_cleanup")
         self.assertNotIn("report_sha256", signal)
+
+    def test_plain_startup_preserves_durable_binding_without_instruction_packet(self):
+        import startup_harness
+        path = self.fixture.session / "entry.cockpit_live_session.json"
+        envelope = {"schema": "caol-cockpit-live-session-v1", "entry_mode": "cockpit_live_session",
+                    "run_id": "run", "binding_id": "native", "bridge_binding_id": "bridge"}
+        with patch.dict(os.environ, {"CAOL_PLAIN_WAITING": "1"}):
+            startup_harness.write_json(path, {**envelope, "witness": "large instructions" * 1000})
+        self.assertEqual(json.loads(path.read_text()), envelope)
 
     def test_plain_scenario_incomplete_cleanup_does_not_release_bridge(self):
         import startup_harness
