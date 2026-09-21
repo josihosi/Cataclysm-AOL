@@ -404,6 +404,16 @@ class PlayerCliTest(unittest.TestCase):
         result = self.cli("inspect", "result.surface.actions", "--limit", "1")
         self.assertEqual(result["slice"][0]["id"], "world.wait")
 
+    def test_inspect_default_output_is_plain_text_and_logged_without_new_input(self):
+        self.observe()
+        process = subprocess.run([sys.executable, str(CLI), "--session", str(self.session),
+                                  "inspect", "result.surface.facts.last_save_result"],
+                                 capture_output=True, text=True)
+        self.assertEqual(process.returncode, 0, process.stderr)
+        self.assertEqual(process.stdout.strip(), "unattempted")
+        self.assertEqual(len(self.requests()), 1)
+        self.assertIn("unattempted", (self.session / "playtest.txt").read_text())
+
     def test_journal_finish_preserves_sealed_terminal_and_requires_witness(self):
         self.observe()
         witness_path = self.session / "witness.json"

@@ -1006,7 +1006,7 @@ def main(argv=None):
                     result = client.finish(json.loads(args.witness.read_text()), args.wait_seconds)
     except (OSError, ValueError, KeyError, TypeError) as error:
         result = {"ok": False, "error": str(error)}
-    if not args.diagnostics and args.command in {"look", "act", "wait", "move", "collect", "resume", "cancel", "call", "quit", "stop", "yes", "no", "ignore"}:
+    if not args.diagnostics and args.command in {"look", "act", "wait", "move", "collect", "resume", "cancel", "call", "quit", "stop", "yes", "no", "ignore", "inspect"}:
         # Complete responses and receipts remain in the session; ordinary play
         # should not spend its display budget on integrity bookkeeping.
         snapshot = None

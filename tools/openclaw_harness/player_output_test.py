@@ -6,6 +6,61 @@ from gameplay_display import player_output, bounded_player_output, plain_player_
 
 
 class PlayerOutputTest(unittest.TestCase):
+    def test_unchanged_controls_are_not_repeated_but_look_and_changes_show_them(self):
+        snapshot = {"owner": "look_cursor", "current": {"facts": {"text": "floor"},
+                    "actions": [{"id": "cursor.east", "label": "east"}]}}
+        current = {"owner": "look_cursor", "view": "delta"}
+        result = {"ok": True, "state": "collected", "response": {"current_input": current}}
+        text = plain_player_output(result, snapshot=snapshot, full_look=False)
+        self.assertIn("Allowed actions unchanged.", text)
+        self.assertNotIn("play act cursor.east", text)
+        self.assertIn("play act cursor.east", plain_player_output(result, snapshot=snapshot))
+        for change in ("actions_changed", "actions_removed"):
+            current[change] = [{"id": "cursor.west"}]
+            self.assertIn("play act cursor.east", plain_player_output(result, snapshot=snapshot, full_look=False))
+            del current[change]
+
+    def test_item_summary_keeps_stats_and_counts_omitted_text_with_retrieval(self):
+        prose = "A long historical description.\n"
+        snapshot = {"owner": "item_info", "current": {"facts": {
+            "item_info_text": "Damage: 21\n" + prose + "* Conducts electricity.\n",
+            "item_name": "Bullet"}, "actions": [{"id": "item_info.close", "label": "Close"}]}}
+        result = {"ok": True, "state": "collected", "response": {"current_input": {
+            "owner": "item_info", "source_selector": "observation"}}}
+        text = plain_player_output(result, snapshot=snapshot)
+        self.assertIn("Damage: 21", text)
+        self.assertIn("* Conducts electricity.", text)
+        self.assertNotIn(prose, text)
+        self.assertIn(f"{len(prose)} characters omitted", text)
+        self.assertIn("play inspect observation.surface.facts.item_info_text", text)
+        self.assertIn("play act item_info.close", text)
+        retrieved = plain_player_output({"ok": True, "response_sha256": "hidden", "slice": prose})
+        self.assertEqual(retrieved, prose)
+
+    def test_npc_summary_keeps_weapon_contents_and_full_details_route(self):
+        snapshot = {"owner": "npc_inspection", "current": {"facts": {
+            "actor_name": "Ada", "diagnostic_items": {
+                "1": {"name": "Pistol", "slot": "wielded", "parent_uid": ""},
+                "2": {"name": "Ammo", "slot": "MAGAZINE", "parent_uid": "1", "charges": 6},
+                "3": {"name": "Shirt", "slot": "worn", "parent_uid": ""}},
+            "diagnostic_rules": {"aim": "Careful"}}, "actions": []}}
+        result = {"ok": True, "state": "collected", "response": {"current_input": {
+            "owner": "npc_inspection", "source_selector": "result"}}}
+        text = plain_player_output(result, snapshot=snapshot)
+        self.assertIn("Pistol", text)
+        self.assertIn("Ammo", text)
+        self.assertNotIn("Shirt", text)
+        self.assertIn("Other gear: 1 items", text)
+        self.assertIn("play inspect result.surface.facts.diagnostic_items", text)
+        self.assertIn("play inspect result.surface.facts.diagnostic_rules", text)
+
+    def test_menu_target_prefix_is_shared_without_changing_command_syntax(self):
+        from gameplay_display import _plain_controls
+        text = _plain_controls([{"id": "menu.choose", "stable_id": "uilist-entry:837", "label": "zombie"}])
+        self.assertEqual(text.count("uilist-entry:"), 1)
+        self.assertIn("--target uilist-entry:<target>", text)
+        self.assertIn("837 — zombie", text)
+
     def test_successful_native_receipt_with_empty_reason_is_not_a_rejection(self):
         text = plain_player_output({"ok": True, "response": {"outcome": {
             "native_receipt": {"accepted": True, "rejection_reason": ""}}}})
@@ -153,7 +208,7 @@ class PlayerOutputTest(unittest.TestCase):
     def test_menu_close_does_not_repeat_world_catalog(self):
         result = {"ok": True, "state": "collected", "response": {"current_input": {"owner": "world"}}}
         self.assertEqual(plain_player_output(result, snapshot=self.world_snapshot(), full_look=False),
-                         "World. Controls: play look")
+                         "World.")
 
     def test_changed_ammo_keeps_weapon_name_and_injury_keeps_maximum(self):
         snapshot = self.world_snapshot()

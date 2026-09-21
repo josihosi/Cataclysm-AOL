@@ -184,7 +184,9 @@ def _plain_controls(actions):
                         f"play act prompt.{verb} --target " + shlex.quote(target))
                     lines.append(label + (" → " + command if action.get("enabled", True) else " (unavailable)"))
             continue
-        lines.append(f"play act {namespace}.<action> --target <target> (copy the target exactly)")
+        prefix = "uilist-entry:" if namespace == "menu" and all(
+            target.startswith("uilist-entry:") for target in targets) else ""
+        lines.append(f"play act {namespace}.<action> --target {prefix}<target> (copy the target exactly)")
         verb_sets = {tuple(verb for verb, action in choices if action.get("enabled", True))
                      for choices in targets.values()}
         shared = next(iter(verb_sets)) if len(verb_sets) == 1 else ()
@@ -196,7 +198,7 @@ def _plain_controls(actions):
             available = [verb for verb, action in choices if action.get("enabled", True)]
             disabled = [verb + ": " + _plain_text(action.get("label", verb))
                         for verb, action in choices if not action.get("enabled", True)]
-            lines.append(f"  {shlex.quote(target)} — {label}" + (" — " + "/".join(available) if available and not shared else ""))
+            lines.append(f"  {shlex.quote(target.removeprefix(prefix))} — {label}" + (" — " + "/".join(available) if available and not shared else ""))
             if disabled:
                 lines.append("    Unavailable: " + "; ".join(disabled))
     return "\n".join(lines)
@@ -221,6 +223,8 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
     lines = []
 
     view = player_output(result)
+    source = result.get("response", result).get("current_input", {}).get("source_selector", "")
+    fact_selector = source + ".surface.facts." if source else ""
     current = view.get("current_input", {})
     owner = current.get("owner")
     fresh = (snapshot and result.get("state") in {"collected", "rejected"}
@@ -231,7 +235,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
             if full_look:
                 lines.append(world_look(snapshot))
             else:
-                lines.append("World. Controls: play look")
+                lines.append("World.")
             # Keep messages/outcomes on actions, without reprinting world diagnostics/maps.
             changed = view.get("facts_changed", {})
             selected = {key: _expanded_changes(changed[key], facts[key]) for key in
@@ -346,6 +350,38 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                              (" → " + command if value.get("enabled", True) else " (unavailable)"))
                 return
             for key, item in value.items():
+                if fresh and fact_selector and owner in {"npc_inspection", "camp_npc_inspection"} and key == "diagnostic_items" and isinstance(item, dict):
+                    shown = {uid for uid, gear in item.items() if gear.get("slot") == "wielded"}
+                    while True:
+                        children = {uid for uid, gear in item.items() if gear.get("parent_uid") in shown}
+                        if children <= shown:
+                            break
+                        shown.update(children)
+                    write({uid: gear for uid, gear in item.items() if uid in shown}, "items")
+                    other = {uid: gear for uid, gear in item.items() if uid not in shown}
+                    if other:
+                        count = len(json.dumps(other, ensure_ascii=False))
+                        lines.append(f"Other gear: {len(other)} items, {count} characters omitted → play inspect {fact_selector}{key}")
+                    continue
+                if fresh and fact_selector and owner in {"npc_inspection", "camp_npc_inspection"} and key in {
+                        "diagnostic_rules", "diagnostic_llm_intent"}:
+                    count = len(item) if isinstance(item, str) else len(json.dumps(item, ensure_ascii=False))
+                    name = "Rules" if key == "diagnostic_rules" else "AI intent"
+                    lines.append(f"{name}: {count} characters omitted → play inspect {fact_selector}{key}")
+                    continue
+                if fresh and fact_selector and key == "item_info_text" and isinstance(item, str):
+                    kept, omitted = [], 0
+                    for row in _plain_text(item).splitlines(keepends=True):
+                        text = row.strip()
+                        if ":" in text or text.startswith("*") or re.match(r"^\d", text) or text.startswith((
+                                "Disassembly ", "Can be stored ", "Length: ")):
+                            kept.append(text)
+                        else:
+                            omitted += len(row)
+                    lines.extend(kept)
+                    if omitted:
+                        lines.append(f"Additional item text: {omitted} characters omitted → play inspect {fact_selector}{key}")
+                    continue
                 if view.get("error") and ((key == "ok" and item is False)
                                           or (key == "state" and item == "rejected")):
                     continue
@@ -454,7 +490,7 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
                 if key in {"actions", "actions_changed"} and isinstance(item, list):
                     lines.append(_plain_controls(item))
                     continue
-                if key in {"current_input", "facts_changed", "outcome", "response", "new_events", "value"}:
+                if key in {"current_input", "facts_changed", "outcome", "response", "new_events", "value", "slice"}:
                     write(item)
                 else:
                     write(item, (label + "." if label else "") + key.removeprefix("diagnostic_").replace("_", " "))
@@ -502,7 +538,11 @@ def plain_player_output(result, *, snapshot=None, full_look=True):
             or error.startswith("look_required")) and "Next: play look" not in lines:
         lines.append("Next: play look")
     if fresh and owner != "world":
-        lines.append(_plain_controls(snapshot["current"].get("actions", [])))
+        if (not full_look and current.get("view") == "delta"
+                and not current.get("actions_changed") and not current.get("actions_removed")):
+            lines.append("Allowed actions unchanged.")
+        else:
+            lines.append(_plain_controls(snapshot["current"].get("actions", [])))
     return "\n".join(line for line in lines if line) or "No changes."
 
 

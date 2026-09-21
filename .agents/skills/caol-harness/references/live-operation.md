@@ -15,6 +15,12 @@ available actions. Use the printed action names literally: for example Zone Mana
 `play act zone.close`, while the look cursor closes with `play act cursor.cancel`. Neither is a
 World owner, so return through its advertised controls before issuing another World action.
 
+Successful action replies are already observations. Use them to choose the next action; do not
+append `look` as a routine verification step. Use `look` when fresh surroundings answer a specific
+question or after rejected input. "Allowed actions unchanged" refers to the preceding control list.
+Verbose item/NPC details show omitted character counts and an
+existing `play inspect ...` command for the full text; retrieval does not advance the game.
+
 Native gameplay here means dispatch through the game's own semantic owners. Run the player CLI
 in the game worktree, locally or over SSH; it does not require a desktop-control connection.
 For a registry-launched file-backed session, use the persistent player client:
