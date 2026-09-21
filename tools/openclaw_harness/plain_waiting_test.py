@@ -75,6 +75,15 @@ class PlainWaitingTest(unittest.TestCase):
         with self.assertRaisesRegex(ValueError, "does not offer a single continuation"):
             self.player.run("continue")
 
+    def test_quit_uses_owned_cleanup_after_bridge_failure(self):
+        status = self.fixture.session / "status.json"
+        current = json.loads(status.read_text())
+        status.write_text(json.dumps({**current, "state": "process_dead"}))
+        with patch.object(FileBackedCockpitBridge, "cleanup", return_value={"ok": True}) as cleanup:
+            result = self.player.run("quit")
+        cleanup.assert_called_once_with(self.client.session, self.client.binding)
+        self.assertEqual(self.player.render(result), "Playtest ended.")
+
     def test_menu_does_not_reset_native_message_baseline(self):
         self.world()
         old = {"time": "8:00", "text": "Old saved game message"}

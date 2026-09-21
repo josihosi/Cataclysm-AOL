@@ -101,6 +101,16 @@ class WaitingPlayer:
         return result
 
     def run(self, command, duration=None):
+        if command == "quit":
+            status = json.loads((self.client.session / "status.json").read_text(encoding="utf-8"))
+            if status.get("state") in {"process_dead", "bridge_failed", "terminalization_failed", "reentry_failed"}:
+                from cockpit_file_bridge import FileBackedCockpitBridge
+                result = FileBackedCockpitBridge.cleanup(self.client.session, self.client.binding)
+                if result.get("ok"):
+                    self.client.state.pop("pending", None)
+                    self.client.state["finished"] = True
+                    self.client.save()
+                return result
         if self.client.state.get("pending"):
             if command != "look":
                 raise ValueError("A command is still pending. Run play look to collect its result.")

@@ -22,6 +22,9 @@ def finish_plain_waiting(run_dir, report, *, cleanup_complete):
     lines.append("Cleanup: " + str(cleanup.get("status", "unknown")).replace("_", " ") + ".")
     path = run_dir / "playtest-summary.txt"
     path.write_text("\n".join(lines) + "\n", encoding="utf-8")
+    retire_startup_records(run_dir)
+    for name in ("probe.step_ledger.json", "proof.gates.json"):
+        (run_dir / name).unlink(missing_ok=True)
     session = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_SESSION_DIR")
     binding = os.environ.get("OPENCLAW_COCKPIT_BRIDGE_BINDING_ID")
     if session and binding and cleanup_complete:
