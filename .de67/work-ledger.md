@@ -1,3 +1,34 @@
+# Active owner-guided waiting redesign, 2026-09-21
+
+The owner now requests a complete waiting slice with session-bound short commands, plain-text
+decision replies and minimal plain-text playtest history, followed by a Luna native Mac playtest
+and review of the full resulting transcript before generalizing. Replace redundant record
+producers and consumers; hiding JSON while retaining its copies does not satisfy this request.
+Use the reviewed `play wait`, `play look`, `play stop`, `play yes`, and `play no` interaction
+examples as the initial design. Validate normal completion, YES/NO, native interruption and
+failure/recovery. Preserve useful observed causes, elapsed game time and negative outcomes.
+
+Owner performance clarification: sluggish advancing turns are the primary waiting alarm, not
+only stopped progress. The owner authorizes a usability threshold derived from an hour of game
+time taking a minute of real time already being very bad. Initial policy: alarm above 10 ms mean
+simulation processing time over the last 100 completed waiting turns (36 real seconds per game
+hour at the limit). Exclude confirmation/input, load, save and transport time. Identify waiting
+from native activity state; do not mix ordinary movement or menu time into the waiting window.
+Emit one alarm on crossing and one recovery, retaining those changes in the plain-text transcript.
+The alarm must give the measured average, sample count and limit, and explicitly tell the worker
+to notify the coordinator that waiting performance needs attention. It must not stop/replay input
+or claim a gameplay result. Report unavailable measurement honestly. Test boundary, transient
+spike, sustained slowdown, repeated collection, recovery and non-waiting exclusions. Controlled
+slowdown proves instrumentation only; label it separately from naturally occurring performance.
+
+Existing implementation dependencies identified: `play_cli.collect` depends on response receipts
+for recovery and retains hashed display snapshots; `evidence_display.bounded` stores originals
+and omitted subtrees; `cockpit_file_bridge._persist_response` writes response/receipt pairs and
+copies receipt data to current status. Native summaries consume `semantic.steps.jsonl` and
+`transition.events.jsonl`. Replace waiting-history dependencies with current operational state
+and useful observed transcript events; audit actual generated files in the native proof.
+The broader campaign remains held. The previous two-fix checkpoint below remains valid history.
+
 # Owner-guided harness repair checkpoint, 2026-09-21
 
 The owner paused the broader campaign and authorized two focused repairs plus one Luna Mac
