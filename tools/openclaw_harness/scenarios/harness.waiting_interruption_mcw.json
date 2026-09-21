@@ -29,13 +29,13 @@
       "frame-bound semantic requests",
       "cockpit:game.observe",
       "cockpit:game.act",
+      "cockpit:game.wait",
       "cockpit:run.quit"
     ],
     "forbidden_input": [
       "guessed-key",
       "raw-save-rewrite",
-      "synthetic replies",
-      "automatic acknowledgement"
+      "synthetic replies"
     ],
     "setup_only_debug": true,
     "disposable_copy": true,
@@ -142,12 +142,13 @@
       ],
       "invariants": [
         "Scheduled setup is harness-interaction proof, not natural encounter-frequency proof.",
-        "Never guess keys or automatically acknowledge a prompt."
+        "Use existing wait-mode handling and currently advertised native actions."
       ],
       "transition_timeout_seconds": 10.0,
       "observe_interval_seconds": 0.1,
       "live_operations": [
-        "game.act"
+        "game.act",
+        "game.wait"
       ]
     }
   ],

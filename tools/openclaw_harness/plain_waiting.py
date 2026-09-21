@@ -74,33 +74,7 @@ class WaitingPlayer:
         self.state["answer"] = answer
         return self.act("prompt.choose", matches[0].get("stable_id"))
 
-    def advance_wait(self, result):
-        """Walk the native duration menu; a pending request is never resubmitted."""
-        while self.state.get("selecting") and result.get("ok") and result.get("state") != "pending":
-            action_ids = {a["id"] for a in self.actions()}
-            duration = "wait." + self.state["duration"]
-            if duration in action_ids:
-                self.state["selecting"] = False
-                self.state["waiting"] = True
-                self.client.save()
-                return self.act(duration)
-            if "wait.duration_menu" in action_ids:
-                result = self.act("wait.duration_menu")
-            elif any(a.get("id") == "menu.choose" and
-                     a.get("stable_id") == "wait-mode:wait-a-while" for a in self.actions()):
-                result = self.act("menu.choose", "wait-mode:wait-a-while")
-            else:
-                self.state["selecting"] = False
-                offered = sorted(a.removeprefix("wait.") for a in action_ids
-                                 if re.fullmatch(r"wait\.[1-9][0-9]*[mh]", a))
-                choices = "\n".join("Choose " + value + " → play wait " + value for value in offered)
-                raise ValueError("The game does not offer that waiting duration." +
-                                 ("\n" + choices if choices else " Run play look."))
-        if not result.get("ok"):
-            self.state["selecting"] = False
-        return result
-
-    def run(self, command, duration=None):
+    def run(self, command, duration=None, mode="ignore"):
         if self.state.get("finishing"):
             status = json.loads((self.client.session / "status.json").read_text(encoding="utf-8"))
             cleanup = status.get("cleanup", {})
@@ -133,11 +107,17 @@ class WaitingPlayer:
         if self.client.state.get("pending"):
             if command != "look":
                 raise ValueError("A command is still pending. Run play look to collect its result.")
-            return self.advance_wait(self.client.collect(1))
+            return self.client.collect(1)
         if command == "look":
             return self.client.submit({"action": "game.observe"}, 1)
-        if command in {"yes", "no"}:
+        if command in {"yes", "no", "ignore"}:
             return self.answer(command)
+        if command == "choose":
+            actions = self.actions()
+            if not duration or not duration.isdigit() or not 1 <= int(duration) <= len(actions):
+                raise ValueError("Choose a displayed option number. Run play look.")
+            action = actions[int(duration) - 1]
+            return self.act(action["id"], action.get("stable_id") or None)
         if command == "cancel":
             return self.act("prompt.cancel")
         if command == "continue":
@@ -159,11 +139,19 @@ class WaitingPlayer:
         if current.get("surface", {}).get("kind") != "world" and not in_duration_menu:
             raise ValueError("Waiting can start from ordinary gameplay. Run play look.")
         minutes = int(duration[:-1]) * (60 if duration[-1] == "h" else 1)
+        self.client.frame()
+        modes = {"ignore": "ignore_danger_and_interruptions", "safe": "handle_classified_non_dangerous",
+                 "stop": "stop_on_interruption"}
+        if mode not in modes:
+            raise ValueError("Choose ignore, safe, or stop as the waiting mode.")
         self.state.update(duration=duration, requested_minutes=minutes,
                           start_minutes=current.get("game_minutes"), start_turn=current.get("game_turn"),
-                          selecting=True, answer=None)
+                          waiting=True, answer=None)
         self.client.save()
-        return self.advance_wait({"ok": True} if in_duration_menu else self.act("world.wait"))
+        return self.client.wait(target_game_minutes=None, target_delta_game_minutes=minutes,
+                                duration_action="wait." + duration, bound_maximum=minutes,
+                                bound_basis="game_mechanic", bound_source="Player requested " + duration,
+                                danger_handling=modes[mode], wait_seconds=1)
 
     def render(self, result):
         lines = []
@@ -199,12 +187,15 @@ class WaitingPlayer:
             if isinstance(text, str) and text:
                 # Native wording preserves interruption causes; remove keyboard-only advice.
                 lines.append(text.removeprefix("Confirm: ").replace(" (Case Sensitive)", ""))
-            if kind == "prompt":
+            if kind in {"prompt", "activity_distraction", "menu"}:
                 choices = 0
-                for choice in self.actions():
+                for index, choice in enumerate(self.actions(), 1):
                     label = str(choice.get("label", "")).strip()
-                    if choice.get("id") == "prompt.choose" and label.casefold() in {"yes", "no"}:
+                    if choice.get("id") == "prompt.choose" and label.casefold() in {"yes", "no", "ignore"}:
                         lines.append(f"{label.upper()} → play {label.lower()}")
+                        choices += 1
+                    elif choice.get("id") not in {"prompt.acknowledge", "modal.acknowledge", "prompt.cancel"}:
+                        lines.append(f"{label or choice['id']} → play choose {index}")
                         choices += 1
                 if any(a.get("id") in {"prompt.acknowledge", "modal.acknowledge"} for a in self.actions()):
                     lines.append("Continue → play continue")
@@ -254,11 +245,14 @@ def main(argv=None):
     if hasattr(sys.stdout, "reconfigure"):
         sys.stdout.reconfigure(encoding="utf-8")
     parser = argparse.ArgumentParser(prog="play", description="Operate your waiting playtest.")
-    parser.add_argument("command", choices=["look", "wait", "stop", "yes", "no", "continue", "cancel", "quit"])
+    parser.add_argument("command", choices=["look", "wait", "stop", "yes", "no", "ignore", "choose", "continue", "cancel", "quit"])
     parser.add_argument("duration", nargs="?")
+    parser.add_argument("mode", nargs="?", choices=["ignore", "safe", "stop"])
     args = parser.parse_args(argv)
-    if args.duration and args.command != "wait":
-        parser.error("Only play wait takes a duration.")
+    if args.duration and args.command not in {"wait", "choose"}:
+        parser.error("Only play wait and play choose take an argument.")
+    if args.mode and args.command != "wait":
+        parser.error("Only play wait takes a mode.")
     session = os.environ.get("CAOL_PLAY_SESSION")
     if not session:
         print("No playtest session is bound. Launch a playtest before using play.")
@@ -272,8 +266,9 @@ def main(argv=None):
         with session_lock(directory / "play-client.lock"):
             player = WaitingPlayer(PlayerClient(directory, plain_waiting=True))
             command = args.command + (" " + args.duration if args.duration else "")
+            command += " " + args.mode if args.mode else ""
             try:
-                result = player.run(args.command, args.duration)
+                result = player.run(args.command, args.duration, args.mode or "ignore")
                 text = player.render(result)
             except (OSError, ValueError, KeyError, TypeError) as error:
                 text = str(error)

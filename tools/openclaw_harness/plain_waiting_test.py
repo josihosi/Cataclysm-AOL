@@ -36,8 +36,6 @@ class PlainWaitingTest(unittest.TestCase):
         with patch("play_cli.retain", side_effect=AssertionError("Plain play must not archive display snapshots")):
             self.world()
             self.player.run("wait", "5m")
-            self.reply("menu", [{"id": "wait.duration_menu", "enabled": True}])
-            self.reply("menu", [{"id": "wait.5m", "enabled": True}])
             result = self.reply("activity_wait", [{"id": "activity.pause", "enabled": True}], minute=2)
             self.assertTrue(self.player.render(result).startswith(
                 "Waiting: 2 minutes elapsed of 5 minutes.\nStop waiting → play stop"))
@@ -128,17 +126,14 @@ class PlainWaitingTest(unittest.TestCase):
         text = self.player.render({"ok": True})
         self.assertEqual(text, "Activity in progress.\nCheck progress → play look")
 
-    def test_wait_passes_advertised_alarm_clock_chooser(self):
+    def test_wait_calls_existing_endpoint_with_dangerous_default(self):
         self.world()
         self.player.run("wait", "5m")
-        self.reply("menu", [
-            {"id": "menu.choose", "stable_id": "wait-mode:wait-a-while", "enabled": True},
-            {"id": "menu.choose", "stable_id": "wait-mode:set-alarm", "enabled": True}])
         request = self.client.state["pending"]["request"]
-        self.assertEqual(request["action_id"], "menu.choose")
-        self.assertEqual(request["stable_id"], "wait-mode:wait-a-while")
-        self.reply("menu", [{"id": "wait.5m", "enabled": True}])
-        self.assertEqual(self.client.state["pending"]["request"]["action_id"], "wait.5m")
+        self.assertEqual(request["action"], "game.wait")
+        self.assertEqual(request["wait"]["danger_handling"], "ignore_danger_and_interruptions")
+        self.assertEqual(request["wait"]["target_delta_game_minutes"], 5)
+        self.assertEqual(request["wait"]["recipe"], ["world.wait", "wait.5m"])
         result = self.reply("world", [{"id": "world.wait", "enabled": True}], minute=5)
         self.assertIn("Waited 5 minutes. Ready.", self.player.render(result))
 
@@ -216,13 +211,12 @@ class PlainWaitingTest(unittest.TestCase):
         self.assertTrue((self.fixture.session / "requests/current.json").exists())
         self.assertTrue((self.fixture.session / "requests/successor.json").exists())
 
-    def test_unavailable_duration_can_be_corrected_in_current_menu(self):
+    def test_explicit_modes_call_existing_handlers(self):
         self.world()
-        self.player.run("wait", "7m")
-        with self.assertRaisesRegex(ValueError, "play wait 5m"):
-            self.reply("menu", [{"id": "wait.5m", "enabled": True}])
-        self.player.run("wait", "5m")
-        self.assertEqual(self.client.state["pending"]["request"]["action_id"], "wait.5m")
+        for mode, expected in (("safe", "handle_classified_non_dangerous"), ("stop", "stop_on_interruption")):
+            self.player.run("wait", "5m", mode)
+            self.assertEqual(self.client.state["pending"]["request"]["wait"]["danger_handling"], expected)
+            self.reply("world", [{"id": "world.wait"}], minute=5)
 
     def test_executable_entrypoint_is_plain_text_and_logs_no_request_ids(self):
         from pathlib import Path
