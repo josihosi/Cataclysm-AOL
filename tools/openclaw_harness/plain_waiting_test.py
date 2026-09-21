@@ -55,6 +55,20 @@ class PlainWaitingTest(unittest.TestCase):
             result = self.reply("world", [{"id": "world.wait", "enabled": True}], minute=5)
             self.assertTrue(self.player.render(result).startswith("Waited 5 minutes. Ready."))
 
+    def test_wait_passes_advertised_alarm_clock_chooser(self):
+        self.world()
+        self.player.run("wait", "5m")
+        self.reply("menu", [
+            {"id": "menu.choose", "stable_id": "wait-mode:wait-a-while", "enabled": True},
+            {"id": "menu.choose", "stable_id": "wait-mode:set-alarm", "enabled": True}])
+        request = self.client.state["pending"]["request"]
+        self.assertEqual(request["action_id"], "menu.choose")
+        self.assertEqual(request["stable_id"], "wait-mode:wait-a-while")
+        self.reply("menu", [{"id": "wait.5m", "enabled": True}])
+        self.assertEqual(self.client.state["pending"]["request"]["action_id"], "wait.5m")
+        result = self.reply("world", [{"id": "world.wait", "enabled": True}], minute=5)
+        self.assertIn("Waited 5 minutes. Ready.", self.player.render(result))
+
     def test_pending_command_never_resends_and_wrong_prompt_rejects(self):
         self.world()
         with self.assertRaisesRegex(ValueError, "does not offer YES"):

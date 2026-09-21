@@ -86,6 +86,9 @@ class WaitingPlayer:
                 return self.act(duration)
             if "wait.duration_menu" in action_ids:
                 result = self.act("wait.duration_menu")
+            elif any(a.get("id") == "menu.choose" and
+                     a.get("stable_id") == "wait-mode:wait-a-while" for a in self.actions()):
+                result = self.act("menu.choose", "wait-mode:wait-a-while")
             else:
                 self.state["selecting"] = False
                 offered = sorted(a.removeprefix("wait.") for a in action_ids
@@ -114,7 +117,8 @@ class WaitingPlayer:
             raise ValueError("Choose a duration, for example: play wait 5m or play wait 1h.")
         current = self.current()
         in_duration_menu = (current.get("surface", {}).get("kind") == "menu" and
-                            any(a["id"].startswith("wait.") for a in self.actions()))
+                            any(a["id"].startswith("wait.") or
+                                a.get("stable_id") == "wait-mode:wait-a-while" for a in self.actions()))
         if current.get("surface", {}).get("kind") != "world" and not in_duration_menu:
             raise ValueError("Waiting can start from ordinary gameplay. Run play look.")
         minutes = int(duration[:-1]) * (60 if duration[-1] == "h" else 1)
